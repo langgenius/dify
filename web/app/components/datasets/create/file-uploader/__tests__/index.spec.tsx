@@ -5,7 +5,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -85,7 +85,7 @@ const setup = ({
   renderWithConsoleQuery(
     <>
       <Owner />
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
     </>,
     { queryClient, systemFeatures: { deployment_edition: edition } },
   )

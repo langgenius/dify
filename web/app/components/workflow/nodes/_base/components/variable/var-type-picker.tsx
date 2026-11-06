@@ -50,7 +50,7 @@ const VarReferencePicker: FC<Props> = ({ readonly, className, value, onChange })
           <SelectValue className="capitalize" />
         </SelectTrigger>
         <SelectPortal>
-          <SelectPositioner sideOffset={4}>
+          <SelectPositioner>
             <SelectPopup className="w-30 rounded-lg border-0 p-1 shadow-sm">
               <SelectList className="p-0">
                 {TYPES.map((type) => (

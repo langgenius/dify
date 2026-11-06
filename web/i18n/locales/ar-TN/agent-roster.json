@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "مثلاً مساعد بحث",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "سيؤدي هذا إلى حذف {{name}} نهائيًا. سيتوقف تطبيق الويب الخاص به، والوصول عبر API، وجميع عمليات سير العمل التي تستخدمه عن العمل فورًا.",
+  "roster.deleteDialog.inputLabel": "اكتب <name>{{name}}</name> للتأكيد",
+  "roster.deleteDialog.inputPlaceholder": "أدخل اسم الوكيل",
   "roster.deleteDialog.title": "حذف {{name}}؟",
   "roster.deleteFailed": "فشل حذف الوكيل.",
   "roster.duplicateDialog.description": "أنشئ نسخة من {{name}} وخصّص هوية Agent الخاصة بها.",

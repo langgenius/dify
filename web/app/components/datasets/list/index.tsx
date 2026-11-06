@@ -1,11 +1,12 @@
 'use client'
 
-import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 // Libraries
 import { useBoolean } from 'ahooks'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useState } from 'react'
+import { parseAsStringLiteral, useQueryState } from 'nuqs'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   activeStepByStepTourGuideGroupAtom,
@@ -17,8 +18,12 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
+import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
+import { KnowledgeViewSwitcher } from '@/features/new-rag/list/knowledge-view-switcher'
+import { NewKnowledgeList } from '@/features/new-rag/list/new-knowledge-list'
+import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
@@ -26,28 +31,29 @@ import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
-import ExternalAPIPanel from '../external-api/external-api-panel'
+import { creatorIdsParser } from '../creator-filter-query'
 import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
+import { KnowledgeListTitleBar } from './title-bar'
+import { useDatasetList, useInvalidDatasetList } from './use-dataset-list'
 
-function List() {
+const knowledgeViewParser = parseAsStringLiteral(['classic', 'agent']).withDefault('classic')
+
+function LegacyList() {
   const { t } = useTranslation(['dataset'])
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
-  const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
-  const queryClient = useQueryClient()
-  const invalidDatasetList = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-  }, [queryClient])
+  const invalidDatasetList = useInvalidDatasetList()
   useDocumentTitle(t(($) => $.knowledge, { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
   const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
+  const [creatorIDs, setCreatorIDs] = useQueryState('creator_ids', creatorIdsParser)
   const debouncedTagIDs = useDebouncedValue(tagFilterValue, 500)
   const tagIDs = tagFilterValue.length > 0 ? debouncedTagIDs : []
 
@@ -57,28 +63,18 @@ function List() {
     workspacePermissionKeys,
     'dataset.external.connect',
   )
-  const { data: apiBaseInfo } = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
-  const datasetListQuery = useInfiniteQuery(
-    consoleQuery.datasets.get.infiniteOptions({
-      input: (page: number) => ({
-        query: {
-          tag_ids: tagIDs,
-          limit: 30,
-          include_all: includeAll,
-          keyword: searchKeywords,
-          page,
-        },
-      }),
-      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
-    }),
-  )
+  const datasetListQuery = useDatasetList({
+    creatorIds: creatorIDs,
+    includeAll,
+    keyword: searchKeywords,
+    tagIds: tagIDs,
+  })
   const pages = datasetListQuery.data?.pages ?? []
   const hasResolvedFirstPage = pages.length > 0
   const hasAnyDataset = (pages[0]?.total ?? 0) > 0
   const hasActiveFilters =
     tagIDs.length > 0 ||
+    creatorIDs.length > 0 ||
     keywords.trim().length > 0 ||
     searchKeywords.trim().length > 0 ||
     includeAll
@@ -134,9 +130,9 @@ function List() {
   return (
     <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
       <DatasetListHeader
-        apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
         canConnectExternalDataset={canConnectExternalDataset}
         canCreateDataset={canCreateDataset}
+        creatorFilterValue={creatorIDs}
         includeAll={includeAll}
         isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
         keywords={keywords}
@@ -144,7 +140,7 @@ function List() {
         onCreateDataset={() => push('/datasets/create')}
         onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
         onConnectDataset={() => push('/datasets/connect')}
-        onExternalApiClick={() => setShowExternalApiPanel(true)}
+        onCreatorsChange={(value) => void setCreatorIDs(value)}
         onIncludeAllChange={toggleIncludeAll}
         onKeywordsChange={setKeywords}
         onOpenTagManagement={() => setShowTagManagementModal(true)}
@@ -193,14 +189,49 @@ function List() {
         onClose={() => setShowTagManagementModal(false)}
         onTagsChange={invalidDatasetList}
       />
-      {showExternalApiPanel && canConnectExternalDataset && (
-        <ExternalAPIPanel
-          canManageExternalKnowledgeApi={canConnectExternalDataset}
-          onClose={() => setShowExternalApiPanel(false)}
-        />
-      )}
     </div>
   )
+}
+
+function KnowledgeFsList() {
+  const docLink = useDocLink()
+  const [view, setView] = useQueryState('view', knowledgeViewParser)
+
+  return (
+    <KnowledgeUpgradeProvider onUpgradeStarted={() => void setView('agent')}>
+      <div className="flex min-h-0 grow flex-col bg-background-body">
+        <KnowledgeListTitleBar
+          apiReferenceUrl={
+            view === 'agent' ? docLink('/api-reference/guides/knowledge-base') : undefined
+          }
+          className={view === 'agent' ? 'px-4 sm:px-8' : 'px-8'}
+          viewSwitcher={
+            <KnowledgeViewSwitcher value={view} onChange={(nextView) => void setView(nextView)} />
+          }
+        />
+        {view === 'agent' ? <NewKnowledgeList /> : <LegacyList />}
+      </div>
+    </KnowledgeUpgradeProvider>
+  )
+}
+
+function List() {
+  const { data: knowledgeFsEnabled } = useSuspenseQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_knowledge_fs,
+    }),
+  )
+
+  if (!knowledgeFsEnabled) {
+    return (
+      <div className="flex min-h-0 grow flex-col bg-background-body">
+        <KnowledgeListTitleBar className="px-8" />
+        <LegacyList />
+      </div>
+    )
+  }
+
+  return <KnowledgeFsList />
 }
 
 export default List

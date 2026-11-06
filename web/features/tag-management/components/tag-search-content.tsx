@@ -23,6 +23,7 @@ type TagSearchContentProps = {
   onOpenTagManagement?: () => void
   onClose?: () => void
   canBindOrUnbindTags?: boolean
+  requiresTargetEditPermission?: boolean
   showTagManagement?: boolean
 }
 
@@ -35,11 +36,15 @@ export const TagSearchContentView = ({
   onOpenTagManagement,
   onClose,
   canBindOrUnbindTags = false,
+  requiresTargetEditPermission = false,
   showTagManagement = true,
   canManageTags,
 }: TagSearchContentViewProps) => {
   const { t } = useTranslation(['common'])
-  const placeholder = t(($) => $['tag.selectorPlaceholder'], { ns: 'common' }) || ''
+  const canChangeBindings = requiresTargetEditPermission
+    ? canBindOrUnbindTags
+    : canBindOrUnbindTags || canManageTags
+  const placeholder = t(($) => $['tag.selectorPlaceholder'], { ns: 'common' })
 
   return (
     <>
@@ -71,11 +76,7 @@ export const TagSearchContentView = ({
           }
 
           return (
-            <ComboboxItem<string>
-              key={tag.id}
-              value={tag.id}
-              disabled={!canBindOrUnbindTags && !canManageTags}
-            >
+            <ComboboxItem<string> key={tag.id} value={tag.id} disabled={!canChangeBindings}>
               <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
               <ComboboxItemIndicator />
             </ComboboxItem>

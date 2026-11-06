@@ -57,13 +57,16 @@ describe('EmailChangeModal', () => {
       name: 'accountSettings.account.changeEmail.codeLabel',
     })
     await user.type(originCode, '123456{Enter}')
-    expect(consoleClient.account.changeEmail.validity.post).toHaveBeenCalledWith({
-      body: {
-        email: 'old@example.com',
-        code: '123456',
-        token: 'email-token',
+    expect(consoleClient.account.changeEmail.validity.post).toHaveBeenCalledWith(
+      {
+        body: {
+          email: 'old@example.com',
+          code: '123456',
+          token: 'email-token',
+        },
       },
-    })
+      { context: { silent: true } },
+    )
 
     const email = await screen.findByRole('textbox', {
       name: 'accountSettings.account.changeEmail.emailLabel',
@@ -75,13 +78,16 @@ describe('EmailChangeModal', () => {
       ).toBeEnabled(),
     )
     await user.type(email, '{Enter}')
-    expect(consoleClient.account.changeEmail.post).toHaveBeenLastCalledWith({
-      body: {
-        email: 'new@example.com',
-        phase: 'new_email',
-        token: 'verified-token',
+    expect(consoleClient.account.changeEmail.post).toHaveBeenLastCalledWith(
+      {
+        body: {
+          email: 'new@example.com',
+          phase: 'new_email',
+          token: 'verified-token',
+        },
       },
-    })
+      { context: { silent: true } },
+    )
 
     const newCode = await screen.findByRole('textbox', {
       name: 'accountSettings.account.changeEmail.codeLabel',
@@ -89,12 +95,15 @@ describe('EmailChangeModal', () => {
     expect(newCode).toHaveValue('')
     await user.type(newCode, '654321{Enter}')
     await waitFor(() =>
-      expect(consoleClient.account.changeEmail.reset.post).toHaveBeenCalledWith({
-        body: {
-          new_email: 'new@example.com',
-          token: 'verified-token',
+      expect(consoleClient.account.changeEmail.reset.post).toHaveBeenCalledWith(
+        {
+          body: {
+            new_email: 'new@example.com',
+            token: 'verified-token',
+          },
         },
-      }),
+        { context: { silent: true } },
+      ),
     )
     expect(mockLogout).toHaveBeenCalledOnce()
   })
@@ -187,12 +196,15 @@ describe('EmailChangeModal', () => {
         name: 'accountSettings.account.changeEmail.emailLabel',
       }),
     ).toBeVisible()
-    expect(consoleClient.account.changeEmail.validity.post).toHaveBeenLastCalledWith({
-      body: {
-        email: 'old@example.com',
-        code: '654321',
-        token: 'email-token',
+    expect(consoleClient.account.changeEmail.validity.post).toHaveBeenLastCalledWith(
+      {
+        body: {
+          email: 'old@example.com',
+          code: '654321',
+          token: 'email-token',
+        },
       },
-    })
+      { context: { silent: true } },
+    )
   })
 })

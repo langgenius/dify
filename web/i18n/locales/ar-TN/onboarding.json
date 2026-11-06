@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "وضع علامة على {{title}} كغير مكتمل",
   "stepByStepTour.minimize": "تصغير",
   "stepByStepTour.progressAriaValueText": "اكتملت {{completed}} من {{total}} خطوات",
-  "stepByStepTour.restore": "فتح الجولة خطوة بخطوة",
   "stepByStepTour.skip": "تخطي الجولة",
   "stepByStepTour.skipRecovery.dismiss": "فهمت",
   "stepByStepTour.skipRecovery.label": "تلميح استعادة Step-by-step Tour",

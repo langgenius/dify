@@ -1,3 +1,4 @@
+import type { ExternalTraceRun } from './external-trace-row'
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
@@ -29,6 +30,7 @@ export type SpecialResultPanelProps = {
   agentOrToolLogItemStack?: AgentLogItemWithChildren[]
   agentOrToolLogListMap?: Record<string, AgentLogItemWithChildren[]>
   handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
+  externalTraceRun?: ExternalTraceRun
 }
 const SpecialResultPanel = ({
   showRetryDetail,
@@ -49,6 +51,7 @@ const SpecialResultPanel = ({
   agentOrToolLogItemStack,
   agentOrToolLogListMap,
   handleShowAgentOrToolLog,
+  externalTraceRun,
 }: SpecialResultPanelProps) => {
   return (
     <div
@@ -65,6 +68,7 @@ const SpecialResultPanel = ({
           list={iterationResultList}
           onBack={setShowIteratingDetailFalse}
           iterDurationMap={iterationResultDurationMap}
+          externalTraceRun={externalTraceRun}
         />
       )}
       {showLoopingDetail && !!loopResultList?.length && setShowLoopingDetailFalse && (
@@ -73,6 +77,7 @@ const SpecialResultPanel = ({
           onBack={setShowLoopingDetailFalse}
           loopDurationMap={loopResultDurationMap}
           loopVariableMap={loopResultVariableMap}
+          externalTraceRun={externalTraceRun}
         />
       )}
       {!!agentOrToolLogItemStack?.length && agentOrToolLogListMap && handleShowAgentOrToolLog && (

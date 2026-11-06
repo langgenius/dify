@@ -16,7 +16,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
   const { t } = useTranslation(['common', 'share'])
   const {
     appSourceType,
-    isMobile,
+    isBelowSm,
     currentConversationId,
     theme,
     handleStartChat,
@@ -32,7 +32,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
       data-testid="inputs-form-node"
       className={cn(
         'mb-6 flex flex-col items-center px-4 pt-6',
-        isMobile && 'mb-4 pt-4',
+        isBelowSm && 'mb-4 pt-4',
         isTryApp && 'mb-0 px-0',
       )}
     >
@@ -47,7 +47,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
           className={cn(
             'flex items-center gap-3 rounded-t-2xl px-6 py-4',
             !collapsed && 'border-b border-divider-subtle',
-            isMobile && 'px-4 py-3',
+            isBelowSm && 'px-4 py-3',
           )}
         >
           <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
@@ -76,12 +76,12 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
           )}
         </div>
         {!collapsed && (
-          <div className={cn('p-6', isMobile && 'p-4')}>
+          <div className={cn('p-6', isBelowSm && 'p-4')}>
             <InputsFormContent />
           </div>
         )}
         {!collapsed && !currentConversationId && (
-          <div className={cn('p-6', isMobile && 'p-4')}>
+          <div className={cn('p-6', isBelowSm && 'p-4')}>
             <Button
               variant="primary"
               className="w-full"

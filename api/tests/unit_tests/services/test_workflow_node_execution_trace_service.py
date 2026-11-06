@@ -7,9 +7,9 @@ from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from fields.workflow_run_fields import WorkflowRunNodeExecutionListResponse
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.account import Account
@@ -43,7 +43,7 @@ def _retry_attempt(retry_index: int, **overrides: object) -> dict[str, object]:
 
 
 def _execution(process_data: dict[str, object]) -> WorkflowNodeExecutionModel:
-    return WorkflowNodeExecutionModel(
+    execution = WorkflowNodeExecutionModel(
         id="exec-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -64,11 +64,12 @@ def _execution(process_data: dict[str, object]) -> WorkflowNodeExecutionModel:
         error=None,
         elapsed_time=3.5,
         execution_metadata=json.dumps({"iteration_id": "iteration-1"}),
-        created_at=datetime(2023, 11, 14, tzinfo=UTC),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
         finished_at=datetime(2023, 11, 14, 0, 0, 4, tzinfo=UTC),
     )
+    execution.created_at = datetime(2023, 11, 14, tzinfo=UTC)
+    return execution
 
 
 def _repository(full_process_data: dict[str, object] | None) -> DifyAPIWorkflowNodeExecutionRepository:
@@ -165,3 +166,25 @@ def test_virtual_trace_validates_through_node_execution_response(sqlite_session:
 
     assert response.data[0].retry_index == 1
     assert response.model_dump(mode="json")["data"][0]["retry_index"] == 1
+
+
+def test_traces_serialize_creator_after_the_assembly_session_closes(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    account = Account(name="Alice", email="alice@example.com")
+    account.id = "account-1"
+    with sqlite_session_factory.begin() as session:
+        session.add(account)
+    process_data = {RETRY_HISTORY_PROCESS_DATA_KEY: [_retry_attempt(1)]}
+
+    with sqlite_session_factory() as session:
+        traces = assemble_workflow_node_execution_traces(
+            [_execution(process_data)], _repository(process_data), session=session
+        )
+
+    response = WorkflowRunNodeExecutionListResponse.model_validate({"data": traces}, from_attributes=True)
+
+    assert [item["created_by_account"] for item in response.model_dump(mode="json")["data"]] == [
+        {"id": "account-1", "name": "Alice", "email": "alice@example.com"},
+        {"id": "account-1", "name": "Alice", "email": "alice@example.com"},
+    ]

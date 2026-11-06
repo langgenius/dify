@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
+from dify_agent.protocol.knowledge_fs import KnowledgeFsCitation
 from pydantic import BaseModel, ConfigDict, Field, RootModel, WithJsonSchema, computed_field
 
 from fields.base import ResponseModel
@@ -157,6 +158,7 @@ class BlockingUsageResponse(ResponseModel):
 
 
 class BlockingRetrieverResourceResponse(ResponseModel):
+    knowledge_fs_citation: KnowledgeFsCitation | None = None
     model_config = ConfigDict(extra="allow")
 
     id: UUIDString | None = None
@@ -473,6 +475,7 @@ class Parameters(BaseModel):
     speech_to_text: FeatureToggleObject
     text_to_speech: TextToSpeechObject
     retriever_resource: FeatureToggleObject
+    show_thoughts: FeatureToggleObject = Field(default_factory=lambda: {"enabled": False})
     annotation_reply: FeatureToggleObject
     more_like_this: FeatureToggleObject
     user_input_form: UserInputFormList

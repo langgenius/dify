@@ -1,3 +1,259 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from unittest.mock import MagicMock
+
+import pytest
+from pydantic import JsonValue
+
+from services.enterprise import rbac_service as svc
+from services.enterprise.base import EnterpriseRequest
+from services.knowledge_fs import membership_changes
+from services.rbac import contracts as rbac_contracts
+from tests.helpers.unit.rbac_fakes import RBACTransport, RecordedRequest
+
+"""Unit tests for the agent-flavoured RBAC inner-API client.
+
+The resource-access clients injected into the application services share one
+implementation across apps, datasets and agents.
+These tests replace the Enterprise transport and assert the HTTP method, the exact endpoint,
+the query/body keys and the returned model for every operation.
+"""
+
+
+TENANT = "tenant-1"
+ACTOR = "acct-1"
+AGENT = "agent-1"
+POLICY = "policy-1"
+
+
+def _last(transport: RBACTransport) -> RecordedRequest:
+    return transport.only_request
+
+
+_AGENT_CASES: list[tuple[str, str, str, Callable[[], object]]] = [
+    (
+        "whitelist_resources",
+        "GET",
+        "/rbac/agents/whitelist/resources",
+        lambda: svc._AGENT_ACCESS.whitelist_resources(TENANT, ACTOR),
+    ),
+    (
+        "user_access_policies",
+        "GET",
+        "/rbac/agents/user-access-policies",
+        lambda: svc._AGENT_ACCESS.user_access_policies(TENANT, ACTOR, resource_id=AGENT),
+    ),
+    (
+        "replace_user_access_policies",
+        "PUT",
+        "/rbac/agents/user-access-policies",
+        lambda: svc._AGENT_ACCESS.replace_user_access_policies(
+            TENANT,
+            ACTOR,
+            resource_id=AGENT,
+            target_account_id="member-1",
+            payload=rbac_contracts.ReplaceUserAccessPolicies(access_policy_ids=[POLICY], account_ids=["member-1"]),
+        ),
+    ),
+    (
+        "whitelist",
+        "GET",
+        "/rbac/agents/whitelist",
+        lambda: svc._AGENT_ACCESS.whitelist(TENANT, ACTOR, resource_id=AGENT),
+    ),
+    (
+        "whitelist_config",
+        "GET",
+        "/rbac/agents/whitelist",
+        lambda: svc._AGENT_ACCESS.whitelist_config(TENANT, ACTOR, resource_id=AGENT),
+    ),
+    (
+        "legacy_whitelist_config",
+        "GET",
+        "/rbac/agents/whitelist",
+        lambda: svc._AGENT_ACCESS.legacy_whitelist_config(TENANT, ACTOR, resource_id=AGENT),
+    ),
+    (
+        "replace_whitelist",
+        "PUT",
+        "/rbac/agents/whitelist",
+        lambda: svc._AGENT_ACCESS.replace_whitelist(
+            TENANT,
+            ACTOR,
+            resource_id=AGENT,
+            payload=rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=True),
+        ),
+    ),
+    (
+        "append_whitelist_members_batch",
+        "POST",
+        "/rbac/agents/whitelist/members/batch",
+        lambda: svc._AGENT_ACCESS.append_whitelist_members_batch(
+            tenant_id=TENANT,
+            account_id=ACTOR,
+            data=[
+                rbac_contracts.AppendAgentWhitelistMembersBatchItem(
+                    agent_id=AGENT, account_ids=["member-1"], policy_id=POLICY
+                )
+            ],
+        ),
+    ),
+    (
+        "matrix",
+        "GET",
+        "/rbac/agents/access-policy",
+        lambda: svc._AGENT_ACCESS.matrix(TENANT, ACTOR, resource_id=AGENT),
+    ),
+    (
+        "list_role_bindings",
+        "GET",
+        "/rbac/agents/access-policy/role-bindings",
+        lambda: svc._AGENT_ACCESS.list_role_bindings(TENANT, ACTOR, resource_id=AGENT, policy_id=POLICY),
+    ),
+    (
+        "list_member_bindings",
+        "GET",
+        "/rbac/agents/access-policy/member-bindings",
+        lambda: svc._AGENT_ACCESS.list_member_bindings(TENANT, ACTOR, resource_id=AGENT, policy_id=POLICY),
+    ),
+    (
+        "delete_member_bindings",
+        "DELETE",
+        "/rbac/agents/access-policy/member-bindings",
+        lambda: svc._AGENT_ACCESS.delete_member_bindings(
+            TENANT,
+            ACTOR,
+            resource_id=AGENT,
+            policy_id=POLICY,
+            payload=rbac_contracts.DeleteMemberBindings(account_ids=["member-1"]),
+        ),
+    ),
+    (
+        "workspace.agent_matrix",
+        "GET",
+        "/rbac/workspace/agents/access-policy",
+        lambda: svc._WORKSPACE_AGENT_ACCESS.matrix(TENANT, ACTOR),
+    ),
+    (
+        "workspace.list_agent_role_bindings",
+        "GET",
+        "/rbac/workspace/agents/access-policy/role-bindings",
+        lambda: svc._WORKSPACE_AGENT_ACCESS.list_role_bindings(TENANT, ACTOR, POLICY),
+    ),
+    (
+        "workspace.list_agent_member_bindings",
+        "GET",
+        "/rbac/workspace/agents/access-policy/member-bindings",
+        lambda: svc._WORKSPACE_AGENT_ACCESS.list_member_bindings(TENANT, ACTOR, POLICY),
+    ),
+    (
+        "workspace.replace_agent_bindings",
+        "PUT",
+        "/rbac/workspace/agents/access-policy/bindings",
+        lambda: svc._WORKSPACE_AGENT_ACCESS.replace_bindings(
+            TENANT, ACTOR, POLICY, rbac_contracts.ReplaceBindings(role_ids=["role-1"], account_ids=["member-1"])
+        ),
+    ),
+    (
+        "catalog.agent",
+        "GET",
+        "/rbac/role-permissions/catalog/agent",
+        lambda: svc.RBACService.Catalog.agent(TENANT, account_id=ACTOR),
+    ),
+]
+
+
+_PARITY_CASES: list[tuple[str, Callable[[], object], Callable[[], object]]] = [
+    (
+        "whitelist_resources",
+        lambda: svc._APP_ACCESS.whitelist_resources(TENANT, ACTOR),
+        lambda: svc._AGENT_ACCESS.whitelist_resources(TENANT, ACTOR),
+    ),
+    (
+        "whitelist",
+        lambda: svc._APP_ACCESS.whitelist(TENANT, ACTOR, "res-1"),
+        lambda: svc._AGENT_ACCESS.whitelist(TENANT, ACTOR, resource_id="res-1"),
+    ),
+    (
+        "user_access_policies",
+        lambda: svc._APP_ACCESS.user_access_policies(TENANT, ACTOR, "res-1"),
+        lambda: svc._AGENT_ACCESS.user_access_policies(TENANT, ACTOR, resource_id="res-1"),
+    ),
+    (
+        "matrix",
+        lambda: svc._APP_ACCESS.matrix(TENANT, ACTOR, "res-1"),
+        lambda: svc._AGENT_ACCESS.matrix(TENANT, ACTOR, resource_id="res-1"),
+    ),
+    (
+        "list_role_bindings",
+        lambda: svc._APP_ACCESS.list_role_bindings(TENANT, ACTOR, "res-1", POLICY),
+        lambda: svc._AGENT_ACCESS.list_role_bindings(TENANT, ACTOR, resource_id="res-1", policy_id=POLICY),
+    ),
+    (
+        "list_member_bindings",
+        lambda: svc._APP_ACCESS.list_member_bindings(TENANT, ACTOR, "res-1", POLICY),
+        lambda: svc._AGENT_ACCESS.list_member_bindings(TENANT, ACTOR, resource_id="res-1", policy_id=POLICY),
+    ),
+]
+
+
+class TestRbacAgentAccessCases:
+    @staticmethod
+    @pytest.fixture
+    def transport(monkeypatch: pytest.MonkeyPatch) -> RBACTransport:
+        transport = RBACTransport(response={"automatic_include_workspace_members": True})
+        monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", transport.send)
+        return transport
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("method", "endpoint", "invoke"),
+        [(case[1], case[2], case[3]) for case in _AGENT_CASES],
+        ids=[case[0] for case in _AGENT_CASES],
+    )
+    def test_agent_operations_hit_the_agent_route(
+        transport: RBACTransport, method: str, endpoint: str, invoke: Callable[[], object]
+    ) -> None:
+        invoke()
+
+        call = _last(transport)
+        assert call.method == method
+        assert call.endpoint == endpoint
+        assert "/apps/" not in call.endpoint
+        assert "/datasets/" not in call.endpoint
+        assert call.tenant_id == TENANT
+        assert call.account_id == ACTOR
+        params = call.params or {}
+        assert "app_id" not in params
+        assert "dataset_id" not in params
+        if AGENT in params.values():
+            assert params.get("agent_id") == AGENT
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("app_call", "agent_call"),
+        [(case[1], case[2]) for case in _PARITY_CASES],
+        ids=[case[0] for case in _PARITY_CASES],
+    )
+    def test_same_path_and_param_shape_modulo_segment(
+        transport: RBACTransport,
+        app_call: Callable[[], object],
+        agent_call: Callable[[], object],
+    ) -> None:
+        app_call()
+        app = _last(transport)
+        transport.requests.clear()
+        agent_call()
+        agent = _last(transport)
+
+        assert app.endpoint.replace("/apps/", "/agents/") == agent.endpoint
+        assert app.method == agent.method
+
+        app_params = {("agent_id" if k == "app_id" else k): v for k, v in (app.params or {}).items()}
+        assert app_params == (agent.params or {})
+
+
 """Unit tests for services.enterprise.rbac_service.
 
 Most enterprise RBAC methods turn a single ``EnterpriseRequest.send_inner_rbac_request``
@@ -5,18 +261,6 @@ call into a pydantic response model. Rather than spinning up an HTTP server, the
 replace that helper and assert on the request arguments and response shape.
 Local membership tests live at the application service boundary.
 """
-
-from __future__ import annotations
-
-from collections.abc import Callable
-from unittest.mock import MagicMock
-
-import pytest
-
-from services.enterprise import rbac_service as svc
-from services.enterprise.base import EnterpriseRequest
-from services.rbac import contracts as rbac_contracts
-from tests.unit_tests.rbac_fakes import RBACTransport, RecordedRequest
 
 
 @pytest.fixture
@@ -882,6 +1126,182 @@ class TestListOption:
             "page_number": 1,
             "resource_type": "app",
         }
+
+
+class _RecordingSession:
+    def __init__(self, events: list[str]) -> None:
+        self.events = events
+
+    def __enter__(self) -> _RecordingSession:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.events.append("close")
+
+    def commit(self) -> None:
+        self.events.append("commit")
+
+    def rollback(self) -> None:
+        self.events.append("rollback")
+
+
+class TestKnowledgeFSRoleMutations:
+    @pytest.fixture
+    def events(self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport) -> list[str]:
+        events: list[str] = []
+        forward_to_transport = transport.send
+
+        def record_remote(
+            method: str,
+            endpoint: str,
+            *,
+            tenant_id: str,
+            account_id: str | None,
+            json: dict[str, object] | None,
+            params: dict[str, object] | None,
+            timeout: float,
+        ) -> JsonValue:
+            events.append("remote")
+            return forward_to_transport(
+                method,
+                endpoint,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json=json,
+                params=params,
+                timeout=timeout,
+            )
+
+        monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", record_remote)
+        monkeypatch.setattr(svc.session_factory, "create_session", lambda: _RecordingSession(events))
+        return events
+
+    def test_replace_member_roles_invalidates_target_after_remote_success(
+        self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport, events: list[str]
+    ) -> None:
+        transport.response = {"account_id": "acct-2", "roles": []}
+        calls: list[dict[str, object]] = []
+
+        def invalidate(**kwargs: object) -> None:
+            calls.append(kwargs)
+            events.append("invalidate")
+
+        monkeypatch.setattr(membership_changes, "apply_workspace_membership_change", invalidate)
+
+        out = svc.RBACService.KnowledgeFSMemberRoles.replace("tenant-1", "acct-actor", "acct-2", ["role-1"])
+
+        assert out.account_id == "acct-2"
+        assert events == ["remote", "invalidate", "commit", "close"]
+        assert calls[0]["tenant_id"] == "tenant-1"
+        assert calls[0]["actor_account_id"] == "acct-actor"
+        assert calls[0]["account_ids"] == ("acct-2",)
+        assert calls[0]["change"] == membership_changes.KnowledgeFSWorkspaceMembershipChange.ROLE_CHANGED
+
+    @pytest.mark.parametrize("operation", ["update", "delete"])
+    def test_role_writes_invalidate_workspace_after_remote_success(
+        self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport, events: list[str], operation: str
+    ) -> None:
+        transport.response = {"id": "role-1", "type": "workspace", "name": "Editors"}
+        tenants: list[object] = []
+
+        def invalidate(**kwargs: object) -> None:
+            tenants.append(kwargs["tenant_id"])
+            events.append("invalidate")
+
+        monkeypatch.setattr(membership_changes, "apply_workspace_rbac_role_change", invalidate)
+
+        if operation == "update":
+            payload = rbac_contracts.RoleMutation(name="Editors", permission_keys=["knowledge_space_read"])
+            role = svc.RBACService.KnowledgeFSRoles.update("tenant-1", "acct-actor", "role-1", payload)
+            assert role.id == "role-1"
+        else:
+            svc.RBACService.KnowledgeFSRoles.delete("tenant-1", "acct-actor", "role-1")
+
+        assert events == ["remote", "invalidate", "commit", "close"]
+        assert tenants == ["tenant-1"]
+
+    def test_remote_failure_does_not_change_local_authorization(
+        self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport, events: list[str]
+    ) -> None:
+        transport.failure = RuntimeError("enterprise unavailable")
+        monkeypatch.setattr(
+            membership_changes, "apply_workspace_membership_change", lambda **_kwargs: events.append("invalidate")
+        )
+
+        with pytest.raises(RuntimeError, match="enterprise unavailable"):
+            svc.RBACService.KnowledgeFSMemberRoles.replace("tenant-1", "acct-actor", "acct-2", ["role-1"])
+
+        assert events == ["remote"]
+
+    def test_local_invalidation_failure_rolls_back_and_propagates(
+        self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport, events: list[str]
+    ) -> None:
+        transport.response = {"id": "role-1", "type": "workspace", "name": "Editors"}
+
+        def fail(**_kwargs: object) -> None:
+            raise RuntimeError("local invalidation failed")
+
+        monkeypatch.setattr(membership_changes, "apply_workspace_rbac_role_change", fail)
+
+        with pytest.raises(RuntimeError, match="local invalidation failed"):
+            svc.RBACService.KnowledgeFSRoles.update(
+                "tenant-1", "acct-actor", "role-1", rbac_contracts.RoleMutation(name="Editors", permission_keys=[])
+            )
+
+        assert events == ["remote", "rollback", "close"]
+
+
+class TestKnowledgeFSPermissions:
+    def test_batch_get_returns_empty_without_remote_call(self, transport: RBACTransport) -> None:
+        assert svc.RBACService.KnowledgeFSPermissions.batch_get("tenant-1", "acct-1", [], session=None) == {}  # type: ignore[arg-type]
+        assert transport.requests == []
+
+    def test_batch_get_uses_full_legacy_permissions_when_rbac_disabled(
+        self, transport: RBACTransport, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=False)
+        out = svc.RBACService.KnowledgeFSPermissions.batch_get(
+            "tenant-1",
+            "acct-1",
+            ["control-1", "control-2"],
+            session=None,  # type: ignore[arg-type]
+        )
+
+        assert transport.requests == []
+        # KnowledgeFS reuses the legacy dataset permission points.
+        expected = [
+            "dataset_readonly",
+            "dataset_create_and_management",
+            "dataset_edit",
+            "dataset_delete",
+            "dataset_access_config",
+            "dataset_retrieval_recall",
+        ]
+        assert out == {"control-1": expected, "control-2": expected}
+
+    def test_batch_get_uses_control_space_contract(
+        self, transport: RBACTransport, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        transport.response = {
+            "data": [
+                {"control_space_id": "control-1", "permission_keys": ["dataset_readonly"]},
+                {"control_space_id": "control-2", "permission_keys": ["dataset_retrieval_recall"]},
+            ]
+        }
+
+        out = svc.RBACService.KnowledgeFSPermissions.batch_get(
+            "tenant-1",
+            "acct-1",
+            ["control-1", "control-2"],
+            session=None,  # type: ignore[arg-type]
+        )
+
+        call = _call_args(transport)
+        assert call.method == "POST"
+        assert call.endpoint == "/rbac/knowledge-fs/permission-keys/batch"
+        assert call.json == {"control_space_ids": ["control-1", "control-2"]}
+        assert out == {"control-1": ["dataset_readonly"], "control-2": ["dataset_retrieval_recall"]}
 
 
 @pytest.fixture
