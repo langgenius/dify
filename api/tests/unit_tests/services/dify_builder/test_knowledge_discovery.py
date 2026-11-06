@@ -13,7 +13,7 @@ from services.dify_builder.agent import build, resources
 from services.dify_builder.application.handlers_build import build_registry
 from services.dify_builder.application.ports import DifyBuilderAgent
 from services.dify_builder.application.runner import Env, Runner
-from services.dify_builder.plan import BuildClarification, WorkflowPlan
+from services.dify_builder.plan import BuildClarification, ResourceDiscovery, WorkflowPlan
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 from tests.unit_tests.services.dify_builder.test_bound_resource_plan_reconciliation import ReconciliationAgent
 from tests.unit_tests.services.dify_builder.test_knowledge_source_cue import (
@@ -80,6 +80,110 @@ def test_only_dataset_is_recommended_as_nonexecuting_preference(monkeypatch: pyt
     assert len(calls) == 1
     assert KNOWLEDGE in str(calls[0]["user"])
     assert "discovery" in str(calls[0]["system"]).lower()
+
+
+@pytest.mark.parametrize("documents", ["empty", "indexing"])
+def test_named_unready_knowledge_prompt_preserves_discovery_preference(
+    monkeypatch: pytest.MonkeyPatch, documents: str
+) -> None:
+    name = "QA1386-product-docs-empty-1030"
+    named = replace(
+        inventory().datasets[0],
+        label=name,
+        meta=f"Discovery only; available documents: 0; status: {documents}; use permission: allowed.",
+        availability={"scope": "discovery_only", "use": "allowed", "documents": documents, "runtime": "not_supported"},
+    )
+    inv = resources.TenantResources(models=[], datasets=[named], tools=[])
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: inv)
+    prompts: list[dict[str, object]] = []
+
+    def invoke(_model: object, **values: object) -> dict[str, object]:
+        prompts.append(values)
+        return {
+            "resource_ids": [KNOWLEDGE],
+            "selection_reasons": {KNOWLEDGE: "Preserves the explicitly named source as a discovery preference."},
+            "knowledge_requires_clarification": True,
+        }
+
+    monkeypatch.setattr(build.llm, "invoke_json", invoke)
+    options = build.discover_resources(
+        object(),
+        "tenant",
+        PLAN.items,
+        goal_text=f"必须从知识库 {name} 检索依据后用中文回答；找不到依据时说明无法回答。",
+        requirements={"knowledge_base": name, "answer_language": "中文"},
+        account_id="actor",
+    )
+    system = str(prompts[0]["system"])
+    user = str(prompts[0]["user"])
+    # Outbound cognition contract only; this does not prove real-model ranking.
+    assert "Preserve an explicitly required, listed knowledge identity" in system
+    assert "actor-scoped metadata says use=allowed" in system
+    assert "waiting_setup" in system
+    assert "empty or indexing" in system
+    assert "Copy the complete knowledge:<id> verbatim, never a bare dataset UUID" in system
+    assert "knowledge_requires_clarification=true" in system
+    assert system.index("# Native build capability and external resource scope") < system.index(
+        "Preserve an explicitly required, listed knowledge identity"
+    )
+    assert name in user
+    assert f"- {KNOWLEDGE} (knowledge, waiting_setup)" in user
+    assert isinstance(options, ResourceDiscovery)
+    assert [(o.id, o.kind, o.readiness) for o in options] == [(KNOWLEDGE, "knowledge", "waiting_setup")]
+    assert options.knowledge_requires_clarification is True
+
+
+def test_named_knowledge_selection_keeps_model_ranking_and_exact_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    inv = inventory(include_model=True)
+    other = replace(
+        inv.datasets[0],
+        id="other-dataset",
+        label="Unrelated ready knowledge",
+        readiness="ready",
+        meta="Available documents: 1; status: indexed; use permission: allowed.",
+        availability={"scope": "discovery_only", "use": "allowed", "documents": "indexed", "runtime": "not_supported"},
+    )
+    inv = replace(inv, datasets=[other, replace(inv.datasets[0], label="QA1386-product-docs-empty-1030")])
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: inv)
+    monkeypatch.setattr(
+        build.llm,
+        "invoke_json",
+        lambda *_a, **_k: {
+            "resource_ids": [KNOWLEDGE],
+            "selection_reasons": {KNOWLEDGE: "Matches the explicitly named discovery preference."},
+            "knowledge_requires_clarification": True,
+        },
+    )
+    options = build.discover_resources(
+        object(),
+        "tenant",
+        PLAN.items,
+        requirements={"knowledge_base": "QA1386-product-docs-empty-1030"},
+        account_id="actor",
+    )
+    assert [o.id for o in options] == [KNOWLEDGE]
+    assert "Matches the explicitly named discovery preference." in options[0].meta
+    assert "cannot bind, generate or execute retrieval" in options[0].meta
+
+
+@pytest.mark.parametrize("listed", [False, True])
+def test_named_knowledge_empty_model_selection_never_invents_a_preference(
+    monkeypatch: pytest.MonkeyPatch, listed: bool
+) -> None:
+    inv = inventory() if listed else resources.TenantResources(models=[], datasets=[], tools=[])
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: inv)
+    monkeypatch.setattr(
+        build.llm,
+        "invoke_json",
+        lambda *_a, **_k: {"resource_ids": [], "knowledge_requires_clarification": True},
+    )
+    options = build.discover_resources(
+        object(), "tenant", PLAN.items, requirements={"knowledge_base": "Permitted synthetic KB"}, account_id="actor"
+    )
+    assert isinstance(options, ResourceDiscovery)
+    assert options == []
+    assert options.knowledge_requires_clarification is True
+    assert options.knowledge_source_unavailable is False
 
 
 def test_knowledge_confirmation_is_metadata_only_and_never_replans(monkeypatch: pytest.MonkeyPatch) -> None:
