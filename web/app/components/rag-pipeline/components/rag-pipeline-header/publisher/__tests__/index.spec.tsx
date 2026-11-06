@@ -165,7 +165,6 @@ function renderPipeline({
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: {
       deployment_edition: 'CLOUD',
-      enable_collaboration_mode: false,
       enable_marketplace: false,
     },
     features: { knowledge_pipeline: { publish_enabled: publishEnabled } },

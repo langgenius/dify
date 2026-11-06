@@ -259,7 +259,7 @@ const PermissionSelector = ({
                   disabled={isDisabled}
                   name="member-search"
                   value={keywords}
-                  placeholder={t(($) => $['operation.search'], { ns: 'common' }) || ''}
+                  placeholder={t(($) => $['operation.search'], { ns: 'common' })}
                   onValueChange={setKeywords}
                 />
               </div>

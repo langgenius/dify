@@ -11,9 +11,9 @@ import { useAutoGenModel } from '@/app/components/app/configuration/config/auto-
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { consoleQuery } from '@/service/console'
-import { ModelModeType, Theme } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import { useMittContext } from '../visual-editor/context'
 import { useVisualEditorStore } from '../visual-editor/store'
 import { SchemaGeneratorDark, SchemaGeneratorLight } from './assets'
@@ -45,7 +45,7 @@ export function JsonSchemaGenerator({ onApply, alignOffset }: JsonSchemaGenerato
   const [model, setModel] = useAutoGenModel()
   const [instruction, setInstruction] = useState('')
   const [schema, setSchema] = useState<SchemaRoot | null>(null)
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )
@@ -63,7 +63,7 @@ export function JsonSchemaGenerator({ onApply, alignOffset }: JsonSchemaGenerato
   const advancedEditing = useVisualEditorStore((state) => state.advancedEditing)
   const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
   const { emit } = useMittContext()
-  const SchemaGenerator = theme === Theme.light ? SchemaGeneratorLight : SchemaGeneratorDark
+  const SchemaGenerator = theme === 'light' ? SchemaGeneratorLight : SchemaGeneratorDark
 
   const handleTrigger = useCallback(
     (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
