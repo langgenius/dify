@@ -36,11 +36,7 @@ const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: 
 
 type AppsProps = {
   onCreateFromBlank?: () => void
-  /**
-   * Called once the app is created, before the redirect. Pickers whose page can stay
-   * mounted after the redirect close here; without it the picker stays until the new
-   * app replaces the page.
-   */
+  /** Called after a successful import, before the redirect. Without it the picker stays open. */
   onCreated?: () => void
   templateMode?: 'agent'
 }

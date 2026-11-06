@@ -142,7 +142,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
         isRbacEnabled,
       })
     } catch (error) {
-      // Stay in the creating state after success so the open dialog cannot submit twice.
+      // Only a failure re-enables the form; after success it stays busy so it cannot submit twice.
       creatingRef.current = false
       setIsCreating(false)
       toast.error(

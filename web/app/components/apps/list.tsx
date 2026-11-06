@@ -23,8 +23,7 @@ import { appCreationQueryParsers, appListQueryParsers, serializeAppListQuery } f
 // Marks a creation history entry that the list pushed over its own entry, so closing can
 // go back to it. It lives in history.state because Back and Forward restore it with the entry.
 const PUSHED_CREATION_ENTRY = 'difyPushedAppCreation'
-const isPushedCreationEntry = () =>
-  (window.history.state as Record<string, unknown> | null)?.[PUSHED_CREATION_ENTRY] === true
+const isPushedCreationEntry = () => window.history.state?.[PUSHED_CREATION_ENTRY] === true
 const markPushedCreationEntry = () =>
   window.history.replaceState({ ...window.history.state, [PUSHED_CREATION_ENTRY]: true }, '')
 
