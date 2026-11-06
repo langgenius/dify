@@ -12,11 +12,11 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { detectPlatform, formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { useCallback, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   IconPicker,
@@ -45,16 +45,6 @@ type CreateAppProps = {
 }
 
 const CREATE_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
-
-// The platform and theme are only known in the browser, so markup that depends on
-// them waits for hydration and the first client render matches the server markup.
-const noopSubscribe = () => () => {}
-const useHasHydrated = () =>
-  useSyncExternalStore(
-    noopSubscribe,
-    () => true,
-    () => false,
-  )
 
 const shouldExpandBeginnerAppTypes = (appMode?: AppType) => {
   return appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
@@ -178,7 +168,6 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   ])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
-  const platform = useHasHydrated() ? detectPlatform() : null
   const createDisabled = isAppQuotaUnavailable || isAppsFull || !canCreateApp || !name.trim()
   useHotkey(
     CREATE_APP_HOTKEY,
@@ -389,15 +378,13 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   onClick={handleCreateApp}
                 >
                   <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
-                  {platform && (
-                    <KbdGroup>
-                      {formatForDisplay(CREATE_APP_HOTKEY, { parts: true, platform }).map((key) => (
-                        <Kbd key={key} color="white">
-                          {key}
-                        </Kbd>
-                      ))}
-                    </KbdGroup>
-                  )}
+                  <KbdGroup>
+                    {formatForDisplay(CREATE_APP_HOTKEY, { parts: true }).map((key) => (
+                      <Kbd key={key} color="white">
+                        {key}
+                      </Kbd>
+                    ))}
+                  </KbdGroup>
                 </Button>
               </div>
             </div>
@@ -430,12 +417,9 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   )
 }
 type CreateAppDialogProps = CreateAppProps & {
-  /** Server-renders the dialog in place, for a route that is only this dialog. */
-  inline?: boolean
   show: boolean
 }
 const CreateAppModal = ({
-  inline,
   show,
   onClose,
   onCreateFromTemplate,
@@ -445,7 +429,6 @@ const CreateAppModal = ({
 
   return (
     <CreateAppDialogShell
-      inline={inline}
       show={show}
       title={t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
       contentClassName="overflow-visible"
@@ -538,9 +521,6 @@ function AppPreview({ mode }: { mode: AppType }) {
 
 function AppScreenShot({ mode, show }: { mode: AppType; show: boolean }) {
   const theme = useResolvedTheme()
-  const hasHydrated = useHasHydrated()
-  // The resolved theme picks the screenshot, and the server cannot know it.
-  if (!hasHydrated) return null
   const modeToImageMap = {
     chat: 'Chatbot',
     'advanced-chat': 'Chatflow',

@@ -1,6 +1,5 @@
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { inferParserType } from 'nuqs'
-import type { AppType } from './app-type'
 import { zGetAppsQuery } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   createParser,
@@ -49,12 +48,11 @@ export const appListQueryParsers = {
 
 export const serializeAppListQuery = createSerializer(appListQueryParsers)
 
-// Studio app creation URLs. `mode` picks the default app type for blank creation.
-export const createAppPath = '/apps/create'
-export const createAppTemplatePath = '/apps/create/template'
-export const createAppModeQueryParser = parseAsStringLiteral(APP_TYPES)
-
-export const getCreateAppHref = (mode?: AppType) =>
-  mode ? `${createAppPath}?mode=${mode}` : createAppPath
+// The Studio list opens its creation dialogs from the URL: `create` picks the
+// dialog and `mode` the default app type for blank creation.
+export const appCreationQueryParsers = {
+  create: parseAsStringLiteral(['blank', 'template'] as const),
+  mode: parseAsStringLiteral(APP_TYPES),
+}
 
 export type AppListUrlQuery = inferParserType<typeof appListQueryParsers>

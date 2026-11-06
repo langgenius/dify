@@ -18,13 +18,7 @@ import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { StudioListNavigation } from './list-navigation'
-import {
-  appListQueryParsers,
-  createAppTemplatePath,
-  getCreateAppHref,
-  serializeAppListQuery,
-} from './query-params'
-import { enterCreationUrl, leaveCreationUrl, useLeaveCreationUrl } from './use-creation-url'
+import { appCreationQueryParsers, appListQueryParsers, serializeAppListQuery } from './query-params'
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
@@ -45,7 +39,12 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const scrollViewportRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
-  const [creationDialog, setCreationDialog] = useState<AppListCreationDialog>(null)
+  const [creationQuery, setCreationQuery] = useQueryStates(appCreationQueryParsers)
+  const [dslDialog, setDSLDialog] = useState<Extract<AppListCreationDialog, { type: 'dsl' }>>()
+  // Closing returns to the entry the dialog was opened from, so Back does not reopen it.
+  const pushedCreationEntryRef = useRef(false)
+  const creationDialog: AppListCreationDialog =
+    dslDialog ?? (creationQuery.create ? { type: creationQuery.create } : null)
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const hasActiveFilters =
     category !== 'all' ||
@@ -58,7 +57,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     (file: File) => {
       if (!canCreateApp) return
 
-      setCreationDialog({ type: 'dsl', droppedFile: file })
+      setDSLDialog({ type: 'dsl', droppedFile: file })
     },
     [canCreateApp],
   )
@@ -106,25 +105,32 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     void setUrlQuery({ sort_by: nextSortBy })
   }
 
-  const openCreateBlankModal = useCallback(() => {
+  const openCreationQuery = (create: 'blank' | 'template') => {
     if (!canCreateApp) return
-    setCreationDialog({ type: 'blank' })
-    enterCreationUrl(getCreateAppHref(category === 'all' ? undefined : category))
-  }, [canCreateApp, category])
-  const openCreateTemplateDialog = useCallback(() => {
-    if (!canCreateApp) return
-    setCreationDialog({ type: 'template' })
-    enterCreationUrl(createAppTemplatePath)
-  }, [canCreateApp])
-  const closeCreationDialog = useCallback(() => {
-    setCreationDialog(null)
-    leaveCreationUrl()
-  }, [])
-  useLeaveCreationUrl(() =>
-    setCreationDialog((current) => (current?.type === 'dsl' ? current : null)),
-  )
+    // Switching between blank and template creation keeps a single history entry.
+    const switching = creationQuery.create !== null
+    if (!switching) pushedCreationEntryRef.current = true
+    void setCreationQuery(
+      { create, mode: create === 'blank' && category !== 'all' ? category : null },
+      { history: switching ? 'replace' : 'push' },
+    )
+  }
+  const openCreateBlankModal = () => openCreationQuery('blank')
+  const openCreateTemplateDialog = () => openCreationQuery('template')
+  const closeCreationDialog = () => {
+    if (dslDialog) {
+      setDSLDialog(undefined)
+      return
+    }
+    if (pushedCreationEntryRef.current) {
+      pushedCreationEntryRef.current = false
+      window.history.back()
+      return
+    }
+    void setCreationQuery(null, { history: 'replace' })
+  }
   const openCreateFromDSLModal = useCallback(() => {
-    if (canCreateApp) setCreationDialog({ type: 'dsl' })
+    if (canCreateApp) setDSLDialog({ type: 'dsl' })
   }, [canCreateApp])
   const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
@@ -191,7 +197,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
 
       <AppListCreationModals
         canCreateApp={canCreateApp}
-        category={category}
+        defaultMode={creationQuery.mode ?? category}
         dialog={creationDialog}
         onClose={closeCreationDialog}
         onOpenBlank={openCreateBlankModal}

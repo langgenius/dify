@@ -4,8 +4,6 @@ import { CreateAppDialogShell } from '../create-app-dialog-shell'
 import AppList from './app-list'
 
 type CreateAppDialogProps = {
-  /** Server-renders the dialog in place, for a route that is only this dialog. */
-  inline?: boolean
   show: boolean
   onClose: () => void
   onCreateFromBlank?: () => void
@@ -13,7 +11,6 @@ type CreateAppDialogProps = {
 }
 
 const CreateAppTemplateDialog = ({
-  inline,
   show,
   onClose,
   onCreateFromBlank,
@@ -23,7 +20,6 @@ const CreateAppTemplateDialog = ({
 
   return (
     <CreateAppDialogShell
-      inline={inline}
       show={show}
       title={t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
       onClose={onClose}

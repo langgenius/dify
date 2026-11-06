@@ -10,6 +10,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { NuqsAdapter as BrowserHistoryNuqsAdapter } from 'nuqs/adapters/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { AppDetailTop } from '@/app/components/app-sidebar/app-detail-top'
 import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
@@ -106,11 +107,17 @@ async function setup(
   searchParams = '',
   {
     waitForResults = true,
+    browserHistory = false,
     ...options
-  }: ConsoleQueryTestOptions & { waitForResults?: boolean } = {},
+  }: ConsoleQueryTestOptions & {
+    /** Keeps the query in `window.history`, so tests can go Back like a browser. */
+    browserHistory?: boolean
+    waitForResults?: boolean
+  } = {},
   tour?: StepByStepTourSessionState,
 ) {
   api.searchParams = new URLSearchParams(searchParams)
+  if (browserHistory) window.history.replaceState(null, '', `/apps${searchParams}`)
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
     accounts: [
@@ -133,9 +140,13 @@ async function setup(
   const list = <List onCreateLearnDify={onCreateLearnDify} onTryLearnDify={onTryLearnDify} />
   const route = (path: string, params: string, content: ReactNode) => (
     <JotaiProvider store={store}>
-      <NuqsTestingAdapter key={path} hasMemory searchParams={params} onUrlUpdate={onUrlUpdate}>
-        {content}
-      </NuqsTestingAdapter>
+      {browserHistory ? (
+        <BrowserHistoryNuqsAdapter>{content}</BrowserHistoryNuqsAdapter>
+      ) : (
+        <NuqsTestingAdapter key={path} hasMemory searchParams={params} onUrlUpdate={onUrlUpdate}>
+          {content}
+        </NuqsTestingAdapter>
+      )}
     </JotaiProvider>
   )
   let rendered!: ReturnType<typeof renderWithConsoleQuery>
@@ -477,7 +488,7 @@ it.each([
   ['app.newApp.startFromTemplate', 'app.newApp.startFromTemplate'],
   ['app.importApp', 'app.importApp'],
 ])('opens the real %s creation dialog from the menu', async (label, title) => {
-  const { user } = await setup()
+  const { user } = await setup('', { browserHistory: true })
   await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
   await user.click(await screen.findByRole('menuitem', { name: new RegExp(label) }))
   const dialog = await screen.findByRole('dialog', { name: title })
@@ -485,30 +496,35 @@ it.each([
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
 })
 
+const location = () => `${window.location.pathname}${window.location.search}`
+
 it.each([
-  ['', '/apps/create', 'app.types.advanced'],
-  ['?category=workflow', '/apps/create?mode=workflow', 'app.types.workflow'],
+  ['', '/apps?create=blank', 'app.types.advanced'],
+  [
+    '?category=workflow',
+    '/apps?category=workflow&create=blank&mode=workflow',
+    'app.types.workflow',
+  ],
 ])(
-  'opens blank creation at its URL over the list from the menu on %s',
+  'opens blank creation from the menu over the list on %s and closes back to it',
   async (searchParams, href, appType) => {
-    const { user } = await setup(searchParams)
+    const { user } = await setup(searchParams, { browserHistory: true })
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
     await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromBlank/ }))
     const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
-    expect(`${window.location.pathname}${window.location.search}`).toBe(href)
+    await waitFor(() => expect(location()).toBe(href))
     expect(within(dialog).getByRole('heading', { name: appType, level: 4 })).toBeInTheDocument()
-    // A shallow URL: the list stays mounted under the dialog, without a router navigation.
     expect(api.push).not.toHaveBeenCalled()
     expect(screen.getByRole('link', { name: 'Chat app', hidden: true })).toBeInTheDocument()
 
     await user.click(within(dialog).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
-    await waitFor(() => expect(window.location.pathname).toBe('/'))
+    await waitFor(() => expect(location()).toBe(`/apps${searchParams}`))
   },
 )
 
-it('closes blank creation when browser history leaves its URL', async () => {
-  const { user } = await setup()
+it('closes blank creation when browser history goes back', async () => {
+  const { user } = await setup('', { browserHistory: true })
   await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
   await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromBlank/ }))
   const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
@@ -517,54 +533,47 @@ it('closes blank creation when browser history leaves its URL', async () => {
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
 })
 
-it('opens blank creation at its URL from the first empty state', async () => {
+it.each([
+  ['?create=blank&mode=workflow', 'app.newApp.startFromBlank'],
+  ['?create=template', 'app.newApp.startFromTemplate'],
+])('opens creation from the URL %s and closes to the plain list', async (searchParams, title) => {
+  const { user } = await setup(searchParams, { browserHistory: true })
+  const dialog = await screen.findByRole('dialog', { name: title })
+  if (searchParams.includes('mode=workflow'))
+    expect(
+      within(dialog).getByRole('heading', { name: 'app.types.workflow', level: 4 }),
+    ).toBeInTheDocument()
+
+  await user.click(within(dialog).getByRole('button', { name: /^(Close|common.operation.close)$/ }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  await waitFor(() => expect(location()).toBe('/apps'))
+})
+
+it('opens blank creation from the first empty state', async () => {
   api.apps.mockResolvedValue(page([]))
-  const { user } = await setup()
+  const { user } = await setup('', { browserHistory: true })
   await user.click(screen.getByRole('button', { name: /app.newApp.startFromBlank/ }))
   const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
   expect(within(dialog).getByRole('textbox', { name: 'app.newApp.name' })).toBeInTheDocument()
-  expect(window.location.pathname).toBe('/apps/create')
+  await waitFor(() => expect(location()).toBe('/apps?create=blank'))
 })
 
-it('opens template creation at its URL over the list', async () => {
-  const { user } = await setup()
-  await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
-  await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromTemplate/ }))
-  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
-  expect(window.location.pathname).toBe('/apps/create/template')
-  expect(screen.getByRole('link', { name: 'Chat app', hidden: true })).toBeInTheDocument()
-
-  act(() => window.history.back())
-  await waitFor(() => expect(dialog).not.toBeInTheDocument())
-})
-
-it('switches from blank creation to templates in one history entry', async () => {
-  const { user } = await setup()
+it('switches between blank and template creation in one history entry', async () => {
+  const { user } = await setup('', { browserHistory: true })
   await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
   await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromBlank/ }))
   const blank = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
   await user.click(within(blank).getByRole('button', { name: /app.newApp.noIdeaTip/ }))
   const templates = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
-  expect(window.location.pathname).toBe('/apps/create/template')
+  await waitFor(() => expect(location()).toBe('/apps?create=template'))
 
-  await user.click(
-    within(templates).getByRole('button', { name: /^(Close|common.operation.close)$/ }),
-  )
-  await waitFor(() => expect(templates).not.toBeInTheDocument())
-  await waitFor(() => expect(window.location.pathname).toBe('/'))
-})
-
-it('opens blank creation from the template dialog', async () => {
-  const { user } = await setup()
-  await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
-  await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromTemplate/ }))
-  const templates = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
-  expect(window.location.pathname).toBe('/apps/create/template')
   await user.click(within(templates).getByRole('button', { name: /app.newApp.startFromBlank/ }))
-  expect(
-    await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' }),
-  ).toBeInTheDocument()
-  expect(window.location.pathname).toBe('/apps/create')
+  const blankAgain = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+  await waitFor(() => expect(location()).toBe('/apps?create=blank'))
+
+  await user.click(within(blankAgain).getByRole('button', { name: 'Close' }))
+  await waitFor(() => expect(blankAgain).not.toBeInTheDocument())
+  await waitFor(() => expect(location()).toBe('/apps'))
 })
 
 it('opens DSL import with the file dropped on the app list', async () => {
@@ -664,7 +673,6 @@ it('opens the create walkthrough after resolving the guide group without activat
     within(menu).getByRole('menuitem', { name: /app.newApp.startFromBlank/, hidden: true }),
   )
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  expect(window.location.pathname).toBe('/')
 })
 
 async function openDeleteDialog(user: ReturnType<typeof userEvent.setup>, appName = 'Chat app') {
