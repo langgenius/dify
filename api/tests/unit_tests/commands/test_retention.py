@@ -9,13 +9,12 @@ from uuid import uuid4
 import click
 import pytest
 from click.testing import CliRunner
-from sqlalchemy import Engine, Table, event, text
+from sqlalchemy import Engine, event, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from commands import clean_expired_messages, retention
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from models.base import TypeBase
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import (
     WorkflowNodeExecutionModel,
@@ -180,19 +179,11 @@ class TestArchiveWorkflowRunsCases:
 
     @staticmethod
     @pytest.fixture
-    def archive_db(sqlite_engine: Engine) -> ArchiveDatabase:
-        """Create only the workflow tables used by archive planning."""
+    def archive_db(sqlite_session: Session) -> ArchiveDatabase:
+        """Expose archive candidates through the shared full-schema SQLite database."""
 
-        workflow_runs_table = WorkflowRun.__table__
-        node_executions_table = WorkflowNodeExecutionModel.__table__
-        assert isinstance(workflow_runs_table, Table)
-        assert isinstance(node_executions_table, Table)
-        TypeBase.metadata.create_all(
-            sqlite_engine,
-            tables=[workflow_runs_table, node_executions_table],
-        )
         return ArchiveDatabase(
-            session_maker=sessionmaker(bind=sqlite_engine, expire_on_commit=False),
+            session_maker=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
             end_before=datetime.datetime(2025, 4, 1, tzinfo=datetime.UTC),
         )
 
