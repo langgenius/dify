@@ -22,6 +22,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const [hoverTime, setHoverTime] = useState(0)
   const [isAudioAvailable, setIsAudioAvailable] = useState(true)
   const theme = useResolvedTheme()
+  const sourceKey = srcs?.join('\u0000') ?? ''
+  const [sources, setSources] = useState(srcs ?? [])
+  const [previousSourceKey, setPreviousSourceKey] = useState(sourceKey)
+  if (previousSourceKey !== sourceKey) {
+    setPreviousSourceKey(sourceKey)
+    setSources(srcs ?? [])
+  }
   const playPauseLabel = t(($) => $[isPlaying ? 'operation.pause' : 'operation.play'], {
     ns: 'common',
   })
@@ -99,7 +106,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     setHoverTime(0)
     setBufferedTime(0)
     setHasStartedPlaying(false)
-    setIsAudioAvailable(Boolean(srcs?.[0] || src))
+    setIsAudioAvailable(Boolean(sources[0] || src))
     const handleError = () => {
       setIsPlaying(false)
       setIsAudioAvailable(false)
@@ -124,7 +131,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     // Preload audio metadata
     audio.load()
     // Use the first source or src to generate waveform
-    const primarySrc = srcs?.[0] || src
+    const primarySrc = sources[0] || src
     const timer = primarySrc
       ? setTimeout(() => {
           void generateWaveformData(primarySrc, () => active)
@@ -140,7 +147,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       audio.removeEventListener('error', handleError)
       clearTimeout(timer)
     }
-  }, [src, srcs])
+  }, [src, sources])
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
     if (audio && isAudioAvailable) {
