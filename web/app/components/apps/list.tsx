@@ -6,10 +6,11 @@ import type { AppListCreationDialog } from './app-list-creation-modals'
 import type { AppListUrlQuery } from './query-params'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { throttle, useQueryStates } from 'nuqs'
+import { throttle, useQueryState, useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { CheckResultToast } from '@/hooks/use-pay'
+import { useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
 import { AppListCatalog } from './app-list-catalog'
 import { AppListCreationModals } from './app-list-creation-modals'
@@ -18,21 +19,29 @@ import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { StudioListNavigation } from './list-navigation'
-import { appListQueryParsers, serializeAppListQuery } from './query-params'
+import {
+  appListQueryParsers,
+  createAppModeQueryParser,
+  serializeAppListQuery,
+} from './query-params'
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 type AppListCategory = AppListUrlQuery['category']
 
 type Props = Readonly<{
+  /** Set by the creation route: opens the blank creation dialog over the list. */
+  opensCreateDialog?: boolean
   onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onTryLearnDify?: (app: RecommendedAppResponse) => void
 }>
 
-export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
+export function List({ opensCreateDialog = false, onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
+  const [createAppMode] = useQueryState('mode', createAppModeQueryParser)
+  const { replace } = useRouter()
   const { category, keywords, creatorIDs, tagIDs, sort_by: sortBy } = urlQuery
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -41,6 +50,11 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [creationDialog, setCreationDialog] = useState<AppListCreationDialog>(null)
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+  const [isCreateRouteClosed, setIsCreateRouteClosed] = useState(false)
+  const createRouteDialog: AppListCreationDialog =
+    opensCreateDialog && canCreateApp && !isCreateRouteClosed
+      ? { type: 'blank', category: createAppMode ?? undefined }
+      : null
   const hasActiveFilters =
     category !== 'all' ||
     tagIDs.length > 0 ||
@@ -109,6 +123,13 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const openCreateFromDSLModal = useCallback(() => {
     if (canCreateApp) setCreationDialog({ type: 'dsl' })
   }, [canCreateApp])
+  const closeCreationDialog = useCallback(() => {
+    setCreationDialog(null)
+    if (!opensCreateDialog) return
+    // Leaving the dialog leaves the creation route, without keeping it in history.
+    setIsCreateRouteClosed(true)
+    replace('/apps')
+  }, [opensCreateDialog, replace])
   const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
   return (
@@ -175,8 +196,8 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
       <AppListCreationModals
         canCreateApp={canCreateApp}
         category={category}
-        dialog={creationDialog}
-        onClose={() => setCreationDialog(null)}
+        dialog={creationDialog ?? createRouteDialog}
+        onClose={closeCreationDialog}
         onOpenBlank={openCreateBlankModal}
         onOpenTemplate={openCreateTemplateDialog}
       />

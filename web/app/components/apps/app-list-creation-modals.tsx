@@ -17,7 +17,7 @@ const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/creat
 })
 
 export type AppListCreationDialog =
-  | { type: 'blank' }
+  | { type: 'blank'; category?: AppListCategory }
   | { type: 'template' }
   | { type: 'dsl'; droppedFile?: File }
   | null
@@ -38,7 +38,8 @@ export function AppListCreationModals({
   onOpenTemplate: () => void
 }) {
   if (!canCreateApp) return null
-  const defaultAppModeResult = zPostAppsBody.shape.mode.safeParse(category)
+  const blankCategory = dialog?.type === 'blank' ? (dialog.category ?? category) : category
+  const defaultAppModeResult = zPostAppsBody.shape.mode.safeParse(blankCategory)
 
   return (
     <>

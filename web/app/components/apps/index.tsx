@@ -32,7 +32,12 @@ const ImportFromMarketplaceTemplateModal = dynamic(
   { ssr: false },
 )
 
-const AppsContent = () => {
+type AppsProps = Readonly<{
+  /** Set by the creation route: opens the blank creation dialog over the Studio. */
+  opensCreateDialog?: boolean
+}>
+
+const AppsContent = ({ opensCreateDialog }: AppsProps) => {
   const queryClient = useQueryClient()
   const { t } = useTranslation(['app'])
   const searchParams = useSearchParams()
@@ -198,7 +203,11 @@ const AppsContent = () => {
     <>
       <EducationExpireNotice />
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-background-body">
-        <List onCreateLearnDify={handleCreateLearnDify} onTryLearnDify={openTryAppPanel} />
+        <List
+          opensCreateDialog={opensCreateDialog}
+          onCreateLearnDify={handleCreateLearnDify}
+          onTryLearnDify={openTryAppPanel}
+        />
         {isShowTryAppPanel && currApp && (
           <TryApp
             appId={currApp.app_id}
@@ -266,6 +275,6 @@ const AppsContent = () => {
   )
 }
 
-export function Apps() {
-  return <AppsContent />
+export function Apps({ opensCreateDialog }: AppsProps = {}) {
+  return <AppsContent opensCreateDialog={opensCreateDialog} />
 }
