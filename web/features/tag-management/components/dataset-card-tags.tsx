@@ -20,14 +20,12 @@ export const DatasetCardTags = ({
   canBindOrUnbindTags,
 }: DatasetCardTagsProps) => (
   <TagSelector
-    placement="bottom-start"
     type="knowledge"
     targetId={datasetId}
     value={tags}
     onOpenTagManagement={onOpenTagManagement}
     onTagsChange={onTagsChange}
     canBindOrUnbindTags={canBindOrUnbindTags}
-    className={cn('mx-3 w-auto', !embeddingAvailable && 'opacity-30')}
-    onClick={(event) => event.stopPropagation()}
+    className={cn('relative mx-3 w-auto', !embeddingAvailable && 'opacity-30')}
   />
 )

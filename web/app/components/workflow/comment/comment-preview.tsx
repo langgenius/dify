@@ -1,14 +1,14 @@
 'use client'
 
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { memo, useEffect, useMemo } from 'react'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useStore } from '../store'
 
 type CommentPreviewProps = {
-  comment: WorkflowCommentList
+  comment: WorkflowCommentBasic
   onClick?: () => void
 }
 

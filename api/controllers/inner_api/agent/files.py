@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -17,9 +17,9 @@ from controllers.inner_api.plugin.wraps import get_user
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.plugin.entities.request import RequestDownloadFileMapping, RequestRequestUploadFile
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
-from services.account_service import TenantService
 from services.file_request_service import FileRequestService
 
 
@@ -39,6 +39,7 @@ class AgentFileUploadRequestPayload(RequestRequestUploadFile):
     tenant_id: str
     user_id: str
     user_from: Literal["account", "end-user"] | None = None
+    max_size: int = Field(ge=0, description="Maximum upload size in bytes")
 
     model_config = ConfigDict(extra="forbid")
 
@@ -106,7 +107,7 @@ class AgentFileUploadRequestApi(Resource):
                 status_code=400,
             ) from exc
 
-        tenant = TenantService.get_tenant_by_id(payload.tenant_id, session=session)
+        tenant = application_services().workspaces.management.get(payload.tenant_id)
         if tenant is None:
             raise AgentFileRequestHttpError(
                 error_code="tenant_not_found",
@@ -115,7 +116,7 @@ class AgentFileUploadRequestApi(Resource):
             )
         try:
             if payload.user_from == "account":
-                if not TenantService.account_belongs_to_tenant(payload.user_id, tenant.id, session=session):
+                if not application_services().workspaces.members.get_role(tenant.id, payload.user_id):
                     raise ValueError("account not found")
                 owner_id = payload.user_id
             else:
@@ -127,6 +128,7 @@ class AgentFileUploadRequestApi(Resource):
                 user_id=owner_id,
                 conversation_id=payload.conversation_id,
                 user_from=payload.user_from,
+                max_size=payload.max_size,
             )
         except ValueError as exc:
             raise AgentFileRequestHttpError(
@@ -162,7 +164,7 @@ class AgentFileDownloadRequestApi(Resource):
                 status_code=400,
             ) from exc
 
-        if TenantService.get_tenant_by_id(payload.tenant_id, session=session) is None:
+        if application_services().workspaces.management.get(payload.tenant_id) is None:
             raise AgentFileRequestHttpError(
                 error_code="tenant_not_found",
                 description="tenant not found",

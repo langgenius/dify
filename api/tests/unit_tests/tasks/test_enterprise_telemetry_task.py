@@ -10,7 +10,7 @@ from tasks.enterprise_telemetry_task import process_enterprise_telemetry
 
 
 @pytest.fixture
-def sample_envelope_json():
+def sample_envelope_json() -> str:
     envelope = TelemetryEnvelope(
         case=TelemetryCase.APP_CREATED,
         tenant_id="test-tenant",
@@ -20,7 +20,7 @@ def sample_envelope_json():
     return envelope.model_dump_json()
 
 
-def test_process_enterprise_telemetry_success(sample_envelope_json):
+def test_process_enterprise_telemetry_success(sample_envelope_json: str) -> None:
     with patch("tasks.enterprise_telemetry_task.EnterpriseMetricHandler") as mock_handler_class:
         mock_handler = MagicMock()
         mock_handler_class.return_value = mock_handler
@@ -35,7 +35,7 @@ def test_process_enterprise_telemetry_success(sample_envelope_json):
         assert call_args.event_id == "test-event-123"
 
 
-def test_process_enterprise_telemetry_invalid_json(caplog: pytest.LogCaptureFixture):
+def test_process_enterprise_telemetry_invalid_json(caplog: pytest.LogCaptureFixture) -> None:
     invalid_json = "not valid json"
 
     process_enterprise_telemetry(invalid_json)
@@ -43,7 +43,9 @@ def test_process_enterprise_telemetry_invalid_json(caplog: pytest.LogCaptureFixt
     assert "Failed to process enterprise telemetry envelope" in caplog.text
 
 
-def test_process_enterprise_telemetry_handler_exception(sample_envelope_json, caplog: pytest.LogCaptureFixture):
+def test_process_enterprise_telemetry_handler_exception(
+    sample_envelope_json: str, caplog: pytest.LogCaptureFixture
+) -> None:
     with patch("tasks.enterprise_telemetry_task.EnterpriseMetricHandler") as mock_handler_class:
         mock_handler = MagicMock()
         mock_handler.handle.side_effect = Exception("Handler error")
@@ -54,7 +56,7 @@ def test_process_enterprise_telemetry_handler_exception(sample_envelope_json, ca
         assert "Failed to process enterprise telemetry envelope" in caplog.text
 
 
-def test_process_enterprise_telemetry_validation_error(caplog: pytest.LogCaptureFixture):
+def test_process_enterprise_telemetry_validation_error(caplog: pytest.LogCaptureFixture) -> None:
     invalid_envelope = json.dumps(
         {
             "case": "INVALID_CASE",

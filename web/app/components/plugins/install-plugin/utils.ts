@@ -1,5 +1,8 @@
-import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../types'
-import type { GitHubUrlInfo } from '@/app/components/plugins/types'
+import type {
+  I18nObject,
+  PluginDeclarationResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GitHubUrlInfo, Plugin, PluginDeclaration, PluginManifestInMarket } from '../types'
 import { isEmpty } from 'es-toolkit/compat'
 
 export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaration): Plugin => {
@@ -31,6 +34,47 @@ export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaratio
     from: 'package',
   }
 }
+
+/** Plugin card text from a translated object; untranslated locales are left out. */
+export const toPluginText = ({ en_US, zh_Hans, ja_JP, pt_BR }: I18nObject): Plugin['label'] => ({
+  en_US,
+  ...(zh_Hans != null && { zh_Hans }),
+  ...(ja_JP != null && { ja_JP }),
+  ...(pt_BR != null && { pt_BR }),
+})
+
+/** Card props for the manifest of a package the console has just uploaded. */
+export const pluginDeclarationToCardPluginProps = (
+  manifest: PluginDeclarationResponse,
+  uniqueIdentifier: string,
+): Plugin => ({
+  plugin_id: uniqueIdentifier,
+  type: manifest.category === 'agent-strategy' ? 'agent_strategy' : manifest.category,
+  category: manifest.category,
+  name: manifest.name,
+  version: manifest.version,
+  latest_version: '',
+  latest_package_identifier: '',
+  // A manifest without an author shows no organization.
+  org: manifest.author ?? '',
+  author: manifest.author ?? undefined,
+  label: toPluginText(manifest.label),
+  brief: toPluginText(manifest.description),
+  description: toPluginText(manifest.description),
+  icon: manifest.icon,
+  icon_dark: manifest.icon_dark ?? undefined,
+  verified: manifest.verified ?? false,
+  introduction: '',
+  repository: '',
+  install_count: 0,
+  endpoint: {
+    settings: [],
+  },
+  tags: (manifest.tags ?? []).map((tag) => ({ name: tag })),
+  badges: [],
+  verification: { authorized_category: 'langgenius' },
+  from: 'package',
+})
 
 export const pluginManifestInMarketToPluginProps = (
   pluginManifest: PluginManifestInMarket,

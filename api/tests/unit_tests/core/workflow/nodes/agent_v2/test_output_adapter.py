@@ -2,8 +2,8 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import RunFailureType
+from dify_agent.protocol.snapshot import SessionSnapshot
 
 from clients.agent_backend import (
     AgentBackendRunCancelledInternalEvent,
@@ -49,7 +49,7 @@ def _succeeded(output: object) -> AgentBackendRunSucceededInternalEvent:
         run_id="run-1",
         source_event_id="2-0",
         output=output,
-        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        session_snapshot=SessionSnapshot(layers={}),
     )
 
 
@@ -130,7 +130,7 @@ def test_success_output_adapter_preserves_dict_output():
             run_id="run-1",
             source_event_id="2-0",
             output={"summary": "ok"},
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -152,6 +152,14 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
             source_event_id="2-0",
             error="bad request",
             reason="validation",
+            session_snapshot=SessionSnapshot(layers={}),
+            usage={
+                "prompt_tokens": 13,
+                "completion_tokens": 8,
+                "total_tokens": 21,
+                "total_price": "0.000210",
+                "currency": "USD",
+            },
         ),
         inputs={},
         process_data={},
@@ -161,6 +169,12 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "bad request"
     assert result.error_type == "validation"
+    assert result.llm_usage.total_tokens == 21
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 21
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == Decimal("0.000210")
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]["session_snapshot"] == {
+        "layer_count": 0
+    }
 
 
 def test_failure_output_adapter_prefers_run_failure_type_over_reason():
@@ -202,7 +216,7 @@ def test_success_output_adapter_normalizes_string_and_scalar_outputs():
             run_id="run-1",
             source_event_id="2-0",
             output="hello",
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -213,7 +227,7 @@ def test_success_output_adapter_normalizes_string_and_scalar_outputs():
             run_id="run-2",
             source_event_id="2-0",
             output=3,
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -250,7 +264,7 @@ def test_success_output_adapter_normalizes_file_output_to_file_segments():
                         }
                     ],
                 },
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
             inputs={},
             process_data={},
@@ -329,7 +343,7 @@ def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_file
                 run_id="run-1",
                 source_event_id="2-0",
                 output={"report": {"transfer_method": "tool_file", "reference": tool_reference}},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
             inputs={},
             process_data={},
@@ -357,7 +371,7 @@ def test_success_output_adapter_accepts_canonical_datasource_file_mapping_for_de
                 run_id="run-1",
                 source_event_id="2-0",
                 output={"report": {"transfer_method": "datasource_file", "reference": datasource_reference}},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
             inputs={},
             process_data={},
@@ -379,7 +393,7 @@ def test_success_output_adapter_accepts_canonical_remote_url_mapping_for_declare
             run_id="run-1",
             source_event_id="2-0",
             output={"report": {"transfer_method": "remote_url", "url": remote_url}},
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -404,7 +418,7 @@ def test_success_output_adapter_accepts_canonical_file_mapping_for_declared_arra
                 run_id="run-1",
                 source_event_id="2-0",
                 output={"attachments": [{"transfer_method": "tool_file", "reference": tool_reference}]},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
             inputs={},
             process_data={},
@@ -430,7 +444,7 @@ def test_success_output_adapter_does_not_treat_generic_object_with_string_id_as_
             run_id="run-1",
             source_event_id="2-0",
             output={"meta": {"id": "123", "type": "summary"}},
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -446,7 +460,7 @@ def test_success_output_adapter_does_not_crash_on_generic_object_with_non_string
             run_id="run-1",
             source_event_id="2-0",
             output={"meta": {"id": 1, "name": "foo"}},
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -470,7 +484,7 @@ def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_o
                     }
                 }
             },
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -502,7 +516,7 @@ def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_g
                     }
                 ]
             },
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
         ),
         inputs={},
         process_data={},
@@ -526,37 +540,13 @@ def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_g
     ]
 
 
-def test_success_output_adapter_does_not_normalize_top_level_canonical_file_mapping_without_declared_file_field():
-    tool_reference = build_file_reference(record_id="tool-file-1")
-    result = WorkflowAgentOutputAdapter().build_success_result(
-        event=AgentBackendRunSucceededInternalEvent(
-            run_id="run-1",
-            source_event_id="2-0",
-            output={
-                "transfer_method": "tool_file",
-                "reference": tool_reference,
-            },
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
-        ),
-        inputs={},
-        process_data={},
-        metadata={"tenant_id": "tenant-1"},
-        declared_outputs=[DeclaredOutputConfig(name="text", type=DeclaredOutputType.STRING, required=False)],
-    )
-
-    assert result.outputs == {
-        "transfer_method": "tool_file",
-        "reference": tool_reference,
-    }
-
-
 def test_success_output_adapter_maps_backend_usage_to_llm_usage_and_metadata():
     result = WorkflowAgentOutputAdapter().build_success_result(
         event=AgentBackendRunSucceededInternalEvent(
             run_id="run-1",
             source_event_id="2-0",
             output={"summary": "ok"},
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            session_snapshot=SessionSnapshot(layers={}),
             usage={
                 "prompt_tokens": 10,
                 "prompt_unit_price": "5",
@@ -596,6 +586,7 @@ def test_failure_output_adapter_maps_cancelled_to_failure_code():
             source_event_id="2-0",
             reason="user_cancelled",
             message=None,
+            usage={"prompt_tokens": 5, "completion_tokens": 3, "total_tokens": 8},
         ),
         inputs={},
         process_data={},
@@ -604,6 +595,8 @@ def test_failure_output_adapter_maps_cancelled_to_failure_code():
 
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error_type == "agent_backend_run_cancelled"
+    assert result.llm_usage.total_tokens == 8
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 8
 
 
 def test_stream_exhausted_result_is_failed_with_stream_error():

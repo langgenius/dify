@@ -1,4 +1,40 @@
+from http import HTTPStatus
+
 from libs.exception import BaseHTTPException
+from services.errors.app import (
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE,
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE,
+)
+
+
+class AppNotFoundError(BaseHTTPException):
+    error_code = "app_not_found"
+    description = "The app no longer exists."
+    code = HTTPStatus.FORBIDDEN
+
+
+class AppAbnormalStatusError(BaseHTTPException):
+    error_code = "app_abnormal_status"
+    description = "The app's status is abnormal."
+    code = HTTPStatus.FORBIDDEN
+
+
+class AppApiDisabledError(BaseHTTPException):
+    error_code = "app_api_disabled"
+    description = "The app's API service has been disabled."
+    code = HTTPStatus.FORBIDDEN
+
+
+class WorkspaceNotFoundError(BaseHTTPException):
+    error_code = "workspace_not_found"
+    description = "Tenant does not exist."
+    code = HTTPStatus.FORBIDDEN
+
+
+class WorkspaceArchivedError(BaseHTTPException):
+    error_code = "workspace_archived"
+    description = "The workspace's status is archived."
+    code = HTTPStatus.FORBIDDEN
 
 
 class AppUnavailableError(BaseHTTPException):
@@ -37,6 +73,12 @@ class WorkflowVersionExecutionNotAllowedError(BaseHTTPException):
     code = 403
 
 
+class TriggerWorkflowServiceModeUnavailableError(BaseHTTPException):
+    error_code = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE
+    description = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
+    code = 403
+
+
 class ConversationCompletedError(BaseHTTPException):
     error_code = "conversation_completed"
     description = "The conversation has ended. Please start a new conversation."
@@ -71,6 +113,12 @@ class CompletionRequestError(BaseHTTPException):
     error_code = "completion_request_error"
     description = "Completion request failed."
     code = 400
+
+
+class AppSuggestedQuestionsAfterAnswerDisabledError(BaseHTTPException):
+    error_code = "app_suggested_questions_after_answer_disabled"
+    description = "The 'Suggested Questions After Answer' feature is disabled."
+    code = 403
 
 
 class NoAudioUploadedError(BaseHTTPException):

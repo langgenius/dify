@@ -3,23 +3,26 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 type MainNavRouteVisibility = (options: MainNavRouteVisibilityOptions) => boolean
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
-const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
 
 export type MainNavRouteConfig = {
   key: string
+  ns?: 'navigation' | 'contacts'
   href: string
   active: (pathname: string) => boolean
   icon: string
   activeIcon: string
   visibility: MainNavRouteVisibility
-  feature?: 'agentV2' | 'marketplace'
+  feature?: 'agentV2' | 'contacts' | 'marketplace'
 } & ({ label: string; labelKey?: never } | { label?: never; labelKey: string })
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
-  canManageAgents: boolean
+  canViewContacts: boolean
+  contactsEnabled: boolean
+  canViewSkills: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
+  skillEnabled: boolean
 }
 
 export type DetailSidebarVisibilityOptions = Pick<
@@ -28,7 +31,9 @@ export type DetailSidebarVisibilityOptions = Pick<
 >
 
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
-const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
+const CAN_VIEW_CONTACTS: MainNavRouteVisibility = (options) => options.canViewContacts
+const SKILL_ENABLED_FOR_WORKSPACE: MainNavRouteVisibility = (options) =>
+  options.skillEnabled && options.canViewSkills && !options.isCurrentWorkspaceDatasetOperator
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -39,9 +44,9 @@ export const MAIN_NAV_ROUTES = [
     key: 'home',
     href: '/',
     labelKey: 'mainNav.home',
-    active: (path: string) => path === '/',
-    icon: 'i-custom-vender-main-nav-home',
-    activeIcon: 'i-custom-vender-main-nav-home-active',
+    active: (path: string) => path === '/' || path === '/explore/apps',
+    icon: 'i-custom-vender-main-nav-home-v2',
+    activeIcon: 'i-custom-vender-main-nav-home-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -52,8 +57,8 @@ export const MAIN_NAV_ROUTES = [
       isPathUnderRoute(path, '/apps') ||
       isPathUnderRoute(path, '/app') ||
       isPathUnderRoute(path, '/snippets'),
-    icon: 'i-custom-vender-main-nav-studio',
-    activeIcon: 'i-custom-vender-main-nav-studio-active',
+    icon: 'i-custom-vender-main-nav-studio-v2',
+    activeIcon: 'i-custom-vender-main-nav-studio-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -61,9 +66,9 @@ export const MAIN_NAV_ROUTES = [
     href: '/agents',
     label: 'Agents',
     active: (path: string) => isPathUnderRoute(path, '/agents'),
-    icon: 'i-custom-vender-main-nav-roster',
-    activeIcon: 'i-custom-vender-main-nav-roster-active',
-    visibility: CAN_MANAGE_AGENTS,
+    icon: 'i-custom-vender-main-nav-agent',
+    activeIcon: 'i-custom-vender-main-nav-agent-active',
+    visibility: VISIBLE_TO_ALL,
     feature: 'agentV2',
   },
   {
@@ -71,9 +76,29 @@ export const MAIN_NAV_ROUTES = [
     href: '/datasets',
     labelKey: 'menus.datasets',
     active: (path: string) => isPathUnderRoute(path, '/datasets'),
-    icon: 'i-custom-vender-main-nav-knowledge',
-    activeIcon: 'i-custom-vender-main-nav-knowledge-active',
+    icon: 'i-custom-vender-main-nav-knowledge-v2',
+    activeIcon: 'i-custom-vender-main-nav-knowledge-v2-active',
     visibility: VISIBLE_TO_ALL,
+  },
+  {
+    key: 'contacts',
+    href: '/contacts',
+    labelKey: 'directory.title',
+    ns: 'contacts',
+    active: (path: string) => isPathUnderRoute(path, '/contacts'),
+    icon: 'i-ri-contacts-book-2-line',
+    activeIcon: 'i-ri-contacts-book-2-fill',
+    visibility: CAN_VIEW_CONTACTS,
+    feature: 'contacts',
+  },
+  {
+    key: 'skills',
+    href: '/skills',
+    labelKey: 'mainNav.skills',
+    active: (path: string) => isPathUnderRoute(path, '/skills'),
+    icon: 'i-custom-vender-main-nav-skill',
+    activeIcon: 'i-custom-vender-main-nav-skill-active',
+    visibility: SKILL_ENABLED_FOR_WORKSPACE,
   },
   {
     key: 'integrations',
@@ -81,8 +106,8 @@ export const MAIN_NAV_ROUTES = [
     labelKey: 'mainNav.integrations',
     active: (path: string) =>
       isPathUnderRoute(path, '/integrations') || isPathUnderRoute(path, '/tools'),
-    icon: 'i-custom-vender-main-nav-integrations',
-    activeIcon: 'i-custom-vender-main-nav-integrations-active',
+    icon: 'i-custom-vender-main-nav-integrations-v2',
+    activeIcon: 'i-custom-vender-main-nav-integrations-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -90,9 +115,11 @@ export const MAIN_NAV_ROUTES = [
     href: '/marketplace',
     labelKey: 'mainNav.marketplace',
     active: (path: string) =>
-      isPathUnderRoute(path, '/marketplace') || isPathUnderRoute(path, '/plugins'),
-    icon: 'i-custom-vender-main-nav-marketplace',
-    activeIcon: 'i-custom-vender-main-nav-marketplace-active',
+      isPathUnderRoute(path, '/marketplace') ||
+      isPathUnderRoute(path, '/plugins') ||
+      isPathUnderRoute(path, '/templates'),
+    icon: 'i-custom-vender-main-nav-marketplace-v2',
+    activeIcon: 'i-custom-vender-main-nav-marketplace-v2-active',
     visibility: VISIBLE_TO_ALL,
     feature: 'marketplace',
   },
@@ -106,6 +133,8 @@ export function isMainNavRouteVisible(
 
   if (route.feature === 'marketplace' && !options.marketplaceEnabled) return false
 
+  if (route.feature === 'contacts' && !options.contactsEnabled) return false
+
   return route.visibility(options)
 }
 
@@ -114,7 +143,7 @@ function isAppDetailPathname(pathname: string) {
 }
 
 function isDatasetDetailPathname(pathname: string) {
-  const [section, datasetId, subSection, action] = pathname.split('/').filter(Boolean)
+  const [section, datasetId, subSection] = pathname.split('/').filter(Boolean)
 
   if (section !== 'datasets' || !datasetId) return false
 
@@ -122,20 +151,21 @@ function isDatasetDetailPathname(pathname: string) {
 
   if (datasetId === 'new' && subSection === 'create') return false
 
-  if (subSection === 'documents' && action && DATASET_DOCUMENT_CREATION_ROUTES.has(action))
-    return false
-
   return true
+}
+
+function isSkillDetailPathname(pathname: string) {
+  const [section, skillId] = pathname.split('/').filter(Boolean)
+
+  return section === 'skills' && !!skillId
 }
 
 export function shouldHideMainNavigation(pathname: string) {
   const [section, namespace, knowledgeSpaceId] = pathname.split('/').filter(Boolean)
 
   return (
-    section === 'datasets' &&
-    namespace === 'new' &&
-    !!knowledgeSpaceId &&
-    knowledgeSpaceId !== 'create'
+    (section === 'datasets' && namespace === 'new' && !!knowledgeSpaceId) ||
+    isSkillDetailPathname(pathname)
   )
 }
 

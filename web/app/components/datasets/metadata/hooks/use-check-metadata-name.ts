@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 const i18nPrefix = 'metadata.checkName'
 
 const useCheckMetadataName = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   return {
     checkName: (name: string) => {
       if (!name) {

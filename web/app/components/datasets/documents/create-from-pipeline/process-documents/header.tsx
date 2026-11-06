@@ -11,7 +11,7 @@ type HeaderProps = {
 }
 
 const Header = ({ onReset, resetDisabled, previewDisabled, onPreview }: HeaderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
 
   return (
     <div className="flex items-center gap-x-1 px-4 py-2">

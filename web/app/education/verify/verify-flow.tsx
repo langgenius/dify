@@ -1,72 +1,58 @@
 'use client'
 
+import type { contract } from '@dify/contracts/api/console/account/orpc.gen'
 import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
+import type { ErrorFromErrorMap, InferContractRouterErrorMap } from '@orpc/contract'
+import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
-import { EDUCATION_APPLICATIONS_PAUSED } from '../constants'
-import { EducationPausedContent } from '../paused-content'
+import { consoleQuery } from '@/service/console'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
 
-class EducationVerificationRejectedError extends Error {}
-class EducationVerificationPausedError extends Error {}
-
-type EducationVerificationRequest = () => Promise<{ token?: string | null }>
-
 const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
-  allowRefresh: allow_refresh ?? false,
-  isEducationAccount: is_student ?? false,
+  allowRefresh: allow_refresh,
+  isEducationAccount: is_student,
 })
 
-const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
+type EducationVerificationError = ErrorFromErrorMap<
+  InferContractRouterErrorMap<typeof contract.account.education.verify.get>
+>
 
-const requestEducationVerification: EducationVerificationRequest = () =>
-  consoleClient.account.education.verify.get({}, { context: { silent: true } })
-
-async function requestEducationVerificationToken(
-  requestVerification: EducationVerificationRequest,
+function educationVerifyErrorMessage(
+  error: EducationVerificationError,
+  t: TFunction<['billing', 'education']>,
 ) {
-  try {
-    const response = await requestVerification()
-    if (!response.token) throw new EducationVerificationRejectedError()
-
-    return response.token
-  } catch (error) {
-    if (error instanceof Response) {
-      const body = (await error
-        .clone()
-        .json()
-        .catch(() => null)) as { code?: unknown } | null
-      if (body?.code === 'education_discount_temporarily_paused')
-        throw new EducationVerificationPausedError()
-    }
-
-    throw error
+  const code = isDefinedError(error) ? error.code : undefined
+  switch (code) {
+    case 'education_verify_failed':
+      return t(($) => $.verifyFailed, { ns: 'education' })
+    case 'education_verify_limit':
+      return t(($) => $.tooManyAttempts, { ns: 'education' })
+    default:
+      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
   }
 }
 
+const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
+
 export default function EducationVerifyPage() {
-  return <EducationVerifyFlow applicationsPaused={EDUCATION_APPLICATIONS_PAUSED} />
+  return <EducationVerifyFlow />
 }
 
-export function EducationVerifyFlow({
-  applicationsPaused,
-  requestVerification = requestEducationVerification,
-}: {
-  applicationsPaused: boolean
-  requestVerification?: EducationVerificationRequest
-}) {
-  const { t } = useTranslation()
+export function EducationVerifyFlow() {
+  const { t } = useTranslation(['billing', 'education'])
   const router = useRouter()
   const { data: userEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -85,22 +71,23 @@ export function EducationVerifyFlow({
     }),
   )
   const {
+    data: verification,
     error: verificationError,
     isError: isVerificationError,
     mutate: verifyEducation,
     reset: resetVerification,
-  } = useMutation({
-    mutationKey: ['education', 'verification-token'],
-    mutationFn: () => requestEducationVerificationToken(requestVerification),
-  })
+  } = useMutation(
+    consoleQuery.account.education.verify.get.mutationOptions({ context: { silent: true } }),
+  )
 
   const startVerification = useCallback(() => {
     if (verificationStartedRef.current) return
 
     verificationStartedRef.current = true
     verifyEducation(undefined, {
-      onSuccess: (token) => {
-        router.replace(`/education/apply?token=${encodeURIComponent(token)}`)
+      onSuccess: (result) => {
+        if (result.status === 'eligible')
+          router.replace(`/education/apply?token=${encodeURIComponent(result.token)}`)
       },
     })
   }, [router, verifyEducation])
@@ -114,8 +101,8 @@ export function EducationVerifyFlow({
     (!educationStatus.isEducationAccount || educationStatus.allowRefresh)
 
   useEffect(() => {
-    if (!applicationsPaused && canVerify) startVerification()
-  }, [applicationsPaused, canVerify, startVerification])
+    if (canVerify) startVerification()
+  }, [canVerify, startVerification])
 
   if (featuresQuery.isPending) return <EducationVerifyLoading />
 
@@ -126,6 +113,9 @@ export function EducationVerifyFlow({
   if (educationStatusQuery.isError)
     return (
       <EducationVerifyError
+        message={t(($) => $[billingErrorMessageKey(educationStatusQuery.error)], {
+          ns: 'billing',
+        })}
         onRetry={() => {
           void educationStatusQuery.refetch()
         }}
@@ -134,10 +124,7 @@ export function EducationVerifyFlow({
 
   if (isAlreadyVerified) return <EducationVerifiedContent />
 
-  if (applicationsPaused || verificationError instanceof EducationVerificationPausedError)
-    return <EducationPausedContent />
-
-  if (verificationError instanceof EducationVerificationRejectedError) {
+  if (verification?.status === 'not_eligible') {
     return (
       <EducationVerifyContent>
         <EducationStatusCard
@@ -183,6 +170,7 @@ export function EducationVerifyFlow({
   if (isVerificationError)
     return (
       <EducationVerifyError
+        message={educationVerifyErrorMessage(verificationError, t)}
         onRetry={() => {
           verificationStartedRef.current = false
           resetVerification()
@@ -208,7 +196,7 @@ function EducationVerifyContent({ children }: { children: ReactNode }) {
 function EducationVerifyLoading() {
   return (
     <EducationStatusCard
-      icon={<Loading />}
+      icon={<LoadingPlaceholder />}
       title={<span className="block h-5 w-40 animate-pulse rounded bg-background-section-burn" />}
     >
       <span className="block h-4 w-full max-w-100 animate-pulse rounded bg-background-section-burn" />
@@ -217,7 +205,7 @@ function EducationVerifyLoading() {
 }
 
 function EducationVerifiedContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education', 'navigation'])
 
   return (
     <EducationVerifyContent>
@@ -229,7 +217,7 @@ function EducationVerifiedContent() {
         actions={
           <>
             <Link className={buttonVariants({ variant: 'primary' })} href="/?settings=billing">
-              {t(($) => $['settings.billing'], { ns: 'common' })}
+              {t(($) => $['settings.billing'], { ns: 'navigation' })}
             </Link>
             <Link className={buttonVariants({ variant: 'ghost-accent' })} href="/">
               <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
@@ -242,8 +230,8 @@ function EducationVerifiedContent() {
   )
 }
 
-function EducationVerifyError({ onRetry }: { onRetry: () => void }) {
-  const { t } = useTranslation()
+function EducationVerifyError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const { t } = useTranslation(['common', 'education'])
 
   return (
     <EducationVerifyContent>
@@ -267,7 +255,7 @@ function EducationVerifyError({ onRetry }: { onRetry: () => void }) {
           </>
         }
       >
-        {t(($) => $['errorBoundary.message'], { ns: 'common' })}
+        {message}
       </EducationStatusCard>
     </EducationVerifyContent>
   )

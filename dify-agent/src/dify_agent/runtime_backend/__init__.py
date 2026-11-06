@@ -2,11 +2,13 @@
 
 from .errors import (
     BindingAcquireError,
+    BindingCapacityExhaustedError,
     BindingCreateError,
     BindingDestroyError,
     BindingLostError,
     HomeSnapshotCreateError,
     HomeSnapshotNotFoundError,
+    HomeSnapshotTooLargeError,
     RuntimeBackendError,
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
@@ -26,6 +28,7 @@ from .protocols import (
 
 __all__ = [
     "BindingAcquireError",
+    "BindingCapacityExhaustedError",
     "BindingCreateError",
     "BindingDestroyError",
     "BindingLostError",
@@ -37,6 +40,7 @@ __all__ = [
     "HomeSnapshotCreateError",
     "HomeSnapshotCreateSpec",
     "HomeSnapshotNotFoundError",
+    "HomeSnapshotTooLargeError",
     "RuntimeBackendError",
     "RuntimeBackendProfile",
     "RuntimeLayout",

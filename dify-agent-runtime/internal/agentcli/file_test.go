@@ -15,6 +15,7 @@ import (
 type fakeFileUploadClient struct {
 	forFrontend         bool
 	downloadRequestCall int
+	downloadMethod      string
 	uploadResponse      []byte
 	calls               []string
 	filename            string
@@ -22,9 +23,11 @@ type fakeFileUploadClient struct {
 	uploadURL           string
 	uploadedBytes       []byte
 	downloadReference   string
+	downloadErr         error
+	downloadURL         *string
 }
 
-func (f *fakeFileUploadClient) CreateFileUploadURL(_ context.Context, filename, mimetype string) (string, error) {
+func (f *fakeFileUploadClient) CreateToolFileUploadURL(_ context.Context, filename, mimetype string) (string, error) {
 	f.calls = append(f.calls, "upload-request")
 	f.filename = filename
 	f.mimetype = mimetype
@@ -45,21 +48,29 @@ func (f *fakeFileUploadClient) UploadFileToURL(uploadURL, filePath, filename, mi
 
 func (f *fakeFileUploadClient) CreateFileDownloadURL(
 	_ context.Context,
-	_ string,
+	transferMethod string,
 	reference, _ *string,
 	forFrontend bool,
 ) (*FileDownloadResponse, error) {
 	f.calls = append(f.calls, "download-request")
 	f.forFrontend = forFrontend
+	f.downloadMethod = transferMethod
 	f.downloadRequestCall++
 	if reference != nil {
 		f.downloadReference = *reference
+	}
+	if f.downloadErr != nil {
+		return nil, f.downloadErr
+	}
+	downloadURL := "/files/tools/report.pdf?sign=2"
+	if f.downloadURL != nil {
+		downloadURL = *f.downloadURL
 	}
 	return &FileDownloadResponse{
 		Filename:    "report.pdf",
 		MimeType:    "application/pdf",
 		Size:        123,
-		DownloadURL: "/files/tools/report.pdf?sign=2",
+		DownloadURL: downloadURL,
 	}, nil
 }
 
@@ -125,43 +136,146 @@ func TestRunFileUploadWithoutDownloadLinkReturnsOnlyCanonicalMapping(t *testing.
 	}
 }
 
-func TestRunFileUploadDefaultAcceptsLegacyNonemptyReference(t *testing.T) {
+func TestRunFileUploadPreservesReferenceWhenPublicURLRequestFails(t *testing.T) {
 	filePath := filepath.Join(t.TempDir(), "report.pdf")
 	if err := os.WriteFile(filePath, []byte("report"), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
 
-	client := &fakeFileUploadClient{uploadResponse: []byte(`{"reference":"raw-id"}`)}
+	client := &fakeFileUploadClient{downloadErr: &agentStubHTTPError{
+		statusCode: http.StatusUnauthorized,
+		code:       agentStubAuthorizationExpiredCode,
+		message:    "expired",
+	}}
 	var output bytes.Buffer
 	err := runFileUpload(client, filePath, false, &output)
-	if err != nil {
-		t.Fatalf("run file upload: %v", err)
+	if err == nil {
+		t.Fatal("run file upload succeeded, want public URL failure")
 	}
-	if client.downloadRequestCall != 1 || client.downloadReference != "raw-id" {
-		t.Fatalf("download request = (%d, %q), want legacy reference", client.downloadRequestCall, client.downloadReference)
+	const reference = "dify-file-ref:eyJyZWNvcmRfaWQiOiJ0b29sLTEifQ=="
+	if got, want := strings.TrimSpace(output.String()), `{"transfer_method":"tool_file","reference":"`+reference+`"}`; got != want {
+		t.Fatalf("partial output = %s, want %s", got, want)
 	}
-	if !strings.Contains(output.String(), `"reference":"raw-id"`) {
-		t.Fatalf("output = %q, want legacy reference", output.String())
+	for _, want := range []string{
+		"request public download URL",
+		"expired after 5 minutes",
+		"will not refresh automatically",
+		"start a new shell tool call",
+		"retry the command",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error = %q, want substring %q", err, want)
+		}
+	}
+	recoveryCommand := "dify-agent file public-url '" + reference + "'"
+	if !strings.HasSuffix(err.Error(), "retry without uploading again: "+recoveryCommand) {
+		t.Fatalf("error = %q, want exact recovery command %q", err, recoveryCommand)
+	}
+	if got, want := strings.Join(client.calls, ","), "upload-request,multipart-upload,download-request"; got != want {
+		t.Fatalf("call order = %s, want %s", got, want)
 	}
 }
 
-func TestRunFileUploadWithoutDownloadLinkRejectsNonCanonicalReference(t *testing.T) {
+func TestRunFileUploadPreservesReferenceWhenPublicURLResponseIsIncomplete(t *testing.T) {
 	filePath := filepath.Join(t.TempDir(), "report.pdf")
 	if err := os.WriteFile(filePath, []byte("report"), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
 
-	client := &fakeFileUploadClient{uploadResponse: []byte(`{"reference":"raw-id"}`)}
+	emptyURL := ""
+	client := &fakeFileUploadClient{downloadURL: &emptyURL}
 	var output bytes.Buffer
-	err := runFileUpload(client, filePath, true, &output)
-	if err == nil || !strings.Contains(err.Error(), "invalid reference") {
-		t.Fatalf("error = %v, want invalid reference", err)
+	err := runFileUpload(client, filePath, false, &output)
+	if err == nil || !strings.Contains(err.Error(), "missing download_url") {
+		t.Fatalf("error = %v, want incomplete public URL response", err)
 	}
-	if client.downloadRequestCall != 0 {
-		t.Fatalf("download request calls = %d, want 0", client.downloadRequestCall)
+	if !strings.Contains(output.String(), `"reference":"dify-file-ref:`) {
+		t.Fatalf("partial output = %q, want uploaded reference", output.String())
 	}
-	if output.Len() != 0 {
-		t.Fatalf("output = %q, want empty", output.String())
+	if !strings.Contains(err.Error(), "dify-agent file public-url") {
+		t.Fatalf("error = %q, want recovery command", err)
+	}
+}
+
+func TestRunFilePublicURLUsesExistingReferenceWithoutUploading(t *testing.T) {
+	client := &fakeFileUploadClient{}
+	var output bytes.Buffer
+	const reference = "dify-file-ref:eyJyZWNvcmRfaWQiOiJ0b29sLTEifQ=="
+
+	if err := runFilePublicURL(client, reference, &output); err != nil {
+		t.Fatalf("run file public URL: %v", err)
+	}
+
+	if got, want := strings.Join(client.calls, ","), "download-request"; got != want {
+		t.Fatalf("calls = %s, want %s", got, want)
+	}
+	if !client.forFrontend || client.downloadMethod != "tool_file" || client.downloadReference != reference {
+		t.Fatalf(
+			"download request = (method=%q, forFrontend=%t, reference=%q)",
+			client.downloadMethod,
+			client.forFrontend,
+			client.downloadReference,
+		)
+	}
+	want := `{"transfer_method":"tool_file","reference":"` + reference + `","public_download_url":"/files/tools/report.pdf?sign=2"}`
+	if got := strings.TrimSpace(output.String()); got != want {
+		t.Fatalf("output = %s, want %s", got, want)
+	}
+}
+
+func TestRunFilePublicURLExplainsExpiredAuthorization(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/agent-stub/files/download-request" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"detail":{"code":"agent_stub_authorization_expired","message":"expired"}}`))
+	}))
+	defer server.Close()
+
+	err := RunFilePublicURL(
+		&Environment{URL: server.URL + "/agent-stub", AuthJWE: "token"},
+		"dify-file-ref:eyJyZWNvcmRfaWQiOiJ0b29sLTEifQ==",
+	)
+	if err == nil {
+		t.Fatal("RunFilePublicURL succeeded, want expired authorization failure")
+	}
+	for _, want := range []string{
+		"request public download URL",
+		"expired after 5 minutes",
+		"will not refresh automatically",
+		"start a new shell tool call",
+		"retry the command",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error = %q, want substring %q", err, want)
+		}
+	}
+}
+
+func TestRunFileUploadRejectsNonCanonicalReferenceInBothModes(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "report.pdf")
+	if err := os.WriteFile(filePath, []byte("report"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	for _, noDownloadLink := range []bool{false, true} {
+		client := &fakeFileUploadClient{uploadResponse: []byte(`{"reference":"raw-id"}`)}
+		var output bytes.Buffer
+		err := runFileUpload(client, filePath, noDownloadLink, &output)
+		if err == nil || !strings.Contains(err.Error(), "invalid reference") {
+			t.Fatalf("noDownloadLink=%t error = %v, want invalid reference", noDownloadLink, err)
+		}
+		if client.downloadRequestCall != 0 || output.Len() != 0 {
+			t.Fatalf(
+				"noDownloadLink=%t download calls = %d, output = %q; want no download or output",
+				noDownloadLink,
+				client.downloadRequestCall,
+				output.String(),
+			)
+		}
 	}
 }
 

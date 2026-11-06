@@ -39,8 +39,12 @@ func RunFileUpload(env *Environment, path string, noDownloadLink bool) error {
 }
 
 type fileUploadClient interface {
-	CreateFileUploadURL(ctx context.Context, filename, mimetype string) (string, error)
+	filePublicURLClient
+	CreateToolFileUploadURL(ctx context.Context, filename, mimetype string) (string, error)
 	UploadFileToURL(uploadURL, filePath, filename, mimetype string) ([]byte, error)
+}
+
+type filePublicURLClient interface {
 	CreateFileDownloadURL(
 		ctx context.Context,
 		transferMethod string,
@@ -64,15 +68,15 @@ func runFileUpload(client fileUploadClient, path string, noDownloadLink bool, ou
 	ctx := context.Background()
 
 	// Step 1: Request a signed upload URL
-	uploadURL, err := client.CreateFileUploadURL(ctx, filename, mimetype)
+	uploadURL, err := client.CreateToolFileUploadURL(ctx, filename, mimetype)
 	if err != nil {
-		return err
+		return fmt.Errorf("request file upload URL: %w", err)
 	}
 
 	// Step 2: Upload the file to the signed URL (data-plane)
 	uploadBody, err := client.UploadFileToURL(uploadURL, absPath, filename, mimetype)
 	if err != nil {
-		return err
+		return fmt.Errorf("upload file data: %w", err)
 	}
 
 	var uploadResult map[string]any
@@ -84,7 +88,7 @@ func runFileUpload(client fileUploadClient, path string, noDownloadLink bool, ou
 	if reference == "" {
 		return fmt.Errorf("signed file upload response is missing reference")
 	}
-	if noDownloadLink && !isCanonicalDifyFileReference(reference) {
+	if !isCanonicalDifyFileReference(reference) {
 		return fmt.Errorf("signed file upload response has invalid reference")
 	}
 
@@ -98,13 +102,63 @@ func runFileUpload(client fileUploadClient, path string, noDownloadLink bool, ou
 		ref := reference
 		dlResp, err := client.CreateFileDownloadURL(ctx, "tool_file", &ref, nil, true)
 		if err != nil {
-			return err
+			writeFileUploadResponse(output, result)
+			return fmt.Errorf(
+				"request public download URL: %w; retry without uploading again: dify-agent file public-url %s",
+				err,
+				shellQuoteArgument(reference),
+			)
+		}
+		if dlResp.DownloadURL == "" {
+			writeFileUploadResponse(output, result)
+			return fmt.Errorf(
+				"public file download response is missing download_url; retry without uploading again: dify-agent file public-url %s",
+				shellQuoteArgument(reference),
+			)
 		}
 		result.PublicDownloadURL = dlResp.DownloadURL
 	}
+	writeFileUploadResponse(output, result)
+	return nil
+}
+
+// RunFilePublicURL requests a browser-visible URL for an existing ToolFile reference.
+func RunFilePublicURL(env *Environment, reference string) error {
+	client, err := NewStubClient(env)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = client.Close() }()
+
+	return runFilePublicURL(client, reference, os.Stdout)
+}
+
+func runFilePublicURL(client filePublicURLClient, reference string, output io.Writer) error {
+	if reference == "" {
+		return fmt.Errorf("file reference must not be empty")
+	}
+	download, err := client.CreateFileDownloadURL(context.Background(), "tool_file", &reference, nil, true)
+	if err != nil {
+		return fmt.Errorf("request public download URL: %w", err)
+	}
+	if download.DownloadURL == "" {
+		return fmt.Errorf("public file download response is missing download_url")
+	}
+	writeFileUploadResponse(output, FileUploadResponse{
+		TransferMethod:    "tool_file",
+		Reference:         reference,
+		PublicDownloadURL: download.DownloadURL,
+	})
+	return nil
+}
+
+func writeFileUploadResponse(output io.Writer, result FileUploadResponse) {
 	out, _ := json.Marshal(result)
 	_, _ = fmt.Fprintln(output, string(out))
-	return nil
+}
+
+func shellQuoteArgument(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
 }
 
 func isCanonicalDifyFileReference(reference string) bool {
@@ -144,7 +198,7 @@ func RunFileDownload(env *Environment, transferMethod string, referenceOrURL str
 
 	dlResp, err := client.CreateFileDownloadURL(ctx, transferMethod, reference, url, false)
 	if err != nil {
-		return err
+		return fmt.Errorf("request file download URL: %w", err)
 	}
 	if dlResp.DownloadURL == "" {
 		return fmt.Errorf("signed file download response is missing download_url")
@@ -156,7 +210,7 @@ func RunFileDownload(env *Environment, transferMethod string, referenceOrURL str
 	// Download the file (data-plane)
 	data, err := client.DownloadFromURL(dlResp.DownloadURL)
 	if err != nil {
-		return err
+		return fmt.Errorf("download file data: %w", err)
 	}
 
 	// Determine target directory

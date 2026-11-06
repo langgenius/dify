@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import enum
 import logging
 import uuid
 from datetime import datetime
@@ -9,7 +8,7 @@ from cachetools.func import ttl_cache
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from configs import dify_config
-from enums import DeploymentEdition
+from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import redis_client
 from services.enterprise.base import (
     EnterpriseRequest,
@@ -29,13 +28,6 @@ DEFAULT_WORKSPACE_JOIN_TIMEOUT_SECONDS = 1.0
 LICENSE_STATUS_CACHE_KEY = "enterprise:license:status"
 VALID_LICENSE_CACHE_TTL = 600  # 10 minutes — valid licenses are stable
 INVALID_LICENSE_CACHE_TTL = 30  # 30 seconds — short so admin fixes are picked up quickly
-
-
-class WebAppAccessMode(enum.StrEnum):
-    PUBLIC = "public"
-    PRIVATE = "private"
-    PRIVATE_ALL = "private_all"
-    SSO_VERIFIED = "sso_verified"
 
 
 PERMISSION_CHECK_MODES: frozenset[WebAppAccessMode] = frozenset(
@@ -293,7 +285,7 @@ class EnterpriseService:
             params = {"appId": app_id}
             data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/id", params=params)
             if not data:
-                raise ValueError("No data found.")
+                raise EnterpriseServiceError("No data found.")
             return WebAppSettings.model_validate(data)
 
         @classmethod
@@ -317,10 +309,25 @@ class EnterpriseService:
             return ret
 
         @classmethod
+        def inherit_app_access_mode(cls, source_app_id: str, target_app_id: str) -> None:
+            """Inherit a source app's mode, preserving the copy path's legacy public fallback."""
+            try:
+                access_mode = cls.get_app_access_mode_by_id(source_app_id).access_mode
+            except Exception:
+                # Preserve the existing copy behavior, including read failures for old apps without settings.
+                access_mode = "public"
+            cls.update_app_access_mode(target_app_id, access_mode)
+
+        @classmethod
         def update_app_access_mode(cls, app_id: str, access_mode: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")
-            allowed = {WebAppAccessMode.PUBLIC, WebAppAccessMode.PRIVATE, WebAppAccessMode.PRIVATE_ALL}
+            allowed = {
+                WebAppAccessMode.PUBLIC,
+                WebAppAccessMode.PRIVATE,
+                WebAppAccessMode.PRIVATE_ALL,
+                WebAppAccessMode.SSO_VERIFIED,
+            }
             if access_mode not in allowed:
                 raise ValueError(f"access_mode must be one of: {', '.join(m.value for m in allowed)}")
 

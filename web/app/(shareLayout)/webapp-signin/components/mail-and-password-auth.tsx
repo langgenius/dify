@@ -1,13 +1,21 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Input } from '@langgenius/dify-ui/input'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
+import {
+  navigateAfterWebAppLogin,
+  resolveWebAppLoginRedirect,
+} from '@/app/(shareLayout)/webapp-signin/login-redirect'
+import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
-import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -24,15 +32,10 @@ type MailAndPasswordAuthProps = {
 }
 
 export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAuthProps) {
-  const { t } = useTranslation()
-  const locale = useLocale()
+  const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
-  const [email, setEmail] = useState(emailFromLink)
-  const [password, setPassword] = useState('')
-
   const [isLoading, setIsLoading] = useState(false)
   const redirectUrl = searchParams.get('redirect_url')
   const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
@@ -42,31 +45,18 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
   }, [redirectUrl, router])
 
-  const handleEmailPasswordLogin = async () => {
+  const handleEmailPasswordLogin = async (email: string, password: string) => {
+    if (isLoading) return
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
-    if (!email) {
-      toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
-      return
-    }
-    if (!emailRegex.test(email)) {
-      toast.error(t(($) => $['error.emailInValid'], { ns: 'login' }))
-      return
-    }
-    if (!password?.trim()) {
-      toast.error(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
-      return
-    }
-
     try {
       setIsLoading(true)
       const loginData = {
         email,
         password: encryptPassword(password),
-        language: locale,
         remember_me: true,
       }
 
@@ -84,7 +74,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           userId: embeddedUserId || undefined,
         })
         setWebAppPassport(loginRedirect.address, access_token)
-        replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
+        navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       } else {
         toast.error(res.data)
       }
@@ -101,74 +91,77 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   }
 
   return (
-    <Form
-      onFormSubmit={() => {
-        void handleEmailPasswordLogin()
+    <Form<{ email: string; password: string }>
+      onFormSubmit={({ email, password }) => {
+        void handleEmailPasswordLogin(email, password)
       }}
     >
-      <Field name="email" className="mb-3 block">
+      <Field
+        name="email"
+        className="mb-3 block"
+        validate={(value) => {
+          if (typeof value !== 'string' || !value)
+            return t(($) => $['error.emailEmpty'], { ns: 'login' })
+          if (!emailRegex.test(value)) return t(($) => $['error.emailInValid'], { ns: 'login' })
+          return null
+        }}
+      >
         <FieldLabel className="my-2 py-0 text-sm leading-5 font-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
         </FieldLabel>
         <div className="mt-1">
-          <FieldControl
-            value={email}
-            onValueChange={setEmail}
+          <Input
+            defaultValue={emailFromLink}
             id="email"
-            type="email"
+            type="text"
+            inputMode="email"
             autoComplete="email"
             spellCheck={false}
-            placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+            placeholder={t(($) => $.emailPlaceholder, { ns: 'login' })}
           />
         </div>
+        <FieldError />
       </Field>
 
-      <Field name="password" className="mb-3 block">
+      <Field
+        name="password"
+        className="mb-3 block"
+        validate={(value) => {
+          if (typeof value !== 'string' || !value.trim())
+            return t(($) => $['error.passwordEmpty'], { ns: 'login' })
+          return null
+        }}
+      >
         <div className="my-2 flex items-center justify-between">
           <FieldLabel className="py-0 text-sm leading-5 font-semibold text-text-secondary">
             {t(($) => $.password, { ns: 'login' })}
           </FieldLabel>
-          <Link
-            href={`/webapp-reset-password?${searchParams.toString()}`}
-            className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
-            tabIndex={isEmailSetup ? 0 : -1}
-            aria-disabled={!isEmailSetup}
-          >
-            {t(($) => $.forget, { ns: 'login' })}
-          </Link>
-        </div>
-        <div className="relative mt-1">
-          <FieldControl
-            value={password}
-            onValueChange={setPassword}
-            id="password"
-            type={showPassword ? 'text' : 'password'}
-            autoComplete="current-password"
-            spellCheck={false}
-            placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-          />
-          <div className="absolute inset-y-0 right-0 flex items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                ns: 'login',
-              })}
-              onClick={() => setShowPassword(!showPassword)}
+          {isEmailSetup ? (
+            <Link
+              href={`/webapp-reset-password?${searchParams.toString()}`}
+              className="system-xs-regular text-text-accent hover:underline"
             >
-              <span aria-hidden="true">{showPassword ? '👀' : '😝'}</span>
-            </Button>
-          </div>
+              {t(($) => $.forget, { ns: 'login' })}
+            </Link>
+          ) : (
+            <span className="system-xs-regular text-components-button-secondary-accent-text-disabled">
+              {t(($) => $.forget, { ns: 'login' })}
+            </span>
+          )}
         </div>
+        <PasswordField className="mt-1">
+          <PasswordFieldInput
+            id="password"
+            autoComplete="current-password"
+            placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
+          />
+          <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+        </PasswordField>
+        <FieldError />
       </Field>
 
       <div className="mb-2">
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={isLoading || !email || !password}
-          className="w-full"
-        >
+        <Button type="submit" variant="primary" loading={isLoading} className="w-full">
           {t(($) => $.signBtn, { ns: 'login' })}
         </Button>
       </div>

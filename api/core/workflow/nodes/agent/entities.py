@@ -1,5 +1,5 @@
 from enum import IntEnum, StrEnum, auto
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +21,7 @@ class AgentNodeData(BaseNodeData):
     tool_node_version: str | None = None
 
     class AgentInput(BaseModel):
-        value: Union[list[str], list[ToolSelector], Any]
+        value: list[str] | list[ToolSelector] | Any
         type: Literal["mixed", "variable", "constant"]
 
     agent_parameters: dict[str, AgentInput] = Field(default_factory=dict)

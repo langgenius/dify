@@ -14,7 +14,6 @@ from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from fastapi.params import Depends as DependsInstance
 from fastapi.responses import StreamingResponse
 
 from dify_agent.protocol.schemas import (
@@ -33,11 +32,8 @@ from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
 def create_runs_router(
     get_store: Callable[[], RedisRunStore],
     get_scheduler: Callable[[], RunScheduler],
-    *,
-    auth_dependency: DependsInstance | None = None,
 ) -> APIRouter:
-    dependencies: list[DependsInstance] = [auth_dependency] if auth_dependency is not None else []
-    router = APIRouter(prefix="/runs", tags=["runs"], dependencies=dependencies)
+    router = APIRouter(prefix="/runs", tags=["runs"])
 
     async def store_dep() -> RedisRunStore:
         return get_store()

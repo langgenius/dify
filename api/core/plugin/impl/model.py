@@ -11,7 +11,9 @@ from core.plugin.entities.plugin_daemon import (
     PluginModelSchemaEntity,
     PluginStringResultResponse,
     PluginTextEmbeddingNumTokensResponse,
+    PluginTTSResultResponse,
     PluginVoicesResponse,
+    TTSAudioChunk,
 )
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
@@ -22,6 +24,7 @@ from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from services.plugin.dispatch_identity import plugin_dispatch_headers
 
 _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name__,))
 _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
@@ -66,6 +69,8 @@ class PluginModelClient(BasePluginClient):
         model_type: str,
         model: str,
         credentials: dict[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> AIModelEntity | None:
         """
         Get model schema
@@ -83,10 +88,7 @@ class PluginModelClient(BasePluginClient):
                     "credentials": credentials,
                 },
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
@@ -95,7 +97,14 @@ class PluginModelClient(BasePluginClient):
         return None
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str | None, plugin_id: str, provider: str, credentials: dict[str, Any]
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        credentials: dict[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> bool:
         """
         validate the credentials of the provider
@@ -111,10 +120,7 @@ class PluginModelClient(BasePluginClient):
                     "credentials": credentials,
                 },
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
@@ -134,6 +140,8 @@ class PluginModelClient(BasePluginClient):
         model_type: str,
         model: str,
         credentials: dict[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> bool:
         """
         validate the credentials of the provider
@@ -151,10 +159,7 @@ class PluginModelClient(BasePluginClient):
                     "credentials": credentials,
                 },
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
@@ -179,7 +184,9 @@ class PluginModelClient(BasePluginClient):
         stop: list[str] | None = None,
         stream: bool = True,
         app_id: str | None = None,
-    ) -> Generator[LLMResultChunk, None, None]:
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> Generator[LLMResultChunk]:
         """
         Invoke llm
         """
@@ -204,16 +211,13 @@ class PluginModelClient(BasePluginClient):
                     app_id=app_id,
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         try:
             yield from response
         except PluginDaemonInnerError as e:
-            raise ValueError(e.message + str(e.code))
+            raise ValueError(e.message + str(e.code)) from e
 
     def start_llm_polling(
         self,
@@ -228,6 +232,8 @@ class PluginModelClient(BasePluginClient):
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         json_schema: dict[str, Any] | None = None,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> LLMPollingResult:
         """Start an LLM polling request for plugin-backed long-running jobs."""
         try:
@@ -252,10 +258,7 @@ class PluginModelClient(BasePluginClient):
                         },
                     )
                 ),
-                headers={
-                    "X-Plugin-ID": plugin_id,
-                    "Content-Type": "application/json",
-                },
+                headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
             )
         except PluginInvokeError as error:
             self._raise_typed_polling_unsupported_error(error)
@@ -270,6 +273,8 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         plugin_state: dict[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> LLMPollingResult:
         """Check the latest state for a plugin-backed LLM polling job."""
         try:
@@ -289,10 +294,7 @@ class PluginModelClient(BasePluginClient):
                         },
                     )
                 ),
-                headers={
-                    "X-Plugin-ID": plugin_id,
-                    "Content-Type": "application/json",
-                },
+                headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
             )
         except PluginInvokeError as error:
             self._raise_typed_polling_unsupported_error(error)
@@ -323,6 +325,8 @@ class PluginModelClient(BasePluginClient):
         credentials: dict[str, Any],
         prompt_messages: list[PromptMessage],
         tools: list[PromptMessageTool] | None = None,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> int:
         """
         Get number of tokens for llm
@@ -344,10 +348,7 @@ class PluginModelClient(BasePluginClient):
                     },
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
@@ -365,6 +366,8 @@ class PluginModelClient(BasePluginClient):
         credentials: dict[str, Any],
         texts: list[str],
         input_type: str,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> EmbeddingResult:
         """
         Invoke text embedding
@@ -386,10 +389,7 @@ class PluginModelClient(BasePluginClient):
                     },
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
@@ -407,6 +407,8 @@ class PluginModelClient(BasePluginClient):
         credentials: dict[str, Any],
         documents: list[dict],
         input_type: str,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> EmbeddingResult:
         """
         Invoke file embedding
@@ -428,10 +430,7 @@ class PluginModelClient(BasePluginClient):
                     },
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
@@ -448,6 +447,8 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         texts: list[str],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> list[int]:
         """
         Get number of tokens for text embedding
@@ -468,10 +469,7 @@ class PluginModelClient(BasePluginClient):
                     },
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
@@ -491,6 +489,8 @@ class PluginModelClient(BasePluginClient):
         docs: list[str],
         score_threshold: float | None = None,
         top_n: int | None = None,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> RerankResult:
         """
         Invoke rerank
@@ -514,10 +514,7 @@ class PluginModelClient(BasePluginClient):
                     },
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
@@ -537,6 +534,8 @@ class PluginModelClient(BasePluginClient):
         docs: list[MultimodalRerankInput],
         score_threshold: float | None = None,
         top_n: int | None = None,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> RerankResult:
         """
         Invoke multimodal rerank
@@ -560,10 +559,7 @@ class PluginModelClient(BasePluginClient):
                     },
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
         for resp in response:
             return resp
@@ -580,14 +576,16 @@ class PluginModelClient(BasePluginClient):
         credentials: dict[str, Any],
         content_text: str,
         voice: str,
-    ) -> Generator[bytes, None, None]:
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> Generator[TTSAudioChunk]:
         """
         Invoke tts
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/tts/invoke",
-            type_=PluginStringResultResponse,
+            type_=PluginTTSResultResponse,
             data=jsonable_encoder(
                 self._dispatch_payload(
                     user_id=user_id,
@@ -602,18 +600,15 @@ class PluginModelClient(BasePluginClient):
                     },
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         try:
             for result in response:
                 hex_str = result.result
-                yield binascii.unhexlify(hex_str)
+                yield TTSAudioChunk(binascii.unhexlify(hex_str), mime_type=result.mime_type)
         except PluginDaemonInnerError as e:
-            raise ValueError(e.message + str(e.code))
+            raise ValueError(e.message + str(e.code)) from e
 
     def get_tts_model_voices(
         self,
@@ -624,6 +619,8 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         language: str | None = None,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> list[TTSModelVoice]:
         """
         Get tts model voices
@@ -644,10 +641,7 @@ class PluginModelClient(BasePluginClient):
                     },
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
@@ -668,6 +662,8 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         file: IO[bytes],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> str:
         """
         Invoke speech to text
@@ -688,10 +684,7 @@ class PluginModelClient(BasePluginClient):
                     },
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:
@@ -708,6 +701,8 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         text: str,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> bool:
         """
         Invoke moderation
@@ -728,10 +723,7 @@ class PluginModelClient(BasePluginClient):
                     },
                 )
             ),
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for resp in response:

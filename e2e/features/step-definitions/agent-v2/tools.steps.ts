@@ -1,23 +1,23 @@
 import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { sendAgentServiceApiChatMessage } from '../../agent-v2/support/access-point'
-import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
+import { sendAgentServiceApiChatMessage } from '../../agent-v2/support/access-point.ts'
 import {
   agentBuilderExpectedTokens,
   agentBuilderPreseededResources,
-} from '../../agent-v2/support/agent-builder-resources'
+} from '../../agent-v2/support/agent-builder-resources.ts'
 import {
   createAgentSoulConfigWithDifyTool,
   createAgentSoulConfigWithModel,
   normalAgentSoulConfig,
-} from '../../agent-v2/support/agent-soul'
-import { asArray, asRecord, asString } from '../../agent-v2/support/fixtures/common'
-import { hasToolEntry } from '../../agent-v2/support/fixtures/tools'
-import { SERVICE_API_RUNTIME_STEP_TIMEOUT_MS } from '../../agent-v2/support/service-api-sse'
-import { getPreseededToolContract } from '../../agent-v2/support/tools'
-import { expectProviderToolActionVisible, getCurrentAgentId } from './configure-helpers'
+} from '../../agent-v2/support/agent-soul.ts'
+import { createConfiguredTestAgent } from '../../agent-v2/support/agent.ts'
+import { asArray, asRecord, asString } from '../../agent-v2/support/fixtures/common.ts'
+import { hasToolEntry } from '../../agent-v2/support/fixtures/tools.ts'
+import { SERVICE_API_RUNTIME_STEP_TIMEOUT_MS } from '../../agent-v2/support/service-api-sse.ts'
+import { getPreseededToolContract } from '../../agent-v2/support/tools.ts'
+import { expectProviderToolActionVisible, getCurrentAgentId } from './configure-helpers.ts'
 
 const getToolsSection = (world: DifyWorld) => world.getPage().getByRole('region', { name: 'Tools' })
 

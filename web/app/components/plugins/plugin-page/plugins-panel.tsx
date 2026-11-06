@@ -4,17 +4,16 @@ import type { PluginDetail } from '../types'
 import type { PluginPageContentInset } from './content-inset'
 import type { FilterState } from './filter-management'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import { useGetLanguage } from '@/context/i18n'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { renderI18nObject } from '@/i18n-config'
+import { useMarketplace } from '@/features/marketplace/client'
+import { renderI18nObject } from '@/i18n/metadata'
 import {
   normalizePluginCategoryListLanguage,
   useInstalledPluginList,
@@ -23,6 +22,7 @@ import {
 } from '@/service/use-plugins'
 import { usePluginsWithLatestVersion } from '../hooks'
 import { PluginCategoryEnum } from '../types'
+import { isEmbeddedMarketplaceCategory } from './category-marketplace'
 import { pluginPageContentFrameClassNames, pluginPageContentInsetClassNames } from './content-inset'
 import { usePluginPageContext } from './context'
 import Empty from './empty'
@@ -79,7 +79,7 @@ const PluginsPanel = ({
   onSwitchToMarketplace,
   toolbarAction,
 }: PluginsPanelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useGetLanguage()
   const filters = usePluginPageContext((v) => v.filters) as FilterState
   const setFilters = usePluginPageContext((v) => v.setFilters)
@@ -87,6 +87,7 @@ const PluginsPanel = ({
   const isTriggerIntegrationPage = fixedCategory === PluginCategoryEnum.trigger
   const isAgentStrategyIntegrationPage = fixedCategory === PluginCategoryEnum.agent
   const isExtensionIntegrationPage = fixedCategory === PluginCategoryEnum.extension
+  const hasEmbeddedMarketplace = isEmbeddedMarketplaceCategory(fixedCategory)
   const isIntegrationCategoryPage =
     isToolIntegrationPage ||
     isTriggerIntegrationPage ||
@@ -104,10 +105,7 @@ const PluginsPanel = ({
         : undefined,
     [filters.searchQuery, filters.tags, isIntegrationCategoryPage, locale, supportsTagFilter],
   )
-  const { data: enableMarketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const {
     data: pluginList,
     isLoading: isPluginListLoading,
@@ -128,9 +126,8 @@ const PluginsPanel = ({
     INTEGRATION_PLUGIN_PAGE_SIZE,
     installedPluginFilters,
   )
-  const currentPluginID = usePluginPageContext((v) => v.currentPluginID)
-  const setCurrentPluginID = usePluginPageContext((v) => v.setCurrentPluginID)
-  const [currentBuiltinToolID, setCurrentBuiltinToolID] = useState<string | undefined>()
+  const selectedItem = usePluginPageContext((v) => v.selectedItem)
+  const setSelectedItem = usePluginPageContext((v) => v.setSelectedItem)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const { run: handleFilterChange } = useDebounceFn(
@@ -184,31 +181,24 @@ const PluginsPanel = ({
       sourceCount: categoryList.length + builtinTools.length,
     })
 
-  const currentPluginDetail = useMemo(() => {
-    const detail = pluginListWithLatestVersion.find(
-      (plugin) => plugin.plugin_id === currentPluginID,
-    )
-    return detail
-  }, [currentPluginID, pluginListWithLatestVersion])
+  const currentPluginID = selectedItem?.type === 'plugin' ? selectedItem.id : undefined
+  const currentBuiltinToolID = selectedItem?.type === 'builtinTool' ? selectedItem.id : undefined
+  const currentPluginDetail = useMemo(
+    () => pluginListWithLatestVersion.find((plugin) => plugin.plugin_id === currentPluginID),
+    [currentPluginID, pluginListWithLatestVersion],
+  )
   const currentBuiltinTool = useMemo(() => {
     return filteredBuiltinTools.find((collection) => collection.id === currentBuiltinToolID)
   }, [currentBuiltinToolID, filteredBuiltinTools])
 
-  const handleHide = () => setCurrentPluginID(undefined)
-  const handleBuiltinToolHide = () => setCurrentBuiltinToolID(undefined)
-  const hasToolMarketplacePanel = enableMarketplace && isToolIntegrationPage
+  const handleDetailHide = () => setSelectedItem(undefined)
+  const hasToolMarketplacePanel = marketplace !== null && isToolIntegrationPage
+  const categoryMarketplace = marketplace && hasEmbeddedMarketplace ? fixedCategory : undefined
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
   const contentFrameClassName = cn(
     pluginPageContentFrameClassNames[contentInset],
     contentPaddingClassName,
   )
-  const emptyVariant = isTriggerIntegrationPage
-    ? 'integrationsTrigger'
-    : isAgentStrategyIntegrationPage
-      ? 'integrationsAgentStrategy'
-      : isExtensionIntegrationPage
-        ? 'integrationsExtension'
-        : 'default'
   const scrollAreaLabel = isTriggerIntegrationPage
     ? t(($) => $['categorySingle.trigger'], { ns: 'plugin' })
     : isAgentStrategyIntegrationPage
@@ -256,7 +246,10 @@ const PluginsPanel = ({
       {isPluginListLoading && <PluginListSkeleton contentFrameClassName={contentFrameClassName} />}
       {!isPluginListLoading && (
         <>
-          {hasVisiblePlugins || hasVisibleBuiltinTools || hasToolMarketplacePanel ? (
+          {hasVisiblePlugins ||
+          hasVisibleBuiltinTools ||
+          hasToolMarketplacePanel ||
+          hasEmbeddedMarketplace ? (
             <PluginsPanelResults
               autoLoadNextPage={isIntegrationCategoryPage}
               containerRef={containerRef}
@@ -276,18 +269,27 @@ const PluginsPanel = ({
               filteredBuiltinTools={filteredBuiltinTools}
               filteredList={filteredList}
               hasToolMarketplacePanel={hasToolMarketplacePanel}
+              marketplace={marketplace}
               hasVisibleBuiltinTools={hasVisibleBuiltinTools}
               hasVisiblePlugins={hasVisiblePlugins}
-              isAgentStrategyIntegrationPage={isAgentStrategyIntegrationPage}
+              hasEmbeddedMarketplace={hasEmbeddedMarketplace}
               isFetching={isFetching}
               isLastPage={isLastPage}
               keywords={filters.searchQuery}
               loadNextPage={loadNextPage}
               scrollAreaLabel={scrollAreaLabel}
-              setCurrentBuiltinToolID={setCurrentBuiltinToolID}
+              onSelectBuiltinTool={(id) => setSelectedItem({ type: 'builtinTool', id })}
               tagFilterValue={filters.tags}
               canDeletePlugin={canDeletePlugin}
               canUpdatePlugin={canUpdatePlugin}
+              categoryEmptyState={hasEmbeddedMarketplace ? fixedCategory : undefined}
+              categoryMarketplace={categoryMarketplace}
+              showCategoryEmptyState={
+                hasEmbeddedMarketplace &&
+                !isFilteringCategory &&
+                !hasVisiblePlugins &&
+                !hasVisibleBuiltinTools
+              }
             />
           ) : isIntegrationCategorySearchEmpty ? (
             <div className={cn('min-h-0 grow bg-components-panel-bg', contentFrameClassName)} />
@@ -297,7 +299,6 @@ const PluginsPanel = ({
               contentInset={contentInset}
               onSwitchToMarketplace={onSwitchToMarketplace}
               installContextCategory={fixedCategory}
-              variant={emptyVariant}
             />
           )}
         </>
@@ -320,14 +321,14 @@ const PluginsPanel = ({
         onUpdate={() => {
           invalidateInstalledPluginList(fixedCategory)
         }}
-        onHide={handleHide}
+        onHide={handleDetailHide}
         canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
       />
       {currentBuiltinTool && !currentBuiltinTool.plugin_id && (
         <ProviderDetail
           collection={currentBuiltinTool}
-          onHide={handleBuiltinToolHide}
+          onHide={handleDetailHide}
           onRefreshData={invalidateInstalledPluginList}
         />
       )}

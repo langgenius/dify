@@ -13,7 +13,7 @@ func newTestTmuxController(t *testing.T) *TmuxController {
 		t.Skip("tmux is not installed")
 	}
 
-	config := DefaultConfig()
+	config := mustDefaultConfig(t)
 	config.RuntimeDir = t.TempDir()
 	controller := NewTmuxController(config)
 	t.Cleanup(func() {

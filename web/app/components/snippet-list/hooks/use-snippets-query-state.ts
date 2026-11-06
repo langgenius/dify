@@ -1,42 +1,41 @@
-import { debounce, parseAsArrayOf, parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useMemo, useState } from 'react'
-import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
-
-const snippetListQueryParsers = {
-  tagIDs: parseAsArrayOf(parseAsString, ';').withDefault([]).withOptions({ history: 'push' }),
-  keywords: parseAsString.withDefault('').withOptions({
-    limitUrlUpdates: debounce(SNIPPET_LIST_SEARCH_DEBOUNCE_MS),
-  }),
-}
+import type { SnippetPublishStatus } from '../query-params'
+import { throttle, useQueryStates } from 'nuqs'
+import { useCallback, useMemo } from 'react'
+import { snippetListQueryParsers } from '../query-params'
 
 export function useSnippetsQueryState() {
-  const [urlQuery, setUrlQuery] = useQueryStates(snippetListQueryParsers)
-  const [creatorIDs, setCreatorIDs] = useState<string[]>([])
+  const [query, setQuery] = useQueryStates(snippetListQueryParsers)
 
   const setKeywords = useCallback(
     (keywords: string) => {
-      setUrlQuery({ keywords })
+      void setQuery({ keywords })
     },
-    [setUrlQuery],
+    [setQuery],
   )
 
   const setTagIDs = useCallback(
     (tagIDs: string[]) => {
-      setUrlQuery({ tagIDs })
+      void setQuery({ tagIDs })
     },
-    [setUrlQuery],
+    [setQuery],
   )
 
-  const handleSetCreatorIDs = useCallback((creatorIDs: string[]) => {
-    setCreatorIDs(creatorIDs)
-  }, [])
+  const setCreatorIDs = useCallback(
+    (creatorIDs: string[]) => {
+      void setQuery({ creatorIDs })
+    },
+    [setQuery],
+  )
 
-  const query = useMemo(
-    () => ({
-      ...urlQuery,
-      creatorIDs,
-    }),
-    [creatorIDs, urlQuery],
+  const setPublishStatus = useCallback(
+    (publishStatus: SnippetPublishStatus) => {
+      void setQuery({ publishStatus })
+    },
+    [setQuery],
+  )
+  const flush = useCallback(
+    () => setQuery(query, { history: 'replace', limitUrlUpdates: throttle(0) }),
+    [query, setQuery],
   )
 
   return useMemo(
@@ -44,8 +43,10 @@ export function useSnippetsQueryState() {
       query,
       setKeywords,
       setTagIDs,
-      setCreatorIDs: handleSetCreatorIDs,
+      setCreatorIDs,
+      setPublishStatus,
+      flush,
     }),
-    [handleSetCreatorIDs, query, setKeywords, setTagIDs],
+    [flush, query, setCreatorIDs, setKeywords, setPublishStatus, setTagIDs],
   )
 }

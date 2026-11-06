@@ -14,7 +14,7 @@ class ProviderCredentialsCacheType(StrEnum):
 
 class ProviderCredentialsCache:
     def __init__(self, tenant_id: str, identity_id: str, cache_type: ProviderCredentialsCacheType):
-        self.cache_key = f"{cache_type}_credentials:tenant_id:{tenant_id}:id:{identity_id}"
+        self.cache_key = f"{cache_type}_credentials:v2:tenant_id:{tenant_id}:id:{identity_id}"
 
     def get(self) -> dict[str, Any] | None:
         """

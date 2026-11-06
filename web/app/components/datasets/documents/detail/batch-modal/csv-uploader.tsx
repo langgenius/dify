@@ -3,30 +3,29 @@ import type { FC } from 'react'
 import type { FileItem } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
-import useTheme from '@/hooks/use-theme'
+import { toast } from '@/app/notifications'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { upload } from '@/service/base'
-import { useFileUploadConfig } from '@/service/use-common'
-import { Theme } from '@/types/app'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   file: FileItem | undefined
   updateFile: (file?: FileItem) => void
 }>
 const CSVUploader: FC<Props> = ({ file, updateFile }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation', 'datasetDocuments'])
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
   const fileUploadConfig = useMemo(
     () => ({
       ...fileUploadConfigResponse,
@@ -175,8 +174,8 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
     if (!isValid(currentFile)) return
     initialUpload(currentFile)
   }
-  const { theme } = useTheme()
-  const chartColor = useMemo(() => (theme === Theme.dark ? '#5289ff' : '#296dff'), [theme])
+  const theme = useResolvedTheme()
+  const chartColor = useMemo(() => (theme === 'dark' ? '#5289ff' : '#296dff'), [theme])
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)
     dropRef.current?.addEventListener('dragover', handleDragOver)
@@ -208,19 +207,19 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
             )}
           >
             <div className="flex w-full items-center justify-center space-x-2">
-              <CSVIcon className="shrink-0" />
+              <span aria-hidden className="i-custom-public-files-csv h-8.5 w-8 shrink-0" />
               <div className="text-text-secondary">
                 {t(($) => $['list.batchModal.csvUploadTitle'], { ns: 'datasetDocuments' })}
                 <button
                   type="button"
-                  className="inline cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  className="inline cursor-pointer border-none bg-transparent p-0 text-start text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={selectHandle}
                 >
                   {t(($) => $['list.batchModal.browse'], { ns: 'datasetDocuments' })}
                 </button>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
+            {dragging && <div ref={dragRef} className="absolute inset-s-0 top-0 size-full" />}
           </div>
         )}
         {file && (
@@ -230,8 +229,8 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
               'hover:border-divider-subtle hover:bg-components-panel-on-panel-item-bg-hover',
             )}
           >
-            <CSVIcon className="shrink-0" />
-            <div className="ml-2 flex w-0 grow">
+            <span aria-hidden className="i-custom-public-files-csv h-8.5 w-8 shrink-0" />
+            <div className="ms-2 flex w-0 grow">
               <span className="max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">
                 {file.file.name.replace(/.csv$/, '')}
               </span>

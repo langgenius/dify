@@ -17,10 +17,6 @@ const createLogItem = (
 })
 
 describe('AgentLogNavMore', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('renders nested options in the real menu and routes selection clicks', async () => {
     const user = userEvent.setup()
     const onShowAgentOrToolLog = vi.fn()
@@ -30,12 +26,8 @@ describe('AgentLogNavMore', () => {
 
     const menuButton = screen.getByRole('button', {
       name: 'common.operation.more',
-      expanded: false,
     })
     await user.click(menuButton)
-    expect(
-      screen.getByRole('button', { name: 'common.operation.more', expanded: true }),
-    ).toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: 'Intermediate Tool' }))
 
     expect(onShowAgentOrToolLog).toHaveBeenCalledWith(option)

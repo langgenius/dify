@@ -1,7 +1,9 @@
 import type { AddressInfo } from 'node:net'
 import { createServer } from 'node:http'
 import { Readable } from 'node:stream'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
+import { ChatClient } from '../src/client/chat'
+import { KnowledgeBaseClient } from '../src/client/knowledge-base'
 import { HttpClient } from '../src/http/client'
 
 const readBody = async (stream: NodeJS.ReadableStream): Promise<Buffer> => {
@@ -30,7 +32,11 @@ describe('HttpClient integration', () => {
         body,
       })
 
-      if (req.url?.startsWith('/json')) {
+      if (
+        req.url?.startsWith('/json') ||
+        req.url?.startsWith('/datasets') ||
+        req.url?.startsWith('/apps/annotations')
+      ) {
         res.writeHead(200, { 'content-type': 'application/json', 'x-request-id': 'req-json' })
         res.end(JSON.stringify({ ok: true }))
         return
@@ -105,6 +111,31 @@ describe('HttpClient integration', () => {
     expect(requests.at(-1)?.body.toString('utf8')).toBe(JSON.stringify({ user: 'u' }))
   })
 
+  it.each(['Content-Type', 'content-type', 'CoNtEnT-TyPe'])(
+    'overrides the JSON content type with %s',
+    async (headerName) => {
+      await client.request({
+        method: 'POST',
+        path: '/json',
+        data: { user: 'u' },
+        headers: { [headerName]: 'application/custom+json' },
+      })
+
+      expect(requests.at(-1)?.headers['content-type']).toBe('application/custom+json')
+      expect(requests.at(-1)?.body.toString('utf8')).toBe(JSON.stringify({ user: 'u' }))
+    },
+  )
+
+  it('overrides authorization without combining differently cased defaults', async () => {
+    await client.request({
+      method: 'GET',
+      path: '/json',
+      headers: { authorization: 'Bearer override-key' },
+    })
+
+    expect(requests.at(-1)?.headers.authorization).toBe('Bearer override-key')
+  })
+
   it('supports streaming request bodies with duplex fetch', async () => {
     const response = await client.request<{ received: string }>({
       method: 'POST',
@@ -134,4 +165,52 @@ describe('HttpClient integration', () => {
 
     expect(Array.from(response.data.values())).toEqual([1, 2, 3, 4])
   })
+
+  const keywordRequests = [
+    {
+      name: 'datasets',
+      path: '/datasets',
+      run: (keyword: string) => new KnowledgeBaseClient(client).listDatasets({ keyword }),
+    },
+    {
+      name: 'documents',
+      path: '/datasets/ds/documents',
+      run: (keyword: string) => new KnowledgeBaseClient(client).listDocuments('ds', { keyword }),
+    },
+    {
+      name: 'segments',
+      path: '/datasets/ds/documents/doc/segments',
+      run: (keyword: string) =>
+        new KnowledgeBaseClient(client).listSegments('ds', 'doc', { keyword }),
+    },
+    {
+      name: 'child chunks',
+      path: '/datasets/ds/documents/doc/segments/seg/child_chunks',
+      run: (keyword: string) =>
+        new KnowledgeBaseClient(client).listChildChunks('ds', 'doc', 'seg', { keyword }),
+    },
+    {
+      name: 'annotations',
+      path: '/apps/annotations',
+      run: (keyword: string) => new ChatClient(client).listAnnotations({ keyword }),
+    },
+  ]
+
+  it.each(keywordRequests)('allows an empty keyword when listing $name', async ({ path, run }) => {
+    await run('')
+
+    const url = new URL(requests.at(-1)!.url, 'http://localhost')
+    expect(url.pathname).toBe(path)
+    expect(url.searchParams.has('keyword')).toBe(true)
+    expect(url.searchParams.get('keyword')).toBe('')
+  })
+
+  it.each(keywordRequests)(
+    'still rejects oversized keywords when listing $name',
+    async ({ run }) => {
+      await expect(Promise.resolve().then(() => run('a'.repeat(10001)))).rejects.toThrow(
+        'maximum length',
+      )
+    },
+  )
 })

@@ -1,25 +1,29 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { replace } from 'string-ts'
-import AudioBtn from '@/app/components/base/audio-btn'
+import { AudioBtn } from '@/app/components/base/audio-btn'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Infotip } from '@/app/components/base/infotip'
-import { languages } from '@/i18n-config/language'
-import { usePathname } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { languages } from '@/i18n/language'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { TtsAutoPlay } from '@/types/app'
 
 type SelectOption = {
@@ -32,10 +36,10 @@ type VoiceParamConfigProps = {
   onChange?: OnFeaturesChange
 }
 const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
-  const { t } = useTranslation()
-  const pathname = usePathname()
-  const matched = /\/app\/([^/]+)/.exec(pathname)
-  const appId = matched?.length && matched[1] ? matched[1] : ''
+  const languageLabelId = useId()
+
+  const { t } = useTranslation(['appApi', 'appDebug', 'common'])
+  const params = useParams<{ appId?: string; agentId?: string }>()
   const text2speech = useFeatures((state) => state.features.text2speech)
   const featuresStore = useFeaturesStore()
   const formatLanguageName = (item: SelectOption) => {
@@ -53,14 +57,21 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
 
   const language = languageItem?.value
   const { data: voiceItems } = useQuery(
-    consoleQuery.apps.byAppId.textToAudio.voices.get.queryOptions({
-      input: appId
-        ? {
-            params: { app_id: appId },
+    params.agentId
+      ? consoleQuery.agent.byAgentId.textToAudio.voices.get.queryOptions({
+          input: {
+            params: { agent_id: params.agentId },
             query: { language: language || 'en-US' },
-          }
-        : skipToken,
-    }),
+          },
+        })
+      : consoleQuery.apps.byAppId.textToAudio.voices.get.queryOptions({
+          input: params.appId
+            ? {
+                params: { app_id: params.appId },
+                query: { language: language || 'en-US' },
+              }
+            : skipToken,
+        }),
   )
   let voiceItem = voiceItems?.find((item) => item.value === text2speech?.voice)
   if (voiceItems && !voiceItem) voiceItem = voiceItems[0]
@@ -98,16 +109,14 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
       </div>
       <div className="mb-3">
         <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
-          {t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
-          <Infotip
-            aria-label={t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
-            popupClassName="w-[180px]"
-          >
-            {t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })
-              .split('\n')
-              .map((item) => (
-                <div key={item}>{item}</div>
-              ))}
+          <span id={languageLabelId}>
+            {t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
+          </span>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={languageLabelId} />
+            <InfotipContent aria-labelledby={languageLabelId} className="w-45 whitespace-pre-wrap">
+              {t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
+            </InfotipContent>
           </Infotip>
         </div>
         <Select
@@ -125,14 +134,20 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
           >
             {languageItem ? formatLanguageName(languageItem) : localLanguagePlaceholder}
           </SelectTrigger>
-          <SelectContent listClassName="max-h-60">
-            {languages.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                <SelectItemText>{formatLanguageName(item)}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            ))}
-          </SelectContent>
+          <SelectPortal>
+            <SelectPositioner>
+              <SelectPopup>
+                <SelectList className="max-h-60">
+                  {languages.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      <SelectItemText>{formatLanguageName(item)}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectList>
+              </SelectPopup>
+            </SelectPositioner>
+          </SelectPortal>
         </Select>
       </div>
       <div className="mb-3">
@@ -157,14 +172,20 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
               >
                 {voiceItem?.name ?? localVoicePlaceholder}
               </SelectTrigger>
-              <SelectContent listClassName="max-h-60">
-                {voiceItems?.map((item: SelectOption) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    <SelectItemText>{item.name}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              <SelectPortal>
+                <SelectPositioner>
+                  <SelectPopup>
+                    <SelectList className="max-h-60">
+                      {voiceItems?.map((item: SelectOption) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          <SelectItemText>{item.name}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      ))}
+                    </SelectList>
+                  </SelectPopup>
+                </SelectPositioner>
+              </SelectPortal>
             </div>
           </Select>
           {languageItem?.example && (
@@ -173,12 +194,7 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
               role="group"
               aria-label={t(($) => $.play, { ns: 'appApi', defaultValue: 'Play' })}
             >
-              <AudioBtn
-                value={languageItem?.example}
-                isAudition
-                voice={text2speech?.voice}
-                noCache
-              />
+              <AudioBtn value={languageItem?.example} isAudition voice={voiceItem?.value} />
             </div>
           )}
         </div>

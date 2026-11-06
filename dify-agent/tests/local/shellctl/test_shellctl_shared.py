@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from shellctl.shared import (
     JOB_ID_ALPHABET,
+    JobMode,
     MAX_WAIT_TIMEOUT_SECONDS,
     RunJobRequest,
     SHELL_TOOL_HARD_TIMEOUT_SECONDS,
@@ -16,6 +17,13 @@ from shellctl.shared import (
     read_output_window,
     tail_output_window,
 )
+
+
+def test_run_job_request_defaults_to_pty_and_rejects_unknown_mode() -> None:
+    assert RunJobRequest(script="true").mode is JobMode.PTY
+
+    with pytest.raises(ValidationError):
+        RunJobRequest(script="true", mode="stdout")  # pyright: ignore[reportArgumentType]
 
 
 def test_shell_tool_timeout_budget_has_one_source_of_truth() -> None:

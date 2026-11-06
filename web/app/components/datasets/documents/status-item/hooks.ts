@@ -2,7 +2,7 @@ import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
 
 export const useIndexStatus = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
   return {
     queuing: {
       status: 'warning',

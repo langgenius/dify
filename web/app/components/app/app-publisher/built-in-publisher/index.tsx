@@ -4,13 +4,14 @@ import { PublisherSummarySection } from './summary-section'
 
 type BuiltInPublisherProps = {
   actions: ComponentProps<typeof PublisherActionsSection>
-  summary: ComponentProps<typeof PublisherSummarySection>
+  keyboardTarget: ComponentProps<typeof PublisherSummarySection>['keyboardTarget']
+  summary: Omit<ComponentProps<typeof PublisherSummarySection>, 'keyboardTarget'>
 }
 
-export function BuiltInPublisher({ actions, summary }: BuiltInPublisherProps) {
+export function BuiltInPublisher({ actions, keyboardTarget, summary }: BuiltInPublisherProps) {
   return (
     <>
-      <PublisherSummarySection {...summary} />
+      <PublisherSummarySection {...summary} keyboardTarget={keyboardTarget} />
       <PublisherActionsSection {...actions} />
     </>
   )

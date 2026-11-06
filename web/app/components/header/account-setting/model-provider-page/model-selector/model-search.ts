@@ -1,6 +1,10 @@
 import type { I18nObject } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { DefaultModel, ModelItem } from '../declarations'
-import type { ModelSelectorModelPredicate, ModelSelectorProvider } from './types'
+import type {
+  ModelSelectorModel,
+  ModelSelectorModelPredicate,
+  ModelSelectorProvider,
+  ModelSelectorValue,
+} from './types'
 import Fuse from 'fuse.js'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { ModelFeatureEnum } from '../declarations'
@@ -28,11 +32,11 @@ type ModelSelectorSearchIndex = {
 
 type FilterModelSelectorModelsParams = {
   aiCreditVisibleProviders: Set<string>
-  defaultModel?: DefaultModel
+  defaultModel?: ModelSelectorValue
   inputValue: string
   installedModelList: ModelSelectorProvider[]
   modelPredicate?: ModelSelectorModelPredicate
-  scopeFeatures: ModelFeatureEnum[]
+  scopeFeatures: readonly string[]
   searchIndex: ModelSelectorSearchIndex
 }
 
@@ -79,7 +83,10 @@ const getProviderKeySearchValues = (provider: string) => {
 
 const createModelSearchKey = (provider: string, model: string) => `${provider}/${model}`
 
-const modelSupportsScopeFeatures = (modelItem: ModelItem, scopeFeatures: ModelFeatureEnum[]) => {
+const modelSupportsScopeFeatures = (
+  modelItem: ModelSelectorModel,
+  scopeFeatures: readonly string[],
+) => {
   if (scopeFeatures.length === 0) return true
 
   return scopeFeatures.every((feature) => {

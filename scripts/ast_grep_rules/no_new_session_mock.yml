@@ -1,0 +1,11 @@
+id: no-new-session-mock
+language: python
+rule:
+  any:
+    - pattern: $SESSION = MagicMock($$$ARGS)
+    - pattern: $SESSION = Mock($$$ARGS)
+constraints:
+  SESSION:
+    regex: ^(session|db_session|mock_session|read_session|write_session)$
+message: net-new session mock assignment in test code
+severity: error

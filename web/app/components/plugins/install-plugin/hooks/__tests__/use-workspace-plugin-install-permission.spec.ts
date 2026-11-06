@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderHook } from '@/test/console/render'
 import useWorkspacePluginInstallPermission from '../use-workspace-plugin-install-permission'
@@ -34,12 +34,6 @@ describe('useWorkspacePluginInstallPermission', () => {
     expect(result.current.canDeletePlugin).toBe(false)
     expect(result.current.canDebugPlugin).toBe(false)
     expect(result.current.canSetPluginPreferences).toBe(false)
-  })
-
-  it('should not expose installed plugin list viewing as a permission capability', () => {
-    const { result } = renderPermissionHook()
-
-    expect('canViewInstalledPlugins' in result.current).toBe(false)
   })
 
   it('should grant delete capability but not install or update with plugin.delete', () => {

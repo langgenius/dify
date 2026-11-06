@@ -1,5 +1,5 @@
-import type { NodeTracing } from '@/types/workflow'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import type { TFunction } from 'i18next'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
 import { withSelectorKey } from '@/test/i18n-mock'
 import formatParallel from '../index'
 
@@ -7,42 +7,7 @@ const t = withSelectorKey((key: string, options?: Record<string, string>) => {
   if (key === 'common.parallel') return 'Parallel'
   if (key === 'common.branch') return 'Branch'
   return options?.ns ? `${options.ns}.${key}` : key
-}, 'workflow')
-
-const createNodeTracing = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
-  id: 'trace-1',
-  index: 0,
-  predecessor_node_id: '',
-  node_id: 'node-1',
-  node_type: BlockEnum.Code,
-  title: 'Node 1',
-  inputs: {},
-  inputs_truncated: false,
-  process_data: {},
-  process_data_truncated: false,
-  outputs_truncated: false,
-  status: NodeRunningStatus.Succeeded,
-  elapsed_time: 0,
-  execution_metadata: {
-    total_tokens: 0,
-    total_price: 0,
-    currency: 'USD',
-  },
-  metadata: {
-    iterator_length: 0,
-    iterator_index: 0,
-    loop_length: 0,
-    loop_index: 0,
-  },
-  created_at: 0,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  finished_at: 0,
-  ...overrides,
-})
+}, 'workflow') as TFunction<['workflow']>
 
 describe('formatParallel', () => {
   it('groups parallel nodes into a titled tree and preserves branch titles', () => {
@@ -77,9 +42,18 @@ describe('formatParallel', () => {
       t,
     )
 
-    expect(result.length).toBeGreaterThan(0)
-    expect(result.some((node) => !!node.parallelDetail)).toBe(true)
-    expect(result.some((node) => node.parallelDetail?.children?.length)).toBe(true)
+    expect(result.map((node) => node.node_id)).toEqual(['parallel-start', 'branch-a'])
+    expect(result[0]?.parallelDetail).toMatchObject({
+      parallelTitle: 'Parallel-1A',
+      children: [{ node_id: 'parallel-start', parallelDetail: { branchTitle: 'Branch-1A-A' } }],
+    })
+    expect(result[1]?.parallelDetail).toMatchObject({
+      parallelTitle: 'Parallel-1B',
+      children: [
+        { node_id: 'branch-a', title: 'Branch A', parallelDetail: { branchTitle: 'Branch-1B-A' } },
+        { node_id: 'branch-child', title: 'Branch Child' },
+      ],
+    })
   })
 
   it('ignores nodes outside parallel groups', () => {

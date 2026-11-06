@@ -1,21 +1,22 @@
 import type { GlobalVariable } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import { isInWorkflowPage } from '../../constants'
-import { useIsChatMode } from '../../hooks/use-workflow'
 import Item from './item'
 
 const Panel = () => {
-  const { t } = useTranslation()
-  const isChatMode = useIsChatMode()
+  const { t } = useTranslation(['workflow'] as const)
+  const isChatflow = useAtomValue(isChatflowAtom)
   const setShowPanel = useStore((s) => s.setShowGlobalVariablePanel)
   const isWorkflowPage = isInWorkflowPage()
 
   const globalVariableList: GlobalVariable[] = [
-    ...(isChatMode
+    ...(isChatflow
       ? [
           {
             name: 'conversation_id',
@@ -52,7 +53,7 @@ const Panel = () => {
       description: t(($) => $['globalVar.fieldsDescription.workflowRunId'], { ns: 'workflow' }),
     },
     // is workflow
-    ...(isWorkflowPage && !isChatMode
+    ...(isWorkflowPage && !isChatflow
       ? [
           {
             name: 'timestamp',

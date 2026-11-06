@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const mocks = vi.hoisted(() => ({
   basePath: '',
@@ -24,23 +24,8 @@ vi.mock('@/utils/var', () => ({
   },
 }))
 
-const getSetCookieHeaders = (headers: Headers) => {
-  const getSetCookie = Reflect.get(headers, 'getSetCookie')
-
-  if (typeof getSetCookie === 'function') {
-    const values: unknown = getSetCookie.call(headers)
-    return Array.isArray(values) ? values : []
-  }
-
-  const setCookie = headers.get('set-cookie')
-  return setCookie ? [setCookie] : []
-}
-
 const createRequest = (url: string, cookie?: string) =>
-  ({
-    url,
-    headers: new Headers(cookie ? { cookie } : undefined),
-  }) as Request
+  new Request(url, { headers: cookie ? { cookie } : undefined })
 
 describe('auth refresh route', () => {
   beforeEach(() => {
@@ -49,19 +34,13 @@ describe('auth refresh route', () => {
     vi.unstubAllGlobals()
     mocks.basePath = ''
   })
+  afterEach(() => vi.unstubAllGlobals())
 
   it('should refresh cookies and redirect back to the requested path', async () => {
     const headers = new Headers()
-    Object.defineProperty(headers, 'getSetCookie', {
-      value: () => [
-        'access_token=new-access; Path=/; HttpOnly',
-        'refresh_token=new-refresh; Path=/; HttpOnly',
-      ],
-    })
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      headers,
-    } as Response)
+    headers.append('Set-Cookie', 'access_token=new-access; Path=/; HttpOnly')
+    headers.append('Set-Cookie', 'refresh_token=new-refresh; Path=/; HttpOnly')
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { headers }))
     vi.stubGlobal('fetch', fetchMock)
     const { GET } = await import('../route')
 
@@ -84,7 +63,7 @@ describe('auth refresh route', () => {
     expect(fetchHeaders.get('cookie')).toBe('refresh_token=old-refresh')
     expect(response.status).toBe(303)
     expect(response.headers.get('location')).toBe('/apps?category=workflow')
-    expect(getSetCookieHeaders(response.headers)).toEqual([
+    expect(response.headers.getSetCookie()).toEqual([
       'access_token=new-access; Path=/; HttpOnly',
       'refresh_token=new-refresh; Path=/; HttpOnly',
     ])
@@ -321,16 +300,9 @@ describe('auth refresh route', () => {
   it('should preserve base path when refreshing and redirecting back', async () => {
     mocks.basePath = '/console'
     const headers = new Headers()
-    Object.defineProperty(headers, 'getSetCookie', {
-      value: () => [
-        'access_token=new-access; Path=/console; HttpOnly',
-        'refresh_token=new-refresh; Path=/console; HttpOnly',
-      ],
-    })
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      headers,
-    } as Response)
+    headers.append('Set-Cookie', 'access_token=new-access; Path=/console; HttpOnly')
+    headers.append('Set-Cookie', 'refresh_token=new-refresh; Path=/console; HttpOnly')
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { headers }))
     vi.stubGlobal('fetch', fetchMock)
     const { GET } = await import('../route')
 
@@ -343,7 +315,7 @@ describe('auth refresh route', () => {
 
     expect(response.status).toBe(303)
     expect(response.headers.get('location')).toBe('/console/apps?category=workflow')
-    expect(getSetCookieHeaders(response.headers)).toEqual([
+    expect(response.headers.getSetCookie()).toEqual([
       'access_token=new-access; Path=/console; HttpOnly',
       'refresh_token=new-refresh; Path=/console; HttpOnly',
     ])

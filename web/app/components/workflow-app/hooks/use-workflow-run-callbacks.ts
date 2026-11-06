@@ -1,4 +1,4 @@
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { IOtherOptions } from '@/service/base'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { sseGet } from '@/service/base'
@@ -245,11 +245,11 @@ export const createBaseWorkflowRunCallbacks = ({
     onReasoning: (params) => {
       handleWorkflowReasoning(params)
     },
-    onTTSChunk: (messageId: string, audio: string) => {
+    onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
       if (!audio || audio === '') return
       const audioPlayer = getOrCreatePlayer()
       if (audioPlayer) {
-        audioPlayer.playAudioWithAudio(audio, true)
+        audioPlayer.playAudioWithAudio(audio, true, audioType)
         AudioPlayerManager.getInstance().resetMsgId(messageId)
       }
     },
@@ -430,9 +430,9 @@ export const createFinalWorkflowRunCallbacks = ({
     onReasoning: (params) => {
       handleWorkflowReasoning(params)
     },
-    onTTSChunk: (messageId: string, audio: string) => {
+    onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
       if (!audio || audio === '') return
-      player?.playAudioWithAudio(audio, true)
+      player?.playAudioWithAudio(audio, true, audioType)
       AudioPlayerManager.getInstance().resetMsgId(messageId)
     },
     onTTSEnd: (_messageId: string, audio: string) => {

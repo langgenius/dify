@@ -20,10 +20,10 @@ class FileChunk:
 
 
 def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
-    response: Generator[T, None, None],
+    response: Generator[T],
     max_file_size: int = 30 * 1024 * 1024,
     max_chunk_size: int = 8192,
-) -> Generator[T, None, None]:
+) -> Generator[T]:
     """
     Merge streaming blob chunks into complete blob messages.
 
@@ -55,6 +55,13 @@ def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
 
             # Initialize buffer for this file if it doesn't exist
             if chunk_id not in files:
+                # Validate the declared size before allocating the buffer.
+                # total_length comes from the plugin and the whole buffer is
+                # pre-allocated, so an oversized claim would exhaust memory
+                # (or raise an unhandled MemoryError/OverflowError) before the
+                # size limit below is ever checked.
+                if total_length > max_file_size:
+                    raise ValueError(f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB")
                 files[chunk_id] = FileChunk(total_length)
 
             # Check if file is too large (before appending)

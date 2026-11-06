@@ -42,6 +42,13 @@ class JobStatusName(StrEnum):
     LOST = "lost"
 
 
+class JobMode(StrEnum):
+    """Standard-stream wiring used to execute a shellctl job."""
+
+    PTY = "pty"
+    STDIO = "stdio"
+
+
 TERMINAL_JOB_STATUSES = frozenset(
     {
         JobStatusName.EXITED,
@@ -139,6 +146,7 @@ class RunJobRequest(ShellctlModel):
     cwd: str | None = None
     env: dict[str, str] | None = None
     terminal: TerminalSize | None = None
+    mode: JobMode = JobMode.PTY
     timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=SHELL_TOOL_HARD_TIMEOUT_SECONDS)
     output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
     idle_flush_seconds: float = Field(default=DEFAULT_IDLE_FLUSH_SECONDS, ge=0, le=30)
@@ -201,6 +209,7 @@ __all__ = [
     "HealthResponse",
     "InputJobRequest",
     "JobInfo",
+    "JobMode",
     "JobResult",
     "JobStatusName",
     "JobStatusView",

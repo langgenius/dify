@@ -1,11 +1,12 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AccessMode } from '@/models/access-control'
-import { Infotip } from '../../base/infotip'
-import Loading from '../../base/loading'
+import { getAvatarInitial } from '@/utils/avatar'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
 
 export type AccessControlSubjects = {
@@ -30,7 +31,7 @@ export default function SpecificGroupsOrMembers({
   onSubjectsChange,
   onRetrySubjects,
 }: SpecificGroupsOrMembersProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   if (accessMode !== AccessMode.SPECIFIC_GROUPS_MEMBERS) {
     return (
@@ -62,7 +63,7 @@ export default function SpecificGroupsOrMembers({
       </div>
       <div className="px-1 pb-1">
         <div className="flex max-h-100 flex-col gap-y-2 overflow-y-auto rounded-lg bg-background-section p-2">
-          {subjectsStatus === 'loading' && <Loading />}
+          {subjectsStatus === 'loading' && <LoadingPlaceholder />}
           {subjectsStatus === 'error' && (
             <div role="alert" className="flex flex-col items-center gap-2 px-2 py-5">
               <p className="system-xs-regular text-text-tertiary">
@@ -90,7 +91,7 @@ type RenderGroupsAndMembersProps = {
 }
 
 function RenderGroupsAndMembers({ subjects, onChange }: RenderGroupsAndMembersProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { groups, members } = subjects
 
   if (groups.length <= 0 && members.length <= 0) {
@@ -178,7 +179,14 @@ type MemberItemProps = {
 
 function MemberItem({ member, onRemove }: MemberItemProps) {
   return (
-    <BaseItem icon={<Avatar size="xxs" avatar={null} name={member.name} />} onRemove={onRemove}>
+    <BaseItem
+      icon={
+        <Avatar size="xxs" aria-hidden="true">
+          <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
+        </Avatar>
+      }
+      onRemove={onRemove}
+    >
       <p className="system-xs-regular text-text-primary">{member.name}</p>
     </BaseItem>
   )
@@ -191,7 +199,7 @@ type BaseItemProps = {
 }
 
 function BaseItem({ icon, onRemove, children }: BaseItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
@@ -201,9 +209,9 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
         </div>
       </div>
       {children}
-      <button
-        type="button"
-        className="flex size-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+      <IconButton
+        size="xs"
+        className="shrink-0"
         aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
         onClick={onRemove}
       >
@@ -211,22 +219,7 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
           aria-hidden="true"
           className="i-ri-close-circle-fill h-3.5 w-3.5 text-text-quaternary"
         />
-      </button>
+      </IconButton>
     </div>
-  )
-}
-
-export function WebAppSSONotEnabledTip() {
-  const { t } = useTranslation()
-  const tip = t(($) => $['accessControlDialog.webAppSSONotEnabledTip'], { ns: 'app' })
-
-  return (
-    <Infotip
-      aria-label={tip}
-      className="text-text-warning-secondary hover:text-text-warning-secondary"
-      iconSize="large"
-    >
-      {tip}
-    </Infotip>
   )
 }

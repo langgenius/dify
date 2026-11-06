@@ -18,34 +18,59 @@ function createTriggerData(overrides: Partial<PluginTriggerNodeType> = {}): Plug
     event_configurations: {},
     output_schema: {},
     ...overrides,
-  } as PluginTriggerNodeType
+  }
 }
 
+type Parameter = TriggerWithProvider['events'][number]['parameters'][number]
+const createParameter = (overrides: Partial<Parameter> = {}): Parameter => ({
+  name: 'channel',
+  label: { en_US: 'Channel', zh_Hans: '频道' },
+  human_description: { en_US: '', zh_Hans: '' },
+  type: 'string',
+  form: 'form',
+  llm_description: '',
+  required: true,
+  multiple: false,
+  default: '',
+  ...overrides,
+})
 function createTriggerProvider(overrides: Partial<TriggerWithProvider> = {}): TriggerWithProvider {
   return {
     id: 'provider-1',
     name: 'my-provider',
     plugin_id: 'plugin-1',
+    author: 'Dify',
+    description: { en_US: '', zh_Hans: '' },
+    icon: 'icon',
+    label: { en_US: 'Provider', zh_Hans: 'Provider' },
+    type: CollectionType.trigger,
+    team_credentials: {},
+    is_team_authorization: false,
+    allow_delete: false,
+    labels: [],
+    plugin_unique_identifier: 'plugin-1@1.0.0',
+    meta: { version: '1.0.0' },
+    supported_creation_methods: [],
     events: [
       {
         name: 'on_message',
+        author: 'Dify',
         label: { en_US: 'On Message', zh_Hans: '收到消息' },
+        description: { en_US: '', zh_Hans: '' },
+        labels: [],
+        output_schema: {},
         parameters: [
-          {
-            name: 'channel',
-            label: { en_US: 'Channel', zh_Hans: '频道' },
-            required: true,
-          },
-          {
+          createParameter(),
+          createParameter({
             name: 'filter',
-            label: { en_US: 'Filter' },
+            label: { en_US: 'Filter', zh_Hans: '' },
             required: false,
-          },
+          }),
         ],
       },
     ],
     ...overrides,
-  } as unknown as TriggerWithProvider
+  }
 }
 
 describe('getTriggerCheckParams', () => {
@@ -71,7 +96,7 @@ describe('getTriggerCheckParams', () => {
   it('should use the requested language for labels', () => {
     const result = getTriggerCheckParams(createTriggerData(), [createTriggerProvider()], 'zh_Hans')
 
-    expect(result.triggerInputsSchema[0]!.label).toBe('频道')
+    expect(result.triggerInputsSchema.map((field) => field.label)).toEqual(['频道', 'Filter'])
   })
 
   it('should fall back to en_US when language label is missing', () => {
@@ -81,15 +106,10 @@ describe('getTriggerCheckParams', () => {
   })
 
   it('should fall back to parameter name when no labels exist', () => {
-    const provider = createTriggerProvider({
-      events: [
-        {
-          name: 'on_message',
-          label: { en_US: 'On Message' },
-          parameters: [{ name: 'raw_param' }],
-        },
-      ],
-    } as Partial<TriggerWithProvider>)
+    const provider = createTriggerProvider()
+    provider.events[0]!.parameters = [
+      createParameter({ name: 'raw_param', label: { en_US: '', zh_Hans: '' } }),
+    ]
 
     const result = getTriggerCheckParams(createTriggerData(), [provider], 'en_US')
 

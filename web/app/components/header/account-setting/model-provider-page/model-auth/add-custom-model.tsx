@@ -12,8 +12,8 @@ import { useTranslation } from 'react-i18next'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import ModelIcon from '../model-icon'
+import { getCanAddedModels } from './hooks/get-custom-models'
 import { useAuth } from './hooks/use-auth'
-import { useCanAddedModels } from './hooks/use-custom-models'
 
 type AddCustomModelProps = {
   provider: ModelProvider
@@ -29,14 +29,14 @@ const AddCustomModel = ({
   open: controlledOpen,
   onOpenChange,
 }: AddCustomModelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
   const [localOpen, setLocalOpen] = useState(false)
   const open = controlledOpen ?? localOpen
   const setOpen = (nextOpen: boolean) => {
     setLocalOpen(nextOpen)
     onOpenChange?.(nextOpen)
   }
-  const canAddedModels = useCanAddedModels(provider)
+  const canAddedModels = getCanAddedModels(provider)
   const noModels = !canAddedModels.length
   const { canUseCredential, canCreateCredential } = useCredentialPermissions()
   const { handleOpenModal: handleOpenModalForAddNewCustomModel } = useAuth(
@@ -74,7 +74,7 @@ const AddCustomModel = ({
           )}
         >
           <span className="i-ri-add-circle-fill size-3.5" />
-          {t(($) => $['modelProvider.addModel'], { ns: 'common' })}
+          {t(($) => $['modelProvider.addModel'], { ns: 'modelProvider' })}
         </Button>
       )
       if ((notAllowCustomCredential && !!noModels) || disabled) {
@@ -112,22 +112,23 @@ const AddCustomModel = ({
         )}
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="max-h-76 overflow-y-auto p-1">
             {canAddedModels.map((model) => (
-              <div
+              <button
+                type="button"
                 key={model.model}
                 className={cn(
-                  'flex h-8 items-center rounded-lg px-2',
+                  'flex h-8 w-full items-center rounded-lg px-2 text-start',
                   canUseCredential
                     ? 'cursor-pointer hover:bg-state-base-hover'
                     : 'cursor-not-allowed opacity-50',
                 )}
-                aria-disabled={!canUseCredential}
+                disabled={!canUseCredential}
                 onClick={() => {
                   if (!canUseCredential) return
 
@@ -136,7 +137,7 @@ const AddCustomModel = ({
                 }}
               >
                 <ModelIcon
-                  className="mr-1 size-5 shrink-0"
+                  className="me-1 size-5 shrink-0"
                   iconClassName="h-5 w-5"
                   provider={provider}
                   modelName={model.model}
@@ -147,20 +148,21 @@ const AddCustomModel = ({
                 >
                   {model.model}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
           {!notAllowCustomCredential && canCreateCredential && (
-            <div
-              className="flex cursor-pointer items-center border-t border-t-divider-subtle p-3 system-xs-medium text-text-accent-light-mode-only"
+            <button
+              type="button"
+              className="flex w-full cursor-pointer items-center border-t border-t-divider-subtle p-3 system-xs-medium text-text-accent-light-mode-only"
               onClick={() => {
                 setOpen(false)
                 handleOpenModalForAddNewCustomModel()
               }}
             >
-              <span className="mr-1 i-ri-add-line size-4" />
-              {t(($) => $['modelProvider.auth.addNewModel'], { ns: 'common' })}
-            </div>
+              <span className="me-1 i-ri-add-line size-4" />
+              {t(($) => $['modelProvider.auth.addNewModel'], { ns: 'modelProvider' })}
+            </button>
           )}
         </div>
       </PopoverContent>

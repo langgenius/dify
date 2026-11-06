@@ -13,6 +13,13 @@ class TurnstileConfig(BaseSettings):
         default="",
         description="Comma-separated parent or exact hostnames accepted from Turnstile.",
     )
+    TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED: bool = Field(
+        default=False,
+        description=(
+            "Require a separate Turnstile challenge when verifying email login codes on Dify Cloud. "
+            "Enable after the compatible web client has been deployed."
+        ),
+    )
 
     @field_validator("TURNSTILE_SECRET_KEY", mode="before")
     @classmethod

@@ -1,19 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiDownloadLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCSVDownloader } from 'react-papaparse'
-import ActionButton from '@/app/components/base/action-button'
 
 type IResDownloadProps = {
-  isMobile: boolean
+  compact: boolean
   values: Record<string, string>[]
 }
 
-const ResDownload: FC<IResDownloadProps> = ({ isMobile, values }) => {
-  const { t } = useTranslation()
+const ResDownload: FC<IResDownloadProps> = ({ compact, values }) => {
+  const { t } = useTranslation(['common'])
   const { CSVDownloader, Type } = useCSVDownloader()
 
   return (
@@ -27,12 +27,12 @@ const ResDownload: FC<IResDownloadProps> = ({ isMobile, values }) => {
       }}
       data={values}
     >
-      {isMobile && (
-        <ActionButton>
-          <RiDownloadLine className="size-4" />
-        </ActionButton>
+      {compact && (
+        <IconButton aria-label={t(($) => $['operation.download'], { ns: 'common' })}>
+          <RiDownloadLine aria-hidden="true" className="size-4" />
+        </IconButton>
       )}
-      {!isMobile && (
+      {!compact && (
         <Button>
           <RiDownloadLine className="size-4" />
           <span>{t(($) => $['operation.download'], { ns: 'common' })}</span>

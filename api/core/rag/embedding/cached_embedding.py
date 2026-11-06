@@ -22,8 +22,27 @@ logger = logging.getLogger(__name__)
 
 
 class CacheEmbedding(Embeddings):
+    QUERY_CACHE_TTL = 600
+
     def __init__(self, model_instance: ModelInstance):
         self._model_instance = model_instance
+
+    @staticmethod
+    def _query_cache_key(provider: str, model_name: str, query_hash: str) -> str:
+        return f"{provider}_{model_name}_{query_hash}"
+
+    @classmethod
+    def get_cached_query_embedding(cls, provider: str, model_name: str, text: str) -> list[float] | None:
+        """Return a cached query vector without requiring a model instance."""
+        query_hash = helper.generate_text_hash(text)
+        embedding_cache_key = cls._query_cache_key(provider, model_name, query_hash)
+        embedding = redis_client.get(embedding_cache_key)
+        if not embedding:
+            return None
+
+        redis_client.expire(embedding_cache_key, cls.QUERY_CACHE_TTL)
+        decoded_embedding = np.frombuffer(base64.b64decode(embedding), dtype="float")
+        return [float(x) for x in decoded_embedding]
 
     @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -51,7 +70,6 @@ class CacheEmbedding(Embeddings):
 
         if embedding_queue_indices:
             embedding_queue_texts = [texts[i] for i in embedding_queue_indices]
-            embedding_queue_embeddings = []
             try:
                 model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
                 model_schema = model_type_instance.get_model_schema(
@@ -69,7 +87,12 @@ class CacheEmbedding(Embeddings):
                         texts=batch_texts, input_type=EmbeddingInputType.DOCUMENT
                     )
 
-                    for vector in embedding_result.embeddings:
+                    # Each vector belongs to a specific text. A vector that cannot be used
+                    # is dropped where it was produced, so collecting the usable vectors in a
+                    # separate list and zipping that list with the indices afterwards would
+                    # pair every later text with its neighbour's vector.
+                    batch_indices = embedding_queue_indices[i : i + len(batch_texts)]
+                    for queue_index, vector in zip(batch_indices, embedding_result.embeddings, strict=False):
                         try:
                             # FIXME: type ignore for numpy here
                             normalized_embedding = (vector / np.linalg.norm(vector)).tolist()  # type: ignore
@@ -78,16 +101,18 @@ class CacheEmbedding(Embeddings):
                                 # for issue #11827  float values are not json compliant
                                 logger.warning("Normalized embedding is nan: %s", normalized_embedding)
                                 continue
-                            embedding_queue_embeddings.append(normalized_embedding)
+                            text_embeddings[queue_index] = normalized_embedding
                         except IntegrityError:
                             db.session.rollback()
                         except Exception:
                             logger.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
-                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
-                        text_embeddings[i] = n_embedding
-                        hash = helper.generate_text_hash(texts[i])
+                    for queue_index in embedding_queue_indices:
+                        n_embedding = text_embeddings[queue_index]
+                        if n_embedding is None:
+                            continue
+                        hash = helper.generate_text_hash(texts[queue_index])
                         if hash not in cache_embeddings:
                             embedding_cache = Embedding(
                                 model_name=self._model_instance.model_name,
@@ -133,7 +158,6 @@ class CacheEmbedding(Embeddings):
 
         if embedding_queue_indices:
             embedding_queue_multimodel_documents = [multimodel_documents[i] for i in embedding_queue_indices]
-            embedding_queue_embeddings = []
             try:
                 model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
                 model_schema = model_type_instance.get_model_schema(
@@ -152,7 +176,11 @@ class CacheEmbedding(Embeddings):
                         input_type=EmbeddingInputType.DOCUMENT,
                     )
 
-                    for vector in embedding_result.embeddings:
+                    # Each vector belongs to a specific file. A vector that cannot be used is
+                    # dropped where it was produced; collecting the usable vectors separately
+                    # and zipping them with the indices afterwards would shift every later file.
+                    batch_indices = embedding_queue_indices[i : i + len(batch_multimodel_documents)]
+                    for queue_index, vector in zip(batch_indices, embedding_result.embeddings, strict=False):
                         try:
                             # FIXME: type ignore for numpy here
                             normalized_embedding = (vector / np.linalg.norm(vector)).tolist()  # type: ignore
@@ -161,16 +189,18 @@ class CacheEmbedding(Embeddings):
                                 # for issue #11827  float values are not json compliant
                                 logger.warning("Normalized embedding is nan: %s", normalized_embedding)
                                 continue
-                            embedding_queue_embeddings.append(normalized_embedding)
+                            multimodel_embeddings[queue_index] = normalized_embedding
                         except IntegrityError:
                             db.session.rollback()
                         except Exception:
                             logger.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
-                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
-                        multimodel_embeddings[i] = n_embedding
-                        file_id = multimodel_documents[i]["file_id"]
+                    for queue_index in embedding_queue_indices:
+                        n_embedding = multimodel_embeddings[queue_index]
+                        if n_embedding is None:
+                            continue
+                        file_id = multimodel_documents[queue_index]["file_id"]
                         if file_id not in cache_embeddings:
                             embedding_cache = Embedding(
                                 model_name=self._model_instance.model_name,
@@ -196,12 +226,14 @@ class CacheEmbedding(Embeddings):
         """Embed query text."""
         # use doc embedding cache or store if not exists
         hash = helper.generate_text_hash(text)
-        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model_name}_{hash}"
-        embedding = redis_client.get(embedding_cache_key)
-        if embedding:
-            redis_client.expire(embedding_cache_key, 600)
-            decoded_embedding = np.frombuffer(base64.b64decode(embedding), dtype="float")
-            return [float(x) for x in decoded_embedding]
+        embedding_cache_key = self._query_cache_key(
+            self._model_instance.provider, self._model_instance.model_name, hash
+        )
+        cached_embedding = self.get_cached_query_embedding(
+            self._model_instance.provider, self._model_instance.model_name, text
+        )
+        if cached_embedding is not None:
+            return cached_embedding
         try:
             embedding_result = self._model_instance.invoke_text_embedding(
                 texts=[text], input_type=EmbeddingInputType.QUERY
@@ -225,7 +257,7 @@ class CacheEmbedding(Embeddings):
             encoded_vector = base64.b64encode(vector_bytes)
             # Transform to string
             encoded_str = encoded_vector.decode("utf-8")
-            redis_client.setex(embedding_cache_key, 600, encoded_str)
+            redis_client.setex(embedding_cache_key, self.QUERY_CACHE_TTL, encoded_str)
         except Exception as ex:
             if dify_config.DEBUG:
                 logger.exception(

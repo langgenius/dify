@@ -47,6 +47,7 @@ def _file_handler(*, sandbox_files_base_url: str = "https://sandbox-files.exampl
         inner_api_url="https://api.internal.example.com",
         inner_api_key="inner-secret",
         sandbox_files_base_url=sandbox_files_base_url,
+        max_upload_size_bytes=50 * 1024 * 1024,
     )
 
 
@@ -66,6 +67,7 @@ def test_upload_request_uses_agent_inner_endpoint_and_binds_sandbox_base(monkeyp
             "filename": "report.pdf",
             "mimetype": "application/pdf",
             "conversation_id": "conversation-1",
+            "max_size": 50 * 1024 * 1024,
         }
         return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?signed=yes"})
 

@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const VariableModalTrigger = ({ open, setOpen, showTip, chatVar, onClose, onSave }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
       setOpen(nextOpen)
@@ -39,10 +39,10 @@ const VariableModalTrigger = ({ open, setOpen, showTip, chatVar, onClose, onSave
         }
       />
       <PopoverContent
-        placement="left-start"
-        sideOffset={8}
+        side="left"
+        align="start"
         alignOffset={showTip ? -278 : -48}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <VariableModal
           chatVar={chatVar}

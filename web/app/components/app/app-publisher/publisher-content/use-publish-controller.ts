@@ -1,28 +1,30 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import type { AppPublisherProps, AppPublisherPublishParams } from '../types'
+import type {
+  AppPublisherProps,
+  AppPublisherPublishOptions,
+  AppPublisherPublishParams,
+} from '../types'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
-import { useHotkey } from '@tanstack/react-hotkeys'
 import { useQueryClient } from '@tanstack/react-query'
-import { use, useEffect, useState } from 'react'
+import { use, useEffect, useRef, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useAppWorkflow, useInvalidateAppWorkflow } from '@/service/use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
 } from '@/service/workflow-queries'
-import { AppModeEnum } from '@/types/app'
-import { APP_PUBLISH_HOTKEY } from '../hotkeys'
 
 type UsePublishControllerParams = Pick<
   AppPublisherProps,
-  'onPublish' | 'onRestore' | 'publishDisabled' | 'publishedAt'
+  'onPublish' | 'onRestore' | 'publishedAt'
 > & {
   appId?: string
-  appMode?: AppModeEnum
+  appMode?: AppMode
   appName?: string
   supportsMultiEnvironment: boolean
   onClose: () => void
@@ -54,19 +56,17 @@ export function usePublishController({
   onClose,
   onPublish,
   onRestore,
-  publishDisabled = false,
   publishedAt,
   supportsMultiEnvironment,
 }: UsePublishControllerParams) {
   const [published, setPublished] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const publishingRef = useRef(false)
   const queryClient = useQueryClient()
   const workflowStore = use(WorkflowContext)
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
-  const isWorkflowApp = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
-  const isChatApp =
-    appMode === AppModeEnum.CHAT ||
-    appMode === AppModeEnum.AGENT_CHAT ||
-    appMode === AppModeEnum.COMPLETION
+  const isWorkflowApp = appMode === 'workflow' || appMode === 'advanced-chat'
+  const isChatApp = appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
   const {
     data: publishedWorkflow,
     isError: isPublishedWorkflowError,
@@ -81,41 +81,58 @@ export function usePublishController({
       : publishedAt
   const hasPublishedVersion = Boolean(currentPublishedAt)
 
-  async function handlePublish(params?: AppPublisherPublishParams) {
-    try {
-      await onPublish?.(params)
-      setPublished(true)
+  async function publishApp(
+    params?: AppPublisherPublishParams,
+    options?: AppPublisherPublishOptions,
+  ) {
+    await onPublish?.(params, options)
+    setPublished(true)
 
-      const socket = appId ? webSocketClient.getSocket(appId) : null
-      if (appId) {
-        invalidateAppWorkflow(appId)
-        if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
-      } else {
-        console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
-      }
-      if (socket) {
-        const timestamp = Date.now()
-        socket.emit('collaboration_event', {
-          type: 'app_publish_update',
-          data: {
-            action: 'published',
-            timestamp,
-          },
+    const socket = appId ? webSocketClient.getSocket(appId) : null
+    if (appId) {
+      invalidateAppWorkflow(appId)
+      if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
+    } else {
+      console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
+    }
+    if (socket) {
+      const timestamp = Date.now()
+      socket.emit('collaboration_event', {
+        type: 'app_publish_update',
+        data: {
+          action: 'published',
           timestamp,
-        })
-      } else if (appId) {
-        console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
-      }
-
-      trackEvent('app_published_time', {
-        action_mode: 'app',
-        app_id: appId,
-        app_name: appName,
+        },
+        timestamp,
       })
+    } else if (appId) {
+      console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
+    }
+
+    trackEvent('app_published_time', {
+      action_mode: 'app',
+      app_id: appId,
+      app_name: appName,
+    })
+  }
+
+  async function handlePublish(params?: AppPublisherPublishParams) {
+    if (publishingRef.current) return
+    publishingRef.current = true
+    setIsPublishing(true)
+    try {
+      await publishApp(params)
     } catch (error) {
       console.warn('[app-publisher] publish failed', error)
       setPublished(false)
+    } finally {
+      publishingRef.current = false
+      setIsPublishing(false)
     }
+  }
+
+  async function publishWorkflowTool(params?: AppPublisherPublishParams) {
+    await publishApp(params, { showSuccessToast: false })
   }
 
   async function handleRestore() {
@@ -124,12 +141,6 @@ export function usePublishController({
       onClose()
     } catch {}
   }
-
-  useHotkey(APP_PUBLISH_HOTKEY, (event) => {
-    event.preventDefault()
-    if (publishDisabled || published) return
-    void handlePublish()
-  })
 
   useEffect(() => {
     if (!appId) return
@@ -140,7 +151,10 @@ export function usePublishController({
 
       if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
       void queryClient
-        .fetchQuery(appWorkflowQueryOptions(appId))
+        .query({
+          ...appWorkflowQueryOptions(appId),
+          staleTime: 0,
+        })
         .then((publishedWorkflow) => {
           workflowStore?.getState().setPublishedAt(publishedWorkflow?.created_at ?? 0)
         })
@@ -158,12 +172,14 @@ export function usePublishController({
     handleRestore,
     hasPublishedVersion,
     isChatApp,
+    isPublishing,
     isPublishedWorkflowError,
     isPublishedWorkflowLoading,
     isPublishedWorkflowSuccess,
     isWorkflowApp,
     published,
     publishedWorkflow,
+    publishWorkflowTool,
     resetPublished: () => setPublished(false),
   }
 }

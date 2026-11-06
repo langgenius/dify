@@ -7,7 +7,8 @@ from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 
 _SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
-_EXPECTED_ACTION = "signin_code"
+EMAIL_CODE_SEND_ACTION = "signin_code"
+EMAIL_CODE_VERIFY_ACTION = "signin_code_verify"
 _MAX_TOKEN_LENGTH = 2048
 _CLIENT_ERROR_CODES = frozenset(
     {
@@ -44,7 +45,13 @@ class _TurnstileResponse(BaseModel):
 
 class TurnstileService:
     @classmethod
-    def verify(cls, *, token: str | None, remote_ip: str | None) -> None:
+    def verify(
+        cls,
+        *,
+        token: str | None,
+        remote_ip: str | None,
+        expected_action: str = EMAIL_CODE_SEND_ACTION,
+    ) -> None:
         normalized_token = token.strip() if token else ""
         if not normalized_token or len(normalized_token) > _MAX_TOKEN_LENGTH:
             raise TurnstileChallengeRejectedError
@@ -74,7 +81,7 @@ class TurnstileService:
                 raise TurnstileChallengeRejectedError
             raise TurnstileUpstreamError("Turnstile returned a server-side verification error")
 
-        if result.action != _EXPECTED_ACTION or not cls._is_allowed_hostname(result.hostname, allowed_hostnames):
+        if result.action != expected_action or not cls._is_allowed_hostname(result.hostname, allowed_hostnames):
             raise TurnstileChallengeRejectedError
 
     @staticmethod

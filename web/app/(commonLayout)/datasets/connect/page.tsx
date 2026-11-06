@@ -1,5 +1,12 @@
-import * as React from 'react'
 import ExternalKnowledgeBaseConnector from '@/app/components/datasets/external-knowledge-base/connector'
+import { getRouteMetadata } from '@/app/route-metadata'
+
+export function generateMetadata() {
+  return getRouteMetadata(
+    'onboarding',
+    ($) => $['stepByStepTour.guides.knowledge.empty.connect.title'],
+  )
+}
 
 const ExternalKnowledgeBaseCreation = () => {
   return <ExternalKnowledgeBaseConnector />

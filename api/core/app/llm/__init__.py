@@ -6,6 +6,7 @@ from .quota import (
     ensure_llm_quota_available,
     ensure_llm_quota_available_for_model,
     reserve_llm_quota_for_model,
+    reserve_model_quota_for_model,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "ensure_llm_quota_available",
     "ensure_llm_quota_available_for_model",
     "reserve_llm_quota_for_model",
+    "reserve_model_quota_for_model",
 ]

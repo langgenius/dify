@@ -1,5 +1,5 @@
-import type { Placement } from '@langgenius/dify-ui/popover'
-import type { MouseEvent } from 'react'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
+import type { ComponentPropsWithRef, MouseEvent, ReactElement } from 'react'
 import type {
   ConfigurationMethodEnum,
   Credential,
@@ -10,10 +10,11 @@ import type {
 } from '../../declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -25,13 +26,7 @@ import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
 
-type PopoverOffsetOptions = {
-  mainAxis?: number
-  crossAxis?: number
-  alignmentAxis?: number
-}
-
-type AuthorizedProps = {
+type AuthorizedProps = Pick<PopoverContentProps, 'side' | 'align'> & {
   provider: ModelProvider
   configurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
@@ -48,12 +43,9 @@ type AuthorizedProps = {
     credentials: Credential[]
   }[]
   disabled?: boolean
-  renderTrigger: (open?: boolean) => React.ReactNode
+  renderTrigger: (open: boolean, props: ComponentPropsWithRef<'button'>) => ReactElement
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
-  offset?: number | PopoverOffsetOptions
-  placement?: Placement
-  triggerPopupSameWidth?: boolean
   popupClassName?: string
   showItemSelectedIcon?: boolean
   onItemClick?: (credential: Credential, model?: CustomModel) => void
@@ -76,9 +68,8 @@ const Authorized = ({
   renderTrigger,
   isOpen,
   onOpenChange,
-  offset = 8,
-  placement = 'bottom-end',
-  triggerPopupSameWidth = false,
+  side,
+  align = 'end',
   popupClassName,
   showItemSelectedIcon,
   onItemClick,
@@ -90,7 +81,7 @@ const Authorized = ({
   disableDeleteButShowAction,
   disableDeleteTip,
 }: AuthorizedProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
@@ -151,48 +142,36 @@ const Authorized = ({
     [canUseCredential, handleActiveCredential, onItemClick, setMergedIsOpen, disableItemClick],
   )
   const notAllowCustomCredential = provider.allow_custom_token === false
-  const resolvedOffset = typeof offset === 'number' ? undefined : offset
-  const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
-  const alignOffset =
-    typeof offset === 'number'
-      ? 0
-      : (resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0)
-  const popupProps = triggerPopupSameWidth
-    ? { style: { width: 'var(--anchor-width, auto)' } }
-    : undefined
   const handleTriggerClick = useCallback(
     (event: MouseEvent<HTMLElement>) => {
       if (!triggerOnlyOpenModal) return
 
       event.preventDefault()
-      if (!canCreateCredential) return
+      if (!canCreateCredential || notAllowCustomCredential || disabled) return
 
       handleOpenModal()
     },
-    [canCreateCredential, handleOpenModal, triggerOnlyOpenModal],
+    [
+      canCreateCredential,
+      disabled,
+      handleOpenModal,
+      notAllowCustomCredential,
+      triggerOnlyOpenModal,
+    ],
   )
 
   return (
     <>
       <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
         <PopoverTrigger
-          nativeButton={false}
-          render={(props, state) => (
-            <div
-              {...props}
-              className={cn(triggerPopupSameWidth ? 'w-full' : 'inline-block', props.className)}
-            >
-              {renderTrigger(state.open)}
-            </div>
-          )}
+          render={(props, state) => renderTrigger(state.open, props)}
+          disabled={disabled}
           onClick={handleTriggerClick}
         />
         <PopoverContent
-          placement={placement}
-          sideOffset={sideOffset}
-          alignOffset={alignOffset}
-          popupProps={popupProps}
-          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+          side={side}
+          align={align}
+          className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           <div
             className={cn(
@@ -242,7 +221,9 @@ const Authorized = ({
               !notAllowCustomCredential &&
               !hideAddAction &&
               canCreateCredential && (
-                <div
+                <Button
+                  variant="ghost"
+                  disabled={disabled}
                   onClick={() =>
                     handleEdit(
                       undefined,
@@ -254,19 +235,19 @@ const Authorized = ({
                         : undefined,
                     )
                   }
-                  className="flex h-10 cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
+                  className="h-10 w-full justify-start px-3 system-xs-medium text-text-accent-light-mode-only"
                 >
-                  <span className="mr-1 i-ri-add-line size-4" />
-                  {t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'common' })}
-                </div>
+                  <span aria-hidden="true" className="i-ri-add-line size-4" />
+                  {t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'modelProvider' })}
+                </Button>
               )}
             {!isModelCredential &&
               !notAllowCustomCredential &&
               !hideAddAction &&
               canCreateCredential && (
                 <div className="p-2">
-                  <Button onClick={() => handleEdit()} className="w-full">
-                    {t(($) => $['modelProvider.auth.addApiKey'], { ns: 'common' })}
+                  <Button disabled={disabled} onClick={() => handleEdit()} className="w-full">
+                    {t(($) => $['modelProvider.auth.addApiKey'], { ns: 'modelProvider' })}
                   </Button>
                 </div>
               )}
@@ -278,19 +259,19 @@ const Authorized = ({
         onOpenChange={(open) => !open && closeConfirmDelete()}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['modelProvider.confirmDelete'], { ns: 'common' })}
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
             </AlertDialogTitle>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
