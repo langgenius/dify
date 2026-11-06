@@ -36,10 +36,16 @@ const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: 
 
 type AppsProps = {
   onCreateFromBlank?: () => void
+  /**
+   * Called once the app is created, before the redirect. Pickers whose page can stay
+   * mounted after the redirect close here; without it the picker stays until the new
+   * app replaces the page.
+   */
+  onCreated?: () => void
   templateMode?: 'agent'
 }
 
-const Apps = ({ onCreateFromBlank, templateMode }: AppsProps) => {
+const Apps = ({ onCreateFromBlank, onCreated, templateMode }: AppsProps) => {
   const { t } = useTranslation(['app', 'common'])
   const locale = useLocale()
   const queryClient = useQueryClient()
@@ -170,8 +176,8 @@ const Apps = ({ onCreateFromBlank, templateMode }: AppsProps) => {
                 templateId: currApp.app_id,
               })
             }
-            // The import navigates to the new app; the dialog stays until it replaces the page.
             setIsShowCreateModal(false)
+            onCreated?.()
           },
           onPending: () => {
             setIsShowCreateModal(false)
@@ -198,6 +204,7 @@ const Apps = ({ onCreateFromBlank, templateMode }: AppsProps) => {
         }
         setShowDSLConfirmModal(false)
         setIsShowCreateModal(false)
+        onCreated?.()
       },
     })
   }

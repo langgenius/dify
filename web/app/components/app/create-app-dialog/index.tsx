@@ -7,6 +7,7 @@ type CreateAppDialogProps = {
   show: boolean
   onClose: () => void
   onCreateFromBlank?: () => void
+  onCreated?: () => void
   templateMode?: 'agent'
 }
 
@@ -14,6 +15,7 @@ const CreateAppTemplateDialog = ({
   show,
   onClose,
   onCreateFromBlank,
+  onCreated,
   templateMode,
 }: CreateAppDialogProps) => {
   const { t } = useTranslation(['app'])
@@ -24,7 +26,11 @@ const CreateAppTemplateDialog = ({
       title={t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
       onClose={onClose}
     >
-      <AppList onCreateFromBlank={onCreateFromBlank} templateMode={templateMode} />
+      <AppList
+        onCreateFromBlank={onCreateFromBlank}
+        onCreated={onCreated}
+        templateMode={templateMode}
+      />
     </CreateAppDialogShell>
   )
 }

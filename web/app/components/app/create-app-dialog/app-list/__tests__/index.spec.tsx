@@ -24,7 +24,12 @@ const { request, locale, toast, checkDependencies, redirect, trackCreateApp, pus
     push: vi.fn(),
   }),
 )
+const agentPermissions = vi.hoisted(() => ({ canImport: false }))
 vi.mock('@/service/base', () => ({ request }))
+vi.mock('@/features/agent-v2/permissions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/agent-v2/permissions')>()),
+  useCanImportAgents: () => agentPermissions.canImport,
+}))
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => locale.value,
@@ -86,6 +91,7 @@ const catalogKey = (language: string) =>
 beforeEach(() => {
   vi.clearAllMocks()
   locale.value = 'en-US'
+  agentPermissions.canImport = false
   request.mockImplementation(async (url: string) => {
     const path = new URL(url).pathname.replace('/console/api', '') + new URL(url).search
     if (path.startsWith('/explore/apps?')) return Response.json(catalog)
@@ -98,10 +104,11 @@ const renderApps = (
   response = catalog,
   permissions = ['app.create_and_management'],
   templateMode?: 'agent',
+  onCreated?: () => void,
 ) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(catalogKey('en-US'), response)
-  return render(<Apps templateMode={templateMode} />, {
+  return render(<Apps templateMode={templateMode} onCreated={onCreated} />, {
     queryClient,
     workspacePermissionKeys: permissions,
   })
@@ -247,6 +254,42 @@ it('fetches fresh detail by canonical app_id and submits the actual form with an
     push,
     expect.any(Object),
   )
+})
+
+it('reports an Agent template created without a bound agent so the roster can close its picker', async () => {
+  request.mockImplementation(async (url: string) => {
+    const path = decodeURIComponent(new URL(url).pathname.replace('/console/api', ''))
+    if (path === '/explore/apps/catalog-Assistant Agent')
+      return Response.json({
+        ...detail,
+        id: 'catalog-Assistant Agent',
+        mode: 'agent',
+        version_id: 'version-1',
+      })
+    if (path === '/apps/imports') return Response.json({ ...imported, app_mode: 'agent' })
+    // The created app has no bound agent yet, so the redirect falls back to the roster.
+    if (path === '/apps/created-app') return Response.json({ id: 'created-app', mode: 'agent' })
+    throw new Error(`Unexpected request: ${url}`)
+  })
+  agentPermissions.canImport = true
+  const onCreated = vi.fn()
+  const user = userEvent.setup()
+  renderApps(
+    { recommended_apps: [createEntry('Assistant Agent', 0, 'agent')], categories: ['Assistant'] },
+    ['app.create_and_management'],
+    'agent',
+    onCreated,
+  )
+  await openFirst(user)
+  await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+
+  await waitFor(() => expect(redirect).toHaveBeenCalled())
+  expect(redirect).toHaveBeenCalledWith(
+    expect.not.objectContaining({ bound_agent_id: expect.anything() }),
+    push,
+    expect.any(Object),
+  )
+  expect(onCreated).toHaveBeenCalledTimes(1)
 })
 
 it('keeps the submitted modal and draft while reporting detail failure without import or navigation', async () => {
