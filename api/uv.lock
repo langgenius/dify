@@ -1522,6 +1522,7 @@ dev = [
     { name = "types-flask-migrate" },
     { name = "types-gevent" },
     { name = "types-greenlet" },
+    { name = "types-grpcio" },
     { name = "types-html5lib" },
     { name = "types-jmespath" },
     { name = "types-jsonschema" },
@@ -1828,6 +1829,7 @@ dev = [
     { name = "types-flask-migrate", specifier = ">=4.1.0.20260508" },
     { name = "types-gevent", specifier = ">=26.9.0.20261006" },
     { name = "types-greenlet", specifier = ">=3.5.0.20260518" },
+    { name = "types-grpcio", specifier = ">=1.85.0.20261028" },
     { name = "types-html5lib", specifier = ">=1.1.11.20260518" },
     { name = "types-jmespath", specifier = ">=1.1.0.20260724" },
     { name = "types-jsonschema", specifier = ">=4.26.0.20261006" },
@@ -6888,6 +6890,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e4/58/ec7e4d35ce36557d7599d347c51632723e5f89af551af776d25bab7c605f/types_greenlet-3.5.0.20260518.tar.gz", hash = "sha256:2abc0b31a60d10244bba4a9f9e5d19b7254749b14ea85cb2f72eef282fab39f4", size = 9084, upload-time = "2026-05-18T06:03:08.352Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4e/1f/112ebbffe68c40af3bca8e948a9d2df66a53dd7b3124e031e3110fcba3e5/types_greenlet-3.5.0.20260518-py3-none-any.whl", hash = "sha256:ce8f2b59314ffd683648d8f7fc1eab7b7a36a0330adb4a054d0a2157b9624166", size = 8816, upload-time = "2026-05-18T06:03:07.06Z" },
+]
+
+[[package]]
+name = "types-grpcio"
+version = "1.85.0.20261028"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/6b/5248f1b10df2c02ffbd99f3c913259bf73cabd2bee0ca1c28d6f3e66c3f4/types_grpcio-1.85.0.20261028.tar.gz", hash = "sha256:4ea4f36a54cf9a62fcb09515f7305e89c01f4edca54b32de24f6b1204b84522c", size = 16127, upload-time = "2026-10-28T07:38:58.025Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c5/ee/e2b2f2d677478456869ca922c1d5bb68f64052c9dfd9ad6c2a91a1122269/types_grpcio-1.85.0.20261028-py3-none-any.whl", hash = "sha256:2c2684330ae57ab64ffb43183ac652e73d2609024e6076e3e9d2b8ae06816207", size = 16076, upload-time = "2026-10-28T07:38:57.193Z" },
 ]
 
 [[package]]
