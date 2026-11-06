@@ -35,6 +35,7 @@ function Harness({ observe }: { observe: (value: HumanInputV2Recipient[]) => voi
       nodeId="hitl"
       value={value}
       readonly={false}
+      isTriggerMode={false}
       onChange={(next) => {
         setValue(next)
         observe(next)

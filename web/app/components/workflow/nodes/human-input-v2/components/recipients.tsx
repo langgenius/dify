@@ -59,6 +59,7 @@ type RecipientsProps = {
   value: HumanInputV2Recipient[]
   onChange: (value: HumanInputV2Recipient[]) => void
   readonly: boolean
+  isTriggerMode: boolean
   availableNodes?: Node[]
 }
 type SourceFilter = 'all' | 'workspace' | 'organization' | 'external'
@@ -77,6 +78,7 @@ const RecipientsContent = ({
   value,
   onChange,
   readonly,
+  isTriggerMode,
   availableNodes = [],
   workspaceId,
   workspace,
@@ -221,6 +223,13 @@ const RecipientsContent = ({
   ])
   const selectedContacts = selectedItems.flatMap((item) => (item.contact ? [item.contact] : []))
   const selectedKeys = selectedItems.map((item) => item.key)
+  const isUnavailableInitiator = (recipient: HumanInputV2Recipient) =>
+    isTriggerMode && recipient.type === 'initiator'
+  const initiatorUnavailableMessage = t(
+    ($) => $['nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow'],
+    { ns: 'workflow' },
+  )
+  const initiatorUnavailableId = `${nodeId}-initiator-unavailable`
   const previewConflict =
     previewContact &&
     findConflictingContact(
@@ -312,6 +321,10 @@ const RecipientsContent = ({
           if (added) {
             const item = itemMap.get(added)
             if (!item) return
+            if (isUnavailableInitiator(item.recipient)) {
+              details.cancel()
+              return
+            }
             if (
               item.contact &&
               findConflictingContact(
@@ -342,7 +355,9 @@ const RecipientsContent = ({
               >
                 {selectedItems.map((item, index) => {
                   const recipient = item.recipient
+                  const initiatorUnavailable = isUnavailableInitiator(recipient)
                   const invalid =
+                    initiatorUnavailable ||
                     !!getRecipientValidationError(recipient) ||
                     value.findIndex(
                       (other) =>
@@ -375,7 +390,11 @@ const RecipientsContent = ({
                       aria-invalid={invalid || undefined}
                       aria-describedby={
                         [
-                          invalid ? `${nodeId}-invalid-${index}` : undefined,
+                          initiatorUnavailable
+                            ? initiatorUnavailableId
+                            : invalid
+                              ? `${nodeId}-invalid-${index}`
+                              : undefined,
                           recipient.type === 'contact' && !item.contact
                             ? `${nodeId}-contact-${index}`
                             : undefined,
@@ -438,7 +457,7 @@ const RecipientsContent = ({
                         workspace.contactCount !== undefined && (
                           <span>{workspace.contactCount}</span>
                         )}
-                      {invalid && (
+                      {invalid && !initiatorUnavailable && (
                         <span id={`${nodeId}-invalid-${index}`} className="sr-only">
                           {invalidMessage}
                         </span>
@@ -513,6 +532,7 @@ const RecipientsContent = ({
                                 item.contact?.email?.toLocaleLowerCase() ===
                                   query.trim().toLocaleLowerCase()),
                           )
+                        if (candidate && isUnavailableInitiator(candidate.recipient)) return
                         if (
                           candidate &&
                           (!candidate.contact ||
@@ -537,6 +557,11 @@ const RecipientsContent = ({
           <p id={`${nodeId}-selection-hint`} className="sr-only">
             {inputHint}
           </p>
+          {value.some(isUnavailableInitiator) && (
+            <p id={initiatorUnavailableId} className="px-1 system-xs-regular text-text-destructive">
+              {initiatorUnavailableMessage}
+            </p>
+          )}
           {emailError && (
             <p
               id={`${nodeId}-recipient-email-error`}
@@ -723,6 +748,7 @@ const RecipientsContent = ({
               </ComboboxStatus>
               <ComboboxList<RecipientItem>>
                 {(item) => {
+                  const initiatorUnavailable = isUnavailableInitiator(item.recipient)
                   const added = value.some(
                     (recipient) =>
                       getRecipientCanonicalKey(recipient) ===
@@ -742,8 +768,16 @@ const RecipientsContent = ({
                     <ComboboxItem<string>
                       key={item.key}
                       value={item.key}
-                      disabled={added || !!conflict}
-                      className="min-w-0 grow"
+                      disabled={initiatorUnavailable || added || !!conflict}
+                      aria-label={initiatorUnavailable ? item.label : undefined}
+                      aria-describedby={
+                        initiatorUnavailable ? `${initiatorUnavailableId}-option` : undefined
+                      }
+                      className={
+                        initiatorUnavailable
+                          ? 'min-w-0 grow data-disabled:opacity-100'
+                          : 'min-w-0 grow'
+                      }
                     >
                       <span className="flex min-w-0 items-center gap-2">
                         {item.contact && (
@@ -755,9 +789,23 @@ const RecipientsContent = ({
                           />
                         )}
                         <span className="min-w-0">
-                          <span className="block truncate system-sm-medium">
+                          <span
+                            className={
+                              initiatorUnavailable
+                                ? 'block truncate system-sm-medium text-text-disabled'
+                                : 'block truncate system-sm-medium'
+                            }
+                          >
                             {item.contact?.name ?? item.label}
                           </span>
+                          {initiatorUnavailable && (
+                            <span
+                              id={`${initiatorUnavailableId}-option`}
+                              className="block system-xs-regular wrap-break-word text-text-tertiary"
+                            >
+                              {initiatorUnavailableMessage}
+                            </span>
+                          )}
                           {item.contact?.email && (
                             <span className="block truncate system-xs-regular text-text-tertiary">
                               {item.contact.email}
