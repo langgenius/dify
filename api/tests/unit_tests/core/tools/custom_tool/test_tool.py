@@ -94,6 +94,7 @@ class TestApiToolRequestAssemblyCases:
         bundle = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(schema)[0]
         tool = _build_tool()
         tool.api_bundle = bundle
+        assert bundle.parameters is not None
         tool.entity.parameters = bundle.parameters
         sent_fields: list[list[tuple[str, str]]] = []
 
