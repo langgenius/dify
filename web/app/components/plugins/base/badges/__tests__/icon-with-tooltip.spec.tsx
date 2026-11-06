@@ -6,7 +6,6 @@ describe('IconWithTooltip', () => {
   it('exposes the badge meaning without opening the tooltip', () => {
     render(
       <IconWithTooltip
-        theme="light"
         lightIconClassName="i-custom-public-plugins-partner-light"
         darkIconClassName="i-custom-public-plugins-partner-dark"
         popupContent="Partner plugin"

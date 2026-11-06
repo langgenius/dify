@@ -1,4 +1,4 @@
-"""Consumer-owned read contracts for credential lists and their visibility policy."""
+"""Consumer-owned credential snapshots, lists, and visibility contracts."""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -35,6 +35,15 @@ class ToolCredentialRecord:
     created_by: str
     partial_member_ids: tuple[str, ...]
     from_other_member: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ToolCredentialSnapshot:
+    """Stored credentials for a tenant- and provider-scoped invocation."""
+
+    id: str
+    credential_type: str
+    credentials: Mapping[str, object]
 
 
 @dataclass(frozen=True, slots=True)
