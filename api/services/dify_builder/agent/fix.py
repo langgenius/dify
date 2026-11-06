@@ -145,6 +145,12 @@ def diagnose(
     evidence: dict[str, Any] | None = None,
     reply_language: str | None = None,
 ) -> Diagnosis:
+    """Diagnose owned failure evidence without changing the graph or Run.
+
+    Only a unique historically bound Code target with format facts may expose
+    its complete redacted current source, under the existing repair budget.
+    Missing/oversized context remains explicit; model failures still degrade.
+    """
     if evidence is None:
         _, _, _, evidence = condition_evidence.build_evidence(failed_run, graph, None, node_outputs)
     safe_run, safe_outputs = diagnostic_context.redact_run_context(failed_run, graph, node_outputs)
@@ -176,9 +182,35 @@ def diagnose(
         if safe_run.error
         else "(no per-node failure recorded)"
     )
+    source_context = ""
+    terminal = [output for output in safe_outputs if output.status == "failed"]
+    target = evidence.get("failed_node_id")
+    relation = evidence.get("graph_state")
+    # Format facts originate only from one historical failed Code target with
+    # unchanged current bindings. Never let a guessed diagnosis select source.
+    if (
+        evidence.get("failure_identity") == "bound"
+        and isinstance(target, str)
+        and target
+        and isinstance(evidence.get("code_input_formats"), list)
+        and relation in {"historical_matches_current", "historical_differs_current"}
+        and len(terminal) == 1
+        and terminal[0].node_id == target
+    ):
+        safe_graph = diagnostic_context.redact_diagnostic_value(graph, failed_run, graph, node_outputs)
+        targets = [node for node in safe_graph.get("nodes", []) if node.get("id") == target]
+        if len(targets) == 1 and targets[0].get("data", {}).get("type") == "code":
+            fields, _omitted = _culprit_repair_fields(target, safe_graph)
+            source_context = (
+                f"\n\nCURRENT CULPRIT SOURCE CONTEXT (native graph relation: {relation}):\n"
+                "This is current source, not proof of historical execution when the graphs differ. "
+                "Compare observed input format facts with its parser assumptions. "
+                "Omitted source requires manual review; do not invent its contents." + fields
+            )
     user = diagnostic_context.redact_diagnostic_text(
         f"FAILED NODES:\n{failed_desc}\n\nGRAPH:\n{_graph_context(graph)}"
-        f"\nCONDITION EVIDENCE:\n{json.dumps(evidence, separators=(',', ':'))}",
+        + source_context
+        + f"\nCONDITION EVIDENCE:\n{json.dumps(evidence, separators=(',', ':'))}",
         failed_run,
         graph,
         node_outputs,

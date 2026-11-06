@@ -36,6 +36,7 @@ Files: `api/services/dify_builder/agent/fix.py`; dedicated `api/tests/unit_tests
 - [x] Verify correction, preflight, and privacy regressions; independently review.
 - [x] Reproduce the remaining case-two parser mismatch; add bounded, value-free historical Code input-format facts shared by diagnosis and proposal, suppressing ambiguous identity or changed input bindings.
 - [x] Re-fix uses a current owned immutable native failed verification when available; missing, unknown, simulated, policy-blocked and stale evidence preserve the original source without dispatch. Preserve business-failure handling.
+- [x] Reproduce the remaining diagnosis omission; give the unique bound Code diagnosis the same bounded/redacted complete culprit fields, explicitly labelled current versus historical source.
 - [ ] Run representative native Local failure → Fix → new Run checks with frozen business expectations.
 
 ## Task 2: ENG-1418 truthful knowledge decisions
@@ -49,6 +50,7 @@ Files: `api/services/dify_builder/application/handlers_build.py`; `api/tests/uni
 - [x] Verify selected discovery → stable retain → explicit waiver still permits genuine business clarification and normal planning at the handler/agent boundary; independently review.
 - [ ] Repeat the named-KB ordinary Local UI flow on the rebuilt artifact and export its UI Trace; stop at formal plan approval before generation.
 - [ ] Reuse the existing actor-bound retain/waive form; retain remains actionable without repeated planning or silent generation.
+- [x] Clarify recommendation-only preservation of exact explicitly required authorized knowledge IDs despite setup/document/runtime readiness; preserve ACL, negative/optional source and no-retrieval guards.
 - [ ] Verify scoped discovery and current form projection; independently review and Local UI evidence.
 
 ## Task 3: ENG-1430 metadata readiness

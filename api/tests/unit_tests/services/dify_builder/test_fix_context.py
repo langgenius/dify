@@ -6,8 +6,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.dify_builder.models import Diagnosis, Graph
+from core.dify_builder.models import Diagnosis, Graph, NodeOutput, Run
 from services.dify_builder.agent import fix
+from services.dify_builder.condition_evidence import build_evidence
 
 
 def _repair_prompt(monkeypatch: pytest.MonkeyPatch, graph: Graph) -> str:
@@ -251,3 +252,119 @@ def test_omitted_source_does_not_block_a_visible_unrelated_field_repair(monkeypa
     intents, _risk = fix.propose_repair(MagicMock(), Diagnosis(culprit_node_id="culprit"), graph)
 
     assert [(intent.args["path"], intent.args["value"]) for intent in intents] == [("title", "Updated parser")]
+
+
+def _diagnosis_prompt(monkeypatch: pytest.MonkeyPatch, graph: Graph, outputs: list[NodeOutput], evidence: dict) -> str:
+    prompts: list[str] = []
+
+    def answer(_model: object, *, user: str, **_kwargs: object) -> dict[str, object]:
+        prompts.append(user)
+        return {"culprit_node_id": "culprit", "root_cause": "Review parser assumptions", "severity": "high"}
+
+    monkeypatch.setattr(fix.llm, "invoke_json", answer)
+    fix.diagnose(MagicMock(), Run(status="failed"), graph, outputs, evidence=evidence)
+    return prompts[0]
+
+
+@pytest.mark.parametrize("relation", ["historical_matches_current", "historical_differs_current"])
+def test_diagnosis_sees_complete_current_parser_with_bound_format_facts(
+    monkeypatch: pytest.MonkeyPatch, relation: str
+) -> None:
+    source = "# bounded actual parser\n" * 150 + "def main(text):\n    return {'result': text.lstrip('\\ufeff')}\n"
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "culprit",
+                "data": {"type": "code", "code": source, "variables": [], "outputs": {"result": {"type": "string"}}},
+            }
+        ],
+        "edges": [],
+    }
+    historical = deepcopy(graph)
+    if relation == "historical_differs_current":
+        historical["nodes"][0]["data"]["code"] = "def main(text): return {'result': text}"
+    outputs = [NodeOutput(node_id="culprit", status="failed", inputs={"text": "| a | b |\n| --- | --- |\n| 1 | 2 |"})]
+    evidence = build_evidence(Run(status="failed"), graph, historical, outputs)[3]
+    prompt = _diagnosis_prompt(monkeypatch, graph, outputs, evidence)
+    assert json.dumps(source, ensure_ascii=False) in prompt
+    assert "CURRENT CULPRIT SOURCE CONTEXT" in prompt
+    assert relation in prompt
+    assert '"format":"markdown-table"' in prompt
+
+
+@pytest.mark.parametrize(
+    "unbound", ["no-history", "ambiguous-row", "wrong-row", "duplicate-current", "not-code", "changed-binding"]
+)
+def test_diagnosis_does_not_expand_unbound_or_mismatched_source(monkeypatch: pytest.MonkeyPatch, unbound: str) -> None:
+    source = "SOURCE_MUST_NOT_EXPAND\n" * 100
+    graph: Graph = {
+        "nodes": [{"id": "culprit", "data": {"type": "code", "code": source, "variables": []}}],
+        "edges": [],
+    }
+    outputs = [NodeOutput(node_id="culprit", status="failed", inputs={"text": "a,b\n1,2"})]
+    historical = deepcopy(graph)
+    if unbound == "no-history":
+        historical = None
+    elif unbound == "changed-binding":
+        graph["nodes"][0]["data"]["variables"] = [{"variable": "new", "value_selector": ["start", "new"]}]
+    evidence = build_evidence(Run(status="failed"), graph, historical, outputs)[3]
+    if unbound == "ambiguous-row":
+        outputs.append(deepcopy(outputs[0]))
+    elif unbound == "wrong-row":
+        outputs[0].node_id = "other"
+    elif unbound == "duplicate-current":
+        graph["nodes"].append(deepcopy(graph["nodes"][0]))
+    elif unbound == "not-code":
+        graph["nodes"][0]["data"]["type"] = "tool"
+    prompt = _diagnosis_prompt(monkeypatch, graph, outputs, evidence)
+    assert "SOURCE_MUST_NOT_EXPAND" not in prompt
+    assert "CURRENT CULPRIT SOURCE CONTEXT" not in prompt
+
+
+def test_diagnosis_expanded_source_redacts_credentials_and_excludes_neighbors(monkeypatch: pytest.MonkeyPatch) -> None:
+    source = "# parser\n" * 200 + "secret = 'private-token'\n"
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "culprit",
+                "data": {
+                    "type": "code",
+                    "code": source,
+                    "authorization": {"type": "api-key", "config": {"api_key": "private-token"}},
+                },
+            },
+            {"id": "neighbor", "data": {"type": "code", "code": "NEIGHBOR_PRIVATE_SOURCE"}},
+        ],
+        "edges": [],
+    }
+    outputs = [NodeOutput(node_id="culprit", status="failed", inputs={"text": "a,b\n1,2"})]
+    evidence = build_evidence(Run(status="failed"), graph, graph, outputs)[3]
+    prompt = _diagnosis_prompt(monkeypatch, graph, outputs, evidence)
+    assert "CURRENT CULPRIT SOURCE CONTEXT" in prompt
+    assert "__DIFY_BUILDER_REDACTED__" in prompt
+    assert "private-token" not in prompt
+    assert "NEIGHBOR_PRIVATE_SOURCE" not in prompt
+
+
+def test_diagnosis_oversized_source_is_explicitly_omitted_without_a_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "culprit",
+                "data": {
+                    "type": "code",
+                    "code": "SOURCE_MUST_BE_WHOLE" + "中" * 30_000,
+                    "outputs": {"result": {"type": "string"}},
+                },
+            }
+        ],
+        "edges": [],
+    }
+    outputs = [NodeOutput(node_id="culprit", status="failed", inputs={"text": "a,b\n1,2"})]
+    evidence = build_evidence(Run(status="failed"), graph, graph, outputs)[3]
+    prompt = _diagnosis_prompt(monkeypatch, graph, outputs, evidence)
+    assert "SOURCE_MUST_BE_WHOLE" not in prompt
+    assert '"characters": 30020' in prompt
+    assert '"outputs": {"result": {"type": "string"}}' in prompt
+    assert "Do not reconstruct or replace omitted fields" in prompt
+    assert len(prompt.encode()) < 40_000

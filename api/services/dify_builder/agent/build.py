@@ -856,6 +856,14 @@ _KNOWLEDGE_DISCOVERY_RULES = (
     "or claim that knowledge retrieval/citations will run. A required knowledge retrieval outcome remains "
     "unsupported in this phase; explain it and wait for the user instead of substituting an LLM-only answer "
     "or claiming the original task is complete. Do not read documents or invoke retrieval to recommend it."
+    " During resource recommendation only: Preserve an explicitly required, listed knowledge identity "
+    "when its actor-scoped metadata says use=allowed, as a discovery-only preference. "
+    "Readiness waiting_setup, empty or indexing documents, and unsupported runtime do not exclude this preference. "
+    "Copy the complete knowledge:<id> verbatim, never a bare dataset UUID, into resource_ids; "
+    "explain the source's relevance in selection_reasons and set knowledge_requires_clarification=true. "
+    "Respect optional and negative source instructions; do not invent a missing identity or select a source "
+    "without actor use permission. Preference selection never authorizes retrieval, binding, "
+    "or waiving a source requirement."
 )
 
 
@@ -918,7 +926,6 @@ def discover_resources(
         "do not shorten an Agent id to its UUID. Reply with ONLY JSON: "
         '{"resource_ids": ["<id>", ...], "selection_reasons": {"<selected resource id>": "<reason>"}}.'
     )
-    system += _KNOWLEDGE_DISCOVERY_RULES
     system += (
         " Include boolean knowledge_requires_clarification: true when the original goal or confirmed requirements "
         "depend on workspace knowledge or answering from company/product documents, even with no available IDs. "
@@ -941,6 +948,7 @@ def discover_resources(
     )
     system += "\n\n# Native workflow build vocabulary\n\n" + _node_vocabulary(mode)
     system += "\n\n" + native_build_capability_system_rules()
+    system += _KNOWLEDGE_DISCOVERY_RULES
     system += llm.json_language_instruction("selection_reasons business explanations", reply_language=reply_language)
     listing = "\n".join(_discovery_line(rid, kind, ref) for rid, (kind, ref) in catalog.items())
     user = f"{_cognition_source(goal_text, requirements)}\n\nPLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"

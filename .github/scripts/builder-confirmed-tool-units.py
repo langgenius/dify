@@ -2880,6 +2880,9 @@ knowledge_cases = a4_expected[
 del knowledge_cases["test_refusing_goal_change_keeps_knowledge_wait_and_never_replans"]
 knowledge_cases.update(
     {
+        "test_named_unready_knowledge_prompt_preserves_discovery_preference": 2,
+        "test_named_knowledge_selection_keeps_model_ranking_and_exact_identity": 1,
+        "test_named_knowledge_empty_model_selection_never_invents_a_preference": 2,
         "test_selected_knowledge_opens_goal_decision_instead_of_repeating_resource_confirmation": 1,
         "test_refusing_goal_change_keeps_current_actionable_form_and_does_not_repeat_wait_message": 2,
         "test_explicit_goal_change_is_traceable_and_allows_no_knowledge_plan": 4,
@@ -2923,6 +2926,10 @@ a4_expected.update(
             "test_preflight_correction_keeps_complete_source_in_both_repair_attempts": 1,
             "test_repair_cannot_replace_a_field_omitted_from_its_context": 6,
             "test_omitted_source_does_not_block_a_visible_unrelated_field_repair": 1,
+            "test_diagnosis_sees_complete_current_parser_with_bound_format_facts": 2,
+            "test_diagnosis_does_not_expand_unbound_or_mismatched_source": 6,
+            "test_diagnosis_expanded_source_redacts_credentials_and_excludes_neighbors": 1,
+            "test_diagnosis_oversized_source_is_explicitly_omitted_without_a_prefix": 1,
         },
         "tests.unit_tests.services.dify_builder.test_testdata_code_refresh": {
             "test_initial_file_submission_refreshes_low_risk_code_and_saves_inputs_once": 6,
