@@ -100,11 +100,21 @@ class AgentLLMInnerService:
         require_agent_service_envelope(request.native_dispatch)
         if request.native_dispatch is not None:
             from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+            from services.dify_builder.cognition_model_gateway import ensure_predefined_plugin_metadata_ready
             from services.dify_builder.native_testing.agent_operations import agent_operations_for_ref
 
             try:
-                agent_operations_for_ref(request.native_dispatch.ref).validate_model_request(request=request)
-                return self._prepare(request)
+                owner = agent_operations_for_ref(request.native_dispatch.ref)
+
+                def check_current_admission() -> None:
+                    """Check the same permit; metadata cannot extend or consume it."""
+                    owner.validate_model_request(request=request)
+
+                check_current_admission()
+                prepared = self._prepare(request)
+                ensure_predefined_plugin_metadata_ready(prepared.model_instance, check=check_current_admission)
+                check_current_admission()
+                return prepared
             except BuilderExecutionPolicyError:
                 raise
             except Exception:

@@ -165,7 +165,7 @@ def test_handler_remembers_preference_but_waits_without_checkpoint_or_plan_appro
     plan = replace(PLAN, used_resource_ids=[], discovery_resource_ids=[KNOWLEDGE])
     agent = ReconciliationAgent(plan)
     result, context, _, items = confirm(agent, offered=[KNOWLEDGE], ids=[KNOWLEDGE])
-    assert result.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
     assert context.resource_selection["knowledge_preferences"] == [KNOWLEDGE]
     assert context.resource_selection["resource_ids"] == []
     assert context.resource_selection["blocked_capability"] == "knowledge_retrieval_phase_two"
@@ -243,7 +243,7 @@ def test_real_agent_and_handler_wait_without_any_workflow_or_model_side_effect(m
 
     agent = LlmBuilderAgent("tenant", account_id="actor", model_resolver_fn=resolver)
     result, ctx, _, items = confirm(agent, offered=[KNOWLEDGE], ids=[KNOWLEDGE])
-    assert result.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
     assert ctx.resource_selection["knowledge_preferences"] == [KNOWLEDGE]
     assert not ctx.checkpoint_id
     assert not any(item.kind == "plan" for item in items)
@@ -362,7 +362,7 @@ def test_mixed_or_uncertain_source_cannot_bypass_handler_with_false_model_hint(
     assert not stored.checkpoint_id
 
 
-def decision_dialog() -> tuple[Runner, InMemoryRepository, str, ReconciliationAgent]:
+def decision_dialog(*, selected: bool = False) -> tuple[Runner, InMemoryRepository, str, ReconciliationAgent]:
     native = WorkflowPlan(
         "Question formatter",
         "User text",
@@ -372,6 +372,23 @@ def decision_dialog() -> tuple[Runner, InMemoryRepository, str, ReconciliationAg
     )
 
     class DialogAgent(ReconciliationAgent):
+        @override
+        def reconcile_resource_plan(
+            self,
+            plan: WorkflowPlan,
+            resource_ids: list[str],
+            *,
+            goal_text: str,
+            requirements: dict[str, object],
+            reply_language: str | None = None,
+        ) -> WorkflowPlan | None:
+            if KNOWLEDGE in resource_ids:
+                self.requests.append({"resource_ids": resource_ids})
+                return replace(plan, used_resource_ids=[], discovery_resource_ids=[KNOWLEDGE])
+            return super().reconcile_resource_plan(
+                plan, resource_ids, goal_text=goal_text, requirements=requirements, reply_language=reply_language
+            )
+
         @override
         def propose_plan_v1(
             self, requirements: dict[str, object], *, goal_text: str, reply_language: str | None = None
@@ -389,7 +406,13 @@ def decision_dialog() -> tuple[Runner, InMemoryRepository, str, ReconciliationAg
 
     agent = DialogAgent(native)
     repo = InMemoryRepository()
-    session = Session(app_id="app", entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_RESOURCE_RECOMMENDATION)
+    session = Session(
+        app_id="app",
+        owner_account_id="actor",
+        tenant_id="tenant",
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_RESOURCE_RECOMMENDATION,
+    )
     repo.create_session(
         session,
         DifyBuilderContext(
@@ -404,7 +427,9 @@ def decision_dialog() -> tuple[Runner, InMemoryRepository, str, ReconciliationAg
         session.id,
         Turn(
             actor=Actor(account_id="actor", tenant_id="tenant"),
-            action=Action(kind="confirm_resources", payload={"resource_ids": []}, base_version=1),
+            action=Action(
+                kind="confirm_resources", payload={"resource_ids": [KNOWLEDGE] if selected else []}, base_version=1
+            ),
         ),
     )
     return runner, repo, session.id, agent
@@ -427,19 +452,92 @@ def answer_decision(
     )
 
 
-def test_refusing_goal_change_keeps_knowledge_wait_and_never_replans() -> None:
-    runner, repo, sid, agent = decision_dialog()
+def test_selected_knowledge_opens_goal_decision_instead_of_repeating_resource_confirmation() -> None:
+    from core.dify_builder.errors import BadRequestError
+    from services.dify_builder.service import DifyBuilderService, _actions_for
+    from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
+
+    runner, repo, sid, agent = decision_dialog(selected=True)
+    session, context = repo.get_session(sid)
+    assert session.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert context.resource_selection["knowledge_preferences"] == [KNOWLEDGE]
+    assert context.resource_selection["knowledge_decision_pending"]["original_goal"] == context.goal_text
+    assert [action.id for action in _actions_for(session.current_state, context)] == ["submit_requirements"]
+    conversation = repo.list_conversation(sid)
+    requests = list(agent.requests)
+    service = DifyBuilderService(repo, FakeSessionLock(), lambda *_a: None)
+    with pytest.raises(BadRequestError, match="not allowed in state"):
+        service._prepare_action(
+            sid,
+            Actor(account_id="actor", tenant_id="tenant"),
+            Action(kind="confirm_resources", payload={"resource_ids": [KNOWLEDGE]}, base_version=session.version),
+        )
+    runner.advance(
+        sid,
+        Turn(
+            actor=Actor(account_id="actor", tenant_id="tenant"),
+            action=Action(
+                kind="confirm_resources", payload={"resource_ids": [KNOWLEDGE]}, base_version=session.version
+            ),
+        ),
+    )
+    assert repo.get_session(sid)[0].current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert repo.list_conversation(sid) == conversation
+    assert agent.requests == requests
+    assert not context.checkpoint_id
+
+
+@pytest.mark.parametrize("selected", [False, True])
+def test_refusing_goal_change_keeps_current_actionable_form_and_does_not_repeat_wait_message(selected: bool) -> None:
+    from services.dify_builder.service import DifyBuilderService, _internal_action_allowed
+    from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
+
+    runner, repo, sid, agent = decision_dialog(selected=selected)
+    requests = list(agent.requests)
+    key = repo.get_session(sid)[1].form_fields[0]["key"]
     result = answer_decision(runner, repo, sid, option=0)
-    assert result.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
     _, context = repo.get_session(sid)
     assert context.resource_selection["knowledge_scope_decision"]["choice"] == "retain"
+    assert context.resource_selection["knowledge_decision_pending"]["card_key"] == key
+    assert context.form_fields[0]["key"] == key
+    service = DifyBuilderService(repo, FakeSessionLock(), lambda *_a: None)
+    view = service._build_session_view(result, context)
+    assert [action.id for action in view.actions] == ["submit_requirements"]
+    assert view.active_interaction is not None
+    assert view.active_interaction.action_id == "submit_requirements"
+    assert view.active_interaction.valid_at_version == result.version
+    assert view.active_interaction.card.payload["fields"][0]["key"] == key
+    assert _internal_action_allowed(result.current_state, context, "message")
+    assert _internal_action_allowed(result.current_state, context, "stop")
+    conversation = repo.list_conversation(sid)
+    action = Action(
+        kind="submit_requirements",
+        payload={key: context.form_fields[0]["options"][0]},
+        base_version=result.version,
+    )
+    service._prepare_action(sid, Actor(account_id="actor", tenant_id="tenant"), action)
+    repeated = runner.advance(sid, Turn(actor=Actor(account_id="actor", tenant_id="tenant"), action=action))
+    repeated_items = repo.list_conversation(sid)
+    assert repeated_items[:-1] == conversation
+    assert repeated_items[-1].kind == "interaction_response"
+    assert repeated.version == result.version + 1
+    _, repeated_context = repo.get_session(sid)
+    repeated_view = service._build_session_view(repeated, repeated_context)
+    assert repeated_view.active_interaction is not None
+    assert repeated_view.active_interaction.valid_at_version == repeated.version
+    assert repeated_view.active_interaction.card.seq == view.active_interaction.card.seq
     assert not context.checkpoint_id
-    assert agent.requests == []
+    assert agent.requests == requests
 
 
-def test_explicit_goal_change_is_traceable_and_allows_no_knowledge_plan() -> None:
-    runner, repo, sid, agent = decision_dialog()
+@pytest.mark.parametrize("selected", [False, True])
+@pytest.mark.parametrize("retain_first", [False, True])
+def test_explicit_goal_change_is_traceable_and_allows_no_knowledge_plan(selected: bool, retain_first: bool) -> None:
+    runner, repo, sid, agent = decision_dialog(selected=selected)
     original = repo.get_session(sid)[1].goal_text
+    if retain_first:
+        answer_decision(runner, repo, sid, option=0)
     result = answer_decision(runner, repo, sid, option=1)
     assert result.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
     _, context = repo.get_session(sid)
@@ -449,7 +547,7 @@ def test_explicit_goal_change_is_traceable_and_allows_no_knowledge_plan() -> Non
     assert original in context.goal_text
     assert "Explicit user goal change" in context.goal_text
     assert context.requirements == {"language": "Chinese"}
-    confirmed = agent.requests[0]["requirements"]
+    confirmed = agent.requests[-1]["requirements"]
     assert isinstance(confirmed, dict)
     change = confirmed["_builder_knowledge_scope_change"]
     assert isinstance(change, dict)
@@ -466,12 +564,38 @@ def test_explicit_goal_change_is_traceable_and_allows_no_knowledge_plan() -> Non
     assert "knowledge" not in str(repo.get_session(sid)[1].plan_items).lower()
 
 
-def test_forged_or_old_decision_field_does_not_modify_goal() -> None:
-    runner, repo, sid, agent = decision_dialog()
+@pytest.mark.parametrize("selected", [False, True])
+def test_forged_or_old_decision_field_does_not_modify_goal(selected: bool) -> None:
+    runner, repo, sid, agent = decision_dialog(selected=selected)
+    requests = list(agent.requests)
     result = answer_decision(runner, repo, sid, option=1, forged=True)
     assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
-    assert agent.requests == []
+    assert agent.requests == requests
     assert "knowledge_scope_decision" not in repo.get_session(sid)[1].resource_selection
+
+
+def test_old_decision_version_cannot_waive_after_retaining_goal() -> None:
+    from core.dify_builder.errors import ConflictError
+
+    runner, repo, sid, agent = decision_dialog(selected=True)
+    session, context = repo.get_session(sid)
+    field = context.form_fields[0]
+    answer_decision(runner, repo, sid, option=0)
+    requests = list(agent.requests)
+    with pytest.raises(ConflictError, match="stale base_version"):
+        runner.advance(
+            sid,
+            Turn(
+                actor=Actor(account_id="actor", tenant_id="tenant"),
+                action=Action(
+                    kind="submit_requirements",
+                    payload={field["key"]: field["options"][1]},
+                    base_version=session.version,
+                ),
+            ),
+        )
+    assert repo.get_session(sid)[1].resource_selection["knowledge_scope_decision"]["choice"] == "retain"
+    assert agent.requests == requests
 
 
 def test_public_description_is_bounded_escaped_data_in_same_discovery_call(monkeypatch: pytest.MonkeyPatch) -> None:

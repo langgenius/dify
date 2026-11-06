@@ -1,5 +1,8 @@
 import binascii
-from collections.abc import Generator, Sequence
+import json
+import re
+import time
+from collections.abc import Callable, Generator, Sequence
 from typing import IO, Any
 
 from core.plugin.entities.plugin_daemon import (
@@ -15,22 +18,114 @@ from core.plugin.entities.plugin_daemon import (
     PluginVoicesResponse,
     TTSAudioChunk,
 )
-from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.base import BasePluginClient, use_plugin_daemon_request_timeout
 from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMResultChunk
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
+from graphon.model_runtime.errors.invoke import InvokeServerUnavailableError
 from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from services.plugin.dispatch_identity import plugin_dispatch_headers
 
 _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name__,))
 _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
+_MODEL_METADATA_READINESS_BUDGET_SECONDS = 10.0
+
+
+def _metadata_gateway_unavailable(error: PluginInvokeError) -> bool:
+    """Recognize only the daemon's bounded exhausted-gateway envelope.
+
+    This identifies a gateway failure, not startup or an unsent inference.
+    Callers may use it only to repeat credential-free schema metadata.
+    """
+    if type(error) is not PluginInvokeError or not isinstance(error.description, str) or len(error.description) > 2048:
+        return False
+    try:
+        envelope = json.loads(error.description)
+    except (ValueError, TypeError, RecursionError):
+        return False
+    if not isinstance(envelope, dict) or envelope.get("error_type") != "PluginDaemonInnerError":
+        return False
+    message = envelope.get("message")
+    if not isinstance(message, str):
+        return False
+    return (
+        re.fullmatch(
+            r"Error sending request to serverless: all (?P<count>[1-9]|1[0-6]) attempts failed, "
+            r"last error: attempt (?P=count)/(?P=count) failed with status code: 502",
+            message,
+        )
+        is not None
+    )
 
 
 class PluginModelClient(BasePluginClient):
+    def ensure_model_metadata_ready(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        plugin_unique_identifier: str,
+        check: Callable[[], None],
+    ) -> None:
+        """Read fresh predefined LLM metadata with at most one gateway retry.
+
+        Preconditions: the caller qualified the pinned predefined model and
+        supplies current admission checks. Credentials and inference payloads
+        are never sent. Success verifies matching fresh metadata; failure never
+        dispatches inference or changes credentials, permissions or cache TTLs.
+        The body deadline is checked per raw chunk, with up to one final read
+        inactivity wait (at most five seconds); it is not a hard wall deadline.
+        """
+        deadline = time.monotonic() + _MODEL_METADATA_READINESS_BUDGET_SECONDS
+
+        def read() -> None:
+            check()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise InvokeServerUnavailableError(description="Plugin model metadata service unavailable.")
+            try:
+                with use_plugin_daemon_request_timeout(min(remaining, 5.0), metadata_deadline=deadline):
+                    schema = self.get_model_schema(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        plugin_id=plugin_id,
+                        provider=provider,
+                        model_type=ModelType.LLM.value,
+                        model=model,
+                        credentials={},
+                        plugin_unique_identifier=plugin_unique_identifier,
+                    )
+            finally:
+                check()
+            if time.monotonic() >= deadline:
+                raise InvokeServerUnavailableError(description="Plugin model metadata service unavailable.")
+            if schema is None or schema.model != model or schema.model_type != ModelType.LLM:
+                raise ValueError("Plugin model metadata schema does not match the prepared model")
+
+        try:
+            read()
+        except PluginInvokeError as error:
+            if not _metadata_gateway_unavailable(error):
+                raise
+            check()
+            time.sleep(min(0.5, max(0.0, deadline - time.monotonic())))
+            check()
+            try:
+                read()
+            except PluginInvokeError as retry_error:
+                if not _metadata_gateway_unavailable(retry_error):
+                    raise
+                raise InvokeServerUnavailableError(
+                    description="Plugin model metadata service unavailable."
+                ) from retry_error
+
     @staticmethod
     def _dispatch_payload(*, user_id: str | None, data: dict[str, Any], app_id: str | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {"data": data}

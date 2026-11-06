@@ -85,3 +85,103 @@ def test_threaded_generation_rechecks_current_policy_without_losing_application_
                 with pytest.raises(CognitionPolicyDeniedError, match="builder_disabled"):
                     pool.submit(complete, model).result()
                 assert len(calls) == 2
+
+
+def test_policy_revoked_during_real_metadata_read_prevents_retry_and_inference(monkeypatch: pytest.MonkeyPatch) -> None:
+    from yarl import URL
+
+    from core.plugin.impl import base
+    from tests.unit_tests.core.plugin.impl.test_model_readiness import _daemon, _error
+    from tests.unit_tests.services.dify_builder.test_predefined_model_readiness import _instance
+
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+    monkeypatch.setattr(composition, "db", SQLAlchemy(app))
+    policies = Policies()
+    policies.policy = CognitionPolicy(True, (MODEL,), MODEL.id, (), 1, "explicit")
+    instance = _instance()
+
+    class Native(Models):
+        def resolve(self, _actor: Actor, _model: CognitionModel) -> ModelInstance:
+            return instance
+
+    monkeypatch.setattr(composition, "_require_feature", lambda _: None)
+    monkeypatch.setattr(composition, "SqlDifyBuilderRepository", lambda _: policies)
+    monkeypatch.setattr(composition, "NativeCognitionModels", lambda _: Native())
+    monkeypatch.setattr(instance, "invoke_llm", lambda **_: pytest.fail("revoked model invoked"))
+    from services.dify_builder import wiring
+
+    monkeypatch.setattr(wiring, "_authorize_app", lambda *_: None)
+    with _daemon([_error()], on_request=lambda: setattr(policies, "role", None)) as (url, requests):
+        monkeypatch.setattr(base, "plugin_daemon_inner_api_baseurl", URL(url))
+        with app.app_context():
+            model = composition.guarded_cognition_model("tenant", None, account_id="member", app_id="app")
+            with pytest.raises(CognitionPolicyDeniedError, match="policy_permission_denied"):
+                model.invoke_llm(prompt_messages=[])
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize("body_expires", [False, True])
+def test_cold_static_initial_selection_reaches_fresh_metadata_before_single_uncertain_inference(
+    monkeypatch: pytest.MonkeyPatch,
+    body_expires: bool,
+) -> None:
+    from yarl import URL
+
+    from core.entities.provider_entities import CustomProviderConfiguration
+    from core.model_manager import ModelManager
+    from core.plugin.impl import base
+    from core.plugin.impl import model as model_client
+    from services.dify_builder.cognition_model_gateway import NativeCognitionModels
+    from tests.unit_tests.core.plugin.impl.test_model_readiness import SCHEMA, _daemon, _error
+    from tests.unit_tests.services.dify_builder.test_cognition_model_gateway import Credentials
+    from tests.unit_tests.services.dify_builder.test_predefined_model_readiness import _instance
+
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+    monkeypatch.setattr(composition, "db", SQLAlchemy(app))
+    instance = _instance()
+    instance.provider_model_bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(
+        credentials={"token": "prepared"}, current_credential_id="chosen"
+    )
+    selected = replace(MODEL, provider=instance.provider, name=instance.model_name)
+    policies = Policies()
+    policies.policy = CognitionPolicy(True, (selected,), selected.id, (), 1, "explicit")
+    manager = ModelManager.for_tenant("tenant")
+    monkeypatch.setattr(manager, "get_model_instance", lambda **_: instance)
+    monkeypatch.setattr(ModelManager, "for_tenant", lambda *_, **__: manager)
+    monkeypatch.setattr(composition, "_require_feature", lambda _: None)
+    monkeypatch.setattr(composition, "SqlDifyBuilderRepository", lambda _: policies)
+    monkeypatch.setattr(composition, "NativeCognitionModels", lambda _: NativeCognitionModels(Credentials()))
+    # Actual predefined availability/selection must not require runtime schema
+    # or count any Redis schema entry as fresh readiness.
+    monkeypatch.setattr(
+        "core.plugin.impl.model_runtime.redis_client.get", lambda _: pytest.fail("schema cache used as readiness")
+    )
+    calls = []
+
+    def uncertain_inference(**_kwargs: object) -> None:
+        calls.append("inference")
+        assert len(requests) == 2
+        raise RuntimeError("unknown provider outcome")
+
+    monkeypatch.setattr(instance, "invoke_llm", uncertain_inference)
+    from services.dify_builder import wiring
+
+    monkeypatch.setattr(wiring, "_authorize_app", lambda *_: None)
+    if body_expires:
+        monkeypatch.setattr(model_client, "_MODEL_METADATA_READINESS_BUDGET_SECONDS", 0.25)
+    with _daemon(
+        [_error(), {"code": 0, "message": "", "data": {"model_schema": SCHEMA}}],
+        stream_fragment=b"\n" if body_expires else None,
+    ) as (url, requests):
+        monkeypatch.setattr(base, "plugin_daemon_inner_api_baseurl", URL(url))
+        with app.app_context():
+            model = composition.guarded_cognition_model("tenant", None, account_id="member", app_id="app")
+            reason = "model_availability_unknown" if body_expires else "model_invocation_failed"
+            with pytest.raises(CognitionPolicyDeniedError, match=reason):
+                WorkflowGenerator._invoke_with_retry(
+                    model_instance=model, prompt_messages=[], model_parameters={}, stage="Builder"
+                )
+    assert len(requests) == (1 if body_expires else 2)
+    assert calls == ([] if body_expires else ["inference"])

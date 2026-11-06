@@ -726,6 +726,13 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         inputs = {}
         if turn.action is not None and isinstance(turn.action.payload.get("inputs"), dict):
             inputs = turn.action.payload["inputs"]
+    from services.dify_builder.test_input_continuity import validate_supplied_values
+
+    try:
+        validate_runtime_inputs(schema, inputs)
+        validate_supplied_values(schema, inputs, require_all=False)
+    except (ValueError, TypeError) as exc:
+        return input_gate_result(env, s, fc, schema, inputs, PcState.EDIT_AWAIT_TESTDATA, str(exc), actor=turn.actor)
     inputs, stale_effects = record_effect_confirmation(env, s, fc, turn.actor, inputs)
     if stale_effects:
         return input_gate_result(
@@ -735,13 +742,9 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             schema,
             inputs,
             PcState.EDIT_AWAIT_TESTDATA,
-            copy_text(BuilderCopyId.TEST_EFFECTS_CHANGED),
+            copy_text(stale_effects),
             actor=turn.actor,
         )
-    try:
-        validate_runtime_inputs(schema, inputs)
-    except ValueError as exc:
-        return input_gate_result(env, s, fc, schema, inputs, PcState.EDIT_AWAIT_TESTDATA, str(exc), actor=turn.actor)
     confirm_testdata_contract(s, fc, turn.action.payload if turn.action else {}, inputs)
     ti = TestInput(
         session_id=s.id,

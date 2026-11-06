@@ -3400,12 +3400,17 @@ def test_default_build_test_never_passes_consent_even_with_a_pending_reference(m
 
 
 def test_changed_test_scope_uses_a_localizable_reason(monkeypatch: pytest.MonkeyPatch) -> None:
+    from runtime_contracts.builder.copy_ids import BuilderCopyId
     from services.dify_builder.application import handlers_build
 
     env, _ = _new_env(dify=FakeBuildDifyPort())
     s = _session(current_state=PcState.BUILD_AWAIT_TESTDATA)
     fc = DifyBuilderContext(reply_language="zh-Hans")
-    monkeypatch.setattr(handlers_build, "record_effect_confirmation", lambda *_args: ({"topic": "hi"}, True))
+    monkeypatch.setattr(
+        handlers_build,
+        "record_effect_confirmation",
+        lambda *_args: ({"topic": "hi"}, BuilderCopyId.TEST_EFFECTS_CHANGED),
+    )
     result = handlers_build.handle_await_testdata(
         env, Turn(actor=_actor(), action=Action(kind="provide_testdata", payload={"inputs": {"topic": "hi"}})), s, fc
     )

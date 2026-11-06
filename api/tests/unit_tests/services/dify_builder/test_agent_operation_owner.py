@@ -716,6 +716,71 @@ def test_confirmed_model_exception_never_returns_private_provider_text(
     assert error.value.reason_code == f"native_agent_model_{phase if phase == 'prepare' else 'dispatch'}_failed"
 
 
+def test_native_model_permission_expiring_during_metadata_prevents_preparation_and_claim(
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService
+) -> None:
+    from yarl import URL
+
+    from core.plugin.impl import base
+    from services.agent_llm_inner_service import AgentLLMInnerService, PreparedAgentLLMInvocation
+    from services.dify_builder.native_testing import agent_operations as module
+    from tests.unit_tests.core.plugin.impl.test_model_readiness import _daemon, _error
+    from tests.unit_tests.services.dify_builder.test_predefined_model_readiness import _instance
+    from tests.unit_tests.services.test_agent_llm_inner_service import _request
+
+    request = _request()
+    request.target.provider = "langgenius/anthropic/anthropic"
+    request.target.model = "static-model"
+    pending = envelope()
+    pending = pending.model_copy(
+        update={
+            "intent": pending.intent.model_copy(
+                update={
+                    "kind": "model",
+                    "target": {
+                        "plugin_id": "langgenius/anthropic",
+                        "provider": request.target.provider,
+                        "model": request.target.model,
+                    },
+                    "parameters": {
+                        **request.target.model_dump(mode="json", exclude={"provider", "model"}),
+                        "stream": True,
+                    },
+                }
+            )
+        }
+    )
+    request.native_dispatch = pending
+    instance = _instance()
+    service = AgentLLMInnerService()
+    monkeypatch.setattr(
+        service, "_prepare", lambda _: PreparedAgentLLMInvocation(request=request, model_instance=instance)
+    )
+    monkeypatch.setattr(module, "agent_operations_for_ref", lambda _: operations_service)
+    monkeypatch.setattr(operations_service, "validate_caller", lambda **_: None)
+    monkeypatch.setattr(operations_service, "revalidate", lambda **_: None)
+    calls = []
+    expired = False
+
+    def validate(**_kwargs: object) -> None:
+        if expired:
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+
+    def expire() -> None:
+        nonlocal expired
+        expired = True
+
+    monkeypatch.setattr(operations_service.bridge.authorization, "validate_dispatch", validate)
+    monkeypatch.setattr(operations_service.bridge.authorization, "claim_dispatch", lambda **_: calls.append("claim"))
+    monkeypatch.setattr(instance, "invoke_llm", lambda **_: pytest.fail("expired model invoked"))
+    with _daemon([_error()], on_request=expire) as (url, requests):
+        monkeypatch.setattr(base, "plugin_daemon_inner_api_baseurl", URL(url))
+        with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
+            service.prepare(request)
+    assert len(requests) == 1
+    assert calls == []
+
+
 def test_expired_completed_receipt_requires_exact_original_permit_and_result(
     operations_service: AgentOperationService,
 ) -> None:

@@ -6,10 +6,68 @@ from typing import Any, Protocol
 from core.dify_builder.models import Actor
 from core.entities.model_entities import ModelWithProviderEntity
 from core.model_manager import ModelInstance, ModelManager
-from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
+from core.plugin.impl.model_runtime import PluginModelRuntime
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from models.provider import ProviderType
+from models.provider_ids import ModelProviderID
 from services.dify_builder.application.cognition_policy import CognitionModel, CognitionPolicyDeniedError
+
+
+def ensure_predefined_plugin_metadata_ready(instance: ModelInstance, *, check: Callable[[], None]) -> bool:
+    """Gate a prepared static plugin model using uncached credential-free metadata.
+
+    Preconditions: admission and credentials were resolved by the existing owner.
+    Only pinned predefined custom-provider LLMs qualify. Config-dependent,
+    system and unresolved LB models retain their existing behavior. Success
+    does not rotate credentials, refresh TTLs or establish inference authority;
+    the caller must retain its final current-policy check before dispatch.
+    """
+    if not isinstance(instance, ModelInstance):
+        return False
+    model_type = instance.model_type_instance
+    declaration = model_type.provider_schema
+    runtime = model_type.model_runtime
+    configuration = instance.provider_model_bundle.configuration
+    if (
+        not isinstance(runtime, PluginModelRuntime)
+        or not isinstance(declaration, PluginModelProviderDeclaration)
+        or declaration.installation_source == PluginInstallationSource.Remote
+        or model_type.model_type != ModelType.LLM
+        or configuration.using_provider_type != ProviderType.CUSTOM
+        or instance.load_balancing_manager is not None
+        or any(
+            model.model == instance.model_name and model.model_type == ModelType.LLM
+            for model in configuration.custom_configuration.models
+        )
+        or not any(
+            model.model == instance.model_name
+            and model.model_type == ModelType.LLM
+            and model.fetch_from == FetchFrom.PREDEFINED_MODEL
+            for model in declaration.models
+        )
+    ):
+        return False
+    provider = ModelProviderID(instance.provider)
+    identifier = declaration.plugin_unique_identifier
+    if (
+        str(ModelProviderID(declaration.provider)) != str(provider)
+        or identifier.partition(":")[0] != provider.plugin_id
+        or "@" not in identifier
+    ):
+        return False
+    runtime.client.ensure_model_metadata_ready(
+        tenant_id=runtime.tenant_id,
+        user_id=runtime.user_id,
+        plugin_id=provider.plugin_id,
+        provider=provider.provider_name,
+        model=instance.model_name,
+        plugin_unique_identifier=identifier,
+        check=check,
+    )
+    return True
 
 
 class ModelCredentialVisibility(Protocol):

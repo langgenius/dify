@@ -20,6 +20,16 @@ Code failure policy:
   or fail-branch behavior unless the user requests changing it. Do not add a
   continuation strategy to defeat required stopping, or infer a stop requirement
   merely from an output name or value such as 0.
+- Validate business identity fields before grouping or hash-based deduplication,
+  using the approved input contract. When per-record isolation is required,
+  preserve each invalid record's original value and input index; reject it
+  individually and continue processing valid records. Do not invent or coerce
+  identities, and do not merge distinct invalid identities into one duplicate/conflict group.
+- Preserve approved valid-identity duplicate and conflict semantics, output
+  fields and counts. A requested per-record failure must not abort a valid
+  batch; an explicit whole-input failure must still stop rather than become
+  zero/empty success. Do not replace unrelated calculations or rewrite the whole Code node
+  when applying a narrowly requested validation or calculation change.
 """
 
 # Shared input semantics for generation and edits/repairs; guidance rather

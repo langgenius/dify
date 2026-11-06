@@ -90,6 +90,7 @@ from services.dify_builder.effect_presentation import (
     with_effects_note,
 )
 from services.dify_builder.execution_messages import change_scope_label
+from services.dify_builder.test_input_continuity import validate_supplied_values
 
 logger = logging.getLogger(__name__)
 
@@ -969,13 +970,21 @@ def testdata_form(
     # Use prepared values to show direct Start-based targets. Typing inputs in
     # this form is intentional; submission binds those values after checking
     # that the configuration itself still matches the shown disclosure.
-    fc.code_risk_assessments = env.dify.prepare_code_risks(
-        s.app_id,
-        actor,
-        session_id=s.id,
-        inputs=values,
-        context=fc,
-    )
+    valid_values = True
+    try:
+        validate_supplied_values(schema, values, require_all=False)
+        if SYSTEM_QUERY in values:
+            validate_runtime_inputs(schema, values)
+    except (ValueError, TypeError):
+        valid_values = False
+    if valid_values:
+        fc.code_risk_assessments = env.dify.prepare_code_risks(
+            s.app_id,
+            actor,
+            session_id=s.id,
+            inputs=values,
+            context=fc,
+        )
     disclosure = _test_effects(env, s, fc, actor, values)
     fc.effect_confirmation_form = {
         item.node_id: item.config_signature or item.signature for item in disclosure.confirmable
@@ -993,15 +1002,43 @@ def testdata_form(
 
 def record_effect_confirmation(
     env: Env, s: Session, fc: DifyBuilderContext, actor: Actor, inputs: dict[str, Any]
-) -> tuple[dict[str, Any], bool]:
+) -> tuple[dict[str, Any], BuilderCopyId | None]:
     """Record only checkboxes for configuration actually shown by the server.
 
-    Return Start inputs and whether a selected effect needs fresh disclosure.
+    Callers validate supplied Start values before this potentially assessing step.
+    Return Start inputs and the reason fresh disclosure is required, if any.
     HTTP/Tool direct Start edits bind approval after the static comparison.
-    Code input changes require a fresh explanation before accepting its choice.
+    A first input submission may refresh an already assessed low-risk Code
+    explanation when no effects were offered or approved. Only another assessed
+    low-risk result on the same execution revision advances directly. New risks
+    or draft drift return to the form;
+    selected or prior effect consent is never transferred to the new scope.
     """
+    from services.dify_builder.code_risk_assessment import validated_assessments
+
     plain, confirmed = split_confirmations(inputs)
     current = _test_effects(env, s, fc, actor, plain)
+    prior = validated_assessments(fc.code_risk_assessments)
+    missing_code_assessment = any(item.node_type == "code" and not item.assessment_digest for item in current.items)
+    refresh = (
+        missing_code_assessment
+        and not confirmed
+        and not fc.effect_confirmation
+        and not fc.effect_confirmation_form
+        and bool(prior)
+        and all(item["status"] == "assessed" and item["classification"] in {"pure", "read"} for item in prior.values())
+    )
+    if refresh:
+        _graph, revision = env.dify.read_graph(s.app_id, actor)
+        refresh = bool(fc.last_snapshot_hash) and revision == fc.last_snapshot_hash
+    refresh_drift = False
+    if refresh:
+        fc.code_risk_assessments = env.dify.prepare_code_risks(
+            s.app_id, actor, session_id=s.id, inputs=plain, context=fc
+        )
+        _graph, revision = env.dify.read_graph(s.app_id, actor)
+        refresh_drift = revision != fc.last_snapshot_hash
+        current = _test_effects(env, s, fc, actor, plain)
     selected = {
         item.node_id: item.config_signature or item.signature
         for item in current.confirmable
@@ -1010,12 +1047,22 @@ def record_effect_confirmation(
     accepted = [
         node_id for node_id, signature in selected.items() if fc.effect_confirmation_form.get(node_id) == signature
     ]
-    stale = len(accepted) != len(selected) or any(
-        item.node_type == "code" and not item.assessment_digest for item in current.items
-    )
+    reason = None
+    if refresh_drift:
+        reason = BuilderCopyId.TEST_CONTEXT_CHANGED
+    elif len(accepted) != len(selected):
+        reason = BuilderCopyId.TEST_EFFECTS_CHANGED
+    elif any(item.node_type == "code" and not item.assessment_digest for item in current.items) or (
+        refresh
+        and (
+            current.confirmable
+            or any(item.node_type == "code" and item.tier not in {"sandboxed", "read"} for item in current.items)
+        )
+    ):
+        reason = BuilderCopyId.TEST_POLICY_REVIEW
     fc.effect_confirmation = current.confirmation(accepted)
     fc.effect_confirmation_form = {}
-    return plain, stale
+    return plain, reason
 
 
 def needs_effect_confirmation(env: Env, s: Session, fc: DifyBuilderContext, actor: Actor) -> bool:
@@ -1343,6 +1390,11 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             raw = turn.action.payload.get("inputs")
             if isinstance(raw, dict):
                 inputs = raw
+    try:
+        validate_runtime_inputs(schema, inputs)
+        validate_supplied_values(schema, inputs, require_all=False)
+    except (ValueError, TypeError) as exc:
+        return input_gate_result(env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, str(exc), actor=turn.actor)
     inputs, stale_effects = record_effect_confirmation(env, s, fc, turn.actor, inputs)
     if stale_effects:
         return input_gate_result(
@@ -1352,14 +1404,10 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             schema,
             inputs,
             PcState.FIX_AWAIT_TESTDATA,
-            copy_text(BuilderCopyId.TEST_EFFECTS_CHANGED),
+            copy_text(stale_effects),
             actor=turn.actor,
         )
 
-    try:
-        validate_runtime_inputs(schema, inputs)
-    except ValueError as exc:
-        return input_gate_result(env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, str(exc), actor=turn.actor)
     confirm_testdata_contract(s, fc, turn.action.payload if turn.action else {}, inputs)
     ti = TestInput(
         session_id=s.id,

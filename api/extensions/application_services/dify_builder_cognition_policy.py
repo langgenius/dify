@@ -7,7 +7,11 @@ from core.dify_builder.models import Actor
 from extensions.ext_database import db
 from repositories.credentials.query_repository import CredentialQueryRepository
 from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError, CognitionPolicyService
-from services.dify_builder.cognition_model_gateway import NativeCognitionModels, PolicyModelInstance
+from services.dify_builder.cognition_model_gateway import (
+    NativeCognitionModels,
+    PolicyModelInstance,
+    ensure_predefined_plugin_metadata_ready,
+)
 from services.dify_builder.repository import SqlDifyBuilderRepository
 
 
@@ -47,18 +51,27 @@ def guarded_cognition_model(tenant_id: str, requested: dict | None, *, account_i
             policy = CognitionPolicyService(repository, native)
             selected = policy.select(actor, requested)
             instance = native.resolve(actor, selected)
-            # External model metadata may take time. Recheck local admission
-            # after it, immediately before returning the invocation target.
-            policy.authorize_selected(actor, selected)
-            if app_id is not None:
-                from services.dify_builder.service import AppAccess
-                from services.dify_builder.wiring import _authorize_app
 
-                try:
-                    _authorize_app(actor, app_id, AppAccess.EDIT)
-                except Exception as exc:
-                    raise CognitionPolicyDeniedError("policy_permission_denied") from exc
-            _require_feature(actor)
+            def check_current_admission() -> None:
+                """Recheck current local admission without choosing another credential."""
+                from services.dify_builder.task_controls import check_current
+
+                check_current()
+                policy.authorize_selected(actor, selected)
+                if app_id is not None:
+                    from services.dify_builder.service import AppAccess
+                    from services.dify_builder.wiring import _authorize_app
+
+                    try:
+                        _authorize_app(actor, app_id, AppAccess.EDIT)
+                    except Exception as exc:
+                        raise CognitionPolicyDeniedError("policy_permission_denied") from exc
+                _require_feature(actor)
+
+            # Fresh metadata bypasses the schema cache. Its wait cannot retain
+            # stale policy or rotate the native owner's prepared LB credential.
+            ensure_predefined_plugin_metadata_ready(instance, check=check_current_admission)
+            check_current_admission()
             return _ConfiguredInvocation(instance, selected.completion_params)
         except CognitionPolicyDeniedError:
             raise

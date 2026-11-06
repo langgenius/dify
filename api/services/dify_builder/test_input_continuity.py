@@ -1,9 +1,36 @@
-"""Reuse compatible Start values as form defaults, never as execution consent."""
+"""Validate Start values and reuse compatible defaults, never grant execution consent."""
 
 from typing import Any
 
 from core.app.apps.base_app_generator import BaseAppGenerator
 from graphon.variables.input_entities import VariableEntity
+
+
+def validate_supplied_values(schema: dict[str, Any], values: dict[str, Any], *, require_all: bool = True) -> None:
+    """Validate supplied Start types and declared limits without changing inputs.
+
+    Reuse native value validation only: no upload fetch, file ownership lookup,
+    model call, normalization or consent is performed. ``require_all=True``
+    additionally checks required fields. Supplied-only validation preserves
+    native missing-value routing and allows an initial form to omit them.
+    Raise the native input error before assessing or persisting invalid data.
+    """
+    for variable in schema.get("variables", []):
+        if isinstance(variable, dict):
+            name = variable.get("variable")
+            if isinstance(name, str) and (name in values or (require_all and variable.get("required"))):
+                entity = VariableEntity.model_validate(
+                    {
+                        "label": name,
+                        "options": [],
+                        "allowed_file_types": [],
+                        "allowed_file_extensions": [],
+                        "allowed_file_upload_methods": [],
+                        **variable,
+                        "type": "text-input" if variable.get("type") == "text" else variable.get("type", "text-input"),
+                    }
+                )
+                BaseAppGenerator()._validate_inputs(variable_entity=entity, value=values.get(name))
 
 
 def reusable_values(schema: dict[str, Any], values: dict[str, Any]) -> dict[str, Any]:
