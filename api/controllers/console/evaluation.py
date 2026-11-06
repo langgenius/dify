@@ -390,7 +390,7 @@ def _get_accessible_dataset(
     if not dify_config.RBAC_ENABLED:
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as exc:
+        except services.errors.base.NoPermissionError as exc:
             raise Forbidden(str(exc)) from exc
     return dataset
 
