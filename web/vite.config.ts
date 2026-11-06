@@ -128,12 +128,6 @@ export default defineConfig(({ command, mode, isPreview }) => {
             name: 'unit',
             pool: 'threads',
             environment: 'happy-dom',
-            environmentOptions: {
-              happyDOM: {
-                // happy-dom 21 disables iframe page loading by default; tests rely on iframe contentWindow.
-                settings: { enableIframePageLoading: true },
-              },
-            },
             globals: true,
             setupFiles: ['./vitest.setup.ts'],
             exclude: [...configDefaults.exclude, browserTestPattern],
