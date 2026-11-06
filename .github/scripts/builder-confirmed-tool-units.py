@@ -2885,6 +2885,10 @@ knowledge_cases.update(
         "test_explicit_goal_change_is_traceable_and_allows_no_knowledge_plan": 4,
         "test_forged_or_old_decision_field_does_not_modify_goal": 2,
         "test_old_decision_version_cannot_waive_after_retaining_goal": 1,
+        "test_required_knowledge_reaches_actor_scoped_discovery_before_executable_planning": 3,
+        "test_required_business_answer_is_not_skipped_by_knowledge_discovery": 1,
+        "test_excluded_knowledge_goal_keeps_normal_executable_planning": 1,
+        "test_preflight_knowledge_selection_waits_until_waiver_then_preserves_business_clarification": 1,
     }
 )
 a4_expected.update(
