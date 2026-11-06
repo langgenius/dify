@@ -1,191 +1,119 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
+import type { ComponentProps } from 'react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import CreateAppTemplateDialog from '../index'
 
-// Mock external dependencies (not base components)
-vi.mock('../app-list', () => ({
-  default: function MockAppList({
-    onCreateFromBlank,
-    onClose,
-  }: {
-    onCreateFromBlank?: () => void
-    onClose: () => void
-  }) {
-    return (
-      <div role="region" aria-label="App list">
-        <button type="button" onClick={onClose}>
-          Success
-        </button>
-        {onCreateFromBlank && (
-          <button type="button" onClick={onCreateFromBlank}>
-            Create from Blank
-          </button>
-        )}
-      </div>
-    )
+const { importApp, push } = vi.hoisted(() => ({ importApp: vi.fn(), push: vi.fn() }))
+const template: RecommendedAppResponse = {
+  app_id: 'catalog-app',
+  app: {
+    id: 'nested-app',
+    name: 'Template',
+    mode: 'chat',
+    icon_type: 'emoji',
+    icon: '🙂',
+    icon_background: '#fff',
+    icon_url: null,
   },
-}))
-
-describe('CreateAppTemplateDialog', () => {
-  const defaultProps = {
-    show: false,
-    onClose: vi.fn(),
-    onCreateFromBlank: vi.fn(),
+  can_trial: false,
+  categories: ['Assistant'],
+  description: 'Template description',
+  position: 0,
+}
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push }), useParams: () => ({}) }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'explore.apps.get': () => ({ recommended_apps: [template], categories: ['Assistant'] }),
+      'explore.apps.byAppId.get': () => ({
+        id: 'catalog-app',
+        name: 'Template',
+        mode: 'chat',
+        can_trial: false,
+        export_data: 'template-dsl',
+      }),
+      'apps.imports.post': importApp,
+      'apps.imports.byAppId.checkDependencies.get': () => ({ leaked_dependencies: [] }),
+    }),
   }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
+})
+beforeEach(() => {
+  importApp.mockResolvedValue({
+    id: 'import-1',
+    status: 'completed',
+    app_id: 'created-app',
+    app_mode: 'chat',
+    permission_keys: ['app.edit'],
+  })
+})
+const setup = (props: Partial<ComponentProps<typeof CreateAppTemplateDialog>> = {}) =>
+  render(<CreateAppTemplateDialog show onClose={vi.fn()} {...props} />, {
+    workspacePermissionKeys: ['app.create_and_management'],
   })
 
-  describe('Rendering', () => {
-    it('should not render when show is false', () => {
-      render(<CreateAppTemplateDialog {...defaultProps} />)
+it('omits create from blank when no callback is available', async () => {
+  setup()
+  await screen.findByTitle('Template')
+  expect(
+    screen.queryByRole('button', { name: 'app.newApp.startFromBlank' }),
+  ).not.toBeInTheDocument()
+})
 
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+it('opens the template catalog when shown', async () => {
+  const { rerender } = setup({ show: false })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  rerender(<CreateAppTemplateDialog show onClose={vi.fn()} />)
+  expect(await screen.findByTitle('Template')).toBeInTheDocument()
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+})
 
-    it('should render modal when show is true', () => {
-      render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
+it('closes from the dialog shell close button', async () => {
+  const user = userEvent.setup()
+  function Scenario() {
+    const [show, setShow] = useState(true)
+    return <CreateAppTemplateDialog show={show} onClose={() => setShow(false)} />
+  }
+  render(<Scenario />)
+  await user.click(screen.getByRole('button', { name: 'Close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+})
 
-      expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
-    })
-
-    it('should render create from blank button when onCreateFromBlank is provided', () => {
-      render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
-
-      expect(screen.getByRole('button', { name: 'Create from Blank' }))!.toBeInTheDocument()
-    })
-
-    it('should not render create from blank button when onCreateFromBlank is not provided', () => {
-      const { onCreateFromBlank: _onCreateFromBlank, ...propsWithoutOnCreate } = defaultProps
-
-      render(<CreateAppTemplateDialog {...propsWithoutOnCreate} show={true} />)
-
-      expect(screen.queryByRole('button', { name: 'Create from Blank' })).not.toBeInTheDocument()
-    })
+it('imports the selected template with the edited name and closes the picker', async () => {
+  const user = userEvent.setup()
+  function Scenario() {
+    const [show, setShow] = useState(true)
+    return <CreateAppTemplateDialog show={show} onClose={() => setShow(false)} />
+  }
+  render(<Scenario />, { workspacePermissionKeys: ['app.create_and_management'] })
+  await user.click(await screen.findByRole('button', { name: /^app.newApp.useTemplate/ }))
+  const name = screen.getByRole('textbox', { name: 'app.newApp.name' })
+  await user.clear(name)
+  await user.type(name, 'My assistant')
+  await user.click(screen.getByRole('button', { name: /common.operation.create/ }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(importApp).toHaveBeenCalledExactlyOnceWith({
+    body: expect.objectContaining({ name: 'My assistant', yaml_content: 'template-dsl' }),
   })
+})
 
-  describe('Props', () => {
-    it('should pass show prop to the dialog shell', () => {
-      const { rerender } = render(<CreateAppTemplateDialog {...defaultProps} />)
-
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-
-      rerender(<CreateAppTemplateDialog {...defaultProps} show={true} />)
-      expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-    })
-
-    it('should close from the dialog shell close button', () => {
-      const mockOnClose = vi.fn()
-
-      render(<CreateAppTemplateDialog {...defaultProps} show={true} onClose={mockOnClose} />)
-
-      const closeButton = screen.getByRole('button', { name: 'Close' })
-      expect(closeButton)!.toBeInTheDocument()
-
-      fireEvent.click(closeButton)
-
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should handle close interactions', () => {
-      const mockOnClose = vi.fn()
-      render(<CreateAppTemplateDialog {...defaultProps} show={true} onClose={mockOnClose} />)
-
-      // Test that the modal is rendered
-      const dialog = screen.getByRole('dialog')
-      expect(dialog)!.toBeInTheDocument()
-
-      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Success' }))!.toBeInTheDocument()
-    })
-
-    it('should close when an app is created from the list', () => {
-      const mockOnClose = vi.fn()
-      render(<CreateAppTemplateDialog {...defaultProps} show={true} onClose={mockOnClose} />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'Success' }))
-
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onCreateFromBlank when create from blank is clicked', () => {
-      const mockOnCreateFromBlank = vi.fn()
-      render(
-        <CreateAppTemplateDialog
-          {...defaultProps}
-          show={true}
-          onCreateFromBlank={mockOnCreateFromBlank}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'Create from Blank' }))
-
-      expect(mockOnCreateFromBlank).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle null props gracefully', () => {
-      expect(() => {
-        render(
-          <CreateAppTemplateDialog
-            show={true}
-            onClose={vi.fn()}
-            // onCreateFromBlank is undefined
-          />,
-        )
-      }).not.toThrow()
-    })
-
-    it('should handle undefined props gracefully', () => {
-      expect(() => {
-        render(
-          <CreateAppTemplateDialog show={true} onClose={vi.fn()} onCreateFromBlank={undefined} />,
-        )
-      }).not.toThrow()
-    })
-
-    it('should handle rapid show/hide toggles', () => {
-      // Test initial state
-      const { unmount } = render(<CreateAppTemplateDialog {...defaultProps} show={false} />)
-      unmount()
-
-      // Test show state
-      render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
-      expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-
-      // Test hide state
-      render(<CreateAppTemplateDialog {...defaultProps} show={false} />)
-      // Due to transition animations, we just verify the component handles the prop change
-      expect(() => render(<CreateAppTemplateDialog {...defaultProps} show={false} />)).not.toThrow()
-    })
-
-    it('should handle missing optional onCreateFromBlank prop', () => {
-      const { onCreateFromBlank: _onCreateFromBlank, ...propsWithoutOnCreate } = defaultProps
-
-      expect(() => {
-        render(<CreateAppTemplateDialog {...propsWithoutOnCreate} show={true} />)
-      }).not.toThrow()
-
-      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Create from Blank' })).not.toBeInTheDocument()
-    })
-
-    it('should work with all required props only', () => {
-      const requiredProps = {
-        show: true,
-        onClose: vi.fn(),
-      }
-
-      expect(() => {
-        render(<CreateAppTemplateDialog {...requiredProps} />)
-      }).not.toThrow()
-
-      expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
-    })
-  })
+it('offers the caller create-from-blank action through the real sidebar', async () => {
+  const user = userEvent.setup()
+  function Scenario() {
+    const [blank, setBlank] = useState(false)
+    return blank ? (
+      <p>Blank app form</p>
+    ) : (
+      <CreateAppTemplateDialog show onClose={vi.fn()} onCreateFromBlank={() => setBlank(true)} />
+    )
+  }
+  render(<Scenario />)
+  await user.click(await screen.findByRole('button', { name: 'app.newApp.startFromBlank' }))
+  expect(screen.getByText('Blank app form')).toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

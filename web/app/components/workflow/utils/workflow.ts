@@ -9,6 +9,7 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
   return (
     nodeType === BlockEnum.LLM ||
     nodeType === BlockEnum.KnowledgeRetrieval ||
+    nodeType === BlockEnum.KnowledgeRetrievalV2 ||
     nodeType === BlockEnum.Code ||
     nodeType === BlockEnum.TemplateTransform ||
     nodeType === BlockEnum.QuestionClassifier ||
@@ -70,11 +71,14 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (
       if (type === 'remove') {
         const index = nodesConnectedSourceOrTargetHandleIdsMap[
           sourceNode.id
-        ]._connectedSourceHandleIds.findIndex((handleId: string) => handleId === edge.sourceHandle)
-        nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds.splice(
-          index,
-          1,
+        ]._connectedSourceHandleIds.findIndex(
+          (handleId: string) => handleId === (edge.sourceHandle || 'source'),
         )
+        if (index >= 0)
+          nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds.splice(
+            index,
+            1,
+          )
       }
 
       if (type === 'add')
@@ -87,11 +91,14 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (
       if (type === 'remove') {
         const index = nodesConnectedSourceOrTargetHandleIdsMap[
           targetNode.id
-        ]._connectedTargetHandleIds.findIndex((handleId: string) => handleId === edge.targetHandle)
-        nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds.splice(
-          index,
-          1,
+        ]._connectedTargetHandleIds.findIndex(
+          (handleId: string) => handleId === (edge.targetHandle || 'target'),
         )
+        if (index >= 0)
+          nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds.splice(
+            index,
+            1,
+          )
       }
 
       if (type === 'add')

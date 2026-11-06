@@ -17,6 +17,7 @@ from controllers.service_api.schema import multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from models import App, EndUser
 
@@ -25,6 +26,14 @@ register_response_schema_models(service_api_ns, FileResponse)
 
 @service_api_ns.route("/files/upload")
 class FileApi(Resource):
+    @error_responses(
+        BlockedFileExtensionError,
+        FilenameNotExistsError,
+        FileTooLargeError,
+        NoFileUploadedError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @service_api_ns.doc(
         summary="Upload File",
         description=(

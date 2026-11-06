@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
@@ -72,6 +73,9 @@ from core.plugin.plugin_service import PluginService
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
+from enums import DeploymentEdition
+from extensions.ext_application_services import build_application_services
+from extensions.ext_redis import RedisClientWrapper
 from models.account import (
     Account,
     TenantAccountRole,
@@ -82,7 +86,12 @@ from models.account import (
     TenantPluginDebugPermission,
     TenantPluginInstallPermission,
 )
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.model_factories import make_account
+from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
+
+application_redis = test_trigger_oauth_client.application_redis
 
 
 def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
@@ -358,10 +367,7 @@ def _expected_dynamic_option_dump() -> dict[str, Any]:
 
 
 def _account(role: TenantAccountRole = TenantAccountRole.OWNER) -> Account:
-    account = Account(name="Test User", email="u1@example.com")
-    account.id = "u1"
-    account.role = role
-    return account
+    return make_account(account_id="u1", name="Test User", email="u1@example.com", role=role)
 
 
 @pytest.fixture
@@ -411,7 +417,7 @@ class TestPluginListLatestVersionsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserLatest.model_validate(payload))
+            result = raised_error(lambda: method(api, ParserLatest.model_validate(payload)))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -439,7 +445,7 @@ class TestPluginDebuggingKeyApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = raised_error(lambda: method(api, "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -577,7 +583,7 @@ class TestPluginCategoryListApi:
         with (
             app.test_request_context("/?page=1&page_size=10"),
         ):
-            result = method(api, "t1", "unknown")
+            result = raised_error(lambda: method(api, "t1", "unknown"))
 
         assert result == ({"code": "invalid_param", "message": "invalid plugin category"}, 400)
 
@@ -592,7 +598,7 @@ class TestPluginCategoryListApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1", "tool")
+            result = raised_error(lambda: method(api, "t1", "tool"))
 
         assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
@@ -657,7 +663,7 @@ class TestPluginUploadFromPkgApi:
             config_overrides_context(PLUGIN_MAX_PACKAGE_SIZE=0),
             patch("controllers.console.workspace.plugin.PluginService.upload_pkg") as upload_pkg_mock,
         ):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValueError, match="File size exceeds the maximum allowed size") as exc_info:
                 method(api, "t1")
             assert "File size exceeds the maximum allowed size" in str(exc_info.value)
 
@@ -756,11 +762,25 @@ class TestPluginFetchPermissionApi:
         ):
             result = method(api, "t1")
 
-        assert result["install_permission"] is not None
+        assert result["install_permission"] == TenantPluginInstallPermission.ADMINS
+        assert result["debug_permission"] == TenantPluginDebugPermission.EVERYONE
 
 
 class TestPluginFetchDynamicSelectOptionsApi:
-    def test_fetch_dynamic_options(self, app: Flask, user):
+    def test_fetch_dynamic_options(
+        self,
+        user: Account,
+        sqlite_session_factory: sessionmaker[Session],
+        application_redis: RedisClientWrapper,
+    ) -> None:
+        app = Flask(__name__)
+        services = build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=application_redis,
+        )
+        app.extensions["application_services"] = services
         api = PluginFetchDynamicSelectOptionsApi()
         method = unwrap(api.get)
 
@@ -769,7 +789,7 @@ class TestPluginFetchDynamicSelectOptionsApi:
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options",
                 return_value=[_dynamic_option()],
-            ),
+            ) as get_options,
         ):
             result = method(
                 api,
@@ -781,6 +801,7 @@ class TestPluginFetchDynamicSelectOptionsApi:
             )
 
         assert result == {"options": [_expected_dynamic_option_dump()]}
+        assert get_options.call_args.kwargs["builders"] is services.workspaces.trigger_builders
 
 
 class TestPluginReadmeApi:
@@ -828,7 +849,7 @@ class TestPluginListInstallationsFromIdsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserLatest.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserLatest.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -860,7 +881,9 @@ class TestPluginInstalledIdsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, PluginInstalledIdsQuery.model_validate({"category": "tool"}), "t1")
+            result = raised_error(
+                lambda: method(api, PluginInstalledIdsQuery.model_validate({"category": "tool"}), "t1")
+            )
 
         assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
@@ -895,8 +918,24 @@ class TestPluginUploadFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserGithubUpload.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserGithubUpload.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
+
+    def test_download_error_reports_status(self, app: Flask):
+        api = PluginUploadFromGithubApi()
+        method = unwrap(api.post)
+
+        payload = {"repo": "r", "version": "v", "package": "p"}
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.upload_pkg_from_github",
+                side_effect=PluginDaemonClientSideError("Failed to download file: HTTP 403"),
+            ),
+        ):
+            result = raised_error(lambda: method(api, ParserGithubUpload.model_validate(payload), "t1"))
+            assert result == ({"code": "plugin_error", "message": "Failed to download file: HTTP 403"}, 400)
 
 
 class TestPluginUploadFromBundleApi:
@@ -941,7 +980,7 @@ class TestPluginUploadFromBundleApi:
             config_overrides_context(PLUGIN_MAX_BUNDLE_SIZE=0),
             patch("controllers.console.workspace.plugin.PluginService.upload_bundle") as upload_bundle_mock,
         ):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValueError, match="File size exceeds the maximum allowed size") as exc_info:
                 method(api, "t1")
             assert "File size exceeds the maximum allowed size" in str(exc_info.value)
 
@@ -986,7 +1025,7 @@ class TestPluginInstallFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserGithubInstall.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserGithubInstall.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1021,7 +1060,7 @@ class TestPluginInstallFromMarketplaceApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserPluginIdentifiers.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserPluginIdentifiers.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1052,7 +1091,9 @@ class TestPluginFetchMarketplacePkgApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
+            result = raised_error(
+                lambda: method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
+            )
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1082,7 +1123,9 @@ class TestPluginFetchManifestApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
+            result = raised_error(
+                lambda: method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
+            )
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1113,7 +1156,7 @@ class TestPluginFetchInstallTasksApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserTasks(), "t1")
+            result = raised_error(lambda: method(api, ParserTasks(), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1141,7 +1184,7 @@ class TestPluginFetchInstallTaskApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1", "t")
+            result = raised_error(lambda: method(api, "t1", "t"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1169,7 +1212,7 @@ class TestPluginDeleteInstallTaskApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1", "t")
+            result = raised_error(lambda: method(api, "t1", "t"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1199,7 +1242,7 @@ class TestPluginDeleteAllInstallTaskItemsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = raised_error(lambda: method(api, "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1227,7 +1270,7 @@ class TestPluginDeleteInstallTaskItemApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1", "task1", "item1")
+            result = raised_error(lambda: method(api, "t1", "task1", "item1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1268,7 +1311,7 @@ class TestPluginUpgradeFromMarketplaceApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserMarketplaceUpgrade.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserMarketplaceUpgrade.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1315,7 +1358,7 @@ class TestPluginUpgradeFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserGithubUpgrade.model_validate(payload), "t1")
+            result = raised_error(lambda: method(api, ParserGithubUpgrade.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1364,7 +1407,9 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
+            result = raised_error(
+                lambda: method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
+            )
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 

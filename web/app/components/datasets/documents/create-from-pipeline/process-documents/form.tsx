@@ -1,15 +1,15 @@
-import type { ZodSchema } from 'zod'
+import type { ZodType } from 'zod'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useImperativeHandle } from 'react'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
+import { toast } from '@/app/notifications'
 import Header from './header'
 
 type OptionsProps = {
   initialData: Record<string, any>
   configurations: BaseConfiguration[]
-  schema: ZodSchema
+  schema: ZodType
   onSubmit: (data: Record<string, any>) => void
   onPreview: () => void
   ref: React.RefObject<any>

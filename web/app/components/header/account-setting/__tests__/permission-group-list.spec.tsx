@@ -37,11 +37,8 @@ const permissionGroups = [
   }),
 ]
 
-const getPermissionRow = (permissionName: string) =>
-  screen.getByText(permissionName).closest('div')!
-
 const getPermissionCheckbox = (permissionName: string) =>
-  within(getPermissionRow(permissionName)).getByRole('checkbox')
+  screen.getByRole('checkbox', { name: permissionName })
 
 describe('PermissionGroupList', () => {
   beforeEach(() => {
@@ -50,24 +47,10 @@ describe('PermissionGroupList', () => {
 
   // Rendering keeps the permission catalog visible as grouped collapsible rows.
   describe('Rendering', () => {
-    it('should render the list as a flexible scroll region', () => {
-      const { container } = render(
-        <PermissionGroupList groups={permissionGroups} value={[]} onChange={vi.fn()} />,
-      )
-
-      expect(container.firstElementChild).toHaveClass('min-h-0', 'flex-1')
-      expect(container.querySelector('.h-full.overflow-hidden')).toBeInTheDocument()
-    })
-
     it('should render an empty state when there are no permission groups', () => {
       render(<PermissionGroupList groups={[]} value={[]} onChange={vi.fn()} />)
 
-      expect(screen.getByText('permission.permissionList.noPermissionsFound')).toHaveClass(
-        'flex',
-        'h-full',
-        'items-center',
-        'justify-center',
-      )
+      expect(screen.getByText('permission.permissionList.noPermissionsFound')).toBeInTheDocument()
     })
 
     it('should expand the first selected group by default', () => {

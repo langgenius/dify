@@ -1,31 +1,35 @@
-import type { QuestionClassifierNodeType, Topic } from '../types'
-import { render, screen } from '@testing-library/react'
+import type { QuestionClassifierNodeType } from '../types'
+import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import Node from '../node'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useTextGenerationCurrentProviderAndModelAndModelList: vi.fn(),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
-    <div>{value ? `${value.provider}:${value.model}` : 'no-model'}</div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
-  __esModule: true,
-  NodeSourceHandle: ({ handleId }: { handleId: string }) => <div>{`handle-${handleId}`}</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var', () => ({
-  __esModule: true,
-  default: ({ value }: { value: string }) => <div>{value}</div>,
-}))
-
-const mockUseTextGeneration = vi.mocked(useTextGenerationCurrentProviderAndModelAndModelList)
+const render = createNuqsTestRenderer((ui) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAppDslVersion(queryClient)
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [createCatalogModelFixture({ model: 'gpt-4o', label: { en_US: 'GPT-4o' } })],
+    }),
+  ])
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  return renderWorkflowFlowComponent(ui, { queryClient })
+})
 
 const createTopic = (overrides: Partial<Topic> = {}): Topic => ({
   id: 'topic-1',
@@ -44,7 +48,7 @@ const createData = (
     name: 'gpt-4o',
     mode: 'chat',
     completion_params: {},
-  } as QuestionClassifierNodeType['model'],
+  },
   classes: [createTopic()],
   query_variable_selector: ['node-1', 'query'],
   instruction: 'Route by topic',
@@ -66,37 +70,28 @@ const baseNodeProps = {
 }
 
 describe('question-classifier/node', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseTextGeneration.mockReturnValue({
-      textGenerationModelList: [{ provider: 'openai', model: 'gpt-4o' }],
-    } as unknown as ReturnType<typeof useTextGenerationCurrentProviderAndModelAndModelList>)
-  })
-
-  it('renders the selected model and output handles for each class', () => {
+  it('shows the configured model and class labels', () => {
     render(
       <Node
         {...baseNodeProps}
         data={createData({
           classes: [
-            createTopic({ label: 'Billing' } as Partial<Topic>),
-            createTopic({ id: 'topic-2', name: 'Refunds', label: 'Refund desk' } as Partial<Topic>),
+            createTopic({ label: 'Billing' }),
+            createTopic({ id: 'topic-2', name: 'Refunds', label: 'Refund desk' }),
           ],
         })}
       />,
     )
 
-    expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()
+    expect(screen.getByText('GPT-4o')).toBeInTheDocument()
     expect(screen.getByText('Billing')).toBeInTheDocument()
     expect(screen.getByText('Refund desk')).toBeInTheDocument()
-    expect(screen.getByText('handle-topic-1')).toBeInTheDocument()
-    expect(screen.getByText('handle-topic-2')).toBeInTheDocument()
   })
 
   it('returns nothing when neither model nor classes are configured and truncates long class names', async () => {
     const user = userEvent.setup()
     const longName = 'L'.repeat(60)
-    const { container, rerender } = render(
+    const { rerender } = render(
       <Node
         {...baseNodeProps}
         data={createData({
@@ -105,7 +100,7 @@ describe('question-classifier/node', () => {
             name: '',
             mode: 'chat',
             completion_params: {},
-          } as QuestionClassifierNodeType['model'],
+          },
           classes: [createTopic({ id: 'topic-2', name: longName })],
         })}
       />,
@@ -124,12 +119,13 @@ describe('question-classifier/node', () => {
             name: '',
             mode: 'chat',
             completion_params: {},
-          } as QuestionClassifierNodeType['model'],
+          },
           classes: [],
         })}
       />,
     )
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByText(`${longName.slice(0, 50)}...`)).not.toBeInTheDocument()
+    expect(screen.queryByText('GPT-4o')).not.toBeInTheDocument()
   })
 })

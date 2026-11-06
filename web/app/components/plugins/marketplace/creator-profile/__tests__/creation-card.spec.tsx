@@ -1,7 +1,7 @@
 import type { CreatorCreation } from '../model'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import CreationCard from '../creation-card'
 
 vi.mock('@/app/components/base/app-icon', () => ({

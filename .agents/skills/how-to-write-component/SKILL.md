@@ -10,6 +10,7 @@ Use this skill to route component architecture decisions to its bundled referenc
 ## Topic Routing
 
 - Component moves, module boundaries, props, types, or owner placement: read [`references/ownership.md`][ownership].
+- Dify UI wrappers or primitive state styling: read the package's [Public API authoring] and [Styling] contracts.
 - Jotai, form drafts, route identity, URL state, or persistence: read [`references/state.md`][state].
 - Generated contracts, nullable API data, Query, mutations, SSR, auth, or workspace state: read [`references/data.md`][data].
 - Hotkeys, focus, dialogs, menus, popovers, or other secondary surfaces: read [`references/interactions.md`][interactions] and the overlay guide it references when applicable. Also read [`references/state.md`][state] when the surface owns a draft or other local session state.
@@ -24,6 +25,8 @@ Identify the behavior owner, state lifetime, and public contract from the nearby
 - Write canonical Tailwind v4 classes; prefer canonical utilities over equivalent arbitrary values.
 - Common forms include `w-105` instead of `w-[420px]`, `px-2.25` instead of `px-[9px]`, `bg-linear-to-b` instead of `bg-gradient-to-b`, `wrap-break-word` instead of `break-words`, and `field-sizing-content` instead of `[field-sizing:content]`.
 
+[Public API authoring]: ../../../packages/dify-ui/docs/authoring.md
+[Styling]: ../../../packages/dify-ui/docs/styling.md
 [data]: references/data.md
 [interactions]: references/interactions.md
 [ownership]: references/ownership.md

@@ -1,52 +1,13 @@
 import type { WorkflowToolDrawerPayload } from '../index'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { emojiCatalogOptions } from '@/app/components/base/icon-picker/emoji-data'
 import { WorkflowToolDrawer } from '../index'
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick, icon }: { onClick?: () => void; icon: string }) => (
-    <button data-testid="app-icon" onClick={onClick}>
-      {icon}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/tools/labels/selector', () => ({
-  default: ({ value, onChange }: { value: string[]; onChange: (labels: string[]) => void }) => (
-    <div data-testid="label-selector">
-      <span>{value.join(',')}</span>
-      <button data-testid="append-label" onClick={() => onChange([...value, 'new-label'])}>
-        Add
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../confirm-modal', () => ({
-  default: ({
-    show,
-    onClose,
-    onConfirm,
-  }: {
-    show: boolean
-    onClose: () => void
-    onConfirm: () => void
-  }) =>
-    show ? (
-      <div data-testid="confirm-modal">
-        <button data-testid="confirm-save" onClick={onConfirm}>
-          Confirm
-        </button>
-        <button data-testid="close-confirm" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    ) : null,
-}))
-
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
     error: (message: string) => mockToastNotify({ type: 'error', message }),
@@ -101,7 +62,12 @@ describe('WorkflowToolDrawer', () => {
       screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'),
       'Created Tool',
     )
-    await user.click(screen.getByTestId('append-label'))
+    await user.click(screen.getByRole('button', { name: 'Label 1' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Label 2' }))
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('checkbox', { name: 'Label 2' })).not.toBeInTheDocument(),
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onCreate).toHaveBeenCalledWith(
@@ -109,10 +75,37 @@ describe('WorkflowToolDrawer', () => {
         workflow_app_id: 'workflow-app-1',
         label: 'Created Tool',
         icon: { content: '🔧', background: '#ffffff' },
-        labels: ['label1', 'new-label'],
+        labels: ['label1', 'label2'],
       }),
     )
     expect(onCreate.mock.calls[0]![0]).not.toHaveProperty('outputParameters')
+  })
+
+  it('saves the confirmed icon without submitting the tool from the picker', async () => {
+    const user = userEvent.setup()
+    const client = new QueryClient()
+    client.setQueryData(emojiCatalogOptions.queryKey, [])
+    const onCreate = vi.fn()
+    render(
+      <QueryClientProvider client={client}>
+        <WorkflowToolDrawer isAdd payload={createPayload()} onHide={vi.fn()} onCreate={onCreate} />
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'tools.createTool.changeIcon' }))
+    await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+    expect(onCreate).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'app.iconPicker.title' }),
+      ).not.toBeInTheDocument(),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onCreate).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ icon: { content: '🔧', background: '#F3FEE7' } }),
+    )
+    client.clear()
   })
 
   it('should block invalid tool-call names before saving', async () => {
@@ -145,9 +138,21 @@ describe('WorkflowToolDrawer', () => {
     render(<WorkflowToolDrawer payload={createPayload()} onHide={vi.fn()} onSave={onSave} />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
-
-    await user.click(screen.getByTestId('confirm-save'))
+    expect(onSave).not.toHaveBeenCalled()
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'tools.createTool.confirmTitle' })).getByRole(
+        'button',
+        { name: 'common.operation.cancel' },
+      ),
+    )
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'tools.createTool.confirmTitle' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(onSave).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
@@ -173,7 +178,7 @@ describe('WorkflowToolDrawer', () => {
 
     expect(
       screen.queryByRole('button', {
-        name: /reservedParameterDuplicateTip|duplicateOutputVariable/,
+        name: 'answer',
       }),
     ).not.toBeInTheDocument()
   })
@@ -186,7 +191,7 @@ describe('WorkflowToolDrawer', () => {
     const userOutputRow = screen.getByRole('row', { name: /text.*Reserved output duplicate/ })
     expect(
       within(userOutputRow).getByRole('button', {
-        name: 'tools.createTool.toolOutput.reservedParameterDuplicateTip',
+        name: 'text',
       }),
     ).toBeInTheDocument()
 
@@ -228,7 +233,7 @@ describe('WorkflowToolDrawer', () => {
     ).toBeInTheDocument()
 
     const duplicateWarnings = screen.getAllByRole('button', {
-      name: /workflow\.errorMsg\.duplicateOutputVariable/,
+      name: 'result',
     })
     expect(duplicateWarnings).toHaveLength(2)
 
@@ -266,7 +271,7 @@ describe('WorkflowToolDrawer', () => {
     )
 
     const issueWarnings = screen.getAllByRole('button', {
-      name: /tools\.createTool\.toolOutput\.reservedParameterDuplicateTip.*workflow\.errorMsg\.duplicateOutputVariable/,
+      name: 'text',
     })
     expect(issueWarnings).toHaveLength(2)
 

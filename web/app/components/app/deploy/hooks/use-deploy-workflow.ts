@@ -2,7 +2,7 @@
 
 import type { DeployWorkflowResponse } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function useDeployWorkflow({
   appId,

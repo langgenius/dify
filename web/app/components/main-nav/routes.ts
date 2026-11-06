@@ -3,21 +3,22 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 type MainNavRouteVisibility = (options: MainNavRouteVisibilityOptions) => boolean
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
-const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
 
 export type MainNavRouteConfig = {
   key: string
+  ns?: 'navigation' | 'contacts'
   href: string
   active: (pathname: string) => boolean
   icon: string
   activeIcon: string
   visibility: MainNavRouteVisibility
-  feature?: 'agentV2' | 'marketplace'
+  feature?: 'agentV2' | 'contacts' | 'marketplace'
 } & ({ label: string; labelKey?: never } | { label?: never; labelKey: string })
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
-  canManageAgents: boolean
+  canViewContacts: boolean
+  contactsEnabled: boolean
   canViewSkills: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
@@ -30,7 +31,7 @@ export type DetailSidebarVisibilityOptions = Pick<
 >
 
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
-const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
+const CAN_VIEW_CONTACTS: MainNavRouteVisibility = (options) => options.canViewContacts
 const SKILL_ENABLED_FOR_WORKSPACE: MainNavRouteVisibility = (options) =>
   options.skillEnabled && options.canViewSkills && !options.isCurrentWorkspaceDatasetOperator
 
@@ -67,7 +68,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/agents'),
     icon: 'i-custom-vender-main-nav-agent',
     activeIcon: 'i-custom-vender-main-nav-agent-active',
-    visibility: CAN_MANAGE_AGENTS,
+    visibility: VISIBLE_TO_ALL,
     feature: 'agentV2',
   },
   {
@@ -78,6 +79,17 @@ export const MAIN_NAV_ROUTES = [
     icon: 'i-custom-vender-main-nav-knowledge-v2',
     activeIcon: 'i-custom-vender-main-nav-knowledge-v2-active',
     visibility: VISIBLE_TO_ALL,
+  },
+  {
+    key: 'contacts',
+    href: '/contacts',
+    labelKey: 'directory.title',
+    ns: 'contacts',
+    active: (path: string) => isPathUnderRoute(path, '/contacts'),
+    icon: 'i-ri-contacts-book-2-line',
+    activeIcon: 'i-ri-contacts-book-2-fill',
+    visibility: CAN_VIEW_CONTACTS,
+    feature: 'contacts',
   },
   {
     key: 'skills',
@@ -121,6 +133,8 @@ export function isMainNavRouteVisible(
 
   if (route.feature === 'marketplace' && !options.marketplaceEnabled) return false
 
+  if (route.feature === 'contacts' && !options.contactsEnabled) return false
+
   return route.visibility(options)
 }
 
@@ -129,16 +143,13 @@ function isAppDetailPathname(pathname: string) {
 }
 
 function isDatasetDetailPathname(pathname: string) {
-  const [section, datasetId, subSection, action] = pathname.split('/').filter(Boolean)
+  const [section, datasetId, subSection] = pathname.split('/').filter(Boolean)
 
   if (section !== 'datasets' || !datasetId) return false
 
   if (DATASET_COLLECTION_ROUTES.has(datasetId)) return false
 
   if (datasetId === 'new' && subSection === 'create') return false
-
-  if (subSection === 'documents' && action && DATASET_DOCUMENT_CREATION_ROUTES.has(action))
-    return false
 
   return true
 }
@@ -153,10 +164,7 @@ export function shouldHideMainNavigation(pathname: string) {
   const [section, namespace, knowledgeSpaceId] = pathname.split('/').filter(Boolean)
 
   return (
-    (section === 'datasets' &&
-      namespace === 'new' &&
-      !!knowledgeSpaceId &&
-      knowledgeSpaceId !== 'create') ||
+    (section === 'datasets' && namespace === 'new' && !!knowledgeSpaceId) ||
     isSkillDetailPathname(pathname)
   )
 }

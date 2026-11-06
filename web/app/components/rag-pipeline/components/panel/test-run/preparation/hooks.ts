@@ -9,7 +9,7 @@ import { CrawlStep } from '@/models/datasets'
 import { TestRunStep } from '../types'
 
 export const useTestRunSteps = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const [currentStep, setCurrentStep] = useState(1)
 
   const handleNextStep = useCallback(() => {

@@ -3,7 +3,7 @@
 import type { ListEnvironmentDeploymentsResponse } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { hashKey, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { hasDeploymentsRequiringPolling } from '../utils/environment-deployment'
 
 export function useRefreshAppEnvironmentsAfterDeploymentPolling(appId: string) {

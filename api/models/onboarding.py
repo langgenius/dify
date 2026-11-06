@@ -32,7 +32,7 @@ class AccountStepByStepTourState(TypeBase):
     )
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     first_workspace_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    skipped: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    skipped: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     completed_task_ids: Mapped[list[str]] = mapped_column(AdjustedJSON, nullable=False, default_factory=list)
     manually_enabled_workspace_ids: Mapped[list[str]] = mapped_column(
         AdjustedJSON,

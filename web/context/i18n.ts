@@ -1,27 +1,18 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import type { Locale } from '@/i18n-config/language'
+import type { Locale } from '@/i18n/locale'
 import type { DocLanguage, DocPathWithoutLang, DocsProduct } from '@/types/doc-paths'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import { useTranslation } from '#i18n'
+import { useLocale } from '#i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
+import { getDocLanguage } from '@/i18n/language'
+import { getPluginLanguage } from '@/i18n/metadata'
 import { docPathProductAvailability, isProductlessDocPath } from '@/types/doc-paths'
-
-export const useLocale = () => {
-  const { i18n } = useTranslation()
-  return i18n.language as Locale
-}
 
 export const useGetLanguage = () => {
   const locale = useLocale()
 
-  return getLanguage(locale)
-}
-export const useGetPricingPageLanguage = () => {
-  const locale = useLocale()
-
-  return getPricingPageLanguage(locale)
+  return getPluginLanguage(locale)
 }
 
 export const defaultDocBaseUrl = 'https://docs.dify.ai'

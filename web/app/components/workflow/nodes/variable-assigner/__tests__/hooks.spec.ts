@@ -1,340 +1,198 @@
-import { act, renderHook } from '@testing-library/react'
-import { FlowType } from '@/types/common'
-import { VarType } from '../../../types'
+import type { Node } from '../../../types'
+import { act } from '@testing-library/react'
+import { useNodes } from 'reactflow'
+import { createEdge, createNode } from '../../../__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '../../../__tests__/workflow-test-env'
+import { BlockEnum, VarType } from '../../../types'
 import { useGetAvailableVars, useVariableAssigner } from '../hooks'
 
-const mockUseStoreApi = vi.hoisted(() => vi.fn())
-const mockUseNodes = vi.hoisted(() => vi.fn())
-const mockUseNodeDataUpdate = vi.hoisted(() => vi.fn())
-const mockUseWorkflow = vi.hoisted(() => vi.fn())
-const mockUseWorkflowVariables = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
-const mockUseWorkflowStore = vi.hoisted(() => vi.fn())
-const mockFlowType = vi.hoisted(() => ({
-  value: undefined as FlowType | undefined,
+// Branch traversal and variable collection have their own suites; here they only feed the filters.
+const mockGetBeforeNodesInSameBranchIncludeParent = vi.hoisted(() => vi.fn())
+const mockGetNodeAvailableVars = vi.hoisted(() => vi.fn())
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../hooks/use-workflow')>()),
+  useWorkflow: () => ({
+    getBeforeNodesInSameBranchIncludeParent: mockGetBeforeNodesInSameBranchIncludeParent,
+  }),
+}))
+vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()),
+  useWorkflowVariables: () => ({ getNodeAvailableVars: mockGetNodeAvailableVars }),
 }))
 
-vi.mock('reactflow', () => ({
-  useStoreApi: () => mockUseStoreApi(),
-  useNodes: () => mockUseNodes(),
-}))
-
-vi.mock('../../../hooks/use-node-data-update', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-node-data-update')>()
-
-  return {
-    ...actual,
-    useNodeDataUpdate: () => mockUseNodeDataUpdate(),
-  }
-})
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useWorkflow: () => mockUseWorkflow(),
-    useIsChatMode: () => mockUseIsChatMode(),
-  }
-})
-
-vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()
-
-  return {
-    ...actual,
-    useWorkflowVariables: () => mockUseWorkflowVariables(),
-  }
-})
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => mockUseWorkflowStore(),
-}))
-
-vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
-    selector({
-      configsMap: {
-        flowType: mockFlowType.value,
+const createAssigner = (data: Record<string, unknown> = {}) =>
+  createNode({
+    id: 'assigner-1',
+    data: {
+      type: BlockEnum.VariableAssigner,
+      variables: [['start', 'foo']],
+      output_type: VarType.string,
+      advanced_settings: {
+        group_enabled: true,
+        groups: [
+          { groupId: 'group-1', group_name: 'Group1', variables: [], output_type: VarType.string },
+        ],
       },
-    }),
-}))
-
-describe('variable-assigner/hooks', () => {
-  const mockHandleNodeDataUpdate = vi.fn()
-  const mockSetNodes = vi.fn()
-  const mockSetShowAssignVariablePopup = vi.fn()
-  const mockSetHoveringAssignVariableGroupId = vi.fn()
-  const getNodes = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockFlowType.value = undefined
-    getNodes.mockReturnValue([
-      {
-        id: 'assigner-1',
-        data: {
-          variables: [['start', 'foo']],
-          output_type: VarType.string,
-          advanced_settings: {
-            groups: [
-              {
-                groupId: 'group-1',
-                variables: [],
-                output_type: VarType.string,
-              },
-            ],
-          },
-        },
-      },
-    ])
-    mockUseStoreApi.mockReturnValue({
-      getState: () => ({
-        getNodes,
-        setNodes: mockSetNodes,
-      }),
-    })
-    mockUseNodeDataUpdate.mockReturnValue({
-      handleNodeDataUpdate: mockHandleNodeDataUpdate,
-    })
-    mockUseWorkflowStore.mockReturnValue({
-      getState: () => ({
-        setShowAssignVariablePopup: mockSetShowAssignVariablePopup,
-        setHoveringAssignVariableGroupId: mockSetHoveringAssignVariableGroupId,
-        connectingNodePayload: { id: 'connecting-node' },
-      }),
-    })
-    mockUseNodes.mockReturnValue([])
-    mockUseWorkflow.mockReturnValue({
-      getBeforeNodesInSameBranchIncludeParent: vi.fn(),
-    })
-    mockUseWorkflowVariables.mockReturnValue({
-      getNodeAvailableVars: vi.fn(),
-    })
-    mockUseIsChatMode.mockReturnValue(false)
+      ...data,
+    },
   })
 
-  it('should append target variables, ignore duplicates, and update grouped variables', () => {
-    const { result } = renderHook(() => useVariableAssigner())
+const renderAssigner = (nodes: Node[] = [createAssigner()], initialStoreState = {}) =>
+  renderWorkflowCanvasHook(() => ({ assigner: useVariableAssigner(), nodes: useNodes() }), {
+    nodes,
+    initialStoreState,
+  })
+
+const assignerData = (nodes: { id: string; data: unknown }[]) =>
+  nodes.find((node) => node.id === 'assigner-1')!.data as Record<string, unknown>
+
+describe('useVariableAssigner', () => {
+  it('appends new target variables, ignores duplicates, and fills grouped variables', () => {
+    const { result } = renderAssigner()
 
     act(() => {
-      result.current.handleAssignVariableValueChange('assigner-1', ['start', 'bar'], {
+      result.current.assigner.handleAssignVariableValueChange('assigner-1', ['start', 'bar'], {
+        variable: 'value',
         type: VarType.number,
-      } as never)
-      result.current.handleAssignVariableValueChange('assigner-1', ['start', 'foo'], {
+      })
+      result.current.assigner.handleAssignVariableValueChange('assigner-1', ['start', 'foo'], {
+        variable: 'value',
         type: VarType.number,
-      } as never)
-      result.current.handleAssignVariableValueChange(
+      })
+      result.current.assigner.handleAssignVariableValueChange(
         'assigner-1',
         ['start', 'grouped'],
-        { type: VarType.arrayString } as never,
+        { variable: 'grouped', type: VarType.arrayString },
         'group-1',
       )
     })
 
-    expect(mockHandleNodeDataUpdate).toHaveBeenNthCalledWith(1, {
-      id: 'assigner-1',
-      data: {
-        variables: [
-          ['start', 'foo'],
-          ['start', 'bar'],
+    expect(assignerData(result.current.nodes)).toMatchObject({
+      variables: [
+        ['start', 'foo'],
+        ['start', 'bar'],
+      ],
+      output_type: VarType.number,
+      advanced_settings: {
+        groups: [
+          {
+            groupId: 'group-1',
+            variables: [['start', 'grouped']],
+            output_type: VarType.arrayString,
+          },
         ],
-        output_type: VarType.number,
       },
     })
-    expect(mockHandleNodeDataUpdate).toHaveBeenNthCalledWith(2, {
-      id: 'assigner-1',
-      data: {
-        advanced_settings: {
-          groups: [
-            {
-              groupId: 'group-1',
-              variables: [['start', 'grouped']],
-              output_type: VarType.arrayString,
-            },
-          ],
-        },
-      },
-    })
-    expect(mockHandleNodeDataUpdate).toHaveBeenCalledTimes(2)
   })
 
-  it('should close the popup and add variables through the positioned add-variable flow', () => {
-    getNodes.mockReturnValue([
-      {
-        id: 'source-node',
-        data: {
-          _showAddVariablePopup: true,
-          _holdAddVariablePopup: true,
-        },
-      },
-      {
-        id: 'assigner-1',
-        data: {
-          variables: [],
-          advanced_settings: {
-            groups: [
-              {
-                groupId: 'group-1',
-                variables: [],
-              },
-            ],
-          },
-          _showAddVariablePopup: true,
-          _holdAddVariablePopup: true,
-        },
-      },
-    ])
+  it('closes the add-variable popups and adds the picked variable to the group', () => {
+    const popupOpen = { _showAddVariablePopup: true, _holdAddVariablePopup: true }
+    const { result, store } = renderAssigner(
+      [
+        createNode({ id: 'source-node', data: popupOpen }),
+        createAssigner({ variables: [], ...popupOpen }),
+      ],
+      { showAssignVariablePopup: { nodeId: 'assigner-1' } },
+    )
 
-    const { result } = renderHook(() => useVariableAssigner())
-
-    act(() => {
-      result.current.handleAddVariableInAddVariablePopupWithPosition(
+    act(() =>
+      result.current.assigner.handleAddVariableInAddVariablePopupWithPosition(
         'source-node',
         'assigner-1',
         'group-1',
         ['start', 'output'],
-        { type: VarType.object } as never,
-      )
-    })
+        { variable: 'output', type: VarType.object },
+      ),
+    )
 
-    expect(mockSetNodes).toHaveBeenCalledWith([
-      expect.objectContaining({
-        id: 'source-node',
-        data: expect.objectContaining({
-          _showAddVariablePopup: false,
-          _holdAddVariablePopup: false,
-        }),
-      }),
-      expect.objectContaining({
-        id: 'assigner-1',
-        data: expect.objectContaining({
-          _showAddVariablePopup: false,
-          _holdAddVariablePopup: false,
-        }),
-      }),
-    ])
-    expect(mockSetShowAssignVariablePopup).toHaveBeenCalledWith(undefined)
-    expect(mockHandleNodeDataUpdate).toHaveBeenCalledWith({
-      id: 'assigner-1',
-      data: {
-        advanced_settings: {
-          groups: [
-            {
-              groupId: 'group-1',
-              variables: [['start', 'output']],
-              output_type: VarType.object,
-            },
-          ],
-        },
+    for (const node of result.current.nodes)
+      expect(node.data).toMatchObject({
+        _showAddVariablePopup: false,
+        _holdAddVariablePopup: false,
+      })
+    expect(store.getState().showAssignVariablePopup).toBeUndefined()
+    expect(assignerData(result.current.nodes)).toMatchObject({
+      advanced_settings: {
+        groups: [
+          { groupId: 'group-1', variables: [['start', 'output']], output_type: VarType.object },
+        ],
       },
     })
   })
 
-  it('should update the hovered group state on enter and leave', () => {
-    const { result } = renderHook(() => useVariableAssigner())
+  it.each([
+    { connecting: true, afterLeave: undefined },
+    { connecting: false, afterLeave: 'group-1' },
+  ])(
+    'tracks the hovered group and clears it on leave only while connecting (connecting=$connecting)',
+    ({ connecting, afterLeave }) => {
+      const { result, store } = renderAssigner([createAssigner()], {
+        connectingNodePayload: connecting ? { nodeId: 'source-node' } : undefined,
+      })
 
-    act(() => {
-      result.current.handleGroupItemMouseEnter('group-1')
-      result.current.handleGroupItemMouseLeave()
-    })
+      act(() => result.current.assigner.handleGroupItemMouseEnter('group-1'))
+      expect(store.getState().hoveringAssignVariableGroupId).toBe('group-1')
 
-    expect(mockSetHoveringAssignVariableGroupId).toHaveBeenNthCalledWith(1, 'group-1')
-    expect(mockSetHoveringAssignVariableGroupId).toHaveBeenNthCalledWith(2, undefined)
+      act(() => result.current.assigner.handleGroupItemMouseLeave())
+      expect(store.getState().hoveringAssignVariableGroupId).toBe(afterLeave)
+    },
+  )
+})
+
+describe('useGetAvailableVars', () => {
+  const canvas = {
+    nodes: [
+      createNode({ id: 'parent-node', data: { type: BlockEnum.Iteration } }),
+      createNode({ id: 'before-1' }),
+      createNode({ id: 'current-node', parentId: 'parent-node' }),
+    ],
+    edges: [createEdge({ source: 'before-1', target: 'current-node' })],
+  }
+
+  beforeEach(() => {
+    mockGetBeforeNodesInSameBranchIncludeParent.mockReturnValue([canvas.nodes[1], canvas.nodes[1]])
   })
 
-  it('should collect available vars and filter start-node env vars when hideEnv is enabled', () => {
-    mockUseNodes.mockReturnValue([
-      {
-        id: 'current-node',
-        parentId: 'parent-node',
-      },
-      {
-        id: 'before-1',
-      },
-      {
-        id: 'parent-node',
-      },
+  it('hides system start variables and empty groups when env vars are hidden', () => {
+    mockGetNodeAvailableVars.mockReturnValue([
+      { isStartNode: true, vars: [{ variable: 'sys.user_id' }, { variable: 'foo' }] },
+      { isStartNode: false, vars: [] },
     ])
-    const getBeforeNodesInSameBranchIncludeParent = vi.fn(() => [
-      { id: 'before-1' },
-      { id: 'before-1' },
-    ])
-    const getNodeAvailableVars = vi
-      .fn()
-      .mockReturnValueOnce([
-        {
-          isStartNode: true,
-          vars: [{ variable: 'sys.user_id' }, { variable: 'foo' }],
-        },
-        {
-          isStartNode: false,
-          vars: [],
-        },
-      ])
-      .mockReturnValueOnce([
-        {
-          isStartNode: false,
-          vars: [{ variable: 'bar' }],
-        },
-      ])
-
-    mockUseWorkflow.mockReturnValue({
-      getBeforeNodesInSameBranchIncludeParent,
-    })
-    mockUseWorkflowVariables.mockReturnValue({
-      getNodeAvailableVars,
-    })
-
-    const { result } = renderHook(() => useGetAvailableVars())
+    const { result } = renderWorkflowCanvasHook(() => useGetAvailableVars(), canvas)
 
     expect(result.current('current-node', 'target', () => true, true)).toEqual([
-      {
-        isStartNode: true,
-        vars: [{ variable: 'foo' }],
-      },
+      { isStartNode: true, vars: [{ variable: 'foo' }] },
     ])
-    expect(result.current('current-node', 'target', () => true, false)).toEqual([
-      {
-        isStartNode: false,
-        vars: [{ variable: 'bar' }],
-      },
-    ])
+    expect(mockGetNodeAvailableVars).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parentNode: expect.objectContaining({ id: 'parent-node' }),
+        beforeNodes: [expect.objectContaining({ id: 'before-1' })],
+        hideEnv: true,
+        isChatflow: false,
+      }),
+    )
+  })
+
+  it('returns the collected variables unchanged when env vars are shown', () => {
+    const vars = [{ isStartNode: false, vars: [{ variable: 'bar' }] }]
+    mockGetNodeAvailableVars.mockReturnValue(vars)
+    const { result } = renderWorkflowCanvasHook(() => useGetAvailableVars(), canvas)
+
+    expect(result.current('current-node', 'target', () => true, false)).toEqual(vars)
     expect(result.current('missing-node', 'target', () => true)).toEqual([])
   })
 
-  it('should filter system variables when the current flow is a snippet', () => {
-    mockFlowType.value = FlowType.snippet
-    mockUseNodes.mockReturnValue([
-      {
-        id: 'current-node',
-      },
-      {
-        id: 'before-1',
-      },
+  it('filters system variables when the current flow is a snippet', () => {
+    mockGetNodeAvailableVars.mockReturnValue([
+      { isStartNode: false, vars: [{ variable: 'sys.user_id' }, { variable: 'answer' }] },
     ])
-    const getBeforeNodesInSameBranchIncludeParent = vi.fn(() => [{ id: 'before-1' }])
-    const getNodeAvailableVars = vi.fn(() => [
-      {
-        isStartNode: false,
-        vars: [{ variable: 'sys.user_id' }, { variable: 'answer' }],
-      },
-    ])
-
-    mockUseWorkflow.mockReturnValue({
-      getBeforeNodesInSameBranchIncludeParent,
+    const { result } = renderWorkflowCanvasHook(() => useGetAvailableVars(), {
+      ...canvas,
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
     })
-    mockUseWorkflowVariables.mockReturnValue({
-      getNodeAvailableVars,
-    })
-
-    const { result } = renderHook(() => useGetAvailableVars())
 
     expect(result.current('current-node', 'target', () => true, false)).toEqual([
-      {
-        isStartNode: false,
-        vars: [{ variable: 'answer' }],
-      },
+      { isStartNode: false, vars: [{ variable: 'answer' }] },
     ])
   })
 })

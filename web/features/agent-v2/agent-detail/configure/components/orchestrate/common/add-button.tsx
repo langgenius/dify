@@ -18,7 +18,7 @@ export function ConfigureSectionAddButton({
   className,
   ...props
 }: ConfigureSectionAddButtonProps) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const isViewingVersion = useAgentOrchestrateViewingVersion()
 
   if (isViewingVersion) return null

@@ -1,12 +1,15 @@
 import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vite-plus/test'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
   createFileTabSkillDetail,
   createReferencePickerSkillDetail,
   createSkillDetail,
+  createSkillVersion,
   getFileTabButton,
   getFileTreeButton,
   getLiveMarkdownEditor,
@@ -38,11 +41,12 @@ describe('SkillDetailPage navigation', () => {
   beforeEach(resetDetailPageFixture)
 
   it('opens Go to Anything from the sidebar search action', async () => {
+    const user = userEvent.setup()
     renderSkillDetailPage()
     render(<TestGotoAnythingDialog />)
 
     expect(screen.queryByRole('dialog', { name: 'Goto Anything' })).not.toBeInTheDocument()
-    fireEvent.click(await screen.findByRole('button', { name: 'app.gotoAnything.searchTitle' }))
+    await user.click(await screen.findByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
     expect(screen.getByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
   })
@@ -51,19 +55,82 @@ describe('SkillDetailPage navigation', () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
 
+    expect(
+      await screen.findByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    ).toBeInTheDocument()
+
     await user.click(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.collapseSidebar',
       }),
     )
     expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    ).not.toBeInTheDocument()
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.expandSidebar',
       }),
     )
     expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+    expect(
+      screen.getByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('opens another skill in its editable draft without retaining the original view state', async () => {
+    const { default: SkillDetailPageRoute } = await import('../detail-page')
+    const user = userEvent.setup()
+    const version = createSkillVersion({ id: 'original-version', version_name: 'Original version' })
+    mocks.skillVersionsQueryOptions.mockImplementation(() => ({
+      queryFn: async () => ({ data: [version] }),
+    }))
+    mocks.skillVersionDetailQueryOptions.mockImplementation(() => ({
+      queryFn: async () => ({
+        ...version,
+        files: createSkillDetail().files,
+      }),
+    }))
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    const { wrapper } = createNuqsTestWrapper()
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <SkillDetailPageRoute />
+      </QueryClientProvider>,
+      { wrapper },
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Original version/ }))
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.rename' }),
+    ).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.collapseSidebar' }),
+    )
+    expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
+
+    mocks.routeSkillId = 'copied-skill'
+    mocks.skillDetail = createSkillDetail({ id: 'copied-skill', display_name: 'Copied skill' })
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <SkillDetailPageRoute />
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.rename' }),
+    ).toHaveTextContent('Copied skill')
+    expect(
+      screen.queryByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows the sidebar while the collapsed rail is hovered', async () => {
@@ -77,7 +144,7 @@ describe('SkillDetailPage navigation', () => {
     )
     expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
 
-    fireEvent.mouseEnter(screen.getByTestId('skill-detail-sidebar-shell'))
+    await user.hover(screen.getByTestId('skill-detail-sidebar-shell'))
 
     expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
 
@@ -91,6 +158,7 @@ describe('SkillDetailPage navigation', () => {
   })
 
   it('resizes the file tree sidebar within its accessible range', async () => {
+    const user = userEvent.setup()
     renderSkillDetailPage()
 
     const resizeHandle = await screen.findByRole('separator', {
@@ -108,11 +176,14 @@ describe('SkillDetailPage navigation', () => {
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
     fireEvent.pointerUp(document)
 
-    fireEvent.keyDown(resizeHandle, { key: 'ArrowRight' })
+    resizeHandle.focus()
+    await user.keyboard('{ArrowRight}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '248')
-    fireEvent.keyDown(resizeHandle, { key: 'End' })
+    await user.keyboard('{Shift>}{ArrowRight}{/Shift}')
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '280')
+    await user.keyboard('{End}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '420')
-    fireEvent.keyDown(resizeHandle, { key: 'Home' })
+    await user.keyboard('{Home}')
     expect(resizeHandle).toHaveAttribute('aria-valuenow', '240')
   })
 
@@ -298,9 +369,13 @@ describe('SkillDetailPage navigation', () => {
     ).toBeInTheDocument()
 
     await user.click(getReferencePickerButton('docs'))
-    await user.keyboard('{ArrowDown}{Enter}')
+    await user.click(getReferencePickerButton('reference.md'))
 
     await waitFor(() => {
+      expect(
+        screen.getAllByRole('textbox').find((editor) => editor instanceof HTMLDivElement)
+          ?.textContent,
+      ).toContain('reference.md')
       expect(
         screen.queryByText('skill.skillManagement.detail.referenceFiles.title'),
       ).not.toBeInTheDocument()
@@ -308,6 +383,7 @@ describe('SkillDetailPage navigation', () => {
   })
 
   it('shows the full reference path on hover and opens the referenced file in an editor tab', async () => {
+    const user = userEvent.setup()
     const manifestContent =
       '---\nname: github-actions-failure-debugging\ndescription: Guide for debugging failing GitHub Actions workflows.\nmetadata:\n  display-name: Untitled skill\n---\n# Guide\n\nRead [guide.md](<docs/guide.md>) before continuing.\n'
     mocks.skillDetail = createSkillDetail({
@@ -340,7 +416,7 @@ describe('SkillDetailPage navigation', () => {
 
     expect(reference).toHaveAttribute('title', 'docs/guide.md')
 
-    fireEvent.click(reference)
+    await user.click(reference)
     expect(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.closeFileTab:{"name":"docs/guide.md"}',

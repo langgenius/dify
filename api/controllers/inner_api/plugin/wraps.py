@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
+from uuid import UUID
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -10,8 +11,8 @@ from sqlalchemy.orm import sessionmaker
 from extensions.ext_database import db
 from libs.login import current_user
 from models.account import Tenant
-from models.enums import EndUserType
-from models.model import DefaultEndUserSessionID, EndUser
+from models.enums import DEFAULT_END_USER_SESSION_ID, EndUserType
+from models.model import EndUser
 
 
 class TenantUserPayload(BaseModel):
@@ -30,8 +31,8 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     context.
     """
     if not user_id:
-        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
-    is_anonymous = user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
+        user_id = DEFAULT_END_USER_SESSION_ID
+    is_anonymous = user_id == DEFAULT_END_USER_SESSION_ID
     try:
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             user_model = None
@@ -55,14 +56,15 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                 # session_id, id is auto-generated) and a fresh EndUser
                 # was created per call, breaking multi-turn chat
                 # continuation (see #36736).
-                user_model = session.scalar(
-                    select(EndUser)
-                    .where(
-                        EndUser.id == user_id,
-                        EndUser.tenant_id == tenant_id,
+                if _is_uuid(user_id):
+                    user_model = session.scalar(
+                        select(EndUser)
+                        .where(
+                            EndUser.id == user_id,
+                            EndUser.tenant_id == tenant_id,
+                        )
+                        .limit(1)
                     )
-                    .limit(1)
-                )
                 if user_model is None:
                     user_model = session.scalar(
                         select(EndUser)
@@ -77,7 +79,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                 user_model = EndUser(
                     tenant_id=tenant_id,
                     type=EndUserType.SERVICE_API,
-                    is_anonymous=is_anonymous,
+                    _is_anonymous=is_anonymous,
                     session_id=user_id,
                 )
                 session.add(user_model)
@@ -88,6 +90,14 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
         raise ValueError("user not found") from e
 
     return user_model
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 def get_user_tenant[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
@@ -102,7 +112,7 @@ def get_user_tenant[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
             raise ValueError("tenant_id is required")
 
         if not user_id:
-            user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
+            user_id = DEFAULT_END_USER_SESSION_ID
 
         tenant_model = db.session.get(Tenant, tenant_id)
 

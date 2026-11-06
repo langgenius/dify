@@ -15,11 +15,11 @@ from controllers.web.error import (
 )
 from controllers.web.workflow import WorkflowRunApi, WorkflowTaskStopApi
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError
-from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
+from tests.helpers.unit.model_factories import make_end_user
 
 
 def _workflow_app() -> App:
@@ -31,12 +31,7 @@ def _chat_app() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        type=EndUserType.BROWSER,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1")
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +61,8 @@ class TestWorkflowRunApi:
     )
     @patch("controllers.web.workflow.web_ns")
     def test_provider_not_init(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs}
 
         with app.test_request_context("/workflows/run", method="POST"):
             with pytest.raises(ProviderNotInitializeError):
@@ -83,7 +79,8 @@ class TestWorkflowRunApi:
         mock_gen: MagicMock,
         app: Flask,
     ) -> None:
-        mock_ns.payload = {"inputs": {}}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs}
 
         with app.test_request_context("/workflows/run", method="POST"):
             with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
@@ -98,7 +95,8 @@ class TestWorkflowRunApi:
     )
     @patch("controllers.web.workflow.web_ns")
     def test_quota_exceeded(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs}
 
         with app.test_request_context("/workflows/run", method="POST"):
             with pytest.raises(ProviderQuotaExceededError):
@@ -114,12 +112,12 @@ class TestWorkflowTaskStopApi:
             with pytest.raises(NotWorkflowAppError):
                 WorkflowTaskStopApi().post(_chat_app(), _end_user(), "task-1")
 
-    @patch("controllers.web.workflow.GraphEngineManager.send_stop_command")
-    @patch("controllers.web.workflow.AppQueueManager.set_stop_flag_no_user_check")
-    def test_stop_calls_both_mechanisms(self, mock_legacy: MagicMock, mock_graph: MagicMock, app: Flask) -> None:
+    @patch("controllers.web.workflow.AppTaskService.stop_workflow_task")
+    def test_stop_passes_app_scope(self, stop: MagicMock, app: Flask) -> None:
         with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
             result = WorkflowTaskStopApi().post(_workflow_app(), _end_user(), "task-1")
 
         assert result == {"result": "success"}
-        mock_legacy.assert_called_once_with("task-1")
-        mock_graph.assert_called_once_with("task-1")
+        stop.assert_called_once_with(
+            tenant_id="tenant-1", app_id="app-1", task_id="task-1", app_mode=AppMode.WORKFLOW, owner=None
+        )

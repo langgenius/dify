@@ -41,7 +41,7 @@ register_response_schema_models(
 @console_ns.route("/features")
 class FeatureApi(Resource):
     @console_ns.doc("get_tenant_features")
-    @console_ns.doc(description="Get feature configuration for current tenant")
+    @console_ns.doc(description="Get feature availability and limits for the current workspace")
     @console_ns.response(
         200,
         "Success",
@@ -50,10 +50,8 @@ class FeatureApi(Resource):
     @console_account_admission()
     @cloud_utm_record
     def get(self, request_context: RequestContext):
-        """Get feature configuration for current tenant"""
-        payload = application_services().feature_queries.get_features(request_context).model_dump()
-        payload.pop("vector_space", None)
-        return payload
+        """Get current workspace features."""
+        return dump_response(FeatureModel, application_services().feature_queries.get_features(request_context))
 
 
 @console_ns.route("/features/vector-space")

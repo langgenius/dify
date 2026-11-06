@@ -38,7 +38,7 @@ const VarPicker: FC<Props> = ({
   onChange,
   notSelectedVarTip,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const [open, setOpen] = useState(false)
   const currItem = options.find((item) => item.value === value)
   const notSetVar = !currItem
@@ -77,8 +77,7 @@ const VarPicker: FC<Props> = ({
         }
       />
       <PopoverContent
-        placement="bottom-end"
-        sideOffset={8}
+        align="end"
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         {options.length > 0 ? (

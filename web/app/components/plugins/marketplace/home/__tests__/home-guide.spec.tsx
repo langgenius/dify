@@ -1,7 +1,7 @@
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import HomeGuide from '../home-guide'
 
 const mocks = vi.hoisted(() => ({
@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
+    useLocale: () => 'en-US',
     useTranslation: () => ({
       i18n: {
         language: 'en-US',
@@ -26,11 +27,18 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: mocks.useDocLink,
 }))
 
-vi.mock('@/config', () => ({
-  get MARKETPLACE_URL_PREFIX() {
-    return mocks.marketplaceUrlPrefix
-  },
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      get NEXT_PUBLIC_MARKETPLACE_URL_PREFIX() {
+        return mocks.marketplaceUrlPrefix
+      },
+    },
+  }
+})
 
 const GUIDE_BUTTON_NAME = /marketplace\.home\.guide/
 
@@ -74,7 +82,7 @@ describe('HomeGuide', () => {
       'href',
       'https://docs.dify.ai/en/develop-plugin/publishing/marketplace-listing/release-overview',
     )
-    expect(options[3]).toHaveAttribute('href', 'https://creators.dify.ai')
+    expect(options[3]).toHaveAttribute('href', 'https://creators.dify.ai/')
     expect(mocks.useDocLink).not.toHaveBeenCalled()
   })
 
@@ -102,7 +110,7 @@ describe('HomeGuide', () => {
     expect(trigger).toHaveAccessibleName(/marketplace\.home\.guide/)
 
     await user.hover(trigger)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(/marketplace\.home\.guide/)
+    expect((await screen.findByRole('tooltip')).textContent).toMatch(/marketplace\.home\.guide/)
 
     await user.unhover(trigger)
     await waitFor(() => {
@@ -111,7 +119,7 @@ describe('HomeGuide', () => {
 
     await user.tab()
     expect(trigger).toHaveFocus()
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(/marketplace\.home\.guide/)
+    expect((await screen.findByRole('tooltip')).textContent).toMatch(/marketplace\.home\.guide/)
   })
 
   it('keeps the Guide dropdown available after the tooltip is shown', async () => {

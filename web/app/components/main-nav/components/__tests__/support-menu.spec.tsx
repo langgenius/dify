@@ -1,37 +1,29 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { Mock } from 'vite-plus/test'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { Menu, MenuContent, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { mailToSupport } from '@/app/components/header/utils/util'
-import { useModalContext } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { render as renderWithoutPricing } from '@/test/console/render'
 import SupportMenu from '../support-menu'
 
 let plan: CloudPlan = 'team'
 
-const {
-  mockConfig,
-  mockOpenZendeskWindow,
-  mockMailToSupport,
-  mockSetShowPricingModal,
-  mockToastError,
-} = vi.hoisted(() => ({
-  mockConfig: {
-    supportEmailAddress: '',
-    zendeskWidgetKey: 'zendesk-key',
-  },
-  mockOpenZendeskWindow: vi.fn(),
-  mockMailToSupport: vi.fn(),
-  mockSetShowPricingModal: vi.fn(),
-  mockToastError: vi.fn(),
-}))
+const { mockConfig, mockOpenZendeskWindow, mockMailToSupport, onPricingUrlUpdate, mockToastError } =
+  vi.hoisted(() => ({
+    mockConfig: {
+      supportEmailAddress: '',
+      zendeskWidgetKey: 'zendesk-key',
+    },
+    mockOpenZendeskWindow: vi.fn(),
+    mockMailToSupport: vi.fn(),
+    onPricingUrlUpdate: vi.fn(),
+    mockToastError: vi.fn(),
+  }))
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     langGeniusVersionInfo: { current_version: '1.0.0' },
@@ -45,7 +37,7 @@ vi.mock('@/app/components/base/zendesk/runtime', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { error: mockToastError },
 }))
 
@@ -67,9 +59,10 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-}))
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
 
 describe('SupportMenu', () => {
   let deploymentEdition: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' = 'CLOUD'
@@ -85,9 +78,7 @@ describe('SupportMenu', () => {
       userProfile: { email: 'user@example.com' },
     }
     plan = 'team'
-    ;(useModalContext as Mock).mockReturnValue({
-      setShowPricingModal: mockSetShowPricingModal,
-    })
+
     ;(mailToSupport as Mock).mockReturnValue('mailto:support@example.com')
   })
 
@@ -109,17 +100,18 @@ describe('SupportMenu', () => {
       ...(withPlan ? { features: { billing: { subscription: { plan } } } } : {}),
     })
     return render(
-      <DropdownMenu open={true} onOpenChange={() => {}}>
-        <DropdownMenuTrigger>open</DropdownMenuTrigger>
-        <DropdownMenuContent>
+      <Menu open={true} onOpenChange={() => {}}>
+        <MenuTrigger>open</MenuTrigger>
+        <MenuContent>
           <SupportMenu />
-        </DropdownMenuContent>
-      </DropdownMenu>,
+        </MenuContent>
+      </Menu>,
       { wrapper },
     )
   }
 
-  it('renders contact us before Discord when Zendesk is configured', () => {
+  it('renders contact us before Discord when Zendesk is configured', async () => {
+    const user = userEvent.setup()
     renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
@@ -131,51 +123,46 @@ describe('SupportMenu', () => {
         .getByText('common.userProfile.contactUs')
         .compareDocumentPosition(screen.getByText('common.userProfile.discord')),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(screen.getByRole('menuitem', { name: 'common.userProfile.discord' })).toHaveClass(
-      'mx-0',
-      'px-3',
-    )
 
-    fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
   })
 
   it('reports a Zendesk load failure so the user can retry', async () => {
+    const user = userEvent.setup()
     mockOpenZendeskWindow.mockRejectedValueOnce(new Error('load failed'))
     renderSupportMenu()
 
-    fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('common.api.actionFailed'))
   })
 
-  it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', () => {
+  it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', async () => {
+    const user = userEvent.setup()
     plan = 'sandbox'
 
     renderSupportMenu()
 
-    expect(screen.getByText('common.userProfile.contactUs')).toHaveClass('text-text-disabled')
-    expect(screen.getByText('billing.upgradeBtn.encourageShort')).toHaveClass(
-      'system-xs-semibold-uppercase',
-      'text-saas-dify-blue-accessible',
-    )
     expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(
-      screen.getByRole('menuitem', {
-        name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
-      }),
-    )
+    const upgradeItem = screen.getByRole('menuitem', {
+      name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
+    })
+    await user.click(upgradeItem)
 
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
     expect(zendeskRuntime.open).not.toHaveBeenCalled()
   })
 
-  it('keeps Zendesk contact us for Cloud sandbox plan with support email and Zendesk configured', () => {
+  it('keeps Zendesk contact us for Cloud sandbox plan with support email and Zendesk configured', async () => {
+    const user = userEvent.setup()
     mockConfig.supportEmailAddress = 'support@example.com'
     plan = 'sandbox'
 
@@ -183,10 +170,10 @@ describe('SupportMenu', () => {
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
-    expect(mockSetShowPricingModal).not.toHaveBeenCalled()
+    expect(onPricingUrlUpdate).not.toHaveBeenCalled()
   })
 
   it('keeps email support for Cloud sandbox plan with support email and no Zendesk configured', () => {

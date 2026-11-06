@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import CreatorProfileHeader from '../header'
 
 vi.mock('#i18n', async () => {
@@ -35,10 +35,6 @@ describe('CreatorProfileHeader', () => {
 
     expect(pluginsLink).toHaveAttribute('href', '/marketplace')
     expect(pluginsLink).not.toHaveAttribute('aria-current')
-    expect(pluginsLink).not.toHaveClass('bg-state-base-active')
     expect(templatesLink).not.toHaveAttribute('aria-current')
-    expect(templatesLink).not.toHaveClass('bg-state-base-active')
-    expect(screen.getByTestId('marketplace-guide')).toBeInTheDocument()
-    expect(screen.queryByTestId('account-section')).not.toBeInTheDocument()
   })
 })

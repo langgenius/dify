@@ -39,7 +39,22 @@ describe('registration tracking', () => {
     vi.clearAllMocks()
     vi.unstubAllGlobals()
     vi.useRealTimers()
-    window.sessionStorage.clear()
+    // A fresh storage boundary avoids happy-dom's bound methods leaking fault injection.
+    const entries = new Map<string, string>()
+    vi.spyOn(window, 'sessionStorage', 'get').mockReturnValue({
+      get length() {
+        return entries.size
+      },
+      clear: () => entries.clear(),
+      getItem: (key: string) => entries.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        entries.set(key, value)
+      },
+      removeItem: (key: string) => {
+        entries.delete(key)
+      },
+      key: (index: number) => [...entries.keys()][index] ?? null,
+    })
     mockConsent.value = 'granted'
     mockAmplitudeInitialized.value = true
     mockTrackEvent.mockImplementation(successResult)
@@ -52,6 +67,8 @@ describe('registration tracking', () => {
 
   afterEach(() => {
     discardRegistrationSessionState()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     vi.useRealTimers()
   })
 
@@ -177,14 +194,8 @@ describe('registration tracking', () => {
     it('swallows sessionStorage write errors without notifying consumers', () => {
       const listener = vi.fn()
       const unsubscribe = subscribeRegistrationSuccess(listener)
-      vi.stubGlobal('window', {
-        sessionStorage: {
-          getItem: vi.fn(() => null),
-          setItem: () => {
-            throw new Error('quota exceeded')
-          },
-          removeItem: vi.fn(),
-        },
+      vi.spyOn(window.sessionStorage, 'setItem').mockImplementation(() => {
+        throw new Error('quota exceeded')
       })
 
       expect(rememberRegistrationSuccess({ method: 'email' })).toBe(false)
@@ -336,6 +347,7 @@ describe('registration tracking', () => {
     })
 
     it('does not retry an acknowledgement-failed marker after an account boundary', async () => {
+      vi.useFakeTimers()
       rememberRegistrationSuccess({ method: 'email' })
       mockTrackEvent.mockReturnValueOnce({ promise: Promise.reject(new Error('network failed')) })
 
@@ -343,6 +355,7 @@ describe('registration tracking', () => {
       expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).not.toBeNull()
 
       discardRegistrationSessionState()
+      await vi.advanceTimersByTimeAsync(1000)
       await flushRegistrationSuccess()
 
       expect(mockTrackEvent).toHaveBeenCalledTimes(1)
@@ -498,16 +511,11 @@ describe('registration tracking', () => {
     })
 
     it('handles storage read errors without throwing', async () => {
-      vi.stubGlobal('window', {
-        sessionStorage: {
-          getItem: () => {
-            throw new Error('read failed')
-          },
-          setItem: vi.fn(),
-          removeItem: () => {
-            throw new Error('remove failed')
-          },
-        },
+      vi.spyOn(window.sessionStorage, 'getItem').mockImplementation(() => {
+        throw new Error('read failed')
+      })
+      vi.spyOn(window.sessionStorage, 'removeItem').mockImplementation(() => {
+        throw new Error('remove failed')
       })
 
       await expect(flushRegistrationSuccess()).resolves.toBeUndefined()
@@ -517,15 +525,8 @@ describe('registration tracking', () => {
     it('retains the same marker when acknowledgement removal fails', async () => {
       rememberRegistrationSuccess({ method: 'email' })
       const raw = window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)
-      const removeItem = vi.fn(() => {
+      vi.spyOn(window.sessionStorage, 'removeItem').mockImplementation(() => {
         throw new Error('remove failed')
-      })
-      vi.stubGlobal('window', {
-        sessionStorage: {
-          getItem: () => raw,
-          setItem: vi.fn(),
-          removeItem,
-        },
       })
 
       await expect(flushRegistrationSuccess()).resolves.toBeUndefined()
@@ -533,17 +534,15 @@ describe('registration tracking', () => {
 
       expect(mockTrackEvent).toHaveBeenCalledTimes(2)
       expect(mockTrackEvent.mock.calls[0]?.[2]).toEqual(mockTrackEvent.mock.calls[1]?.[2])
-      expect(removeItem).toHaveBeenCalledTimes(2)
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe(raw)
     })
 
     it('no-ops when sessionStorage access is blocked', async () => {
-      vi.stubGlobal('window', {
-        get sessionStorage() {
-          throw new Error('storage disabled')
-        },
+      vi.spyOn(window, 'sessionStorage', 'get').mockImplementation(() => {
+        throw new Error('storage disabled')
       })
 
-      expect(() => rememberRegistrationSuccess({ method: 'email' })).not.toThrow()
+      expect(rememberRegistrationSuccess({ method: 'email' })).toBe(false)
       await expect(flushRegistrationSuccess()).resolves.toBeUndefined()
       expect(mockTrackEvent).not.toHaveBeenCalled()
     })

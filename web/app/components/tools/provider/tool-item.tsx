@@ -3,21 +3,20 @@ import type { Collection, Tool } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
+import { useLocale } from '#i18n'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
-import { useLocale } from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { getPluginLanguage } from '@/i18n/metadata'
 
 type Props = Readonly<{
   disabled?: boolean
   collection: Collection
   tool: Tool
   isBuiltIn: boolean
-  isModel: boolean
 }>
 
-const ToolItem = ({ disabled, collection, tool, isBuiltIn, isModel }: Props) => {
+const ToolItem = ({ disabled, collection, tool, isBuiltIn }: Props) => {
   const locale = useLocale()
-  const language = getLanguage(locale)
+  const language = getPluginLanguage(locale)
   const [showDetail, setShowDetail] = useState(false)
 
   return (
@@ -53,7 +52,6 @@ const ToolItem = ({ disabled, collection, tool, isBuiltIn, isModel }: Props) => 
             setShowDetail(false)
           }}
           isBuiltIn={isBuiltIn}
-          isModel={isModel}
         />
       )}
     </>

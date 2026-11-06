@@ -3,13 +3,13 @@ import type { FC } from 'react'
 import type { AssignerNodeOperation } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -48,7 +48,7 @@ const VarList: FC<Props> = ({
   writeModeTypesArr,
   writeModeTypesNum,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflowLogic'])
   const handleAssignedVarChange = useCallback(
     (index: number) => {
       return (value: ValueSelector | string) => {
@@ -93,9 +93,9 @@ const VarList: FC<Props> = ({
     (index: number) => {
       return (value: ValueSelector | string | number | boolean) => {
         const newList = produce(list, (draft) => {
-          draft[index]!.value = value as ValueSelector
+          draft[index]!.value = value
         })
-        onChange(newList, value as ValueSelector)
+        onChange(newList, Array.isArray(value) ? value : undefined)
       }
     },
     [list, onChange],
@@ -143,7 +143,7 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t(($) => $['nodes.assigner.noVarTip'], { ns: 'workflow' })}
+        {t(($) => $['nodes.assigner.noVarTip'], { ns: 'workflowLogic' })}
       </ListNoDataPlaceholder>
     )
   }
@@ -173,7 +173,7 @@ const VarList: FC<Props> = ({
                   filterVar={filterVar}
                   placeholder={
                     t(($) => $['nodes.assigner.selectAssignedVariable'], {
-                      ns: 'workflow',
+                      ns: 'workflowLogic',
                     }) as string
                   }
                   minWidth={352}
@@ -183,7 +183,9 @@ const VarList: FC<Props> = ({
                 <OperationSelector
                   value={item.operation}
                   placeholder="Operation"
-                  disabled={!item.variable_selector || item.variable_selector.length === 0}
+                  disabled={
+                    readonly || !item.variable_selector || item.variable_selector.length === 0
+                  }
                   onSelect={handleOperationChange(index, assignedVarType!)}
                   assignedVarType={assignedVarType}
                   writeModeTypes={writeModeTypes}
@@ -205,7 +207,7 @@ const VarList: FC<Props> = ({
                     filterVar={handleFilterToAssignedVar(index)}
                     valueTypePlaceHolder={toAssignedVarType}
                     placeholder={
-                      t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' }) as string
+                      t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' }) as string
                     }
                     minWidth={352}
                     popupFor="toAssigned"
@@ -214,19 +216,12 @@ const VarList: FC<Props> = ({
                 )}
               {!!(item.operation === WriteMode.set && assignedVarType) && (
                 <>
-                  {assignedVarType === 'number' && (
-                    <Input
-                      type="number"
-                      value={item.value as number}
-                      onChange={(e) => handleToAssignedVarChange(index)(Number(e.target.value))}
-                      className="w-full"
-                    />
-                  )}
                   {assignedVarType === 'string' && (
                     <Textarea
+                      readOnly={readonly}
                       aria-label={
                         item.variable_selector?.join('.') ||
-                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' })
+                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' })
                       }
                       value={item.value as string}
                       onValueChange={(value) => handleToAssignedVarChange(index)(value)}
@@ -235,6 +230,7 @@ const VarList: FC<Props> = ({
                   )}
                   {assignedVarType === 'boolean' && (
                     <BoolValue
+                      disabled={readonly}
                       value={item.value as boolean}
                       onChange={(value) => handleToAssignedVarChange(index)(value)}
                     />
@@ -250,14 +246,29 @@ const VarList: FC<Props> = ({
                   )}
                 </>
               )}
-              {writeModeTypesNum?.includes(item.operation) && (
-                <Input
-                  type="number"
-                  value={item.value as number}
-                  onChange={(e) => handleToAssignedVarChange(index)(Number(e.target.value))}
-                  placeholder="Enter number value..."
+              {((item.operation === WriteMode.set && assignedVarType === VarType.number) ||
+                writeModeTypesNum?.includes(item.operation)) && (
+                <NumberField
+                  step="any"
+                  value={typeof item.value === 'number' ? item.value : null}
+                  readOnly={readonly}
+                  onValueChange={(value) => handleToAssignedVarChange(index)(value ?? '')}
                   className="w-full"
-                />
+                >
+                  <NumberFieldGroup>
+                    <NumberFieldInput
+                      aria-label={
+                        item.variable_selector.join('.') ||
+                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' })
+                      }
+                      placeholder={
+                        writeModeTypesNum?.includes(item.operation)
+                          ? 'Enter number value...'
+                          : undefined
+                      }
+                    />
+                  </NumberFieldGroup>
+                </NumberField>
               )}
             </div>
             <IconButton
@@ -265,6 +276,7 @@ const VarList: FC<Props> = ({
               size="lg"
               tone="destructive"
               className="shrink-0"
+              disabled={readonly}
               onClick={handleVarRemove(index)}
             >
               <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />

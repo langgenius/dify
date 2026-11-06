@@ -7,7 +7,7 @@ remote HTTP remain mocked because they are external I/O boundaries.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import httpx
@@ -119,10 +119,12 @@ def test_create_file_by_raw_prefers_filename_extension_over_mimetype(
 def test_create_file_by_url_downloads_and_persists_record(sqlite_tool_file_session: Session) -> None:
     manager = ToolFileManager()
     tenant_id = str(uuid4())
-    response = Mock()
-    response.content = b"binary"
-    response.headers = {"Content-Type": "application/octet-stream"}
-    response.raise_for_status.return_value = None
+    response = httpx.Response(
+        200,
+        content=b"binary",
+        headers={"Content-Type": "application/octet-stream"},
+        request=httpx.Request("GET", "https://example.com/f.bin"),
+    )
 
     with (
         patch("core.tools.tool_file_manager.storage") as storage,
@@ -143,10 +145,12 @@ def test_create_file_by_url_prefers_url_extension_over_mimetype(
 ) -> None:
     manager = ToolFileManager()
     tenant_id = str(uuid4())
-    response = Mock()
-    response.content = b"docx"
-    response.headers = {"Content-Type": "application/octet-stream"}
-    response.raise_for_status.return_value = None
+    response = httpx.Response(
+        200,
+        content=b"docx",
+        headers={"Content-Type": "application/octet-stream"},
+        request=httpx.Request("GET", "https://example.com/report.docx?download=1"),
+    )
 
     with (
         patch("core.tools.tool_file_manager.storage") as storage,

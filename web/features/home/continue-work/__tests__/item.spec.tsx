@@ -17,18 +17,13 @@ const toastMocks = vi.hoisted(() => ({
   warning: vi.fn(),
 }))
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: mockFormatTimeFromNow,
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     warning: toastMocks.warning,
   },
@@ -80,6 +75,7 @@ const renderItem = (
 ) =>
   renderWithConsoleQuery(<ContinueWorkItem app={app} />, {
     accountProfile: mockConsoleState.userProfile,
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
     systemFeatures,
   })
 
@@ -101,7 +97,6 @@ describe('ContinueWorkItem', () => {
       expect(link).toHaveAttribute('href', '/app/app-1/configuration')
       expect(link).toHaveAccessibleDescription(/Alice.*5 minutes ago/)
       expect(link).not.toContainElement(screen.getByText('Alice'))
-      expect(screen.getByText('Alice')).toBeInTheDocument()
       expect(
         screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}'),
       ).toBeInTheDocument()

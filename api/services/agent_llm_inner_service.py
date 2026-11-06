@@ -82,7 +82,7 @@ class AgentLLMInnerService:
             app_type=get_credit_usage_app_type(app.mode),
         )
 
-    def invoke(self, prepared: PreparedAgentLLMInvocation) -> Generator[LLMResultChunk, None, None]:
+    def invoke(self, prepared: PreparedAgentLLMInvocation) -> Generator[LLMResultChunk]:
         request = prepared.request
         caller = request.caller
         target = request.target
@@ -109,7 +109,7 @@ class AgentLLMInnerService:
                 "created_by": prepared.created_by,
             },
         )
-        yield from cast(Generator[LLMResultChunk, None, None], result)
+        yield from cast(Generator[LLMResultChunk], result)
 
     def _validate_app_tenant(self, *, app_id: str, tenant_id: str) -> App:
         with self._session_factory() as session:

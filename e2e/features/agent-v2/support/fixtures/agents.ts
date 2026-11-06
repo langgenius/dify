@@ -1,12 +1,12 @@
-import type { ConsoleClient } from '../../../../support/api/console-client'
-import type { DifyWorld } from '../../../support/world'
-import type { PreseededResource } from './common'
+import type { ConsoleClient } from '../../../../support/api/console-client.ts'
+import type { DifyWorld } from '../../../support/world.ts'
+import type { PreseededResource } from './common.ts'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
-} from '../agent-builder-resources'
-import { agentBuilderTestMaterials } from '../test-materials'
+} from '../agent-builder-resources.ts'
+import { agentBuilderTestMaterials } from '../test-materials.ts'
 import {
   asArray,
   asRecord,
@@ -14,9 +14,9 @@ import {
   failFixturePrerequisite,
   findResourceByName,
   hasNamedOrKeyedEntry,
-} from './common'
-import { requireReadyPreseededDataset } from './datasets'
-import { requireAgentBuilderStableChatModel } from './models'
+} from './common.ts'
+import { requireReadyPreseededDataset } from './datasets.ts'
+import { requireAgentBuilderStableChatModel } from './models.ts'
 import {
   findToolEntry,
   hasToolEntry,
@@ -24,7 +24,7 @@ import {
   requirePreseededTool,
   splitToolDisplayName,
   splitToolResourceId,
-} from './tools'
+} from './tools.ts'
 
 const hasKnowledgeDataset = (soul: Record<string, unknown>, dataset: PreseededResource) => {
   const knowledge = asRecord(soul.knowledge)

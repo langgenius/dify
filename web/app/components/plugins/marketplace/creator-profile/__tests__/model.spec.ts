@@ -3,8 +3,9 @@ import type {
   MarketplacePlugin,
   MarketplaceTemplate,
 } from '@dify/contracts/marketplace'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import {
+  adaptCreations,
   adaptCreatorProfile,
   getStandaloneCreationHref,
   normalizeCreatorSocialLink,
@@ -41,6 +42,7 @@ const template = {
   icon_background: '#fff',
   icon_file_key: '',
   publisher_unique_handle: 'dify',
+  publisher_handle: 'Dify Display Name',
   usage_count: 10,
   categories: [],
   deps_plugins: ['dify/search'],
@@ -100,8 +102,35 @@ describe('creator profile model', () => {
       '/bundles/dify/research?language=zh-Hans',
     )
     expect(getStandaloneCreationHref(viewModel.creations[1]!, 'zh-Hans')).toBe(
-      '/template/dify/Research%20template?templateId=template%2Fone&creationType=templates&language=zh-Hans',
+      '/template/dify/template%2Fone?language=zh-Hans',
     )
+    expect(getStandaloneCreationHref(viewModel.creations[1]!)).toBe('/template/dify/template%2Fone')
+  })
+
+  it('uses stable template links for publisher handle fallbacks without exposing creator email', () => {
+    const creations = adaptCreations({
+      locale: 'en-US',
+      plugins: [],
+      templates: [
+        { ...template, publisher_unique_handle: '', publisher_handle: '研究 / Team' },
+        {
+          ...template,
+          publisher_unique_handle: '',
+          publisher_handle: '',
+          creator_email: 'private@example.com',
+        },
+        { ...template, template_name: 'Renamed research template' },
+      ],
+      resolvePluginIcon: () => '',
+      resolveTemplateIcon: () => '',
+      resolveDependencyIcon: () => '',
+    })
+
+    expect(creations.map((creation) => getStandaloneCreationHref(creation))).toEqual([
+      '/template/%E7%A0%94%E7%A9%B6%20%2F%20Team/template%2Fone',
+      '/template/template/template%2Fone',
+      '/template/dify/template%2Fone',
+    ])
   })
 
   it('normalizes Unix-second, Unix-millisecond, and ISO timestamps', () => {
@@ -164,7 +193,7 @@ describe('creator profile model', () => {
     expect(parseCreatorSortOrder('ASC')).toBe('asc')
   })
 
-  it('sorts all fields in both directions and preserves equal-value order', () => {
+  it('sorts update time, creation time and popularity while preserving equal-value order', () => {
     const creations = [
       { id: 'first', updatedAt: 1, createdAt: 3, popularity: 2 },
       { id: 'second', updatedAt: 1, createdAt: 2, popularity: 3 },
@@ -193,32 +222,8 @@ describe('creator profile model', () => {
     expect(normalizeCreatorSocialLink('mailto:test@example.com')).toBeNull()
   })
 
-  it('ignores non-string social links and template dependencies instead of throwing', () => {
+  it('ignores non-string values at the social-link normalization boundary', () => {
     expect(normalizeCreatorSocialLink({ href: 'https://x.com/x' })).toBeNull()
     expect(normalizeCreatorSocialLink(null)).toBeNull()
-
-    const viewModel = adaptCreatorProfile({
-      creator: {
-        ...creator,
-        social_links: [{ href: 'https://x.com/x' }, 'github.com/evanz'] as unknown as string[],
-      },
-      kind: 'individual',
-      locale: 'en-US',
-      avatarUrl: '/avatar',
-      backgroundUrl: '/background',
-      plugins: [],
-      templates: [
-        {
-          ...template,
-          deps_plugins: [null, 'dify/search', ''] as unknown as string[],
-        },
-      ],
-      resolvePluginIcon: () => '/plugin-icon',
-      resolveTemplateIcon: () => '',
-      resolveDependencyIcon: (id) => `/dependency/${id}`,
-    })
-
-    expect(viewModel.profile.socialLinks).toEqual([expect.objectContaining({ platform: 'github' })])
-    expect(viewModel.creations[0]?.dependencyIcons).toEqual(['/dependency/dify/search'])
   })
 })

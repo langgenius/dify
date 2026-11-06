@@ -12,7 +12,7 @@ type ActionsProps = {
 }
 
 const Actions = ({ formParams, runDisabled, onBack }: ActionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const { form, isSubmitting, canSubmit } = formParams
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running

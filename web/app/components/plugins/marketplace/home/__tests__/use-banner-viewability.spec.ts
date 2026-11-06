@@ -1,6 +1,6 @@
 import { act, render } from '@testing-library/react'
 import { createElement, useRef } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useBannerViewability } from '../use-banner-viewability'
 
 type ObserverRecord = {

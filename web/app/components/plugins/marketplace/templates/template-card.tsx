@@ -6,11 +6,15 @@ import { useBoolean } from 'ahooks'
 import { useCallback } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import Partner from '@/app/components/plugins/base/badges/partner'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import {
+  getMarketplacePluginIconUrl,
+  getMarketplaceTemplateIconUrl,
+} from '@/features/marketplace/api'
 import { useRouter } from '@/next/navigation'
 import { formatNumberAbbreviated } from '@/utils/format'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
 import TemplateDetailDialog from './template-detail-dialog'
+import { useOptionalTemplateDetailRoute } from './use-optional-template-detail-route'
 
 type TemplateCardProps = {
   template: MarketplaceTemplate
@@ -22,6 +26,9 @@ const MAX_VISIBLE_PLUGIN_DEPENDENCIES = 7
 
 export default function TemplateCard({ template, className, partnerText }: TemplateCardProps) {
   const router = useRouter()
+  const navigation = useMarketplaceDetailNavigation()
+  const externalHref = navigation.templateHref(template)
+  const templateDetailRoute = useOptionalTemplateDetailRoute()
   const [isDetailOpen, { setTrue: showDetail, setFalse: hideDetail }] = useBoolean(false)
   const publisher =
     template.publisher_handle || template.publisher_unique_handle || template.creator_email || ''
@@ -30,11 +37,14 @@ export default function TemplateCard({ template, className, partnerText }: Templ
     0,
     (template.deps_plugins?.length ?? 0) - MAX_VISIBLE_PLUGIN_DEPENDENCIES,
   )
-  const imageUrl = template.icon_file_key
-    ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
-    : undefined
+  const imageUrl = template.icon_file_key ? getMarketplaceTemplateIconUrl(template.id) : undefined
+  const openDetail = () => {
+    if (templateDetailRoute) templateDetailRoute.open(template)
+    else showDetail()
+  }
   const handleOpenChange = (open: boolean) => {
-    if (open) showDetail()
+    if (open) openDetail()
+    else if (templateDetailRoute) templateDetailRoute.close()
     else hideDetail()
   }
   const handleInstall = useCallback(() => {
@@ -50,19 +60,31 @@ export default function TemplateCard({ template, className, partnerText }: Templ
           className,
         )}
       >
-        <button
-          type="button"
-          aria-label={template.template_name}
-          className="absolute inset-0 z-[1] cursor-pointer rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          onClick={showDetail}
-        />
+        {externalHref ? (
+          <a
+            href={externalHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={template.template_name}
+            className="absolute inset-0 z-[1] cursor-pointer rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          />
+        ) : (
+          <button
+            type="button"
+            aria-label={template.template_name}
+            className="absolute inset-0 z-[1] cursor-pointer rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            onClick={openDetail}
+          />
+        )}
         <div className="relative z-0 flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
           <AppIcon
             size="large"
-            iconType={imageUrl ? 'image' : 'emoji'}
-            icon={imageUrl ? undefined : template.icon || '📄'}
-            imageUrl={imageUrl}
-            background={template.icon_background}
+            icon={{
+              icon_type: imageUrl ? 'image' : 'emoji',
+              icon: template.icon || '📄',
+              icon_url: imageUrl,
+              icon_background: template.icon_background,
+            }}
           />
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
             <div className="flex items-center">
@@ -90,7 +112,7 @@ export default function TemplateCard({ template, className, partnerText }: Templ
             <img
               key={pluginId}
               className="size-6 rounded-md border-[0.5px] border-effects-icon-border object-cover"
-              src={getIconFromMarketPlace(pluginId)}
+              src={getMarketplacePluginIconUrl(pluginId)}
               alt=""
               title={pluginId}
             />
@@ -100,12 +122,14 @@ export default function TemplateCard({ template, className, partnerText }: Templ
           )}
         </div>
       </article>
-      <TemplateDetailDialog
-        open={isDetailOpen}
-        template={template}
-        onInstall={handleInstall}
-        onOpenChange={handleOpenChange}
-      />
+      {!externalHref && !templateDetailRoute && (
+        <TemplateDetailDialog
+          open={isDetailOpen}
+          template={template}
+          onInstall={handleInstall}
+          onOpenChange={handleOpenChange}
+        />
+      )}
     </>
   )
 }

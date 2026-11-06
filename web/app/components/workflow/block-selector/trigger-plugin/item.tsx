@@ -56,7 +56,7 @@ const TriggerPluginItem: FC<Props> = ({
   onSelect,
   disabled = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const language = useGetLanguage()
   const { theme } = useTheme()
   const notShowProvider = payload.type === CollectionType.workflow

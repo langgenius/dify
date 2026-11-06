@@ -2,7 +2,7 @@ import type {
   AgentBuildDraftResponse,
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { ConsoleClient } from '../../../support/api/console-client'
+import type { ConsoleClient } from '../../../support/api/console-client.ts'
 import { ORPCError } from '@orpc/client'
 
 export async function saveAgentBuildDraft(

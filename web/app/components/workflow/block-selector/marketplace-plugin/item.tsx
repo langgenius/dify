@@ -1,5 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types.ts'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
@@ -8,20 +9,21 @@ import { useTranslation } from 'react-i18next'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { useLocale } from '@/context/i18n'
+import { useGetLanguage } from '@/context/i18n'
 import { formatNumber } from '@/utils/format'
 import Action from './action'
 
 type Props = Readonly<{
+  marketplace: MarketplaceLinks
   payload: Plugin
 }>
 
-function Item({ payload }: Props) {
-  const { t } = useTranslation()
+function Item({ marketplace, payload }: Props) {
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
-  const locale = useLocale()
+  const language = useGetLanguage()
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
-    obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
+    obj?.[language] || obj?.['en-US'] || obj?.en_US || ''
   const [isShowInstallModal, { setTrue: showInstallModal, setFalse: hideInstallModal }] =
     useBoolean(false)
   const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
@@ -67,6 +69,7 @@ function Item({ payload }: Props) {
             </Button>
           )}
           <Action
+            marketplace={marketplace}
             open={open}
             onOpenChange={setOpen}
             author={payload.org}

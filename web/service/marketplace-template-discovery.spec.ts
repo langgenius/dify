@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   templateSearch: vi.fn(),
 }))
 
-vi.mock('./client', () => ({
+vi.mock('@/service/marketplace', () => ({
   marketplaceClient: {
     templateCollections: (...args: unknown[]) => mocks.templateCollections(...args),
     templateCollectionTemplates: (...args: unknown[]) => mocks.templateCollectionTemplates(...args),
@@ -23,7 +23,7 @@ const importDiscovery = async () => {
 
 describe('marketplace template discovery', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
   it('loads each template collection and isolates a failed collection', async () => {
@@ -48,11 +48,10 @@ describe('marketplace template discovery', () => {
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
-    expect(mocks.templateCollectionTemplates).toHaveBeenNthCalledWith(
-      1,
+    expect(mocks.templateCollectionTemplates).toHaveBeenCalledWith(
       {
         params: { collectionName: 'featured' },
-        body: { limit: 20 },
+        body: {},
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )

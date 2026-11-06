@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { downloadUrl } from '@/utils/download'
 import FileImageRender from '../file-image-render'
-import { fileIsUploaded } from '../utils'
+import { fileIsUploaded, getFileDownloadUrl } from '../utils'
 
 type FileImageItemProps = {
   file: FileEntity
@@ -24,10 +24,10 @@ const FileImageItem = ({
   onRemove,
   onReUpload,
 }: FileImageItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'custom'])
   const { id, progress, base64Url, url, name } = file
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
-  const download_url = url ? `${url}&as_attachment=true` : base64Url
+  const download_url = url ? getFileDownloadUrl(url) : base64Url
   const image = (
     <FileImageRender
       className="h-17 w-17 shadow-md"

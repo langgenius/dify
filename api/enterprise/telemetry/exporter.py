@@ -61,10 +61,7 @@ def _parse_otlp_headers(raw: str) -> dict[str, str]:
 def _datetime_to_ns(dt: datetime) -> int:
     """Convert a datetime to nanoseconds since epoch (OTEL convention)."""
     # Ensure we always interpret naive datetimes as UTC instead of local time.
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    else:
-        dt = dt.astimezone(UTC)
+    dt = dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
     return int(dt.timestamp() * 1_000_000_000)
 
 

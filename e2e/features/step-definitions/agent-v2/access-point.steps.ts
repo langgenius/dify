@@ -1,15 +1,15 @@
-import type { DifyWorld } from '../../support/world'
-import type { AccessSurfaceName } from './access-point-helpers'
+import type { DifyWorld } from '../../support/world.ts'
+import type { AccessSurfaceName } from './access-point-helpers.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { publishAgentWithPublishableDraft } from '../../agent-v2/support/agent'
+import { publishAgentWithPublishableDraft } from '../../agent-v2/support/agent.ts'
 import {
   getAccessSurfaceCard,
   getCurrentAgentId,
   getPreseededResource,
   getServiceApiCard,
   getWebAppCard,
-} from './access-point-helpers'
+} from './access-point-helpers.ts'
 
 const toggleAgentAccess = async (
   world: DifyWorld,

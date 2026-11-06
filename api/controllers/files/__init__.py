@@ -1,3 +1,5 @@
+from types import ModuleType
+
 from flask import Blueprint
 from flask_restx import Namespace
 
@@ -14,7 +16,26 @@ api = ExternalApi(
 
 files_ns = Namespace("files", description="File operations", path="/")
 
-from . import appdeploy_files, image_preview, tool_files, upload
+
+def _register_controllers() -> tuple[ModuleType, ...]:
+    """Load route modules after their namespaces and schema models exist."""
+
+    from . import appdeploy_files, plugin_file_upload, tool_files, upload_file_delivery
+
+    return (
+        appdeploy_files,
+        plugin_file_upload,
+        tool_files,
+        upload_file_delivery,
+    )
+
+
+(
+    appdeploy_files,
+    plugin_file_upload,
+    tool_files,
+    upload_file_delivery,
+) = _register_controllers()
 
 api.add_namespace(files_ns)
 
@@ -23,7 +44,7 @@ __all__ = [
     "appdeploy_files",
     "bp",
     "files_ns",
-    "image_preview",
+    "plugin_file_upload",
     "tool_files",
-    "upload",
+    "upload_file_delivery",
 ]

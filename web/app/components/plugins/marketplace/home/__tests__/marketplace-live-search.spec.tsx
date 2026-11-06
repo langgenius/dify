@@ -1,20 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MarketplaceLiveSearch from '../marketplace-live-search'
 
 const { mockReplace } = vi.hoisted(() => ({
   mockReplace: vi.fn(),
 }))
-
-vi.mock('ahooks', async (importOriginal) => {
-  const original = await importOriginal<typeof import('ahooks')>()
-
-  return {
-    ...original,
-    useDebounce: <T,>(value: T) => value,
-  }
-})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),

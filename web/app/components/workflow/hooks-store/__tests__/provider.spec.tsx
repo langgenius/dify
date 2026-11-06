@@ -1,74 +1,123 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { use } from 'react'
-import { HooksStoreContext, HooksStoreContextProvider } from '../provider'
+import type { AvailableNodesMetaData } from '../store'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { BlockClassification } from '../../block-selector/types'
+import { BlockEnum } from '../../types'
+import { HooksStoreContextProvider } from '../provider'
+import { useHooksStore } from '../store'
 
-const mockRefreshAll = vi.fn()
-const mockStore = {
-  getState: () => ({
-    refreshAll: mockRefreshAll,
-  }),
-}
-
-let mockReactflowState = {
+const canvas = vi.hoisted(() => ({
   d3Selection: null as object | null,
   d3Zoom: null as object | null,
-}
-
-vi.mock('reactflow', () => ({
-  useStore: (selector: (state: typeof mockReactflowState) => unknown) =>
-    selector(mockReactflowState),
 }))
 
-vi.mock('../store', async () => {
-  const actual = await vi.importActual<typeof import('../store')>('../store')
-  return {
-    ...actual,
-    createHooksStore: vi.fn(() => mockStore),
-  }
+vi.mock('reactflow', () => ({
+  useStore: (selector: (state: typeof canvas) => unknown) => selector(canvas),
+}))
+
+const createCatalog = (...types: BlockEnum[]): AvailableNodesMetaData => ({
+  nodes: types.map((type) => ({
+    metaData: {
+      classification: BlockClassification.Default,
+      sort: 0,
+      type,
+      title: type,
+      author: 'Dify',
+    },
+    defaultValue: {},
+    checkValid: () => ({ isValid: true }),
+  })),
 })
 
-const Consumer = () => {
-  const store = use(HooksStoreContext)
-  return <div>{store ? 'has-hooks-store' : 'missing-hooks-store'}</div>
+const AvailableNodes = () => {
+  const catalog = useHooksStore((state) => state.availableNodesMetaData)
+  return (
+    <output aria-label="Available nodes">
+      {catalog?.nodes.map((node) => node.metaData.type).join(', ')}
+    </output>
+  )
+}
+
+const ExportButton = () => {
+  const isExporting = useHooksStore((state) => state.isExporting)
+  const handleExportDSL = useHooksStore((state) => state.handleExportDSL)
+  return (
+    <button disabled={isExporting} onClick={() => handleExportDSL?.()}>
+      Export
+    </button>
+  )
 }
 
 describe('hooks-store provider', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockReactflowState = {
-      d3Selection: null,
-      d3Zoom: null,
-    }
+    canvas.d3Selection = null
+    canvas.d3Zoom = null
   })
 
-  it('should provide the hooks store context without refreshing when the canvas handles are missing', () => {
-    render(
-      <HooksStoreContextProvider>
-        <Consumer />
+  it.each(['before', 'after'] as const)(
+    'propagates node catalog changes %s canvas initialization',
+    (timing) => {
+      if (timing === 'after') {
+        canvas.d3Selection = {}
+        canvas.d3Zoom = {}
+      }
+      const initialCatalog = createCatalog(BlockEnum.KnowledgeRetrieval)
+      const enabledCatalog = createCatalog(
+        BlockEnum.KnowledgeRetrieval,
+        BlockEnum.KnowledgeRetrievalV2,
+      )
+      const { rerender } = render(
+        <HooksStoreContextProvider availableNodesMetaData={initialCatalog}>
+          <AvailableNodes />
+        </HooksStoreContextProvider>,
+      )
+      const availableNodes = screen.getByRole('status', { name: 'Available nodes' })
+      expect(availableNodes).toHaveTextContent(BlockEnum.KnowledgeRetrieval)
+      expect(availableNodes).not.toHaveTextContent(BlockEnum.KnowledgeRetrievalV2)
+
+      rerender(
+        <HooksStoreContextProvider availableNodesMetaData={enabledCatalog}>
+          <AvailableNodes />
+        </HooksStoreContextProvider>,
+      )
+      expect(availableNodes).toHaveTextContent(BlockEnum.KnowledgeRetrievalV2)
+
+      rerender(
+        <HooksStoreContextProvider availableNodesMetaData={initialCatalog}>
+          <AvailableNodes />
+        </HooksStoreContextProvider>,
+      )
+      expect(availableNodes).toHaveTextContent(BlockEnum.KnowledgeRetrieval)
+      expect(availableNodes).not.toHaveTextContent(BlockEnum.KnowledgeRetrievalV2)
+    },
+  )
+
+  it('propagates export pending state and the latest handler independently of canvas initialization', async () => {
+    const user = userEvent.setup()
+    const firstExport = vi.fn().mockResolvedValue(true)
+    const retryExport = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(
+      <HooksStoreContextProvider handleExportDSL={firstExport} isExporting={false}>
+        <ExportButton />
       </HooksStoreContextProvider>,
     )
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    expect(firstExport).toHaveBeenCalledTimes(1)
 
-    expect(screen.getByText('has-hooks-store')).toBeInTheDocument()
-    expect(mockRefreshAll).not.toHaveBeenCalled()
-  })
-
-  it('should refresh the hooks store when both d3Selection and d3Zoom are available', async () => {
-    const handleRun = vi.fn()
-    mockReactflowState = {
-      d3Selection: {},
-      d3Zoom: {},
-    }
-
-    render(
-      <HooksStoreContextProvider handleRun={handleRun}>
-        <Consumer />
+    rerender(
+      <HooksStoreContextProvider handleExportDSL={firstExport} isExporting>
+        <ExportButton />
       </HooksStoreContextProvider>,
     )
+    expect(screen.getByRole('button', { name: 'Export' })).toBeDisabled()
 
-    await waitFor(() => {
-      expect(mockRefreshAll).toHaveBeenCalledWith({
-        handleRun,
-      })
-    })
+    rerender(
+      <HooksStoreContextProvider handleExportDSL={retryExport} isExporting={false}>
+        <ExportButton />
+      </HooksStoreContextProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    expect(retryExport).toHaveBeenCalledTimes(1)
+    expect(firstExport).toHaveBeenCalledTimes(1)
   })
 })

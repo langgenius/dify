@@ -17,7 +17,7 @@ export function PublisherEnvironmentActionsSection({
   deployment?: EnvironmentDeployment
   environmentId: string
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const actionsDisabled = !appId || !deployment
   const accessPointHref = appId ? environmentHref('access-point', appId, environmentId) : undefined
   const deployHref = appId ? environmentHref('deploy', appId, environmentId) : undefined

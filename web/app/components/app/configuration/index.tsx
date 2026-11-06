@@ -1,6 +1,6 @@
 'use client'
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import ConfigurationView from './configuration-view'
 import { useConfiguration } from './hooks/use-configuration'
 import { appConfigurationToastManager } from './toast'
@@ -9,7 +9,7 @@ const Configuration = () => {
   const viewModel = useConfiguration()
   return (
     <>
-      <ToastHost manager={appConfigurationToastManager} offset={{ top: 60 }} />
+      <AppToaster manager={appConfigurationToastManager} offset={{ top: 60 }} />
       <ConfigurationView {...viewModel} />
     </>
   )

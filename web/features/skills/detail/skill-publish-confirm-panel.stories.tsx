@@ -1,7 +1,7 @@
 import type { SkillReferenceResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { SkillPublishBottomActions } from './publish-bar'
 import { SkillPublishConfirmPanel } from './skill-metadata'
 

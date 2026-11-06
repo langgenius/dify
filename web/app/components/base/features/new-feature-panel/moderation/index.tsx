@@ -1,16 +1,16 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { ContentModeration } from '@/app/components/base/icons/src/vender/features'
-import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { useCodeBasedExtensions } from '@/service/use-common'
+import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
 
 type Props = Readonly<{
   disabled?: boolean
@@ -18,23 +18,23 @@ type Props = Readonly<{
 }>
 
 const Moderation = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { setShowModerationSettingModal } = useModalContext()
   const locale = useLocale()
   const featuresStore = useFeaturesStore()
   const moderation = useFeatures((s) => s.features.moderation)
-  const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
+  const { data: codeBasedExtensionList } = useQuery(codeBasedExtensionsQueryOptions('moderation'))
   const [isHovering, setIsHovering] = useState(false)
 
   const handleOpenModerationSettingModal = () => {
     /* v8 ignore next -- guarded path is not reachable in tests with a real disabled button because click is prevented at DOM level. @preserve */
     if (disabled) return
 
-    const { features, setFeatures } = featuresStore!.getState()
+    const { setFeatures } = featuresStore!.getState()
     setShowModerationSettingModal({
       payload: moderation as any,
       onSaveCallback: (newModeration) => {
-        const newFeatures = produce(features, (draft) => {
+        const newFeatures = produce(featuresStore!.getState().features, (draft) => {
           draft.moderation = newModeration
         })
         setFeatures(newFeatures)
@@ -64,14 +64,14 @@ const Moderation = ({ disabled, onChange }: Props) => {
             },
           },
           onSaveCallback: (newModeration) => {
-            const newFeatures = produce(features, (draft) => {
+            const newFeatures = produce(featuresStore!.getState().features, (draft) => {
               draft.moderation = newModeration
             })
             setFeatures(newFeatures)
             if (onChange) onChange(newFeatures)
           },
           onCancelCallback: () => {
-            const newFeatures = produce(features, (draft) => {
+            const newFeatures = produce(featuresStore!.getState().features, (draft) => {
               draft.moderation = { enabled: false }
             })
             setFeatures(newFeatures)
@@ -80,8 +80,16 @@ const Moderation = ({ disabled, onChange }: Props) => {
         })
       }
 
+      if (enabled && features.moderation?.type) {
+        const newFeatures = produce(featuresStore!.getState().features, (draft) => {
+          draft.moderation!.enabled = true
+        })
+        setFeatures(newFeatures)
+        onChange?.(newFeatures)
+      }
+
       if (!enabled) {
-        const newFeatures = produce(features, (draft) => {
+        const newFeatures = produce(featuresStore!.getState().features, (draft) => {
           draft.moderation = { enabled: false }
         })
         setFeatures(newFeatures)
@@ -119,7 +127,10 @@ const Moderation = ({ disabled, onChange }: Props) => {
     <FeatureCard
       icon={
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-text-success p-1 shadow-xs">
-          <ContentModeration className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-features-content-moderation size-4 text-text-primary-on-surface"
+          />
         </div>
       }
       title={t(($) => $['feature.moderation.title'], { ns: 'appDebug' })}

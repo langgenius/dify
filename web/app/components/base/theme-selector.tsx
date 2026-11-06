@@ -1,15 +1,17 @@
 'use client'
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useTheme } from 'next-themes'
+import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const THEMES = ['light', 'dark', 'system'] as const
@@ -19,13 +21,25 @@ const isTheme = (value: string): value is Theme => {
   return (THEMES as readonly string[]).includes(value)
 }
 
+const subscribeToNothing = () => () => {}
+
+const useIsHydrated = () =>
+  useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  )
+
 export default function ThemeSelector() {
-  const { t } = useTranslation()
+  const direction = useDirection()
+  const { t } = useTranslation(['common'])
   const { theme, setTheme } = useTheme()
+  const isHydrated = useIsHydrated()
   const currentTheme: Theme = theme && isTheme(theme) ? theme : 'system'
 
   const getCurrentIcon = () => {
-    switch (theme) {
+    if (!isHydrated) return <span aria-hidden className="size-4" />
+    switch (currentTheme) {
       case 'light':
         return <span aria-hidden className="i-ri-sun-line size-4 text-text-tertiary" />
       case 'dark':
@@ -36,8 +50,8 @@ export default function ThemeSelector() {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <IconButton
             aria-label={t(($) => $['theme.theme'], { ns: 'common' })}
@@ -48,34 +62,34 @@ export default function ThemeSelector() {
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={6} className="w-36">
-        <DropdownMenuRadioGroup<Theme>
+      <MenuContent dir={direction} sideOffset={6} className="w-36">
+        <MenuRadioGroup<Theme>
           value={currentTheme}
           onValueChange={(nextTheme) => setTheme(nextTheme)}
         >
-          <DropdownMenuRadioItem<Theme> value="light" closeOnClick>
+          <MenuRadioItem<Theme> value="light" closeOnClick>
             <span className="i-ri-sun-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">
               {t(($) => $['theme.light'], { ns: 'common' })}
             </span>
-            <DropdownMenuRadioItemIndicator data-testid="light-icon" />
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem<Theme> value="dark" closeOnClick>
+            <MenuRadioItemIndicator data-testid="light-icon" />
+          </MenuRadioItem>
+          <MenuRadioItem<Theme> value="dark" closeOnClick>
             <span className="i-ri-moon-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">
               {t(($) => $['theme.dark'], { ns: 'common' })}
             </span>
-            <DropdownMenuRadioItemIndicator data-testid="dark-icon" />
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem<Theme> value="system" closeOnClick>
+            <MenuRadioItemIndicator data-testid="dark-icon" />
+          </MenuRadioItem>
+          <MenuRadioItem<Theme> value="system" closeOnClick>
             <span className="i-ri-computer-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">
               {t(($) => $['theme.auto'], { ns: 'common' })}
             </span>
-            <DropdownMenuRadioItemIndicator data-testid="system-icon" />
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <MenuRadioItemIndicator data-testid="system-icon" />
+          </MenuRadioItem>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }

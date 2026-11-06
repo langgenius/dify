@@ -13,6 +13,8 @@ domain value type through its public API.
 - [`Autocomplete`] accepts free-form text with optional suggestions.
 - [`Combobox`] selects and remembers one or more values from a searchable collection.
 - [`Select`] chooses from a closed, scannable list without text entry.
+- [Date and time pickers] select civil dates, wall times or instants. Their fixed value models
+  do not use collection generics; the family guide owns anatomy and commit semantics.
 
 Multiple-selection comboboxes follow the Base UI chips composition: chips and the input share the
 input group, chips wrap, and the group grows vertically.
@@ -26,6 +28,13 @@ put the input hint there because it takes precedence over `aria-description`.
 Autocomplete, Combobox, and Select popups use Base UI's `--anchor-width` and `--available-width`
 variables to follow their trigger while clamping to the viewport. Do not replace that sizing with
 a fixed width or an unclamped minimum width.
+
+When a Combobox renders its input inside the popup, do not add a control that clears the typed
+query. The query is per-open state that Base UI resets: choosing an item clears it in `multiple`
+mode and closes the popup in single mode, and closing the popup (Escape, outside press) clears it.
+A clear control there adds a second tab stop to the popup's focus loop and a second x that means
+something other than `ComboboxClear`, which clears the selected value. Outside the popup, use
+`ComboboxClear` or `AutocompleteClear`.
 
 Use `Radio` for the default radio appearance. Use `RadioItem` when custom content itself is a
 radio item, and put `RadioControl` inside it for Dify UI's visual indicator. `RadioControl` is a
@@ -149,6 +158,7 @@ current result window, or provide an ID-only label fallback.
 `CheckboxGroup` follows Base UI and uses `string[]`. Model stronger business ID distinctions at
 the domain boundary unless the upstream primitive contract changes.
 
+[Date and time pickers]: ../src/date-time/README.md
 [`Autocomplete`]: https://base-ui.com/react/components/autocomplete
 [`Combobox`]: https://base-ui.com/react/components/combobox
 [`RadioGroup`]: https://base-ui.com/react/components/radio

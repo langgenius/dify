@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import { API_PREFIX } from '@/config'
 
 type AuthenticationSectionProps = {
@@ -25,7 +25,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
   credentials,
   onCredentialsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const dynamicRegistrationLabelId = useId()
   const clientIdInputId = useId()
   const clientSecretInputId = useId()
@@ -36,7 +36,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
         <div className="mb-1 flex h-6 items-center">
           <Switch
             aria-labelledby={dynamicRegistrationLabelId}
-            className="mr-2"
+            className="me-2"
             checked={isDynamicRegistration}
             onCheckedChange={onDynamicRegistrationChange}
           />
@@ -45,17 +45,14 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
           </span>
         </div>
         {!isDynamicRegistration && (
-          <div className="mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-text-warning" />
-            <div className="system-xs-regular text-text-secondary">
-              <div className="mb-1">
-                {t(($) => $['mcp.modal.redirectUrlWarning'], { ns: 'tools' })}
-              </div>
-              <code className="block rounded-sm bg-state-warning-active px-2 py-1 system-xs-medium break-all text-text-secondary">
+          <Alert type="warning" className="mt-2">
+            <AlertTitle>{t(($) => $['mcp.modal.redirectUrlWarning'], { ns: 'tools' })}</AlertTitle>
+            <AlertDescription>
+              <code className="mt-1 block rounded-sm bg-state-warning-active px-2 py-1 system-xs-medium break-all text-text-secondary">
                 {`${API_PREFIX}/mcp/oauth/callback`}
               </code>
-            </div>
-          </div>
+            </AlertDescription>
+          </Alert>
         )}
       </div>
       <div>

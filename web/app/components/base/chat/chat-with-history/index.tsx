@@ -3,9 +3,9 @@ import type { InstalledAppResponse } from '@dify/contracts/api/console/installed
 import type { FC } from 'react'
 import type { ChatProps } from '../chat'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useState } from 'react'
-import Loading from '@/app/components/base/loading'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { createTheme } from '../embedded-chatbot/theme/theme'
 import ChatWrapper from './chat-wrapper'
@@ -19,55 +19,98 @@ type ChatWithHistoryProps = {
   className?: string
 }
 const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
-  const { appData, appChatListDataLoading, chatShouldReloadKey, isMobile, sidebarCollapseState } =
+  const { appData, appChatListDataLoading, chatShouldReloadKey, isBelowSm, sidebarCollapseState } =
     useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
   const site = appData?.site
 
   const [showSidePanel, setShowSidePanel] = useState(false)
+  const sidebarToggleRef = useRef<HTMLButtonElement>(null)
+  const sidePanelHasFocusRef = useRef(false)
+  const sidePanelHoveredRef = useRef(false)
+  const sidePanelBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const previousSidebarCollapsedRef = useRef(isSidebarCollapsed)
+
+  useLayoutEffect(() => {
+    if (previousSidebarCollapsedRef.current !== isSidebarCollapsed) {
+      sidebarToggleRef.current?.focus()
+      previousSidebarCollapsedRef.current = isSidebarCollapsed
+    }
+  }, [isSidebarCollapsed])
 
   useEffect(() => {
-    if (!isSidebarCollapsed) setShowSidePanel(false)
-  }, [isSidebarCollapsed])
+    if (!isSidebarCollapsed || isBelowSm) {
+      setShowSidePanel(false)
+      sidePanelHasFocusRef.current = false
+      sidePanelHoveredRef.current = false
+    }
+    return () => clearTimeout(sidePanelBlurTimeoutRef.current)
+  }, [isSidebarCollapsed, isBelowSm])
 
   useDocumentTitle(site?.title || 'Chat')
 
   return (
     <div
-      className={cn('flex h-full bg-background-default-burn', isMobile && 'flex-col', className)}
+      className={cn('flex h-full bg-background-default-burn', isBelowSm && 'flex-col', className)}
     >
-      {!isMobile && (
+      {!isBelowSm && (
         <div
+          inert={isSidebarCollapsed}
           className={cn(
-            'flex w-59 flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
+            'flex w-59 flex-col p-1 pe-0 transition-all duration-200 ease-in-out',
             isSidebarCollapsed && 'w-0 overflow-hidden p-0!',
           )}
         >
-          <Sidebar />
+          <Sidebar toggleButtonRef={!isSidebarCollapsed ? sidebarToggleRef : undefined} />
         </div>
       )}
-      {isMobile && <HeaderInMobile />}
-      <div className={cn('relative grow p-2', isMobile && 'h-[calc(100%-56px)] p-0')}>
-        {isSidebarCollapsed && (
+      {isBelowSm && <HeaderInMobile />}
+      <div className={cn('relative grow p-2', isBelowSm && 'h-[calc(100%-56px)] p-0')}>
+        {!isBelowSm && isSidebarCollapsed && (
           <div
             className={cn(
               'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
-              showSidePanel ? 'left-0' : '-left-62',
+              showSidePanel ? 'inset-s-0' : '-inset-s-62',
             )}
-            onMouseEnter={() => setShowSidePanel(true)}
-            onMouseLeave={() => setShowSidePanel(false)}
+            onMouseEnter={() => {
+              sidePanelHoveredRef.current = true
+              setShowSidePanel(true)
+            }}
+            onFocusCapture={() => {
+              // React focus events include the sidebar's portalled menus and dialogs.
+              clearTimeout(sidePanelBlurTimeoutRef.current)
+              sidePanelHasFocusRef.current = true
+            }}
+            onBlurCapture={() => {
+              sidePanelHasFocusRef.current = false
+              // Native Tab can flush microtasks between blur and focus. Wait until
+              // the focus transition finishes, including moves through portals.
+              clearTimeout(sidePanelBlurTimeoutRef.current)
+              sidePanelBlurTimeoutRef.current = setTimeout(() => {
+                if (!sidePanelHasFocusRef.current && !sidePanelHoveredRef.current)
+                  setShowSidePanel(false)
+              }, 0)
+            }}
+            onMouseLeave={() => {
+              sidePanelHoveredRef.current = false
+              if (!sidePanelHasFocusRef.current) setShowSidePanel(false)
+            }}
           >
-            <Sidebar isPanel panelVisible={showSidePanel} />
+            <div inert={!showSidePanel} className="flex min-h-0 grow">
+              <Sidebar isPanel panelVisible={showSidePanel} />
+            </div>
           </div>
         )}
         <div
           className={cn(
             'flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg',
-            isMobile ? 'rounded-t-2xl' : 'rounded-2xl',
+            isBelowSm ? 'rounded-t-2xl' : 'rounded-2xl',
           )}
         >
-          {!isMobile && <Header />}
-          {appChatListDataLoading && <Loading type="app" />}
+          {!isBelowSm && (
+            <Header toggleButtonRef={isSidebarCollapsed ? sidebarToggleRef : undefined} />
+          )}
+          {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
           {!appChatListDataLoading && <ChatWrapper key={chatShouldReloadKey} />}
         </div>
       </div>
@@ -87,8 +130,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   isNewAgent = false,
   renderAgentContent,
 }) => {
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const {
     appData,
@@ -160,7 +202,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         handleRenameConversation,
         handleNewConversationCompleted,
         chatShouldReloadKey,
-        isMobile,
+        isBelowSm,
         isInstalledApp,
         appId,
         handleFeedback,

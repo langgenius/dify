@@ -20,7 +20,7 @@ describe('document-extractor/use-single-run-form-params', () => {
       useSingleRunFormParams({
         id: 'doc-node',
         payload: createData(),
-        runInputData: { files: ['old-file'] },
+        runInputData: { files: ['old-file'], other: 'preserve' },
         runInputDataRef: { current: {} },
         getInputVars: () => [],
         setRunInputData,
@@ -38,7 +38,7 @@ describe('document-extractor/use-single-run-form-params', () => {
 
     result.current.forms[0]!.onChange({ files: ['new-file'] })
 
-    expect(setRunInputData).toHaveBeenCalledWith({ files: ['new-file'] })
+    expect(setRunInputData).toHaveBeenCalledWith({ files: ['new-file'], other: 'preserve' })
     expect(result.current.getDependentVars()).toEqual([['start', 'files']])
     expect(result.current.getDependentVar('files')).toEqual(['start', 'files'])
   })

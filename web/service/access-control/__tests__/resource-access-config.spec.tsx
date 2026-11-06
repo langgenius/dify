@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
 import {
   useAppResourceWhitelist,
   useAppResourceWhitelistConfig,
@@ -25,94 +26,60 @@ const mocks = vi.hoisted(() => ({
   appWhitelistGet: vi.fn(),
   appWhitelistConfigGet: vi.fn(),
   datasetWhitelistConfigGet: vi.fn(),
-  appUserQueryOptions: vi.fn(),
-  datasetUserQueryOptions: vi.fn(),
-  appWhitelistQueryOptions: vi.fn(),
-  appWhitelistConfigQueryOptions: vi.fn(),
-  datasetWhitelistConfigQueryOptions: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    workspaces: {
-      current: {
-        rbac: {
-          apps: {
-            byAppId: {
-              accessPolicies: {
-                byPolicyId: {
-                  memberBindings: { delete: mocks.appDeleteMemberBindings },
-                },
-              },
-              whitelist: { put: mocks.appPut },
-            },
-          },
-          datasets: {
-            byDatasetId: {
-              accessPolicies: {
-                byPolicyId: {
-                  memberBindings: { delete: mocks.datasetDeleteMemberBindings },
-                },
-              },
-              whitelist: { put: mocks.datasetPut },
-            },
-          },
-        },
-      },
-    },
-  },
-  consoleQuery: {
-    workspaces: {
-      current: {
-        rbac: {
-          apps: {
-            byAppId: {
-              accessPolicy: { get: { key: () => ['app-access-policy'] } },
-              userAccessPolicies: {
-                get: {
-                  key: () => ['app-user-access-policies'],
-                  queryOptions: mocks.appUserQueryOptions,
-                },
-              },
-              whitelist: {
-                get: {
-                  key: () => ['app-whitelist'],
-                  queryOptions: mocks.appWhitelistQueryOptions,
-                },
-              },
-              whitelistConfig: {
-                get: {
-                  key: () => ['app-whitelist-config'],
-                  queryOptions: mocks.appWhitelistConfigQueryOptions,
-                },
-              },
-            },
-          },
-          datasets: {
-            byDatasetId: {
-              accessPolicy: { get: { key: () => ['dataset-access-policy'] } },
-              userAccessPolicies: {
-                get: {
-                  key: () => ['dataset-user-access-policies'],
-                  queryOptions: mocks.datasetUserQueryOptions,
-                },
-              },
-              whitelist: {
-                get: { key: () => ['dataset-whitelist'] },
-              },
-              whitelistConfig: {
-                get: {
-                  key: () => ['dataset-whitelist-config'],
-                  queryOptions: mocks.datasetWhitelistConfigQueryOptions,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.apps.byAppId.userAccessPolicies.get': mocks.appUserGet,
+      'workspaces.current.rbac.datasets.byDatasetId.userAccessPolicies.get': mocks.datasetUserGet,
+      'workspaces.current.rbac.apps.byAppId.whitelist.get': mocks.appWhitelistGet,
+      'workspaces.current.rbac.apps.byAppId.whitelistConfig.get': mocks.appWhitelistConfigGet,
+      'workspaces.current.rbac.datasets.byDatasetId.whitelistConfig.get':
+        mocks.datasetWhitelistConfigGet,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.rbac.apps.byAppId.whitelist.put': mocks.appPut,
+      'workspaces.current.rbac.datasets.byDatasetId.whitelist.put': mocks.datasetPut,
+      'workspaces.current.rbac.apps.byAppId.accessPolicies.byPolicyId.memberBindings.delete':
+        mocks.appDeleteMemberBindings,
+      'workspaces.current.rbac.datasets.byDatasetId.accessPolicies.byPolicyId.memberBindings.delete':
+        mocks.datasetDeleteMemberBindings,
+    }),
+  }
+})
+
+function seedAccessQueries(client: QueryClient) {
+  const app = consoleQuery.workspaces.current.rbac.apps.byAppId
+  const dataset = consoleQuery.workspaces.current.rbac.datasets.byDatasetId
+  const appInput = { input: { params: { app_id: 'app-1' } } }
+  const datasetInput = { input: { params: { dataset_id: 'dataset-1' } } }
+  const query = { language: 'en' as const, page: 1, limit: 20, reverse: false }
+  const keys = {
+    'app-access-policy': app.accessPolicy.get.queryKey({
+      input: { ...appInput.input, query: { language: 'en' } },
+    }),
+    'app-user-access-policies': app.userAccessPolicies.get.queryKey({
+      input: { ...appInput.input, query },
+    }),
+    'app-whitelist': app.whitelist.get.queryKey(appInput),
+    'app-whitelist-config': app.whitelistConfig.get.queryKey(appInput),
+    'dataset-access-policy': dataset.accessPolicy.get.queryKey({
+      input: { ...datasetInput.input, query: { language: 'en' } },
+    }),
+    'dataset-user-access-policies': dataset.userAccessPolicies.get.queryKey({
+      input: { ...datasetInput.input, query },
+    }),
+    'dataset-whitelist': dataset.whitelist.get.queryKey(datasetInput),
+    'dataset-whitelist-config': dataset.whitelistConfig.get.queryKey(datasetInput),
+  }
+  for (const key of Object.values(keys)) client.setQueryData(key, {})
+  return keys
+}
 
 const createHarness = () => {
   const queryClient = new QueryClient({
@@ -152,32 +119,12 @@ describe('resource access config queries and mutations', () => {
         total_pages: 2,
       },
     })
-    mocks.appUserQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['app-user-access-policies', input],
-      queryFn: mocks.appUserGet,
-    }))
-    mocks.appWhitelistQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['app-whitelist', input],
-      queryFn: mocks.appWhitelistGet,
-    }))
     mocks.appWhitelistConfigGet.mockResolvedValue({
       automatic_include_workspace_members: true,
     })
-    mocks.appWhitelistConfigQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['app-whitelist-config', input],
-      queryFn: mocks.appWhitelistConfigGet,
-    }))
-    mocks.datasetUserQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['dataset-user-access-policies', input],
-      queryFn: mocks.datasetUserGet,
-    }))
     mocks.datasetWhitelistConfigGet.mockResolvedValue({
       automatic_include_workspace_members: false,
     })
-    mocks.datasetWhitelistConfigQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['dataset-whitelist-config', input],
-      queryFn: mocks.datasetWhitelistConfigGet,
-    }))
     mocks.appPut.mockResolvedValue({
       account_ids: [],
     })
@@ -196,11 +143,9 @@ describe('resource access config queries and mutations', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(mocks.appUserQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: { app_id: 'app-1' },
-        query: { language: 'en', limit: 50, page: 3, reverse: false },
-      },
+    expect(mocks.appUserGet).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      query: { language: 'en', limit: 50, page: 3, reverse: false },
     })
     expect(result.current.data?.pagination.current_page).toBe(3)
   })
@@ -211,9 +156,7 @@ describe('resource access config queries and mutations', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(mocks.appWhitelistQueryOptions).toHaveBeenCalledWith({
-      input: { params: { app_id: 'app-1' } },
-    })
+    expect(mocks.appWhitelistGet).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
     expect(result.current.data).toEqual({
       account_ids: ['account-1'],
     })
@@ -225,9 +168,7 @@ describe('resource access config queries and mutations', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(mocks.appWhitelistConfigQueryOptions).toHaveBeenCalledWith({
-      input: { params: { app_id: 'app-1' } },
-    })
+    expect(mocks.appWhitelistConfigGet).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
     expect(result.current.data).toEqual({
       automatic_include_workspace_members: true,
     })
@@ -241,11 +182,9 @@ describe('resource access config queries and mutations', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(mocks.datasetUserQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: { dataset_id: 'dataset-1' },
-        query: { language: 'en', limit: 25, page: 2, reverse: false },
-      },
+    expect(mocks.datasetUserGet).toHaveBeenCalledWith({
+      params: { dataset_id: 'dataset-1' },
+      query: { language: 'en', limit: 25, page: 2, reverse: false },
     })
   })
 
@@ -258,8 +197,8 @@ describe('resource access config queries and mutations', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(mocks.datasetWhitelistConfigQueryOptions).toHaveBeenCalledWith({
-      input: { params: { dataset_id: 'dataset-1' } },
+    expect(mocks.datasetWhitelistConfigGet).toHaveBeenCalledWith({
+      params: { dataset_id: 'dataset-1' },
     })
     expect(result.current.data).toEqual({
       automatic_include_workspace_members: false,
@@ -268,7 +207,7 @@ describe('resource access config queries and mutations', () => {
 
   it('should update automatic inclusion and invalidate the app member list and whitelist data', async () => {
     const { queryClient, wrapper } = createHarness()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const keys = seedAccessQueries(queryClient)
     const { result } = renderHook(() => useUpdateAppAutomaticIncludeWorkspaceMembers('app-1'), {
       wrapper,
     })
@@ -279,15 +218,14 @@ describe('resource access config queries and mutations', () => {
       params: { app_id: 'app-1' },
       body: { automatic_include_workspace_members: true },
     })
-    expect(invalidateQueries).toHaveBeenCalledTimes(3)
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-user-access-policies'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-whitelist'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-whitelist-config'] })
+    expect(queryClient.getQueryState(keys['app-user-access-policies'])?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(keys['app-whitelist'])?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(keys['app-whitelist-config'])?.isInvalidated).toBe(true)
   })
 
   it('should update automatic inclusion and invalidate the dataset member list and whitelist data', async () => {
     const { queryClient, wrapper } = createHarness()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const keys = seedAccessQueries(queryClient)
     const { result } = renderHook(
       () => useUpdateDatasetAutomaticIncludeWorkspaceMembers('dataset-1'),
       { wrapper },
@@ -299,15 +237,16 @@ describe('resource access config queries and mutations', () => {
       params: { dataset_id: 'dataset-1' },
       body: { automatic_include_workspace_members: false },
     })
-    expect(invalidateQueries).toHaveBeenCalledTimes(3)
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-user-access-policies'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-whitelist'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-whitelist-config'] })
+    expect(queryClient.getQueryState(keys['dataset-user-access-policies'])?.isInvalidated).toBe(
+      true,
+    )
+    expect(queryClient.getQueryState(keys['dataset-whitelist'])?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(keys['dataset-whitelist-config'])?.isInvalidated).toBe(true)
   })
 
-  it('should remove app member bindings in one mutation and invalidate queries once', async () => {
+  it('should remove app member bindings in one mutation and refresh cached access data', async () => {
     const { queryClient, wrapper } = createHarness()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const keys = seedAccessQueries(queryClient)
     const { result } = renderHook(() => useRemoveAppAccessPolicyMemberBindings('app-1'), {
       wrapper,
     })
@@ -328,15 +267,14 @@ describe('resource access config queries and mutations', () => {
       params: { app_id: 'app-1', policy_id: 'default' },
       body: { account_ids: ['account-3'] },
     })
-    expect(invalidateQueries).toHaveBeenCalledTimes(3)
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-user-access-policies'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-access-policy'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-whitelist'] })
+    expect(queryClient.getQueryState(keys['app-user-access-policies'])?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(keys['app-access-policy'])?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(keys['app-whitelist'])?.isInvalidated).toBe(true)
   })
 
-  it('should remove dataset member bindings in one mutation and invalidate queries once', async () => {
+  it('should remove dataset member bindings in one mutation and refresh cached access data', async () => {
     const { queryClient, wrapper } = createHarness()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const keys = seedAccessQueries(queryClient)
     const { result } = renderHook(() => useRemoveDatasetAccessPolicyMemberBindings('dataset-1'), {
       wrapper,
     })
@@ -357,9 +295,10 @@ describe('resource access config queries and mutations', () => {
       params: { dataset_id: 'dataset-1', policy_id: 'default' },
       body: { account_ids: ['account-3'] },
     })
-    expect(invalidateQueries).toHaveBeenCalledTimes(3)
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-user-access-policies'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-access-policy'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-whitelist'] })
+    expect(queryClient.getQueryState(keys['dataset-user-access-policies'])?.isInvalidated).toBe(
+      true,
+    )
+    expect(queryClient.getQueryState(keys['dataset-access-policy'])?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(keys['dataset-whitelist'])?.isInvalidated).toBe(true)
   })
 })

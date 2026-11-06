@@ -7,7 +7,7 @@ export type FormData = {
   label: string
   variable: string
   maxLength?: number
-  default?: string
+  default?: string | number | boolean
   required: boolean
   tooltips?: string
   options?: string[]

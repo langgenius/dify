@@ -1,12 +1,12 @@
 import type { SortableItem } from './types'
 import type { MoreInfo, ValueSelector } from '@/app/components/workflow/types'
 import type { InputVar } from '@/models/pipeline'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChangeType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { useInputFieldPanel } from '../../../../hooks/use-input-field-panel'
 import { usePipeline } from '../../../../hooks/use-pipeline'
 
@@ -23,7 +23,7 @@ export const useFieldList = ({
   nodeId,
   allVariableNames,
 }: useFieldListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const { toggleInputFieldEditPanel } = useInputFieldPanel()
   const [inputFields, setInputFields] = useState<InputVar[]>(initialInputFields)
   const inputFieldsRef = useRef<InputVar[]>(inputFields)
@@ -64,7 +64,7 @@ export const useFieldList = ({
       if (isVarUsedInNodes([VARIABLE_PREFIX, nodeId, itemToRemove!.variable || ''])) {
         showRemoveVarConfirm()
         setRemovedVar([VARIABLE_PREFIX, nodeId, itemToRemove!.variable || ''])
-        setRemoveIndex(index as number)
+        setRemoveIndex(index)
         return
       }
       const newInputFields = inputFieldsRef.current.filter((_, i) => i !== index)
@@ -124,15 +124,18 @@ export const useFieldList = ({
       t,
     ],
   )
-  const handleOpenInputFieldEditor = useCallback((id?: string) => {
-    const index = inputFieldsRef.current.findIndex((field) => field.variable === id)
-    editingFieldIndex.current = index
-    toggleInputFieldEditPanel?.({
-      onClose: handleCloseInputFieldEditor,
-      onSubmit: handleSubmitField,
-      initialData: inputFieldsRef.current[index],
-    })
-  }, [])
+  const handleOpenInputFieldEditor = useCallback(
+    (id?: string) => {
+      const index = inputFieldsRef.current.findIndex((field) => field.variable === id)
+      editingFieldIndex.current = index
+      toggleInputFieldEditPanel?.({
+        onClose: handleCloseInputFieldEditor,
+        onSubmit: handleSubmitField,
+        initialData: inputFieldsRef.current[index],
+      })
+    },
+    [handleCloseInputFieldEditor, handleSubmitField, toggleInputFieldEditPanel],
+  )
   return {
     inputFields,
     handleListSortChange,

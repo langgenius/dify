@@ -43,7 +43,7 @@ export function ToolBaseForm({
   onSelectMultipleTool,
   onDescriptionChange,
 }: ToolBaseFormProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   return (
     <div className="flex flex-col gap-3 px-4 py-2">
@@ -59,7 +59,8 @@ export function ToolBaseForm({
           )}
         </div>
         <ToolPicker
-          placement="bottom"
+          side="bottom"
+          align="center"
           sideOffset={4}
           trigger={
             <ToolTrigger

@@ -1,8 +1,8 @@
 'use client'
 
-import type { ComponentProps } from 'react'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactNode } from 'react'
 import type { AccessPointStatus } from '@/app/components/base/access-point/status'
-import type { AppModeEnum } from '@/types/app'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
@@ -10,14 +10,13 @@ import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
-import { ApiSecretKeyButton } from './api-secret-key-button'
 import { useAccessPointStatusLabel } from './use-access-point-status-label'
 import { getAppApiReferencePath } from './utils'
 
 type ServiceApiCardViewProps = {
-  apiKeyButtonProps: ComponentProps<typeof ApiSecretKeyButton>
+  apiKeyAction: ReactNode
   apiUrl: string
-  appMode?: AppModeEnum
+  appMode?: AppDetailWithSite['mode']
   available: boolean
   status: AccessPointStatus
   switchDisabled: boolean
@@ -27,7 +26,7 @@ type ServiceApiCardViewProps = {
 }
 
 export function ServiceApiCardView({
-  apiKeyButtonProps,
+  apiKeyAction,
   apiUrl,
   appMode,
   available,
@@ -37,7 +36,7 @@ export function ServiceApiCardView({
   switchDisabled,
   switchLoading = false,
 }: ServiceApiCardViewProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'appOverview', 'deployments'])
   const docLink = useDocLink()
   const apiReferencePath = appMode ? getAppApiReferencePath(appMode) : undefined
   const apiReferenceUrl = apiReferencePath ? docLink(apiReferencePath) : undefined
@@ -59,7 +58,7 @@ export function ServiceApiCardView({
       switchLoading={switchLoading}
       actions={
         <>
-          <ApiSecretKeyButton {...apiKeyButtonProps} />
+          {apiKeyAction}
           {available && apiReferenceUrl ? (
             <Link
               href={apiReferenceUrl}

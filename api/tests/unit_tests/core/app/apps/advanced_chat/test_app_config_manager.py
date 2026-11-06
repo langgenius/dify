@@ -1,30 +1,22 @@
-import json
+from collections.abc import Callable
 from unittest.mock import patch
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from tests.helpers.unit.model_factories import make_app, make_workflow
 
 
 def _app() -> App:
-    return App(id="app-1", tenant_id="tenant-1", name="Advanced Chat App", mode=AppMode.ADVANCED_CHAT)
+    return make_app(name="Advanced Chat App", mode=AppMode.ADVANCED_CHAT, icon_type=None)
 
 
 def _workflow() -> Workflow:
-    return Workflow(
-        id="wf-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=WorkflowType.CHAT,
-        version=Workflow.VERSION_DRAFT,
-        graph="{}",
-        features=json.dumps({}),
-        created_by="account-1",
-    )
+    return make_workflow(workflow_id="wf-1", workflow_type=WorkflowType.CHAT, graph="{}")
 
 
 class TestAdvancedChatAppConfigManager:
-    def test_get_app_config(self):
+    def test_get_app_config(self) -> None:
         app_model = _app()
         workflow = _workflow()
 
@@ -43,12 +35,10 @@ class TestAdvancedChatAppConfigManager:
         assert app_config.workflow_id == "wf-1"
         assert app_config.app_mode == AppMode.ADVANCED_CHAT
 
-    def test_config_validate_filters_keys(self):
-        def _add_key(key, value):
-            def _inner(*args, **kwargs):
-                config = kwargs.get("config") if kwargs else args[-1]
-                config = {**config, key: value}
-                return config, [key]
+    def test_config_validate_filters_keys(self) -> None:
+        def _add_key(key: str, value: object) -> Callable[..., tuple[dict[str, object], list[str]]]:
+            def _inner(config: dict[str, object], **_: object) -> tuple[dict[str, object], list[str]]:
+                return {**config, key: value}, [key]
 
             return _inner
 

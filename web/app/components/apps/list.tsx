@@ -1,23 +1,15 @@
 'use client'
 
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { AppListCreationDialog } from './app-list-creation-modals'
 import type { AppListUrlQuery } from './query-params'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { useQueryStates } from 'nuqs'
+import { throttle, useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { CheckModal } from '@/hooks/use-pay'
+import { CheckResultToast } from '@/hooks/use-pay'
 import { hasPermission } from '@/utils/permission'
 import { AppListCatalog } from './app-list-catalog'
 import { AppListCreationModals } from './app-list-creation-modals'
@@ -25,25 +17,23 @@ import { AppListHeader } from './app-list-header'
 import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
-import { appListQueryParsers } from './query-params'
+import { StudioListNavigation } from './list-navigation'
+import { appListQueryParsers, serializeAppListQuery } from './query-params'
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 type AppListCategory = AppListUrlQuery['category']
 
 type Props = Readonly<{
-  onCreateLearnDify?: (app: App) => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
 }>
 
 export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
-  const { category, keywords } = urlQuery
-  const [creatorIDs, setCreatorIDs] = useState<string[]>([])
-  const [tagIDs, setTagIDs] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<AppListSortBy>('last_modified')
+  const { category, keywords, creatorIDs, tagIDs, sort_by: sortBy } = urlQuery
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const dropZoneRef = useRef<HTMLDivElement>(null)
   const scrollViewportRef = useRef<HTMLDivElement>(null)
@@ -95,7 +85,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   }
   const changeTagIDs = (nextTagIDs: string[]) => {
     resetCatalogScroll()
-    setTagIDs(nextTagIDs)
+    void setUrlQuery({ tagIDs: nextTagIDs })
   }
   const changeKeywords = (nextKeywords: string) => {
     resetCatalogScroll()
@@ -103,11 +93,11 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   }
   const changeCreatorIDs = (nextCreatorIDs: string[]) => {
     resetCatalogScroll()
-    setCreatorIDs(nextCreatorIDs)
+    void setUrlQuery({ creatorIDs: nextCreatorIDs })
   }
   const changeSortBy = (nextSortBy: AppListSortBy) => {
     resetCatalogScroll()
-    setSortBy(nextSortBy)
+    void setUrlQuery({ sort_by: nextSortBy })
   }
 
   const openCreateBlankModal = useCallback(() => {
@@ -122,7 +112,11 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
   return (
-    <>
+    <StudioListNavigation
+      path="/apps"
+      href={serializeAppListQuery('/apps', urlQuery)}
+      flush={() => setUrlQuery(urlQuery, { history: 'replace', limitUrlUpdates: throttle(0) })}
+    >
       <div
         ref={dropZoneRef}
         className="relative flex h-0 min-h-0 shrink-0 grow flex-col bg-background-body"
@@ -131,60 +125,47 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
           <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2"></div>
         )}
 
-        <AppListHeader
-          titleId={titleId}
-          category={category}
-          tagIDs={tagIDs}
-          keywords={keywords}
-          creatorIDs={creatorIDs}
-          sortBy={sortBy}
-          onCategoryChange={changeCategory}
-          onTagIDsChange={changeTagIDs}
-          onKeywordsChange={changeKeywords}
-          onCreatorIDsChange={changeCreatorIDs}
-          onSortByChange={changeSortBy}
-          onCreateBlank={openCreateBlankModal}
-          onCreateTemplate={openCreateTemplateDialog}
-          onImportDSL={openCreateFromDSLModal}
-          onOpenTagManagement={openTagManagement}
-          showCreateButton={canCreateApp}
-        />
-
-        <div className="relative min-h-0 grow">
-          <ScrollArea className="size-full overflow-hidden">
-            <ScrollAreaViewport
-              ref={scrollViewportRef}
-              role="region"
-              aria-labelledby={titleId}
-              className="overscroll-contain"
-              style={{ overflowX: 'hidden' }}
-            >
-              <ScrollAreaContent
-                className="flex min-h-full w-full max-w-full flex-col"
-                style={{ minWidth: 0 }}
-              >
-                <AppListCatalog
-                  appListQuery={appListQuery}
-                  canCreateApp={canCreateApp}
-                  dragging={dragging}
-                  hasActiveFilters={hasActiveFilters}
-                  onCreateBlank={openCreateBlankModal}
-                  onCreateLearnDify={onCreateLearnDify}
-                  onCreateTemplate={openCreateTemplateDialog}
-                  onImportDSL={openCreateFromDSLModal}
-                  onOpenTagManagement={openTagManagement}
-                  onTryLearnDify={onTryLearnDify}
-                  scrollViewportRef={scrollViewportRef}
-                />
-              </ScrollAreaContent>
-            </ScrollAreaViewport>
-            <ScrollAreaScrollbar>
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollArea>
+        <div
+          ref={scrollViewportRef}
+          role="region"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          className="flex min-h-0 grow flex-col overflow-x-hidden overflow-y-auto overscroll-contain outline-hidden"
+        >
+          <AppListHeader
+            titleId={titleId}
+            category={category}
+            tagIDs={tagIDs}
+            keywords={keywords}
+            creatorIDs={creatorIDs}
+            sortBy={sortBy}
+            onCategoryChange={changeCategory}
+            onTagIDsChange={changeTagIDs}
+            onKeywordsChange={changeKeywords}
+            onCreatorIDsChange={changeCreatorIDs}
+            onSortByChange={changeSortBy}
+            onCreateBlank={openCreateBlankModal}
+            onCreateTemplate={openCreateTemplateDialog}
+            onImportDSL={openCreateFromDSLModal}
+            onOpenTagManagement={openTagManagement}
+            showCreateButton={canCreateApp}
+          />
+          <AppListCatalog
+            appListQuery={appListQuery}
+            canCreateApp={canCreateApp}
+            dragging={dragging}
+            hasActiveFilters={hasActiveFilters}
+            onCreateBlank={openCreateBlankModal}
+            onCreateLearnDify={onCreateLearnDify}
+            onCreateTemplate={openCreateTemplateDialog}
+            onImportDSL={openCreateFromDSLModal}
+            onOpenTagManagement={openTagManagement}
+            onTryLearnDify={onTryLearnDify}
+            scrollViewportRef={scrollViewportRef}
+          />
         </div>
 
-        <CheckModal />
+        <CheckResultToast />
         <AppListTagManagementModal
           show={showTagManagementModal}
           onClose={() => setShowTagManagementModal(false)}
@@ -199,6 +180,6 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
         onOpenBlank={openCreateBlankModal}
         onOpenTemplate={openCreateTemplateDialog}
       />
-    </>
+    </StudioListNavigation>
   )
 }

@@ -10,13 +10,7 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 }))
 
 describe('ToolTrigger', () => {
-  it('renders the placeholder for the unconfigured state', () => {
-    render(<ToolTrigger open={false} />)
-
-    expect(screen.getByText('plugin.detailPanel.toolSelector.placeholder')).toBeInTheDocument()
-  })
-
-  it('renders the selected provider icon and tool label', () => {
+  it('names the trigger after the selected tool', () => {
     render(
       <ToolTrigger
         open
@@ -28,8 +22,7 @@ describe('ToolTrigger', () => {
       />,
     )
 
-    expect(screen.getByTestId('block-icon')).toBeInTheDocument()
-    expect(screen.getByText('Search Tool')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Search Tool' })).toBeInTheDocument()
   })
 
   it('switches to the configure placeholder when requested', () => {

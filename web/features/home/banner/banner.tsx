@@ -5,12 +5,13 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
-import { useLocale } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { BannerItem } from './banner-item'
 import { IndicatorButton } from './indicator-button'
@@ -76,9 +77,9 @@ function BannerCarouselContent({
   onRotationControlPointerDown,
   onApiChange,
 }: BannerCarouselContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'explore'])
   const { api, selectedIndex } = useCarousel()
-  const trackedBannerKeysRef = useRef(new Set<string>())
+  const trackedBannerKeysRef = useRefWithInit(() => new Set<string>())
   const nextIndex = (selectedIndex + 1) % banners.length
   const activeBanner = banners[selectedIndex]
   const trackingKey = accountId && activeBanner ? `${accountId}:${activeBanner.id}` : null
@@ -107,13 +108,13 @@ function BannerCarouselContent({
       event_time: Date.now(),
     })
     trackedBannerKeysRef.current.add(trackingKey)
-  }, [accountId, activeBanner, language, selectedIndex, trackingKey])
+  }, [accountId, activeBanner, language, selectedIndex, trackingKey, trackedBannerKeysRef])
 
   const controls =
     banners.length > 1 ? (
       <div
         data-carousel-control
-        className="pointer-events-auto flex h-7 min-w-0 shrink-0 items-center gap-2 @min-[996px]/banner:max-w-150 @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:pr-10"
+        className="pointer-events-auto flex h-7 min-w-0 shrink-0 items-center gap-2 @min-[996px]/banner:max-w-150 @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:pe-10"
       >
         <IconButton
           size="md"
@@ -158,12 +159,12 @@ function BannerCarouselContent({
   return (
     <>
       {hasFooter ? (
-        <div className="pointer-events-none absolute right-4 bottom-6 left-8 z-40 flex min-w-0 items-center justify-between gap-4 @min-[720px]/banner:right-64 @min-[996px]/banner:right-60 @min-[996px]/banner:flex-wrap @min-[996px]/banner:justify-start @min-[996px]/banner:gap-1">
+        <div className="pointer-events-none absolute inset-s-8 inset-e-4 bottom-6 z-40 flex min-w-0 items-center justify-between gap-4 @min-[720px]/banner:inset-e-64 @min-[996px]/banner:inset-e-60 @min-[996px]/banner:flex-wrap @min-[996px]/banner:justify-start @min-[996px]/banner:gap-1">
           {activeBanner?.link ? (
             <div className="flex min-w-0 items-center gap-1.5 py-1 @min-[996px]/banner:max-w-170 @min-[996px]/banner:min-w-120 @min-[996px]/banner:flex-[1_0_0]">
               <span className="flex size-4 items-center justify-center rounded-full bg-text-accent p-0.5">
                 <span
-                  className="i-ri-arrow-right-line size-3 text-text-primary-on-surface"
+                  className="i-ri-arrow-right-line size-3 text-text-primary-on-surface rtl:rotate-180"
                   aria-hidden="true"
                 />
               </span>
@@ -205,7 +206,7 @@ type BannerProps = {
 }
 
 export function Banner({ banners }: BannerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
   const locale = useLocale()
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),

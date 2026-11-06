@@ -1,16 +1,19 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { Switch } from '@langgenius/dify-ui/switch'
-import { memo, useState } from 'react'
+  Menu,
+  MenuCheckboxItem,
+  MenuCheckboxItemIndicator,
+  MenuItem,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
+import { memo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
+import { handleWorkflowMenuKeyDown } from '@/app/components/workflow/shortcuts/handle-workflow-menu-key-down'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
 export type OperatorProps = {
@@ -27,12 +30,35 @@ const Operator = ({
   showAuthor,
   onShowAuthorChange,
 }: OperatorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [open, setOpen] = useState(false)
+  const deletingRef = useRef(false)
+  const flowStore = useStoreApi()
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) deletingRef.current = false
+    setOpen(nextOpen)
+  }
+
+  function handleCopy() {
+    setOpen(false)
+    onCopy()
+  }
+
+  function handleDuplicate() {
+    setOpen(false)
+    onDuplicate()
+  }
+
+  function handleDelete() {
+    deletingRef.current = true
+    setOpen(false)
+    onDelete()
+  }
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger
+    <Menu open={open} onOpenChange={handleOpenChange}>
+      <MenuTrigger
         aria-label={t(($) => $['operation.more'], { ns: 'common' })}
         className={cn(
           'flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -42,67 +68,69 @@ const Operator = ({
           event.preventDefault()
           event.stopPropagation()
           event.preventBaseUIHandler()
-          setOpen((prev) => !prev)
+          handleOpenChange(!open)
         }}
         onClick={(event) => event.stopPropagation()}
       >
         <span aria-hidden className="i-ri-more-fill size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuPortal>
-        <DropdownMenuPositioner placement="bottom-end" sideOffset={4}>
-          <DropdownMenuPopup>
+      </MenuTrigger>
+      <MenuPortal>
+        <MenuPositioner sideOffset={4} align="end">
+          <MenuPopup
+            finalFocus={() => (deletingRef.current ? (flowStore.getState().domNode ?? true) : true)}
+            onKeyDown={(event) =>
+              handleWorkflowMenuKeyDown(event, [
+                ['workflow.copy', handleCopy],
+                ['workflow.duplicate', handleDuplicate],
+                ['workflow.delete', handleDelete],
+              ])
+            }
+          >
             <div className="min-w-48 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl">
               <div className="p-1">
-                <DropdownMenuItem
+                <MenuItem
                   className="justify-between rounded-md px-3 text-sm text-text-secondary"
-                  onClick={() => {
-                    setOpen(false)
-                    onCopy()
-                  }}
+                  onClick={handleCopy}
                 >
                   {t(($) => $['common.copy'], { ns: 'workflow' })}
                   <ShortcutKbd shortcut="workflow.copy" />
-                </DropdownMenuItem>
-                <DropdownMenuItem
+                </MenuItem>
+                <MenuItem
                   className="justify-between rounded-md px-3 text-sm text-text-secondary"
-                  onClick={() => {
-                    setOpen(false)
-                    onDuplicate()
-                  }}
+                  onClick={handleDuplicate}
                 >
                   {t(($) => $['common.duplicate'], { ns: 'workflow' })}
                   <ShortcutKbd shortcut="workflow.duplicate" />
-                </DropdownMenuItem>
+                </MenuItem>
               </div>
-              <DropdownMenuSeparator className="my-0" />
+              <MenuSeparator className="my-0" />
               <div className="p-1">
-                <div
-                  className="flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-                  onClick={(e) => e.stopPropagation()}
+                <MenuCheckboxItem
+                  checked={showAuthor}
+                  onCheckedChange={onShowAuthorChange}
+                  closeOnClick={false}
+                  className="justify-between rounded-md px-3 text-sm text-text-secondary"
                 >
-                  <div>{t(($) => $['nodes.note.editor.showAuthor'], { ns: 'workflow' })}</div>
-                  <Switch size="lg" checked={showAuthor} onCheckedChange={onShowAuthorChange} />
-                </div>
+                  {t(($) => $['nodes.note.editor.showAuthor'], { ns: 'workflow' })}
+                  <MenuCheckboxItemIndicator />
+                </MenuCheckboxItem>
               </div>
-              <DropdownMenuSeparator className="my-0" />
+              <MenuSeparator className="my-0" />
               <div className="p-1">
-                <DropdownMenuItem
+                <MenuItem
                   variant="destructive"
                   className="justify-between rounded-md px-3 text-sm text-text-secondary"
-                  onClick={() => {
-                    setOpen(false)
-                    onDelete()
-                  }}
+                  onClick={handleDelete}
                 >
                   {t(($) => $['operation.delete'], { ns: 'common' })}
                   <ShortcutKbd shortcut="workflow.delete" />
-                </DropdownMenuItem>
+                </MenuItem>
               </div>
             </div>
-          </DropdownMenuPopup>
-        </DropdownMenuPositioner>
-      </DropdownMenuPortal>
-    </DropdownMenu>
+          </MenuPopup>
+        </MenuPositioner>
+      </MenuPortal>
+    </Menu>
   )
 }
 

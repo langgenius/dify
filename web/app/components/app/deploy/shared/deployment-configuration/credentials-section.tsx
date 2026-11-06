@@ -13,19 +13,19 @@ const CredentialConfigurationField = memo(
     paths,
     slot,
     slotKey,
-    value,
+    defaultValue,
   }: {
     onChange: DeploymentConfigurationValuesController['setCredential']
     paths?: NonNullable<CredentialSlot['workflow_as_tool_dependency']>['paths']
     slot: CredentialSlot
     slotKey: string
-    value?: string
+    defaultValue?: string
   }) => {
     return (
       <CredentialField
         paths={paths}
         slot={slot}
-        value={value}
+        defaultValue={defaultValue}
         onChange={(value) => onChange(slotKey, value)}
       />
     )
@@ -36,17 +36,17 @@ CredentialConfigurationField.displayName = 'CredentialConfigurationField'
 export const CredentialsSection = memo(
   ({
     credentialSlots,
-    credentials,
+    getCredential,
     horizontalPaddingClassName,
     onChange,
   }: {
     credentialSlots: CredentialSlot[]
-    credentials: DeploymentConfigurationValuesController['credentials']
+    getCredential: DeploymentConfigurationValuesController['getCredential']
     horizontalPaddingClassName: string
     onChange: DeploymentConfigurationValuesController['setCredential']
   }) => {
-    const { t } = useTranslation('deployments')
-    const { t: tWorkflow } = useTranslation('workflow')
+    const { t } = useTranslation(['deployments'])
+    const { t: tWorkflow } = useTranslation(['navigation'])
     const appCredentialSlots = credentialSlots.filter((slot) => !slot.workflow_as_tool_dependency)
     const subworkflowCredentialSlots = credentialSlots.filter(
       (slot) => slot.workflow_as_tool_dependency,
@@ -68,7 +68,7 @@ export const CredentialsSection = memo(
               key={slotKey}
               slot={slot}
               slotKey={slotKey}
-              value={credentials[slotKey] ?? defaultCredentialId(slot)}
+              defaultValue={getCredential(slotKey) ?? defaultCredentialId(slot)}
               onChange={onChange}
             />
           )
@@ -77,7 +77,8 @@ export const CredentialsSection = memo(
           <>
             <div className="flex min-w-0 items-center gap-2 pt-2">
               <span className="shrink-0 system-xs-medium-uppercase text-text-tertiary">
-                {t(($) => $['studio.precheck.from'])} {tWorkflow(($) => $['common.workflowAsTool'])}
+                {t(($) => $['studio.precheck.from'])}{' '}
+                {tWorkflow(($) => $['common.workflowAsTool'], { ns: 'navigation' })}
               </span>
               <span
                 aria-hidden
@@ -93,7 +94,7 @@ export const CredentialsSection = memo(
                   paths={slot.workflow_as_tool_dependency?.paths}
                   slot={slot}
                   slotKey={slotKey}
-                  value={credentials[slotKey] ?? defaultCredentialId(slot)}
+                  defaultValue={getCredential(slotKey) ?? defaultCredentialId(slot)}
                   onChange={onChange}
                 />
               )

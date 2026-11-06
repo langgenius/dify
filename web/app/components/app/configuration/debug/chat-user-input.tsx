@@ -23,7 +23,7 @@ type Props = Readonly<{
 }>
 
 const ChatUserInput = ({ inputs }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const baseId = useId()
   const { modelConfig, setInputs, canTestAndRun = false } = useContext(ConfigContext)
   const debugInputReadonly = !canTestAndRun
@@ -150,7 +150,7 @@ const ChatUserInput = ({ inputs }: Props) => {
                   <Input
                     aria-labelledby={`${baseId}-${key}-label`}
                     type="number"
-                    value={inputs[key] ? `${inputs[key]}` : ''}
+                    value={inputs[key] || inputs[key] === 0 ? `${inputs[key]}` : ''}
                     onValueChange={(value) => handleInputValueChange(key, value)}
                     placeholder={name}
                     maxLength={max_length}
