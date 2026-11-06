@@ -19,6 +19,7 @@ import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { mockIntersectionObserver } from '@/test/intersection-observer'
 import { AppACLPermission } from '@/utils/permission'
+import { templateDialogRequestedAtom } from '../creation-requests'
 import { List } from '../list'
 
 const api = vi.hoisted(() => ({
@@ -27,7 +28,6 @@ const api = vi.hoisted(() => ({
   starred: vi.fn<typeof consoleClient.apps.starred.get>(),
   online: vi.fn<typeof consoleClient.apps.workflows.onlineUsers.post>(),
   learn: vi.fn<typeof consoleClient.explore.apps.learnDify.get>(),
-  create: vi.fn(),
   push: vi.fn(),
   replace: vi.fn(),
   searchParams: new URLSearchParams(),
@@ -51,14 +51,10 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.workflows.onlineUsers.post': api.online,
       'explore.apps.learnDify.get': api.learn,
       'explore.apps.get': async () => ({ recommended_apps: [], categories: [] }),
-      'apps.post': ({ body }: { body: Record<string, unknown> }) => api.create(body),
       'tags.get': async () => [{ id: 'tag-1', name: 'Research', type: 'app' }],
     }),
   }
 })
-vi.mock('@/utils/create-app-tracking', () => ({
-  trackCreateApp: vi.fn().mockResolvedValue(undefined),
-}))
 
 const app = (overrides: Partial<AppPartial> = {}) => ({
   ...createAppDetailFixture({ id: 'app-1', name: 'Chat app', maintainer: 'creator-1' }),
@@ -111,9 +107,9 @@ async function setup(
   searchParams = '',
   {
     waitForResults = true,
-    opensCreateDialog = false,
+    templateDialogRequested = false,
     ...options
-  }: ConsoleQueryTestOptions & { waitForResults?: boolean; opensCreateDialog?: boolean } = {},
+  }: ConsoleQueryTestOptions & { waitForResults?: boolean; templateDialogRequested?: boolean } = {},
   tour?: StepByStepTourSessionState,
 ) {
   api.searchParams = new URLSearchParams(searchParams)
@@ -133,16 +129,11 @@ async function setup(
   const store = createStore()
   store.set(queryClientAtom, queryClient)
   if (tour) store.set(stepByStepTourSessionAtom, tour)
+  if (templateDialogRequested) store.set(templateDialogRequestedAtom, true)
   const onUrlUpdate = vi.fn()
   const onCreateLearnDify = vi.fn()
   const onTryLearnDify = vi.fn()
-  const list = (
-    <List
-      opensCreateDialog={opensCreateDialog}
-      onCreateLearnDify={onCreateLearnDify}
-      onTryLearnDify={onTryLearnDify}
-    />
-  )
+  const list = <List onCreateLearnDify={onCreateLearnDify} onTryLearnDify={onTryLearnDify} />
   const route = (path: string, params: string, content: ReactNode) => (
     <JotaiProvider store={store}>
       <NuqsTestingAdapter key={path} hasMemory searchParams={params} onUrlUpdate={onUrlUpdate}>
@@ -185,12 +176,12 @@ async function setup(
 }
 
 beforeEach(() => {
+  window.history.replaceState(null, '', '/')
   api.apps.mockReset().mockResolvedValue(page())
   api.delete.mockReset().mockResolvedValue(undefined)
   api.starred.mockReset().mockResolvedValue(page([]))
   api.online.mockReset().mockResolvedValue({ data: [] })
   api.learn.mockReset().mockResolvedValue({ recommended_apps: [learnApp] })
-  api.create.mockReset()
   api.push.mockReset()
   api.replace.mockReset()
   intersect = mockIntersectionObserver()
@@ -486,7 +477,6 @@ it('changes sorting without losing filters and resets catalog scroll', async () 
 })
 
 it.each([
-  ['app.newApp.startFromBlank', 'app.newApp.startFromBlank'],
   ['app.newApp.startFromTemplate', 'app.newApp.startFromTemplate'],
   ['app.importApp', 'app.importApp'],
 ])('opens the real %s creation dialog from the menu', async (label, title) => {
@@ -498,61 +488,80 @@ it.each([
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
 })
 
-it('opens a real blank-app form from the first empty state', async () => {
+it.each([
+  ['', '/apps/create', 'app.types.advanced'],
+  ['?category=workflow', '/apps/create?mode=workflow', 'app.types.workflow'],
+])(
+  'opens blank creation at its URL over the list from the menu on %s',
+  async (searchParams, href, appType) => {
+    const { user } = await setup(searchParams)
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromBlank/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+    expect(`${window.location.pathname}${window.location.search}`).toBe(href)
+    expect(within(dialog).getByRole('heading', { name: appType, level: 4 })).toBeInTheDocument()
+    // A shallow URL: the list stays mounted under the dialog, without a router navigation.
+    expect(api.push).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Chat app', hidden: true })).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    await waitFor(() => expect(window.location.pathname).toBe('/'))
+  },
+)
+
+it('follows browser history in and out of blank creation', async () => {
+  const { user } = await setup()
+  await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+  await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromBlank/ }))
+  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+
+  act(() => window.history.back())
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  act(() => window.history.forward())
+  expect(
+    await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' }),
+  ).toBeInTheDocument()
+})
+
+it('opens blank creation at its URL from the first empty state', async () => {
   api.apps.mockResolvedValue(page([]))
   const { user } = await setup()
   await user.click(screen.getByRole('button', { name: /app.newApp.startFromBlank/ }))
   const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
   expect(within(dialog).getByRole('textbox', { name: 'app.newApp.name' })).toBeInTheDocument()
+  expect(window.location.pathname).toBe('/apps/create')
 })
 
-it('opens the creation route with the requested app type and leaves it on close', async () => {
-  const { user } = await setup('?mode=workflow', { opensCreateDialog: true })
-  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+it('switches from blank creation to templates and leaves its URL', async () => {
+  const { user } = await setup()
+  await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+  await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromBlank/ }))
+  const blank = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+  await user.click(within(blank).getByRole('button', { name: /app.newApp.noIdeaTip/ }))
   expect(
-    within(dialog).getByRole('heading', { name: 'app.types.workflow', level: 4 }),
+    await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' }),
   ).toBeInTheDocument()
+  await waitFor(() => expect(window.location.pathname).toBe('/'))
+})
 
-  await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+it('opens the template dialog the blank creation route handed off to', async () => {
+  const { user } = await setup('', { templateDialogRequested: true })
+  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
+  await user.click(within(dialog).getByRole('button', { name: /^(Close|common.operation.close)$/ }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
-  expect(api.replace).toHaveBeenCalledWith('/apps')
 })
 
-it('opens the new app straight from the creation route', async () => {
-  api.create.mockResolvedValue(
-    createAppDetailFixture({
-      id: 'new-workflow',
-      mode: 'workflow',
-      maintainer: 'creator-1',
-      permission_keys: [AppACLPermission.Edit],
-    }),
-  )
-  const { user, onUrlUpdate } = await setup('?mode=workflow', { opensCreateDialog: true })
-  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
-
-  await user.type(within(dialog).getByRole('textbox', { name: 'app.newApp.name' }), 'Evaluator')
-  await user.click(within(dialog).getByRole('button', { name: /app\.newApp\.Create/ }))
-
-  await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/new-workflow/workflow'))
-  expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ mode: 'workflow' }))
-  // The dialog stays over the list until the editor replaces the page.
-  expect(dialog).toBeInTheDocument()
-  expect(api.replace).not.toHaveBeenCalled()
-  expect(onUrlUpdate).not.toHaveBeenCalled()
-})
-
-it('keeps the creation route dialog closed without workspace creation permission', async () => {
-  await setup('?mode=workflow', { opensCreateDialog: true, workspacePermissionKeys: [] })
+it('opens blank creation from the template dialog', async () => {
+  const { user } = await setup()
+  await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+  await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromTemplate/ }))
+  const templates = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
+  await user.click(within(templates).getByRole('button', { name: /app.newApp.startFromBlank/ }))
   expect(
-    screen.queryByRole('dialog', { name: 'app.newApp.startFromBlank' }),
-  ).not.toBeInTheDocument()
-})
-
-it('ignores the creation mode on the plain Studio list', async () => {
-  await setup('?mode=workflow')
-  expect(
-    screen.queryByRole('dialog', { name: 'app.newApp.startFromBlank' }),
-  ).not.toBeInTheDocument()
+    await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' }),
+  ).toBeInTheDocument()
+  expect(window.location.pathname).toBe('/apps/create')
 })
 
 it('opens DSL import with the file dropped on the app list', async () => {
@@ -652,6 +661,7 @@ it('opens the create walkthrough after resolving the guide group without activat
     within(menu).getByRole('menuitem', { name: /app.newApp.startFromBlank/, hidden: true }),
   )
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(window.location.pathname).toBe('/')
 })
 
 async function openDeleteDialog(user: ReturnType<typeof userEvent.setup>, appName = 'Chat app') {

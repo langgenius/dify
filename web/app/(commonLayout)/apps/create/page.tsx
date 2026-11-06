@@ -1,11 +1,11 @@
-import { Apps } from '@/app/components/apps'
+import { CreateAppRoute } from '@/app/components/apps/create-app-route'
 import { getRouteMetadata } from '@/app/route-metadata'
 
 export function generateMetadata() {
   return getRouteMetadata('navigation', ($) => $['menus.apps'])
 }
 
-// `/apps/create?mode=<app type>`: the Studio with the blank creation dialog open.
+// Visited directly, `/apps/create?mode=<app type>` shows only the creation dialog.
 export default function CreateAppPage() {
-  return <Apps opensCreateDialog />
+  return <CreateAppRoute />
 }

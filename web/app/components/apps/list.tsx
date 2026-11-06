@@ -5,23 +5,26 @@ import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore
 import type { AppListCreationDialog } from './app-list-creation-modals'
 import type { AppListUrlQuery } from './query-params'
 import { useDebounce } from 'ahooks'
-import { useAtomValue } from 'jotai'
-import { throttle, useQueryState, useQueryStates } from 'nuqs'
-import { useCallback, useId, useMemo, useRef, useState } from 'react'
+import { useAtom, useAtomValue } from 'jotai'
+import { throttle, useQueryStates } from 'nuqs'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { CheckResultToast } from '@/hooks/use-pay'
-import { useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
+import { basePath } from '@/utils/var'
 import { AppListCatalog } from './app-list-catalog'
 import { AppListCreationModals } from './app-list-creation-modals'
 import { AppListHeader } from './app-list-header'
 import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
+import { templateDialogRequestedAtom } from './creation-requests'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { StudioListNavigation } from './list-navigation'
 import {
   appListQueryParsers,
   createAppModeQueryParser,
+  createAppPath,
+  getCreateAppHref,
   serializeAppListQuery,
 } from './query-params'
 
@@ -29,19 +32,20 @@ type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 type AppListCategory = AppListUrlQuery['category']
 
+const isCreateAppLocation = () => window.location.pathname === `${basePath}${createAppPath}`
+const leaveCreateAppLocation = () => {
+  if (isCreateAppLocation()) window.history.back()
+}
+
 type Props = Readonly<{
-  /** Set by the creation route: opens the blank creation dialog over the list. */
-  opensCreateDialog?: boolean
   onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onTryLearnDify?: (app: RecommendedAppResponse) => void
 }>
 
-export function List({ opensCreateDialog = false, onCreateLearnDify, onTryLearnDify }: Props) {
+export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
-  const [createAppMode] = useQueryState('mode', createAppModeQueryParser)
-  const { replace } = useRouter()
   const { category, keywords, creatorIDs, tagIDs, sort_by: sortBy } = urlQuery
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -49,12 +53,10 @@ export function List({ opensCreateDialog = false, onCreateLearnDify, onTryLearnD
   const titleId = useId()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [creationDialog, setCreationDialog] = useState<AppListCreationDialog>(null)
+  const [isTemplateDialogRequested, setIsTemplateDialogRequested] = useAtom(
+    templateDialogRequestedAtom,
+  )
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-  const [isCreateRouteClosed, setIsCreateRouteClosed] = useState(false)
-  const createRouteDialog: AppListCreationDialog =
-    opensCreateDialog && canCreateApp && !isCreateRouteClosed
-      ? { type: 'blank', category: createAppMode ?? undefined }
-      : null
   const hasActiveFilters =
     category !== 'all' ||
     tagIDs.length > 0 ||
@@ -114,22 +116,43 @@ export function List({ opensCreateDialog = false, onCreateLearnDify, onTryLearnD
     void setUrlQuery({ sort_by: nextSortBy })
   }
 
+  // Blank creation owns `/apps/create`. From the Studio it is a shallow URL over
+  // the mounted list; visited directly, the route renders it on its own.
   const openCreateBlankModal = useCallback(() => {
-    if (canCreateApp) setCreationDialog({ type: 'blank' })
-  }, [canCreateApp])
+    if (!canCreateApp) return
+    const mode = category === 'all' ? undefined : category
+    setIsTemplateDialogRequested(false)
+    setCreationDialog({ type: 'blank', category: mode })
+    window.history.pushState(window.history.state, '', `${basePath}${getCreateAppHref(mode)}`)
+  }, [canCreateApp, category, setIsTemplateDialogRequested])
   const openCreateTemplateDialog = useCallback(() => {
-    if (canCreateApp) setCreationDialog({ type: 'template' })
-  }, [canCreateApp])
-  const openCreateFromDSLModal = useCallback(() => {
-    if (canCreateApp) setCreationDialog({ type: 'dsl' })
+    if (!canCreateApp) return
+    setCreationDialog({ type: 'template' })
+    leaveCreateAppLocation()
   }, [canCreateApp])
   const closeCreationDialog = useCallback(() => {
     setCreationDialog(null)
-    if (!opensCreateDialog) return
-    // Leaving the dialog leaves the creation route, without keeping it in history.
-    setIsCreateRouteClosed(true)
-    replace('/apps')
-  }, [opensCreateDialog, replace])
+    setIsTemplateDialogRequested(false)
+    leaveCreateAppLocation()
+  }, [setIsTemplateDialogRequested])
+  useEffect(() => {
+    const syncBlankCreationWithLocation = () => {
+      if (!isCreateAppLocation()) {
+        setCreationDialog((current) => (current?.type === 'blank' ? null : current))
+        return
+      }
+      const mode = new URLSearchParams(window.location.search).get('mode')
+      setCreationDialog({
+        type: 'blank',
+        category: (mode && createAppModeQueryParser.parse(mode)) || undefined,
+      })
+    }
+    window.addEventListener('popstate', syncBlankCreationWithLocation)
+    return () => window.removeEventListener('popstate', syncBlankCreationWithLocation)
+  }, [])
+  const openCreateFromDSLModal = useCallback(() => {
+    if (canCreateApp) setCreationDialog({ type: 'dsl' })
+  }, [canCreateApp])
   const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
   return (
@@ -196,7 +219,10 @@ export function List({ opensCreateDialog = false, onCreateLearnDify, onTryLearnD
       <AppListCreationModals
         canCreateApp={canCreateApp}
         category={category}
-        dialog={creationDialog ?? createRouteDialog}
+        dialog={
+          creationDialog ??
+          (canCreateApp && isTemplateDialogRequested ? { type: 'template' } : null)
+        }
         onClose={closeCreationDialog}
         onOpenBlank={openCreateBlankModal}
         onOpenTemplate={openCreateTemplateDialog}
