@@ -5,10 +5,13 @@ from unittest.mock import MagicMock, Mock, create_autospec
 import pytest
 from celery.canvas import Signature
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from enums import CloudPlan, DeploymentEdition
 from enums.creator import CreatorUserRole
+from models.model import UploadFile
 from services.entities.upload_file import FileUploadActor, UploadFileRecord
+from services.file_adapters import build_file_service
 from services.file_service import FileService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from tests.helpers.unit.config_override import config_overrides_context
@@ -57,6 +60,34 @@ def test_delay_with_entities_calls_dispatch(mocker: MockerFixture, proxy: RagPip
     proxy.delay()
 
     dispatch_mock.assert_called_once()
+
+
+def test_upload_invoke_entities_commits_file_before_dispatch(
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """An invocation upload must be visible from a fresh worker session."""
+    mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue")
+    save = mocker.patch("services.file_adapters.storage.save", autospec=True)
+    entity = Mock()
+    entity.model_dump.return_value = {"doc": "data"}
+    proxy = RagPipelineTaskProxy(
+        dataset_tenant_id="tenant-1",
+        user_id="user-1",
+        rag_pipeline_invoke_entities=[entity],
+        files=build_file_service(session_factory=sqlite_session_factory),
+    )
+
+    file_id = proxy._upload_invoke_entities()
+
+    with sqlite_session_factory() as session:
+        upload = session.get(UploadFile, file_id)
+        assert upload is not None
+        assert upload.tenant_id == "tenant-1"
+        assert upload.created_by == "user-1"
+        assert upload.name == "rag_pipeline_invoke_entities.json"
+        assert upload.used is True
+        save.assert_called_once_with(upload.key, b'[{"doc": "data"}]')
 
 
 @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
