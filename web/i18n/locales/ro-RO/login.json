@@ -51,6 +51,7 @@
   "history.notNow": "Nu acum",
   "history.signedInAs": "Autentificat ca {{email}}",
   "history.title": "Date anterioare",
+  "history.transferWarning": "Este posibil ca unele date, inclusiv execuțiile încă în desfășurare, să nu poată fi transferate. Dacă transferul eșuează, este posibil ca datele să nu mai poată fi recuperate ulterior.",
   "history.unsupportedDescription": "Acest tip de aplicație nu acceptă transferul datelor conversațiilor. Nu vei putea vedea aceste conversații anterioare în acest cont.",
   "history.unsupportedTitle": "Conversațiile nu pot fi adăugate la acest cont",
   "history.useDifferentAccount": "Folosește alt cont",

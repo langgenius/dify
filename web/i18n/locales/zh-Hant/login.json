@@ -51,6 +51,7 @@
   "history.notNow": "暫不處理",
   "history.signedInAs": "已登入為 {{email}}",
   "history.title": "先前的資料",
+  "history.transferWarning": "部分資料（包括仍在進行的執行）可能無法移轉。移轉失敗的資料之後可能無法復原。",
   "history.unsupportedDescription": "此類應用程式不支援轉移對話資料。你將無法在此帳號中查看這些先前的對話。",
   "history.unsupportedTitle": "無法將對話新增至此帳號",
   "history.useDifferentAccount": "使用其他帳號",

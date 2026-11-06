@@ -51,6 +51,7 @@
   "history.notNow": "Nanti saja",
   "history.signedInAs": "Masuk sebagai {{email}}",
   "history.title": "Data sebelumnya",
+  "history.transferWarning": "Sebagian data, termasuk eksekusi yang masih berlangsung, mungkin gagal ditransfer. Data yang gagal ditransfer mungkin tidak dapat dipulihkan di kemudian hari.",
   "history.unsupportedDescription": "Jenis aplikasi ini tidak mendukung pemindahan data percakapan. Anda tidak akan dapat melihat percakapan sebelumnya di akun ini.",
   "history.unsupportedTitle": "Percakapan tidak dapat ditambahkan ke akun ini",
   "history.useDifferentAccount": "Gunakan akun lain",

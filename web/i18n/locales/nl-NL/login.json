@@ -51,6 +51,7 @@
   "history.notNow": "Niet nu",
   "history.signedInAs": "Ingelogd als {{email}}",
   "history.title": "Eerdere gegevens",
+  "history.transferWarning": "Sommige gegevens, waaronder uitvoeringen die nog bezig zijn, worden mogelijk niet overgezet. Gegevens waarvan de overdracht mislukt, kunnen later mogelijk niet worden hersteld.",
   "history.unsupportedDescription": "Dit type app ondersteunt het overzetten van gespreksgegevens niet. Je kunt deze eerdere gesprekken niet in dit account bekijken.",
   "history.unsupportedTitle": "Gesprekken kunnen niet aan dit account worden toegevoegd",
   "history.useDifferentAccount": "Een ander account gebruiken",

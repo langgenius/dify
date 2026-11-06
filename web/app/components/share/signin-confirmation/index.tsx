@@ -127,7 +127,11 @@ export default function SignInConfirmation({
                     nativeButton
                     render={<button type="button" />}
                     aria-labelledby={`${id}-${option.value}-title`}
-                    aria-describedby={`${id}-${option.value}-description`}
+                    aria-describedby={
+                      option.value === 'add'
+                        ? `${id}-${option.value}-description ${id}-transfer-warning`
+                        : `${id}-${option.value}-description`
+                    }
                     className={cn(
                       'flex w-full items-start gap-3 rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 py-3.75 text-start hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-offset-2 focus-visible:outline-hidden data-checked:ring-1 data-checked:ring-inset',
                       option.value === 'delete'
@@ -152,6 +156,15 @@ export default function SignInConfirmation({
                       >
                         {option.description}
                       </span>
+                      {option.value === 'add' && (
+                        <span
+                          id={`${id}-transfer-warning`}
+                          role="note"
+                          className="mt-2 rounded-lg border border-state-warning-active bg-state-warning-hover p-3 system-xs-regular wrap-anywhere text-text-warning"
+                        >
+                          {t(($) => $['history.transferWarning'], { ns: 'login' })}
+                        </span>
+                      )}
                     </span>
                   </RadioItem>
                 </FieldItem>

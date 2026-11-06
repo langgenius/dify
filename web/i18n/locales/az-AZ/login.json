@@ -51,6 +51,7 @@
   "history.notNow": "İndi deyil",
   "history.signedInAs": "{{email}} kimi daxil olmusunuz",
   "history.title": "Əvvəlki məlumatlar",
+  "history.transferWarning": "Hələ davam edən icralar da daxil olmaqla bəzi məlumatların köçürülməsi uğursuz ola bilər. Köçürülməsi uğursuz olan məlumatları sonradan bərpa etmək mümkün olmaya bilər.",
   "history.unsupportedDescription": "Bu tip tətbiq söhbət məlumatlarının ötürülməsini dəstəkləmir. Bu hesabda əvvəlki söhbətləri görə bilməyəcəksiniz.",
   "history.unsupportedTitle": "Söhbətlər bu hesaba əlavə edilə bilməz",
   "history.useDifferentAccount": "Başqa hesab istifadə et",

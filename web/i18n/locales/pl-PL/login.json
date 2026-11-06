@@ -51,6 +51,7 @@
   "history.notNow": "Nie teraz",
   "history.signedInAs": "Zalogowano jako {{email}}",
   "history.title": "Wcześniejsze dane",
+  "history.transferWarning": "Przeniesienie niektórych danych, w tym trwających wykonań, może się nie powieść. Danych, których nie uda się przenieść, może nie dać się później odzyskać.",
   "history.unsupportedDescription": "Ten typ aplikacji nie obsługuje przenoszenia danych rozmów. Nie będzie można wyświetlić tych wcześniejszych rozmów na tym koncie.",
   "history.unsupportedTitle": "Nie można dodać rozmów do tego konta",
   "history.useDifferentAccount": "Użyj innego konta",

@@ -51,6 +51,7 @@
   "history.notNow": "暂不处理",
   "history.signedInAs": "已登录为 {{email}}",
   "history.title": "之前的数据",
+  "history.transferWarning": "部分数据（包括仍在进行的运行）可能无法迁移。迁移失败的数据之后可能无法恢复。",
   "history.unsupportedDescription": "此类应用不支持迁移会话数据。你将无法在此账号中查看这些之前的会话。",
   "history.unsupportedTitle": "无法将会话添加到此账号",
   "history.useDifferentAccount": "使用其他账号",

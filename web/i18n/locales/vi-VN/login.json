@@ -51,6 +51,7 @@
   "history.notNow": "Để sau",
   "history.signedInAs": "Đã đăng nhập bằng {{email}}",
   "history.title": "Dữ liệu trước đó",
+  "history.transferWarning": "Một số dữ liệu, bao gồm các lượt chạy vẫn đang diễn ra, có thể không chuyển được. Dữ liệu chuyển không thành công có thể không khôi phục được về sau.",
   "history.unsupportedDescription": "Loại ứng dụng này không hỗ trợ chuyển dữ liệu cuộc trò chuyện. Bạn sẽ không thể xem các cuộc trò chuyện trước đó trong tài khoản này.",
   "history.unsupportedTitle": "Không thể thêm các cuộc trò chuyện vào tài khoản này",
   "history.useDifferentAccount": "Sử dụng tài khoản khác",

@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SignInConfirmation from '..'
 
@@ -26,6 +26,10 @@ it('selects adding earlier data by default and submits the selected action', asy
 
   const addOption = screen.getByRole('radio', { name: 'login.history.add' })
   const deleteOption = screen.getByRole('radio', { name: 'login.history.delete' })
+  expect(within(addOption).getByRole('note')).toHaveTextContent('login.history.transferWarning')
+  expect(addOption).toHaveAccessibleDescription(
+    'login.history.addDescription login.history.transferWarning',
+  )
   expect(addOption).toBeChecked()
   expect(deleteOption).not.toBeChecked()
   expect(screen.getByRole('button', { name: 'login.history.addAndContinue' })).toBeEnabled()
@@ -35,6 +39,7 @@ it('selects adding earlier data by default and submits the selected action', asy
   await user.click(screen.getByText('login.history.delete'))
   expect(deleteOption).toBeChecked()
   expect(addOption).not.toBeChecked()
+  expect(within(addOption).getByRole('note')).toBeVisible()
   const deleteButton = screen.getByRole('button', { name: 'login.history.deleteAndContinue' })
   expect(deleteButton).toBeEnabled()
 
@@ -86,6 +91,7 @@ it('defaults to continuing without adding data when migration is unsupported and
   expect(screen.getByText('login.history.unsupportedTitle')).toBeInTheDocument()
   expect(screen.getByText('login.history.unsupportedDescription')).toBeInTheDocument()
   expect(screen.queryByRole('radio', { name: 'login.history.add' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('note')).not.toBeInTheDocument()
   expect(screen.queryByRole('link', { name: 'login.history.notNow' })).not.toBeInTheDocument()
   const continueOption = screen.getByRole('radio', {
     name: 'login.history.continueWithoutAdding',

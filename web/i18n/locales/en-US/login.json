@@ -51,6 +51,7 @@
   "history.notNow": "Not now",
   "history.signedInAs": "Signed in as {{email}}",
   "history.title": "Earlier data",
+  "history.transferWarning": "Some data, including runs still in progress, may fail to transfer. Failed transfers may not be recoverable later.",
   "history.unsupportedDescription": "This type of app doesn’t support transferring conversation data. You won’t be able to view these earlier conversations in this account.",
   "history.unsupportedTitle": "Conversations can’t be added to this account",
   "history.useDifferentAccount": "Use a different account",
