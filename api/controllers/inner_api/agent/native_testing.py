@@ -25,7 +25,8 @@ from dify_agent.protocol.native_testing import (
     AgentStoredResultResponse,
     AgentStoreResultPayload,
 )
-from flask import make_response, request
+from flask import g, make_response, request
+from flask.globals import request_ctx
 from flask_restx import Resource
 from pydantic import RootModel, ValidationError
 
@@ -319,7 +320,21 @@ class AgentNativeReadResultApi(Resource):
     def post(self):
         payload = _parse(AgentReadResultPayload, limit=MAX_AGENT_CONTROL_BYTES)
         try:
-            result = agent_operations_for_ref(payload.ref).read_result(ref=payload.ref, result_ref=payload.result_ref)
+            from services.dify_builder.native_testing.agent_lineage import NativeAgentRecoveryReadContext
+
+            context = g.get("agent_runtime_context")
+            if isinstance(context, NativeAgentRecoveryReadContext):
+                if (
+                    g.get("agent_runtime_request") is not request_ctx.request
+                    or context.ref != payload.ref
+                    or context.result_ref != payload.result_ref
+                ):
+                    raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
+                result = context.result
+            else:
+                result = agent_operations_for_ref(payload.ref).read_result(
+                    ref=payload.ref, result_ref=payload.result_ref
+                )
         except BuilderExecutionPolicyError:
             raise AgentNativeControlRefused() from None
         return _bounded_private_response(AgentResultReadResponse, {"result": result}, MAX_AGENT_CONFIG_BYTES)

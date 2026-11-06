@@ -6,7 +6,7 @@ Qualified native adapters must supply actual execution/termination evidence.
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from re import fullmatch
 from typing import TYPE_CHECKING, Literal, Protocol, Self
@@ -67,6 +67,7 @@ from services.dify_builder.native_testing.transitions import (
 )
 
 if TYPE_CHECKING:
+    from services.dify_builder.native_testing.agent_recovery import RecoveryPendingState
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 
 _OUTCOME = TypeAdapter(Outcome)
@@ -190,6 +191,7 @@ class _ResumeCheckpoint:
     payload: NativeCheckpointPayload
     pending_ids: tuple[str, ...]
     observed_generation: int
+    recovery: "RecoveryPendingState | None" = None
 
 
 @dataclass(frozen=True)
@@ -668,11 +670,23 @@ class NativeTestLifecycleService:
             for child_ref, child_checkpoint in children:
                 child_payload = self.store.read_checkpoint(ref=child_ref, checkpoint=child_checkpoint)
                 stack.append((child_ref, child_checkpoint, child_payload))
+            recovery = self.store.load_recovery_checkpoint_state(ref=current_ref, checkpoint=current_checkpoint)
+            selected[current_ref.invocation_id] = replace(selected[current_ref.invocation_id], recovery=recovery)
         return selected
 
     def _validate_checkpoints(self, session, owned, selected):
         states = {}
         for identity, proof in selected.items():
+            from services.dify_builder.native_testing.agent_recovery import recovery_record
+
+            current_owned, _ = self.loader._load(session, ref=proof.ref, lock=False)
+            record = recovery_record(current_owned.bindings)
+            if (record is None) != (proof.recovery is None):
+                raise BuilderExecutionPolicyError("native_agent_recovery_unready")
+            if proof.recovery is not None:
+                self.store.recheck_recovery_checkpoint_state(
+                    session=session, owned=current_owned, state=proof.recovery, checkpoint=proof.checkpoint
+                )
             state = invocation_state(session, proof.ref, owned.tenant_id)
             continuation = session.scalar(
                 owner_query(NativeContinuation, proof.ref, owned.tenant_id).where(
@@ -1015,8 +1029,9 @@ class NativeTestLifecycleService:
     ) -> CheckpointRef:
         """Metadata handoff for an already claimed resume, never new execution authority.
 
-        Permission checks precede the bounded SQL read; no writer or private I/O.
-        Runtime must still reread this C03 object and verify its actual native run.
+        Permission checks precede the bounded SQL read. A recovery selection is
+        loaded outside the writer and rechecked with the claimed dispatch under
+        the request lock. Runtime still rereads the original C03 object.
         """
         from models.dify_builder_native_tests import NativePayloadObject
 
@@ -1079,9 +1094,33 @@ class NativeTestLifecycleService:
             ):
                 raise BuilderExecutionPolicyError("checkpoint_unavailable")
             try:
-                return CheckpointRef(checkpoint_id=saved.checkpoint_id, payload_digest=saved.payload_digest)
+                checkpoint = CheckpointRef(checkpoint_id=saved.checkpoint_id, payload_digest=saved.payload_digest)
             except ValueError:
                 raise BuilderExecutionPolicyError("checkpoint_unavailable") from None
+        recovery = self.store.load_recovery_checkpoint_state(ref=ref, checkpoint=checkpoint)
+        # A claimed dispatch excludes recovery reservation; retain the ordinary
+        # read-only handoff when no recovery record exists.
+        if recovery is not None:
+            with self.loader.locked(ref=ref) as (session, owned, _scope):
+                self.store.recheck_recovery_checkpoint_state(
+                    session=session, owned=owned, state=recovery, checkpoint=checkpoint
+                )
+                current = invocation_state(session, ref, owned.tenant_id)
+                dispatch = session.scalar(
+                    owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
+                )
+                if (
+                    dispatch is None
+                    or dispatch.state != "claimed"
+                    or dispatch.generation != generation
+                    or dispatch.checkpoint_id != checkpoint.checkpoint_id
+                    or current.generation != generation
+                    or current.checkpoint_id != checkpoint.checkpoint_id
+                    or dispatch.claim_expires_at is None
+                    or dispatch.claim_expires_at <= self.clock()
+                ):
+                    raise BuilderExecutionPolicyError("native_dispatch_mismatch")
+        return checkpoint
 
     def prepare_dispatch_claim(
         self, *, ref: NativeTestContextRef, generation: int, dispatch_id: str
@@ -1111,6 +1150,10 @@ class NativeTestLifecycleService:
             if dispatch is None or observed.checkpoint_id != dispatch.checkpoint_id:
                 raise BuilderExecutionPolicyError("native_dispatch_mismatch")
             if generation == 0 and dispatch.generation == 0 and dispatch.checkpoint_id is None:
+                from services.dify_builder.native_testing.agent_recovery import recovery_record
+
+                if recovery_record(owned.bindings) is not None:
+                    raise BuilderExecutionPolicyError("native_agent_recovery_unready")
                 if dispatch.idempotency_digest != canonical_digest({"initial": ref.model_dump(mode="json")}):
                     raise BuilderExecutionPolicyError("native_initial_conflict")
                 self._validate_initial(
@@ -1156,6 +1199,10 @@ class NativeTestLifecycleService:
         owned, scope = self.loader._load(session, ref=ref, lock=False)
         state = invocation_state(session, ref, owned.tenant_id)
         if generation == 0 and dispatch.checkpoint_id is None:
+            from services.dify_builder.native_testing.agent_recovery import recovery_record
+
+            if recovery_record(owned.bindings) is not None:
+                raise BuilderExecutionPolicyError("native_agent_recovery_unready")
             if dispatch.idempotency_digest != canonical_digest({"initial": ref.model_dump(mode="json")}):
                 raise BuilderExecutionPolicyError("native_initial_conflict")
             if state.context_object_id != prepared.context_object_id:
