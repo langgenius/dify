@@ -434,18 +434,6 @@ def _failure_reason(error: BaseException) -> FailureReason:
             return "rate_limit"
         if 500 <= error.response.status_code <= 599:
             return "service_unavailable"
-    # Inspect only to classify; never copy provider bodies or URLs into Trace.
-    text = str(error).lower()
-    reasons: dict[FailureReason, tuple[str, ...]] = {
-        "connection_refused": ("connection refused", "connectionrefused"),
-        "timeout": ("timed out", "timeout"),
-        "authentication": ("unauthorized", "authentication", "invalid api key"),
-        "rate_limit": ("rate limit", "rate_limit"),
-        "service_unavailable": ("service unavailable",),
-    }
-    for reason, markers in reasons.items():
-        if any(marker in text for marker in markers):
-            return reason
     return "unknown"
 
 

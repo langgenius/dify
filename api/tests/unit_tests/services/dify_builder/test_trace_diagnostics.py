@@ -146,13 +146,18 @@ def test_generation_projection_retains_attempt_not_arbitrary_strings() -> None:
     assert "secret" not in json.dumps(records)
 
 
-def test_wrapped_plugin_connection_refusal_is_classified_without_echo() -> None:
+@pytest.mark.parametrize(
+    ("failure", "reason"),
+    [
+        (RuntimeError("connection refused http://internal?token=secret"), "unknown"),
+        (ConnectionRefusedError("connection refused http://internal?token=secret"), "connection_refused"),
+    ],
+)
+def test_connection_refusal_requires_typed_error_without_echo(failure: Exception, reason: str) -> None:
     records = []
     with diagnostics.scope(records.append, "plan"):
-        diagnostics.report(
-            "provider_invocation_failed", error=RuntimeError("connection refused http://internal?token=secret")
-        )
-    assert records[0]["reason"] == "connection_refused"
+        diagnostics.report("provider_invocation_failed", error=failure)
+    assert records[0]["reason"] == reason
     assert "secret" not in json.dumps(records)
 
 
@@ -168,7 +173,9 @@ def test_cas_emission_and_reload_preserve_additive_safe_diagnostics(
     env, _ = _new_env()
     env.repo = repo
     agent = LlmBuilderAgent("tenant")
-    agent._model_instance = diagnostic_model(failure=RuntimeError("connection refused http://internal?token=secret"))
+    agent._model_instance = diagnostic_model(
+        failure=ConnectionRefusedError("connection refused http://internal?token=secret")
+    )
     env.agent = agent
     monkeypatch.setattr(
         build, "planning_catalogue", lambda *_a, **_k: TenantResources(models=[], datasets=[], tools=[])

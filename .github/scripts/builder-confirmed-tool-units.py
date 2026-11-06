@@ -961,7 +961,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"] = {
     "test_json_and_schema_have_distinct_codes": 1,
     "test_env_bounds_resets_and_correlates_diagnostics": 1,
     "test_generation_projection_retains_attempt_not_arbitrary_strings": 1,
-    "test_wrapped_plugin_connection_refusal_is_classified_without_echo": 1,
+    "test_connection_refusal_requires_typed_error_without_echo": 2,
     "test_cas_emission_and_reload_preserve_additive_safe_diagnostics": 1,
     "test_catalogue_failure_differs_from_successful_empty": 1,
     "test_context_scope_does_not_leak_between_nested_calls": 1,
@@ -2956,11 +2956,12 @@ a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"].upd
     "test_planning_facts_survive_sql_cas_and_public_trace_export": 2,
 })
 a4_expected["tests.unit_tests.services.dify_builder.test_policy_trace_diagnostics"] = {
-    "test_policy_wrapped_provider_reason_survives_without_retry_or_secret_projection": 10,
+    "test_policy_wrapped_provider_reason_survives_without_retry_or_secret_projection": 16,
     "test_explicit_setup_refusal_keeps_priority_over_underlying_timeout": 1,
     "test_nested_explicit_causes_preserve_known_reason_and_terminate_cycles": 1,
     "test_diagnostic_cause_walk_is_bounded_and_does_not_use_implicit_context": 1,
     "test_serverless_502_real_plugin_decoder_keeps_bounded_reason_without_replay": 2,
+    "test_generic_wrapper_text_cannot_mask_explicit_typed_provider_cause": 2,
 }
 for module, expected in {**a3_expected, **a4_expected}.items():
     actual = {}
