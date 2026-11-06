@@ -46,13 +46,15 @@ def app_record(
         if detail:
             model_config.update(config.to_dict(annotation_reply=load_annotation_reply_config(session, app.id)))
     workflow = app.workflow_with_session(session=session)
+    workflow_type = None if workflow is None else workflow.type.value
+    workflow_kind = None if workflow is None else resolve_workflow_kind(workflow.kind).value
     workflow_data = (
         None
         if workflow is None
         else {
             "id": workflow.id,
-            "type": workflow.type.value,
-            "kind": resolve_workflow_kind(workflow.kind).value,
+            "type": workflow_type,
+            "kind": workflow_kind,
             "created_by": workflow.created_by,
             "created_at": workflow.created_at,
             "updated_by": workflow.updated_by,
@@ -89,8 +91,8 @@ def app_record(
         author_name=None if detail else app.author_name_with_session(session=session),
         app_model_config=model_config,
         workflow=workflow_data,
-        workflow_type=workflow.type.value if workflow is not None else None,
-        workflow_kind=resolve_workflow_kind(workflow.kind).value if workflow is not None else None,
+        workflow_type=workflow_type,
+        workflow_kind=workflow_kind,
         site=site_data,
         tracing=app.tracing,
         bound_agent_id=app.bound_agent_id_with_session(session=session) if projection != "detail" else None,
