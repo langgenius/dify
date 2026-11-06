@@ -358,7 +358,7 @@ jobs:
           raise SystemExit(int(code) or (1 if problems else 0))
           PY
       - name: Real confirmed recovery PostgreSQL and Redis owners
-        timeout-minutes: 20
+        timeout-minutes: 30
         shell: bash
         run: |
           set -euo pipefail
@@ -368,7 +368,9 @@ jobs:
           export PATH="$postgres_bin:$PATH"
           # The API already installs this checkout's editable SDK. The fixture also imports
           # SDK server code; its sole missing dependency is pinned by dify-agent/uv.lock.
-          timeout --kill-after=30s 18m uv run --project api --no-sync --with jwcrypto==1.5.7 python -u - < .github/scripts/builder-confirmed-recovery.py 2>&1 | tee builder-confirmed-recovery.log
+          # All 80 real owner cases exceed 18 minutes on the hosted runner.
+          # Leave room before the step deadline for bounded shutdown and reporting.
+          timeout --kill-after=30s 28m uv run --project api --no-sync --with jwcrypto==1.5.7 python -u - < .github/scripts/builder-confirmed-recovery.py 2>&1 | tee builder-confirmed-recovery.log
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
