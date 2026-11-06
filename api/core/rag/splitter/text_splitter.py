@@ -170,6 +170,13 @@ class Tokenizer:
 
 def split_text_on_tokens(*, text: str, tokenizer: Tokenizer) -> list[str]:
     """Split incoming text and return chunks using tokenizer."""
+    if tokenizer.tokens_per_chunk <= 0:
+        raise ValueError(f"tokens_per_chunk must be positive, got {tokenizer.tokens_per_chunk}.")
+    if tokenizer.chunk_overlap >= tokenizer.tokens_per_chunk:
+        raise ValueError(
+            f"chunk_overlap ({tokenizer.chunk_overlap}) must be strictly smaller than "
+            f"tokens_per_chunk ({tokenizer.tokens_per_chunk}); otherwise splitting never terminates."
+        )
     splits: list[str] = []
     input_ids = tokenizer.encode(text)
     start_idx = 0
