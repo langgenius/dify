@@ -238,7 +238,7 @@ class LlmBuilderAgent:
         )
 
     @diagnostics.cognition
-    def assess_capability_gap(self, plan_items, options, *, goal_text: str, requirements: dict[str, Any]):
+    def assess_capability_gap(self, plan_items, options, *, goal_text: str, requirements: dict[str, Any]) -> str | None:
         return build.assess_capability_gap(
             self.model_or_none(),
             plan_items,

@@ -287,3 +287,23 @@ def cognition_failure_message(
                 BuilderCopyId.OPERATION_MODEL_FAILED, reason=_display_label(_REASON_LABELS, reason, reply_language)
             )
     return fallback
+
+
+def capability_assessment_unavailable_message(
+    records: Sequence[Mapping[str, Any]], *, reply_language: str
+) -> BuilderText:
+    """Disclose unknown feasibility using only this assessment's observations.
+
+    The caller supplies records captured during the assessment invocation,
+    excluding prior discovery failures. Return fixed guidance and optional
+    sanitized model-failure copy; never claim an unsupported capability or
+    alter approval, bindings, requirements or retry policy. No I/O is performed.
+    """
+    guidance = (
+        "计划可行性检查暂不可用。请在批准前检查计划和资源，或调整计划后重试。"
+        if reply_language.lower().startswith("zh")
+        else "The plan feasibility check is unavailable. Review the plan and resources before approving, "
+        "or adjust the plan to retry."
+    )
+    detail = cognition_failure_message(records, "", reply_language=reply_language)
+    return text_parts(guidance, "\n", detail) if detail else guidance

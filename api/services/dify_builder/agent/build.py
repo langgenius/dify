@@ -1126,19 +1126,20 @@ def assess_capability_gap(
     goal_text: str = "",
     requirements: dict[str, Any] | None = None,
     mode: str = "workflow",
-) -> str:
-    """One sentence naming an uncovered draft capability or named requirement.
+) -> str | None:
+    """Assess an executable plan without granting approval or runtime admission.
 
-    Native build vocabulary is separate from the selected external resources;
-    neither grants runtime admission. There is no marketplace lookup, so this
-    says a capability is missing, never which plugin would supply it. A
-    ``missing_config`` Tool has an installed action schema and can cover a draft
-    step; its credentials require later setup before testing or publishing. A model we cannot
-    reach reports no gap: inventing one would block a build that might be
-    fine.
+    Accept source constraints and current recommendations, never inferred
+    bindings. Return a named gap, an assessed empty string, or None when the
+    assessment is unavailable. Empty plans need no executable-plan assessment
+    (knowledge-only discovery uses this path). Model failure never establishes
+    an unsupported capability. Preserve policy refusals and the existing JSON
+    correction budget; perform no marketplace lookup or state mutation.
     """
-    if model is None or not plan_items:
+    if not plan_items:
         return ""
+    if model is None:
+        return None
     listing = (
         "\n".join(f"- {o.id} ({o.kind}, {o.readiness}): {o.label}" + (f"; {o.meta}" if o.meta else "") for o in options)
         or "- (none)"
@@ -1165,10 +1166,19 @@ def assess_capability_gap(
         raise
     except Exception:
         trace_diagnostics.report("deterministic_fallback", fallback_used=True)
-        logger.warning("dify_builder: capability-gap assessment failed", exc_info=True)
-        return ""
+        logger.warning("dify_builder: capability-gap assessment unavailable")
+        return None
     gap = data.get("gap")
-    return str(gap).strip() if isinstance(gap, str) else ""
+    if not isinstance(gap, str):
+        trace_diagnostics.report(
+            "response_schema_invalid",
+            fallback_used=True,
+            validation_details=[
+                {"stage": "plan", "reason_code": "missing" if "gap" not in data else "type", "path": ("gap",)}
+            ],
+        )
+        return None
+    return gap.strip()
 
 
 # Which plan step a resource kind covers, by the node vocabulary the planner

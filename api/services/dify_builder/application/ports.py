@@ -106,11 +106,11 @@ class DifyBuilderAgent(Protocol):
         reply_language: str | None = None,
     ) -> list[ResourceOption]: ...
 
-    # One plain sentence naming a plan step nothing installed can perform, or
-    # "" when the recommended resources cover the plan. Never raises.
+    # A named gap, "" for a valid assessment with no named gap (or no plan),
+    # or None when assessment is unavailable. Policy refusals still propagate.
     def assess_capability_gap(
         self, plan_items: list[str], options: list[ResourceOption], *, goal_text: str, requirements: dict[str, Any]
-    ) -> str: ...
+    ) -> str | None: ...
 
     def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]: ...
 

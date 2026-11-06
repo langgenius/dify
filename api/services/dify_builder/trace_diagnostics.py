@@ -87,6 +87,7 @@ _VALIDATION_PATH_FIELDS = frozenset(
         "type",
         "title",
         "plan",
+        "gap",
         "input_summary",
         "output_summary",
         "code",
