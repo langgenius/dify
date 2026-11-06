@@ -333,6 +333,7 @@ services:
       - collaboration
     environment:
       MODE: api
+      MIGRATION_ENABLED: "false"
     # Resolve websocket settings after loading the shared/API service files.
     entrypoint:
       - /bin/bash
@@ -410,6 +411,7 @@ services:
       - knowledge-fs
     environment:
       MODE: worker
+      MIGRATION_ENABLED: "false"
       CELERY_WORKER_QUEUES: knowledge_fs_upgrade
       CELERY_WORKER_POOL: prefork
       CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_UPGRADE_WORKER_AMOUNT:-2}
