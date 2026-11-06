@@ -368,7 +368,7 @@ it.each(['invalid', 'request-error', 'save-error'] as const)(
       expect(await within(setup).findByRole('status')).toHaveTextContent('plugin.auth.unavailable')
     else
       expect(await within(setup).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
-    expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
     expect(handleRun).not.toHaveBeenCalled()
     if (failure === 'save-error') expect(preflight).not.toHaveBeenCalled()
   },
@@ -405,7 +405,7 @@ it('saves only the selected independent authentication root and leaves reuse and
   expect(within(setup).queryByText('Tool reuse')).not.toBeInTheDocument()
   expect(within(setup).queryByText('Tool workspace')).not.toBeInTheDocument()
   const selector = await within(rows[0]!).findByRole('button', {
-    name: /plugin.auth.appUser.testConnection/,
+    name: /share.connections.setup.selectConnection/,
   })
   await user.click(selector)
   const picker = await screen.findByRole('dialog', { name: 'plugin.auth.authorization' })
@@ -441,7 +441,10 @@ it.each([WorkflowRunningStatus.Running, WorkflowRunningStatus.Paused])(
     const configure = screen.getByRole('button', { name: 'share.connections.configure.title' })
     await user.click(configure)
     const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
-    expect(await within(dialog).findByRole('button', { name: /Workspace key/ })).toBeDisabled()
+    expect(await within(dialog).findByRole('button', { name: /Workspace key/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(preflight).not.toHaveBeenCalled()
   },
 )

@@ -3943,11 +3943,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/header/run-mode.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    }
-  },
   "web/app/components/workflow/header/test-run-menu-helpers.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
