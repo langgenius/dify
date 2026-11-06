@@ -96,6 +96,61 @@ describe('question-classifier class switching', () => {
     expect(firstEditor).toHaveTextContent('23')
   })
 
+  it('allows clicking and typing in class 2 after saving class 1 (Save -> click another class -> type)', async () => {
+    const user = userEvent.setup()
+
+    function SaveHarness() {
+      const [list, setList] = useState<Topic[]>([
+        { id: '1', name: '', label: 'CLASS 1' },
+        { id: '2', name: '', label: 'CLASS 2' },
+      ])
+      const [savedList, setSavedList] = useState<Topic[] | null>(null)
+
+      // Simulates persisting the updated category configuration and pushing down the synchronized post-save state
+      const handleSave = () => {
+        setSavedList([...list])
+      }
+
+      return (
+        <div>
+          <button type="button" onClick={handleSave}>
+            Save
+          </button>
+          <ClassList
+            nodeId="node-1"
+            list={savedList ?? list}
+            onChange={setList}
+            filterVar={() => true}
+          />
+        </div>
+      )
+    }
+
+    renderClassList(<SaveHarness />)
+
+    const textboxes = screen.getAllByRole('textbox')
+    expect(textboxes).toHaveLength(2)
+
+    const [firstEditor, secondEditor] = textboxes
+
+    // 1. Enter text into class 1
+    await replacePromptEditorText(firstEditor!, '23')
+    await waitFor(() => expect(firstEditor).toHaveTextContent('23'))
+
+    // 2. Click Save to persist categories
+    const saveButton = screen.getByRole('button', { name: 'Save' })
+    await user.click(saveButton)
+
+    // 3. Switch to class 2 after save
+    await user.click(secondEditor!)
+    expect(secondEditor).toHaveFocus()
+
+    // 4. Edit class 2 smoothly
+    await replacePromptEditorText(secondEditor!, '45')
+    await waitFor(() => expect(secondEditor).toHaveTextContent('45'))
+    expect(firstEditor).toHaveTextContent('23')
+  })
+
   it('focuses the editor when clicking the container around it', async () => {
     const user = userEvent.setup()
 

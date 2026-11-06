@@ -13,7 +13,7 @@
     "analyze": "next experimental-analyze",
     "build": "next build",
     "build:vinext": "vp build",
-    "dev": "vp dev --host 0.0.0.0",
+    "dev": "vp dev",
     "dev:next": "next dev",
     "dev:next:inspect": "next dev --inspect",
     "dev:proxy": "dev-proxy --config ./dev-proxy.config.ts --env-file ./.env.local",
