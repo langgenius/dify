@@ -2,6 +2,7 @@
 
 import json
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -15,6 +16,12 @@ from services.dify_builder.plan import BuildClarification, ResourceDiscovery, Wo
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 from tests.unit_tests.services.dify_builder.test_bound_resource_plan_reconciliation import ReconciliationAgent
 from tests.unit_tests.services.dify_builder.test_build_cognition import _FakeInstance
+
+if TYPE_CHECKING:
+    from services.dify_builder.repository import SqlDifyBuilderRepository
+    from services.dify_builder.service import DifyBuilderService
+
+pytest_plugins = ["tests.unit_tests.services.dify_builder.test_service"]
 
 GOAL = (
     "帮我做一个文本翻译工作流：用户输入普通文本 source_text 和目标语言 target_language，通过 LLM 翻译并输出 "
@@ -431,3 +438,148 @@ def test_semantic_source_survives_the_real_context_json_boundary() -> None:
     legacy = context_from_dict({"goal_text": GOAL})
     assert legacy.knowledge_source_intent == legacy.confirmed_requirement_sources == {}
     assert current_source_intent(legacy) is None
+
+
+@pytest.mark.parametrize("replacement_state", ["excluded", "unspecified"])
+def test_actual_pending_business_form_stop_resume_keeps_logical_task_requirement(
+    monkeypatch: pytest.MonkeyPatch,
+    service: "DifyBuilderService",
+    repo: "SqlDifyBuilderRepository",
+    replacement_state: str,
+) -> None:
+    from core.dify_builder.models import Graph
+    from services.dify_builder.knowledge_source_intent import SOURCE_INPUT, record_source_intent
+    from services.dify_builder.task_lifecycle import advance_task_identity
+    from tests.unit_tests.services.dify_builder.test_service import ACCOUNT_ID, APP_ID, TENANT_ID, _actor
+
+    goal = "Use CompanyFAQ knowledge base. Do not use another knowledge base."
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_GOAL_ANALYSIS,
+    )
+    context = DifyBuilderContext(
+        goal_text=goal,
+        confirmed_requirement_keys=[],
+        form_fields=[{"key": "language", "label": "Answer language", "type": "text", "required": True}],
+    )
+    repo.create_session(session, context, [])
+    task_id = advance_task_identity(session, context, EntryMode.BUILD)
+    assert task_id == f"{session.id}:1"
+    record_source_intent(context, {"state": "required", "evidence": ["Use CompanyFAQ knowledge base"]})
+    base = repo.compare_and_advance(session.id, 1, session.current_state, context, [])
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph(nodes=[], edges=[]), features=Graph()), "resume-revision")
+    stopped = service.stop_task(session.id, _actor(), base_version=base, client_action_id="source-stop")
+    service.resume_task(session.id, _actor(), base_version=stopped.version, client_action_id="source-resume")
+    resumed, context = repo.get_session(session.id)
+    assert context.task_control["generation"] == 1
+    assert context.logical_task_id == task_id
+    assert resumed.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert context.form_fields[0]["key"] == "language"
+    agent = ReconciliationAgent(None)
+    model = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "title": "No source",
+                    "input_summary": "Text",
+                    "output_summary": "Answer",
+                    "plan": ["Return text"],
+                    "knowledge_source_intent": {
+                        "state": replacement_state,
+                        "evidence": ["Do not use another knowledge base"],
+                    },
+                }
+            )
+        ]
+    )
+    calls: list[dict[str, object]] = []
+
+    def propose(
+        requirements: dict[str, object], *, goal_text: str, reply_language: str | None = None
+    ) -> WorkflowPlan | BuildClarification | None:
+        assert SOURCE_INPUT in requirements
+        calls.append(requirements)
+        return build.propose_plan_v1(model, requirements, goal_text=goal_text, reply_language=reply_language)
+
+    def discover(*_args: object, **_kwargs: object) -> ResourceDiscovery:
+        return ResourceDiscovery([])
+
+    monkeypatch.setattr(agent, "propose_plan_v1", propose)
+    monkeypatch.setattr(agent, "discover_resources", discover)
+    runner = Runner(Env(agent=agent, repo=repo, dify=FakeDifyPort(), now=lambda: datetime.min), build_registry())
+    result = runner.advance(
+        session.id,
+        Turn(
+            actor=_actor(),
+            action=Action(kind="submit_requirements", payload={"language": "English"}, base_version=resumed.version),
+        ),
+    )
+    context = repo.get_session(session.id)[1]
+    assert result.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert context.logical_task_id == task_id
+    assert context.knowledge_source_intent["required"] is True
+    assert context.plan_items == []
+    assert calls == model.calls == []
+    assert "knowledge_scope_decision" not in context.resource_selection
+    assert context.confirmed_requirement_sources["language"]["value"] == "English"
+    # The existing current form and explicit waiver still own the goal change
+    # after Resume; neither the generation bump nor model metadata replaces it.
+    pending = runner.advance(
+        session.id,
+        Turn(
+            actor=_actor(),
+            action=Action(kind="confirm_resources", payload={"resource_ids": []}, base_version=result.version),
+        ),
+    )
+    context = repo.get_session(session.id)[1]
+    field = context.form_fields[0]
+    waived = runner.advance(
+        session.id,
+        Turn(
+            actor=_actor(),
+            action=Action(
+                kind="submit_requirements", payload={field["key"]: field["options"][1]}, base_version=pending.version
+            ),
+        ),
+    )
+    context = repo.get_session(session.id)[1]
+    assert waived.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert context.resource_selection["knowledge_scope_decision"]["choice"] == "waive"
+    assert context.resource_selection["knowledge_scope_decision"]["original_goal"] == goal
+    assert context.goal_text.startswith(goal)
+    assert context.goal_text != goal
+    assert len(calls) == len(model.calls) == 1
+    assert context.built_node_ids == []
+
+
+def test_new_logical_task_does_not_inherit_positive_and_old_exclusion_is_stale() -> None:
+    from services.dify_builder.knowledge_source_intent import (
+        current_source_intent,
+        established_source_required,
+        record_source_intent,
+    )
+    from services.dify_builder.task_lifecycle import advance_task_identity
+
+    session = Session(app_id="app", entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_CAPABILITY_CHECK)
+    context = DifyBuilderContext(
+        goal_text="Use CompanyFAQ knowledge base. Do not use another knowledge base.", confirmed_requirement_keys=[]
+    )
+    repo = InMemoryRepository()
+    repo.create_session(session, context, [])
+    first_task = advance_task_identity(session, context, EntryMode.BUILD)
+    record_source_intent(context, {"state": "required", "evidence": ["Use CompanyFAQ knowledge base"]})
+    assert established_source_required(context)
+    second_task = advance_task_identity(session, context, EntryMode.BUILD)
+    assert second_task != first_task
+    assert not established_source_required(context)
+    assert current_source_intent(context) is None
+    context.goal_text = GOAL
+    record_source_intent(context, INTENT)
+    assert not established_source_required(context)
+    assert current_source_intent(context) == INTENT
+    # An execution resume invalidates only the exclusion freshness, not task identity.
+    context.task_control["generation"] = 1
+    assert current_source_intent(context) is None
