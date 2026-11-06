@@ -2936,6 +2936,9 @@ a4_expected.update(
         },
     }
 )
+a4_expected["tests.unit_tests.core.dify_builder.test_handlers_fix"].update(
+    {"test_re_fix_selects_only_current_owned_known_native_failure": 19}
+)
 for module, expected in {**a3_expected, **a4_expected}.items():
     actual = {}
     for classname, name in identities:
@@ -3147,6 +3150,21 @@ for module, functions in {
     },
 }.items():
     json_contract_expected.setdefault(module, {}).update(functions)
+# ENG-1417: value-free failed Code format facts and current failed-Run provenance.
+json_contract_expected.setdefault(
+    "tests.unit_tests.services.dify_builder.test_condition_evidence", {}
+).update(
+    {
+        "test_failed_code_format_facts_reach_diagnosis_and_repair_without_values": 1,
+        "test_failed_code_format_classifies_only_observed_table_samples": 5,
+        "test_code_format_facts_require_unique_failed_historical_code": 5,
+        "test_code_format_facts_bound_samples_and_never_traverse_nested_values": 1,
+        "test_code_format_facts_do_not_claim_changed_bindings_or_unknown_run": 4,
+        "test_code_format_facts_keep_native_row_identity_after_redaction_collisions": 1,
+        "test_code_format_facts_bound_input_count_without_exposing_authored_keys": 1,
+        "test_code_format_facts_degrade_when_current_graph_is_malformed": 3,
+    }
+)
 for module, expected in {
     json_policy_module: json_policy_expected,
     **json_contract_expected,
