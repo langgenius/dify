@@ -121,14 +121,18 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
           />
           <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
         </PasswordField>
-        <Link
-          href={`/reset-password?${searchParams.toString()}`}
-          className={`absolute inset-e-0 top-1 rounded-sm system-xs-regular outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
-          tabIndex={isEmailSetup ? 0 : -1}
-          aria-disabled={!isEmailSetup}
-        >
-          {t(($) => $.forget, { ns: 'login' })}
-        </Link>
+        {isEmailSetup ? (
+          <Link
+            href={`/reset-password?${searchParams.toString()}`}
+            className="absolute inset-e-0 top-1 rounded-sm system-xs-regular text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            {t(($) => $.forget, { ns: 'login' })}
+          </Link>
+        ) : (
+          <span className="absolute inset-e-0 top-1 system-xs-regular text-components-button-secondary-accent-text-disabled">
+            {t(($) => $.forget, { ns: 'login' })}
+          </span>
+        )}
         <FieldError>
           {t(($) => $[password.trim() ? 'error.passwordInvalid' : 'error.passwordEmpty'], {
             ns: 'login',
