@@ -1,14 +1,50 @@
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import NotFound
 
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError
 from core.rag.models.document import Document
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
+from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.knowledge.indexing.adapters.execution import IndexingExecutionAdapter
+from services.knowledge.indexing.adapters.sources import CompositeStoredSourceResolver
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
 from services.knowledge.indexing.estimate import StoredSource
 from services.knowledge.indexing.execution import DocumentIndexingService, IndexingDocument
 from services.knowledge.resource_scope import DatasetRef
 
 ExecutionFixture = tuple[DocumentIndexingService, MagicMock, IndexingDocument, list[Document]]
+
+
+class _NonTextDescriptionError(Exception):
+    description: object = None
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (ProviderTokenNotInitError("provider unavailable"), "provider unavailable"),
+        (QuotaExceededError(), "Quota Exceeded"),
+        (NotFound(description="source file missing"), "source file missing"),
+        (RuntimeError("index unavailable"), "index unavailable"),
+        (_NonTextDescriptionError("fallback"), "fallback"),
+    ],
+)
+def test_adapter_preserves_error_descriptions(
+    sqlite_session_factory: sessionmaker[Session], error: Exception, expected: str
+) -> None:
+    adapter = IndexingExecutionAdapter(
+        session_factory=sqlite_session_factory,
+        documents=SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory),
+        segments=SQLAlchemySegmentRepository(session_factory=sqlite_session_factory),
+        uploads=SQLAlchemyKnowledgeUploadRepository(session_factory=sqlite_session_factory),
+        sources=CompositeStoredSourceResolver(adapters={}),
+    )
+
+    assert adapter.describe_error(error) == expected
 
 
 @pytest.fixture

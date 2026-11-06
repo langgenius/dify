@@ -11,15 +11,17 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models.dataset import ChildChunk, Dataset, DocumentSegment, DocumentSegmentSummary
+from models.vector import VectorConfiguration
 from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table
 from repositories.knowledge.keyword_table_repository import persist_keyword_table
+from repositories.knowledge.vector_configuration_repository import resolve_vector_configuration
 
 
 def delete_index_entries(
     dataset: Dataset,
     *,
     vector_node_ids: Sequence[str],
-    vector_type: str | None,
+    vector_configuration: VectorConfiguration | None,
     keyword_node_ids: Sequence[str],
     new_session: Callable[[], Session],
 ) -> None:
@@ -30,7 +32,7 @@ def delete_index_entries(
     """
     if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
         if vector_node_ids:
-            Vector(dataset, session=None, vector_type=vector_type).delete_by_ids(list(vector_node_ids))
+            Vector(dataset, session=None, configuration=vector_configuration).delete_by_ids(list(vector_node_ids))
         return
     if not keyword_node_ids:
         return
@@ -108,7 +110,9 @@ def clean_document_indexes(
         )
         high_quality = dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         node_ids = list(dict.fromkeys([*summary_node_ids, *body_node_ids]))
-        vector_type = Vector.resolve_vector_type(dataset, session=session) if high_quality and node_ids else None
+        vector_configuration = (
+            resolve_vector_configuration(dataset, session=session) if high_quality and node_ids else None
+        )
         session.expunge(dataset)
 
     if not node_ids and not summary_ids and not child_ids:
@@ -117,7 +121,7 @@ def clean_document_indexes(
     delete_index_entries(
         dataset,
         vector_node_ids=node_ids,
-        vector_type=vector_type,
+        vector_configuration=vector_configuration,
         keyword_node_ids=body_node_ids,
         new_session=new_session,
     )

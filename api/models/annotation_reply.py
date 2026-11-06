@@ -3,14 +3,19 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from models.dataset import Dataset
 from models.enums import ConversationFromSource
 from models.vector import VectorConfiguration
 
 
 @dataclass(frozen=True)
 class AnnotationSearch:
-    dataset: Dataset
+    """Resolved annotation search values; no session or persistence model crosses the ports."""
+
+    tenant_id: str
+    app_id: str
+    embedding_model_provider: str
+    embedding_model: str
+    collection_binding_id: str
     configuration: VectorConfiguration
     setting_id: str
     score_threshold: float
