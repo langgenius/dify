@@ -451,6 +451,10 @@ def _discover_and_offer_resources(
     complete-goal and retry_after_revert paths, which enter BUILD_INITIAL_PLAN
     with no reporter yet (``progress=None``, so one is created here). One
     implementation so the two entries cannot drift apart.
+
+    An unavailable feasibility assessment is disclosed without asserting a
+    capability gap or changing the resource/plan confirmation gates. Only
+    observations from that assessment may explain its failure.
     """
     steps = [
         ("build-discover-resources", copy_text(BuilderCopyId.PROGRESS_FIND_COMPATIBLE_RESOURCES)),
@@ -506,16 +510,26 @@ def _discover_and_offer_resources(
     )
     # Keep the empty selection card as the active confirm gate. Its description
     # explains the empty result without adding a standalone conversation item.
+    assessment_diagnostic_start = len(env.diagnostics)
     gap = env.agent.assess_capability_gap(
         list(fc.plan_items), options, goal_text=fc.goal_text, requirements=_knowledge_requirements(fc)
     )
+    gap_text: BuilderText = gap or ""
+    if gap is None:
+        from services.dify_builder.execution_messages import capability_assessment_unavailable_message
+
+        # Presentation uses only this invocation's observations. A discovery
+        # failure cannot supply the cause of an unavailable feasibility check.
+        gap_text = capability_assessment_unavailable_message(
+            env.diagnostics[assessment_diagnostic_start:], reply_language=fc.reply_language
+        )
     execution = progress.finish()
     turn_items = append_assistant(
         env,
         s,
         fc,
-        text_parts(copy_text(BuilderCopyId.LABELS_RECOMMENDED_RESOURCES), "\n\n", gap)
-        if gap
+        text_parts(copy_text(BuilderCopyId.LABELS_RECOMMENDED_RESOURCES), "\n\n", gap_text)
+        if gap_text
         else copy_text(BuilderCopyId.LABELS_RECOMMENDED_RESOURCES),
         execution=execution,
         cards=["resource_select"],
