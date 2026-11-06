@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -796,9 +797,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         """Regression for #40028: trailing slashes must not produce a double-slash retrieval URL."""
         settings = {"endpoint": "http://ragflow.example.com/api/v1/dify/", "api_key": "ragflow-test-key"}
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_proxy.post.return_value = mock_response
+        mock_proxy.post.return_value = httpx.Response(200)
 
         ExternalDatasetService.check_endpoint_and_api_key(settings)
 
@@ -811,9 +810,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         """Regression for #40028: a generic /api/v1 base must not pass when it only returns 401."""
         settings = {"endpoint": "http://ragflow.example.com/api/v1", "api_key": "ragflow-test-key"}
 
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-        mock_proxy.post.return_value = mock_response
+        mock_proxy.post.return_value = httpx.Response(401)
 
         with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
             ExternalDatasetService.check_endpoint_and_api_key(settings)
@@ -829,9 +826,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         rejects the probe payload with a 400 argument error instead of dropping the connection."""
         settings = {"endpoint": "http://ragflow.example.com/api/v1/dify", "api_key": "ragflow-test-key"}
 
-        mock_response = MagicMock()
-        mock_response.status_code = 400
-        mock_proxy.post.return_value = mock_response
+        mock_proxy.post.return_value = httpx.Response(400)
 
         ExternalDatasetService.check_endpoint_and_api_key(settings)
 
@@ -843,9 +838,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         """Test validation fails with 401 Unauthorized (auth failure)."""
         settings = {"endpoint": "https://api.example.com", "api_key": "wrong-key"}
 
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-        mock_proxy.post.return_value = mock_response
+        mock_proxy.post.return_value = httpx.Response(401)
 
         with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
             ExternalDatasetService.check_endpoint_and_api_key(settings)
