@@ -7,3 +7,6 @@
 # Set COMPOSE_WORKER_HEALTHCHECK_INTERVAL in docker/.env; Compose needs it before loading service files.
 # Set COMPOSE_WORKER_HEALTHCHECK_TIMEOUT in docker/.env; Compose needs it before loading service files.
 CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1}
+
+# Disable database migrations in Celery worker beat to avoid Alembic race conditions with API service
+MIGRATION_ENABLED=${MIGRATION_ENABLED:-false}
