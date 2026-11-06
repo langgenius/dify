@@ -16,10 +16,6 @@ import services.human_input_service as human_input_service_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.repositories.human_input_repository import (
-    HumanInputFormRecord,
-    HumanInputFormSubmissionRepository,
-)
 from enums.human_input import (
     DeliveryMethodType,
     HumanInputFormKind,
@@ -31,6 +27,7 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
+from models.human_input_contracts import HumanInputFormRecord
 from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -42,6 +39,7 @@ from models.human_input_entities import (
 )
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
+from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 from services.human_input_service import (
     Form,
     FormExpiredError,
@@ -105,13 +103,8 @@ def sample_form_record() -> HumanInputFormRecord:
 @pytest.fixture
 def form_repository(
     sqlite_session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
     mocker: MockerFixture,
 ) -> Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository]:
-    monkeypatch.setattr(
-        "core.repositories.human_input_repository.session_factory.create_session", sqlite_session_factory
-    )
-
     def build(record: HumanInputFormRecord | None) -> HumanInputFormSubmissionRepository:
         """Persist the form and recipient; None leaves the database empty for missing-token tests."""
         if record is not None:
@@ -154,7 +147,7 @@ def form_repository(
             )
             with sqlite_session_factory.begin() as session:
                 session.add_all([form, delivery, recipient])
-        repository = HumanInputFormSubmissionRepository()
+        repository = HumanInputFormSubmissionRepository(sessions=sqlite_session_factory)
         mocker.spy(repository, "get_by_token")
         mocker.spy(repository, "mark_submitted")
         return repository
@@ -394,6 +387,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(
     persisted = repo.get_by_form_id(sample_form_record.form_id)
     assert persisted is not None
     assert persisted.status == HumanInputFormStatus.SUBMITTED
+    assert persisted.selected_action_id == "submit"
     assert persisted.submitted_data == {"field": "value"}
     assert persisted.submission_end_user_id == "end-user-id"
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)

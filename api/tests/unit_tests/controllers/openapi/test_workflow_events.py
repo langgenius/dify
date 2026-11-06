@@ -16,8 +16,8 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
 
+from controllers.common.errors import NotFoundError
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
 from core.db.session_factory import session_factory
 from graphon.enums import WorkflowExecutionStatus
@@ -123,14 +123,14 @@ class TestOpenApiWorkflowEventsApi:
         module = sys.modules["controllers.openapi.workflow_events"]
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
-        monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
+        monkeypatch.setattr(module, "WorkflowEventStream", msg_gen_mock)
 
     def test_not_found_when_run_missing(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         factory_mock = self._bind_repo(monkeypatch, None)
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 api.get.__handler__(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
@@ -149,7 +149,7 @@ class TestOpenApiWorkflowEventsApi:
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 api.get.__handler__(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
@@ -163,7 +163,7 @@ class TestOpenApiWorkflowEventsApi:
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 api.get.__handler__(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
@@ -244,7 +244,7 @@ class TestOpenApiWorkflowEventsApi:
 
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter(["a", "b"])
-        monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
+        monkeypatch.setattr(module, "WorkflowEventStream", msg_gen_mock)
         monkeypatch.setattr(module, "build_workflow_event_stream", lambda **_kwargs: iter(["a", "b"]))
 
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
@@ -266,7 +266,7 @@ class TestOpenApiWorkflowEventsApi:
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
-        monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
+        monkeypatch.setattr(module, "WorkflowEventStream", msg_gen_mock)
 
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):

@@ -15,6 +15,7 @@ from flask_restx import Resource
 from pydantic import ConfigDict, WithJsonSchema
 from werkzeug.exceptions import BadRequest, NotFound
 
+from controllers.common.errors import InvalidRequestError, NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
@@ -87,14 +88,14 @@ def _jsonify_form_definition(form: Form, *, inputs: Sequence[FormInputConfig] = 
 
 def _ensure_form_belongs_to_app(form: Form, app_model: App) -> None:
     if form.app_id != app_model.id or form.tenant_id != app_model.tenant_id:
-        raise NotFound("Form not found")
+        raise NotFoundError("Form not found")
 
 
 def _ensure_form_is_allowed_for_service_api(form: Form) -> None:
     # Keep app-token callers scoped to the public web-form surface; internal HITL
     # routes must continue to flow through console-only authentication.
     if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.SERVICE_API):
-        raise NotFound("Form not found")
+        raise NotFoundError("Form not found")
 
 
 def _jsonify_v2_form_definition(form: V2Form) -> Response:
@@ -252,7 +253,7 @@ class WorkflowHumanInputFormApi(Resource):
         recipient_type = form.recipient_type
         if recipient_type is None:
             logger.warning("Recipient type is None for form, form_id=%s", form.id)
-            raise BadRequest("Form recipient type is invalid")
+            raise InvalidRequestError("Form recipient type is invalid")
 
         try:
             service.submit_form_by_token(
@@ -263,6 +264,6 @@ class WorkflowHumanInputFormApi(Resource):
                 submission_end_user_id=end_user.id,
             )
         except FormNotFoundError as caught_error:
-            raise NotFound("Form not found") from caught_error
+            raise NotFoundError("Form not found") from caught_error
 
         return {}, 200
