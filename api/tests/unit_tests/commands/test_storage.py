@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from types import SimpleNamespace
+from dataclasses import dataclass
 
 import pytest
 from click.testing import CliRunner
@@ -27,6 +27,11 @@ class _FakeEngine:
         return []
 
 
+@dataclass
+class _FakeDb:
+    engine: _FakeEngine
+
+
 def test_clear_orphaned_file_records_keeps_files_used_as_segment_attachments(monkeypatch: pytest.MonkeyPatch) -> None:
     attachment_id = "0198a6b2-6e4c-7c3a-9d1e-2f3b4c5d6e7f"
     engine = _FakeEngine(
@@ -35,7 +40,7 @@ def test_clear_orphaned_file_records_keeps_files_used_as_segment_attachments(mon
             "segment_attachment_bindings": [(attachment_id,)],
         }
     )
-    monkeypatch.setattr(storage, "db", SimpleNamespace(engine=engine))
+    monkeypatch.setattr(storage, "db", _FakeDb(engine))
 
     result = CliRunner().invoke(storage.clear_orphaned_file_records, ["--force"])
 
