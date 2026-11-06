@@ -27,7 +27,7 @@ from core.dify_builder.models import (
     Run,
     Session,
 )
-from services.dify_builder import diagnostic_context
+from services.dify_builder import diagnostic_context, tool_output_evidence
 from services.dify_builder.credentials import REDACTED
 from services.dify_builder.revision import executable_graph_revision
 
@@ -377,6 +377,8 @@ def build_evidence(
         ),
         "current_conditions": _project(safe_current, [], target, observed=False),
         "truncated": False,
+        "tool_output_observations": [],
+        "tool_output_observations_omitted": False,
     }
     current_targets = [node for node in current["nodes"] if node["id"] == raw_target] if _usable_graph(current) else []
     if (
@@ -406,6 +408,21 @@ def build_evidence(
         if len(json.dumps(evidence, ensure_ascii=True).encode()) > MAX_CONTEXT_BYTES:
             evidence["failed_node_id"] = ""
             evidence["failed_node_type"] = "if-else" if target_type == "if-else" else "unknown"
+    # Existing condition safeguards keep their budget priority. Tool samples
+    # are optional grounding, never repair authorization or a schema.
+    if (
+        historical is not None
+        and identity == "bound"
+        and current_digest == historical_digest
+        and _usable_graph(safe_historical)
+    ):
+        observations, omitted = tool_output_evidence.tool_output_observations(safe_historical, safe_outputs, target)
+        evidence["tool_output_observations_omitted"] = omitted
+        for observation in observations:
+            evidence["tool_output_observations"].append(observation)
+            if len(json.dumps(evidence, ensure_ascii=True).encode()) > MAX_CONTEXT_BYTES:
+                evidence["tool_output_observations"].pop()
+                evidence["tool_output_observations_omitted"] = True
     return safe_run, safe_current, safe_outputs, evidence
 
 

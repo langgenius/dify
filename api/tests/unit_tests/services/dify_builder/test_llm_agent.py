@@ -511,3 +511,57 @@ def test_an_agent_without_an_actor_passes_none_rather_than_inventing_one(monkeyp
     agent.bind_resources(["step"], ["rid"])
 
     assert seen["bind_resources"][1].get("account_id") is None
+
+
+@pytest.mark.parametrize(
+    ("schema", "state"),
+    [
+        ({"type": "object", "properties": {"records": {"type": "array"}}}, "declared"),
+        ({}, "absent"),
+        ({"description": "x" * 20000}, "oversized"),
+    ],
+)
+def test_repair_public_output_declaration_uses_exact_existing_catalogue_read(
+    monkeypatch: pytest.MonkeyPatch, schema: dict[str, object], state: str
+) -> None:
+    import json
+
+    from tests.unit_tests.services.dify_builder.test_api_tool_output_context import CapturingModel
+    from tests.unit_tests.services.dify_builder.test_tool_parameter_semantics import _ENTRY
+
+    entry: resources.ToolCatalogueEntry = {**_ENTRY, "output_schema": schema}
+    reads: list[str] = []
+
+    def catalogue(tenant: str) -> list[resources.ToolCatalogueEntry]:
+        reads.append(tenant)
+        return [entry, {**entry, "provider_name": "unrelated/provider"}]
+
+    monkeypatch.setattr(resources, "_list_tools", catalogue)
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "actual-tool",
+                "data": {
+                    "type": "tool",
+                    "provider_id": entry["provider_name"],
+                    "provider_type": entry["provider_type"],
+                    "tool_name": entry["tool_name"],
+                },
+            }
+        ],
+        "edges": [],
+    }
+    capture = CapturingModel()
+    agent = LlmBuilderAgent("tenant", model_resolver_fn=lambda: capture)
+    agent.propose_repair(Diagnosis(culprit_node_id="actual-tool", root_cause="missing field"), graph)
+    assert len(capture.prompts) == 1
+    context = capture.prompts[0]
+    marker = "# Upstream plugin output contracts and native Tool message channels\n\n"
+    assert marker in context
+    payload = json.loads(context.split(marker)[1].splitlines()[0])
+    assert len(payload["tools"]) == 1
+    assert payload["tools"][0]["node_id"] == "actual-tool"
+    assert payload["tools"][0]["output_schema_state"] == state
+    assert payload["tools"][0]["output_schema"] == (schema if state == "declared" else {})
+    assert reads == ["tenant"]
+    assert "unrelated/provider" not in context

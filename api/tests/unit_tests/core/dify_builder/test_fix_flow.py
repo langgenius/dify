@@ -158,10 +158,15 @@ def test_full_fix_flow_request_fix_to_publish_success() -> None:
     conv_kinds = {item.kind for item in conversation}
     assert "change_set" not in conv_kinds
     assert "test_result" in conv_kinds
-    assert any(
-        item.kind == "assistant_turn" and english_text(item.payload.get("reply_text", "")).startswith("Applied ")
+    applied_reply = next(
+        english_text(item.payload["reply_text"])
         for item in conversation
+        if item.kind == "assistant_turn"
+        and "field details unavailable" in english_text(item.payload.get("reply_text", ""))
     )
+    assert "output" in applied_reply
+    assert "not verified" in applied_reply
+    assert "new Test Run" in applied_reply
 
     # run-immutability: verify minted a brand NEW run id, distinct from the
     # original failed run, and it is marked immutable.

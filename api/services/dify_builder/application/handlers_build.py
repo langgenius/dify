@@ -108,6 +108,7 @@ from services.dify_builder.plan import (
     validated_confirmed_requirement_keys,
 )
 from services.dify_builder.repair_gate import NO_REPAIR_REASON
+from services.dify_builder.repair_presentation import applied_repair_summary, repair_proposal
 
 logger = logging.getLogger(__name__)
 
@@ -1546,17 +1547,16 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             failure_reason=test_failure_reason(run) if business_failure is None else None,
         ),
     )
-    proposed = [f"{i.op} {i.args.get('node_id', '')}".strip() for i in intents]
     execution = progress.finish()
-    proposal_text = "\n".join(f"- {change}" for change in proposed)
-    reply_text = diagnosis.root_cause or copy_text(BuilderCopyId.TEST_FAILED_FALLBACK)
-    reply_text = text_parts(
-        reply_text,
-        (
-            text_parts("\n\n", copy_text(BuilderCopyId.REPAIR_PROPOSED_FIX), "\n", proposal_text)
-            if intents
-            else text_parts("\n\n", copy_text(BuilderCopyId.REPAIR_NO_SAFE_FOUND))
-        ),
+    proposal_text = repair_proposal(graph, intents, diagnosis, risk, fc.reply_language)
+    reply_text = (
+        proposal_text
+        if intents
+        else text_parts(
+            diagnosis.root_cause or copy_text(BuilderCopyId.TEST_FAILED_FALLBACK),
+            "\n\n",
+            copy_text(BuilderCopyId.REPAIR_NO_SAFE_FOUND),
+        )
     )
     if not intents and risk.reason and risk.reason != NO_REPAIR_REASON:
         reply_text = text_parts(reply_text, "\n", copy_text(BuilderCopyId.REPAIR_REASON, reason=risk.reason))
@@ -1617,6 +1617,7 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             ],
         )
         progress.activate("build-apply-repair")
+        before_graph = env.repo.get_checkpoint(fc.checkpoint_id)[1].graph if fc.checkpoint_id else {}
         try:
             result = env.dify.apply_repair(
                 s.app_id,
@@ -1680,26 +1681,19 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         fc.last_snapshot_hash = result.new_hash
         fc.last_structure_fingerprint = result.structure_fingerprint
         fc.staged_repair = []
-        changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="repair")
+        _changes, _scope, fc.change_set = build_change_set(
+            result, default_scope="configuration", fallback_diff="repair"
+        )
         progress.activate("build-prepare-retest")
         decision_items = append_card(
-            fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_APPLIED_THE_FIX_READY_TO_RETEST))
+            fc, DecisionItem(text=applied_repair_summary(result, before_graph, fc.reply_language))
         )
         execution = progress.finish()
-        change_lines = "\n".join(f"- {change}" for change in changes) or text_parts(
-            "- ", copy_text(BuilderCopyId.REPAIR_APPLIED_FALLBACK)
-        )
         turn_items = append_assistant(
             env,
             s,
             fc,
-            text_parts(
-                copy_text(
-                    BuilderCopyId.REPAIR_APPLIED, count=len(changes), scope=change_scope_label(scope, fc.reply_language)
-                ),
-                "\n",
-                change_lines,
-            ),
+            applied_repair_summary(result, before_graph, fc.reply_language),
             execution=execution,
             turn_id=progress.operation_id,
         )

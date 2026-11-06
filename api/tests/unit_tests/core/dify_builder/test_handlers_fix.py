@@ -323,9 +323,11 @@ def test_apply_streams_change_summary_when_adapter_omits_scope_and_changes() -> 
     items = repo.list_conversation(s.id)
     assert not any(i.kind == "change_set" for i in items)
     assistant = next(
-        i for i in items if i.kind == "assistant_turn" and english_text(i.payload["reply_text"]).startswith("Applied")
+        i
+        for i in items
+        if i.kind == "assistant_turn" and "field details unavailable" in english_text(i.payload["reply_text"])
     )
-    assert "(configuration)" in english_text(assistant.payload["reply_text"])
+    assert "not verified" in english_text(assistant.payload["reply_text"])
     assert "output" in english_text(assistant.payload["reply_text"])
 
 

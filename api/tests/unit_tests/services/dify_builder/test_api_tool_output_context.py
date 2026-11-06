@@ -100,13 +100,20 @@ class CapturingModel:
         self.prompts: list[str] = []
         self.message_batches: list[list[PromptMessage]] = []
         self.requests: list[tuple[dict[str, object], bool]] = []
+        self.stops: list[list[str] | None] = []
 
     def invoke_llm(
-        self, *, prompt_messages: Sequence[PromptMessage], model_parameters: dict[str, object], stream: bool
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: dict[str, object],
+        stream: bool,
+        stop: list[str] | None = None,
     ) -> LLMResult:
         self.prompts.append(str(prompt_messages[-1].content))
         self.message_batches.append(list(prompt_messages))
         self.requests.append((model_parameters, stream))
+        self.stops.append(stop)
         return LLMResult(
             model="fixture",
             prompt_messages=prompt_messages,

@@ -89,7 +89,7 @@ from services.dify_builder.effect_presentation import (
     effects_note,
     with_effects_note,
 )
-from services.dify_builder.execution_messages import change_scope_label
+from services.dify_builder.repair_presentation import applied_repair_summary
 from services.dify_builder.test_input_continuity import validate_supplied_values
 
 logger = logging.getLogger(__name__)
@@ -1238,6 +1238,7 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
         ],
     )
     progress.activate("fix-apply-repair")
+    before_graph = env.repo.get_checkpoint(fc.checkpoint_id)[1].graph if fc.checkpoint_id else {}
     try:
         result = env.dify.apply_repair(
             s.app_id,
@@ -1298,24 +1299,15 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
     progress.activate("fix-summarize-changes")
-    changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="config edit")
-    execution = progress.finish()
-    change_lines = "\n".join(f"- {change}" for change in changes) or text_parts(
-        "- ", copy_text(BuilderCopyId.REPAIR_CONFIGURATION_UPDATED)
+    _changes, _scope, fc.change_set = build_change_set(
+        result, default_scope="configuration", fallback_diff="config edit"
     )
+    execution = progress.finish()
     items = append_assistant(
         env,
         s,
         fc,
-        text_parts(
-            copy_text(
-                BuilderCopyId.REPAIR_CHANGES_APPLIED,
-                count=len(changes),
-                scope=change_scope_label(scope, fc.reply_language),
-            ),
-            "\n",
-            change_lines,
-        ),
+        applied_repair_summary(result, before_graph, fc.reply_language),
         execution=execution,
     )
 

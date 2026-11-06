@@ -1443,3 +1443,66 @@ def test_code_format_facts_degrade_when_current_graph_is_malformed(malformed: Gr
     graph, outputs = _failed_code_format_fixture("a,b\n1,2")
     evidence = build_evidence(Run(status="failed"), malformed, graph, outputs)[3]
     assert "code_input_formats" not in evidence
+
+
+def test_normal_historical_owner_carries_tool_structure_to_both_requests(native_adapter: NativeEvidenceCase) -> None:
+    graph = native_adapter.graph
+    graph["nodes"][0]["data"] = {
+        "type": "tool",
+        "provider_type": "builtin",
+        "provider_id": "fixture/provider",
+        "tool_name": "records",
+    }
+    graph["nodes"][1]["data"] = {
+        "type": "code",
+        "code_language": "python3",
+        "code": "def main(): return {}",
+        "variables": [],
+        "outputs": {},
+    }
+    native_adapter.run.graph = json.dumps(graph)
+    native_adapter.workflow.graph = json.dumps(graph)
+    native_adapter.rows[0].outputs = json.dumps(
+        {"text": '[{"url":"https://private.example","count":3}]', "json": [{"data": []}]}
+    )
+    diagnosis, _, _, model = _real_context_proposal(native_adapter)
+    assert diagnosis.condition_evidence is not None
+    observed = diagnosis.condition_evidence["tool_output_observations"]
+    assert observed[0]["channels"]["text"]["parsed_json"]["items"][0] == {
+        "type": "object",
+        "observed_fields": 2,
+        "sampled_fields": [{"type": "string"}, {"type": "number"}],
+        "omitted_fields": 0,
+        "field_names": "unknown",
+    }
+    for call in model.calls:
+        user = call["prompt_messages"][1].content
+        assert "same_run_observation_not_schema" in user
+        assert "https://private.example" not in user
+
+
+def test_invalid_unicode_tool_text_cannot_abort_historical_diagnosis_or_proposal(
+    native_adapter: NativeEvidenceCase,
+) -> None:
+    graph = native_adapter.graph
+    graph["nodes"][0]["data"] = {
+        "type": "tool",
+        "provider_type": "builtin",
+        "provider_id": "fixture/provider",
+        "tool_name": "records",
+    }
+    native_adapter.run.graph = json.dumps(graph)
+    native_adapter.workflow.graph = json.dumps(graph)
+    original_outputs = json.dumps({"text": "\ud800", "json": [{"data": []}]})
+    native_adapter.rows[0].outputs = original_outputs
+    diagnosis, _, _, model = _real_context_proposal(native_adapter)
+    assert diagnosis.condition_evidence is not None
+    observed = diagnosis.condition_evidence["tool_output_observations"]
+    assert observed[0]["channels"]["text"] == {"type": "string", "json_parse_state": "malformed"}
+    assert observed[0]["channels"]["json"]["type"] == "array"
+    assert len(model.calls) >= 2
+    for call in model.calls:
+        user = call["prompt_messages"][1].content
+        assert '"json_parse_state":"malformed"' in user
+        assert "same_run_observation_not_schema" in user
+    assert native_adapter.rows[0].outputs == original_outputs

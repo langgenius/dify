@@ -232,6 +232,13 @@ SELECTED_GUARDS = [
     "api/tests/unit_tests/controllers/console/app/test_workflow.py::TestWorkflowCases::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
 ]
 FILES = list(dict.fromkeys(FILES))
+# ENG-1392/1410: reviewed repair presentation and same-Run Tool structure owners.
+FILES += [
+    "api/tests/unit_tests/core/dify_builder/test_fix_flow.py",
+    "api/tests/unit_tests/core/dify_builder/test_repair_readability.py",
+    "api/tests/unit_tests/services/dify_builder/test_repair_presentation.py",
+    "api/tests/unit_tests/services/dify_builder/test_tool_output_evidence.py"
+]
 code = pytest.main(
     [
         *FILES,
@@ -2963,6 +2970,134 @@ a4_expected["tests.unit_tests.services.dify_builder.test_policy_trace_diagnostic
     "test_serverless_502_real_plugin_decoder_keeps_bounded_reason_without_replay": 2,
     "test_generic_wrapper_text_cannot_mask_explicit_typed_provider_cause": 2,
 }
+# ENG-1392/1410: exact affected-module inventories; retain all existing registrations.
+for module, functions in {
+    "tests.unit_tests.core.dify_builder.test_fix_flow": {
+        "test_full_fix_flow_request_fix_to_publish_success": 1,
+        "test_full_fix_flow_stale_base_version_raises_conflict": 1,
+        "test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision": 1
+    },
+    "tests.unit_tests.core.dify_builder.test_repair_readability": {
+        "test_apply_owners_name_real_changed_fields_and_do_not_infer_verification": 6,
+        "test_proposal_owners_show_business_title_rationale_and_retest_boundary": 3
+    },
+    "tests.unit_tests.services.dify_builder.test_api_tool_output_context": {
+        "test_direct_public_response_schema_stays_separate_from_native_outputs": 1,
+        "test_actual_code_model_request_gets_upstream_api_envelope_and_declared_body": 1,
+        "test_absent_ambiguous_reference_or_oversized_declaration_never_guesses_body": 6,
+        "test_non_upstream_api_is_not_dumped_into_consumer_context": 1,
+        "test_deep_schema_is_bounded_without_exposing_partial_guessed_fields": 1,
+        "test_response_body_transport_matches_native_object_only_json_message": 3,
+        "test_many_relevant_api_nodes_have_bounded_context_and_explicit_omissions": 1,
+        "test_api_code_system_rules_resolve_actual_no_filter_plan_and_independent_result_bound": 1,
+        "test_api_code_system_rules_do_not_change_unrelated_or_non_code_builders": 3,
+        "test_api_code_system_rules_keep_undeclared_shapes_unknown": 2,
+        "test_fixed_system_rules_use_context_only_as_gate_without_promoting_workspace_data": 1
+    },
+    "tests.unit_tests.services.dify_builder.test_condition_evidence": {
+        "test_diagnosis_shows_active_condition_even_without_historical_binding": 1,
+        "test_real_proposal_rejects_an_unknown_evidence_operator_guess": 1,
+        "test_same_run_producer_json_type_is_distinct_from_unresolved_if_operand": 8,
+        "test_incomplete_or_ambiguous_producer_evidence_stays_unknown": 9,
+        "test_native_legacy_fallback_and_explicit_empty_cases": 3,
+        "test_historical_graph_does_not_borrow_current_condition_or_schema": 1,
+        "test_error_only_credential_is_collected_before_projection_and_truncation": 1,
+        "test_all_graphs_and_later_upstream_rows_are_redacted_before_budget": 1,
+        "test_projection_budget_discards_whole_conditions_and_marks_unknown": 1,
+        "test_real_write_rejects_value_only_noop_that_leaves_observed_mismatch": 1,
+        "test_adapter_denies_mismatched_run_before_reading_any_execution": 3,
+        "test_adapter_denies_row_identity_before_ephemeral_raw_handling": 4,
+        "test_adapter_unavailable_native_evidence_does_not_gain_observed_types": 5,
+        "test_real_write_proven_numeric_equality_changes_only_nested_operator": 1,
+        "test_actual_write_gate_preserves_threshold_selector_and_ordering": 4,
+        "test_real_model_boundary_diagnosis_and_proposal_share_sanitized_types": 1,
+        "test_minimal_numeric_equality_repair_preserves_unrelated_invalid_sibling": 1,
+        "test_harmless_if_metadata_edit_preserves_valid_comparison": 7,
+        "test_malformed_historical_graph_cannot_crash_or_bind_runtime_types": 5,
+        "test_real_vet_rejects_equality_transition_with_native_incompatible_expected": 7,
+        "test_runtime_build_edit_handlers_bind_native_condition_evidence": 2,
+        "test_real_proposal_cannot_bypass_failed_if_gate_via_other_graph_mutations": 5,
+        "test_native_run_error_credentials_are_collected_for_ordinary_fix": 1,
+        "test_incomplete_or_repeated_execution_scope_cannot_establish_types": 4,
+        "test_real_proposal_cannot_claim_value_only_noop_is_an_if_repair": 3,
+        "test_quoted_and_expected_credentials_are_collected_before_projection": 4,
+        "test_over_budget_execution_identifiers_cannot_escape_context_budget": 1,
+        "test_actual_write_refuses_indirect_if_gate_bypass": 3,
+        "test_proven_equality_repair_preserves_native_threshold_route": 4,
+        "test_runtime_handler_write_reloads_trusted_failed_run_and_refuses_value_only": 3,
+        "test_runtime_non_if_fix_keeps_existing_native_write_behavior": 1,
+        "test_review_r1_handled_exception_cannot_hide_terminal_failed_if": 3,
+        "test_review_r1_r2_unknown_failure_identity_cannot_authorize_producer_rewrite": 10,
+        "test_review_r3_historical_if_replaced_by_same_id_code_is_stale": 2,
+        "test_review_r4_normalized_explicit_credentials_never_reach_prompts_or_evidence": 15,
+        "test_review_r2_missing_history_cannot_use_current_non_if_type": 2,
+        "test_review_r2_write_does_not_trust_prior_available_diagnosis": 2,
+        "test_review_r2_unavailable_context_rejects_schema_and_routing": 4,
+        "test_review_r2_successful_run_cannot_authorize_a_terminal_non_if_repair": 1,
+        "test_review_r4_known_credential_repeated_as_failure_identity_is_sanitized": 1,
+        "test_review_r4_non_sensitive_wrapper_cannot_hide_explicit_inner_credential": 4,
+        "test_review_r2_unregistered_historical_type_cannot_prove_non_if": 2,
+        "test_failed_code_format_facts_reach_diagnosis_and_repair_without_values": 1,
+        "test_failed_code_format_classifies_only_observed_table_samples": 5,
+        "test_code_format_facts_require_unique_failed_historical_code": 5,
+        "test_code_format_facts_bound_samples_and_never_traverse_nested_values": 1,
+        "test_code_format_facts_do_not_claim_changed_bindings_or_unknown_run": 4,
+        "test_code_format_facts_keep_native_row_identity_after_redaction_collisions": 1,
+        "test_code_format_facts_bound_input_count_without_exposing_authored_keys": 1,
+        "test_code_format_facts_degrade_when_current_graph_is_malformed": 3,
+        "test_normal_historical_owner_carries_tool_structure_to_both_requests": 1,
+        "test_invalid_unicode_tool_text_cannot_abort_historical_diagnosis_or_proposal": 1
+    },
+    "tests.unit_tests.services.dify_builder.test_llm_agent": {
+        "test_is_dify_builder_agent": 1,
+        "test_llm_agent_build_methods_delegate_to_build": 1,
+        "test_build_methods_call_build_module_with_resolved_model": 1,
+        "test_remaining_build_methods_thread_model_and_tenant_args": 1,
+        "test_fix_methods_degrade_without_model": 1,
+        "test_model_is_resolved_lazily_and_memoized": 1,
+        "test_fix_methods_call_fix_module_with_resolved_model": 1,
+        "test_model_or_none_swallows_resolution_error": 1,
+        "test_llm_agent_generate_mock_inputs_delegates": 1,
+        "test_llm_agent_edit_methods_delegate_to_edit": 1,
+        "test_edit_methods_call_edit_module_with_resolved_model": 1,
+        "test_model_or_none_logs_resolution_failure_once": 1,
+        "test_message_reply_delegates_stream_callback": 1,
+        "test_initial_plan_defers_catalogue_and_discovery_receives_goal_and_requirements": 1,
+        "test_every_tool_owner_receives_the_acting_account": 1,
+        "test_an_agent_without_an_actor_passes_none_rather_than_inventing_one": 1,
+        "test_repair_public_output_declaration_uses_exact_existing_catalogue_read": 3
+    },
+    "tests.unit_tests.services.dify_builder.test_repair_presentation": {
+        "test_proposal_groups_fields_and_bindings_with_business_titles": 1,
+        "test_applied_uses_only_result_diff_even_when_proposal_was_larger": 1,
+        "test_noop_and_unknown_result_do_not_claim_repairs_applied": 1,
+        "test_native_fallback_connections_delete_and_chinese": 1,
+        "test_sensitive_nested_values_hostile_markdown_and_bounds": 1,
+        "test_unknown_node_uses_id_without_inventing_a_title": 1,
+        "test_proposal_bounds_many_distinct_nodes_fields_and_binding_selectors": 1,
+        "test_rationale_cannot_echo_opaque_code_or_payloads": 1,
+        "test_direct_selector_and_output_schema_explain_bound_field_names": 1,
+        "test_multiple_new_nodes_without_ids_keep_separate_native_groups": 1,
+        "test_blank_result_title_does_not_replace_native_fallback": 1,
+        "test_sensitive_url_schemes_are_case_insensitive": 1,
+        "test_dotted_private_proposal_values_are_redacted_without_hiding_field_and_selector_names": 8,
+        "test_insertion_names_authoritative_node_and_original_edge_endpoints": 4
+    },
+    "tests.unit_tests.services.dify_builder.test_tool_output_evidence": {
+        "test_text_json_and_native_json_remain_distinct_without_values": 1,
+        "test_unknown_or_ambiguous_provenance_has_no_tool_shape": 8,
+        "test_text_parse_state_and_samples_never_claim_universal_items": 4,
+        "test_structure_limits_and_unsafe_dynamic_keys_are_explicit": 1,
+        "test_projection_reaches_existing_diagnose_and_propose_requests": 1,
+        "test_tool_count_and_combined_byte_limits_report_omissions": 1,
+        "test_malformed_tool_identity_is_never_copied_as_runtime_values": 1,
+        "test_unsafe_field_names_are_omitted_even_when_they_look_like_identifiers": 9,
+        "test_invalid_unicode_text_is_malformed_without_losing_independent_json_structure": 3,
+        "test_runtime_data_keys_have_no_field_provenance_in_either_channel": 2,
+        "test_anonymous_object_samples_preserve_empty_heterogeneity_and_all_shape_limits": 1
+    }
+}.items():
+    a4_expected.setdefault(module, {}).update(functions)
 for module, expected in {**a3_expected, **a4_expected}.items():
     actual = {}
     for classname, name in identities:
