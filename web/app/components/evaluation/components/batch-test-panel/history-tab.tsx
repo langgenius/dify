@@ -24,8 +24,16 @@ const STATUS_ICON_CLASS_NAMES: Record<string, string> = {
   pending: 'i-ri-time-line text-text-tertiary',
   running: 'i-ri-loader-4-line animate-spin text-text-accent',
   completed: 'i-ri-checkbox-circle-fill text-util-colors-green-green-600',
+  partiallyFailed: 'i-ri-error-warning-fill text-text-warning-secondary',
   failed: 'i-ri-close-circle-fill text-text-destructive',
   cancelled: 'i-ri-forbid-2-line text-text-tertiary',
+}
+
+// A finished run can still have failed rows; surface that instead of a plain success state.
+const getDisplayStatus = (record: EvaluationRunResponse) => {
+  if (record.status !== 'completed' || record.failed_items <= 0) return record.status
+  if (record.total_items > 0 && record.failed_items >= record.total_items) return 'failed'
+  return 'partiallyFailed'
 }
 
 const formatCreatedAt = (createdAt: number | null | undefined, formatTime: FormatTimestamp) => {
@@ -66,6 +74,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
     pending: t(($) => $['history.status.pending']),
     running: t(($) => $['history.status.running']),
     completed: t(($) => $['history.status.completed']),
+    partiallyFailed: t(($) => $['history.status.partiallyFailed']),
     failed: t(($) => $['history.status.failed']),
     cancelled: t(($) => $['history.status.cancelled']),
   }
@@ -125,16 +134,16 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
           </colgroup>
           <thead>
             <tr className="border-b border-divider-regular">
-              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">
+              <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
                 <span className="inline-flex items-center gap-0.5">
                   {t(($) => $['history.columns.time'])}
                   <span aria-hidden="true" className="i-ri-arrow-down-line h-3.5 w-3.5" />
                 </span>
               </th>
-              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">
+              <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['history.columns.creator'])}
               </th>
-              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">
+              <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['history.columns.status'])}
               </th>
               <th className="h-7 text-center text-text-tertiary">
@@ -184,10 +193,13 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                   <td className="h-10 px-3">
                     <div className="flex h-10 items-center justify-center">
                       <span
-                        aria-label={statusLabels[record.status] ?? record.status}
+                        aria-label={
+                          statusLabels[getDisplayStatus(record)] ?? getDisplayStatus(record)
+                        }
                         className={cn(
                           'inline-block h-4 w-4',
-                          STATUS_ICON_CLASS_NAMES[record.status] ?? STATUS_ICON_CLASS_NAMES.pending,
+                          STATUS_ICON_CLASS_NAMES[getDisplayStatus(record)] ??
+                            STATUS_ICON_CLASS_NAMES.pending,
                         )}
                       />
                     </div>
