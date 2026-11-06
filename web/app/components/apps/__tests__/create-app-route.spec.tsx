@@ -42,7 +42,7 @@ beforeEach(() => {
 
 it('opens blank creation with the app type from the URL', async () => {
   renderRoute('?mode=workflow')
-  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+  const dialog = await screen.findByRole('region', { name: 'app.newApp.startFromBlank' })
   expect(
     within(dialog).getByRole('heading', { name: 'app.types.workflow', level: 4 }),
   ).toBeInTheDocument()
@@ -50,14 +50,14 @@ it('opens blank creation with the app type from the URL', async () => {
 
 it('returns to the Studio on close', async () => {
   const { user } = renderRoute('')
-  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+  const dialog = await screen.findByRole('region', { name: 'app.newApp.startFromBlank' })
   await user.click(within(dialog).getByRole('button', { name: 'Close' }))
   await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/apps'))
 })
 
 it('hands off to the template dialog on the Studio list', async () => {
   const { store, user } = renderRoute('')
-  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
+  const dialog = await screen.findByRole('region', { name: 'app.newApp.startFromBlank' })
   await user.click(within(dialog).getByRole('button', { name: /app.newApp.noIdeaTip/ }))
   expect(store.get(templateDialogRequestedAtom)).toBe(true)
   expect(router.replace).toHaveBeenCalledWith('/apps')
@@ -66,5 +66,5 @@ it('hands off to the template dialog on the Studio list', async () => {
 it('sends users without creation permission back to the Studio', async () => {
   renderRoute('?mode=workflow', { workspacePermissionKeys: [] })
   await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/apps'))
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.queryByRole('region')).not.toBeInTheDocument()
 })

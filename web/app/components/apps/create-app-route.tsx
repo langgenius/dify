@@ -1,18 +1,14 @@
 'use client'
 
 import { useAtomValue, useSetAtom } from 'jotai'
-import dynamic from 'next/dynamic'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect } from 'react'
+import CreateAppModal from '@/app/components/app/create-app-modal'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
 import { templateDialogRequestedAtom } from './creation-requests'
 import { createAppModeQueryParser } from './query-params'
-
-const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {
-  ssr: false,
-})
 
 /**
  * Blank app creation visited directly at `/apps/create?mode=<app type>`, without
@@ -35,6 +31,7 @@ export function CreateAppRoute() {
 
   return (
     <CreateAppModal
+      inline
       show
       onClose={leave}
       onCreateFromTemplate={() => {
