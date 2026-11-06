@@ -2,14 +2,19 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from functools import wraps
 from inspect import unwrap
 from uuid import UUID
 
 import pytest
+from flask import Flask
+from flask_restx import Namespace
 
+from controllers.common.schema import register_response_schema_models
 from controllers.console.app import agent
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.wraps import RBACPermission
+from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from services.agent.log_contracts import AgentLogAppNotFoundError
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
@@ -136,3 +141,30 @@ def test_log_controller_translates_missing_app(monkeypatch: pytest.MonkeyPatch) 
 
 def test_log_admission_preserves_view_layout_permission() -> None:
     assert [check.scene for check in rbac_checks(agent.AgentLogApi.get)] == [RBACPermission.APP_VIEW_LAYOUT]
+
+
+@pytest.mark.usefixtures("workflow_application")
+def test_missing_app_response_preserves_error_contract(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Given an admitted caller, serve a missing App as the documented app_not_found 404."""
+    method = agent.AgentLogApi.get
+
+    @wraps(method)
+    def admitted_get(self: agent.AgentLogApi, app_id: UUID) -> object:
+        payload = agent.AgentLogQuery(message_id=MESSAGE_ID, conversation_id=CONVERSATION_ID)
+        return unwrap(method)(self, payload, CONTEXT, app_id)
+
+    monkeypatch.setattr(agent.AgentLogApi, "get", admitted_get)
+    api = ExternalApi(app)
+    namespace = Namespace("agent", path="/")
+    register_response_schema_models(namespace, agent.AgentLogResponse)
+    namespace.add_resource(agent.AgentLogApi, "/apps/<uuid:app_id>/agent/logs")
+    api.add_namespace(namespace)
+
+    response = app.test_client().get(f"/apps/{APP_ID}/agent/logs")
+
+    assert response.status_code == 404
+    assert response.json == {"code": "app_not_found", "message": "App not found.", "status": 404}
+    with app.test_request_context():
+        operation = api.__schema__["paths"]["/apps/{app_id}/agent/logs"]["get"]
+    schema = operation["responses"]["404"]["content"]["application/json"]["schema"]
+    assert {"$ref": "#/components/schemas/AppNotFoundError"} in schema.get("anyOf", [schema])

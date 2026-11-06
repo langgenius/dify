@@ -2534,6 +2534,7 @@ Get agent execution logs for an application
 | ---- | ----------- | ------ |
 | 200 | Agent logs retrieved successfully | **application/json**: [AgentLogResponse](#agentlogresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/annotation-reply/{action}

@@ -5764,6 +5764,7 @@ export type GetAppsByAppIdAgentLogsData = {
 
 export type GetAppsByAppIdAgentLogsErrors = {
   400: ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
