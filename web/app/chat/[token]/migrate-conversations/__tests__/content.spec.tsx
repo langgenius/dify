@@ -3,6 +3,7 @@ import type { AppData } from '@/models/share'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { onTestFinished } from 'vite-plus/test'
 import { AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME, PASSPORT_LOCAL_STORAGE_NAME } from '@/config'
 import { fetchAppInfo } from '@/service/share'
 import { shareQueryKeys } from '@/service/use-share'
@@ -201,10 +202,66 @@ it('skips migration when the response contains no connections or conversations',
     </QueryClientProvider>,
   )
 
-  await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/workflow/current-app'))
+  await vi.waitFor(() =>
+    expect(replace).toHaveBeenCalledWith(`${window.location.origin}/workflow/current-app`),
+  )
   expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   expect(webAppClient.migration.claim.post).not.toHaveBeenCalled()
   expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBe('anonymous-current')
+})
+
+it.each([
+  'javascript:alert(1)',
+  'https://untrusted.example/chat/current-app',
+  '//untrusted.example/chat/current-app',
+  '/my-apps',
+])(
+  'rejects unsafe migration return target %s before automatically leaving the page',
+  async (redirect) => {
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    onTestFinished(() => replace.mockRestore())
+    vi.mocked(fetchAppInfo).mockResolvedValueOnce(appInfo)
+    vi.mocked(webAppClient.migration.claimablePassports.post).mockResolvedValueOnce({ data: [] })
+    const query = new URLSearchParams({ redirect_url: redirect, conversationId: 'existing-chat' })
+    window.history.replaceState({}, '', `/chat/current-app/migrate-conversations?${query}`)
+
+    render(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <MigrateConversationsContent />
+      </QueryClientProvider>,
+    )
+
+    await vi.waitFor(() =>
+      expect(replace).toHaveBeenCalledExactlyOnceWith(
+        '/chat/current-app?conversationId=existing-chat',
+      ),
+    )
+  },
+)
+
+it('sanitizes the deferred link and explicit continue action for unsafe return targets', async ({
+  onTestFinished,
+}) => {
+  const user = userEvent.setup()
+  const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+  onTestFinished(() => replace.mockRestore())
+  vi.mocked(fetchAppInfo).mockResolvedValueOnce(appInfo)
+  const query = new URLSearchParams({ redirect_url: 'javascript:alert(1)' })
+  window.history.replaceState({}, '', `/chat/current-app/migrate-conversations?${query}`)
+
+  render(
+    <QueryClientProvider client={createTestQueryClient()}>
+      <MigrateConversationsContent />
+    </QueryClientProvider>,
+  )
+
+  expect(await screen.findByRole('link', { name: 'login.history.notNow' })).toHaveAttribute(
+    'href',
+    '/chat/current-app',
+  )
+  await user.click(screen.getByRole('radio', { name: 'login.history.delete' }))
+  await user.click(screen.getByRole('button', { name: 'login.history.deleteAndContinue' }))
+  await vi.waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith('/chat/current-app'))
 })
 
 it('keeps anonymous passports when deferring to the original chat', async () => {
@@ -282,7 +339,9 @@ it('claims all eligible anonymous data, retains the account Passport, and return
   )
   expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBeNull()
   expect(localStorage.getItem(AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBeNull()
-  expect(replace).toHaveBeenCalledWith('/chat/current-app?conversationId=existing-chat')
+  expect(replace).toHaveBeenCalledWith(
+    `${window.location.origin}/chat/current-app?conversationId=existing-chat`,
+  )
 })
 
 it('deletes only matching anonymous passports locally and continues without claiming data', async ({
@@ -410,7 +469,7 @@ it('requests Console account switching only after WebApp logout succeeds, preser
   await vi.waitFor(() => {
     expect(beginWebAppAccountLogin).toHaveBeenCalledExactlyOnceWith(
       'https://accounts.example/signin',
-      '/chat/current-app?conversationId=existing-chat',
+      `${window.location.origin}/chat/current-app?conversationId=existing-chat`,
     )
     expect(assign).toHaveBeenCalledWith(
       'https://accounts.example/signin?code_challenge=challenge&switch_account=1',

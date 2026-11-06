@@ -19,8 +19,9 @@ import {
   subscribeWebAppAuthSession,
   webAppLogout,
 } from '@/service/webapp-auth'
-import { beginWebAppAccountLogin } from '@/service/webapp/login'
+import { beginWebAppAccountLogin, resolveWebAppAccountReturn } from '@/service/webapp/login'
 import { claimWebAppMigration, loadWebAppMigrationCandidates } from '@/service/webapp/migration'
+import { basePath } from '@/utils/var'
 
 const migrationCandidatesQueryOptions = (authSession: number) =>
   queryOptions({
@@ -33,10 +34,12 @@ export default function MigrateConversationsContent() {
   const { t } = useTranslation(['common'])
   const { token } = useParams<{ token: string }>()
   const searchParams = useSearchParams()
-  const currentSearch = searchParams.toString()
+  const fallbackParams = new URLSearchParams(searchParams.toString())
+  fallbackParams.delete('redirect_url')
+  const currentSearch = fallbackParams.toString()
   const continueHref =
-    searchParams.get('redirect_url') ||
-    `/chat/${encodeURIComponent(token)}${currentSearch ? `?${currentSearch}` : ''}`
+    resolveWebAppAccountReturn(searchParams.get('redirect_url'))?.url ||
+    `${basePath}/chat/${encodeURIComponent(token)}${currentSearch ? `?${currentSearch}` : ''}`
   const { data: appInfo, error } = useGetWebAppInfo()
   const supportsMigration = appInfo?.mode === 'workflow' || appInfo?.mode === 'advanced-chat'
   const authSession = useSyncExternalStore(

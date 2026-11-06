@@ -4,7 +4,15 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { captureAppAccessScope } from '@/features/app-access-error/state'
-import { startWebAppAccountSession } from '@/service/webapp-auth'
+import {
+  getAnonymousWebAppPassport,
+  getAuthenticatedWebAppPassport,
+  getWebAppAccessToken,
+  setWebAppAccessToken,
+  setWebAppPassport,
+  startWebAppAccountSession,
+} from '@/service/webapp-auth'
+import { createDeferred } from '@/test/deferred'
 import { createReactI18nextMock } from '@/test/i18n-mock'
 import AccountMenu from '../account-menu'
 
@@ -14,6 +22,7 @@ vi.mock('react-i18next', () =>
     'app.endUser.userMenu': 'Account for {{name}}',
     'common.api.actionFailed': 'Action failed',
     'common.operation.retry': 'Retry',
+    'common.userProfile.logout': 'Log out',
   }),
 )
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
@@ -140,5 +149,88 @@ describe('end-user account menu', () => {
 
     expect(await screen.findByRole('button', { name: 'Account for Ada' })).toBeInTheDocument()
     expect(screen.queryByText('Joel')).not.toBeInTheDocument()
+  })
+
+  it('logs out using the account cookie and clears signed-in passports only after success', async () => {
+    const user = userEvent.setup()
+    const app = { kind: 'default', code: 'previous-app' } as const
+    setWebAppAccessToken('account-session', 'end_user')
+    setWebAppPassport(app, 'anonymous-history', 'anonymous')
+    setWebAppPassport(app, 'signed-in-passport', 'authenticated')
+    const pending = createDeferred<Response>()
+    const requests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const request = new Request(input, init)
+      if (new URL(request.url).pathname.endsWith('/logout')) {
+        requests.push(request)
+        return pending.promise
+      }
+      return Promise.resolve(Response.json(profile))
+    })
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    renderAccountMenu()
+
+    await user.click(await screen.findByRole('button', { name: 'Account for Joel' }))
+    const logout = screen.getByRole('menuitem', { name: 'Log out' })
+    await user.click(logout)
+
+    await waitFor(() => expect(requests).toHaveLength(1))
+    const request = requests.at(0)
+    expect(request?.method).toBe('POST')
+    expect(request?.credentials).toBe('include')
+    expect(request?.headers.has('authorization')).toBe(false)
+    expect(request?.headers.has('x-app-code')).toBe(false)
+    expect(request?.headers.has('x-app-passport')).toBe(false)
+    expect(logout).toHaveAttribute('aria-disabled', 'true')
+    await user.click(logout)
+    expect(requests).toHaveLength(1)
+    expect(getWebAppAccessToken()).toBe('account-session')
+    expect(getAuthenticatedWebAppPassport(app)).toBe('signed-in-passport')
+    expect(replace).not.toHaveBeenCalled()
+
+    pending.resolve(Response.json({ result: 'success' }))
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/my-apps'))
+    expect(getWebAppAccessToken()).toBe('')
+    expect(getAuthenticatedWebAppPassport(app)).toBe('')
+    expect(getAnonymousWebAppPassport(app)).toBe('anonymous-history')
+  })
+
+  it('keeps the signed-in session when logout fails and allows retry from the menu', async () => {
+    const user = userEvent.setup()
+    const app = { kind: 'default', code: 'previous-app' } as const
+    setWebAppAccessToken('account-session', 'end_user')
+    setWebAppPassport(app, 'signed-in-passport', 'authenticated')
+    let attempts = 0
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const request = new Request(input, init)
+      if (new URL(request.url).pathname.endsWith('/logout')) {
+        attempts += 1
+        return Promise.resolve(
+          attempts === 1
+            ? Response.json(
+                { code: 'server_error', message: 'Logout unavailable', status: 503 },
+                { status: 503 },
+              )
+            : Response.json({ result: 'success' }),
+        )
+      }
+      return Promise.resolve(Response.json(profile))
+    })
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    renderAccountMenu()
+
+    await user.click(await screen.findByRole('button', { name: 'Account for Joel' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Log out' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Logout unavailable')
+    expect(getWebAppAccessToken()).toBe('account-session')
+    expect(getAuthenticatedWebAppPassport(app)).toBe('signed-in-passport')
+    expect(replace).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('menuitem', { name: 'Log out' }))
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/my-apps'))
+    expect(attempts).toBe(2)
+    expect(getWebAppAccessToken()).toBe('')
   })
 })

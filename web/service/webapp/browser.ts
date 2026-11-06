@@ -17,7 +17,12 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
     const url = new URL(input.url)
     const basePath = baseURL.pathname.replace(/\/$/, '')
     const path = url.pathname.slice(basePath.length)
-    if (path.startsWith('/me/') || path === '/account/profile' || path.startsWith('/migration/')) {
+    if (
+      path.startsWith('/me/') ||
+      path === '/account/profile' ||
+      path === '/logout' ||
+      path.startsWith('/migration/')
+    ) {
       const sessionRevision = options.context.authSession ?? getWebAppAuthSessionSnapshot()
       const assertCurrentAccount = () => {
         if (sessionRevision !== getWebAppAuthSessionSnapshot())

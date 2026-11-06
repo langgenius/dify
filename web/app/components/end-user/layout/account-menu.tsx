@@ -2,13 +2,18 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Menu, MenuContent, MenuGroup, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import LogoutMenuItem from '@/app/components/header/account-menu/logout-menu-item'
 import { webAppQuery } from '@/service/webapp'
-import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
+import {
+  getWebAppAuthSessionSnapshot,
+  subscribeWebAppAuthSession,
+  webAppLogout,
+} from '@/service/webapp-auth'
 import { getAvatarInitial } from '@/utils/avatar'
+import { basePath } from '@/utils/var'
 
 export default function AccountMenu() {
   const { t } = useTranslation(['app', 'common'])
@@ -27,6 +32,10 @@ export default function AccountMenu() {
   )
   const account = profile.isError ? undefined : profile.data
   const name = account?.name || t(($) => $['endUser.account'], { ns: 'app' })
+  const logout = useMutation({
+    mutationFn: () => webAppLogout(null, { silent: true }),
+    onSuccess: () => window.location.replace(`${basePath}/my-apps`),
+  })
 
   return (
     <Menu>
@@ -75,7 +84,19 @@ export default function AccountMenu() {
           </MenuGroup>
         )}
         <MenuGroup className="py-1">
-          <LogoutMenuItem />
+          {logout.isError && (
+            <p
+              role="alert"
+              className="px-3 py-1 system-xs-regular wrap-anywhere text-text-destructive"
+            >
+              {logout.error.message || t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
+          )}
+          <LogoutMenuItem
+            onLogout={() => logout.mutate()}
+            disabled={logout.isPending}
+            closeOnClick={false}
+          />
         </MenuGroup>
       </MenuContent>
     </Menu>
