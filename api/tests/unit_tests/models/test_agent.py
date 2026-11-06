@@ -139,7 +139,7 @@ def test_agent_models_require_fields_and_generate_ids(
             model(**incomplete_values)
 
 
-def test_agent_enums_match_prd_boundaries():
+def test_agent_enums_match_prd_boundaries() -> None:
     assert AgentKind.DIFY_AGENT.value == "dify_agent"
     assert AgentIconType.EMOJI.value == "emoji"
     assert AgentScope.ROSTER.value == "roster"
@@ -158,7 +158,7 @@ def test_agent_enums_match_prd_boundaries():
     assert WorkflowAgentBindingType.INLINE_AGENT.value == "inline_agent"
 
 
-def test_agent_table_uses_db_unique_constraint_for_active_roster_names():
+def test_agent_table_uses_db_unique_constraint_for_active_roster_names() -> None:
     agent_table = cast(sa.Table, Agent.__table__)
     unique_constraints = {
         str(constraint.name): tuple(column.name for column in constraint.columns)
@@ -181,7 +181,7 @@ def test_agent_table_uses_db_unique_constraint_for_active_roster_names():
 
 def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow_only_duplicates(
     sqlite_engine: sa.Engine,
-):
+) -> None:
     engine = sqlite_engine
     agent_table = cast(sa.Table, Agent.__table__)
     insert_agent = agent_table.insert()
@@ -235,7 +235,7 @@ def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow
             )
 
 
-def test_current_snapshot_stores_agent_soul_snapshot_as_long_text_json():
+def test_current_snapshot_stores_agent_soul_snapshot_as_long_text_json() -> None:
     config_snapshot = AgentSoulConfig.model_validate(
         {
             "schema_version": 1,
@@ -257,7 +257,7 @@ def test_current_snapshot_stores_agent_soul_snapshot_as_long_text_json():
     assert version.config_snapshot_dict["env"]["secret_refs"][0]["provider_credential_id"] == "cred-1"
 
 
-def test_agent_config_draft_stores_editable_agent_soul_as_long_text_json():
+def test_agent_config_draft_stores_editable_agent_soul_as_long_text_json() -> None:
     config_snapshot = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "draft prompt"}})
     draft = AgentConfigDraft(
         tenant_id="tenant-1",
@@ -274,7 +274,7 @@ def test_agent_config_draft_stores_editable_agent_soul_as_long_text_json():
     assert draft.config_snapshot_dict["prompt"]["system_prompt"] == "draft prompt"
 
 
-def test_workflow_binding_stores_node_job_config_separately_from_agent_soul():
+def test_workflow_binding_stores_node_job_config_separately_from_agent_soul() -> None:
     node_job_config = {
         "schema_version": 1,
         "workflow_prompt": "Review the bid and identify clarification questions.",
@@ -300,7 +300,7 @@ def test_workflow_binding_stores_node_job_config_separately_from_agent_soul():
     assert "prompt" not in binding.node_job_config_dict
 
 
-def test_long_text_columns_do_not_use_mysql_incompatible_server_defaults():
+def test_long_text_columns_do_not_use_mysql_incompatible_server_defaults() -> None:
     for column in (Agent.__table__.c.description,):
         assert isinstance(column.type, LongText)
         assert column.server_default is None
@@ -309,7 +309,7 @@ def test_long_text_columns_do_not_use_mysql_incompatible_server_defaults():
     assert WorkflowAgentNodeBinding.__table__.c.node_job_config.server_default is None
 
 
-def test_agent_config_revision_links_previous_and_current_snapshots():
+def test_agent_config_revision_links_previous_and_current_snapshots() -> None:
     revision = AgentConfigRevision(
         tenant_id="tenant-1",
         agent_id="agent-1",
