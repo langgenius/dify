@@ -1,14 +1,19 @@
+import logging
 from collections import OrderedDict
 from http import HTTPStatus
-from typing import cast
+from typing import NoReturn
 
 from flask import current_app, got_request_exception
+from werkzeug.exceptions import HTTPException
 
 from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
+from services.annotation.errors import AnnotationResourceNotFoundError
 from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.errors.base import NoPermissionError
+from services.errors.dataset import DatasetNotFoundError
+from services.errors.document import DocumentAccessDeniedError, DocumentNotFoundError, DocumentSourceNotFoundError
 
 
 class FilenameNotExistsError(BaseHTTPException):
@@ -167,6 +172,106 @@ class InvalidArgumentError(BaseHTTPException):
     code = 400
 
 
+class InvalidRequestError(BaseHTTPException):
+    error_code = "bad_request"
+    code = 400
+    description = "The browser (or proxy) sent a request that this server could not understand."
+
+
+class AccessDeniedError(BaseHTTPException):
+    error_code = "forbidden"
+    code = 403
+    description = (
+        "You don't have the permission to access the requested resource. "
+        "It is either read-protected or not readable by the server."
+    )
+
+
+class AuthenticationRequiredError(BaseHTTPException):
+    error_code = "unauthorized"
+    code = 401
+    description = "Authentication is required."
+
+
+class UnsupportedMediaTypeError(BaseHTTPException):
+    error_code = "unsupported_media_type"
+    code = 415
+    description = "The server does not support the media type transmitted in the request."
+
+
+class UnprocessableEntityError(BaseHTTPException):
+    error_code = "unprocessable_entity"
+    code = 422
+
+
+class TooManyRequestsError(BaseHTTPException):
+    error_code = "too_many_requests"
+    code = 429
+    description = "This user has exceeded an allotted request count. Try again later."
+
+
+class RequestBodyTooLargeError(BaseHTTPException):
+    error_code = "request_entity_too_large"
+    code = 413
+
+
+def raise_unexpected_error(error: Exception, *, message: str) -> NoReturn:
+    """Keep HTTP failures intact and sanitize unclassified failures at the transport boundary.
+
+    Framework request parsing and project HTTP errors may both reach a route's
+    error translator. Neither should be converted to a generic server error.
+    """
+    if isinstance(error, HTTPException):
+        raise error
+    logging.getLogger(__name__).exception(message)
+    raise InternalServerError() from error
+
+
+def register_resource_error_handlers(api: ExternalApi) -> None:
+    """Register resource failures before generic handlers on an initialized API.
+
+    Missing resources retain HTTP 404 and denied documents HTTP 403, including
+    their documented error codes; unrelated handlers remain registered.
+    """
+
+    def missing_resource(error: Exception) -> tuple[dict[str, str | int], int]:
+        got_request_exception.send(current_app, exception=error)
+        return {"code": "not_found", "message": str(error), "status": 404}, 404
+
+    def document_access_denied(error: DocumentAccessDeniedError) -> tuple[dict[str, str | int], int]:
+        got_request_exception.send(current_app, exception=error)
+        return {"code": "forbidden", "message": str(error), "status": 403}, 403
+
+    handlers: object = api.error_handlers
+    assert isinstance(handlers, OrderedDict)
+    for error_type in (
+        AnnotationResourceNotFoundError,
+        DatasetNotFoundError,
+        DocumentNotFoundError,
+        DocumentSourceNotFoundError,
+    ):
+        register_handler = api.errorhandler(error_type)
+        assert callable(register_handler)
+        register_handler(missing_resource)
+        handlers.move_to_end(error_type, last=False)
+    register_access_handler = api.errorhandler(DocumentAccessDeniedError)
+    assert callable(register_access_handler)
+    register_access_handler(document_access_denied)
+    handlers.move_to_end(DocumentAccessDeniedError, last=False)
+    for error_type in (
+        AnnotationResourceNotFoundError,
+        DatasetNotFoundError,
+        DocumentNotFoundError,
+        DocumentSourceNotFoundError,
+    ):
+        api.document_error_handler(error_type, status=HTTPStatus.NOT_FOUND, code=NotFoundError.error_code)
+    api.document_error_handler(
+        DocumentAccessDeniedError,
+        status=HTTPStatus.FORBIDDEN,
+        code=ForbiddenError.error_code,
+    )
+
+
 def register_permission_error_handler(api: ExternalApi) -> None:
     """Preserve the default permission-error response for Console and Service API."""
 
@@ -180,7 +285,9 @@ def register_permission_error_handler(api: ExternalApi) -> None:
         }, HTTPStatus.BAD_REQUEST
 
     # Flask-RESTX picks the first matching handler, including the generic Exception handler.
-    cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(NoPermissionError, last=False)
+    handlers: object = api.error_handlers
+    assert isinstance(handlers, OrderedDict)
+    handlers.move_to_end(NoPermissionError, last=False)
     api.document_error_handler(NoPermissionError, status=HTTPStatus.BAD_REQUEST, code=InvalidArgumentError.error_code)
 
 

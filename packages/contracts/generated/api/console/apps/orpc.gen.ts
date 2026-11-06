@@ -3887,7 +3887,6 @@ export const get67 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftConversationVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftConversationVariablesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Update conversation variables for workflow draft
@@ -3908,7 +3907,6 @@ export const post46 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftConversationVariablesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const conversationVariables2 = {
   get: get67,
@@ -3916,7 +3914,7 @@ export const conversationVariables2 = {
 }
 
 /**
- * Get draft workflow
+ * Get environment variables
  *
  * Get environment variables for workflow
  */
@@ -3927,15 +3925,12 @@ export const get68 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftEnvironmentVariables',
     path: '/apps/{app_id}/workflows/draft/environment-variables',
-    summary: 'Get draft workflow',
+    summary: 'Get environment variables',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftEnvironmentVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
-  })
+  .errors({ draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError } })
 
 /**
  * Update environment variables for workflow draft
@@ -3956,7 +3951,6 @@ export const post47 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const environmentVariables = {
   get: get68,
@@ -4463,7 +4457,6 @@ export const delete11 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get variables for a specific node
@@ -4479,7 +4472,6 @@ export const get72 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const variables = {
   delete: delete11,
@@ -4657,7 +4649,6 @@ export const get77 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftSystemVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftSystemVariablesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const systemVariables = {
   get: get77,
@@ -4744,7 +4735,6 @@ export const put6 = oc
   })
   .input(z.object({ params: zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetPath }))
   .output(zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const reset = {
   put: put6,
@@ -4765,7 +4755,6 @@ export const delete12 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get a specific workflow variable
@@ -4781,7 +4770,6 @@ export const get78 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Update a workflow variable
@@ -4802,7 +4790,6 @@ export const patch2 = oc
     }),
   )
   .output(zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byVariableId = {
   delete: delete12,
@@ -4826,10 +4813,9 @@ export const delete13 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsDraftVariablesPath }))
   .output(zDeleteAppsByAppIdWorkflowsDraftVariablesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
- * Get draft workflow
+ * List draft workflow variables without loading their values
  *
  * Get draft workflow variables
  */
@@ -4840,7 +4826,7 @@ export const get79 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftVariables',
     path: '/apps/{app_id}/workflows/draft/variables',
-    summary: 'Get draft workflow',
+    summary: 'List draft workflow variables without loading their values',
     tags: ['console'],
   })
   .input(
@@ -4850,10 +4836,7 @@ export const get79 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsDraftVariablesResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
-  })
+  .errors({ draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError } })
 
 export const variables2 = {
   delete: delete13,

@@ -19,7 +19,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import dump_response
 from libs.uuid_utils import uuidv7
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
-from services.workflow_draft_variable_service import WorkflowDraftVariableList
+from services.workflow.variable_contracts import WorkflowDraftVariableList
 from tests.unit_tests.controllers.conftest import app_query_services as app_query_services  # noqa: PLC0414
 from tests.unit_tests.controllers.conftest import (
     datasource_application_dependencies as datasource_application_dependencies,  # noqa: PLC0414
