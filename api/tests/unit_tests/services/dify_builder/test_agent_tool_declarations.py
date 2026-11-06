@@ -341,7 +341,7 @@ def test_same_permit_validation_does_not_claim_or_spend(
     before = deepcopy(snapshot_facts())
     permit_before = permit.model_dump(mode="json")
 
-    from services.dify_builder.native_testing.repository import OwnedNativeTest
+    from services.dify_builder.native_testing.repository import NativeBinding, NativeBindingResolver, OwnedNativeTest
 
     owned = OwnedNativeTest(
         ref=ref,
@@ -372,7 +372,21 @@ def test_same_permit_validation_does_not_claim_or_spend(
         lambda _permit: ref.model_copy(update={"invocation_id": "foreign"}) if change == "owner" else ref,
     )
     monkeypatch.setattr(service, "_attempt", lambda *_args: attempt)
-    monkeypatch.setattr(service, "_binding", lambda *_args: trusted)
+
+    def binding_for_validation(
+        selected_session: Session,
+        selected_owned: OwnedNativeTest,
+        selected_intent: EffectIntent,
+        *,
+        resolver: NativeBindingResolver | None = None,
+    ) -> NativeBinding:
+        assert selected_session is session
+        assert selected_owned is owned
+        assert selected_intent == effect
+        assert resolver is loader.resolver
+        return trusted
+
+    monkeypatch.setattr(service, "_binding", binding_for_validation)
     monkeypatch.setattr(service, "_claim", lambda *_args: pytest.fail("validation spent a second permit"))
     monkeypatch.setattr(
         service, "claim_dispatch", lambda **_kwargs: pytest.fail("validation consumed a physical dispatch claim")
