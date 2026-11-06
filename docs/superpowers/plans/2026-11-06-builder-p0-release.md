@@ -42,6 +42,10 @@ Files: `api/services/dify_builder/application/handlers_build.py`; `api/tests/uni
 
 - [x] Reproduce repeated resource confirmation from the original Trace.
 - [x] Add failing selected-KB → decision-form, stale-confirmation, retain and explicit-waive tests.
+- [x] Reproduce the Local pre-discovery loop: a confirmed retain answer was reasked under a new planner field key.
+- [x] Add failing no-form/captured-retain/business-answer tests; route unwaived knowledge constraints to actor-scoped discovery before executable planning, preserving validated answers and the original goal.
+- [x] Verify selected discovery → stable retain → explicit waiver still permits genuine business clarification and normal planning at the handler/agent boundary; independently review.
+- [ ] Repeat the named-KB ordinary Local UI flow on the rebuilt artifact and export its UI Trace; stop at formal plan approval before generation.
 - [ ] Reuse the existing actor-bound retain/waive form; retain remains actionable without repeated planning or silent generation.
 - [ ] Verify scoped discovery and current form projection; independently review and Local UI evidence.
 

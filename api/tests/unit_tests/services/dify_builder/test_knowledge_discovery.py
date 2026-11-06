@@ -13,7 +13,7 @@ from services.dify_builder.agent import build, resources
 from services.dify_builder.application.handlers_build import build_registry
 from services.dify_builder.application.ports import DifyBuilderAgent
 from services.dify_builder.application.runner import Env, Runner
-from services.dify_builder.plan import WorkflowPlan
+from services.dify_builder.plan import BuildClarification, WorkflowPlan
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 from tests.unit_tests.services.dify_builder.test_bound_resource_plan_reconciliation import ReconciliationAgent
 from tests.unit_tests.services.dify_builder.test_knowledge_source_cue import (
@@ -867,3 +867,253 @@ def test_explicit_knowledge_waiver_can_clarify_business_rules_before_replanning(
     assert "knowledge_decision_pending" not in context.resource_selection
     assert not context.checkpoint_id
     assert context.built_node_ids == []
+
+
+def knowledge_preflight_dialog(
+    monkeypatch: pytest.MonkeyPatch, entry: str, *, submit: bool = True
+) -> tuple[Runner, InMemoryRepository, str, list[dict[str, object]], list[tuple[str, str | None]]]:
+    """Replay the captured pre-discovery retain answer with real resource boundaries."""
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+
+    goal = (
+        "Discover my permitted knowledge base QA1386-product-docs-empty-1030 as a preference. "
+        "Must retrieve from that knowledge base before answering with source citations; retain the goal if unsupported."
+        if entry != "excluded"
+        else "Do not use a knowledge base; format the supplied text."
+    )
+    retain = "等待（保留检索该知识库的业务目标，暂不构建）"
+    values = (
+        {
+            "selected_knowledge_base": "QA1386-product-docs-empty-1030",
+            "fallback_when_retrieval_unavailable": retain,
+            "input_field": "question",
+            "must_retrieve_before_answer": True,
+            "require_source_citation": True,
+        }
+        if entry != "excluded"
+        else {}
+    )
+    fields = (
+        [
+            {
+                "key": "selected_knowledge_base",
+                "label": "请选择本次使用的知识库",
+                "type": "select",
+                "options": ["QA1386-product-docs-empty-1030"],
+                "required": True,
+            },
+            {
+                "key": "fallback_when_retrieval_unavailable",
+                "label": "若本期无法完成知识库检索，您希望如何处理",
+                "type": "select",
+                "options": [retain, "修改目标"],
+                "required": True,
+            },
+        ]
+        if entry == "captured_retain"
+        else [
+            {
+                "key": "language",
+                "label": "Answer language",
+                "type": "select",
+                "options": ["Chinese", "English"],
+                "required": True,
+            }
+        ]
+        if entry == "business_answer"
+        else []
+    )
+    if entry == "business_answer":
+        values["language"] = "Chinese"
+    plan_requests: list[dict[str, object]] = []
+    catalogue_calls: list[tuple[str, str | None]] = []
+    native = WorkflowPlan(
+        "Text formatter", "Question text", "Formatted text", ["start accepts question", "end returns it"]
+    )
+
+    def analyze_goal(goal_text: str, *, reply_language: str | None = None) -> dict[str, object]:
+        assert goal_text == goal
+        del reply_language
+        return {"fields": fields, "values": values}
+
+    def propose_plan_v1(
+        requirements: dict[str, object], *, goal_text: str, reply_language: str | None = None
+    ) -> WorkflowPlan | BuildClarification | None:
+        del reply_language
+        plan_requests.append({"requirements": requirements, "goal_text": goal_text})
+        if entry == "excluded" or "empty_text" in requirements:
+            return native
+        if "_builder_knowledge_scope_change" in requirements:
+            return BuildClarification(
+                fields=[
+                    {
+                        "key": "empty_text",
+                        "label": "Empty question",
+                        "type": "select",
+                        "options": ["Reject", "Skip"],
+                        "required": True,
+                    }
+                ],
+                values={"empty_text": "Reject"},
+            )
+        # The observed model response asks the already-confirmed stage
+        # boundary again under a new key, rather than reaching discovery.
+        return BuildClarification(
+            fields=[
+                {
+                    "key": "confirm_wait_or_modify",
+                    "label": "本期无法构建知识检索节点，您希望如何处理？",
+                    "type": "select",
+                    "options": ["等待", "修改目标"],
+                    "required": True,
+                }
+            ],
+            values={"confirm_wait_or_modify": "等待"},
+        )
+
+    def assess_capability_gap(*_args: object, **_kwargs: object) -> str:
+        return "Knowledge discovery only; retrieval is unavailable."
+
+    def load_inventory(
+        tenant_id: str, *, account_id: str | None = None, **_kwargs: object
+    ) -> resources.TenantResources:
+        catalogue_calls.append((tenant_id, account_id))
+        return inventory()
+
+    monkeypatch.setattr(resources, "list_tenant_resources", load_inventory)
+    monkeypatch.setattr(
+        build.llm,
+        "invoke_json",
+        lambda *_a, **_kw: {
+            "resource_ids": [] if entry == "excluded" else [KNOWLEDGE],
+            "selection_reasons": {KNOWLEDGE: "Required discovery preference only."},
+        },
+    )
+    repo = InMemoryRepository()
+    session = Session(app_id="app", entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_CAPABILITY_CHECK)
+    repo.create_session(session, DifyBuilderContext(goal_text=goal), [])
+    agent = LlmBuilderAgent("tenant", account_id="actor", model_resolver_fn=lambda: object())
+    monkeypatch.setattr(agent, "analyze_goal", analyze_goal)
+    monkeypatch.setattr(agent, "propose_plan_v1", propose_plan_v1)
+    monkeypatch.setattr(agent, "assess_capability_gap", assess_capability_gap)
+    runner = Runner(Env(agent=agent, repo=repo, dify=FakeDifyPort(), now=lambda: datetime.min), build_registry())
+    current = runner.advance(session.id, Turn(actor=Actor(account_id="actor", tenant_id="tenant")))
+    if fields and submit:
+        payload: dict[str, object] = {}
+        for spec in fields:
+            key = spec["key"]
+            assert isinstance(key, str)
+            payload[key] = values[key]
+        if entry == "business_answer":
+            payload["language"] = "English"
+        runner.advance(
+            session.id,
+            Turn(
+                actor=Actor(account_id="actor", tenant_id="tenant"),
+                action=Action(kind="submit_requirements", payload=payload, base_version=current.version),
+            ),
+        )
+    return runner, repo, session.id, plan_requests, catalogue_calls
+
+
+@pytest.mark.parametrize("entry", ["no_form", "captured_retain", "business_answer"])
+def test_required_knowledge_reaches_actor_scoped_discovery_before_executable_planning(
+    monkeypatch: pytest.MonkeyPatch, entry: str
+) -> None:
+    _, repo, sid, plans, catalogue = knowledge_preflight_dialog(monkeypatch, entry)
+    session, context = repo.get_session(sid)
+    assert session.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert plans == []
+    assert catalogue == [("tenant", "actor")]
+    assert "Must retrieve from that knowledge base" in context.goal_text
+    assert context.resource_selection["offered_knowledge_ids"] == [KNOWLEDGE]
+    assert context.plan_items == []
+    assert not context.checkpoint_id
+    assert context.built_node_ids == []
+    assert not any(item.kind == "plan" for item in repo.list_conversation(sid))
+    if entry == "captured_retain":
+        assert (
+            context.requirements["fallback_when_retrieval_unavailable"]
+            == "等待（保留检索该知识库的业务目标，暂不构建）"
+        )
+        assert context.confirmed_requirement_keys == ["selected_knowledge_base", "fallback_when_retrieval_unavailable"]
+    if entry == "business_answer":
+        assert context.requirements["language"] == "English"
+        assert context.confirmed_requirement_keys == ["language"]
+
+
+def test_required_business_answer_is_not_skipped_by_knowledge_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner, repo, sid, plans, catalogue = knowledge_preflight_dialog(monkeypatch, "business_answer", submit=False)
+    current, _ = repo.get_session(sid)
+    result = runner.advance(
+        sid,
+        Turn(
+            actor=Actor(account_id="actor", tenant_id="tenant"),
+            action=Action(kind="submit_requirements", payload={}, base_version=current.version),
+        ),
+    )
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert repo.get_session(sid)[1].confirmed_requirement_keys == []
+    assert catalogue == plans == []
+
+
+def test_excluded_knowledge_goal_keeps_normal_executable_planning(monkeypatch: pytest.MonkeyPatch) -> None:
+    _, repo, sid, plans, catalogue = knowledge_preflight_dialog(monkeypatch, "excluded")
+    assert repo.get_session(sid)[0].current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert len(plans) == 1
+    assert catalogue == [("tenant", "actor")]
+    assert repo.get_session(sid)[1].plan_items == ["start accepts question", "end returns it"]
+
+
+def test_preflight_knowledge_selection_waits_until_waiver_then_preserves_business_clarification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner, repo, sid, plans, catalogue = knowledge_preflight_dialog(monkeypatch, "captured_retain")
+    current, context = repo.get_session(sid)
+    assert current.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    original = context.goal_text
+    result = runner.advance(
+        sid,
+        Turn(
+            actor=Actor(account_id="actor", tenant_id="tenant"),
+            action=Action(
+                kind="confirm_resources", payload={"resource_ids": [KNOWLEDGE]}, base_version=current.version
+            ),
+        ),
+    )
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert repo.get_session(sid)[1].resource_selection["knowledge_preferences"] == [KNOWLEDGE]
+    answer_decision(runner, repo, sid, option=0)
+    answer_decision(runner, repo, sid, option=0)
+    assert plans == []
+    assert catalogue == [("tenant", "actor"), ("tenant", "actor")]
+    answer_decision(runner, repo, sid, option=1)
+    current, context = repo.get_session(sid)
+    assert current.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert context.form_fields[0]["key"] == "empty_text"
+    assert context.requirements["selected_knowledge_base"] == "QA1386-product-docs-empty-1030"
+    assert context.resource_selection["knowledge_scope_decision"]["original_goal"] == original
+    assert len(plans) == 1
+    confirmed = plans[0]["requirements"]
+    assert isinstance(confirmed, dict)
+    change = confirmed["_builder_knowledge_scope_change"]
+    assert isinstance(change, dict)
+    assert change["choice"] == "waive"
+    assert not context.checkpoint_id
+    result = runner.advance(
+        sid,
+        Turn(
+            actor=Actor(account_id="actor", tenant_id="tenant"),
+            action=Action(kind="submit_requirements", payload={"empty_text": "Skip"}, base_version=current.version),
+        ),
+    )
+    assert result.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert len(plans) == 2
+    replanned = plans[1]["requirements"]
+    assert isinstance(replanned, dict)
+    assert replanned["empty_text"] == "Skip"
+    assert repo.get_session(sid)[1].confirmed_requirement_keys == [
+        "selected_knowledge_base",
+        "fallback_when_retrieval_unavailable",
+        "empty_text",
+    ]

@@ -182,6 +182,9 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
 
     progress.activate("build-prepare-requirements")
     if not fc.form_fields:
+        if _knowledge_discovery_required(fc):
+            progress.finish()
+            return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
         progress.add_steps([("build-draft-plan", copy_text(BuilderCopyId.PROGRESS_DRAFT_THE_WORKFLOW_PLAN))])
         progress.activate("build-draft-plan")
         plan = env.agent.propose_plan_v1(
@@ -298,10 +301,12 @@ def _offer_clarification(fc: DifyBuilderContext, clarification: BuildClarificati
 
 
 def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """Merge requirements and commit the abstract plan before resource discovery.
+    """Merge validated answers before knowledge discovery or executable planning.
 
-    The automatic initial-plan state performs discovery only after this
-    transition is durable. Continue adjusting
+    Unwaived knowledge requirements reach actor-scoped discovery without an
+    executable plan: retrieval is unsupported, not an unanswered business rule.
+    Genuine business forms still require valid submission; explicit waiver may
+    resume planning and its business clarification. Continue adjusting
     first collects a fresh required change request in this existing form gate.
     If planning returns no usable plan, keep this waiting state and prior plan."""
     kind = action_kind(turn)
@@ -356,6 +361,9 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         if fc.requirements != previous_requirements:
             clear_task_acceptance(fc)
 
+    if _knowledge_discovery_required(fc):
+        progress.finish()
+        return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
     progress.activate("build-draft-plan")
     plan = env.agent.propose_plan_v1(
         _knowledge_requirements(fc), goal_text=fc.goal_text, reply_language=fc.reply_language or None
@@ -516,10 +524,12 @@ def _discover_and_offer_resources(
 
 
 def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(working, auto) Discover resources for the prepared plan and fall straight
+    """(working, auto) Discover resources for a plan or knowledge-only scope and fall straight
     through to build.resource_recommendation. Entered after a complete goal
     needs no clarification, or via the retry_after_revert loop-back.
-    Submitted requirements also enter after their abstract plan commits. Unconditional: this
+    Submitted requirements enter after their abstract plan commits, or before
+    executable planning when knowledge can only be discovered. This entry never
+    approves generation. Unconditional: this
     is a working/pass-through state now (state.py), so the runner drives it
     on entry with no action to gate on -- it must NOT re-require find_resources,
     or the loop-back (which lands here with the action already consumed)
@@ -548,6 +558,17 @@ def _knowledge_requirements(fc: DifyBuilderContext) -> dict[str, Any]:
     # Keep both the original task and the explicit user change traceable. This
     # is never inferred from a model's optional/required classification.
     return {**fc.requirements, "_builder_knowledge_scope_change": fc.resource_selection["knowledge_scope_decision"]}
+
+
+def _knowledge_discovery_required(fc: DifyBuilderContext) -> bool:
+    """Keep an unwaived knowledge constraint out of executable-plan clarification.
+
+    Discovery and the actor-bound goal decision own this unsupported capability.
+    Preserve all business answers; only explicit waiver permits normal planning.
+    """
+    return not _knowledge_waived(fc) and has_confirmed_knowledge_source_cue(
+        fc.goal_text, fc.requirements, fc.confirmed_requirement_keys
+    )
 
 
 def _ask_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
