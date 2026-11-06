@@ -644,7 +644,10 @@ export const get12 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse)
-  .errors({ draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError } })
+  .errors({
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+  })
 
 export const environmentVariables = {
   get: get12,
@@ -778,6 +781,7 @@ export const delete2 = oc
     z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }),
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const get14 = oc
   .route({
@@ -789,6 +793,7 @@ export const get14 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const variables = {
   delete: delete2,
@@ -901,6 +906,7 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const systemVariables = {
   get: get17,
@@ -918,6 +924,7 @@ export const put = oc
     z.object({ params: zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath }),
   )
   .output(zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const reset = {
   put,
@@ -936,6 +943,7 @@ export const delete3 = oc
     z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }),
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const get18 = oc
   .route({
@@ -947,6 +955,7 @@ export const get18 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const patch2 = oc
   .route({
@@ -963,6 +972,7 @@ export const patch2 = oc
     }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const byVariableId = {
   delete: delete3,
@@ -982,6 +992,7 @@ export const delete4 = oc
   })
   .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath }))
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 /**
  * List draft pipeline variables without loading their values
@@ -1002,7 +1013,10 @@ export const get19 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
-  .errors({ draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError } })
+  .errors({
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+  })
 
 export const variables2 = {
   delete: delete4,

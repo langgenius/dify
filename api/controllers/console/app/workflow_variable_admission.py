@@ -11,6 +11,7 @@ from controllers.console.datasets.error import PipelineNotFoundError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission
 from enums.account import TenantAccountRole
+from libs.external_api import document_errors
 from machinery.context import RequestContext
 from services.errors.app import WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
@@ -26,6 +27,12 @@ from services.workflow.variable_contracts import (
 def console_variable_admission[T, **P, R](
     kind: Literal["app", "pipeline", "snippet"], *, permission: RBACPermission = RBACPermission.APP_VIEW_LAYOUT
 ):
+    """Admit a draft-variable handler and document its owner's business errors.
+
+    Given a supported owner kind, return a decorator that preserves the handler's
+    error declarations and adds the app or pipeline lookup error when applicable.
+    Snippet lookup failures use the generic not-found response.
+    """
     checks = (
         [RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline())]
         if kind == "pipeline"
@@ -60,6 +67,10 @@ def console_variable_admission[T, **P, R](
             except NoPermissionError as error:
                 raise AccessDeniedError() from error
 
+        if kind == "app":
+            return document_errors(admitted, AppNotFoundError)
+        if kind == "pipeline":
+            return document_errors(admitted, PipelineNotFoundError)
         return admitted
 
     return decorate
