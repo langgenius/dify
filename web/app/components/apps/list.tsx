@@ -18,12 +18,13 @@ import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { StudioListNavigation } from './list-navigation'
-import { appListQueryParsers, serializeAppListQuery } from './query-params'
 import {
-  enterBlankCreationUrl,
-  leaveBlankCreationUrl,
-  useLeaveBlankCreationUrl,
-} from './use-blank-creation-url'
+  appListQueryParsers,
+  createAppTemplatePath,
+  getCreateAppHref,
+  serializeAppListQuery,
+} from './query-params'
+import { enterCreationUrl, leaveCreationUrl, useLeaveCreationUrl } from './use-creation-url'
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
@@ -109,19 +110,19 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     if (!canCreateApp) return
     const mode = category === 'all' ? undefined : category
     setCreationDialog({ type: 'blank', category: mode })
-    enterBlankCreationUrl(mode)
+    enterCreationUrl(getCreateAppHref(mode))
   }, [canCreateApp, category])
   const openCreateTemplateDialog = useCallback(() => {
     if (!canCreateApp) return
     setCreationDialog({ type: 'template' })
-    leaveBlankCreationUrl()
+    enterCreationUrl(createAppTemplatePath)
   }, [canCreateApp])
   const closeCreationDialog = useCallback(() => {
     setCreationDialog(null)
-    leaveBlankCreationUrl()
+    leaveCreationUrl()
   }, [])
-  useLeaveBlankCreationUrl(() =>
-    setCreationDialog((current) => (current?.type === 'blank' ? null : current)),
+  useLeaveCreationUrl(() =>
+    setCreationDialog((current) => (current?.type === 'dsl' ? current : null)),
   )
   const openCreateFromDSLModal = useCallback(() => {
     if (canCreateApp) setCreationDialog({ type: 'dsl' })

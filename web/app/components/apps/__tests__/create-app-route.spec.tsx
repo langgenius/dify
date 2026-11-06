@@ -5,7 +5,7 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
-import { CreateAppRoute } from '../create-app-route'
+import { CreateAppRoute, CreateAppTemplateRoute } from '../create-app-route'
 
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -23,15 +23,17 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-function renderRoute(searchParams: string, options: ConsoleQueryTestOptions = {}) {
+function renderRoute(
+  searchParams: string,
+  options: ConsoleQueryTestOptions = {},
+  route = <CreateAppRoute />,
+) {
   const queryClient = createConsoleQueryClient()
   const store = createStore()
   store.set(queryClientAtom, queryClient)
   renderWithConsoleQuery(
     <JotaiProvider store={store}>
-      <NuqsTestingAdapter searchParams={searchParams}>
-        <CreateAppRoute />
-      </NuqsTestingAdapter>
+      <NuqsTestingAdapter searchParams={searchParams}>{route}</NuqsTestingAdapter>
     </JotaiProvider>,
     {
       queryClient,
@@ -64,19 +66,36 @@ it('returns to the Studio on close', async () => {
   await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/apps'))
 })
 
-it('switches between blank creation and templates in place', async () => {
+it('switches to the template creation route', async () => {
   const { user } = renderRoute('')
   const blank = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
   await user.click(within(blank).getByRole('button', { name: /app.newApp.noIdeaTip/ }))
-  const templates = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
-  expect(router.replace).not.toHaveBeenCalled()
+  expect(router.replace).toHaveBeenCalledWith('/apps/create/template')
+})
 
-  await user.click(
-    await within(templates).findByRole('button', { name: /app.newApp.startFromBlank/ }),
-  )
-  expect(
-    await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' }),
-  ).toBeInTheDocument()
+describe('template creation route', () => {
+  it('opens template creation on its own', async () => {
+    renderRoute('', {}, <CreateAppTemplateRoute />)
+    expect(
+      await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' }),
+    ).toBeInTheDocument()
+  })
+
+  it('returns to the Studio on close', async () => {
+    const { user } = renderRoute('', {}, <CreateAppTemplateRoute />)
+    const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/apps'))
+  })
+
+  it('switches to the blank creation route', async () => {
+    const { user } = renderRoute('', {}, <CreateAppTemplateRoute />)
+    const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
+    await user.click(
+      await within(dialog).findByRole('button', { name: /app.newApp.startFromBlank/ }),
+    )
+    expect(router.replace).toHaveBeenCalledWith('/apps/create')
+  })
 })
 
 it('sends users without creation permission back to the Studio', async () => {

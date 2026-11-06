@@ -36,11 +36,13 @@ const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: 
 
 type AppsProps = {
   onClose: () => void
+  /** Runs once an app is created from a template; closes the list by default. */
+  onCreated?: () => void
   onCreateFromBlank?: () => void
   templateMode?: 'agent'
 }
 
-const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
+const Apps = ({ onClose, onCreated = onClose, onCreateFromBlank, templateMode }: AppsProps) => {
   const { t } = useTranslation(['app', 'common'])
   const locale = useLocale()
   const queryClient = useQueryClient()
@@ -172,7 +174,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
               })
             }
             setIsShowCreateModal(false)
-            onClose()
+            onCreated()
           },
           onPending: () => {
             setIsShowCreateModal(false)
@@ -199,7 +201,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
         }
         setShowDSLConfirmModal(false)
         setIsShowCreateModal(false)
-        onClose()
+        onCreated()
       },
     })
   }
@@ -215,7 +217,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
-        <div className="min-w-45 pl-5">
+        <div className="min-w-45 ps-5">
           <span className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
           </span>
@@ -271,7 +273,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
             />
           </div>
         )}
-        <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
+        <div className="h-full flex-1 shrink-0 grow overflow-auto border-s border-divider-burn p-6 pt-2">
           {searchFilteredList && searchFilteredList.length > 0 && (
             <>
               <div className="pt-4 pb-1">

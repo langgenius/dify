@@ -98,12 +98,13 @@ const renderApps = (
   response = catalog,
   permissions = ['app.create_and_management'],
   templateMode?: 'agent',
+  onCreated?: () => void,
 ) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(catalogKey('en-US'), response)
   const onClose = vi.fn()
   return {
-    ...render(<Apps onClose={onClose} templateMode={templateMode} />, {
+    ...render(<Apps onClose={onClose} onCreated={onCreated} templateMode={templateMode} />, {
       queryClient,
       workspacePermissionKeys: permissions,
     }),
@@ -251,6 +252,18 @@ it('fetches fresh detail by canonical app_id and submits the actual form with an
     push,
     expect.any(Object),
   )
+})
+
+it('hands a created app to onCreated instead of closing', async () => {
+  const user = userEvent.setup()
+  const onCreated = vi.fn()
+  const { onClose } = renderApps(catalog, ['app.create_and_management'], undefined, onCreated)
+  await openFirst(user)
+  await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'My app')
+  await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+  await waitFor(() => expect(onCreated).toHaveBeenCalledOnce())
+  expect(onClose).not.toHaveBeenCalled()
+  expect(redirect).toHaveBeenCalled()
 })
 
 it('keeps the submitted modal and draft while reporting detail failure without import or navigation', async () => {

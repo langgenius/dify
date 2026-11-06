@@ -16,6 +16,9 @@ const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/creat
   ssr: false,
 })
 
+// Stay open until the new app replaces the page, like blank creation.
+const keepOpenAfterCreating = () => {}
+
 export type AppListCreationDialog =
   | { type: 'blank'; category?: AppListCategory }
   | { type: 'template' }
@@ -55,7 +58,12 @@ export function AppListCreationModals({
         />
       )}
       {dialog?.type === 'template' && (
-        <CreateAppTemplateDialog show onClose={onClose} onCreateFromBlank={onOpenBlank} />
+        <CreateAppTemplateDialog
+          show
+          onClose={onClose}
+          onCreated={keepOpenAfterCreating}
+          onCreateFromBlank={onOpenBlank}
+        />
       )}
     </>
   )

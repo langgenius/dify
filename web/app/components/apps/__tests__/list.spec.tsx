@@ -526,15 +526,31 @@ it('opens blank creation at its URL from the first empty state', async () => {
   expect(window.location.pathname).toBe('/apps/create')
 })
 
-it('switches from blank creation to templates and leaves its URL', async () => {
+it('opens template creation at its URL over the list', async () => {
+  const { user } = await setup()
+  await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+  await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromTemplate/ }))
+  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
+  expect(window.location.pathname).toBe('/apps/create/template')
+  expect(screen.getByRole('link', { name: 'Chat app', hidden: true })).toBeInTheDocument()
+
+  act(() => window.history.back())
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+})
+
+it('switches from blank creation to templates in one history entry', async () => {
   const { user } = await setup()
   await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
   await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromBlank/ }))
   const blank = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
   await user.click(within(blank).getByRole('button', { name: /app.newApp.noIdeaTip/ }))
-  expect(
-    await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' }),
-  ).toBeInTheDocument()
+  const templates = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
+  expect(window.location.pathname).toBe('/apps/create/template')
+
+  await user.click(
+    within(templates).getByRole('button', { name: /^(Close|common.operation.close)$/ }),
+  )
+  await waitFor(() => expect(templates).not.toBeInTheDocument())
   await waitFor(() => expect(window.location.pathname).toBe('/'))
 })
 
@@ -543,6 +559,7 @@ it('opens blank creation from the template dialog', async () => {
   await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
   await user.click(await screen.findByRole('menuitem', { name: /app.newApp.startFromTemplate/ }))
   const templates = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
+  expect(window.location.pathname).toBe('/apps/create/template')
   await user.click(within(templates).getByRole('button', { name: /app.newApp.startFromBlank/ }))
   expect(
     await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' }),

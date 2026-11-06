@@ -50,6 +50,8 @@ export const appListQueryParsers = {
 export const serializeAppListQuery = createSerializer(appListQueryParsers)
 
 export const createAppPath = '/apps/create'
+/** Opens the Studio with the template creation dialog. */
+export const createAppTemplatePath = '/apps/create/template'
 export const createAppModeQueryParser = parseAsStringLiteral(APP_TYPES)
 
 /** Opens the Studio with the blank creation dialog, defaulting to `mode` when given. */

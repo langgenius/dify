@@ -1,55 +1,62 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import dynamic from 'next/dynamic'
 import { useQueryState } from 'nuqs'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
 import CreateAppModal from '@/app/components/app/create-app-modal'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
-import { createAppModeQueryParser } from './query-params'
+import { createAppModeQueryParser, createAppPath, createAppTemplatePath } from './query-params'
 
-const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), {
-  ssr: false,
-})
+// Visited directly, the creation routes render their dialog on its own, without the
+// Studio list. Inside the Studio the list opens the same dialogs with shallow URLs.
 
-/**
- * Blank app creation visited directly at `/apps/create?mode=<app type>`, without
- * the Studio list. Inside the Studio the list opens it with a shallow URL instead.
- */
-export function CreateAppRoute() {
+function useCreationRoute() {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-  const [mode] = useQueryState('mode', createAppModeQueryParser)
   const { replace } = useRouter()
-  const [showsTemplates, setShowsTemplates] = useState(false)
-
-  const leave = useCallback(() => replace('/apps'), [replace])
 
   useEffect(() => {
     if (!canCreateApp) replace('/apps')
   }, [canCreateApp, replace])
 
-  if (!canCreateApp) return null
+  return { canCreateApp, replace }
+}
 
-  if (showsTemplates) {
-    return (
-      <CreateAppTemplateDialog
-        show
-        onClose={leave}
-        onCreateFromBlank={() => setShowsTemplates(false)}
-      />
-    )
-  }
+// Stay open until the new app replaces the page.
+const keepOpenAfterCreating = () => {}
+
+/** `/apps/create?mode=<app type>`: blank app creation. */
+export function CreateAppRoute() {
+  const { canCreateApp, replace } = useCreationRoute()
+  const [mode] = useQueryState('mode', createAppModeQueryParser)
+  if (!canCreateApp) return null
 
   return (
     <CreateAppModal
       inline
       show
-      onClose={leave}
-      onCreateFromTemplate={() => setShowsTemplates(true)}
+      onClose={() => replace('/apps')}
+      onCreateFromTemplate={() => replace(createAppTemplatePath)}
       defaultAppMode={mode ?? undefined}
+    />
+  )
+}
+
+/** `/apps/create/template`: app creation from a template. */
+export function CreateAppTemplateRoute() {
+  const { canCreateApp, replace } = useCreationRoute()
+  if (!canCreateApp) return null
+
+  return (
+    <CreateAppTemplateDialog
+      inline
+      show
+      onClose={() => replace('/apps')}
+      onCreated={keepOpenAfterCreating}
+      onCreateFromBlank={() => replace(createAppPath)}
     />
   )
 }
