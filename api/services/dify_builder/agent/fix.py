@@ -33,6 +33,7 @@ from services.dify_builder import (
     graph_ops,
     mutation_policy,
     preflight,
+    tool_output_evidence,
 )
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import graph_prompt, llm
@@ -172,6 +173,7 @@ def diagnose(
         )
         + condition_evidence.SYSTEM_RULES
         + TOOL_OUTPUT_SEMANTICS_RULES
+        + tool_output_evidence.SYSTEM_RULES
         + llm.json_language_instruction("root_cause", reply_language=reply_language)
     )
     failed_desc = "\n".join(
@@ -530,6 +532,9 @@ def propose_repair(
             "listed node types. Reply with ONLY a JSON object: "
             '{"intents": [{"op": ..., "args": {...}}], '
             '"risk": {"level": "low|high", "reason": "...", "has_external_side_effect": true|false}}.\n'
+            "Explain in risk.reason why the changed fields/bindings address the diagnosis, what behavior "
+            "or external target/account/permission may change, and what a new Test Run must check. "
+            "Do not include code literals, credentials, URLs or raw input/output values. "
             + _OP_SCHEMA
             + CODE_FAILURE_POLICY_RULES
             + TOOL_PARAMETER_SEMANTICS_RULES
@@ -539,6 +544,7 @@ def propose_repair(
         )
         + condition_evidence.SYSTEM_RULES
         + TOOL_OUTPUT_SEMANTICS_RULES
+        + tool_output_evidence.SYSTEM_RULES
         + llm.json_language_instruction("risk.reason", reply_language=reply_language)
     )
     visible_graph = prompt_graph if prompt_graph is not None else graph
