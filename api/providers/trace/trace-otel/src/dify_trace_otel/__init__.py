@@ -1,0 +1,1 @@
+"""Generic OpenTelemetry trace provider."""

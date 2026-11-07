@@ -16,6 +16,7 @@ members = [
     "dify-trace-langsmith",
     "dify-trace-mlflow",
     "dify-trace-opik",
+    "dify-trace-otel",
     "dify-trace-sdk",
     "dify-trace-tencent",
     "dify-trace-weave",
@@ -1582,6 +1583,7 @@ trace-all = [
     { name = "dify-trace-langsmith" },
     { name = "dify-trace-mlflow" },
     { name = "dify-trace-opik" },
+    { name = "dify-trace-otel" },
     { name = "dify-trace-tencent" },
     { name = "dify-trace-weave" },
 ]
@@ -1599,6 +1601,9 @@ trace-mlflow = [
 ]
 trace-opik = [
     { name = "dify-trace-opik" },
+]
+trace-otel = [
+    { name = "dify-trace-otel" },
 ]
 trace-tencent = [
     { name = "dify-trace-tencent" },
@@ -1885,6 +1890,7 @@ trace-all = [
     { name = "dify-trace-langsmith", editable = "providers/trace/trace-langsmith" },
     { name = "dify-trace-mlflow", editable = "providers/trace/trace-mlflow" },
     { name = "dify-trace-opik", editable = "providers/trace/trace-opik" },
+    { name = "dify-trace-otel", editable = "providers/trace/trace-otel" },
     { name = "dify-trace-tencent", editable = "providers/trace/trace-tencent" },
     { name = "dify-trace-weave", editable = "providers/trace/trace-weave" },
 ]
@@ -1893,6 +1899,7 @@ trace-langfuse = [{ name = "dify-trace-langfuse", editable = "providers/trace/tr
 trace-langsmith = [{ name = "dify-trace-langsmith", editable = "providers/trace/trace-langsmith" }]
 trace-mlflow = [{ name = "dify-trace-mlflow", editable = "providers/trace/trace-mlflow" }]
 trace-opik = [{ name = "dify-trace-opik", editable = "providers/trace/trace-opik" }]
+trace-otel = [{ name = "dify-trace-otel", editable = "providers/trace/trace-otel" }]
 trace-tencent = [{ name = "dify-trace-tencent", editable = "providers/trace/trace-tencent" }]
 trace-weave = [{ name = "dify-trace-weave", editable = "providers/trace/trace-weave" }]
 vdb-alibabacloud-mysql = [{ name = "dify-vdb-alibabacloud-mysql", editable = "providers/vdb/vdb-alibabacloud-mysql" }]
@@ -2026,6 +2033,17 @@ requires-dist = [
 name = "dify-trace-opik"
 version = "0.0.1"
 source = { editable = "providers/trace/trace-opik" }
+dependencies = [
+    { name = "dify-trace-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "dify-trace-sdk", editable = "providers/trace/trace-sdk" }]
+
+[[package]]
+name = "dify-trace-otel"
+version = "0.0.1"
+source = { editable = "providers/trace/trace-otel" }
 dependencies = [
     { name = "dify-trace-sdk" },
 ]
