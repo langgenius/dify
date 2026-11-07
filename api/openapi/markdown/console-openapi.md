@@ -34568,6 +34568,7 @@ Resolved single-choice input with immutable concrete options.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| default_value | string | Optional preselected option. Used only when it belongs to the resolved option list; an empty or unavailable value leaves the input unselected. | No |
 | option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |

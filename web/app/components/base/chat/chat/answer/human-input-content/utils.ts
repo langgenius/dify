@@ -62,7 +62,10 @@ export const initializeInputs = (
     }
 
     if (isSelectFormInput(item)) {
-      initialInputs[item.output_variable_name] = ''
+      const defaultValue = item.default_value ?? ''
+      initialInputs[item.output_variable_name] = item.option_source.value.includes(defaultValue)
+        ? defaultValue
+        : ''
       return
     }
 

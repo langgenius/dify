@@ -524,7 +524,7 @@ describe('ChatInputArea', () => {
     })
 
     it('should preserve the current query and report transcription failure', async () => {
-      const user = userEvent.setup({ delay: null })
+      const user = userEvent.setup()
       vi.mocked(transcribeAudio).mockRejectedValueOnce(new Error('API error'))
       render(
         <ChatInputArea
