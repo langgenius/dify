@@ -28,6 +28,8 @@
   "menus.plugins": "통합",
   "menus.status": "베타 버전",
   "menus.tools": "도구",
+  "settings.accessToken": "액세스 토큰",
+  "settings.accessTokenDescription": "선택한 앱과 지식 베이스에만 접근할 수 있는 서비스 API 토큰을 만드세요.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "청구",
   "settings.customEndpoint": "사용자 지정 엔드포인트",

@@ -42,6 +42,8 @@ it('collects only reported namespaces and active fallback languages, once per st
 it('receives late resources for the matching provider without switching its language', async () => {
   const i18n = createInstance().use(initReactI18next)
   await i18n.init({ lng: 'zh-Hans', fallbackLng: false, resources: { 'zh-Hans': { common: {} } } })
+  const previousResources = window.__difyI18nResources
+  window.__difyI18nResources = {}
   const unsubscribe = subscribeToStreamedResources('main', i18n)
   try {
     window.__difyI18nResources = {
@@ -57,7 +59,8 @@ it('receives late resources for the matching provider without switching its lang
     })
   } finally {
     unsubscribe()
-    delete window.__difyI18nResources
+    if (previousResources === undefined) delete window.__difyI18nResources
+    else window.__difyI18nResources = previousResources
   }
 })
 

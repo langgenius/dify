@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "ID copiado para a área de transferência",
   "versionHistory.action.deleteDeployedVersionError": "Esta versão do workflow está implantada, ou sendo implantada, em um ou mais ambientes. Remova-a de todos os ambientes antes de excluir a versão.",
   "versionHistory.action.deleteFailure": "Falha ao deletar versão",
-  "versionHistory.action.deleteSuccess": "Versão excluída",
   "versionHistory.action.restoreFailure": "Falha ao restaurar versão",
   "versionHistory.action.restoreInProgress": "{{userName}} está restaurando para a versão {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Versão restaurada",

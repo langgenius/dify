@@ -1,8 +1,5 @@
-import type { ActiveContext } from '@/auth/hosts'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-
-export const DEFAULT_HOST = 'https://cloud.dify.ai'
 
 export function openAPIBase(host: string): string {
   return `${host.replace(/\/+$/, '')}/openapi/v1/`
@@ -15,7 +12,6 @@ export type ResolveHostOptions = {
 
 export function resolveHost(opts: ResolveHostOptions): string {
   let raw = opts.raw.trim()
-  if (raw === '') raw = DEFAULT_HOST
   if (!raw.includes('://')) raw = `https://${raw}`
   let url: URL
   try {
@@ -36,25 +32,6 @@ export function resolveHost(opts: ResolveHostOptions): string {
   }
   const out = url.toString()
   return out.endsWith('/') ? out.slice(0, -1) : out
-}
-
-export function hostWithScheme(host: string, scheme: string | undefined): string {
-  if (host.includes('://')) return host
-  const proto = scheme === undefined || scheme === '' ? 'https' : scheme
-  return `${proto}://${host}`
-}
-
-// Every call site that builds an HTTP client for the active host needs both its
-// scheme-qualified host and whether TLS verification is disabled for it — derive
-// them together so neither is forgotten independently.
-export function activeHostInfo(active: Pick<ActiveContext, 'host' | 'scheme' | 'insecureTls'>): {
-  host: string
-  insecure: boolean
-} {
-  return {
-    host: hostWithScheme(active.host, active.scheme),
-    insecure: active.insecureTls === true,
-  }
 }
 
 export function bareHost(raw: string): string {

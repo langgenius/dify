@@ -6,8 +6,8 @@ import { isServer } from '@/utils/client'
  * @param eventParams - event params
  */
 export const sendGAEvent = (eventName: string, eventParams?: GtagEventParams): void => {
-  if (isServer || typeof (window as any).gtag !== 'function') {
+  if (isServer || typeof window.gtag !== 'function') {
     return
   }
-  ;(window as any).gtag('event', eventName, eventParams)
+  window.gtag('event', eventName, eventParams)
 }

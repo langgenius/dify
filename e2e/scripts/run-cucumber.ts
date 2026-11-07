@@ -4,12 +4,18 @@ import path from 'node:path'
 import { runCleanupTasks } from '../support/cleanup.ts'
 import { assertCucumberScenariosStarted } from '../support/cucumber-messages.ts'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process.ts'
+import { startWebBuildDownload } from '../support/web-build.ts'
 import { startWebServer, stopWebServer } from '../support/web-server.ts'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env.ts'
 import { e2eDir, isMainModule, runCommand } from './common.ts'
 import { parseRunOptions, shouldStartManagedAgentBackend } from './run-options.ts'
 import { runSeed } from './seed-runner.ts'
-import { resetState, startMiddleware, stopMiddleware } from './setup.ts'
+import {
+  getManagedSandboxEnvironment,
+  resetState,
+  startMiddleware,
+  stopMiddleware,
+} from './setup.ts'
 import './env-register.ts'
 
 const hasCustomTags = (forwardArgs: string[]) =>
@@ -73,9 +79,10 @@ const waitForManagedProcess = async ({
   }
 }
 
-const main = async () => {
-  const { forwardArgs, full, headed, seed, seedOnly } = parseRunOptions(process.argv.slice(2))
+export const runCucumber = async (argv: string[]) => {
+  const { downloadWebBuild, forwardArgs, full, headed, seed, seedOnly } = parseRunOptions(argv)
   const startAgentBackendForRun = shouldStartManagedAgentBackend()
+  const sandboxEnvironment = startAgentBackendForRun ? getManagedSandboxEnvironment() : {}
   const cucumberReportDir = path.join(e2eDir, 'cucumber-report')
   const logDir = path.join(e2eDir, '.logs')
   let apiProcess: ManagedProcess | undefined
@@ -83,12 +90,14 @@ const main = async () => {
   let difyAgentProcess: ManagedProcess | undefined
   let middlewareStarted = false
   let shellctlProcess: ManagedProcess | undefined
+  let webBuild: Awaited<ReturnType<typeof startWebBuildDownload>> | undefined
 
   let cleanupPromise: Promise<void> | undefined
   const cleanup = async () => {
     if (!cleanupPromise) {
       cleanupPromise = (async () => {
         const cleanupErrors = await runCleanupTasks([
+          { label: 'Stop Web build download', run: () => stopManagedProcess(webBuild?.process) },
           { label: 'Stop web server', run: stopWebServer },
           { label: 'Stop celery worker', run: () => stopManagedProcess(celeryProcess) },
           { label: 'Stop API server', run: () => stopManagedProcess(apiProcess) },
@@ -120,20 +129,29 @@ const main = async () => {
 
   try {
     if (full) await resetState()
+    if (!seedOnly) await rm(cucumberReportDir, { force: true, recursive: true })
+    await mkdir(logDir, { recursive: true })
+
+    // The runner owns both preparation branches and tears them down on failure.
+    // Download the shared build while middleware and backend services start.
+    if (downloadWebBuild) webBuild = await startWebBuildDownload(logDir)
 
     if (full) {
       middlewareStarted = true
       await startMiddleware()
     }
 
-    if (!seedOnly) await rm(cucumberReportDir, { force: true, recursive: true })
-    await mkdir(logDir, { recursive: true })
-
-    if (startAgentBackendForRun) {
+    if (
+      startAgentBackendForRun &&
+      !process.env.DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT?.trim() &&
+      !process.env.DIFY_AGENT_SHELLCTL_ENTRYPOINT?.trim() &&
+      !process.env.E2E_SHELLCTL_URL?.trim()
+    ) {
       shellctlProcess = await startLoggedProcess({
         command: process.execPath,
         args: ['./scripts/setup.ts', 'shellctl-sandbox'],
         cwd: e2eDir,
+        env: sandboxEnvironment,
         label: 'shellctl sandbox',
         logFilePath: path.join(logDir, 'cucumber-shellctl-sandbox.log'),
       })
@@ -143,12 +161,14 @@ const main = async () => {
         managedProcess: shellctlProcess,
         url: `http://127.0.0.1:${shellctlPort}/healthz`,
       })
+    }
 
+    if (startAgentBackendForRun) {
       difyAgentProcess = await startLoggedProcess({
         command: process.execPath,
         args: ['./scripts/setup.ts', 'agent-backend'],
         cwd: e2eDir,
-        env: { E2E_START_AGENT_BACKEND: '1' },
+        env: { ...sandboxEnvironment, E2E_START_AGENT_BACKEND: '1' },
         label: 'agent backend',
         logFilePath: path.join(logDir, 'cucumber-agent-backend.log'),
       })
@@ -182,6 +202,16 @@ const main = async () => {
       logFilePath: path.join(logDir, 'cucumber-celery.log'),
     })
 
+    if (webBuild) {
+      const waitStarted = Date.now()
+      console.log('Backend services are ready; waiting for the shared Web build.')
+      const error = await webBuild.completed
+      if (error) throw error
+      console.log(
+        `Shared Web build ready after ${Math.round((Date.now() - waitStarted) / 1000)}s of additional waiting.`,
+      )
+    }
+
     await startWebServer({
       baseURL,
       command: process.execPath,
@@ -197,6 +227,7 @@ const main = async () => {
     if (!seedOnly) {
       const cucumberEnv: NodeJS.ProcessEnv = {
         ...process.env,
+        ...sandboxEnvironment,
         CUCUMBER_HEADLESS: headed ? '0' : '1',
       }
 
@@ -229,7 +260,7 @@ const main = async () => {
 }
 
 if (isMainModule(import.meta.url)) {
-  void main().catch((error) => {
+  void runCucumber(process.argv.slice(2)).catch((error) => {
     console.error(error instanceof Error ? error.message : String(error))
     process.exit(1)
   })

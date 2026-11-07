@@ -62,6 +62,7 @@ from core.tools.entities.tool_entities import (
     WorkflowToolParameterConfiguration,
 )
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import alphanumeric, dump_response, uuid_value
@@ -524,7 +525,6 @@ class ToolBuiltinProviderListToolsApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider: str):
-
         return dump_response(
             ToolApiListResponse,
             BuiltinToolManageService.list_builtin_tool_provider_tools(
@@ -546,7 +546,6 @@ class ToolBuiltinProviderInfoApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider: str):
-
         return _dump_tool_provider_payload(
             BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider).to_dict()
         )
@@ -568,7 +567,6 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @with_current_tenant_id
     @model_validate(BuiltinToolCredentialDeletePayload)
     def post(self, req_data: BuiltinToolCredentialDeletePayload, tenant_id: str, provider: str):
-
         return dump_response(
             SimpleResultResponse,
             BuiltinToolManageService.delete_builtin_tool_provider(
@@ -664,9 +662,9 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
                 tenant_id=tenant_id,
                 provider_name=provider,
-                session=db.session(),
                 user=user,
                 include_credential_ids=query.include_credential_ids or None,
+                credential_query=application_services().credential_queries,
             ),
         )
 
@@ -852,7 +850,6 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider, credential_type):
-
         return dump_response(
             ProviderConfigListResponse,
             BuiltinToolManageService.list_builtin_provider_credentials_schema(
@@ -1070,7 +1067,6 @@ class ToolApiListApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-
         return _dump_tool_provider_payload_list(
             [
                 provider.to_dict()
@@ -1156,7 +1152,10 @@ class ToolPluginOAuthApi(Resource):
             tenant_id=tenant_id,
             plugin_id=plugin_id,
             provider=provider_name,
-            extra_data={"visibility": requested_visibility.value},
+            extra_data={
+                "visibility": requested_visibility.value,
+                "plugin_unique_identifier": oauth_client_params.plugin_unique_identifier,
+            },
         )
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
         authorization_url_response = oauth_handler.get_authorization_url(
@@ -1165,7 +1164,8 @@ class ToolPluginOAuthApi(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_client_params,
+            system_credentials=dict(oauth_client_params.credentials),
+            plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
         )
         # response-contract:ignore cookie-bearing Flask response
         response = make_response(dump_response(PluginOAuthAuthorizationUrlResponse, authorization_url_response))
@@ -1203,6 +1203,16 @@ class ToolOAuthCallback(Resource):
         if oauth_client_params is None:
             raise Forbidden("no oauth available client config found for this tool provider")
 
+        try:
+            OAuthProxyService.validate_plugin_context(
+                context,
+                plugin_id=plugin_id,
+                provider=provider_name,
+                plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
+            )
+        except ValueError as error:
+            raise Forbidden(str(error)) from error
+
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
         credentials_response = oauth_handler.get_credentials(
             tenant_id=tenant_id,
@@ -1210,7 +1220,8 @@ class ToolOAuthCallback(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_client_params,
+            system_credentials=dict(oauth_client_params.credentials),
+            plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
             request=request,
         )
 
@@ -1363,9 +1374,9 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
                 tenant_id=tenant_id,
                 provider=provider,
-                session=db.session(),
                 user=user,
                 include_credential_ids=query.include_credential_ids or None,
+                credential_query=application_services().credential_queries,
             ),
         )
 
@@ -1599,7 +1610,6 @@ class ToolMCPListAllApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             # Skip sensitive data decryption for list view to improve performance

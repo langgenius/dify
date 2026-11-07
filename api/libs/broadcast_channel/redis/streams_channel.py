@@ -202,10 +202,7 @@ class _StreamsSubscription(Subscription):
             self._start_if_needed()
 
         try:
-            if timeout is None:
-                item = self._queue.get()
-            else:
-                item = self._queue.get(timeout=timeout)
+            item = self._queue.get() if timeout is None else self._queue.get(timeout=timeout)
         except queue.Empty:
             return None
 

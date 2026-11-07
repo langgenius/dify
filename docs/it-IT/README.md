@@ -86,9 +86,9 @@ docker compose up -d
 
 Dopo aver avviato il server, potete accedere al dashboard di Dify tramite il vostro browser all'indirizzo [http://localhost/install](http://localhost/install) e avviare il processo di inizializzazione.
 
-#### Richiedere Aiuto
+### Richiedere Aiuto
 
-Consultate le nostre [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) se riscontrate problemi durante la configurazione di Dify. Contattateci [tramite la community](#community--contatti) se continuano a verificarsi difficoltà.
+Consultate le nostre [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) se riscontrate problemi durante la configurazione di Dify. Contattateci [tramite la community](#community-e-contatti) se continuano a verificarsi difficoltà.
 
 > Se desiderate contribuire a Dify o effettuare ulteriori sviluppi, consultate la nostra [guida al deployment dal codice sorgente](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code).
 
@@ -120,7 +120,7 @@ Tutte le offerte di Dify sono dotate di API corrispondenti, permettendovi di int
 ## Utilizzo di Dify
 
 - **Cloud <br/>**
-  Ospitiamo un servizio [Dify Cloud](https://dify.ai) che chiunque può provare senza configurazione. Offre tutte le funzionalità della versione self-hosted e include 200 chiamate GPT-4 gratuite nel piano sandbox.
+  Prova [Dify Cloud](https://cloud.dify.ai) senza gestire un server. Consulta la [pagina dei prezzi](https://dify.ai/pricing) per i piani e i limiti di utilizzo attuali.
 
 - **Dify Community Edition Self-Hosted<br/>**
   Avviate rapidamente Dify nel vostro ambiente con questa [guida di avvio rapido](#avvio-rapido). Utilizzate la nostra [documentazione](https://docs.dify.ai) per ulteriori informazioni e istruzioni dettagliate.
@@ -163,11 +163,11 @@ Scegli il canale più adatto alla tua richiesta:
 - [X](https://x.com/dify_ai): segui le notizie sulle release e gli aggiornamenti del progetto.
 ## Storia delle Stelle
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## Divulgazione sulla Sicurezza
 
-Per proteggere la vostra privacy, evitate di pubblicare problemi di sicurezza su GitHub. Inviate invece le vostre domande a security@dify.ai e vi forniremo una risposta più dettagliata.
+Segnala le vulnerabilità in privato tramite GitHub Security Advisories, seguendo la nostra [politica di sicurezza](../../SECURITY.md). Non divulgarle in issue, discussioni o pull request pubbliche.
 
 ## Licenza
 

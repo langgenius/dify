@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type {
   AppPublisherProps,
@@ -17,14 +18,13 @@ import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
 } from '@/service/workflow-queries'
-import { AppModeEnum } from '@/types/app'
 
 type UsePublishControllerParams = Pick<
   AppPublisherProps,
   'onPublish' | 'onRestore' | 'publishedAt'
 > & {
   appId?: string
-  appMode?: AppModeEnum
+  appMode?: AppMode
   appName?: string
   supportsMultiEnvironment: boolean
   onClose: () => void
@@ -65,11 +65,8 @@ export function usePublishController({
   const queryClient = useQueryClient()
   const workflowStore = use(WorkflowContext)
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
-  const isWorkflowApp = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
-  const isChatApp =
-    appMode === AppModeEnum.CHAT ||
-    appMode === AppModeEnum.AGENT_CHAT ||
-    appMode === AppModeEnum.COMPLETION
+  const isWorkflowApp = appMode === 'workflow' || appMode === 'advanced-chat'
+  const isChatApp = appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
   const {
     data: publishedWorkflow,
     isError: isPublishedWorkflowError,

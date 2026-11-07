@@ -302,9 +302,7 @@ class WorkflowRunArchiveBundleIndexBackfill:
             return False
         if year is not None and _extract_key_part(key, "year") != f"{year:04d}":
             return False
-        if month is not None and _extract_key_part(key, "month") != f"{month:02d}":
-            return False
-        return True
+        return not (month is not None and _extract_key_part(key, "month") != f"{month:02d}")
 
     @staticmethod
     def _validate_manifest_scope(

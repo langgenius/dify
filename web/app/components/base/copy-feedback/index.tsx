@@ -1,4 +1,5 @@
 'use client'
+import type { IconButtonProps } from '@langgenius/dify-ui/icon-button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -6,15 +7,18 @@ import { useClipboard } from 'foxact/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type CopyFeedbackProps = Readonly<{
-  content: string
-  className?: string
-  copiedLabel?: string
-  copyLabel?: string
-  onCopyError?: () => void
-}>
+type CopyFeedbackProps = Readonly<
+  Pick<IconButtonProps, 'ref'> & {
+    content: string
+    className?: string
+    copiedLabel?: string
+    copyLabel?: string
+    onCopyError?: () => void
+  }
+>
 
 export function CopyFeedback({
+  ref,
   content,
   className,
   copiedLabel,
@@ -42,7 +46,7 @@ export function CopyFeedback({
       <TooltipTrigger
         closeOnClick={false}
         render={
-          <IconButton aria-label={safeText} className={className} onClick={handleCopy}>
+          <IconButton ref={ref} aria-label={safeText} className={className} onClick={handleCopy}>
             <span
               aria-hidden="true"
               className={cn('size-4', copied ? 'i-ri-clipboard-fill' : 'i-ri-clipboard-line')}

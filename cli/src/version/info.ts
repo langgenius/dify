@@ -1,5 +1,4 @@
 import { arch, platform } from '@/sys/index'
-import { compatString } from './compat'
 
 export type Channel = 'dev' | 'alpha' | 'edge' | 'rc' | 'stable'
 
@@ -23,12 +22,11 @@ export function shortVersion(): string {
 
 export function longVersion(): string {
   const { version, commit, buildDate, channel } = versionInfo
-  return (
-    `difyctl ${version} (commit ${commit.slice(0, 7)}, built ${buildDate}, channel ${channel})\n` +
-    `compat: ${compatString()}`
-  )
+  return `difyctl ${version} (commit ${commit.slice(0, 7)}, built ${buildDate}, channel ${channel})`
 }
 
 export function userAgent(): string {
   return `difyctl/${versionInfo.version} (${platform()}; ${arch()}; ${versionInfo.channel})`
 }
+
+export const BINARY = 'difyctl'

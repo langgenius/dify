@@ -1,12 +1,13 @@
 'use client'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type { Recipient } from '@/app/components/workflow/nodes/human-input/types'
-import type { Member } from '@/models/common'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getAvatarInitial } from '@/utils/avatar'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -14,7 +15,7 @@ type Props = Readonly<{
   value: Recipient[]
   searchValue: string
   onSearchChange: (value: string) => void
-  list: Member[]
+  list: AccountWithRoleResponse[]
   onSelect: (value: string) => void
   email: string
   hideSearch?: boolean
@@ -86,12 +87,10 @@ const MemberList: FC<Props> = ({
                 )}
                 onClick={() => onSelect(account.id)}
               >
-                <Avatar
-                  className={cn(isSelected && 'opacity-50')}
-                  avatar={account.avatar_url}
-                  size="sm"
-                  name={account.name}
-                />
+                <Avatar className={cn(isSelected && 'opacity-50')} size="sm" aria-hidden="true">
+                  <AvatarFallback>{getAvatarInitial(account.name)}</AvatarFallback>
+                  <AvatarImage src={account.avatar_url || undefined} alt="" />
+                </Avatar>
                 <div className={cn('grow', isSelected && 'opacity-50')}>
                   <div className="system-sm-medium text-text-secondary">
                     {account.name}

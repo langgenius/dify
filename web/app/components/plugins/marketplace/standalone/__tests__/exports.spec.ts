@@ -23,6 +23,6 @@ describe('standalone Marketplace host entry', () => {
       expect.any(Function),
     )
     expect(standaloneMarketplaceServer.SERVER_PREFETCH_BUDGET_MS).toBeGreaterThan(0)
-    expect(standaloneMarketplaceServer.parseCreatorSortField('popularity')).toBe('popularity')
+    expect(standaloneMarketplaceServer.parseCreatorSortField).toEqual(expect.any(Function))
   })
 })

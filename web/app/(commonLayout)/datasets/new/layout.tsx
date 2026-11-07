@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
-import { getSystemFeatures } from '@/features/system-features/server'
 import { redirect } from '@/next/navigation'
+import { consoleClient } from '@/service/console'
 
 export default async function Layout({ children }: { children: ReactNode }) {
-  const systemFeatures = await getSystemFeatures()
+  const features = await consoleClient.features.get()
 
-  if (!systemFeatures.knowledge_fs_enabled) redirect('/datasets')
+  if (!features.enable_knowledge_fs) redirect('/datasets')
 
   return children
 }

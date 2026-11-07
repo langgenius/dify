@@ -8,6 +8,9 @@
   "apps.fullTip2": "ຮອດຂີດຈຳກັດຂອງແພັກເກດແລ້ວ",
   "apps.fullTip2des": "ແນະນຳໃຫ້ລຶບແອັບຯທີ່ບໍ່ໄດ້ໃຊ້ງານອອກເພື່ອເພີ່ມພື້ນທີ່ຫວ່າງ ຫຼື ຕິດຕໍ່ພວກເຮົາ.",
   "buyPermissionDeniedTip": "ກະລຸນາຕິດຕໍ່ຜູ້ດູແລລະບົບຂອງອົງກອນຂອງທ່ານເພື່ອສະໝັກໃຊ້ບໍລິການ",
+  "errors.operationFailed": "ພວກເຮົາບໍ່ສາມາດດຳເນີນຄຳຮ້ອງນີ້ໃຫ້ສຳເລັດໄດ້. ກະລຸນາລອງໃໝ່ພາຍຫຼັງ. ຖ້າບັນຫາຍັງຄົງຢູ່, ກະລຸນາຕິດຕໍ່ຝ່າຍຊ່ວຍເຫຼືອ.",
+  "errors.requestInProgress": "ຄຳຮ້ອງກ່ອນໜ້າຂອງທ່ານຍັງຢູ່ໃນລະຫວ່າງການດຳເນີນການ. ກະລຸນາລອງໃໝ່ໃນອີກຈັກໜ່ອຍ.",
+  "errors.unavailable": "ບໍລິການນີ້ບໍ່ສາມາດໃຊ້ງານໄດ້ຊົ່ວຄາວ. ກະລຸນາລອງໃໝ່ພາຍຫຼັງ.",
   "plans.community.btnText": "ເລີ່ມຕົ້ນໃຊ້ງານ",
   "plans.community.description": "ສຳລັບຜູ້ທີ່ມັກຮັກໃນ Open-source, ນັກພັດທະນາທົ່ວໄປ ແລະ ໂຄງການທີ່ບໍ່ແມ່ນເພື່ອການຄ້າ",
   "plans.community.features": [
@@ -46,6 +49,7 @@
     "ການຊ່ວຍເຫຼືອຜ່ານ Email & Chat ແບບບຸລິມະສິດ"
   ],
   "plans.premium.includesTitle": "ລວມທຸກຢ່າງຈາກ Community ແລະ:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "ພຣີມຽມ (Premium)",
   "plans.premium.price": "ປັບຂະໜາດໄດ້",
   "plans.premium.priceTip": "ຂຶ້ນກັບ Cloud Marketplace",
@@ -69,6 +73,7 @@
   "plansCommon.comparePlanAndFeatures": "ປຽບທຽບແພັກເກດ ແລະ ຟີເຈີ",
   "plansCommon.currentPlan": "ແພັກເກດປັດຈຸບັນ",
   "plansCommon.days": "ມື້",
+  "plansCommon.discountedAnnualPrice": "ລາຄາລາຍປີຫຼັງຫຼຸດ: ",
   "plansCommon.documentProcessingPriority": "ບຸລິມະສິດການປະມວນຜົນເອກະສານ",
   "plansCommon.documentProcessingPriorityTip": "ສຳລັບບຸລິມະສິດການປະມວນຜົນເອກະສານທີ່ສູງກວ່າ, ກະລຸນາອັບເກຣດແພັກເກດຂອງທ່ານ.",
   "plansCommon.documentProcessingPriorityUpgrade": "ປະມວນຜົນຂໍ້ມູນໄດ້ຫຼາຍຂຶ້ນ ດ້ວຍຄວາມຖືກຕ້ອງ ແລະ ຄວາມໄວທີ່ສູງຂຶ້ນ.",
@@ -87,6 +92,7 @@
   "plansCommon.modelProviders": "ຮອງຮັບ OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate",
   "plansCommon.month": "ເດືອນ",
   "plansCommon.mostPopular": "ຍອດນິຍົມ",
+  "plansCommon.originalAnnualPrice": "ລາຄາລາຍປີເດີມ: ",
   "plansCommon.priceTip": "ຕໍ່ພື້ນທີ່ເຮັດວຽກ/",
   "plansCommon.priority.priority": "ບຸລິມະສິດ",
   "plansCommon.priority.standard": "ມາດຕະຖານ",

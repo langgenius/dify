@@ -1,19 +1,15 @@
-import type { NotionPage } from '@/models/common'
-import type {
-  CrawlResultItem,
-  CustomFile,
-  DocumentItem,
-  FullDocumentDetail,
-} from '@/models/datasets'
+import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { StepTwoFile, StepTwoNotionPage } from '../types'
+import type { CrawlResultItem, DocumentItem } from '@/models/datasets'
 import { useCallback, useState } from 'react'
 import { DataSourceType } from '@/models/datasets'
 
 type UsePreviewStateOptions = {
   dataSourceType: DataSourceType
-  files: CustomFile[]
-  notionPages: NotionPage[]
+  files: StepTwoFile[]
+  notionPages: StepTwoNotionPage[]
   websitePages: CrawlResultItem[]
-  documentDetail?: FullDocumentDetail
+  documentDetail?: DocumentDetailResponse
   datasetId?: string
 }
 
@@ -21,24 +17,30 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
   const { dataSourceType, files, notionPages, websitePages, documentDetail, datasetId } = options
 
   // File preview state
-  const [previewFile, setPreviewFile] = useState<DocumentItem>(
-    datasetId && documentDetail ? documentDetail.file : files[0],
+  // Editing an existing document has no preview item until one is picked.
+  const isEditing = !!datasetId && !!documentDetail
+  const [previewFile, setPreviewFile] = useState<StepTwoFile | DocumentItem | undefined>(
+    isEditing ? undefined : files[0],
   )
 
   // Notion page preview state
-  const [previewNotionPage, setPreviewNotionPage] = useState<NotionPage>(
-    datasetId && documentDetail ? documentDetail.notion_page : notionPages[0],
+  const [previewNotionPage, setPreviewNotionPage] = useState<StepTwoNotionPage | undefined>(
+    isEditing ? undefined : notionPages[0],
   )
 
   // Website page preview state
-  const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(
-    datasetId && documentDetail ? documentDetail.website_page : websitePages[0],
+  const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem | undefined>(
+    isEditing ? undefined : websitePages[0],
   )
 
   // Get preview items for document picker based on data source type
   const getPreviewPickerItems = useCallback(() => {
     if (dataSourceType === DataSourceType.FILE) {
-      return files as Array<Required<CustomFile>>
+      return files.map((file) => ({
+        id: file.id ?? '',
+        name: file.name,
+        extension: file.extension ?? '',
+      }))
     }
     if (dataSourceType === DataSourceType.NOTION) {
       return notionPages.map((page) => ({
@@ -60,7 +62,13 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
   // Get current preview value for picker
   const getPreviewPickerValue = useCallback(() => {
     if (dataSourceType === DataSourceType.FILE) {
-      return previewFile as Required<CustomFile>
+      return (
+        previewFile && {
+          id: previewFile.id ?? '',
+          name: previewFile.name,
+          extension: previewFile.extension ?? '',
+        }
+      )
     }
     if (dataSourceType === DataSourceType.NOTION) {
       return {
@@ -83,7 +91,7 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
   const handlePreviewChange = useCallback(
     (selected: { id: string; name: string }) => {
       if (dataSourceType === DataSourceType.FILE) {
-        setPreviewFile(selected as DocumentItem)
+        setPreviewFile(files.find((file) => file.id === selected.id))
       } else if (dataSourceType === DataSourceType.NOTION) {
         const selectedPage = notionPages.find((page) => page.page_id === selected.id)
         if (selectedPage) setPreviewNotionPage(selectedPage)
@@ -92,7 +100,7 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
         if (selectedPage) setPreviewWebsitePage(selectedPage)
       }
     },
-    [dataSourceType, notionPages, websitePages],
+    [dataSourceType, files, notionPages, websitePages],
   )
 
   return {

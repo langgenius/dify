@@ -26,7 +26,7 @@
     "e2e:web:build": "node ./scripts/setup.ts web-build",
     "seed": "node ./scripts/run-cucumber.ts --seed-only",
     "test:unit": "vp test run",
-    "type-check": "tsc"
+    "type-check": "tsrs --noEmit"
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",
@@ -41,6 +41,7 @@
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
     "eventsource-parser": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",

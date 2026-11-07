@@ -1,0 +1,1801 @@
+import type {
+  DatasourceCredentialResponse,
+  DatasourceProviderAuthResponse,
+} from '@dify/contracts/api/console/auth/types.gen'
+import type {
+  KnowledgeFsSourceConnectionListResponse,
+  KnowledgeFsSourceConnectionResponse,
+  KnowledgeFsSourceProviderListResponse,
+  KnowledgeFsSourceProviderResponse,
+  KnowledgeFsSourceResponse,
+  KnowledgeFsSourceWorkflowResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
+import type {
+  NewKnowledgeOnlineDocumentsSourceDraft,
+  NewKnowledgeOnlineDriveSourceDraft,
+} from '../../setup/source-draft'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { render } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
+import { ConnectedSourceWorkflow } from '../connected-source-workflow'
+
+const clientMock = vi.hoisted(() => ({
+  createConnection: vi.fn(),
+  createSource: vi.fn(),
+  createWorkflowImport: vi.fn(),
+  deleteSource: vi.fn(),
+  getFiles: vi.fn(),
+  getPages: vi.fn(),
+  getSource: vi.fn(),
+  getSyncPolicy: vi.fn(),
+  getWorkflow: vi.fn(),
+  importFiles: vi.fn(),
+  importPages: vi.fn(),
+  listConnections: vi.fn(),
+  listDatasourceAuth: vi.fn(),
+  listDatasourcePlugins: vi.fn(),
+  listProviders: vi.fn(),
+  listSources: vi.fn(),
+  patchSource: vi.fn(),
+  refreshConnection: vi.fn(),
+  updateSyncPolicy: vi.fn(),
+}))
+
+const openMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-123' },
+  }))
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
+  const source = `${space}.sources.bySourceId`
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      [`${space}.sourceConnections.byConnectionId.refresh.post`]: clientMock.refreshConnection,
+      [`${space}.sourceConnections.post`]: clientMock.createConnection,
+      [`${space}.sourceWorkflows.byRunId.get`]: clientMock.getWorkflow,
+      [`${source}.asyncImport.post`]: clientMock.createWorkflowImport,
+      [`${source}.delete`]: clientMock.deleteSource,
+      [`${source}.files.get`]: clientMock.getFiles,
+      [`${source}.get`]: clientMock.getSource,
+      [`${source}.import.post`]: clientMock.importPages,
+      [`${source}.importFiles.post`]: clientMock.importFiles,
+      [`${source}.pages.get`]: clientMock.getPages,
+      [`${source}.patch`]: clientMock.patchSource,
+      [`${source}.syncPolicy.get`]: clientMock.getSyncPolicy,
+      [`${source}.syncPolicy.put`]: clientMock.updateSyncPolicy,
+      [`${source}.workflowImports.post`]: clientMock.createWorkflowImport,
+      [`${space}.sources.get`]: clientMock.listSources,
+      [`${space}.sources.post`]: clientMock.createSource,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.list.get': () => clientMock.listDatasourceAuth(),
+      'rag.pipelines.datasourcePlugins.get': () => clientMock.listDatasourcePlugins(),
+      [`${space}.sourceConnections.get`]: clientMock.listConnections,
+      [`${space}.sourceProviders.get`]: clientMock.listProviders,
+    }),
+  }
+})
+
+const notionProvider: KnowledgeFsSourceProviderResponse = {
+  auth_kinds: ['endpoint'],
+  available: true,
+  capabilities: ['online-document'],
+  configuration: [
+    {
+      name: 'credentialId',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'pluginId',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'provider',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'datasource',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'providerKind',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+  ],
+  display_name: 'Notion',
+  id: 'notion-provider',
+  unavailable_reason: null,
+}
+
+const notionCredential: DatasourceCredentialResponse = {
+  avatar_url: '',
+  credential: {},
+  id: 'notion-credential-1',
+  is_default: true,
+  name: 'Default Notion',
+  type: 'oauth2' as DatasourceCredentialResponse['type'],
+}
+
+const notionDatasourcePlugin: DataSourceItem = {
+  declaration: {
+    credentials_schema: [],
+    datasources: [
+      {
+        description: { en_US: 'Notion pages', zh_Hans: 'Notion 页面' },
+        identity: {
+          author: 'langgenius',
+          icon: 'icon.svg',
+          label: { en_US: 'Notion', zh_Hans: 'Notion' },
+          name: 'notion',
+          provider: 'notion',
+        },
+        parameters: [],
+      },
+    ],
+    identity: {
+      author: 'langgenius',
+      description: { en_US: 'Notion', zh_Hans: 'Notion' },
+      icon: 'icon.svg',
+      label: { en_US: 'Notion', zh_Hans: 'Notion' },
+      name: 'notion',
+      tags: [],
+    },
+    provider_type: 'online_document',
+  },
+  is_authorized: true,
+  plugin_id: 'langgenius/notion_datasource',
+  plugin_unique_identifier: 'langgenius/notion_datasource:1.0.0@local',
+  provider: 'notion',
+}
+
+const notionDatasourcePluginWithParameters: DataSourceItem = {
+  ...notionDatasourcePlugin,
+  declaration: {
+    ...notionDatasourcePlugin.declaration,
+    datasources: [
+      {
+        ...notionDatasourcePlugin.declaration.datasources![0]!,
+        parameters: [
+          {
+            description: { en_US: '' },
+            label: { en_US: 'Workspace' },
+            name: 'workspace',
+            required: true,
+            type: 'string',
+          },
+        ],
+      },
+    ],
+  },
+}
+
+const s3Provider: KnowledgeFsSourceProviderResponse = {
+  auth_kinds: ['endpoint'],
+  available: true,
+  capabilities: ['online-drive'],
+  configuration: [
+    {
+      name: 'credentialId',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'pluginId',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'provider',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'datasource',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'providerKind',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+  ],
+  display_name: 'Amazon S3',
+  id: 's3-provider',
+  unavailable_reason: null,
+}
+
+const s3Credential: DatasourceCredentialResponse = {
+  avatar_url: '',
+  credential: { region: 'us-west-2' },
+  id: 's3-credential-1',
+  is_default: true,
+  name: 'AWS S3',
+  type: 'api-key' as DatasourceCredentialResponse['type'],
+}
+
+const s3DatasourcePlugin: DataSourceItem = {
+  declaration: {
+    credentials_schema: [],
+    datasources: [
+      {
+        description: { en_US: 'Amazon S3 files', zh_Hans: 'Amazon S3 文件' },
+        identity: {
+          author: 'langgenius',
+          icon: 'icon.svg',
+          label: { en_US: 'Amazon S3', zh_Hans: 'Amazon S3' },
+          name: 'aws_s3_storage',
+          provider: 'aws_s3_storage',
+        },
+        parameters: [],
+      },
+    ],
+    identity: {
+      author: 'langgenius',
+      description: { en_US: 'Amazon S3', zh_Hans: 'Amazon S3' },
+      icon: 'icon.svg',
+      label: { en_US: 'Amazon S3', zh_Hans: 'Amazon S3' },
+      name: 'aws_s3_storage',
+      tags: [],
+    },
+    provider_type: 'online_drive',
+  },
+  is_authorized: true,
+  plugin_id: 'langgenius/aws_s3_storage',
+  plugin_unique_identifier: 'langgenius/aws_s3_storage:1.0.0@local',
+  provider: 'aws_s3_storage',
+}
+
+const s3DatasourceAuth: DatasourceProviderAuthResponse = {
+  author: 'langgenius',
+  credential_schema: [],
+  credentials_list: [s3Credential],
+  description: { en_US: 'Amazon S3', zh_Hans: 'Amazon S3' },
+  icon: 'icon.svg',
+  label: { en_US: 'Amazon S3', zh_Hans: 'Amazon S3' },
+  name: 'aws_s3_storage',
+  oauth_schema: null,
+  plugin_id: 'langgenius/aws_s3_storage',
+  plugin_unique_identifier: 'langgenius/aws_s3_storage:1.0.0@local',
+  provider: 'aws_s3_storage',
+}
+
+function notionDatasourceAuth(
+  credentials: DatasourceCredentialResponse[] = [],
+): DatasourceProviderAuthResponse {
+  return {
+    author: 'langgenius',
+    credential_schema: [],
+    credentials_list: credentials,
+    description: { en_US: 'Notion', zh_Hans: 'Notion' },
+    icon: 'icon.svg',
+    label: { en_US: 'Notion', zh_Hans: 'Notion' },
+    name: 'notion',
+    oauth_schema: null,
+    plugin_id: 'langgenius/notion_datasource',
+    plugin_unique_identifier: 'langgenius/notion_datasource:1.0.0@local',
+    provider: 'notion',
+  }
+}
+
+function connectionResponse(
+  overrides: Partial<KnowledgeFsSourceConnectionResponse> = {},
+): KnowledgeFsSourceConnectionResponse {
+  return {
+    auth_kind: 'endpoint',
+    configuration: {
+      credentialId: notionCredential.id,
+      datasource: 'notion',
+      pluginId: 'langgenius/notion_datasource',
+      provider: 'notion',
+      providerKind: 'online-document',
+    },
+    created_at: '2026-07-20T10:00:00Z',
+    error_code: null,
+    expires_at: null,
+    id: 'connection-1',
+    knowledge_space_id: 'space-1',
+    name: 'Default Notion',
+    provider_id: notionProvider.id,
+    scopes: [],
+    status: 'active',
+    updated_at: '2026-07-20T10:00:00Z',
+    version: 2,
+    ...overrides,
+  }
+}
+
+function sourceResponse(
+  overrides: Partial<KnowledgeFsSourceResponse> = {},
+): KnowledgeFsSourceResponse {
+  return {
+    connection_id: 'connection-1',
+    created_at: '2026-07-20T10:00:00Z',
+    credential_configured: true,
+    id: 'preview-source',
+    knowledge_space_id: 'space-1',
+    metadata: {},
+    name: 'Notion',
+    permission_scope: [],
+    status: 'disabled',
+    type: 'connector',
+    updated_at: '2026-07-20T10:00:00Z',
+    uri: 'notion://connection-1',
+    version: 3,
+    ...overrides,
+  }
+}
+
+function workflowResponse(
+  state: string,
+  overrides: Partial<KnowledgeFsSourceWorkflowResponse> = {},
+): KnowledgeFsSourceWorkflowResponse {
+  return {
+    checkpoint: 'import',
+    created_at: '2026-07-20T10:00:00Z',
+    execution_attempts: 1,
+    id: 'import-run-1',
+    knowledge_space_id: 'space-1',
+    kind: 'online-document-import',
+    max_execution_attempts: 3,
+    progress_completed: 0,
+    progress_failed: 0,
+    progress_skipped: 0,
+    progress_total: 1,
+    source_id: 'preview-source',
+    state,
+    updated_at: '2026-07-20T10:00:00Z',
+    ...overrides,
+  }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve
+  })
+  return { promise, resolve }
+}
+
+const defaultDraft: NewKnowledgeOnlineDocumentsSourceDraft = {
+  provider: 'Notion',
+  sourceName: '',
+  sourceType: 'onlineDocuments',
+  syncPolicy: 'daily',
+}
+
+type ConnectedDraft = NewKnowledgeOnlineDocumentsSourceDraft | NewKnowledgeOnlineDriveSourceDraft
+
+/** The server lists a connection once it has been created, as later connection refetches expect. */
+function acceptConnection(connection: KnowledgeFsSourceConnectionResponse) {
+  clientMock.createConnection.mockImplementation(async () => {
+    clientMock.listConnections.mockResolvedValue({ data: [connection], next_cursor: null })
+    return connection
+  })
+}
+
+async function settle(queryClient: QueryClient) {
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+}
+
+async function renderSetup(draft: ConnectedDraft = defaultDraft, { settled = true } = {}) {
+  const queryClient = createTestQueryClient()
+  const onCompleted = vi.fn()
+  const onDraftChange = vi.fn()
+  const onExit = vi.fn()
+  const content = (nextDraft: ConnectedDraft) => (
+    <QueryClientTestProvider queryClient={queryClient}>
+      <ConnectedSourceWorkflow
+        draft={nextDraft}
+        knowledgeSpaceId="space-1"
+        onCompleted={onCompleted}
+        onDraftChange={onDraftChange}
+        onExit={onExit}
+      />
+    </QueryClientTestProvider>
+  )
+  const view = render(content(draft))
+  if (settled) await settle(queryClient)
+  return {
+    ...view,
+    onCompleted,
+    onDraftChange,
+    onExit,
+    queryClient,
+    rerenderDraft: (nextDraft: ConnectedDraft) => view.rerender(content(nextDraft)),
+  }
+}
+
+async function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
+  const queryClient = createTestQueryClient()
+  const onCompleted = vi.fn()
+  const onDraftChange = vi.fn()
+  const onExit = vi.fn()
+
+  function StatefulSetup() {
+    const [currentDraft, setCurrentDraft] = useState(draft)
+    return (
+      <QueryClientTestProvider queryClient={queryClient}>
+        <ConnectedSourceWorkflow
+          draft={currentDraft}
+          knowledgeSpaceId="space-1"
+          onCompleted={onCompleted}
+          onDraftChange={(nextDraft) => {
+            onDraftChange(nextDraft)
+            setCurrentDraft(nextDraft as ConnectedDraft)
+          }}
+          onExit={onExit}
+        />
+      </QueryClientTestProvider>
+    )
+  }
+
+  const view = render(<StatefulSetup />)
+  await settle(queryClient)
+  return { ...view, onDraftChange }
+}
+
+describe('ConnectedSourceWorkflow', () => {
+  beforeEach(() => {
+    for (const mock of Object.values(clientMock)) mock.mockReset()
+    openMock.mockReset()
+    vi.stubGlobal('open', openMock)
+
+    clientMock.listProviders.mockResolvedValue({
+      data: [notionProvider],
+    } satisfies KnowledgeFsSourceProviderListResponse)
+    clientMock.listDatasourcePlugins.mockResolvedValue([notionDatasourcePlugin])
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth()],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.listSources.mockResolvedValue({ data: [], next_cursor: null })
+    clientMock.createSource.mockResolvedValue(sourceResponse())
+    clientMock.patchSource.mockResolvedValue(
+      sourceResponse({ name: 'Team wiki', status: 'active', version: 4 }),
+    )
+    clientMock.createWorkflowImport.mockResolvedValue(workflowResponse('completed'))
+    clientMock.getWorkflow.mockResolvedValue(workflowResponse('completed'))
+    clientMock.getSyncPolicy.mockRejectedValue(
+      Object.assign(new Error('sync policy not found'), { status: 404 }),
+    )
+    clientMock.deleteSource.mockResolvedValue({ status: 'accepted' })
+    clientMock.getFiles.mockResolvedValue({ buckets: [] })
+    clientMock.getPages.mockResolvedValue({ next_cursor: null, workspaces: [] })
+    clientMock.getSource.mockResolvedValue(sourceResponse({ status: 'active', version: 5 }))
+    clientMock.importFiles.mockResolvedValue({ documents: [], failed: [], skipped: [] })
+    clientMock.importPages.mockResolvedValue({ documents: [], failed: [], skipped: [] })
+    clientMock.updateSyncPolicy.mockResolvedValue({})
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps the sync policy available while provider data is loading', async () => {
+    clientMock.listProviders.mockReturnValue(new Promise(() => undefined))
+
+    await renderSetup(defaultDraft, { settled: false })
+
+    expect(
+      await screen.findByRole('combobox', { name: 'knowledgeSources.syncPolicy' }),
+    ).toBeEnabled()
+  })
+
+  it('shows the shared provider credential card and opens the provider package when no credential exists', async () => {
+    const user = userEvent.setup()
+    const view = await renderSetup()
+
+    expect(
+      await screen.findByText('knowledgeSources.providerNotConfigured:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'knowledgeSources.providerCredentialRequiredDescription:{"provider":"Notion"}',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addSource' })).toBeDisabled()
+    expect(clientMock.createConnection).not.toHaveBeenCalled()
+    expect(view.container.querySelectorAll('img[src$="filename=icon.svg"]')).toHaveLength(2)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeSources.connectProvider:{"provider":"Notion"}',
+      }),
+    )
+
+    expect(openMock).toHaveBeenCalledWith(
+      '/integrations/data-source?package-ids=%5B%22langgenius%2Fnotion_datasource%22%5D',
+      '_blank',
+      'noopener,noreferrer',
+    )
+  })
+
+  it('does not reuse a stale Notion connection after its credential is removed', async () => {
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+
+    await renderSetup()
+
+    expect(
+      await screen.findByText('knowledgeSources.providerNotConfigured:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    expect(clientMock.createSource).not.toHaveBeenCalled()
+    expect(clientMock.getPages).not.toHaveBeenCalled()
+    expect(clientMock.createConnection).not.toHaveBeenCalled()
+  })
+
+  it('falls back to an installed provider when the requested provider is not installed', async () => {
+    await renderSetup({
+      ...defaultDraft,
+      provider: 'Confluence',
+    })
+
+    expect(screen.queryByRole('radio', { name: 'Confluence' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('radio', { name: 'Notion' })).toBeChecked()
+    expect(
+      await screen.findByText('knowledgeSources.providerNotConfigured:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
+    expect(clientMock.createConnection).not.toHaveBeenCalled()
+  })
+
+  it('uses the fallback provider transport and clears stale provider parameters', async () => {
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    acceptConnection(connectionResponse())
+
+    await renderSetup({
+      ...defaultDraft,
+      parameters: { folderId: 'stale-google-folder' },
+      provider: 'Google Docs',
+      sourceName: 'Old Google source',
+    })
+
+    await waitFor(() =>
+      expect(clientMock.createConnection).toHaveBeenCalledWith({
+        body: {
+          authKind: 'endpoint',
+          configuration: {
+            credentialId: notionCredential.id,
+            datasource: 'notion',
+            pluginId: 'langgenius/notion_datasource',
+            provider: 'notion',
+            providerKind: 'online-document',
+          },
+          credentials: {},
+          name: notionCredential.name,
+          providerId: notionProvider.id,
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    await waitFor(() =>
+      expect(clientMock.createSource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            metadata: expect.objectContaining({
+              parameters: {},
+              providerKind: 'online-document',
+              providerName: 'Notion',
+            }),
+            name: 'Notion',
+          }),
+        }),
+      ),
+    )
+  })
+
+  it('prompts for provider installation when no matching integration is installed', async () => {
+    clientMock.listDatasourcePlugins.mockResolvedValue([s3DatasourcePlugin])
+
+    await renderSetup()
+
+    const prompt = await screen.findByText('plugin.list.notFound')
+    expect(prompt.closest('[role="status"]')).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Notion' })).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSources.providerUnavailable')).not.toBeInTheDocument()
+  })
+
+  it('clears a failed connection attempt when a provider refresh selects another integration', async () => {
+    const outlineProvider: KnowledgeFsSourceProviderResponse = {
+      ...notionProvider,
+      display_name: 'Outline',
+      id: 'outline-provider',
+    }
+    const outlineDatasourcePlugin: DataSourceItem = {
+      ...notionDatasourcePlugin,
+      declaration: {
+        ...notionDatasourcePlugin.declaration,
+        datasources: [
+          {
+            ...notionDatasourcePlugin.declaration.datasources![0]!,
+            identity: {
+              ...notionDatasourcePlugin.declaration.datasources![0]!.identity,
+              label: { en_US: 'Outline', zh_Hans: 'Outline' },
+              name: 'outline',
+              provider: 'outline',
+            },
+          },
+        ],
+        identity: {
+          ...notionDatasourcePlugin.declaration.identity,
+          label: { en_US: 'Outline', zh_Hans: 'Outline' },
+          name: 'outline',
+        },
+      },
+      plugin_id: 'langgenius/outline_datasource',
+      plugin_unique_identifier: 'langgenius/outline_datasource:1.0.0@local',
+      provider: 'outline',
+    }
+    const outlineDatasourceAuth: DatasourceProviderAuthResponse = {
+      ...notionDatasourceAuth(),
+      label: { en_US: 'Outline', zh_Hans: 'Outline' },
+      name: 'outline',
+      plugin_id: outlineDatasourcePlugin.plugin_id,
+      plugin_unique_identifier: outlineDatasourcePlugin.plugin_unique_identifier,
+      provider: outlineDatasourcePlugin.provider,
+    }
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.createConnection.mockRejectedValue(new Error('provider unavailable'))
+    const { queryClient } = await renderSetup()
+
+    expect(
+      await screen.findByText('knowledgeSources.connectionFailed:{"provider":"Notion"}'),
+    ).toHaveAttribute('role', 'alert')
+
+    clientMock.listProviders.mockResolvedValue({
+      data: [outlineProvider],
+    } satisfies KnowledgeFsSourceProviderListResponse)
+    await act(async () => {
+      clientMock.listDatasourcePlugins.mockResolvedValue([outlineDatasourcePlugin])
+      clientMock.listDatasourceAuth.mockResolvedValue({ result: [outlineDatasourceAuth] })
+      await queryClient.refetchQueries()
+    })
+
+    expect(await screen.findByRole('radio', { name: 'Outline' })).toBeChecked()
+    expect(
+      await screen.findByText('knowledgeSources.providerNotConfigured:{"provider":"Outline"}'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('knowledgeSources.connectionFailed:{"provider":"Outline"}'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'knowledgeSources.connectProvider:{"provider":"Outline"}',
+      }),
+    ).toBeEnabled()
+  })
+
+  it.each(['', 'Saved wiki'])(
+    'allows clearing and replacing the source name from %j',
+    async (sourceName) => {
+      const user = userEvent.setup()
+      clientMock.listDatasourceAuth.mockResolvedValue({
+        result: [notionDatasourceAuth([notionCredential])],
+      })
+      clientMock.listConnections.mockResolvedValue({
+        data: [connectionResponse()],
+        next_cursor: null,
+      })
+      await renderStatefulSetup({ ...defaultDraft, sourceName })
+
+      const input = await screen.findByRole('textbox', { name: /knowledgeSources.sourceName/ })
+      expect(input).not.toHaveValue('')
+
+      await user.clear(input)
+      expect(input).toHaveValue('')
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.addSource' })).toBeDisabled()
+
+      await user.type(input, 'My wiki')
+      expect(input).toHaveValue('My wiki')
+      await user.keyboard(
+        '{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}',
+      )
+      expect(input).toHaveValue('')
+    },
+  )
+
+  it('starts the selected Notion import and completes setup without waiting for indexing', async () => {
+    const user = userEvent.setup()
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.createSource.mockResolvedValue(sourceResponse())
+    clientMock.patchSource.mockResolvedValue(
+      sourceResponse({
+        metadata: { preview: false },
+        name: 'Team wiki',
+        status: 'active',
+        version: 4,
+      }),
+    )
+    clientMock.createWorkflowImport.mockResolvedValue(workflowResponse('queued'))
+    clientMock.getWorkflow.mockReturnValue(new Promise(() => undefined))
+    clientMock.getPages.mockResolvedValue({
+      next_cursor: null,
+      workspaces: [
+        {
+          pages: [
+            {
+              last_edited_time: '2026-07-21T12:00:00Z',
+              page_id: 'page-1',
+              page_name: 'Product roadmap',
+              parent_id: null,
+              type: 'page',
+            },
+          ],
+          total: 1,
+          workspace_id: 'workspace-1',
+          workspace_name: 'Acme workspace',
+        },
+      ],
+    })
+    clientMock.importPages.mockResolvedValue({
+      documents: [{ document_asset_id: 'asset-1', filename: 'Product roadmap' }],
+      failed: [],
+      skipped: [],
+    })
+    const view = await renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+
+    const page = await screen.findByRole('checkbox', { name: 'Product roadmap' })
+    expect(clientMock.createSource).toHaveBeenCalledExactlyOnceWith({
+      body: {
+        connectionId: 'connection-1',
+        metadata: {
+          clientRequestId: expect.any(String),
+          datasourceParameterMode: 'exact',
+          parameters: {},
+          preview: true,
+          providerId: 'notion-provider',
+          providerKind: 'online-document',
+          providerName: 'Notion',
+          sourceType: 'onlineDocuments',
+        },
+        name: 'Notion',
+        permissionScope: [],
+        status: 'disabled',
+        type: 'connector',
+        uri: 'notion://connection-1',
+      },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 200 },
+    })
+    const addSource = screen.getByRole('button', { name: 'knowledgeSpace.addSource' })
+    expect(addSource).toBeDisabled()
+
+    await user.click(page)
+    expect(addSource).toBeEnabled()
+    expect(screen.getByText('knowledgeSources.pagesSelected:{"count":1}')).toBeInTheDocument()
+    const currentAddSource = screen.getByRole('button', { name: 'knowledgeSpace.addSource' })
+    await user.click(currentAddSource)
+
+    await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
+    expect(clientMock.patchSource).toHaveBeenCalledWith({
+      body: {
+        expectedVersion: 3,
+        name: 'Team wiki',
+      },
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+    })
+    expect(clientMock.createWorkflowImport).toHaveBeenCalledWith({
+      body: {
+        items: [
+          {
+            lastEditedTime: '2026-07-21T12:00:00Z',
+            name: 'Product roadmap',
+            pageId: 'page-1',
+            providerItemId: '["workspace-1","page-1"]',
+            type: 'page',
+            workspaceId: 'workspace-1',
+          },
+        ],
+        kind: 'online-document-import',
+        syncPolicy: { enabled: true, mode: 'interval' },
+      },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+    })
+    expect(clientMock.getWorkflow).not.toHaveBeenCalled()
+    expect(clientMock.getSource).not.toHaveBeenCalled()
+    expect(clientMock.getSyncPolicy).not.toHaveBeenCalled()
+    expect(clientMock.updateSyncPolicy).not.toHaveBeenCalled()
+    expect(clientMock.createWorkflowImport.mock.invocationCallOrder[0]).toBeLessThan(
+      view.onCompleted.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    )
+
+    view.unmount()
+    expect(clientMock.deleteSource).not.toHaveBeenCalled()
+  })
+
+  it('stops the import and cleans up the renamed source when canceled while the rename is pending', async () => {
+    const user = userEvent.setup()
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.getPages.mockResolvedValue({
+      next_cursor: null,
+      workspaces: [
+        {
+          pages: [
+            {
+              last_edited_time: null,
+              page_id: 'page-1',
+              page_name: 'Product roadmap',
+              parent_id: null,
+              type: 'page',
+            },
+          ],
+          total: 1,
+          workspace_id: 'workspace-1',
+          workspace_name: 'Acme workspace',
+        },
+      ],
+    })
+    const rename = deferred<KnowledgeFsSourceResponse>()
+    clientMock.patchSource.mockReturnValue(rename.promise)
+    const view = await renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+    await waitFor(() => expect(clientMock.patchSource).toHaveBeenCalledOnce())
+
+    view.unmount()
+    expect(clientMock.deleteSource).not.toHaveBeenCalled()
+
+    await act(async () => {
+      rename.resolve(sourceResponse({ name: 'Team wiki', version: 4 }))
+    })
+
+    await waitFor(() => expect(clientMock.deleteSource).toHaveBeenCalledOnce())
+    expect(clientMock.deleteSource).toHaveBeenCalledWith({
+      body: { expectedRevision: 4 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { documents: 'cascade' },
+    })
+    expect(clientMock.createWorkflowImport).not.toHaveBeenCalled()
+    expect(view.onCompleted).not.toHaveBeenCalled()
+  })
+
+  it('submits the source from the source name field through the form boundary', async () => {
+    const user = userEvent.setup()
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.patchSource.mockResolvedValue(
+      sourceResponse({ metadata: { preview: false }, name: 'Team wiki', version: 4 }),
+    )
+    clientMock.getPages.mockResolvedValue({
+      next_cursor: null,
+      workspaces: [
+        {
+          pages: [
+            {
+              last_edited_time: null,
+              page_id: 'page-1',
+              page_name: 'Product roadmap',
+              parent_id: null,
+              type: 'page',
+            },
+          ],
+          total: 1,
+          workspace_id: 'workspace-1',
+          workspace_name: 'Acme workspace',
+        },
+      ],
+    })
+    const view = await renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addSource' })).toHaveAttribute(
+      'type',
+      'submit',
+    )
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }),
+    ).toHaveAttribute('type', 'button')
+    await user.type(screen.getByRole('textbox', { name: /sourceName/i }), '{Enter}')
+
+    await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
+    expect(clientMock.createWorkflowImport).toHaveBeenCalledOnce()
+  })
+
+  it('reconciles an accepted import when the response is lost before navigation', async () => {
+    const user = userEvent.setup()
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.getPages.mockResolvedValue({
+      next_cursor: null,
+      workspaces: [
+        {
+          pages: [
+            {
+              last_edited_time: null,
+              page_id: 'page-1',
+              page_name: 'Product roadmap',
+              parent_id: null,
+              type: 'page',
+            },
+          ],
+          total: 1,
+          workspace_id: 'workspace-1',
+          workspace_name: 'Acme workspace',
+        },
+      ],
+    })
+    clientMock.createWorkflowImport.mockRejectedValue(new TypeError('Failed to fetch'))
+    clientMock.getSource.mockResolvedValue(
+      sourceResponse({
+        metadata: {
+          pendingImport: {
+            kind: 'online-document-import',
+            syncPolicy: { enabled: true, mode: 'interval' },
+            workflowId: 'import-run-1',
+          },
+          preview: false,
+        },
+        name: 'Team wiki',
+        status: 'disabled',
+        version: 5,
+      }),
+    )
+    const view = await renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+
+    await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    view.unmount()
+    expect(clientMock.deleteSource).not.toHaveBeenCalled()
+  })
+
+  it('applies datasource parameters once instead of rebuilding the preview on every keypress', async () => {
+    const user = userEvent.setup()
+    clientMock.listDatasourcePlugins.mockResolvedValue([notionDatasourcePluginWithParameters])
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+
+    await renderStatefulSetup({ ...defaultDraft, parameters: {} })
+
+    const workspace = await screen.findByRole('textbox', { name: 'Workspace' })
+    await user.type(workspace, 'product-docs')
+
+    expect(clientMock.createSource).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+
+    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
+    expect(clientMock.createSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          metadata: expect.objectContaining({ parameters: { workspace: 'product-docs' } }),
+        }),
+      }),
+    )
+  })
+
+  it('creates the managed endpoint connection automatically from the default credential', async () => {
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    acceptConnection(connectionResponse())
+
+    const view = await renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+
+    await waitFor(() =>
+      expect(clientMock.createConnection).toHaveBeenCalledWith({
+        body: {
+          authKind: 'endpoint',
+          configuration: {
+            credentialId: 'notion-credential-1',
+            datasource: 'notion',
+            pluginId: 'langgenius/notion_datasource',
+            provider: 'notion',
+            providerKind: 'online-document',
+          },
+          credentials: {},
+          name: 'Default Notion',
+          providerId: 'notion-provider',
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    expect(clientMock.createConnection).toHaveBeenCalledOnce()
+
+    view.unmount()
+  })
+
+  it('replaces a failed managed connection without calling the forbidden refresh endpoint', async () => {
+    const user = userEvent.setup()
+    const failedConnection = connectionResponse({
+      error_code: 'PROVIDER_AUTH_FAILED',
+      status: 'error',
+    })
+    const recoveredConnection = connectionResponse({
+      id: 'connection-recovered',
+      status: 'active',
+      version: 3,
+    })
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [failedConnection],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    acceptConnection(recoveredConnection)
+
+    await renderSetup({ ...defaultDraft, sourceName: 'Recovered wiki' })
+
+    expect(
+      await screen.findByText('knowledgeSources.connectionNeedsAttention:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeSources.connectProvider:{"provider":"Notion"}',
+      }),
+    )
+    expect(openMock).toHaveBeenCalledWith(
+      '/integrations/data-source?package-ids=%5B%22langgenius%2Fnotion_datasource%22%5D',
+      '_blank',
+      'noopener,noreferrer',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryProviderLoad' }))
+
+    await waitFor(() => expect(clientMock.createConnection).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(clientMock.createSource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            connectionId: 'connection-recovered',
+          }),
+        }),
+      ),
+    )
+    expect(clientMock.refreshConnection).not.toHaveBeenCalled()
+  })
+
+  it('uses the Google Drive datasource as the Google Docs transport and imports a selected doc', async () => {
+    const user = userEvent.setup()
+    const googleCredential: DatasourceCredentialResponse = {
+      avatar_url: '',
+      credential: {},
+      id: 'google-credential-1',
+      is_default: true,
+      name: 'docs@example.com',
+      type: 'oauth2' as DatasourceCredentialResponse['type'],
+    }
+    const googleProvider: KnowledgeFsSourceProviderResponse = {
+      ...s3Provider,
+      display_name: 'Google Drive',
+      id: 'google-drive-provider',
+    }
+    const googleDatasourcePlugin: DataSourceItem = {
+      ...s3DatasourcePlugin,
+      declaration: {
+        ...s3DatasourcePlugin.declaration,
+        datasources: [
+          {
+            description: { en_US: 'Google Drive files', zh_Hans: 'Google Drive 文件' },
+            identity: {
+              author: 'langgenius',
+              icon: 'icon.svg',
+              label: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+              name: 'google_drive',
+              provider: 'google_drive',
+            },
+            parameters: [],
+          },
+        ],
+        identity: {
+          ...s3DatasourcePlugin.declaration.identity,
+          description: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+          label: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+          name: 'google_drive',
+        },
+      },
+      plugin_id: 'langgenius/google_drive',
+      plugin_unique_identifier: 'langgenius/google_drive:1.0.0@local',
+      provider: 'google_drive',
+    }
+    const googleDatasourceAuth: DatasourceProviderAuthResponse = {
+      ...s3DatasourceAuth,
+      credentials_list: [googleCredential],
+      description: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+      label: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+      name: 'google_drive',
+      plugin_id: 'langgenius/google_drive',
+      plugin_unique_identifier: 'langgenius/google_drive:1.0.0@local',
+      provider: 'google_drive',
+    }
+    const googleConnection = connectionResponse({
+      configuration: {
+        credentialId: googleCredential.id,
+        datasource: 'google_drive',
+        pluginId: 'langgenius/google_drive',
+        provider: 'google_drive',
+        providerKind: 'online-drive',
+      },
+      id: 'google-connection',
+      name: 'docs@example.com',
+      provider_id: googleProvider.id,
+    })
+    const googlePreviewSource = sourceResponse({
+      connection_id: googleConnection.id,
+      id: 'google-docs-preview',
+      name: 'Google Docs',
+      uri: 'gdocs://google-connection',
+    })
+    const googleDraft: NewKnowledgeOnlineDocumentsSourceDraft = {
+      provider: 'Google Docs',
+      sourceName: 'Team docs',
+      sourceType: 'onlineDocuments',
+      syncPolicy: 'daily',
+    }
+
+    clientMock.listProviders.mockResolvedValue({
+      data: [googleProvider],
+    } satisfies KnowledgeFsSourceProviderListResponse)
+    clientMock.listDatasourcePlugins.mockResolvedValue([googleDatasourcePlugin])
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [googleDatasourceAuth],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [googleConnection],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.createSource.mockResolvedValue(googlePreviewSource)
+    clientMock.patchSource.mockResolvedValue(
+      sourceResponse({
+        connection_id: googleConnection.id,
+        id: googlePreviewSource.id,
+        name: googleDraft.sourceName,
+        status: 'active',
+        uri: googlePreviewSource.uri,
+        version: 4,
+      }),
+    )
+    clientMock.getSource.mockResolvedValue(
+      sourceResponse({
+        connection_id: googleConnection.id,
+        id: googlePreviewSource.id,
+        name: googleDraft.sourceName,
+        status: 'active',
+        uri: googlePreviewSource.uri,
+        version: 5,
+      }),
+    )
+    clientMock.createWorkflowImport.mockResolvedValue(
+      workflowResponse('completed', {
+        kind: 'online-drive-import',
+        source_id: googlePreviewSource.id,
+      }),
+    )
+    clientMock.getFiles.mockImplementation(({ query }: { query: { prefix?: string } }) =>
+      query.prefix === 'folder-1'
+        ? Promise.resolve({
+            buckets: [
+              {
+                bucket: null,
+                continuation_token: null,
+                files: [
+                  {
+                    id: 'doc-1',
+                    name: 'Launch plan',
+                    type: 'application/vnd.google-apps.document',
+                  },
+                  {
+                    id: 'doc-2',
+                    name: 'Meeting notes',
+                    type: 'application/vnd.google-apps.document',
+                  },
+                ],
+                is_truncated: false,
+              },
+            ],
+          })
+        : Promise.resolve({
+            buckets: [
+              {
+                bucket: null,
+                continuation_token: null,
+                files: [
+                  {
+                    id: 'folder-1',
+                    name: 'My Drive',
+                    type: 'folder',
+                  },
+                ],
+                is_truncated: false,
+              },
+            ],
+          }),
+    )
+
+    const view = await renderSetup(googleDraft)
+
+    expect(
+      await screen.findByText('knowledgeSources.selectFoldersAndDocsToSync'),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('knowledgeDocuments.searchDocuments')).not.toBeInTheDocument()
+    expect(clientMock.createConnection).not.toHaveBeenCalled()
+    expect(clientMock.createSource).toHaveBeenCalledWith({
+      body: {
+        connectionId: googleConnection.id,
+        metadata: {
+          clientRequestId: expect.any(String),
+          datasourceParameterMode: 'exact',
+          parameters: {},
+          preview: true,
+          providerId: googleProvider.id,
+          providerKind: 'online-drive',
+          providerName: 'Google Docs',
+          sourceType: 'onlineDocuments',
+        },
+        name: 'Google Docs',
+        permissionScope: [],
+        status: 'disabled',
+        type: 'connector',
+        uri: 'gdocs://google-connection',
+      },
+      params: { control_space_id: 'space-1' },
+    })
+
+    const driveFolder = await screen.findByRole('checkbox', { name: 'My Drive' })
+    const driveFolderDisclosure = screen.getByRole('button', { name: 'My Drive' })
+    expect(driveFolderDisclosure).toHaveAttribute('aria-expanded', 'false')
+    await user.click(driveFolderDisclosure)
+    expect(driveFolderDisclosure).toHaveAttribute('aria-expanded', 'true')
+    await waitFor(() =>
+      expect(clientMock.getFiles).toHaveBeenCalledWith({
+        params: { control_space_id: 'space-1', source_id: googlePreviewSource.id },
+        query: { maxKeys: 200, prefix: 'folder-1' },
+      }),
+    )
+    await user.click(await screen.findByRole('checkbox', { name: 'Launch plan' }))
+    expect(driveFolder).toHaveAttribute('aria-checked', 'mixed')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+
+    await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
+    expect(clientMock.createWorkflowImport).toHaveBeenCalledWith({
+      body: {
+        items: [
+          {
+            bucket: undefined,
+            id: 'doc-1',
+            mimeType: 'application/vnd.google-apps.document',
+            name: 'Launch plan',
+            providerItemId: '["","doc-1"]',
+          },
+        ],
+        kind: 'online-drive-import',
+        syncPolicy: { enabled: true, mode: 'interval' },
+      },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: googlePreviewSource.id },
+    })
+    expect(clientMock.updateSyncPolicy).not.toHaveBeenCalled()
+
+    view.unmount()
+    expect(clientMock.deleteSource).not.toHaveBeenCalled()
+  })
+
+  it('selects an Amazon S3 folder across pages and imports only descendant files', async () => {
+    const user = userEvent.setup()
+    const s3Draft: NewKnowledgeOnlineDriveSourceDraft = {
+      provider: 'Amazon S3',
+      sourceName: 'Product archive',
+      sourceType: 'onlineDrive',
+      syncPolicy: 'daily',
+    }
+    const s3Connection = connectionResponse({
+      configuration: {
+        credentialId: 's3-credential-1',
+        datasource: 'aws_s3_storage',
+        pluginId: 'langgenius/aws_s3_storage',
+        provider: 'aws_s3_storage',
+        providerKind: 'online-drive',
+      },
+      id: 's3-connection',
+      name: 'AWS S3',
+      provider_id: 's3-provider',
+    })
+    const s3PreviewSource = sourceResponse({
+      connection_id: 's3-connection',
+      id: 's3-preview',
+      name: 'Amazon S3',
+      uri: 's3://s3-connection',
+    })
+    const archiveSecondPageResponse = {
+      buckets: [
+        {
+          bucket: 'product-bucket',
+          continuation_token: null,
+          files: [
+            {
+              id: 'archive/summary.txt',
+              name: 'summary.txt',
+              size: 1024,
+              type: 'file',
+            },
+          ],
+          is_truncated: false,
+        },
+      ],
+    }
+    const archiveSecondPage = deferred<typeof archiveSecondPageResponse>()
+
+    clientMock.listProviders.mockResolvedValue({
+      data: [s3Provider],
+    } satisfies KnowledgeFsSourceProviderListResponse)
+    clientMock.listDatasourcePlugins.mockResolvedValue([s3DatasourcePlugin])
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [s3DatasourceAuth],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [s3Connection],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.createSource.mockResolvedValue(s3PreviewSource)
+    clientMock.patchSource.mockResolvedValue(
+      sourceResponse({
+        connection_id: 's3-connection',
+        id: 's3-preview',
+        metadata: { preview: false },
+        name: 'Product archive',
+        status: 'active',
+        uri: 's3://s3-connection',
+        version: 4,
+      }),
+    )
+    clientMock.createWorkflowImport.mockResolvedValue(
+      workflowResponse('completed', {
+        kind: 'online-drive-import',
+        source_id: 's3-preview',
+      }),
+    )
+    clientMock.getFiles.mockImplementation(
+      ({
+        query,
+      }: {
+        query: {
+          bucket?: string
+          continuationToken?: string
+          prefix?: string
+        }
+      }) => {
+        if (!query.bucket)
+          return Promise.resolve({
+            buckets: [
+              {
+                bucket: 'product-bucket',
+                continuation_token: null,
+                files: [],
+                is_truncated: false,
+              },
+            ],
+          })
+        if (!query.prefix)
+          return Promise.resolve({
+            buckets: [
+              {
+                bucket: 'product-bucket',
+                continuation_token: null,
+                files: [
+                  {
+                    id: 'archive/',
+                    name: 'Archive',
+                    type: 'folder',
+                  },
+                ],
+                is_truncated: false,
+              },
+            ],
+          })
+        if (query.prefix === 'archive/' && !query.continuationToken)
+          return Promise.resolve({
+            buckets: [
+              {
+                bucket: 'product-bucket',
+                continuation_token: 'archive-next',
+                files: [
+                  {
+                    id: 'archive/report.pdf',
+                    name: 'report.pdf',
+                    size: 4096,
+                    type: 'file',
+                  },
+                  {
+                    id: 'archive/nested/',
+                    name: 'Nested',
+                    type: 'folder',
+                  },
+                ],
+                is_truncated: true,
+              },
+            ],
+          })
+        if (query.prefix === 'archive/' && query.continuationToken === 'archive-next')
+          return archiveSecondPage.promise
+        if (query.prefix === 'archive/nested/')
+          return Promise.resolve({
+            buckets: [
+              {
+                bucket: 'product-bucket',
+                continuation_token: null,
+                files: [
+                  {
+                    id: 'archive/nested/notes.md',
+                    name: 'notes.md',
+                    size: 512,
+                    type: 'file',
+                  },
+                ],
+                is_truncated: false,
+              },
+            ],
+          })
+        throw new Error(`Unexpected S3 browse query: ${JSON.stringify(query)}`)
+      },
+    )
+
+    const view = await renderSetup(s3Draft)
+
+    const bucket = await screen.findByRole('button', { name: 'product-bucket' })
+    expect(screen.getByText('s3://product-bucket · us-west-2')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'knowledgeSources.selectAll' })).toBeEnabled()
+    expect(screen.queryByRole('checkbox', { name: 'product-bucket' })).not.toBeInTheDocument()
+    expect(bucket).toHaveAttribute('aria-expanded', 'false')
+    expect(clientMock.createConnection).not.toHaveBeenCalled()
+    expect(clientMock.createSource).toHaveBeenCalledWith({
+      body: {
+        connectionId: 's3-connection',
+        metadata: {
+          clientRequestId: expect.any(String),
+          datasourceParameterMode: 'exact',
+          parameters: {},
+          preview: true,
+          providerId: 's3-provider',
+          providerKind: 'online-drive',
+          providerName: 'Amazon S3',
+          sourceType: 'onlineDrive',
+        },
+        name: 'Amazon S3',
+        permissionScope: [],
+        status: 'disabled',
+        type: 'connector',
+        uri: 's3://s3-connection',
+      },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(clientMock.getFiles).toHaveBeenNthCalledWith(1, {
+      params: { control_space_id: 'space-1', source_id: 's3-preview' },
+      query: { maxKeys: 200 },
+    })
+
+    await user.click(bucket)
+    expect(bucket).toHaveAttribute('aria-expanded', 'true')
+    await waitFor(() =>
+      expect(clientMock.getFiles).toHaveBeenCalledWith({
+        params: { control_space_id: 'space-1', source_id: 's3-preview' },
+        query: { bucket: 'product-bucket', maxKeys: 200 },
+      }),
+    )
+
+    const folder = await screen.findByRole('checkbox', { name: 'Archive' })
+    expect(folder).toHaveAttribute('aria-checked', 'false')
+    await user.click(folder)
+    await waitFor(() =>
+      expect(clientMock.getFiles).toHaveBeenCalledWith({
+        params: { control_space_id: 'space-1', source_id: 's3-preview' },
+        query: {
+          bucket: 'product-bucket',
+          maxKeys: 200,
+          prefix: 'archive/',
+        },
+      }),
+    )
+    await waitFor(() =>
+      expect(clientMock.getFiles).toHaveBeenCalledWith({
+        params: { control_space_id: 'space-1', source_id: 's3-preview' },
+        query: {
+          bucket: 'product-bucket',
+          continuationToken: 'archive-next',
+          maxKeys: 200,
+          prefix: 'archive/',
+        },
+      }),
+    )
+    expect(folder).toHaveAttribute('aria-disabled', 'true')
+    expect(folder).toHaveAttribute('aria-checked', 'true')
+
+    await act(async () => archiveSecondPage.resolve(archiveSecondPageResponse))
+    await waitFor(() =>
+      expect(clientMock.getFiles).toHaveBeenCalledWith({
+        params: { control_space_id: 'space-1', source_id: 's3-preview' },
+        query: {
+          bucket: 'product-bucket',
+          maxKeys: 200,
+          prefix: 'archive/nested/',
+        },
+      }),
+    )
+    await screen.findByText('knowledgeSources.pagesSelected:{"count":3}')
+    expect(folder).toHaveAttribute('aria-checked', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Archive' }))
+    expect(await screen.findByRole('checkbox', { name: 'report.pdf' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'summary.txt' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Nested' }))
+    expect(await screen.findByRole('checkbox', { name: 'notes.md' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+
+    await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
+    expect(clientMock.createWorkflowImport).toHaveBeenCalledOnce()
+    const workflowRequest = clientMock.createWorkflowImport.mock.calls[0]?.[0]
+    expect(workflowRequest).toEqual({
+      body: {
+        items: [
+          {
+            bucket: 'product-bucket',
+            id: 'archive/report.pdf',
+            mimeType: undefined,
+            name: 'report.pdf',
+            providerItemId: '["product-bucket","archive/report.pdf"]',
+          },
+          {
+            bucket: 'product-bucket',
+            id: 'archive/summary.txt',
+            mimeType: undefined,
+            name: 'summary.txt',
+            providerItemId: '["product-bucket","archive/summary.txt"]',
+          },
+          {
+            bucket: 'product-bucket',
+            id: 'archive/nested/notes.md',
+            mimeType: undefined,
+            name: 'notes.md',
+            providerItemId: '["product-bucket","archive/nested/notes.md"]',
+          },
+        ],
+        kind: 'online-drive-import',
+        syncPolicy: { enabled: true, mode: 'interval' },
+      },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 's3-preview' },
+    })
+    expect(JSON.parse(JSON.stringify(workflowRequest?.body))).toEqual({
+      items: [
+        {
+          bucket: 'product-bucket',
+          id: 'archive/report.pdf',
+          name: 'report.pdf',
+          providerItemId: '["product-bucket","archive/report.pdf"]',
+        },
+        {
+          bucket: 'product-bucket',
+          id: 'archive/summary.txt',
+          name: 'summary.txt',
+          providerItemId: '["product-bucket","archive/summary.txt"]',
+        },
+        {
+          bucket: 'product-bucket',
+          id: 'archive/nested/notes.md',
+          name: 'notes.md',
+          providerItemId: '["product-bucket","archive/nested/notes.md"]',
+        },
+      ],
+      kind: 'online-drive-import',
+      syncPolicy: { enabled: true, mode: 'interval' },
+    })
+    expect(clientMock.updateSyncPolicy).not.toHaveBeenCalled()
+
+    view.unmount()
+    expect(clientMock.deleteSource).not.toHaveBeenCalled()
+  })
+
+  it('rejects an oversized folder selection atomically at the 200-file limit', async () => {
+    const user = userEvent.setup()
+    const s3Draft: NewKnowledgeOnlineDriveSourceDraft = {
+      provider: 'Amazon S3',
+      sourceName: 'Oversized archive',
+      sourceType: 'onlineDrive',
+      syncPolicy: 'daily',
+    }
+    const s3Connection = connectionResponse({
+      configuration: {
+        credentialId: 's3-credential-1',
+        datasource: 'aws_s3_storage',
+        pluginId: 'langgenius/aws_s3_storage',
+        provider: 'aws_s3_storage',
+        providerKind: 'online-drive',
+      },
+      id: 's3-limit-connection',
+      name: 'AWS S3',
+      provider_id: 's3-provider',
+    })
+    const s3PreviewSource = sourceResponse({
+      connection_id: s3Connection.id,
+      id: 's3-limit-preview',
+      name: 'Amazon S3',
+      uri: 's3://s3-limit-connection',
+    })
+    const firstPageFiles = Array.from({ length: 200 }, (_, index) => ({
+      id: `large/file-${index + 1}.txt`,
+      name: `file-${index + 1}.txt`,
+      type: 'file',
+    }))
+
+    clientMock.listProviders.mockResolvedValue({
+      data: [s3Provider],
+    } satisfies KnowledgeFsSourceProviderListResponse)
+    clientMock.listDatasourcePlugins.mockResolvedValue([s3DatasourcePlugin])
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [s3DatasourceAuth],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [s3Connection],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.createSource.mockResolvedValue(s3PreviewSource)
+    clientMock.getFiles.mockImplementation(
+      ({
+        query,
+      }: {
+        query: {
+          bucket?: string
+          continuationToken?: string
+          prefix?: string
+        }
+      }) => {
+        if (!query.bucket)
+          return Promise.resolve({
+            buckets: [
+              {
+                bucket: 'limit-bucket',
+                continuation_token: null,
+                files: [],
+                is_truncated: false,
+              },
+            ],
+          })
+        if (!query.prefix)
+          return Promise.resolve({
+            buckets: [
+              {
+                bucket: 'limit-bucket',
+                continuation_token: null,
+                files: [
+                  {
+                    id: 'large/',
+                    name: 'Large folder',
+                    type: 'folder',
+                  },
+                ],
+                is_truncated: false,
+              },
+            ],
+          })
+        if (!query.continuationToken)
+          return Promise.resolve({
+            buckets: [
+              {
+                bucket: 'limit-bucket',
+                continuation_token: 'large-next',
+                files: firstPageFiles,
+                is_truncated: true,
+              },
+            ],
+          })
+        if (query.continuationToken === 'large-next')
+          return Promise.resolve({
+            buckets: [
+              {
+                bucket: 'limit-bucket',
+                continuation_token: null,
+                files: [
+                  {
+                    id: 'large/file-201.txt',
+                    name: 'file-201.txt',
+                    type: 'file',
+                  },
+                ],
+                is_truncated: false,
+              },
+            ],
+          })
+        throw new Error(`Unexpected S3 limit query: ${JSON.stringify(query)}`)
+      },
+    )
+
+    await renderSetup(s3Draft)
+
+    await user.click(await screen.findByRole('button', { name: 'limit-bucket' }))
+    const folder = await screen.findByRole('checkbox', { name: 'Large folder' })
+    await user.click(folder)
+
+    expect(await screen.findByText('knowledgeSources.maxPages: 200')).toBeInTheDocument()
+    expect(
+      screen.getByText('knowledgeSources.pagesSelected:{"count":0}', { exact: false }),
+    ).toBeInTheDocument()
+    expect(folder).toHaveAttribute('aria-checked', 'false')
+    expect(folder).toHaveAttribute('aria-describedby', 'connected-source-selection-limit')
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addSource' })).toBeDisabled()
+    expect(clientMock.createWorkflowImport).not.toHaveBeenCalled()
+    expect(clientMock.getFiles).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: s3PreviewSource.id },
+      query: {
+        bucket: 'limit-bucket',
+        continuationToken: 'large-next',
+        maxKeys: 200,
+        prefix: 'large/',
+      },
+    })
+  })
+})

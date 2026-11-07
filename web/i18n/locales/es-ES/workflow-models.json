@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "El campo requerido se utiliza solo como referencia para la inferencia del modelo, y no para la validación obligatoria de la salida del parámetro.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "Tipo",
   "nodes.parameterExtractor.advancedSetting": "Configuración avanzada",
-  "nodes.parameterExtractor.extractParametersNotSet": "Parámetros de extracción no configurados",
+  "nodes.parameterExtractor.extractParametersNotSet": "No hay parámetros de extracción configurados",
   "nodes.parameterExtractor.importFromTool": "Importar desde herramientas",
   "nodes.parameterExtractor.instruction": "Instrucción",
   "nodes.parameterExtractor.instructionTip": "Ingrese instrucciones adicionales para ayudar al extractor de parámetros a entender cómo extraer parámetros.",

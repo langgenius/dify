@@ -3,15 +3,16 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
+from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel
-from werkzeug.exceptions import HTTPException, InternalServerError, Unauthorized
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, UnauthorizedError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -27,7 +28,6 @@ from controllers.console.explore.error import (
     ConversationNotFoundHTTPError,
     InstalledAppNotFoundHTTPError,
     MessageCursorNotFoundHTTPError,
-    MessageFeedbackRatingRequiredHTTPError,
     MessageNotFoundHTTPError,
     NotChatAppError,
     NotCompletionAppError,
@@ -41,20 +41,30 @@ from fields.conversation_fields import ResultResponse
 from fields.message_fields import ExploreMessageInfiniteScrollPagination, SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from machinery.context import RequestContext
+from models.enums import FeedbackRating
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.entities.message_entities import MessageAccount
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.base import BaseServiceError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
+    FeedbackRatingRequiredError,
     FirstMessageNotExistsError,
+    MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_generation_service import InstalledAppNotCompletionError
-from services.installed_app_message_service import FeedbackRatingRequiredError, MessageNotChatAppError
+from services.message_more_like_this_service import (
+    MoreLikeThisConfigNotFoundError,
+    MoreLikeThisNotCompletionError,
+)
+from services.message_query_service import MessageNotChatAppError
 
 logger = logging.getLogger(__name__)
 
@@ -79,13 +89,13 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             return view(*args, **kwargs)
         except InstalledAppNotFoundError as error:
             raise InstalledAppNotFoundHTTPError() from error
-        except AppDefinitionUnavailableError as error:
+        except (AppDefinitionUnavailableError, MoreLikeThisConfigNotFoundError, AppModelConfigBrokenError) as error:
             raise AppUnavailableError() from error
-        except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+        except (AccountNotFoundError, MessageActorNotFoundError) as error:
+            raise UnauthorizedError("Account no longer exists.") from error
         except MessageNotChatAppError as error:
             raise NotChatAppError() from error
-        except InstalledAppNotCompletionError as error:
+        except MoreLikeThisNotCompletionError as error:
             raise NotCompletionAppError() from error
         except MessageNotExistsError as error:
             raise MessageNotFoundHTTPError() from error
@@ -94,7 +104,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except ConversationNotExistsError as error:
             raise ConversationNotFoundHTTPError() from error
         except FeedbackRatingRequiredError as error:
-            raise MessageFeedbackRatingRequiredHTTPError() from error
+            raise MessageFeedbackRatingRequiredError() from error
         except MoreLikeThisDisabledError as error:
             raise AppMoreLikeThisDisabledError() from error
         except SuggestedQuestionsAfterAnswerDisabledError as error:
@@ -107,7 +117,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderModelCurrentlyNotSupportError() from error
         except InvokeError as error:
             raise CompletionRequestError(error.description) from error
-        except (HTTPException, ValueError):
+        except (BaseHTTPException, ValueError):
             raise
         except Exception as error:
             logger.exception("Installed-app message operation failed")
@@ -121,8 +131,11 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     endpoint="installed_app_messages",
 )
 class MessageListApi(Resource):
+    @error_responses(
+        AppUnavailableError, ConversationNotFoundHTTPError, MessageCursorNotFoundHTTPError, NotChatAppError
+    )
     @console_ns.doc(params=query_params_from_model(MessageListQuery))
-    @console_ns.response(200, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(MessageListQuery)
@@ -130,9 +143,11 @@ class MessageListApi(Resource):
     def get(
         self, query: MessageListQuery, request_context: RequestContext, installed_app: InstalledAppRef
     ) -> dict[str, object]:
-        page = application_services().installed_app_messages.get_page(
+        page = application_services().message_queries.get_page(
+            app_id=installed_app.app_id,
+            app_owner_tenant_id=installed_app.app_owner_tenant_id,
+            actor=MessageAccount(account_id=request_context.account_id),
             installed_app=installed_app,
-            account_id=request_context.account_id,
             conversation_id=query.conversation_id,
             first_id=query.first_id or None,
             limit=query.limit,
@@ -145,8 +160,9 @@ class MessageListApi(Resource):
     endpoint="installed_app_message_feedback",
 )
 class MessageFeedbackApi(Resource):
+    @error_responses(AppUnavailableError, MessageFeedbackRatingRequiredError, MessageNotFoundHTTPError)
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(MessageFeedbackPayload)
@@ -158,11 +174,13 @@ class MessageFeedbackApi(Resource):
         installed_app: InstalledAppRef,
         message_id: UUID,
     ) -> dict[str, object]:
-        application_services().installed_app_messages.set_feedback(
+        application_services().message_feedbacks.set_feedback(
+            app_id=installed_app.app_id,
+            app_owner_tenant_id=installed_app.app_owner_tenant_id,
+            actor=MessageAccount(account_id=request_context.account_id),
             installed_app=installed_app,
-            account_id=request_context.account_id,
             message_id=str(message_id),
-            rating=payload.rating,
+            rating=FeedbackRating(payload.rating) if payload.rating is not None else None,
             content=payload.content,
         )
         return helper.dump_response(ResultResponse, {"result": "success"})
@@ -173,8 +191,18 @@ class MessageFeedbackApi(Resource):
     endpoint="installed_app_more_like_this",
 )
 class MessageMoreLikeThisApi(Resource):
+    @error_responses(
+        AppMoreLikeThisDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        MessageNotFoundHTTPError,
+        NotCompletionAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc(params=query_params_from_model(MoreLikeThisQuery))
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
     @model_validate(MoreLikeThisQuery)
@@ -186,9 +214,12 @@ class MessageMoreLikeThisApi(Resource):
         installed_app: InstalledAppRef,
         message_id: UUID,
     ) -> Response:
-        response = application_services().installed_app_generation.generate_more_like_this(
-            installed_app=installed_app,
-            account_id=request_context.account_id,
+        if installed_app.app_mode != "completion":
+            raise NotCompletionAppError()
+        response = application_services().message_more_like_this.generate(
+            app_id=installed_app.app_id,
+            app_owner_tenant_id=installed_app.app_owner_tenant_id,
+            actor=MessageAccount(account_id=request_context.account_id),
             message_id=str(message_id),
             streaming=query.response_mode == "streaming",
         )
@@ -201,17 +232,34 @@ class MessageMoreLikeThisApi(Resource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
+    @error_responses(
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ConversationNotFoundHTTPError,
+        MessageNotFoundHTTPError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @_message_errors
     def get(
         self, request_context: RequestContext, installed_app: InstalledAppRef, message_id: UUID
     ) -> dict[str, object]:
+        if installed_app.app_mode not in {"chat", "agent-chat", "advanced-chat"}:
+            raise NotChatAppError()
+
         try:
-            questions = application_services().installed_app_messages.get_suggested_questions(
-                installed_app=installed_app,
-                account_id=request_context.account_id,
+            questions = application_services().message_suggested_questions.get_suggested_questions(
+                app_id=installed_app.app_id,
+                app_owner_tenant_id=installed_app.app_owner_tenant_id,
+                expected_app_mode=installed_app.app_mode,
+                actor=MessageAccount(account_id=request_context.account_id),
+                invoke_from="explore",
                 message_id=str(message_id),
             )
         except (

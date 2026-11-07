@@ -1,9 +1,11 @@
 import type { RefObject } from 'react'
 import type { ToolsContentInset } from '../content-inset'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import Marketplace from '.'
 import { useToolMarketplacePanel } from './use-tool-marketplace-panel'
 
 type BuiltinMarketplacePanelProps = {
+  marketplace: MarketplaceLinks
   containerRef: RefObject<HTMLDivElement | null>
   contentInset: ToolsContentInset
   keywords: string
@@ -11,6 +13,7 @@ type BuiltinMarketplacePanelProps = {
 }
 
 export function BuiltinMarketplacePanel({
+  marketplace,
   containerRef,
   contentInset,
   keywords,
@@ -27,6 +30,7 @@ export function BuiltinMarketplacePanel({
     <>
       <div ref={toolListTailRef} />
       <Marketplace
+        marketplace={marketplace}
         searchPluginText={keywords}
         filterPluginTags={tagFilterValue}
         isMarketplaceArrowVisible={isMarketplaceArrowVisible}

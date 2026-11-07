@@ -44,11 +44,19 @@ const renderNotice = (accountId = 'user-1') => {
 }
 
 describe('EducationExpireNotice', () => {
+  const storageKey = 'dismissed-education-expire-notice'
+  let previousNotice: string | null
   beforeEach(() => {
-    localStorage.clear()
+    previousNotice = localStorage.getItem(storageKey)
+    localStorage.removeItem(storageKey)
     mockEducationStatus.allowRefresh = true
     mockEducationStatus.expireAt = Date.UTC(2099, 0, 1) / 1000
     mockPricingModal.isOpen = false
+  })
+
+  afterEach(() => {
+    if (previousNotice === null) localStorage.removeItem(storageKey)
+    else localStorage.setItem(storageKey, previousNotice)
   })
 
   it('persists dismissal for the same account, expiration date, and phase', async () => {

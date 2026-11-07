@@ -1,21 +1,12 @@
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { AccessRule } from '../types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AccessRuleSection from '../access-rule-section'
 
-const mocks = vi.hoisted(() => ({
-  workspacePermissionKeys: [] as string[],
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  }))
-})
+let workspacePermissionKeys: string[] = []
+const render = (ui: ReactElement) => renderWithConsoleQuery(ui, { workspacePermissionKeys })
 
 const rule: AccessRule = {
   policy: {
@@ -63,27 +54,18 @@ class MockIntersectionObserver {
   disconnect = vi.fn()
 }
 
-const renderWithQueryClient = (children: ReactNode) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
-
-  return render(<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>)
-}
-
 describe('AccessRuleSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.workspacePermissionKeys = []
+    workspacePermissionKeys = []
     intersectionObserverCallback = null
-    globalThis.IntersectionObserver =
-      MockIntersectionObserver as unknown as typeof IntersectionObserver
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
   })
 
+  afterEach(() => vi.unstubAllGlobals())
+
   it('should render a collapsed group and expand it when the header is clicked', async () => {
+    const user = userEvent.setup()
     render(
       <AccessRuleSection
         title="App Access Rules"
@@ -95,7 +77,7 @@ describe('AccessRuleSection', () => {
 
     expect(screen.queryByText('Full Control')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: /^App Access Rules/ }))
+    await user.click(screen.getByRole('button', { name: /^App Access Rules/ }))
 
     expect(screen.getByText('Full Control')).toBeInTheDocument()
   })
@@ -184,10 +166,11 @@ describe('AccessRuleSection', () => {
   })
 
   it('should expose create action when workspace role management is allowed', async () => {
-    mocks.workspacePermissionKeys = ['workspace.role.manage']
+    const user = userEvent.setup()
+    workspacePermissionKeys = ['workspace.role.manage']
     const onCreate = vi.fn()
 
-    renderWithQueryClient(
+    render(
       <AccessRuleSection
         title="App Access Rules"
         rules={[rule]}
@@ -197,32 +180,35 @@ describe('AccessRuleSection', () => {
       />,
     )
 
-    await userEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /permission\.accessRule\.newPermissionSet/ }),
     )
 
     expect(onCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('should keep row actions when workspace role management is allowed', async () => {
-    mocks.workspacePermissionKeys = ['workspace.role.manage']
+  it('opens the built-in rule through its authorized row action', async () => {
+    const user = userEvent.setup()
+    const onViewRule = vi.fn()
+    workspacePermissionKeys = ['workspace.role.manage']
 
-    renderWithQueryClient(
+    render(
       <AccessRuleSection
         title="App Access Rules"
         rules={[rule]}
         totalCount={1}
         isLoadingRules={false}
+        onViewRule={onViewRule}
         defaultExpanded
       />,
     )
 
     const trigger = screen.getByRole('button', { name: 'common.operation.moreActions' })
-    expect(trigger).not.toHaveAttribute('data-popup-open')
 
-    await userEvent.click(trigger)
+    await user.click(trigger)
 
-    expect(trigger).toHaveAttribute('data-popup-open', '')
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.view' }))
+    expect(onViewRule).toHaveBeenCalledExactlyOnceWith(rule)
   })
 
   it('should hide create action when workspace role management is missing', () => {

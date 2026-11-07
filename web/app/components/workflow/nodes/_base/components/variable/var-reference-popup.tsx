@@ -1,10 +1,12 @@
 'use client'
+
 import type { FC, RefObject } from 'react'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ListEmpty from '@/app/components/base/list-empty'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import VarReferenceVars from './var-reference-vars'
 
@@ -26,9 +28,9 @@ const VarReferencePopup: FC<Props> = ({
   isSupportFileVar = true,
   preferSchemaType,
 }) => {
-  const { t } = useTranslation(['workflow'])
-  const pipelineId = useStore((s) => s.pipelineId)
-  const showManageRagInputFields = useMemo(() => !!pipelineId, [pipelineId])
+  const { t } = useTranslation(['workflow'] as const)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
+  const showManageRagInputFields = resourceKind === 'knowledge-pipeline'
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
@@ -42,7 +44,7 @@ const VarReferencePopup: FC<Props> = ({
       {(!vars || vars.length === 0) && popupFor ? (
         popupFor === 'toAssigned' ? (
           <ListEmpty
-            title={t(($) => $['variableReference.noAvailableVars'], { ns: 'workflow' }) || ''}
+            title={t(($) => $['variableReference.noAvailableVars'], { ns: 'workflow' })}
             description={
               <div className="system-xs-regular text-text-tertiary">
                 {t(($) => $['variableReference.noVarsForOperation'], { ns: 'workflow' })}
@@ -51,7 +53,7 @@ const VarReferencePopup: FC<Props> = ({
           />
         ) : (
           <ListEmpty
-            title={t(($) => $['variableReference.noAssignedVars'], { ns: 'workflow' }) || ''}
+            title={t(($) => $['variableReference.noAssignedVars'], { ns: 'workflow' })}
             description={
               <div className="system-xs-regular text-text-tertiary">
                 {t(($) => $['variableReference.assignedVarsDescription'], { ns: 'workflow' })}

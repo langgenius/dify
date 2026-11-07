@@ -6,6 +6,7 @@ import {
   AlertDialogCancelButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '../index'
@@ -93,7 +94,9 @@ describe('AlertDialog wrapper', () => {
         <AlertDialog defaultOpen>
           <AlertDialogContent>
             <AlertDialogTitle>Delete project?</AlertDialogTitle>
-            <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>,
       )

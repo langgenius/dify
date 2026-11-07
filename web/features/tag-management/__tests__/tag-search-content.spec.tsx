@@ -1,10 +1,11 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
+import type { ReactElement } from 'react'
 import type { TagComboboxItem } from '../components/tag-combobox-item'
 import { Combobox, createComboboxItems } from '@langgenius/dify-ui/combobox'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMemo, useState } from 'react'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { isCreateTagOption } from '../components/tag-combobox-item'
 import { TagSearchContent } from '../components/tag-search-content'
 
@@ -16,12 +17,8 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
 }))
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { workspacePermissionKeys: mockWorkspacePermissionKeys.value })
 
 const i18n = {
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
@@ -109,8 +106,6 @@ const PanelHarness = ({
     >
       <TagSearchContent
         type={type}
-        inputValue={inputValue}
-        onInputValueChange={setInputValue}
         canBindOrUnbindTags={canBindOrUnbindTags}
         onOpenTagManagement={onOpenTagManagement}
       />
@@ -124,16 +119,6 @@ describe('TagSearchContent', () => {
     mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage']
   })
 
-  it('renders search, selected tags, unselected tags, and management action', () => {
-    render(<PanelHarness />)
-
-    expect(screen.getByRole('combobox', { name: i18n.selectorPlaceholder })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
-    expect(screen.queryByText('KnowledgeDB')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: i18n.manageTags })).toBeInTheDocument()
-  })
-
   it('filters options by the controlled combobox input value', async () => {
     const user = userEvent.setup()
     render(<PanelHarness />)
@@ -142,40 +127,6 @@ describe('TagSearchContent', () => {
 
     expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /API/i })).not.toBeInTheDocument()
-  })
-
-  it('clears only the search input from the input clear button', async () => {
-    const user = userEvent.setup()
-    render(<PanelHarness />)
-
-    const input = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
-    await user.type(input, 'Back')
-    expect(input).toHaveValue('Back')
-    vi.clearAllMocks()
-
-    const clearButton = screen.getByRole('button', { name: i18n.operationClear })
-    await user.pointer({ keys: '[MouseLeft>]', target: clearButton })
-    expect(input).toHaveFocus()
-    await user.pointer({ keys: '[/MouseLeft]', target: clearButton })
-
-    expect(input).toHaveValue('')
-    expect(input).toHaveFocus()
-    expect(onValueChangeSpy).not.toHaveBeenCalled()
-    expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
-  })
-
-  it('shows a create option when the query is not an existing tag name', async () => {
-    const user = userEvent.setup()
-    render(<PanelHarness />)
-
-    await user.type(screen.getByRole('combobox', { name: i18n.selectorPlaceholder }), 'BrandNewTag')
-
-    const createOption = screen.getByRole('option', { name: /BrandNewTag/i })
-    expect(createOption).toHaveTextContent(i18n.create)
-    expect(createOption).toHaveTextContent('BrandNewTag')
   })
 
   it('does not show a create option for an exact existing tag name', async () => {
@@ -192,7 +143,7 @@ describe('TagSearchContent', () => {
     render(<PanelHarness />)
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining(['tag-2']))
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(['tag-1', 'tag-2'])
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
     expect(onValueChangeSpy).toHaveBeenLastCalledWith(['tag-1'])
@@ -204,6 +155,7 @@ describe('TagSearchContent', () => {
 
     const input = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
     await user.type(input, 'BrandNewTag')
+    expect(screen.getByRole('option', { name: /BrandNewTag/i })).toHaveTextContent(i18n.create)
     await user.click(screen.getByRole('option', { name: /BrandNewTag/i }))
 
     expect(onValueChangeSpy).toHaveBeenLastCalledWith(
@@ -254,7 +206,7 @@ describe('TagSearchContent', () => {
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
 
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining(['tag-2']))
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(['tag-1', 'tag-2'])
     expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
   })
 

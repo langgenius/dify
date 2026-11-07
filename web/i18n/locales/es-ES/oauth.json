@@ -1,4 +1,8 @@
 {
+  "callback.error": "La autorización falló",
+  "callback.errorHint": "Vuelve a la página anterior e inténtalo de nuevo.",
+  "callback.success": "Autorización completada",
+  "callback.successHint": "Ya puedes cerrar esta pestaña y volver a la página anterior.",
   "connect": "Conectar a",
   "continue": "Continuar",
   "error.authAppInfoFetchFailed": "No se pudo obtener la información de la aplicación para la autorización",

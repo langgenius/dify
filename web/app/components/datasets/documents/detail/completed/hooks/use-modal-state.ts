@@ -1,24 +1,27 @@
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { useCallback, useState } from 'react'
 
 type CurrSegmentType = {
-  segInfo?: SegmentDetailModel
+  segInfo?: SegmentResponse
   showModal: boolean
   isEditMode?: boolean
 }
 
 type CurrChildChunkType = {
-  childChunkInfo?: ChildChunkDetail
+  childChunkInfo?: ChildChunkResponse
   showModal: boolean
 }
 
 type UseModalStateReturn = {
   currSegment: CurrSegmentType
-  onClickCard: (detail: SegmentDetailModel, isEditMode?: boolean) => void
+  onClickCard: (detail: SegmentResponse, isEditMode?: boolean) => void
   onCloseSegmentDetail: () => void
   currChildChunk: CurrChildChunkType
   currChunkId: string
-  onClickSlice: (detail: ChildChunkDetail) => void
+  onClickSlice: (detail: ChildChunkResponse) => void
   onCloseChildSegmentDetail: () => void
   onCloseNewSegmentModal: () => void
   showNewChildSegmentModal: boolean
@@ -45,7 +48,7 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
   const [fullScreen, setFullScreen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(true)
 
-  const onClickCard = useCallback((detail: SegmentDetailModel, isEditMode = false) => {
+  const onClickCard = useCallback((detail: SegmentResponse, isEditMode = false) => {
     setCurrChildChunk({ showModal: false })
     setCurrSegment({ segInfo: detail, showModal: true, isEditMode })
   }, [])
@@ -55,7 +58,7 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
     setFullScreen(false)
   }, [])
 
-  const onClickSlice = useCallback((detail: ChildChunkDetail) => {
+  const onClickSlice = useCallback((detail: ChildChunkResponse) => {
     setCurrSegment({ showModal: false })
     setCurrChildChunk({ childChunkInfo: detail, showModal: true })
     setCurrChunkId(detail.segment_id)

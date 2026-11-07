@@ -4,7 +4,6 @@ import { RiArrowRightLine, RiArrowRightUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
 import Link from '@/next/link'
 import { ToolType } from '../../workflow/block-selector/types'
 
@@ -32,7 +31,6 @@ const getLink = (type?: ToolType) => {
 const Empty = ({ type, isAgent }: Props) => {
   const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
-  const { theme } = useTheme()
 
   const hasLink = type === ToolType.Custom || type === ToolType.MCP
   const renderType = isAgent ? ('agent' as const) : type
@@ -47,7 +45,7 @@ const Empty = ({ type, isAgent }: Props) => {
   const tipContent = renderType && (
     <>
       {t(($) => $[`addToolModal.${renderType}.tip`], { ns: 'tools' })}{' '}
-      {hasLink && <RiArrowRightUpLine className="ml-0.5 size-3" />}
+      {hasLink && <RiArrowRightUpLine className="ms-0.5 size-3 rtl:-scale-x-100" />}
     </>
   )
 
@@ -78,7 +76,7 @@ const Empty = ({ type, isAgent }: Props) => {
                   </div>
                   <div className="h-px flex-1 bg-divider-subtle" />
                 </div>
-                <div className="text-left system-md-semibold text-text-secondary">
+                <div className="text-start system-md-semibold text-text-secondary">
                   {t(($) => $[stepKey], { ns: 'tools' })}
                 </div>
               </li>
@@ -90,7 +88,7 @@ const Empty = ({ type, isAgent }: Props) => {
           >
             {t(($) => $['workflowToolEmpty.goToStudio'], { ns: 'tools' })}
             <span className="flex size-5 items-center justify-center rounded-full bg-text-accent text-text-primary-on-surface">
-              <RiArrowRightLine className="size-4" />
+              <RiArrowRightLine className="size-4 rtl:rotate-180" />
             </span>
           </Link>
         </div>
@@ -110,10 +108,7 @@ const Empty = ({ type, isAgent }: Props) => {
     <div className="flex flex-col items-center justify-center">
       <span
         aria-hidden
-        className={cn(
-          'i-custom-vender-other-no-tool-placeholder h-9 w-51',
-          theme === 'dark' ? 'invert' : '',
-        )}
+        className="i-custom-vender-other-no-tool-placeholder h-9 w-51 dark:invert"
       />
       <div className="mt-2 mb-1 text-[13px] leading-4.5 font-medium text-text-primary">
         {hasTitle && renderType

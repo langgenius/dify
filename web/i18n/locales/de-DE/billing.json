@@ -8,6 +8,9 @@
   "apps.fullTip2": "Limit erreicht",
   "apps.fullTip2des": "Es wird empfohlen, inaktive Anwendungen zu bereinigen, um Speicherplatz freizugeben, oder uns zu kontaktieren.",
   "buyPermissionDeniedTip": "Bitte kontaktieren Sie Ihren Unternehmensadministrator, um zu abonnieren",
+  "errors.operationFailed": "Diese Anfrage konnte nicht abgeschlossen werden. Bitte versuchen Sie es später erneut. Wenn das Problem weiterhin besteht, wenden Sie sich an den Support.",
+  "errors.requestInProgress": "Ihre vorherige Anfrage wird noch bearbeitet. Bitte versuchen Sie es gleich noch einmal.",
+  "errors.unavailable": "Dieser Dienst ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.",
   "plans.community.btnText": "Beginnen Sie mit der Gemeinschaft",
   "plans.community.description": "Für Einzelbenutzer, kleine Teams oder nicht-kommerzielle Projekte",
   "plans.community.features": [
@@ -46,6 +49,7 @@
     "Priorisierte E-Mail- und Chatsupport"
   ],
   "plans.premium.includesTitle": "Alles aus der Community, plus:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Premium",
   "plans.premium.price": "Skalierbar",
   "plans.premium.priceTip": "Basierend auf dem Cloud-Marktplatz",
@@ -69,6 +73,7 @@
   "plansCommon.comparePlanAndFeatures": "Pläne und Funktionen vergleichen",
   "plansCommon.currentPlan": "Aktueller Tarif",
   "plansCommon.days": "Tage",
+  "plansCommon.discountedAnnualPrice": "Ermäßigter Jahrespreis: ",
   "plansCommon.documentProcessingPriority": "Priorität der Dokumentenverarbeitung",
   "plansCommon.documentProcessingPriorityTip": "Für eine höhere Priorität bei der Dokumentenverarbeitung upgraden Sie bitte Ihren Plan.",
   "plansCommon.documentProcessingPriorityUpgrade": "Mehr Daten mit höherer Genauigkeit bei schnelleren Geschwindigkeiten verarbeiten.",
@@ -87,6 +92,7 @@
   "plansCommon.modelProviders": "Modellanbieter",
   "plansCommon.month": "Monat",
   "plansCommon.mostPopular": "Am beliebtesten",
+  "plansCommon.originalAnnualPrice": "Ursprünglicher Jahrespreis: ",
   "plansCommon.priceTip": "pro Arbeitsbereich/",
   "plansCommon.priority.priority": "Priorität",
   "plansCommon.priority.standard": "Standard",
