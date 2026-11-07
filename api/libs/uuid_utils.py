@@ -12,6 +12,10 @@ import uuid
 # https://docs.python.org/3/library/struct.html#byte-order-size-and-alignment
 _PACK_TIMESTAMP = ">Q"
 
+# UUIDv7 carries a 48-bit timestamp (RFC 9562, Section 5.7), so the largest
+# representable timestamp is 2**48 - 1 milliseconds since the Unix epoch.
+_MAX_TIMESTAMP_MS = 2**48 - 1
+
 # Define the format for packing the 12-bit random data A (as specified in RFC 9562 Section 5.7)
 # into an unsigned 16-bit integer (big-endian).
 _PACK_RAND_A = ">H"
@@ -44,10 +48,19 @@ def _create_uuidv7_bytes(timestamp_ms: int, random_bytes: bytes) -> bytes:
     Returns:
         A 16-byte bytes object representing the complete UUIDv7 structure.
 
+    Raises:
+        ValueError: If timestamp_ms is outside the 48-bit range
+            (0 <= timestamp_ms <= 2**48 - 1). Out-of-range values used to
+            silently wrap (values above 2**48 - 1 lost their high bits) or
+            surface as struct.error (negative values).
+
     Note:
         This function assumes the random_bytes parameter is exactly 10 bytes.
         The caller is responsible for providing appropriate random data.
     """
+    if not 0 <= timestamp_ms <= _MAX_TIMESTAMP_MS:
+        raise ValueError(f"timestamp_ms must be between 0 and {_MAX_TIMESTAMP_MS} (48 bits), got {timestamp_ms}")
+
     # Create the 128-bit UUID structure
     uuid_bytes = bytearray(16)
 

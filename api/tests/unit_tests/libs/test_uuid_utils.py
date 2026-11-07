@@ -349,3 +349,48 @@ def test_uuidv7_boundary_edge_cases() -> None:
     assert isinstance(current_uuid, uuid.UUID)
     assert current_uuid.version == 7
     assert uuidv7_timestamp(current_uuid) == current_time
+
+
+def test_create_uuidv7_bytes_rejects_timestamp_above_48_bits() -> None:
+    """Timestamps above the 48-bit field must fail instead of silently wrapping."""
+    random_bytes = b"\x00" * 10
+
+    with pytest.raises(ValueError, match="48 bits"):
+        _create_uuidv7_bytes(2**48, random_bytes)
+    with pytest.raises(ValueError, match="48 bits"):
+        _create_uuidv7_bytes(2**48 + 1, random_bytes)
+
+
+def test_create_uuidv7_bytes_rejects_negative_timestamp() -> None:
+    """Negative timestamps must raise ValueError, not struct.error."""
+    random_bytes = b"\x00" * 10
+
+    with pytest.raises(ValueError, match="48 bits"):
+        _create_uuidv7_bytes(-1, random_bytes)
+
+
+def test_uuidv7_rejects_out_of_range_timestamp() -> None:
+    """uuidv7 must reject timestamps outside the 48-bit range."""
+    with pytest.raises(ValueError, match="48 bits"):
+        uuidv7(2**48)
+    with pytest.raises(ValueError, match="48 bits"):
+        uuidv7(2**48 + 1)
+    with pytest.raises(ValueError, match="48 bits"):
+        uuidv7(-1)
+
+
+def test_uuidv7_boundary_rejects_out_of_range_timestamp() -> None:
+    """uuidv7_boundary must reject timestamps outside the 48-bit range."""
+    with pytest.raises(ValueError, match="48 bits"):
+        uuidv7_boundary(2**48)
+    with pytest.raises(ValueError, match="48 bits"):
+        uuidv7_boundary(2**48 + 1)
+    with pytest.raises(ValueError, match="48 bits"):
+        uuidv7_boundary(-1)
+
+
+def test_uuidv7_timestamp_round_trip_at_48_bit_bounds() -> None:
+    """Timestamps at the edges of the 48-bit range round-trip exactly."""
+    for timestamp_ms in (0, 2**48 - 1):
+        assert uuidv7_timestamp(uuidv7(timestamp_ms)) == timestamp_ms
+        assert uuidv7_timestamp(uuidv7_boundary(timestamp_ms)) == timestamp_ms
