@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
+import AudioGallery from '..'
 import AudioPlayer from '../AudioPlayer'
 
 const decode = vi.fn()
@@ -64,6 +65,48 @@ afterEach(() => {
 })
 
 describe('AudioPlayer', () => {
+  it('keeps playback and position when the gallery receives an equal source list', async () => {
+    const interaction = user()
+    vi.mocked(HTMLMediaElement.prototype.load).mockImplementation(function (
+      this: HTMLMediaElement,
+    ) {
+      this.currentTime = 0
+    })
+    const { rerender } = render(
+      <AudioGallery srcs={['https://example.com/a.mp3', 'https://example.com/b.ogg']} />,
+    )
+    const audio = getAudio()
+    await interaction.click(playButton())
+    audio.currentTime = 42
+    fireEvent.timeUpdate(audio)
+
+    rerender(<AudioGallery srcs={['https://example.com/a.mp3', 'https://example.com/b.ogg']} />)
+
+    expect(audio.currentTime).toBe(42)
+    expect(screen.getByRole('button', { name: 'common.operation.pause' })).toBeInTheDocument()
+    expect(audio.load).toHaveBeenCalledOnce()
+    expect(audio.pause).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['reorder', ['https://example.com/b.ogg', 'https://example.com/a.mp3']],
+    [
+      'add',
+      ['https://example.com/a.mp3', 'https://example.com/b.ogg', 'https://example.com/c.wav'],
+    ],
+    ['remove', ['https://example.com/a.mp3']],
+    ['replace a fallback', ['https://example.com/a.mp3', 'https://example.com/c.wav']],
+  ])('reloads when sources %s', (_change, updatedSources) => {
+    const { rerender } = render(
+      <AudioGallery srcs={['https://example.com/a.mp3', 'https://example.com/b.ogg']} />,
+    )
+    rerender(<AudioGallery srcs={updatedSources} />)
+    expect(getAudio().load).toHaveBeenCalledTimes(2)
+    expect(Array.from(getAudio().querySelectorAll('source'), (source) => source.src)).toEqual(
+      updatedSources,
+    )
+  })
+
   it('plays, pauses, and returns to play when playback ends', async () => {
     const interaction = user()
     render(<AudioPlayer src="https://example.com/a.mp3" />)
