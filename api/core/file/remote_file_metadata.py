@@ -54,9 +54,9 @@ def guess_file_info_from_response(response: httpx.Response) -> FileInfo:
     if not filename:
         content_disposition = response.headers.get("Content-Disposition")
         if content_disposition:
-            filename_match = re.search(r'filename="?(.+)"?', content_disposition)
+            filename_match = re.search(r'filename\s*=\s*(?:"([^"]+)"|([^;]+))', content_disposition)
             if filename_match:
-                filename = filename_match.group(1)
+                filename = (filename_match.group(1) or filename_match.group(2)).strip()
 
     # If still no filename, generate a unique one
     if not filename:
