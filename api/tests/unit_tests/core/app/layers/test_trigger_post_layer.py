@@ -1,13 +1,12 @@
 import logging
 from collections.abc import Iterator
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import Engine, event
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.workflow.system_variables import build_system_variables
@@ -21,32 +20,22 @@ from models.enums import AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from models.trigger import WorkflowTriggerLog
 
 
-@dataclass(frozen=True)
-class TriggerDatabase:
-    session: Session
-    statements: list[str]
-
-
-@pytest.fixture(autouse=True)
-def trigger_database(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iterator[TriggerDatabase]:
-    """Create the trigger-log table and bind layer-owned sessions to SQLite."""
-    WorkflowTriggerLog.metadata.create_all(sqlite_engine, tables=[WorkflowTriggerLog.__table__])
-    sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
+@pytest.fixture
+def recorded_statements(sqlite_engine: Engine) -> Iterator[list[str]]:
+    """Record the statements the layer issues through the shared SQLite engine."""
     statements: list[str] = []
 
-    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def record_statement(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         statements.append(statement)
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement)
-    with sqlite_session_maker() as session:
-        try:
-            yield TriggerDatabase(session=session, statements=statements)
-        finally:
-            event.remove(sqlite_engine, "before_cursor_execute", record_statement)
+    try:
+        yield statements
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
 
-def _persist_trigger_log(database: TriggerDatabase, *, trigger_log_id: str = "log-1") -> WorkflowTriggerLog:
+def _persist_trigger_log(session: Session, *, trigger_log_id: str = "log-1") -> WorkflowTriggerLog:
     trigger_log = WorkflowTriggerLog(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -66,14 +55,14 @@ def _persist_trigger_log(database: TriggerDatabase, *, trigger_log_id: str = "lo
         created_by="account-1",
     )
     trigger_log.id = trigger_log_id
-    database.session.add(trigger_log)
-    database.session.commit()
+    session.add(trigger_log)
+    session.commit()
     return trigger_log
 
 
 class TestTriggerPostLayer:
-    def test_on_event_updates_trigger_log(self, trigger_database: TriggerDatabase):
-        trigger_log = _persist_trigger_log(trigger_database)
+    def test_on_event_updates_trigger_log(self, sqlite_session: Session) -> None:
+        trigger_log = _persist_trigger_log(sqlite_session)
         runtime_state = SimpleNamespace(
             outputs={"answer": "ok"},
             variable_pool=VariablePool.from_bootstrap(
@@ -96,8 +85,8 @@ class TestTriggerPostLayer:
 
             layer.on_event(GraphRunSucceededEvent())
 
-        trigger_database.session.expire_all()
-        persisted_log = trigger_database.session.get(WorkflowTriggerLog, trigger_log.id)
+        sqlite_session.expire_all()
+        persisted_log = sqlite_session.get(WorkflowTriggerLog, trigger_log.id)
         assert persisted_log is not None
         assert persisted_log.status == WorkflowTriggerStatus.SUCCEEDED
         assert persisted_log.workflow_run_id == "run-1"
@@ -106,8 +95,8 @@ class TestTriggerPostLayer:
         assert persisted_log.total_tokens == 12
         assert persisted_log.finished_at is not None
 
-    def test_on_event_updates_trigger_log_for_aborted_event(self, trigger_database: TriggerDatabase):
-        trigger_log = _persist_trigger_log(trigger_database)
+    def test_on_event_updates_trigger_log_for_aborted_event(self, sqlite_session: Session) -> None:
+        trigger_log = _persist_trigger_log(sqlite_session)
         runtime_state = SimpleNamespace(
             outputs={"partial": "ok"},
             variable_pool=VariablePool.from_bootstrap(
@@ -130,8 +119,8 @@ class TestTriggerPostLayer:
 
             layer.on_event(GraphRunAbortedEvent(reason="timeout"))
 
-        trigger_database.session.expire_all()
-        persisted_log = trigger_database.session.get(WorkflowTriggerLog, trigger_log.id)
+        sqlite_session.expire_all()
+        persisted_log = sqlite_session.get(WorkflowTriggerLog, trigger_log.id)
         assert persisted_log is not None
         assert persisted_log.status == WorkflowTriggerStatus.FAILED
         assert persisted_log.workflow_run_id == "run-1"
@@ -144,8 +133,8 @@ class TestTriggerPostLayer:
     def test_on_event_handles_missing_trigger_log(
         self,
         caplog: pytest.LogCaptureFixture,
-        trigger_database: TriggerDatabase,
-    ):
+        sqlite_session: Session,
+    ) -> None:
         runtime_state = SimpleNamespace(
             outputs={},
             variable_pool=VariablePool.from_bootstrap(
@@ -165,9 +154,9 @@ class TestTriggerPostLayer:
             layer.on_event(GraphRunFailedEvent(error="boom"))
 
         assert any(record.levelno == logging.ERROR for record in caplog.records)
-        assert trigger_database.session.get(WorkflowTriggerLog, "missing") is None
+        assert sqlite_session.get(WorkflowTriggerLog, "missing") is None
 
-    def test_on_event_ignores_non_status_events(self, trigger_database: TriggerDatabase):
+    def test_on_event_ignores_non_status_events(self, recorded_statements: list[str]) -> None:
         runtime_state = SimpleNamespace(
             outputs={},
             variable_pool=VariablePool.from_bootstrap(
@@ -183,7 +172,7 @@ class TestTriggerPostLayer:
         )
         layer.initialize(runtime_state, Mock())
 
-        trigger_database.statements.clear()
+        recorded_statements.clear()
         layer.on_event(Mock())
 
-        assert trigger_database.statements == []
+        assert recorded_statements == []
