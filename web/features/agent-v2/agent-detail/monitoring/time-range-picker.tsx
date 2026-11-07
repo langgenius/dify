@@ -19,8 +19,6 @@ import { MonitoringDateRangePicker } from '@/app/components/app/monitoring/date-
 import { formatToLocalTime } from '@/utils/format'
 import { buildPeriod, getRangeSelection } from './time-range'
 
-export type { AgentMonitoringPeriod } from './time-range'
-
 type TimeRangeKey = 'today' | 'last7days' | 'last30days'
 
 type TimeRangeOption = {
@@ -60,10 +58,11 @@ export function AgentMonitoringTimeRangePicker({
     if (!option) return
 
     const { start: nextStart, end: nextEnd } = getRangeSelection(option.days)
+    const nextName = t(($) => $[option.nameKey])
     setSelectedRange(option.value)
     setStart(nextStart)
     setEnd(nextEnd)
-    onChange(buildPeriod(t(($) => $[option.nameKey]), nextStart, nextEnd))
+    onChange(buildPeriod(nextName, nextStart, nextEnd))
   }
 
   const handleDateChange = (type: 'start' | 'end') => (date?: Dayjs) => {
@@ -91,7 +90,7 @@ export function AgentMonitoringTimeRangePicker({
       >
         <SelectTrigger
           aria-label={t(($) => $['agentDetail.monitoring.timeRangeLabel'])}
-          className="w-fit shrink-0 cursor-pointer gap-1.5 pr-2 pl-3"
+          className="w-fit shrink-0 cursor-pointer gap-1.5 ps-3 pe-2"
         >
           {selectedRange === 'custom'
             ? t(($) => $['agentDetail.monitoring.timeRanges.custom'])

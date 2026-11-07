@@ -11,7 +11,7 @@ export type AgentMonitoringPeriod = {
   query: AgentMonitoringPeriodQuery
 }
 
-export const queryDateFormat = 'YYYY-MM-DD HH:mm'
+const queryDateFormat = 'YYYY-MM-DD HH:mm'
 
 /**
  * The statistics endpoints treat the range as half-open (`start <= created_at < end`),

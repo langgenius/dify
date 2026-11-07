@@ -2,7 +2,7 @@
 
 import type { AgentLogSourceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
-import type { AgentMonitoringPeriod } from './time-range-picker'
+import type { AgentMonitoringPeriod } from './time-range'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   ScrollArea,

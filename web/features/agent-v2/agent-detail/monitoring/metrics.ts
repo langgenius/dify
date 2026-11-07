@@ -1,5 +1,6 @@
 import type { AgentStatisticSummaryEnvelopeResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentMonitoringChartRow, AgentMonitoringChartType } from './chart-utils'
+import type { AgentMonitoringPeriodQuery } from './time-range'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import { formatNumberAbbreviated } from '@/utils/format'
@@ -14,11 +15,6 @@ export type AgentMonitoringMetric = {
   valueKey: string
   unitKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
   yMaxWhenEmpty: number
-}
-
-type AgentMonitoringPeriodQuery = {
-  start: string
-  end: string
 }
 
 type ChartRowValue = number | string | undefined
