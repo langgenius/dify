@@ -67,7 +67,7 @@ afterEach(() => {
 describe('AudioPlayer', () => {
   it('keeps playback and position when the gallery receives an equal source list', async () => {
     const interaction = user()
-    vi.mocked(HTMLMediaElement.prototype.load).mockImplementation(function () {
+    vi.mocked(HTMLMediaElement.prototype.load).mockImplementation(function (this: HTMLMediaElement) {
       this.currentTime = 0
     })
     const { rerender } = render(
