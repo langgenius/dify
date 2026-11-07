@@ -1,13 +1,10 @@
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
 from decimal import Decimal
-from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import Table
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.sql.dml import Delete
 
 from models.agent import (
     Agent,
@@ -220,35 +217,6 @@ def test_purge_archived_agent_deletes_complete_aggregate_and_preserves_workflow_
         assert preserved_binding.agent_id == agent.id
         for row in preserved_rows:
             assert observer_session.get(type(row), row.id) is not None
-
-
-def test_purge_bulk_deletes_aggregate_dependencies_before_agent(monkeypatch: pytest.MonkeyPatch) -> None:
-    context = MagicMock()
-    session = context.__enter__.return_value
-    session.scalars.return_value.all.return_value = [_archived_agent()]
-    session.scalar.side_effect = [None, None]
-    deleted_tables: list[str] = []
-
-    def record_bulk_delete(statement: object) -> None:
-        if isinstance(statement, Delete):
-            deleted_tables.append(cast(Table, statement.table).name)
-
-    session.execute.side_effect = record_bulk_delete
-    monkeypatch.setattr("services.agent.deletion_service.session_factory.create_session", lambda: context)
-    AgentDeletionService.purge_archived_agents(tenant_id="tenant-1", agent_ids=["agent-1"])
-
-    assert deleted_tables == [
-        cast(Table, model.__table__).name
-        for model in (
-            AgentDebugConversation,
-            AgentConfigRevision,
-            AgentConfigDraft,
-            AgentConfigSnapshot,
-            AgentHomeSnapshot,
-            AgentWorkspaceBinding,
-            Agent,
-        )
-    ]
 
 
 @pytest.mark.parametrize(

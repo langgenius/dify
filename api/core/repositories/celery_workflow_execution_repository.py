@@ -11,11 +11,12 @@ from typing import override
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.repositories.factory import WorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from enums.creator import CreatorUserRole
 from graphon.entities import WorkflowExecution
-from models import Account, CreatorUserRole, EndUser
+from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
+from services.workflow.persistence import WorkflowExecutionRepository
 from tasks.workflow_execution_tasks import (
     save_workflow_execution_task,
 )

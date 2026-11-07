@@ -129,7 +129,7 @@ class TestRagPipelineVariableCollectionApi:
             restx_config,
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", sqlite_db),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.build_rag_pipeline_service",
                 return_value=rag_srv,
             ),
             patch(
@@ -160,7 +160,7 @@ class TestRagPipelineVariableCollectionApi:
             app.test_request_context("/"),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", sqlite_db),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.build_rag_pipeline_service",
                 return_value=rag_srv,
             ),
         ):
@@ -327,7 +327,7 @@ def test_direct_variable_access_rejects_different_user(
         patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", sqlite_db),
         patch.object(sqlite_db.session, "commit") as commit,
         patch(
-            "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
+            "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.build_rag_pipeline_service",
             return_value=rag_service,
         ),
         patch(
@@ -364,7 +364,7 @@ class TestRagPipelineVariableResetApi:
             app.test_request_context("/"),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", sqlite_db),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.build_rag_pipeline_service",
                 return_value=rag_srv,
             ),
             patch(
@@ -429,7 +429,7 @@ class TestSystemAndEnvironmentVariablesApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.build_rag_pipeline_service",
                 return_value=rag_srv,
             ),
         ):
@@ -461,7 +461,7 @@ class TestSystemAndEnvironmentVariablesApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.build_rag_pipeline_service",
                 return_value=rag_srv,
             ),
         ):

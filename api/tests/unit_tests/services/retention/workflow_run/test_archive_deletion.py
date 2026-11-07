@@ -13,10 +13,11 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.ext_redis import RedisClientWrapper
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorage, ArchiveStorageError
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowRunArchiveBundle, WorkflowType
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services.retention.workflow_run.archive_deletion import WorkflowRunArchiveDeleter

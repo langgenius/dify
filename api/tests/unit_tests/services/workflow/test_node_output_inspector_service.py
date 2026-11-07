@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.agent import (
     Agent,
@@ -34,7 +35,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import App
 from models.workflow import (
     WorkflowNodeExecutionModel,

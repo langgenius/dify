@@ -19,14 +19,15 @@ from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
 from core.workflow.file_reference import parse_file_reference
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from models import ToolFile
-from models.enums import ApiTokenType, CreatorUserRole
+from models.enums import ApiTokenType
 from models.model import ApiToken, UploadFile
-from services.file_service import FileService
+from repositories.file.upload_file_repository import get_upload_files_in_session
 from services.knowledge_fs.errors import (
     QUERY_IMAGE_MAX_COUNT,
     QUERY_IMAGE_MAX_TOTAL_BYTES,
@@ -103,7 +104,7 @@ def validate_query_image_references(
 
     with session_factory.create_session() as session:
         _assert_active_service_image_actor(session, tenant_id=tenant_id, account_id=account_id)
-        files_by_id = FileService.get_upload_files_by_ids(tenant_id, normalized_ids, session=session)
+        files_by_id = get_upload_files_in_session(session, tenant_id=tenant_id, upload_file_ids=normalized_ids)
         result: list[KnowledgeFSQueryImageMetadata] = []
         total_bytes = 0
         for upload_file_id in normalized_ids:
@@ -153,7 +154,7 @@ def load_query_image_previews(
         return {}
 
     with session_factory.create_session() as session:
-        files_by_id = FileService.get_upload_files_by_ids(tenant_id, unique_ids, session=session)
+        files_by_id = get_upload_files_in_session(session, tenant_id=tenant_id, upload_file_ids=unique_ids)
         previews: dict[str, KnowledgeFSQueryImagePreview] = {}
         for upload_file_id in unique_ids:
             upload_file = files_by_id.get(upload_file_id)
@@ -269,7 +270,7 @@ def load_query_image(
             raise KnowledgeFSQueryImageError("QUERY_IMAGE_SUBJECT_INVALID", "Query image subject is invalid")
         with session_factory.create_session() as session:
             _assert_active_service_image_actor(session, tenant_id=tenant_id, account_id=account_id)
-            upload_file = FileService.get_upload_files_by_ids(tenant_id, normalized_ids, session=session).get(
+            upload_file = get_upload_files_in_session(session, tenant_id=tenant_id, upload_file_ids=normalized_ids).get(
                 upload_file_id
             )
             if upload_file is None or upload_file.tenant_id != tenant_id:
@@ -405,10 +406,8 @@ def _load_granted_query_image_record(grant: _WorkflowQueryImageGrant) -> _QueryI
                 mime_type=_validate_image_metadata(mime_type=tool_file.mimetype, size=tool_file.size),
                 size=tool_file.size,
             )
-        upload_file = FileService.get_upload_files_by_ids(
-            grant.tenant_id,
-            [grant.file_id],
-            session=session,
+        upload_file = get_upload_files_in_session(
+            session, tenant_id=grant.tenant_id, upload_file_ids=[grant.file_id]
         ).get(grant.file_id)
         if upload_file is None:
             raise KnowledgeFSQueryImageError("QUERY_IMAGE_NOT_FOUND", "Query image was not found")

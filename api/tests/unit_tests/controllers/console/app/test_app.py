@@ -161,6 +161,24 @@ def _make_request_context() -> RequestContext:
     )
 
 
+@dataclass
+class _CompletionGenerationFake:
+    result: dict[str, str] | None = None
+    error: Exception | None = None
+
+    def generate(self, **_kwargs: object) -> dict[str, str]:
+        if self.error is not None:
+            raise self.error
+        if self.result is None:
+            raise AssertionError("the test must configure a completion result or error")
+        return self.result
+
+
+@dataclass(frozen=True)
+class _CompletionServices:
+    app_generation: _CompletionGenerationFake
+
+
 class TestAppApisCases:
     @staticmethod
     @pytest.fixture
@@ -193,11 +211,11 @@ class TestAppApisCases:
         ) -> None:
             api = completion_module.CompletionMessageApi()
             method = unwrap(api.post)
-
+            generation = _CompletionGenerationFake(result={"text": "ok"})
             monkeypatch.setattr(
-                completion_module.AppGenerateService,
-                "generate",
-                lambda **_kwargs: {"text": "ok"},
+                completion_module,
+                "application_services",
+                lambda: _CompletionServices(app_generation=generation),
             )
             monkeypatch.setattr(
                 completion_module.helper,
@@ -224,13 +242,13 @@ class TestAppApisCases:
         ) -> None:
             api = completion_module.CompletionMessageApi()
             method = unwrap(api.post)
-
+            generation = _CompletionGenerationFake(
+                error=completion_module.services.errors.conversation.ConversationNotExistsError()
+            )
             monkeypatch.setattr(
-                completion_module.AppGenerateService,
-                "generate",
-                lambda **_kwargs: (_ for _ in ()).throw(
-                    completion_module.services.errors.conversation.ConversationNotExistsError()
-                ),
+                completion_module,
+                "application_services",
+                lambda: _CompletionServices(app_generation=generation),
             )
 
             with (
@@ -251,11 +269,11 @@ class TestAppApisCases:
         ) -> None:
             api = completion_module.CompletionMessageApi()
             method = unwrap(api.post)
-
+            generation = _CompletionGenerationFake(error=completion_module.ProviderTokenNotInitError("x"))
             monkeypatch.setattr(
-                completion_module.AppGenerateService,
-                "generate",
-                lambda **_kwargs: (_ for _ in ()).throw(completion_module.ProviderTokenNotInitError("x")),
+                completion_module,
+                "application_services",
+                lambda: _CompletionServices(app_generation=generation),
             )
 
             with (
@@ -276,11 +294,11 @@ class TestAppApisCases:
         ) -> None:
             api = completion_module.CompletionMessageApi()
             method = unwrap(api.post)
-
+            generation = _CompletionGenerationFake(error=completion_module.QuotaExceededError())
             monkeypatch.setattr(
-                completion_module.AppGenerateService,
-                "generate",
-                lambda **_kwargs: (_ for _ in ()).throw(completion_module.QuotaExceededError()),
+                completion_module,
+                "application_services",
+                lambda: _CompletionServices(app_generation=generation),
             )
 
             with (

@@ -22,8 +22,10 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.web import remote_files as remote_files_module
+from enums.creator import CreatorUserRole
 from libs.exception import BaseHTTPException
 from models.model import App, AppMode, EndUser
+from services.entities.upload_file import FileUploadActor
 from services.errors.file import (
     BlockedFileExtensionError as ServiceBlockedFileExtensionError,
 )
@@ -144,9 +146,10 @@ class TestRemoteFileInfoApi:
 
 
 class TestRemoteFileUploadApi:
-    def test_upload_delegates_without_overriding_web_tenant(self, app: Flask) -> None:
+    def test_upload_delegates_with_explicit_web_actor_and_tenant(self, app: Flask) -> None:
         remote_files = MagicMock()
         remote_files.upload_from_url.return_value = _upload_result()
+        app_model = _app_model()
         end_user = _end_user()
         url = "https://example.com/report.txt"
 
@@ -154,7 +157,7 @@ class TestRemoteFileUploadApi:
             app.test_request_context("/remote-files/upload", method="POST", json={"url": url}),
             _patch_application_services(remote_files),
         ):
-            response, status = remote_files_module.RemoteFileUploadApi().post(_app_model(), end_user)
+            response, status = remote_files_module.RemoteFileUploadApi().post(app_model, end_user)
 
         assert status == 201
         assert response == {
@@ -167,7 +170,11 @@ class TestRemoteFileUploadApi:
             "created_by": "eu-1",
             "created_at": 1704067200,
         }
-        remote_files.upload_from_url.assert_called_once_with(url=url, user=end_user)
+        remote_files.upload_from_url.assert_called_once_with(
+            url=url,
+            actor=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+            tenant_id=app_model.tenant_id,
+        )
 
     def test_uses_complete_message_for_empty_file_size_error(self, app: Flask) -> None:
         remote_files = MagicMock()

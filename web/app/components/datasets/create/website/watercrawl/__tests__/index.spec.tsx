@@ -373,10 +373,20 @@ describe('WaterCrawl', () => {
             resume = resolve
           }),
       )
-      vi.mocked(createWatercrawlTask).mockResolvedValueOnce({ job_id: 'limit-job' })
+      vi.mocked(createWatercrawlTask).mockResolvedValueOnce({
+        job_id: 'limit-job',
+        status: 'active',
+      })
       vi.mocked(checkWatercrawlTaskStatus)
-        .mockResolvedValueOnce({ status: 'running', current: 1, total: 100, data: [] })
         .mockResolvedValueOnce({
+          job_id: 'limit-job',
+          status: 'running',
+          current: 1,
+          total: 100,
+          data: [],
+        })
+        .mockResolvedValueOnce({
+          job_id: 'limit-job',
           status: 'completed',
           current: 1,
           total: 100,

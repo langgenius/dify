@@ -237,6 +237,18 @@ export const zRagPipelineWorkflowPublishResponse = z.object({
 })
 
 /**
+ * DatasetConcurrentUpdateError
+ *
+ * The dataset changed while it was being updated. Please retry the request.
+ */
+export const zDatasetConcurrentUpdateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_concurrent_update'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * DatasourceContentPreviewPayload
  */
 export const zDatasourceContentPreviewPayload = z.object({

@@ -18,8 +18,8 @@ from libs.datetime_utils import naive_utc_now
 from models.application_trace import ApplicationTraceRun
 from models.enums import ConversationFromSource
 from models.model import AppMode, Message
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AgentTraceSettings
 from services.tracing.egress import SSRFEgress
@@ -55,8 +55,10 @@ def bind_worker(
         sources=collection.repository,
         records=TraceRecordRepository(
             collection.sessions,
-            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(collection.sessions),
-            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(collection.sessions),
+            workflow_runs=WorkflowRepositoryFactory.create_api_workflow_run_repository(collection.sessions),
+            node_executions=WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
+                collection.sessions
+            ),
             files_url="https://files.test",
             enterprise_details=False,
         ),

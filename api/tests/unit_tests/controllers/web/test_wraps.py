@@ -33,7 +33,7 @@ from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.entities.feature_entities import FeatureModel
-from services.file_service import FileService
+from services.file_adapters import build_file_service
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_authentication_adapters import PassportWebAppSessionGateway
 from services.web_passport_gateways import PassportTokenGateway
@@ -159,7 +159,7 @@ def _harness(
         app_definitions=AppDefinitionQueryService(definitions=definitions, builtin_icon_url_prefix=""),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=definitions,
-            file_service=FileService(session_factory=factory),
+            file_service=build_file_service(session_factory=factory),
             workspace_features=lambda _: FeatureModel(),
             files_url="https://files.example",
             deployment_edition=DeploymentEdition.CLOUD,

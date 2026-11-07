@@ -19,6 +19,7 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from fields.file_fields import FileResponse
+from services.entities.upload_file import FileUploadActor
 
 
 @openapi_ns.route("/apps/<string:app_id>/files")
@@ -53,4 +54,11 @@ class AppFileUploadApi(Resource):
     )
     def post(self, ctx: Context, app_id: str, *, body: FileUploadPayload):
         end_read_transaction(ctx.session)
-        return FileResponse.model_validate(upload(body.file, ctx.caller), from_attributes=True)
+        return FileResponse.model_validate(
+            upload(
+                body.file,
+                actor=FileUploadActor(id=ctx.caller.id, creator_role=ctx.subject.caller_role),
+                tenant_id=ctx.workspace.id,
+            ),
+            from_attributes=True,
+        )

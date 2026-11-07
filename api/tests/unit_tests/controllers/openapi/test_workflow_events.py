@@ -20,9 +20,10 @@ from werkzeug.exceptions import NotFound
 
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
 from core.db.session_factory import session_factory
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
-from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.enums import EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
 
@@ -116,7 +117,7 @@ class TestOpenApiWorkflowEventsApi:
         repo_mock.get_workflow_run_by_id_and_tenant_id.return_value = workflow_run
         factory_mock = Mock()
         factory_mock.create_api_workflow_run_repository.return_value = repo_mock
-        monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
+        monkeypatch.setattr(module, "WorkflowRepositoryFactory", factory_mock)
         return factory_mock
 
     def _bind_generators(self, monkeypatch: pytest.MonkeyPatch) -> None:

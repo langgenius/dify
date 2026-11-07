@@ -1,12 +1,16 @@
 from typing import cast
 
+import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.sql.elements import ClauseElement
 
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from services.account_activation_service import ActivationCommitOutcomeUnknownError
 from services.entities.account_activation_entities import AccountInvitation, AccountSetup, InvitationToken
 
 
@@ -29,6 +33,7 @@ def _invitation() -> AccountInvitation:
         workspace_name="Workspace",
         role="admin",
         requires_setup=True,
+        membership_exists=False,
     )
 
 
@@ -53,6 +58,33 @@ class TestResolveInvitation:
 
         assert result == _invitation()
 
+    def test_reports_existing_membership(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        account, tenant = _persist_invitation_state(sqlite_session)
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.NORMAL,
+            )
+        )
+        sqlite_session.commit()
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+
+        result = repository.resolve(
+            InvitationToken(
+                account_id=account.id,
+                email=account.email,
+                workspace_id=tenant.id,
+            )
+        )
+
+        assert result is not None
+        assert result.membership_exists is True
+
     def test_rejects_token_for_different_account(
         self,
         sqlite_session: Session,
@@ -73,6 +105,61 @@ class TestResolveInvitation:
 
 
 class TestPersistActivation:
+    def test_reports_lost_connection_during_commit_as_unknown(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        mocker: MockerFixture,
+    ) -> None:
+        _persist_invitation_state(sqlite_session)
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+        commit_error = OperationalError(
+            "COMMIT",
+            {},
+            ConnectionError("connection lost"),
+            connection_invalidated=True,
+        )
+        mocker.patch.object(sqlite_session_factory.class_, "commit", side_effect=commit_error)
+
+        with pytest.raises(ActivationCommitOutcomeUnknownError):
+            repository.activate(_invitation(), role="admin", setup=None)
+
+    def test_propagates_explicit_commit_failure_as_rolled_back(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        mocker: MockerFixture,
+    ) -> None:
+        _persist_invitation_state(sqlite_session)
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+        commit_error = OperationalError(
+            "COMMIT",
+            {},
+            RuntimeError("serialization failure"),
+            connection_invalidated=False,
+        )
+        mocker.patch.object(sqlite_session_factory.class_, "commit", side_effect=commit_error)
+
+        with pytest.raises(OperationalError, match="serialization failure"):
+            repository.activate(_invitation(), role="admin", setup=None)
+
+    def test_propagates_non_database_commit_failure_as_rolled_back(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        mocker: MockerFixture,
+    ) -> None:
+        _persist_invitation_state(sqlite_session)
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+        mocker.patch.object(
+            sqlite_session_factory.class_,
+            "commit",
+            side_effect=RuntimeError("commit was not attempted"),
+        )
+
+        with pytest.raises(RuntimeError, match="commit was not attempted"):
+            repository.activate(_invitation(), role="admin", setup=None)
+
     def test_locks_account_while_switching_current_workspace(
         self,
         sqlite_session: Session,

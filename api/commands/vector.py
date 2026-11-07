@@ -19,7 +19,7 @@ from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, D
 from models.dataset import Document as DatasetDocument
 from models.enums import DatasetMetadataType, IndexingStatus, SegmentStatus
 from models.model import App, AppAnnotationSetting, MessageAnnotation
-from repositories.knowledge.dataset_read_repository import get_segment_child_chunks
+from repositories.knowledge.segment_query_repository import get_segment_child_chunks
 
 
 @click.command("vdb-migrate", help="Migrate vector db.")

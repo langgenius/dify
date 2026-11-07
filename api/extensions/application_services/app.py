@@ -12,8 +12,8 @@ from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.dsl_import_repository import DslImportRepository
 from repositories.app.enterprise_app_repository import EnterpriseAppRepository
 from repositories.app.export_repository import AppExportRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
@@ -90,7 +90,7 @@ def build_app_services(
                 app_web_url=dify_config.APP_WEB_URL,
                 service_api_url=dify_config.SERVICE_API_URL,
             ),
-            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=database_client),
+            workflow_runs=WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker=database_client),
             now=naive_utc_now,
         ),
         triggers=SQLAlchemyAppTriggerRepository(session_factory=database_client),

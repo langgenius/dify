@@ -4,11 +4,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import (
     AppTriggerType,
-    CreatorUserRole,
     EndUserType,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,

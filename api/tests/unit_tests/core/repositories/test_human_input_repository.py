@@ -60,7 +60,7 @@ from models.human_input import (
     RecipientType,
     StandaloneWebAppRecipientPayload,
 )
-from repositories.human_input_errors import FormAlreadyHandledError
+from services.errors.human_input import FormAlreadyHandledError
 
 """Unit tests for HumanInputFormRepositoryImpl private helpers."""
 
@@ -523,6 +523,9 @@ def _human_input_repository_persist_form(
     session.add(form)
     session.commit()
     return form
+
+
+_persist_form = _human_input_repository_persist_form
 
 
 def _persist_recipient(
@@ -1110,18 +1113,6 @@ class TestHumanInputRepositoryCases:
         assert record.status == HumanInputFormStatus.TIMEOUT
 
     @staticmethod
-    def test_mark_timeout_submitted_raises_form_not_found(repository_session: Session) -> None:
-        form = _human_input_repository_persist_form(
-            repository_session,
-            form_id="f",
-            workflow_run_id=None,
-            status=HumanInputFormStatus.SUBMITTED,
-        )
-        repo = HumanInputFormSubmissionRepository()
-        with pytest.raises(FormNotFoundError, match="form already submitted"):
-            repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.EXPIRED)
-
-    @staticmethod
     def test_mark_timeout_updates_fields(repository_session: Session) -> None:
         form = _human_input_repository_persist_form(repository_session, form_id="f", workflow_run_id=None)
         form.selected_action_id = "a"
@@ -1275,3 +1266,20 @@ def repository_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -
     )
     with repository_session_factory() as session:
         yield session
+
+
+def test_mark_timeout_submitted_raises_already_handled(repository_session: Session) -> None:
+    form = _persist_form(
+        repository_session,
+        form_id="f",
+        workflow_run_id=None,
+        status=HumanInputFormStatus.SUBMITTED,
+    )
+    repo = HumanInputFormSubmissionRepository()
+    with pytest.raises(FormAlreadyHandledError) as error:
+        repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.EXPIRED)
+    assert error.value.status == HumanInputFormStatus.SUBMITTED
+    repository_session.expire_all()
+    persisted = repository_session.get(HumanInputForm, form.id)
+    assert persisted is not None
+    assert persisted.status == HumanInputFormStatus.SUBMITTED

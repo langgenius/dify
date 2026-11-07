@@ -8,9 +8,10 @@ from faker import Faker
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowNodeExecutionStatus
 from machinery.context import RequestContext
-from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole
+from models.enums import ConversationFromSource, ConversationStatus
 from models.model import (
     AppMode,
     Conversation,
@@ -18,8 +19,8 @@ from models.model import (
 )
 from models.workflow import WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.app_service import AppService, CreateAppParams
 from services.workflow_run_service import WorkflowRunService
 from tests.e2e_tests.containers.helpers import accounts as account_fixtures
@@ -38,7 +39,7 @@ class TestWorkflowRunService:
         return WorkflowRunService(
             workflow_runs=workflow_runs,
             session_factory=session_factory,
-            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            node_executions=WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
                 session_maker=session_factory
             ),
         )

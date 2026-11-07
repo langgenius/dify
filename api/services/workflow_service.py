@@ -4,7 +4,7 @@ import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import exists, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -15,7 +15,6 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.file_access import DatabaseFileAccessController
 from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
-from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.human_input_adapter import (
@@ -92,7 +91,8 @@ from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.factory import WorkflowRepositoryFactory
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -102,6 +102,7 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from services.file_adapters import build_file_service
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
 from services.workflow.workflow_converter import WorkflowConverter
@@ -120,6 +121,9 @@ from .human_input_delivery_test_service import (
 )
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
 from .workflow_restore import apply_published_workflow_snapshot_to_draft
+
+if TYPE_CHECKING:
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 
 @dataclass(frozen=True)
@@ -220,7 +224,7 @@ class WorkflowService:
         """Initialize WorkflowService with repository dependencies."""
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        self._node_execution_service_repo = WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
 
@@ -446,6 +450,9 @@ class WorkflowService:
 
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+        previous_upload_file_payloads = (
+            (workflow.graph, workflow._conversation_variables) if workflow is not None else ()
+        )
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
@@ -500,6 +507,12 @@ class WorkflowService:
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
+        lock_new_workflow_upload_file_references(
+            session,
+            tenant_id=app_model.tenant_id,
+            previous_payloads=previous_upload_file_payloads,
+            current_payloads=(workflow.graph, workflow._conversation_variables),
+        )
         session.flush()
         retirement_candidates: set[str] = set()
         if sync_agent_bindings:
@@ -591,14 +604,22 @@ class WorkflowService:
         Update draft workflow conversation variables
         """
         # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow(app_model=app_model, session=session)
+        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
 
         if not workflow:
             raise ValueError("No draft workflow found.")
 
+        previous_conversation_variables = workflow._conversation_variables
         workflow.conversation_variables = conversation_variables
         workflow.updated_by = account.id
         workflow.updated_at = naive_utc_now()
+
+        lock_new_workflow_upload_file_references(
+            session,
+            tenant_id=app_model.tenant_id,
+            previous_payloads=(previous_conversation_variables,),
+            current_payloads=(workflow._conversation_variables,),
+        )
 
         # commit db session changes
         session.commit()
@@ -655,7 +676,10 @@ class WorkflowService:
         self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
-        draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
+        draft_workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+        previous_upload_file_payloads = (
+            (draft_workflow.graph, draft_workflow._conversation_variables) if draft_workflow is not None else ()
+        )
         draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -667,6 +691,13 @@ class WorkflowService:
 
         if is_new_draft:
             session.add(draft_workflow)
+
+        lock_new_workflow_upload_file_references(
+            session,
+            tenant_id=app_model.tenant_id,
+            previous_payloads=previous_upload_file_payloads,
+            current_payloads=(draft_workflow.graph, draft_workflow._conversation_variables),
+        )
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -697,10 +728,14 @@ class WorkflowService:
         marked_name: str = "",
         marked_comment: str = "",
     ) -> Workflow:
-        draft_workflow_stmt = select(Workflow).where(
-            Workflow.tenant_id == app_model.tenant_id,
-            Workflow.app_id == app_model.id,
-            Workflow.version == Workflow.VERSION_DRAFT,
+        draft_workflow_stmt = (
+            select(Workflow)
+            .where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.version == Workflow.VERSION_DRAFT,
+            )
+            .with_for_update()
         )
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
@@ -767,6 +802,11 @@ class WorkflowService:
         )
 
         # commit db session changes
+        lock_new_workflow_upload_file_references(
+            session,
+            tenant_id=app_model.tenant_id,
+            current_payloads=(workflow.graph, workflow._conversation_variables),
+        )
         session.add(workflow)
         WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
             session=session,
@@ -775,11 +815,7 @@ class WorkflowService:
         )
 
         # trigger app workflow events
-        app_published_workflow_was_updated.send(
-            app_model,
-            published_workflow=workflow,
-            session=session,
-        )
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow, session=session)
 
         # return new workflow
         return workflow
@@ -1174,6 +1210,8 @@ class WorkflowService:
         account: Account,
         query: str = "",
         files: Sequence[File] | None = None,
+        *,
+        knowledge_retrieval: "KnowledgeRetriever",
     ) -> WorkflowNodeExecutionModel:
         """
         Run draft workflow node
@@ -1243,6 +1281,7 @@ class WorkflowService:
             enclosing_node_id = None
 
         run = WorkflowEntry.single_step_run(
+            knowledge_retrieval=knowledge_retrieval,
             execution_driver=WorkflowRunAgg.run,
             workflow=draft_workflow,
             node_id=node_id,
@@ -1252,12 +1291,15 @@ class WorkflowService:
             variable_loader=variable_loader,
         )
 
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        draft_variable_sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
+        file_creator = build_file_service(session_factory=draft_variable_sessions)
+        repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             tenant_id=app_model.tenant_id,
             user=account,
             app_id=app_model.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            files=file_creator,
         )
         node, node_events = run
         if is_agent_preview:
@@ -1330,7 +1372,7 @@ class WorkflowService:
         with sessionmaker(db.engine).begin() as session:
             outputs = workflow_node_execution.load_full_outputs(session, storage)
 
-        with sessionmaker(bind=db.engine).begin() as session:
+        with draft_variable_sessions.begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 tenant_id=app_model.tenant_id,
@@ -1340,6 +1382,7 @@ class WorkflowService:
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=node_execution.id,
                 user=account,
+                files=file_creator,
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
 
@@ -1481,7 +1524,9 @@ class WorkflowService:
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
         enclosing_node_id = enclosing_node_type_and_id[1] if enclosing_node_type_and_id else None
-        with sessionmaker(bind=db.engine).begin() as session:
+        draft_variable_sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
+        file_creator = build_file_service(session_factory=draft_variable_sessions)
+        with draft_variable_sessions.begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 tenant_id=app_model.tenant_id,
@@ -1490,6 +1535,7 @@ class WorkflowService:
                 node_type=BuiltinNodeTypes.HUMAN_INPUT,
                 node_execution_id=str(uuid.uuid4()),
                 user=account,
+                files=file_creator,
                 enclosing_node_id=enclosing_node_id,
             )
             draft_var_saver.save(outputs=outputs, process_data={})
@@ -1698,7 +1744,14 @@ class WorkflowService:
         return variable_pool
 
     def run_free_workflow_node(
-        self, node_data: dict[str, Any], tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
+        self,
+        node_data: dict[str, Any],
+        tenant_id: str,
+        user_id: str,
+        node_id: str,
+        user_inputs: dict[str, Any],
+        *,
+        knowledge_retrieval: "KnowledgeRetriever",
     ) -> WorkflowNodeExecution:
         """
         Run free workflow node
@@ -1713,6 +1766,7 @@ class WorkflowService:
                 tenant_id=tenant_id,
                 user_id=user_id,
                 user_inputs=user_inputs,
+                knowledge_retrieval=knowledge_retrieval,
             ),
             start_at=start_at,
             node_id=node_id,

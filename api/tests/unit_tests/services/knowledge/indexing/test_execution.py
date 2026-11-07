@@ -1,12 +1,95 @@
+from collections.abc import Generator
+from contextlib import AbstractContextManager, contextmanager
+from dataclasses import dataclass, field
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.rag.models.document import Document
+from services.entities.upload_file import CreatedUploadArtifact
+from services.extraction.contracts import ExtractionResult
+from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.indexing.contracts import IndexingDocument, StoredSource
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
-from services.knowledge.indexing.estimate import StoredSource
-from services.knowledge.indexing.execution import DocumentIndexingService, IndexingDocument
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.indexing.execution import DocumentIndexingService, IndexingTransformResult
+from services.knowledge.indexing.locks import (
+    KnowledgeIndexingLease,
+    KnowledgeIndexingLeaseLostError,
+    document_index_lock_name,
+)
+
+
+@dataclass
+class _TestIndexingLease:
+    token: str = "test-indexing-lease"
+    lose_on_assertion: int | None = None
+    assertions: int = 0
+    released: bool = False
+
+    def assert_owned(self) -> None:
+        self.assertions += 1
+        if self.lose_on_assertion == self.assertions:
+            raise KnowledgeIndexingLeaseLostError("test lease lost")
+
+    def renew(self) -> bool:
+        return not self.released
+
+    def release(self) -> bool:
+        was_owned = not self.released
+        self.released = True
+        return was_owned
+
+
+@dataclass
+class _TestIndexingLock:
+    held_names: list[str] = field(default_factory=list)
+    leases: list[_TestIndexingLease] = field(default_factory=list)
+
+    def try_acquire(self, name: str, *, timeout: int) -> KnowledgeIndexingLease | None:
+        del name, timeout
+        raise AssertionError("unexpected try_acquire call")
+
+    def try_acquire_handoff(
+        self,
+        name: str,
+        *,
+        timeout: int,
+        owner_id: str,
+    ) -> KnowledgeIndexingLease | None:
+        del name, timeout, owner_id
+        raise AssertionError("unexpected try_acquire_handoff call")
+
+    @contextmanager
+    def hold(
+        self,
+        name: str,
+        *,
+        timeout: int,
+        expected_token: str | None = None,
+        blocking_timeout: float = 0,
+    ) -> Generator[KnowledgeIndexingLease]:
+        assert timeout == 600
+        assert expected_token is None
+        assert blocking_timeout == 600
+        lease = _TestIndexingLease(token=f"test-indexing-lease-{len(self.leases) + 1}")
+        self.held_names.append(name)
+        self.leases.append(lease)
+        try:
+            yield lease
+        finally:
+            lease.release()
+
+    def hold_handoff(
+        self,
+        name: str,
+        *,
+        timeout: int,
+        owner_id: str,
+        blocking_timeout: float = 0,
+    ) -> AbstractContextManager[KnowledgeIndexingLease]:
+        del name, timeout, owner_id, blocking_timeout
+        raise AssertionError("unexpected hold_handoff call")
+
 
 ExecutionFixture = tuple[DocumentIndexingService, MagicMock, IndexingDocument, list[Document]]
 
@@ -15,20 +98,27 @@ ExecutionFixture = tuple[DocumentIndexingService, MagicMock, IndexingDocument, l
 def execution() -> ExecutionFixture:
     ref = DatasetRef("tenant", "dataset").document("document")
     document = IndexingDocument(
-        StoredSource(ref, "upload_file", {}, "text_model"), {"mode": "automatic"}, "English", False
+        StoredSource(ref, "upload_file", {}, "text_model"),
+        {"mode": "automatic"},
+        "English",
+        False,
     )
     ports = MagicMock()
     ports.documents.get_indexing_document.return_value = document
     chunks = [Document(page_content="one"), Document(page_content="two")]
-    ports.backend.extract.return_value = chunks
-    ports.backend.transform.return_value = chunks
+    ports.backend.extract.return_value = ExtractionResult(documents=chunks)
+    ports.backend.transform.return_value = IndexingTransformResult(chunks=chunks)
     ports.backend.count_tokens.return_value = [7, 11]
     ports.backend.describe_error.side_effect = str
     ports.segments.resume_indexing.return_value = (chunks[1:], 18)
+    ports.segments.save_for_indexing.return_value = ()
+    ports.segments.get_pending_upload_cleanup_ids.return_value = ()
+    ports.indexing_locks = _TestIndexingLock()
     service = DocumentIndexingService(
         documents=ports.documents,
         segments=ports.segments,
         backend=ports.backend,
+        indexing_locks=ports.indexing_locks,
         enforce_vector_space_admission=True,
         clock=iter([10, 13]).__next__,
     )
@@ -44,19 +134,114 @@ def test_completion_waits_for_persisted_segments_and_all_index_writes(execution:
         service.run_in_splitting_status(document.ref)
     else:
         service.run_in_indexing_status(document.ref)
+
     calls = [call[0] for call in ports.mock_calls]
     assert calls.index("backend.load") < calls.index("documents.complete_indexing")
     ports.documents.complete_indexing.assert_called_once_with(document.ref, tokens=18, latency=3)
     if start == "indexing":
         ports.backend.extract.assert_not_called()
+        ports.documents.mark_splitting.assert_not_called()
         ports.segments.save_for_indexing.assert_not_called()
         ports.backend.load.assert_called_once_with(document, chunks[1:])
     else:
+        ports.documents.mark_splitting.assert_called_once_with(document.ref, source_version=None)
         assert calls.index("segments.save_for_indexing") < calls.index("backend.load")
         ports.segments.save_for_indexing.assert_called_once_with(document, chunks, [7, 11])
-        if start == "splitting":
-            assert calls.index("segments.clear_for_indexing") < calls.index("backend.extract")
     assert ports.backend.ensure_admission.call_count == (start == "parsing")
+
+
+def test_execution_acquires_and_releases_the_document_indexing_lock(execution: ExecutionFixture) -> None:
+    service, ports, document, _ = execution
+
+    service.run([document.ref])
+
+    indexing_locks = ports.indexing_locks
+    assert isinstance(indexing_locks, _TestIndexingLock)
+    assert indexing_locks.held_names == [document_index_lock_name(document.ref.document_id)]
+    [lease] = indexing_locks.leases
+    assert lease.assertions > 0
+    assert lease.released
+
+
+def test_owned_lease_is_reused_without_acquiring_or_releasing_another_lock(execution: ExecutionFixture) -> None:
+    service, ports, document, _ = execution
+    owned_lease = _TestIndexingLease(token="task-owned-lease")
+
+    service.run([document.ref], owned_leases={document.ref.document_id: owned_lease})
+
+    indexing_locks = ports.indexing_locks
+    assert isinstance(indexing_locks, _TestIndexingLock)
+    assert indexing_locks.held_names == []
+    assert owned_lease.assertions > 0
+    assert not owned_lease.released
+
+
+def test_lost_owned_lease_does_not_persist_failure_or_completion(execution: ExecutionFixture) -> None:
+    service, ports, document, _ = execution
+    owned_lease = _TestIndexingLease(token="task-owned-lease", lose_on_assertion=3)
+
+    with pytest.raises(KnowledgeIndexingLeaseLostError, match="test lease lost"):
+        service.run([document.ref], owned_leases={document.ref.document_id: owned_lease})
+
+    ports.documents.mark_splitting.assert_called_once()
+    ports.documents.fail_indexing.assert_not_called()
+    ports.documents.complete_indexing.assert_not_called()
+
+
+def test_replacement_reclaims_old_files_only_after_new_segments_commit(execution: ExecutionFixture) -> None:
+    service, ports, document, _ = execution
+    ports.segments.save_for_indexing.return_value = ("old-image",)
+
+    service.run_in_splitting_status(document.ref)
+
+    calls = [call[0] for call in ports.mock_calls]
+    assert calls.index("segments.save_for_indexing") < calls.index("backend.reclaim_upload_files")
+    assert calls.index("backend.reclaim_upload_files") < calls.index("segments.acknowledge_upload_cleanup")
+    assert calls.index("segments.acknowledge_upload_cleanup") < calls.index("backend.load")
+    ports.backend.reclaim_upload_files.assert_called_once_with(document, ("old-image",))
+    ports.segments.acknowledge_upload_cleanup.assert_called_once_with(document, ("old-image",))
+
+
+def test_replacement_reclaim_failure_keeps_pending_evidence(execution: ExecutionFixture) -> None:
+    service, ports, document, _ = execution
+    ports.segments.save_for_indexing.return_value = ("old-image",)
+    ports.backend.reclaim_upload_files.side_effect = RuntimeError("storage unavailable")
+
+    service.run_in_splitting_status(document.ref)
+
+    ports.segments.acknowledge_upload_cleanup.assert_not_called()
+    ports.backend.load.assert_not_called()
+    ports.documents.fail_indexing.assert_called_once_with(document.ref, "storage unavailable")
+
+
+def test_source_version_is_staged_with_splitting_and_not_passed_to_completion(execution: ExecutionFixture) -> None:
+    service, ports, document, chunks = execution
+    ports.backend.extract.return_value = ExtractionResult(
+        documents=chunks,
+        source_version="2026-10-24T00:00:00Z",
+    )
+
+    service.run([document.ref])
+
+    ports.documents.mark_splitting.assert_called_once_with(
+        document.ref,
+        source_version="2026-10-24T00:00:00Z",
+    )
+    ports.documents.complete_indexing.assert_called_once_with(document.ref, tokens=18, latency=3)
+
+
+def test_extractor_artifacts_are_cleaned_when_a_later_phase_fails(execution: ExecutionFixture) -> None:
+    service, ports, document, chunks = execution
+    artifact = CreatedUploadArtifact("upload-1", "workspace-1/extracted.png")
+    ports.backend.extract.return_value = ExtractionResult(
+        documents=chunks,
+        created_upload_artifacts=(artifact,),
+    )
+    ports.backend.load.side_effect = RuntimeError("index unavailable")
+
+    service.run([document.ref])
+
+    ports.backend.cleanup_created_upload_files.assert_called_once_with(document, (artifact.id,))
 
 
 @pytest.mark.parametrize("stage", ["extract", "transform", "ensure_admission", "count_tokens", "load"])
@@ -70,7 +255,9 @@ def test_failed_phase_records_error_without_completing(execution: ExecutionFixtu
         "load": ports.backend.load,
     }[stage]
     operation.side_effect = RuntimeError("index unavailable")
+
     service.run([document.ref])
+
     ports.documents.complete_indexing.assert_not_called()
     ports.documents.fail_indexing.assert_called_once_with(document.ref, "index unavailable")
     if stage != "load":
@@ -97,13 +284,33 @@ def test_pause_and_deletion_do_not_become_indexing_errors(
     ports.documents.fail_indexing.assert_not_called()
 
 
-def test_pause_after_worker_completion_prevents_document_completion(execution: ExecutionFixture) -> None:
-    service, ports, document, _ = execution
-    ports.backend.check_paused.side_effect = [None, None, DocumentIsPausedError()]
+def test_pause_after_source_version_is_staged_preserves_it_for_recovery(execution: ExecutionFixture) -> None:
+    service, ports, document, chunks = execution
+    ports.backend.extract.return_value = ExtractionResult(
+        documents=chunks,
+        source_version="2026-10-24T00:00:00Z",
+    )
+    ports.backend.check_paused.side_effect = [None, DocumentIsPausedError()]
+
     with pytest.raises(DocumentIsPausedError):
         service.run([document.ref])
-    ports.documents.complete_indexing.assert_not_called()
+
+    ports.documents.mark_splitting.assert_called_once_with(
+        document.ref,
+        source_version="2026-10-24T00:00:00Z",
+    )
     ports.documents.fail_indexing.assert_not_called()
+    ports.documents.complete_indexing.assert_not_called()
+
+
+def test_resume_from_indexing_relies_on_persisted_source_version(execution: ExecutionFixture) -> None:
+    service, ports, document, _ = execution
+
+    service.run_in_indexing_status(document.ref)
+
+    ports.backend.extract.assert_not_called()
+    ports.documents.mark_splitting.assert_not_called()
+    ports.documents.complete_indexing.assert_called_once_with(document.ref, tokens=18, latency=3)
 
 
 def test_missing_document_is_skipped(execution: ExecutionFixture) -> None:

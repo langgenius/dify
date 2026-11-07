@@ -314,6 +314,7 @@ def test_writes_use_explicit_actor_and_preserve_omitted_icon_type(
     app = persist_app(sqlite_session, icon_type=IconType.IMAGE)
     result = repository.update(CONTEXT, app.id, UpdateAppParams(name="Updated"))
     assert result.icon_type == IconType.IMAGE
+    assert result.icon == ""
     assert result.updated_by == ACTOR
     sqlite_session.expire_all()
     persisted = sqlite_session.get(App, app.id)

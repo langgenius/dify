@@ -38,6 +38,7 @@ from services.workflow_execution_identity import build_workflow_execution_identi
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -60,6 +61,7 @@ class WorkflowTool(Tool):
         workflow_call_depth: int,
         entity: ToolEntity,
         runtime: ToolRuntime,
+        knowledge_retrieval: KnowledgeRetriever | None = None,
         label: str = "Workflow",
         execution_driver: WorkflowRunDriver | None = None,
     ):
@@ -70,6 +72,7 @@ class WorkflowTool(Tool):
         self.workflow_call_depth = workflow_call_depth
         self.label = label
         self.execution_driver = execution_driver
+        self._knowledge_retrieval = knowledge_retrieval
         self._latest_usage = LLMUsage.empty_usage()
         self._parent_trace_context = None
         self._trace_session_id = None
@@ -108,7 +111,13 @@ class WorkflowTool(Tool):
 
         if self.execution_driver is None:
             raise ToolInvokeError("Workflow execution driver is required")
-        generator = WorkflowAppGenerator(execution_driver=self.execution_driver)
+        knowledge_retrieval = self._knowledge_retrieval
+        if knowledge_retrieval is None:
+            raise ToolInvokeError("Knowledge retrieval runtime is required")
+        generator = WorkflowAppGenerator(
+            execution_driver=self.execution_driver,
+            knowledge_retrieval=knowledge_retrieval,
+        )
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
 
@@ -250,10 +259,26 @@ class WorkflowTool(Tool):
             version=self.version,
             label=self.label,
             execution_driver=self.execution_driver,
+            knowledge_retrieval=self._knowledge_retrieval,
         )
         forked._parent_trace_context = self._parent_trace_context.model_copy() if self._parent_trace_context else None
         forked._trace_session_id = self._trace_session_id
         return forked
+
+    def bind_execution_dependencies(
+        self,
+        *,
+        execution_driver: WorkflowRunDriver | None,
+        knowledge_retrieval: KnowledgeRetriever,
+    ) -> None:
+        """Bind dependencies on an execution-scoped fork of this tool definition.
+
+        Tool definitions may be constructed without execution dependencies for
+        metadata and parameter-configuration operations. Once a definition is
+        bound for execution, knowledge retrieval is required.
+        """
+        self.execution_driver = execution_driver
+        self._knowledge_retrieval = knowledge_retrieval
 
     def set_parent_trace_context(
         self,

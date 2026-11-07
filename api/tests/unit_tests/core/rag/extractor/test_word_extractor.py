@@ -17,15 +17,10 @@ from docx.opc.part import Part
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from httpx import Response
-from PIL import Image
-from sqlalchemy import event, select
-from sqlalchemy.orm import Session
 
 import core.rag.extractor.word_extractor as we
 from core.rag.extractor.word_extractor import WordExtractor
-from extensions.storage.opendal_storage import OpenDALStorage
-from models.model import UploadFile
-from tests.helpers.unit.config_override import apply_config_overrides
+from services.extraction.contracts import ExtractedImage, ImageReference
 
 
 class _TextOxmlElement(Protocol):
@@ -40,6 +35,18 @@ class _CloseRecorder:
     def close(self) -> object | None:
         self.close_calls += 1
         return self.result
+
+
+class _ImageWriter:
+    def __init__(self, *, fail_after: int | None = None) -> None:
+        self.calls: list[ExtractedImage] = []
+        self._fail_after = fail_after
+
+    def write(self, image: ExtractedImage) -> ImageReference:
+        self.calls.append(image)
+        if self._fail_after is not None and len(self.calls) == self._fail_after:
+            raise RuntimeError("storage failure")
+        return ImageReference(preview_url=f"http://files.local/files/image-{len(self.calls)}/file-preview")
 
 
 def _set_oxml_text(element: object, text: str) -> None:
@@ -112,7 +119,7 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(we.remote_fetcher, "make_request", fake_make_request)
 
-    extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id")
+    extractor = WordExtractor("https://example.com/test.docx")
     try:
         assert calls
         assert calls[0][0] == "get"
@@ -129,22 +136,10 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
         extractor.temp_file.close()
 
 
-@pytest.mark.parametrize("inject_session", [False, True])
-def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch, inject_session: bool, sqlite_session: Session):
+def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch):
     external_bytes = b"ext-bytes"
     internal_bytes = b"int-bytes"
-
-    # Patch storage.save to capture writes
-    saves: list[tuple[str, bytes]] = []
-
-    def save(key: str, data: bytes):
-        saves.append((key, data))
-
-    monkeypatch.setattr(we.storage, "save", save)
-    monkeypatch.setattr(we.db, "session", sqlite_session, raising=False)
-
-    # Patch config values used for URL composition and storage type
-    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
+    writer = _ImageWriter()
 
     # Patch external image fetcher
     def fake_make_request(method: str, url: str, **kwargs):
@@ -160,11 +155,7 @@ def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch, inject_sessio
     doc.part.rels.add_relationship(RT.IMAGE, internal_part, "rId2")
 
     extractor = object.__new__(WordExtractor)
-    extractor.tenant_id = "00000000-0000-0000-0000-000000000001"
-    extractor.user_id = "00000000-0000-0000-0000-000000000002"
-    extractor._session = sqlite_session if inject_session else None
-    transaction_events: list[str] = []
-    event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
+    extractor._image_writer = writer
 
     image_map = extractor._extract_images_from_docx(doc)
 
@@ -172,68 +163,31 @@ def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch, inject_sessio
     assert set(image_map.keys()) == {"rId1", internal_part}
     assert all(v.startswith("![image](") and v.endswith("/file-preview)") for v in image_map.values())
 
-    # Storage should receive both payloads
-    payloads = {data for _, data in saves}
-    assert external_bytes in payloads
-    assert internal_bytes in payloads
-
-    assert len(sqlite_session.scalars(select(UploadFile)).all()) == 2
-    assert transaction_events == ([] if inject_session else ["commit"])
+    assert writer.calls == [
+        ExtractedImage(content=external_bytes, extension="png", mime_type="image/png"),
+        ExtractedImage(content=internal_bytes, extension="png", mime_type="image/png"),
+    ]
 
 
-def test_extract_images_does_not_stage_partial_files_on_storage_failure(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+def test_extract_images_propagates_image_writer_failure():
     doc = Document()
     doc.part.rels.add_relationship(RT.IMAGE, _image_part("image1.png", b"first"), "rId1")
     doc.part.rels.add_relationship(RT.IMAGE, _image_part("image2.png", b"second"), "rId2")
 
-    save_calls = 0
-
-    def save(key: str, data: bytes) -> None:
-        nonlocal save_calls
-        save_calls += 1
-        if save_calls == 2:
-            raise RuntimeError("storage failure")
-
-    monkeypatch.setattr(we.storage, "save", save)
-    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
-
+    writer = _ImageWriter(fail_after=2)
     extractor = object.__new__(WordExtractor)
-    extractor.tenant_id = "00000000-0000-0000-0000-000000000001"
-    extractor.user_id = "00000000-0000-0000-0000-000000000002"
-    extractor._session = sqlite_session
+    extractor._image_writer = writer
 
     with pytest.raises(RuntimeError, match="storage failure"):
         extractor._extract_images_from_docx(doc)
 
-    assert sqlite_session.scalars(select(UploadFile)).all() == []
+    assert writer.calls == [
+        ExtractedImage(content=b"first", extension="png", mime_type="image/png"),
+        ExtractedImage(content=b"second", extension="png", mime_type="image/png"),
+    ]
 
 
-def test_extract_images_from_docx_uses_internal_files_url(monkeypatch: pytest.MonkeyPatch):
-    """Test that INTERNAL_FILES_URL takes precedence over FILES_URL for plugin access."""
-    # Test the URL generation logic directly
-    from configs import dify_config
-
-    apply_config_overrides(
-        monkeypatch,
-        FILES_URL="http://external.example.com",
-        INTERNAL_FILES_URL="http://internal.docker:5001",
-    )
-
-    upload_file_id = "test_file_id"
-
-    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
-    generated_url = f"{base_url}/files/{upload_file_id}/file-preview"
-
-    assert "http://internal.docker:5001" in generated_url, f"Expected internal URL, got: {generated_url}"
-    assert "http://external.example.com" not in generated_url, f"Should not use external URL, got: {generated_url}"
-
-
-def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
-    # Patch db and storage to avoid issues during image extraction (even if no images are present)
-    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
-
+def test_extract_hyperlinks():
     doc = Document()
     p = doc.add_paragraph("Visit ")
 
@@ -262,7 +216,7 @@ def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Se
         tmp_path = tmp.name
 
     try:
-        extractor = WordExtractor(tmp_path, "tenant_id", "user_id", session=unbound_session)
+        extractor = WordExtractor(tmp_path)
         docs = extractor.extract()
         # Verify modern hyperlink extraction
         assert "Visit[Dify](https://dify.ai)" in docs[0].page_content
@@ -271,10 +225,7 @@ def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Se
             os.remove(tmp_path)
 
 
-def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
-    # Mock db and storage
-    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
-
+def test_extract_legacy_hyperlinks():
     doc = Document()
     p = doc.add_paragraph()
 
@@ -320,7 +271,7 @@ def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_sess
         tmp_path = tmp.name
 
     try:
-        extractor = WordExtractor(tmp_path, "tenant_id", "user_id", session=unbound_session)
+        extractor = WordExtractor(tmp_path)
         docs = extractor.extract()
         # Verify legacy hyperlink extraction
         assert "[Example](http://example.com)" in docs[0].page_content
@@ -329,12 +280,29 @@ def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_sess
             os.remove(tmp_path)
 
 
+def test_text_only_extraction_skips_word_images(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    document = Document()
+    document.add_paragraph("preview text")
+    file_path = tmp_path / "preview.docx"
+    document.save(file_path)
+    extractor = WordExtractor(str(file_path))
+
+    def fail_if_called(_document: object) -> dict[object, str]:
+        pytest.fail("text-only extraction must not persist Word images")
+
+    monkeypatch.setattr(extractor, "_extract_images_from_docx", fail_if_called)
+
+    extracted = extractor.extract()
+
+    assert "preview text" in extracted[0].page_content
+
+
 def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch):
     response = Response(404, content=b"")
     monkeypatch.setattr(we.remote_fetcher, "make_request", lambda method, url, **kwargs: response)
 
     with pytest.raises(ValueError, match="returned status code 404"):
-        WordExtractor("https://example.com/missing.docx", "tenant", "user")
+        WordExtractor("https://example.com/missing.docx")
 
     assert response.is_closed
 
@@ -350,12 +318,12 @@ def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path: Pa
         lambda p: p == str(target_file),
     )
 
-    extractor = WordExtractor("~/expanded.docx", "tenant", "user")
+    extractor = WordExtractor("~/expanded.docx")
     assert extractor.file_path == str(target_file)
 
     monkeypatch.setattr(we.os.path, "isfile", lambda p: False)
     with pytest.raises(ValueError, match="is not a valid file or url"):
-        WordExtractor("not-a-file", "tenant", "user")
+        WordExtractor("not-a-file")
 
 
 def test_close_closes_temp_file():
@@ -404,7 +372,7 @@ def test_close_closes_awaitable_close_result():
     assert extractor.temp_file.close_calls == 1
 
 
-def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch):
     doc = Document()
     doc.part.rels.add_relationship(RT.IMAGE, "image-no-url", "r1", is_external=True)
     doc.part.rels.add_relationship(RT.IMAGE, "https://example.com/image-error", "r2", is_external=True)
@@ -417,20 +385,15 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
         return Response(200, headers={"Content-Type": "application/unknown"}, content=b"x")
 
     monkeypatch.setattr(we.remote_fetcher, "make_request", fake_make_request)
-    monkeypatch.setattr(we.db, "session", sqlite_session, raising=False)
-    apply_config_overrides(monkeypatch, FILES_URL="http://files.local")
 
     extractor = object.__new__(WordExtractor)
-    extractor.tenant_id = "tenant"
-    extractor.user_id = "user"
-    extractor._session = None
-    transaction_events: list[str] = []
-    event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
+    writer = _ImageWriter()
+    extractor._image_writer = writer
 
     result = extractor._extract_images_from_docx(doc)
 
     assert result == {}
-    assert transaction_events == ["commit"]
+    assert writer.calls == []
 
 
 def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
@@ -483,6 +446,7 @@ def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyP
         tmp_path = tmp.name
 
     extractor = object.__new__(WordExtractor)
+    extractor._image_writer = _ImageWriter()
     monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: {})
 
     try:
@@ -498,6 +462,7 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ):
     extractor = object.__new__(WordExtractor)
+    extractor._image_writer = _ImageWriter()
 
     ext_image_id = "ext-image"
     int_embed_id = "int-embed"
@@ -744,63 +709,3 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
-
-
-@pytest.fixture
-def local_image_storage(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> OpenDALStorage:
-    local_storage = OpenDALStorage(scheme="fs", root=str(tmp_path / "storage"))
-    monkeypatch.setattr(we.storage, "storage_runner", local_storage, raising=False)
-    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
-    return local_storage
-
-
-@pytest.mark.parametrize("part_name", ["image1.png", "logo.png", "Logo.PNG"])
-def test_extract_preserves_image_relationships_regardless_of_part_name(
-    tmp_path: Path, sqlite_session: Session, local_image_storage: OpenDALStorage, part_name: str
-) -> None:
-    png = io.BytesIO()
-    Image.new("RGB", (2, 2), "red").save(png, format="PNG")
-    image_bytes = png.getvalue()
-    png.seek(0)
-    doc = Document()
-    doc.add_paragraph("Before logo")
-    doc.add_picture(png)
-    doc.add_paragraph("After logo")
-    image_rel = next(rel for rel in doc.part.rels.values() if rel.reltype == RT.IMAGE)
-    image_rel.target_part._partname = PackURI(f"/word/media/{part_name}")
-    path = tmp_path / "logo.docx"
-    doc.save(str(path))
-    assert len(Document(str(path)).inline_shapes) == 1
-
-    content = (
-        WordExtractor(
-            str(path),
-            "00000000-0000-0000-0000-000000000001",
-            "00000000-0000-0000-0000-000000000002",
-            session=sqlite_session,
-        )
-        .extract()[0]
-        .page_content
-    )
-
-    upload = sqlite_session.scalars(select(UploadFile)).one()
-    image_link = f"![image](http://files.local/files/{upload.id}/file-preview)"
-    assert content.index("Before logo") < content.index(image_link) < content.index("After logo")
-    assert local_image_storage.load_once(upload.key) == image_bytes
-
-
-def test_extract_ignores_non_image_relationship_with_image_in_target(
-    tmp_path: Path, sqlite_session: Session, local_image_storage: OpenDALStorage
-) -> None:
-    doc = Document()
-    doc.add_paragraph("Visible text")
-    metadata = Part(PackURI("/word/image-metadata.xml"), "application/xml", b"<metadata/>")
-    doc.part.rels.add_relationship(RT.CUSTOM_XML, metadata, "rIdMetadata")
-    path = tmp_path / "metadata.docx"
-    doc.save(str(path))
-
-    content = WordExtractor(str(path), "tenant", "user", session=sqlite_session).extract()[0].page_content
-
-    assert content == "Visible text"
-    assert sqlite_session.scalars(select(UploadFile)).all() == []
-    assert not local_image_storage.exists("image_files/")

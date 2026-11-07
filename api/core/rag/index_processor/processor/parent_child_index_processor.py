@@ -3,6 +3,7 @@
 import json
 import logging
 import uuid
+from collections.abc import Callable, Mapping
 from typing import Any, TypedDict, override
 
 from sqlalchemy import delete, select
@@ -17,8 +18,6 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.entities import ParentMode, Rule
-from core.rag.extractor.entity.extract_setting import ExtractSetting
-from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
@@ -43,24 +42,24 @@ class ParentChildFormatPreviewDict(TypedDict):
 
 class ParentChildIndexProcessor(BaseIndexProcessor):
     @override
-    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
-        text_docs = ExtractProcessor.extract(
-            extract_setting=extract_setting,
-            is_automatic=(
-                kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
-            ),
-            session=session,
-        )
-
-        return text_docs
-
-    @override
     def transform(
-        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+        self,
+        documents: list[Document],
+        current_user: Account | None = None,
+        *,
+        process_rule: Mapping[str, object],
+        tenant_id: str,
+        on_upload_file_created: Callable[[str], None],
+        session: Session,
+        embedding_model_instance: ModelInstance | None = None,
+        doc_language: str = "English",
+        preview: bool = False,
     ) -> list[Document]:
-        process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
+        mode = process_rule.get("mode")
+        if not isinstance(mode, str):
+            raise ValueError("Invalid process rule mode.")
         if not process_rule.get("rules"):
             raise ValueError("No rules found in process rule.")
         rules = Rule.model_validate(process_rule.get("rules"))
@@ -70,17 +69,17 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if not rules.segmentation:
                 raise ValueError("No segmentation found in rules.")
             splitter = self._get_splitter(
-                processing_rule_mode=process_rule.get("mode"),
+                processing_rule_mode=mode,
                 max_tokens=rules.segmentation.max_tokens,
                 chunk_overlap=rules.segmentation.chunk_overlap,
                 separator=rules.segmentation.separator,
-                embedding_model_instance=kwargs.get("embedding_model_instance"),
+                embedding_model_instance=embedding_model_instance,
             )
             for document in documents:
-                if kwargs.get("preview") and len(all_documents) >= 10:
+                if preview and len(all_documents) >= 10:
                     return all_documents
                 # document clean
-                document_text = CleanProcessor.clean(document.page_content, process_rule)
+                document_text = CleanProcessor.clean(document.page_content, dict(process_rule))
                 document.page_content = document_text
                 # parse document to nodes
                 document_nodes = splitter.split_documents([document])
@@ -102,15 +101,14 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             multimodel_documents = self._get_content_files(
                                 document_node,
                                 current_user,
-                                tenant_id=kwargs["tenant_id"],
+                                tenant_id=tenant_id,
                                 session=session,
+                                on_upload_file_created=on_upload_file_created,
                             )
                             if multimodel_documents:
                                 document_node.attachments = multimodel_documents
                             # parse document to child nodes
-                            child_nodes = self.split_child_nodes(
-                                document_node, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
-                            )
+                            child_nodes = self.split_child_nodes(document_node, rules, mode, embedding_model_instance)
                             document_node.children = child_nodes
                             split_documents.append(document_node)
                 all_documents.extend(split_documents)
@@ -119,16 +117,15 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             document = Document(page_content=page_content, metadata=documents[0].metadata)
             multimodel_documents = self._get_content_files(
                 document,
-                tenant_id=kwargs["tenant_id"],
+                tenant_id=tenant_id,
                 session=session,
+                on_upload_file_created=on_upload_file_created,
             )
             if multimodel_documents:
                 document.attachments = multimodel_documents
             # parse document to child nodes
-            child_nodes = self.split_child_nodes(
-                document, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
-            )
-            if kwargs.get("preview"):
+            child_nodes = self.split_child_nodes(document, rules, mode, embedding_model_instance)
+            if preview:
                 if len(child_nodes) > dify_config.CHILD_CHUNKS_PREVIEW_NUMBER:
                     child_nodes = child_nodes[: dify_config.CHILD_CHUNKS_PREVIEW_NUMBER]
 
@@ -150,7 +147,6 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         with_keywords: bool = True,
         *,
         session: Session,
-        **kwargs,
     ) -> None:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset, session=session)
@@ -166,14 +162,21 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
     @override
     def clean(
-        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+        self,
+        dataset: Dataset,
+        node_ids: list[str] | None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        delete_summaries: bool = False,
+        delete_child_chunks: bool = False,
+        precomputed_child_node_ids: list[str] | None = None,
     ) -> None:
         # node_ids is segment's node_ids
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
         # Only delete summaries if explicitly requested (e.g., when segment is actually deleted)
-        delete_summaries = kwargs.get("delete_summaries", False)
         if delete_summaries:
             if node_ids:
                 # Find segments by index_node_id
@@ -191,8 +194,6 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 SummaryIndexAdapter.delete_summaries_for_segments(dataset, None, session=session)
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            delete_child_chunks = kwargs.get("delete_child_chunks") or False
-            precomputed_child_node_ids = kwargs.get("precomputed_child_node_ids")
             vector = Vector(dataset, session=session)
 
             if node_ids:

@@ -12,9 +12,10 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.account import Account
-from models.enums import CreatorUserRole, EndUserType
+from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 

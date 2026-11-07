@@ -81,6 +81,7 @@ from tests.helpers.unit.config_override import apply_config_overrides
 TENANT = "11111111-1111-1111-1111-111111111111"
 AGENT = "22222222-2222-2222-2222-222222222222"
 USER = "33333333-3333-3333-3333-333333333333"
+_SEEDED_TOOL_FILE_IDS = frozenset({"tool-file-1", "old-skill-file"})
 
 
 class _FakeToolFileManager(ToolFileManager):
@@ -164,6 +165,19 @@ def _seed_agent() -> None:
         account = Account(name="Li Wei", email="li.wei@example.com")
         account.id = USER
         session.add(account)
+        for file_id in _SEEDED_TOOL_FILE_IDS:
+            tool_file = ToolFile(
+                user_id=USER,
+                tenant_id=TENANT,
+                conversation_id=None,
+                file_key=f"tools/{file_id}.zip",
+                mimetype="application/zip",
+                name=f"{file_id}.zip",
+                size=1,
+                original_url=None,
+            )
+            tool_file.id = file_id
+            session.add(tool_file)
         session.add(
             App(
                 id="66666666-6666-6666-6666-666666666666",
@@ -346,7 +360,14 @@ def test_list_tags_returns_distinct_tags_with_counts() -> None:
         payload=SkillCreatePayload(name="empty-tags"),
     )
     with session_factory.create_session() as session:
-        session.add(Tag(tenant_id=TENANT, type=TagType.SKILL, name="unbound", created_by=USER))
+        session.add(
+            Tag(
+                tenant_id=TENANT,
+                type=TagType.SKILL,
+                name="unbound",
+                created_by=USER,
+            )
+        )
         session.commit()
 
     result = service.list_tags(tenant_id=TENANT)
@@ -3826,7 +3847,7 @@ def _overwrite_package(
 
 def _tool_file_ids() -> set[str]:
     with session_factory.create_session() as session:
-        return set(session.scalars(select(ToolFile.id)))
+        return set(session.scalars(select(ToolFile.id))) - _SEEDED_TOOL_FILE_IDS
 
 
 def _tool_file_key(tool_file_id: str) -> str:

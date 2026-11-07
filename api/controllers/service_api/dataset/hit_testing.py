@@ -1,24 +1,69 @@
+from typing import Never
 from uuid import UUID
 
-from sqlalchemy.orm import Session
-
+from controllers.common.errors import (
+    ForbiddenError,
+    InternalServerError,
+    InvalidArgumentError,
+    NotFoundError,
+    ServiceUnavailableError,
+)
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.console.app.error import (
+from controllers.console.wraps import model_validate
+from controllers.service_api import service_api_ns
+from controllers.service_api.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.app.wraps import with_session
-from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
-from controllers.service_api import service_api_ns
-from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
-from fields.hit_testing_fields import HitTestingResponse
+from controllers.service_api.dataset.error import DatasetNotInitializedError
+from controllers.service_api.flask_admission import DatasetApiResource, dataset_admission
+from extensions.ext_application_services import application_services
+from fields.hit_testing_fields import HitTestingPayload, HitTestingResponse
 from libs.external_api import error_responses
 from libs.helper import dump_response
+from machinery.context import RequestContext
+from services.errors.index import IndexNotInitializedError
+from services.errors.knowledge_retrieval import KnowledgeRetrievalUnavailableError
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.hit_testing.entities import HitTestingRequest
+from services.knowledge.hit_testing.errors import (
+    HitTestingFailedError,
+    HitTestingInvocationError,
+    HitTestingProviderError,
+    HitTestingUnsupportedInputError,
+    HitTestingUpstreamError,
+)
+
+_KNOWLEDGE_INDEX_UNAVAILABLE_MESSAGE = "The knowledge index is temporarily unavailable. Please retry later."
 
 register_schema_models(service_api_ns, HitTestingPayload)
 register_response_schema_models(service_api_ns, HitTestingResponse)
+
+
+def _raise_hit_testing_error(error: Exception) -> Never:
+    if isinstance(error, KnowledgeRetrievalUnavailableError):
+        raise ServiceUnavailableError(description=_KNOWLEDGE_INDEX_UNAVAILABLE_MESSAGE) from error
+    if isinstance(error, DatasetNotFoundError):
+        raise NotFoundError(description=str(error)) from error
+    if isinstance(error, DatasetAccessDeniedError):
+        raise ForbiddenError(description=str(error)) from error
+    if isinstance(error, IndexNotInitializedError):
+        raise DatasetNotInitializedError() from error
+    if isinstance(error, HitTestingProviderError):
+        if error.kind == "quota":
+            raise ProviderQuotaExceededError() from error
+        if error.kind == "unsupported":
+            raise ProviderModelCurrentlyNotSupportError() from error
+        raise ProviderNotInitializeError(error.description) from error
+    if isinstance(error, HitTestingInvocationError):
+        raise CompletionRequestError(str(error)) from error
+    if isinstance(error, HitTestingUnsupportedInputError):
+        raise InvalidArgumentError(description=str(error)) from error
+    if isinstance(error, (HitTestingUpstreamError, HitTestingFailedError)):
+        raise InternalServerError() from error
+    raise error
 
 
 @service_api_ns.route(
@@ -26,8 +71,9 @@ register_response_schema_models(service_api_ns, HitTestingResponse)
     doc={"post": {"deprecated": True}},
 )
 @service_api_ns.route("/datasets/<uuid:dataset_id>/retrieve")
-class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
+class HitTestingApi(DatasetApiResource):
     @error_responses(
+        DatasetNotInitializedError,
         CompletionRequestError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
@@ -57,6 +103,7 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
             403: "`forbidden` : Insufficient permissions.",
             404: "`not_found` : Knowledge base not found.",
             500: "`internal_server_error` : An internal error occurred during retrieval.",
+            503: "`service_unavailable` : The knowledge index is temporarily unavailable. Retry later.",
         },
     )
     @service_api_ns.doc("dataset_hit_testing")
@@ -70,16 +117,37 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
     @service_api_ns.response(401, "Unauthorized - invalid API token")
     @service_api_ns.response(404, "Dataset not found")
     @service_api_ns.expect(service_api_ns.models[HitTestingPayload.__name__])
-    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    @with_session
-    def post(self, session: Session, tenant_id: str, dataset_id: UUID) -> dict[str, object]:
+    @dataset_admission(rate_limit=True)
+    @model_validate(HitTestingPayload)
+    def post(
+        self,
+        payload: HitTestingPayload,
+        request_context: RequestContext,
+        dataset_id: UUID,
+    ) -> dict[str, object]:
         """Perform hit testing on a dataset.
 
         Tests retrieval performance for the specified dataset.
         """
-        dataset_id_str = str(dataset_id)
-        dataset = self.get_and_validate_dataset(session, dataset_id_str)
-        args = self.parse_args(service_api_ns.payload)
-        self.hit_testing_args_check(args)
-
-        return dump_response(HitTestingResponse, self.perform_hit_testing(session, dataset, args))
+        try:
+            result = application_services().knowledge.hit_testing.retrieve(
+                request_context,
+                dataset_id=str(dataset_id),
+                request=HitTestingRequest(
+                    query=payload.query,
+                    retrieval_model=(
+                        payload.retrieval_model.model_dump(exclude_none=True)
+                        if payload.retrieval_model is not None
+                        else None
+                    ),
+                    external_retrieval_model=(
+                        payload.external_retrieval_model.to_domain()
+                        if payload.external_retrieval_model is not None
+                        else None
+                    ),
+                    attachment_ids=payload.attachment_ids,
+                ),
+            )
+        except Exception as error:
+            _raise_hit_testing_error(error)
+        return dump_response(HitTestingResponse, result)

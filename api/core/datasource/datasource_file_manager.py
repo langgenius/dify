@@ -13,9 +13,9 @@ import httpx
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.file import remote_fetcher
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
-from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 from models.tools import ToolFile
 

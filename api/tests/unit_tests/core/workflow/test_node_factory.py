@@ -1,7 +1,7 @@
 import types
 from collections.abc import Callable, Mapping
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch, sentinel
+from unittest.mock import MagicMock, create_autospec, patch, sentinel
 
 import pytest
 from sqlalchemy import Engine
@@ -46,7 +46,9 @@ from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
+from services.file_service import UploadFileCreator
 from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -79,6 +81,10 @@ class DummyKnowledgeRetrievalNode(DummyNode):
 
 class DummyDocumentExtractorNode(DummyNode):
     pass
+
+
+def _knowledge_index_files() -> UploadFileCreator:
+    return create_autospec(UploadFileCreator, instance=True)
 
 
 class TestNodeFactoryCases:
@@ -118,6 +124,8 @@ class TestNodeFactoryCases:
             return DifyNodeFactory(
                 init_params=SimpleNamespace(run_context=run_context),
                 runtime_state=SimpleNamespace(),
+                knowledge_retrieval=make_knowledge_retriever(),
+                knowledge_index_files=_knowledge_index_files(),
             )
 
         def test_create_node_unknown_type(self):
@@ -197,7 +205,7 @@ class TestNodeFactoryCases:
             node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}})
 
             assert isinstance(node, DummyKnowledgeRetrievalNode)
-            assert node.kwargs == {}
+            assert node.kwargs == {"retrieval": factory.knowledge_retrieval}
 
         def test_create_node_document_extractor_branch(self, monkeypatch: pytest.MonkeyPatch):
             factory = self._factory()
@@ -489,6 +497,8 @@ class TestNodeFactoryCasesWorkflow:
                 graph_config=graph_config,
                 run_context=run_context,
                 call_depth=2,
+                knowledge_retrieval=make_knowledge_retriever(),
+                knowledge_index_files=_knowledge_index_files(),
             )
 
             result = graph_init_context.to_graph_init_params()
@@ -536,6 +546,8 @@ class TestNodeFactoryCasesWorkflow:
         factory = node_factory.DifyNodeFactory(
             build_test_graph_init_params(graph_config=graph_config),
             RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id="workflow"),
+            knowledge_retrieval=make_knowledge_retriever(),
+            knowledge_index_files=_knowledge_index_files(),
         )
         if invalid_kind is None:
             graph = Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
@@ -659,6 +671,8 @@ class TestNodeFactoryCasesWorkflow:
                 created_by=None,
             )
             factory._use_workflow_tool_containers = True
+            factory._knowledge_retrieval = make_knowledge_retriever()
+            factory._knowledge_index_files = _knowledge_index_files()
             factory._code_executor = sentinel.code_executor
             factory._code_limits = sentinel.code_limits
             factory._jinja2_template_renderer = sentinel.jinja2_template_renderer

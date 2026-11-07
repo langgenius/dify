@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
@@ -7,7 +8,7 @@ import pytest
 from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.workspace import snippets as snippets_module
@@ -16,6 +17,27 @@ from models.snippet import CustomizedSnippet
 from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_account
+from tests.unit_tests.services.snippet_test_utils import make_snippet_service
+
+
+@dataclass(frozen=True)
+class _SnippetApplicationServices:
+    snippets: object
+    tags: object
+
+
+@pytest.fixture(autouse=True)
+def snippet_application_services(
+    application_tags: object,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Expose the composed snippet service through the controller boundary."""
+    services = _SnippetApplicationServices(
+        snippets=make_snippet_service(sqlite_session_factory),
+        tags=application_tags,
+    )
+    monkeypatch.setattr(snippets_module, "application_services", lambda: services)
 
 
 def _account(account_id: str = "account-1") -> Account:
@@ -178,7 +200,7 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(
 @pytest.mark.parametrize("implicit_returning", [True, False])
 def test_create_snippet_returns_database_defaults_without_committing(
     app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, implicit_returning: bool
-):
+) -> None:
     monkeypatch.setattr(CustomizedSnippet.__table__, "implicit_returning", implicit_returning)
     monkeypatch.setattr(CustomizedSnippet.__mapper__, "_compiled_cache", {})
     api = snippets_module.CustomizedSnippetsApi()

@@ -10,6 +10,7 @@ from urllib.parse import quote
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models.knowledge_fs import (
@@ -19,8 +20,9 @@ from models.knowledge_fs import (
     KnowledgeFSStagedUploadStatus,
 )
 from models.model import Account, UploadFile
+from services.entities.upload_file import FileUploadActor
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
-from services.file_service import FileService
+from services.file_service import UploadFileCreator
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.object_storage import KnowledgeFSObjectStorageService
 from services.knowledge_fs.product_dto import (
@@ -87,10 +89,12 @@ class KnowledgeFSStagedUploadService:
         session_maker: sessionmaker[Session],
         *,
         facade: KnowledgeFSDataFacade,
+        files: UploadFileCreator,
         object_storage: KnowledgeFSObjectStorageService | None = None,
     ) -> None:
         self._session_maker = session_maker
         self._facade = facade
+        self._files = files
         self._object_storage = object_storage or KnowledgeFSObjectStorageService()
 
     def stage(
@@ -113,13 +117,12 @@ class KnowledgeFSStagedUploadService:
         normalized_content_type = _KNOWLEDGE_FS_DOCUMENT_MIME_TYPES[extension]
         checksum = b64encode(sha256(body).digest()).decode()
         try:
-            upload_file = FileService(self._session_maker).upload_file(
+            upload_file = self._files.upload_file(
                 filename=file_name,
                 content=body,
                 mimetype=normalized_content_type,
-                user=account,
+                actor=FileUploadActor(id=account.id, creator_role=CreatorUserRole.ACCOUNT),
                 tenant_id=tenant_id,
-                source="knowledge_fs",
                 default_file_size_limit=file_size_limit_mb,
             )
         except FileTooLargeError as exc:

@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -19,6 +18,9 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool as DatasetQueryTool
+from enums.creator import CreatorUserRole
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 
 class DatasetRetrieverTool(Tool):
@@ -28,7 +30,8 @@ class DatasetRetrieverTool(Tool):
 
     @staticmethod
     def get_dataset_tools(
-        session: Session,
+        knowledge_retrieval: KnowledgeRetriever,
+        app_id: str,
         tenant_id: str,
         dataset_ids: list[str],
         retrieve_config: DatasetRetrieveConfigEntity | None,
@@ -47,31 +50,34 @@ class DatasetRetrieverTool(Tool):
         if retrieve_config is None:
             return []
 
-        feature = DatasetRetrieval()
+        available_datasets = knowledge_retrieval.list_datasets(tenant_id=tenant_id, dataset_ids=dataset_ids)
 
-        # save original retrieve strategy, and set retrieve strategy to SINGLE
-        # Agent only support SINGLE mode
-        original_retriever_mode = retrieve_config.retrieve_strategy
-        retrieve_config.retrieve_strategy = DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
-        retrieval_tools = feature.to_dataset_retriever_tool(
-            session=session,
-            tenant_id=tenant_id,
-            dataset_ids=dataset_ids,
-            retrieve_config=retrieve_config,
-            return_resource=return_resource,
-            invoke_from=invoke_from,
-            hit_callback=hit_callback,
-            user_id=user_id,
-            inputs=inputs,
+        user_from = (
+            CreatorUserRole.ACCOUNT
+            if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+            else CreatorUserRole.END_USER
         )
-        if retrieval_tools is None or len(retrieval_tools) == 0:
-            return []
-
-        # restore retrieve strategy
-        retrieve_config.retrieve_strategy = original_retriever_mode
+        metadata_inputs = {str(key): str(value) for key, value in inputs.items()}
+        retrieval_tools: list[DatasetRetrieverBaseTool] = []
+        for dataset in available_datasets:
+            retrieval_tools.append(
+                DatasetQueryTool.from_dataset(
+                    dataset=dataset,
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    user_id=user_id,
+                    user_from=user_from.value,
+                    hit_callbacks=[hit_callback],
+                    return_resource=return_resource,
+                    retriever_from=invoke_from.to_source(),
+                    retrieve_config=retrieve_config,
+                    metadata_inputs=metadata_inputs,
+                    knowledge_retrieval=knowledge_retrieval,
+                )
+            )
 
         # convert retrieval tools to Tools
-        tools = []
+        tools: list[DatasetRetrieverTool] = []
         for retrieval_tool in retrieval_tools:
             tool = DatasetRetrieverTool(
                 retrieval_tool=retrieval_tool,
@@ -132,7 +138,7 @@ class DatasetRetrieverTool(Tool):
             yield self.create_text_message(text="please input query")
         else:
             # invoke dataset retriever tool
-            result = self.retrieval_tool.run(session=session, query=query)
+            result = self.retrieval_tool.run(query=query)
             yield self.create_text_message(text=result)
 
     def validate_credentials(

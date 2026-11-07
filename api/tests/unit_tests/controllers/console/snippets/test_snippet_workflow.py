@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from inspect import unwrap
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.snippets import snippet_workflow as snippet_workflow_module
@@ -15,6 +16,30 @@ from models.snippet import CustomizedSnippet
 from models.workflow import Workflow
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_account
+from tests.unit_tests.services.snippet_test_utils import (
+    make_snippet_generation_service,
+    make_snippet_service,
+)
+
+
+@dataclass(frozen=True)
+class _SnippetApplicationServices:
+    snippets: object
+    snippet_generation: object
+
+
+@pytest.fixture(autouse=True)
+def snippet_application_services(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Expose snippet persistence and execution through the controller composition point."""
+    snippets = make_snippet_service(sqlite_session_factory)
+    services = _SnippetApplicationServices(
+        snippets=snippets,
+        snippet_generation=make_snippet_generation_service(sqlite_session_factory, snippets=snippets),
+    )
+    monkeypatch.setattr(snippet_workflow_module, "application_services", lambda: services)
 
 
 def _account(account_id: str = "account-1") -> Account:

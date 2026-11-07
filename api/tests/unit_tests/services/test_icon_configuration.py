@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.orm import Session
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
-from models.enums import CreatorUserRole
 from models.model import IconType, UploadFile
 from services.icon_configuration import is_valid_image_icon
 

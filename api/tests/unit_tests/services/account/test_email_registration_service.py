@@ -1,21 +1,25 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import asdict
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
-from models.account import Account
-from services.account.email_registration_service import AccountEmailRegistrationService
+from models.account import Account, Tenant, TenantAccountJoin
+from services.account.email_registration_service import AccountEmailRegistrationService, EmailRegistrationTokenClaim
 from services.account_errors import (
     AccountEmailAlreadyInUseError,
     AccountEmailDomainSuspendedError,
     EmailRegistrationPasswordMismatchError,
+    EmailRegistrationWorkspaceLimitError,
     InvalidEmailRegistrationCodeError,
     InvalidEmailRegistrationTokenError,
 )
@@ -24,6 +28,9 @@ from services.entities.account_entities import (
     AccountEmailRegistrationToken,
     AccountSessionTokens,
 )
+from services.errors.base import PersistenceCommitOutcomeUnknownError
+from services.workspace.contracts import CreatedWorkspace
+from services.workspace.gateways import RedisWorkspaceQuotaGuard, WorkspaceProvisioningEffectsGateway
 from tests.helpers.unit.model_factories import make_account
 
 
@@ -47,8 +54,16 @@ def boundaries(service: AccountEmailRegistrationService, mocker: MockerFixture) 
     mocker.patch("services.account.email_registration_adapters.send_email_register_mail_task.delay")
     mocker.patch("services.account.email_registration_adapters.send_email_register_mail_task_when_account_exist.delay")
     mocker.patch("services.account.email_registration_adapters.TokenManager.revoke_token")
+    read_token = mocker.patch("services.account.email_registration_adapters.TokenManager.get_token_data")
+
+    def claim(token: str) -> EmailRegistrationTokenClaim | None:
+        token_data = service._tokens.get(token)
+        if token_data is None:
+            return None
+        return EmailRegistrationTokenClaim(token_data=token_data, claim_id="claim-1")
+
     return {
-        "read_token": mocker.patch("services.account.email_registration_adapters.TokenManager.get_token_data"),
+        "read_token": read_token,
         "generate_token": mocker.patch(
             "services.account.email_registration_adapters.TokenManager.generate_token", return_value="token-1"
         ),
@@ -57,6 +72,9 @@ def boundaries(service: AccountEmailRegistrationService, mocker: MockerFixture) 
         ),
         "issue": mocker.spy(service._tokens, "issue"),
         "revoke": mocker.spy(service._tokens, "revoke"),
+        "claim": mocker.patch.object(service._tokens, "claim", side_effect=claim),
+        "consume": mocker.patch.object(service._tokens, "consume"),
+        "release": mocker.patch.object(service._tokens, "release"),
         "find_by_email": mocker.spy(service._accounts, "find_by_email"),
         "send_code": mocker.spy(service._notifications, "send_code"),
         "send_account_exists": mocker.spy(service._notifications, "send_account_exists"),
@@ -242,7 +260,7 @@ def test_register_creates_account_and_logs_it_in(
             "Asia/Shanghai",
         )
     login.assert_called_once_with("account-1", ip_address="127.0.0.1")
-    boundaries["revoke"].assert_called_once_with("verified-token")
+    boundaries["consume"].assert_called_once_with("verified-token", "claim-1")
     boundaries["find_by_email"].assert_called_once_with("New@Example.com")
     boundaries["create"].assert_called_once_with(
         email="new@example.com",
@@ -253,6 +271,75 @@ def test_register_creates_account_and_logs_it_in(
     )
     boundaries["login"].assert_called_once_with("account-1", ip_address="127.0.0.1")
     boundaries["reset_login_failures"].assert_called_once_with("new@example.com")
+
+
+def test_register_uses_committed_account_when_workspace_notification_fails(
+    service: AccountEmailRegistrationService,
+    boundaries: dict[str, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(
+        ALLOW_REGISTER=True,
+        ALLOW_CREATE_WORKSPACE=True,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        SECRET_KEY="test-secret-key-with-at-least-32-bytes",
+    )
+    monkeypatch.setattr(
+        RedisWorkspaceQuotaGuard,
+        "acquire",
+        lambda _guard: nullcontext(lambda: None),
+    )
+    monkeypatch.setattr("services.workspace.gateways.generate_key_pair", lambda _workspace_id: "public-key")
+    boundaries["read_token"].return_value = asdict(
+        AccountEmailRegistrationToken(
+            email="new@example.com",
+            code="123456",
+            phase=AccountEmailRegistrationPhase.REGISTER,
+        )
+    )
+    observed_workspace_ids: list[str] = []
+
+    def fail_after_commit(
+        _effects: WorkspaceProvisioningEffectsGateway,
+        workspace: CreatedWorkspace,
+        *,
+        owner_id: str | None,
+    ) -> None:
+        assert owner_id is not None
+        observed_workspace_ids.append(workspace.id)
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(func.count()).select_from(Account)) == 1
+            assert session.scalar(select(func.count()).select_from(Tenant)) == 1
+            assert session.scalar(select(func.count()).select_from(TenantAccountJoin)) == 1
+        raise RuntimeError("post-commit workspace notification failed")
+
+    monkeypatch.setattr(WorkspaceProvisioningEffectsGateway, "created", fail_after_commit)
+
+    tokens = service.register(
+        remote_ip="127.0.0.1",
+        token="verified-token",
+        new_password="ValidPass123!",
+        password_confirm="ValidPass123!",
+        language="en-US",
+        timezone="UTC",
+    )
+
+    assert tokens.access_token
+    assert tokens.refresh_token
+    assert observed_workspace_ids
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(func.count()).select_from(Account)) == 1
+        assert session.scalar(select(func.count()).select_from(Tenant)) == 1
+        assert session.scalar(select(func.count()).select_from(TenantAccountJoin)) == 1
+        account = session.scalar(select(Account))
+        assert account is not None
+        assert account.email == "new@example.com"
+        assert account.last_login_at is not None
+    boundaries["consume"].assert_called_once_with("verified-token", "claim-1")
+    boundaries["release"].assert_not_called()
+    boundaries["login"].assert_called_once()
 
 
 def test_register_rejects_password_mismatch_before_reading_token(
@@ -294,6 +381,7 @@ def test_register_requires_verified_registration_phase(
         )
 
     boundaries["revoke"].assert_not_called()
+    boundaries["release"].assert_called_once_with("pending-token", "claim-1")
 
 
 def test_register_consumes_token_before_rejecting_existing_account(
@@ -321,5 +409,113 @@ def test_register_consumes_token_before_rejecting_existing_account(
             timezone=None,
         )
 
-    boundaries["revoke"].assert_called_once_with("verified-token")
+    boundaries["consume"].assert_called_once_with("verified-token", "claim-1")
     boundaries["create"].assert_not_called()
+
+
+def test_register_releases_claim_when_pre_persistence_lookup_fails(
+    service: AccountEmailRegistrationService,
+    boundaries: dict[str, MagicMock],
+) -> None:
+    boundaries["read_token"].return_value = asdict(
+        AccountEmailRegistrationToken(
+            email="new@example.com",
+            code="123456",
+            phase=AccountEmailRegistrationPhase.REGISTER,
+        )
+    )
+    boundaries["find_by_email"].side_effect = RuntimeError("lookup failed")
+
+    with pytest.raises(RuntimeError, match="lookup failed"):
+        service.register(
+            remote_ip="127.0.0.1",
+            token="verified-token",
+            new_password="ValidPass123!",
+            password_confirm="ValidPass123!",
+            language=None,
+            timezone=None,
+        )
+
+    boundaries["release"].assert_called_once_with("verified-token", "claim-1")
+    boundaries["create"].assert_not_called()
+
+
+def test_register_releases_claim_when_workspace_policy_rejects_before_persistence(
+    service: AccountEmailRegistrationService,
+    boundaries: dict[str, MagicMock],
+) -> None:
+    boundaries["read_token"].return_value = asdict(
+        AccountEmailRegistrationToken(
+            email="new@example.com",
+            code="123456",
+            phase=AccountEmailRegistrationPhase.REGISTER,
+        )
+    )
+    boundaries["create"].side_effect = EmailRegistrationWorkspaceLimitError()
+
+    with pytest.raises(EmailRegistrationWorkspaceLimitError):
+        service.register(
+            remote_ip="127.0.0.1",
+            token="verified-token",
+            new_password="ValidPass123!",
+            password_confirm="ValidPass123!",
+            language=None,
+            timezone=None,
+        )
+
+    boundaries["release"].assert_called_once_with("verified-token", "claim-1")
+    boundaries["consume"].assert_not_called()
+
+
+def test_register_keeps_claim_when_create_commit_outcome_is_unknown(
+    service: AccountEmailRegistrationService,
+    boundaries: dict[str, MagicMock],
+) -> None:
+    boundaries["read_token"].return_value = asdict(
+        AccountEmailRegistrationToken(
+            email="new@example.com",
+            code="123456",
+            phase=AccountEmailRegistrationPhase.REGISTER,
+        )
+    )
+    boundaries["create"].side_effect = PersistenceCommitOutcomeUnknownError("commit outcome unknown")
+
+    with pytest.raises(PersistenceCommitOutcomeUnknownError, match="commit outcome unknown"):
+        service.register(
+            remote_ip="127.0.0.1",
+            token="verified-token",
+            new_password="ValidPass123!",
+            password_confirm="ValidPass123!",
+            language=None,
+            timezone=None,
+        )
+
+    boundaries["release"].assert_not_called()
+    boundaries["consume"].assert_not_called()
+
+
+def test_register_releases_claim_when_create_rolls_back(
+    service: AccountEmailRegistrationService,
+    boundaries: dict[str, MagicMock],
+) -> None:
+    boundaries["read_token"].return_value = asdict(
+        AccountEmailRegistrationToken(
+            email="new@example.com",
+            code="123456",
+            phase=AccountEmailRegistrationPhase.REGISTER,
+        )
+    )
+    boundaries["create"].side_effect = RuntimeError("transaction rolled back")
+
+    with pytest.raises(RuntimeError, match="transaction rolled back"):
+        service.register(
+            remote_ip="127.0.0.1",
+            token="verified-token",
+            new_password="ValidPass123!",
+            password_confirm="ValidPass123!",
+            language=None,
+            timezone=None,
+        )
+
+    boundaries["release"].assert_called_once_with("verified-token", "claim-1")
+    boundaries["consume"].assert_not_called()

@@ -6,9 +6,9 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from models.enums import (
     ConversationFromSource,
-    CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
 )

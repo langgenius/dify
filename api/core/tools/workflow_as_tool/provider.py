@@ -206,6 +206,7 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
             workflow_id=workflow.id,
             version=db_provider.version,
             workflow_call_depth=0,
+            knowledge_retrieval=None,
             label=db_provider.label,
         )
 

@@ -39,10 +39,11 @@ from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from core.app.entities.task_entities import HumanInputRequiredResponse, StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from libs.helper import to_timestamp
-from models.enums import CreatorUserRole
 from models.model import App
+from services.entities.upload_file import FileUploadActor
 from services.human_input_service import FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
@@ -183,7 +184,12 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
 
         if body.files:
             end_read_transaction(ctx.session)
-        inputs = merge_files(body.inputs, body.files, ctx.caller)
+        inputs = merge_files(
+            body.inputs,
+            body.files,
+            actor=FileUploadActor(id=ctx.caller.id, creator_role=ctx.subject.caller_role),
+            tenant_id=ctx.workspace.id,
+        )
 
         try:
             service.submit_form_by_token(

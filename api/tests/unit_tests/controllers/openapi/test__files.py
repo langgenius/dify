@@ -10,14 +10,18 @@ from werkzeug.datastructures import FileStorage
 from controllers.openapi import _files as module
 from controllers.openapi._errors import InvalidFilePart
 from controllers.openapi._files import merge_files
+from enums.creator import CreatorUserRole
 from factories.file_factory.validation import is_file_valid_with_config
 from graphon.file import FileTransferMethod, FileType, FileUploadConfig
+from services.entities.upload_file import FileUploadActor
 
 _DOCUMENT_VARIABLE_CONFIG = FileUploadConfig(
     allowed_file_types=[FileType.DOCUMENT],
     allowed_file_upload_methods=[FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL],
     number_limits=5,
 )
+_ACTOR = FileUploadActor(id="account-1", creator_role=CreatorUserRole.ACCOUNT)
+_TENANT_ID = "tenant-1"
 
 
 def _fs(name: str, mimetype: str) -> FileStorage:
@@ -36,7 +40,12 @@ def uploads(monkeypatch: pytest.MonkeyPatch) -> Mock:
 
 def test_parts_become_mappings_the_core_file_factory_accepts() -> None:
     original = {"q": "hi"}
-    inputs = merge_files(original, {"doc": _fs("r.pdf", "application/pdf"), "pages": [_fs("1.png", "image/png")]}, None)
+    inputs = merge_files(
+        original,
+        {"doc": _fs("r.pdf", "application/pdf"), "pages": [_fs("1.png", "image/png")]},
+        actor=_ACTOR,
+        tenant_id=_TENANT_ID,
+    )
     assert original == {"q": "hi"}
     assert inputs == {
         "q": "hi",
@@ -53,4 +62,9 @@ def test_parts_become_mappings_the_core_file_factory_accepts() -> None:
 
 def test_a_name_given_in_both_inputs_and_files_is_refused() -> None:
     with pytest.raises(InvalidFilePart, match="doc"):
-        merge_files({"doc": "https://x/a.pdf"}, {"doc": _fs("a.pdf", "application/pdf")}, None)
+        merge_files(
+            {"doc": "https://x/a.pdf"},
+            {"doc": _fs("a.pdf", "application/pdf")},
+            actor=_ACTOR,
+            tenant_id=_TENANT_ID,
+        )

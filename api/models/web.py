@@ -5,8 +5,9 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from enums.creator import CreatorUserRole
+
 from .base import TypeBase
-from .enums import CreatorUserRole
 from .model import Message
 from .types import EnumText, StringUUID
 

@@ -5,7 +5,7 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.file_reference import resolve_local_file_record_id
 from core.workflow.system_variables import SystemVariableKey, get_system_segment
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -140,9 +140,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
                         )
                     )
                 case DatasourceProviderType.LOCAL_FILE:
-                    file_id = resolve_file_record_id(
-                        datasource_info.get("reference") or datasource_info.get("related_id")
-                    )
+                    file_id = resolve_local_file_record_id(datasource_info)
                     if not file_id:
                         raise DatasourceNodeError("File is not exist")
 

@@ -3,7 +3,7 @@ from typing import cast, override
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.enums import CreatorUserRole
+from enums.creator import CreatorUserRole
 from models.model import Message
 from models.web import SavedMessage
 from services.errors.message import LastMessageNotExistsError, MessageNotExistsError

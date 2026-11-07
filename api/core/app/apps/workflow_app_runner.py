@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -44,8 +44,6 @@ from core.app.entities.queue_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.credit_usage import CreditUsageAppType
-from core.rag.entities import RetrievalSourceMetadata
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord
 from core.workflow.node_factory import (
     DifyGraphInitContext,
@@ -53,6 +51,7 @@ from core.workflow.node_factory import (
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
@@ -112,8 +111,13 @@ from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from graphon.variables.factory import build_segment
 from models.workflow import Workflow
+from services.knowledge.entities.citation import RetrievalSourceMetadata
+from services.workflow.persistence import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from services.workflow_node_variables import load_additional_node_variables
 from tasks.mail_human_input_delivery_task import dispatch_human_input_form_delivery_task
+
+if TYPE_CHECKING:
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -206,12 +210,14 @@ class WorkflowBasedAppRunner:
         self,
         *,
         queue_manager: AppQueueManager,
+        knowledge_retrieval: "KnowledgeRetriever",
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         app_id: str,
         graph_engine_layers: Sequence[Layer] = (),
         execution_driver: WorkflowRunDriver | None = None,
     ):
         self._queue_manager = queue_manager
+        self._knowledge_retrieval = knowledge_retrieval
         self._variable_loader = variable_loader
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
@@ -256,6 +262,8 @@ class WorkflowBasedAppRunner:
             trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
+            knowledge_retrieval=self._knowledge_retrieval,
+            knowledge_index_files=build_knowledge_index_files(),
             execution_driver=self._execution_driver,
             workflow_id=workflow_id,
             graph_config=graph_config,
@@ -431,6 +439,8 @@ class WorkflowBasedAppRunner:
             trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
+            knowledge_retrieval=self._knowledge_retrieval,
+            knowledge_index_files=build_knowledge_index_files(),
             execution_driver=self._execution_driver,
             workflow_id=workflow.id,
             graph_config=graph_config,

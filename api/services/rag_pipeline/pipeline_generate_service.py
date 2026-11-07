@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -10,10 +11,9 @@ from models.dataset import Pipeline
 from models.enums import IndexingStatus
 from models.model import Account, App, EndUser
 from models.workflow import Workflow
-from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
-from services.knowledge.dataset_service import DocumentService
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
-from services.rag_pipeline.rag_pipeline import RagPipelineService
+from repositories.knowledge.document_query_repository import get_documents_by_ids
+from repositories.knowledge.pipeline_query_repository import get_pipeline_dataset
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 
 
 class PipelineGenerateService:
@@ -130,16 +130,31 @@ class PipelineGenerateService:
         :param invoke_from: invoke from
         :return:
         """
-        rag_pipeline_service = RagPipelineService(session)
         if invoke_from == InvokeFrom.DEBUGGER:
-            # fetch draft workflow by app_model
-            workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
+            workflow = session.scalar(
+                select(Workflow)
+                .where(
+                    Workflow.tenant_id == pipeline.tenant_id,
+                    Workflow.app_id == pipeline.id,
+                    Workflow.version == "draft",
+                )
+                .limit(1)
+            )
 
             if not workflow:
                 raise ValueError("Workflow not initialized")
         else:
-            # fetch published workflow by app_model
-            workflow = rag_pipeline_service.get_published_workflow(pipeline=pipeline)
+            workflow = None
+            if pipeline.workflow_id:
+                workflow = session.scalar(
+                    select(Workflow)
+                    .where(
+                        Workflow.tenant_id == pipeline.tenant_id,
+                        Workflow.app_id == pipeline.id,
+                        Workflow.id == pipeline.workflow_id,
+                    )
+                    .limit(1)
+                )
 
             if not workflow:
                 raise ValueError("Workflow not published")
@@ -150,7 +165,15 @@ class PipelineGenerateService:
     def update_document_status(cls, document_ref: DocumentRef, *, session: Session) -> None:
         """Set a document in the owner-bound dataset to waiting."""
         document = next(
-            iter(DocumentService.get_documents_by_ids(document_ref.dataset, [document_ref.document_id], session)), None
+            iter(
+                get_documents_by_ids(
+                    session,
+                    tenant_id=document_ref.dataset.tenant_id,
+                    dataset_id=document_ref.dataset.dataset_id,
+                    document_ids=(document_ref.document_id,),
+                )
+            ),
+            None,
         )
         if document is None:
             raise ValueError("Pipeline document not found")

@@ -1,16 +1,19 @@
-from typing import Any, Literal
+from typing import Literal
 
 from flask_restx import Resource
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, Field, RootModel
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import WebsiteCrawlError
 from controllers.console.wraps import account_initialization_required, model_validate, setup_required
 from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
 from libs.external_api import error_responses
+from libs.helper import dump_response
 from libs.login import login_required
-from services.data_source.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest, WebsiteService
+from services.data_source.entities.website import CrawledPage, ScrapedPage
+from services.data_source.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest
 
 
 class WebsiteCrawlPayload(BaseModel):
@@ -23,12 +26,31 @@ class WebsiteCrawlStatusQuery(BaseModel):
     provider: Literal["firecrawl", "watercrawl", "jinareader"]
 
 
-class WebsiteCrawlResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any]
+class WebsiteCrawlStartedResponse(ResponseModel):
+    status: str
+    job_id: str
+
+
+class WebsitePageCrawledResponse(ResponseModel):
+    status: str
+    data: ScrapedPage
+
+
+class WebsiteCrawlResponse(RootModel[WebsiteCrawlStartedResponse | WebsitePageCrawledResponse]):
+    """A remote crawl job or the immediately available single-page content."""
+
+
+class WebsiteCrawlProgressResponse(ResponseModel):
+    status: str
+    job_id: str
+    total: int
+    current: int
+    data: list[CrawledPage]
+    time_consuming: str | float | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 register_schema_models(console_ns, WebsiteCrawlPayload, WebsiteCrawlStatusQuery)
-register_response_schema_models(console_ns, WebsiteCrawlResponse)
+register_response_schema_models(console_ns, WebsiteCrawlResponse, WebsiteCrawlProgressResponse)
 
 
 @console_ns.route("/website/crawl")
@@ -43,7 +65,7 @@ class WebsiteCrawlApi(Resource):
     @login_required
     @account_initialization_required
     @model_validate(WebsiteCrawlPayload)
-    def post(self, req_data: WebsiteCrawlPayload):
+    def post(self, req_data: WebsiteCrawlPayload) -> tuple[dict[str, object], int]:
         # Create typed request and validate
         try:
             api_request = WebsiteCrawlApiRequest.from_args(req_data.model_dump())
@@ -52,10 +74,10 @@ class WebsiteCrawlApi(Resource):
 
         # Crawl URL using typed request
         try:
-            result = WebsiteService(providers=application_services().data_sources.providers).crawl_url(api_request)
+            result = application_services().data_sources.website.crawl_url(api_request)
         except Exception as e:
             raise WebsiteCrawlError(str(e)) from e
-        return result, 200
+        return dump_response(WebsiteCrawlResponse, result, exclude_unset=True), 200
 
 
 @console_ns.route("/website/crawl/status/<string:job_id>")
@@ -65,13 +87,15 @@ class WebsiteCrawlStatusApi(Resource):
     @console_ns.doc(description="Get website crawl status")
     @console_ns.doc(params={"job_id": "Crawl job ID", "provider": "Crawl provider (firecrawl/watercrawl/jinareader)"})
     @console_ns.doc(params=query_params_from_model(WebsiteCrawlStatusQuery))
-    @console_ns.response(200, "Crawl status retrieved successfully", console_ns.models[WebsiteCrawlResponse.__name__])
+    @console_ns.response(
+        200, "Crawl status retrieved successfully", console_ns.models[WebsiteCrawlProgressResponse.__name__]
+    )
     @console_ns.response(400, "Invalid provider")
     @setup_required
     @login_required
     @account_initialization_required
     @model_validate(WebsiteCrawlStatusQuery)
-    def get(self, req_data: WebsiteCrawlStatusQuery, job_id: str):
+    def get(self, req_data: WebsiteCrawlStatusQuery, job_id: str) -> tuple[dict[str, object], int]:
         # Create typed request and validate
         try:
             api_request = WebsiteCrawlStatusApiRequest.from_args(req_data.model_dump(), job_id)
@@ -80,9 +104,7 @@ class WebsiteCrawlStatusApi(Resource):
 
         # Get crawl status using typed request
         try:
-            result = WebsiteService(providers=application_services().data_sources.providers).get_crawl_status_typed(
-                api_request
-            )
+            result = application_services().data_sources.website.get_crawl_status_typed(api_request)
         except Exception as e:
             raise WebsiteCrawlError(str(e)) from e
-        return result, 200
+        return dump_response(WebsiteCrawlProgressResponse, result), 200

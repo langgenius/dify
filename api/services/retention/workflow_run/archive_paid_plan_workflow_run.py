@@ -1157,17 +1157,17 @@ class WorkflowRunArchiver:
         self,
         session: Session,
     ) -> DifyAPIWorkflowNodeExecutionRepository:
-        from repositories.factory import DifyAPIRepositoryFactory
+        from repositories.workflow.factory import WorkflowRepositoryFactory
 
         session_maker = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-        return DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
+        return WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
 
     def _get_workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self.workflow_run_repo is not None:
             return self.workflow_run_repo
 
-        from repositories.factory import DifyAPIRepositoryFactory
+        from repositories.workflow.factory import WorkflowRepositoryFactory
 
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        self.workflow_run_repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker)
         return self.workflow_run_repo

@@ -23,6 +23,7 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from models.model import App, Conversation, Message, MessageAgentThought, MessageAnnotation
 from services.workflow_run_agg import WorkflowRunAgg
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 def _assert_direct_output(agent_queue_manager: MessageBasedAppQueueManager, text: str) -> None:
@@ -38,7 +39,10 @@ def _assert_direct_output(agent_queue_manager: MessageBasedAppQueueManager, text
 @pytest.fixture
 def runner(agent_records: tuple[Conversation, Message]) -> AgentChatAppRunner:
     assert agent_records[0].id == "conv"
-    return AgentChatAppRunner(execution_driver=WorkflowRunAgg.run)
+    return AgentChatAppRunner(
+        execution_driver=WorkflowRunAgg.run,
+        knowledge_retrieval=make_knowledge_retriever(),
+    )
 
 
 def _records(session: Session) -> tuple[Conversation, Message]:

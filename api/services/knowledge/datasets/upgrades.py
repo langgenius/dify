@@ -1,16 +1,13 @@
 """Classic-to-Agent knowledge base upgrade use cases behind the dataset console endpoints."""
 
 from collections.abc import Callable
+from typing import Protocol
 from uuid import uuid4
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
-from models import Dataset
 from models.knowledge_fs import KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJobStatus
-from models.provider import TenantDefaultModel
 from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeConflictError,
     KnowledgeFSUpgradeModelPreferences,
@@ -21,10 +18,10 @@ from services.dataset_knowledge_fs_upgrade_service import (
     upgrade_job_matches_model_choices,
 )
 from services.knowledge.dataset_access import DatasetAccess, DatasetAccessError
-from services.knowledge.dataset_service import DatasetService
-from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations, load_actor
+from services.knowledge.datasets.contracts import DatasetListFilter, DatasetVisibility
+from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge_fs.product_dto import (
-    KnowledgeFSUpgradeModelChoice,
     KnowledgeFSUpgradeModelsPayload,
     KnowledgeFSUpgradePreparationResponse,
 )
@@ -40,13 +37,31 @@ class KnowledgeFSUpgradeUnavailableError(Exception):
     """The KnowledgeFS feature is disabled, so upgrades cannot start or retry."""
 
 
+class KnowledgeUpgradeDatasets(Protocol):
+    def visibility(self, context: RequestContext) -> DatasetVisibility: ...
+
+    def list_datasets(
+        self,
+        context: RequestContext,
+        query: DatasetListFilter,
+        accessible_ids: list[str] | None,
+        include_own: bool,
+    ) -> DatasetPage: ...
+
+    def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord: ...
+
+    def get_upgrade_model_preferences(self, ref: DatasetRef) -> tuple[str, KnowledgeFSUpgradeModelPreferences]:
+        """Return models within ``ref``'s scope or fail when its dataset is absent."""
+        ...
+
+
 class KnowledgeUpgradeApplicationService:
     def __init__(
         self,
         *,
         session_factory: sessionmaker[Session],
         dataset_access: DatasetAccess,
-        datasets: SQLAlchemyDatasetOperations,
+        datasets: KnowledgeUpgradeDatasets,
         rbac_enabled: bool,
         feature_enabled: Callable[[], bool],
         enqueue: Callable[[KnowledgeFSUpgradeSnapshotService, str, str], None] | None = None,
@@ -61,40 +76,11 @@ class KnowledgeUpgradeApplicationService:
     def _snapshots(self) -> KnowledgeFSUpgradeSnapshotService:
         return KnowledgeFSUpgradeSnapshotService(self._sessions)
 
-    @staticmethod
-    def _choice(provider: str | None, model: str | None) -> KnowledgeFSUpgradeModelChoice | None:
-        if not provider or not model:
-            return None
-        return KnowledgeFSUpgradeModelChoice(provider=provider, model=model)
-
     def _load_model_preferences(
         self, *, tenant_id: str, dataset_id: str
     ) -> tuple[str, KnowledgeFSUpgradeModelPreferences]:
-        """Read the legacy settings and saved defaults in a short, tenant-scoped session."""
-        with self._sessions() as session:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id))
-            if dataset is None:
-                raise KnowledgeFSUpgradeNotFoundError("Dataset was not found")
-            defaults: dict[ModelType, KnowledgeFSUpgradeModelChoice] = {}
-            for row in session.scalars(
-                select(TenantDefaultModel).where(
-                    TenantDefaultModel.tenant_id == tenant_id,
-                    TenantDefaultModel.model_type.in_((ModelType.TEXT_EMBEDDING, ModelType.RERANK, ModelType.LLM)),
-                )
-            ):
-                choice = self._choice(row.provider_name, row.model_name)
-                if choice is not None:
-                    defaults[row.model_type] = choice
-            retrieval = dataset.retrieval_model if isinstance(dataset.retrieval_model, dict) else {}
-            reranking = retrieval.get("reranking_model") or {}
-            if not isinstance(reranking, dict):
-                reranking = {}
-            preferences = KnowledgeFSUpgradeModelPreferences(
-                embedding=self._choice(dataset.embedding_model_provider, dataset.embedding_model),
-                rerank=self._choice(reranking.get("reranking_provider_name"), reranking.get("reranking_model_name")),
-                defaults=defaults,
-            )
-            return str(dataset.provider or ""), preferences
+        """Return tenant-scoped model settings or propagate a missing-dataset error."""
+        return self._datasets.get_upgrade_model_preferences(DatasetRef(tenant_id, dataset_id))
 
     def list_recoverable_jobs(self, context: RequestContext) -> list[KnowledgeFSUpgradeJob]:
         workspace_id = context.active_workspace_id
@@ -102,16 +88,16 @@ class KnowledgeUpgradeApplicationService:
         dataset_ids = list(dict.fromkeys(job.old_dataset_id for job in jobs))
         if not dataset_ids:
             return []
-        accessible_ids = self._datasets.visibility(context).list_scope(rbac_enabled=self._rbac_enabled)
-        with self._sessions() as session:
-            datasets, _ = DatasetService.get_datasets_by_ids(
-                dataset_ids,
-                workspace_id,
-                user=load_actor(session, context),
-                accessible_dataset_ids=accessible_ids,
-                session=session,
+        accessible_ids, include_own = self._datasets.visibility(context).list_scope(rbac_enabled=self._rbac_enabled)
+        visible_ids: list[str] = []
+        for offset in range(0, len(dataset_ids), 100):
+            page = self._datasets.list_datasets(
+                context,
+                DatasetListFilter(ids=dataset_ids[offset : offset + 100], limit=100),
+                accessible_ids,
+                include_own,
             )
-            visible_ids = [str(dataset.id) for dataset in datasets]
+            visible_ids.extend(str(dataset["id"]) for dataset in page["data"])
         allowed_ids: set[str] = set()
         for dataset_id in visible_ids:
             try:
@@ -122,14 +108,19 @@ class KnowledgeUpgradeApplicationService:
         return [job for job in jobs if job.old_dataset_id in allowed_ids]
 
     def discovery(self, context: RequestContext, *, dataset_id: str) -> KnowledgeFSUpgradePreparationResponse:
+        """Return eligibility and recommendations for an admitted dataset.
+
+        The context must identify the dataset's workspace and an authorized account.
+        Ineligible datasets return ``models=None`` without model-provider I/O. Read,
+        access, and provider-discovery failures propagate without changing state.
+        """
         dataset = self._dataset_access.require_accessible(context, dataset_id)
-        with self._sessions() as session:
-            provider = session.scalar(
-                select(Dataset.provider).where(Dataset.id == dataset.id, Dataset.tenant_id == dataset.workspace_id)
-            )
+        details = self._datasets.get_dataset(context, DatasetRef(dataset.workspace_id, dataset.id))
         job = self._snapshots().get_latest(tenant_id=dataset.workspace_id, dataset_id=dataset.id)
         eligibility = upgrade_discovery_response(
-            job, feature_enabled=self._feature_enabled(), dataset_provider=str(provider or "")
+            job,
+            feature_enabled=self._feature_enabled(),
+            dataset_provider=str(details["provider"]),
         )
         recommendations = None
         if eligibility.can_upgrade:
@@ -147,6 +138,13 @@ class KnowledgeUpgradeApplicationService:
         idempotency_key: str,
         models: KnowledgeFSUpgradeModelsPayload | None = None,
     ) -> KnowledgeFSUpgradeJob:
+        """Validate models, persist one workspace-scoped snapshot, and enqueue it.
+
+        The context must admit ``dataset_id`` and the feature must be enabled.
+        Replaying an idempotency key returns its job only when the dataset and any
+        supplied model choices match. Invalid models, conflicts, inaccessible or
+        external datasets, and persistence failures create and enqueue no new job.
+        """
         if not self._feature_enabled():
             raise KnowledgeFSUpgradeUnavailableError()
         dataset = self._dataset_access.require_accessible(context, dataset_id)

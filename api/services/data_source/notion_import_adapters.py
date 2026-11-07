@@ -119,12 +119,9 @@ class PluginNotionSourceGateway:
         if not isinstance(integration_secret, str) or not integration_secret:
             raise NotionImportCredentialUnavailableError()
         extractor = self._extractor_factory(
-            notion_workspace_id="",
             notion_obj_id=page_id,
             notion_page_type=page_type.value,
             notion_access_token=integration_secret,
-            notion_token_loader=lambda: integration_secret,
-            tenant_id=workspace_id,
         )
         return "\n".join(document.page_content for document in extractor.extract())
 

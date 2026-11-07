@@ -59,6 +59,7 @@ from services.tracing.adapters import CeleryTraceEmitter
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @pytest.fixture(autouse=True)
@@ -413,6 +414,7 @@ def test_single_step_loads_variables_referenced_only_by_knowledge_filters(
         user_inputs={},
         variable_pool=pool,
         variable_loader=DraftVariableLoader(),
+        knowledge_retrieval=make_knowledge_retriever(),
         execution_driver=None,
     )
     if operator != "=":
@@ -451,6 +453,7 @@ def test_single_step_legacy_agent_v2_does_not_resolve_new_agent_binding(monkeypa
         user_id="user-id",
         user_inputs={},
         variable_pool=VariablePool(),
+        knowledge_retrieval=make_knowledge_retriever(),
         execution_driver=None,
     )
     assert isinstance(node, LegacyAgentNode)

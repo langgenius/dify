@@ -24,6 +24,7 @@ from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.utils.encryption import ProviderConfigEncrypter
 from models.tools import MCPToolProvider
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -218,6 +219,12 @@ class MCPToolManageService:
             )
 
         # Create provider
+        if icon_type != "emoji" and icon:
+            lock_and_validate_owned_upload_files_in_session(
+                self._session,
+                tenant_id=tenant_id,
+                upload_file_ids=(icon,),
+            )
         mcp_tool = MCPToolProvider(
             tenant_id=tenant_id,
             name=name,
@@ -267,6 +274,8 @@ class MCPToolManageService:
                               instead of performing network operations.
         """
         mcp_provider = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
+        self._session.refresh(mcp_provider, with_for_update=True)
+        previous_icon = mcp_provider.icon
 
         # Check for duplicate name (excluding current provider)
         if name != mcp_provider.name:
@@ -294,6 +303,12 @@ class MCPToolManageService:
             # Update basic fields
             mcp_provider.updated_at = datetime.now()
             mcp_provider.name = name
+            if icon_type != "emoji" and icon and icon != previous_icon:
+                lock_and_validate_owned_upload_files_in_session(
+                    self._session,
+                    tenant_id=tenant_id,
+                    upload_file_ids=(icon,),
+                )
             mcp_provider.icon = self._prepare_icon(icon, icon_type, icon_background)
             mcp_provider.server_identifier = server_identifier
 

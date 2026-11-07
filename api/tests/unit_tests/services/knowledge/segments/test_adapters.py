@@ -1,9 +1,8 @@
-from collections.abc import Iterator, Mapping, Sequence
-from contextlib import nullcontext
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -21,44 +20,64 @@ from core.rag.index_processor.index_processor_base import SummaryIndexSettingDic
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.models.document import ChildDocument
 from core.rag.models.document import Document as IndexDocument
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from libs.helper import generate_text_hash
 from libs.pagination import PaginatedResult
 from machinery.context import RequestContext
+from models.account import TenantAccountJoin, TenantAccountRole
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, SegmentAttachmentBinding
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
+from models.enums import (
+    DatasetRuntimeMode,
+    DataSourceType,
+    DocumentCreatedFrom,
+    IndexingStatus,
+    SegmentStatus,
+    SummaryStatus,
+)
 from models.model import UploadFile
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.knowledge.dataset_access import DatasetAccessService
-from services.knowledge.dataset_service import SegmentService
-from services.knowledge.entities.segments import ChildChunkUpdateArgs, SegmentUpdateArgs
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef, SegmentRef
+from services.knowledge.entities.segments import ChildChunkUpdateArgs
 from services.knowledge.segments.adapters import (
     CelerySegmentBatchImportDispatcher,
     ModelManagerSegmentGuard,
     RedisSegmentIndexingState,
+    SegmentPresentationAdapter,
 )
 from services.knowledge.segments.application import (
     DatasetSegmentApplicationService,
     SegmentBatchImportDispatcher,
-    SegmentDatasetRecord,
-    SegmentDetail,
+    SegmentDatasetNotFoundError,
     SegmentIndex,
     SegmentIndexingState,
-    SegmentListFilter,
     SegmentModelGuard,
     SegmentModelProviderError,
+    SegmentPermissionDeniedError,
+    SegmentStatusUpdateError,
+    SegmentUploadFileNotFoundError,
 )
+from services.knowledge.segments.contracts import (
+    ChildChunkState,
+    SegmentCreateRecord,
+    SegmentDatasetRecord,
+    SegmentDetail,
+    SegmentDocumentMutationBusyError,
+    SegmentListFilter,
+)
+from services.knowledge.segments.indexing import SegmentIndexingGateway
 
 
 @dataclass
 class SegmentLimitsStub:
     SINGLE_CHUNK_ATTACHMENT_LIMIT: int = 10
+    DATASET_MAX_SEGMENTS_PER_REQUEST: int = 100
 
 
 def test_celery_dispatcher_preserves_task_argument_order() -> None:
@@ -107,6 +126,7 @@ def _document(document_id: str, workspace_id: str, dataset_id: str) -> Document:
         created_by="account-1",
         doc_form=IndexStructureType("text_model"),
         word_count=0,
+        indexing_status=IndexingStatus.COMPLETED,
     )
 
 
@@ -144,6 +164,64 @@ def _upload(file_id: str, workspace_id: str, name: str) -> UploadFile:
     return upload
 
 
+def _segment_create_record(segment_id: str) -> SegmentCreateRecord:
+    now = datetime(2026, 1, 1)
+    return SegmentCreateRecord(
+        segment_id=segment_id,
+        content="content",
+        answer=None,
+        word_count=7,
+        tokens=2,
+        index_node_id=f"node-{segment_id}",
+        index_node_hash=f"hash-{segment_id}",
+        created_by="account-1",
+        indexing_at=now,
+        completed_at=now,
+    )
+
+
+def test_summary_image_query_prefers_bound_images_then_falls_back_to_markdown(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    attachment = _upload("attachment-image", "workspace-1", "attachment.png")
+    attachment.extension = "png"
+    attachment.mime_type = "image/png"
+    markdown = _upload("markdown-image", "workspace-1", "markdown.jpg")
+    markdown.extension = "jpg"
+    markdown.mime_type = "image/jpeg"
+    segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+    segment.content = "![image](/files/markdown-image/image-preview)"
+    binding = SegmentAttachmentBinding(
+        tenant_id="workspace-1",
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="segment-1",
+        attachment_id="attachment-image",
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _dataset("dataset-1", "workspace-1"),
+                _document("document-1", "workspace-1", "dataset-1"),
+                segment,
+                attachment,
+                markdown,
+                binding,
+            ]
+        )
+
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1").segment("segment-1")
+    repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    assert [file.id for file in repository.get_summary_image_files(ref)] == ["attachment-image"]
+
+    with sqlite_session_factory.begin() as session:
+        persisted_binding = session.get(SegmentAttachmentBinding, binding.id)
+        assert persisted_binding is not None
+        session.delete(persisted_binding)
+
+    assert [file.id for file in repository.get_summary_image_files(ref)] == ["markdown-image"]
+
+
 def test_scope_lookup_enforces_owner_chain(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -151,7 +229,10 @@ def test_scope_lookup_enforces_owner_chain(
         session.add(_dataset("dataset-1", "workspace-1"))
         session.add(_document("document-1", "workspace-1", "dataset-1"))
 
-    store = SQLAlchemyDatasetRepository(session_factory=sqlite_session_factory)
+    store = SQLAlchemyDatasetRepository(
+        session_factory=sqlite_session_factory,
+        revoke_keys_after_commit=lambda _session, _tokens: None,
+    )
     scope = store.get_segment_scope(
         dataset_ref=DatasetRef("workspace-1", "dataset-1"),
         document_id="document-1",
@@ -170,6 +251,115 @@ def test_scope_lookup_enforces_owner_chain(
     )
 
 
+def test_batch_import_rejects_same_workspace_member_without_dataset_access(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    dispatcher = create_autospec(SegmentBatchImportDispatcher, instance=True, spec_set=True)
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _dataset("dataset-1", "workspace-1", permission="only_me"),
+                _document("document-1", "workspace-1", "dataset-1"),
+                _upload("file-1", "workspace-1", "segments.csv"),
+                TenantAccountJoin(
+                    tenant_id="workspace-1",
+                    account_id="account-2",
+                    role=TenantAccountRole.EDITOR,
+                ),
+            ]
+        )
+    application = _application(
+        sqlite_session_factory,
+        dispatcher=dispatcher,
+        legacy_permissions_enabled=True,
+    )
+
+    with pytest.raises(SegmentPermissionDeniedError):
+        application.start_batch_import(
+            RequestContext("request-1", None, "account-2", "workspace-1"),
+            dataset_id="dataset-1",
+            document_id="document-1",
+            upload_file_id="file-1",
+        )
+
+    dispatcher.dispatch.assert_not_called()
+
+
+def test_batch_import_allows_workspace_editor_with_dataset_access(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    dispatcher = create_autospec(SegmentBatchImportDispatcher, instance=True, spec_set=True)
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _dataset("dataset-1", "workspace-1", permission="all_team_members"),
+                _document("document-1", "workspace-1", "dataset-1"),
+                _upload("file-1", "workspace-1", "segments.csv"),
+                TenantAccountJoin(
+                    tenant_id="workspace-1",
+                    account_id="account-2",
+                    role=TenantAccountRole.EDITOR,
+                ),
+            ]
+        )
+    application = _application(
+        sqlite_session_factory,
+        dispatcher=dispatcher,
+        legacy_permissions_enabled=True,
+    )
+
+    result = application.start_batch_import(
+        RequestContext("request-1", None, "account-2", "workspace-1"),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        upload_file_id="file-1",
+    )
+
+    assert (result.job_id, result.job_status) == ("job-1", "waiting")
+    dispatcher.dispatch.assert_called_once_with(
+        job_id="job-1",
+        upload_file_id="file-1",
+        dataset_id="dataset-1",
+        document_id="document-1",
+        workspace_id="workspace-1",
+        actor_id="account-2",
+    )
+
+
+def test_batch_import_rejects_cross_workspace_owner_chain(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    dispatcher = create_autospec(SegmentBatchImportDispatcher, instance=True, spec_set=True)
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _dataset("dataset-1", "workspace-1", permission="all_team_members"),
+                _document("document-1", "workspace-1", "dataset-1"),
+                _upload("file-1", "workspace-1", "segments.csv"),
+                TenantAccountJoin(
+                    tenant_id="workspace-2",
+                    account_id="account-2",
+                    role=TenantAccountRole.EDITOR,
+                ),
+            ]
+        )
+    application = _application(
+        sqlite_session_factory,
+        dispatcher=dispatcher,
+        legacy_permissions_enabled=True,
+    )
+
+    with pytest.raises(SegmentDatasetNotFoundError):
+        application.start_batch_import(
+            RequestContext("request-1", None, "account-2", "workspace-2"),
+            dataset_id="dataset-1",
+            document_id="document-1",
+            upload_file_id="file-1",
+        )
+
+    dispatcher.dispatch.assert_not_called()
+
+
 def test_upload_lookup_is_tenant_scoped(sqlite_session_factory: sessionmaker[Session]) -> None:
     with sqlite_session_factory.begin() as session:
         session.add_all(
@@ -183,6 +373,10 @@ def test_upload_lookup_is_tenant_scoped(sqlite_session_factory: sessionmaker[Ses
 
     assert store.get_file_name(workspace_id="workspace-1", upload_file_id="file-1") == "one.csv"
     assert store.get_file_name(workspace_id="workspace-1", upload_file_id="file-2") is None
+    assert store.get_existing_file_ids(workspace_id="workspace-1", file_ids=("file-1", "file-2")) == frozenset(
+        {"file-1"}
+    )
+    assert store.get_existing_file_ids(workspace_id="workspace-1", file_ids=()) == frozenset()
 
 
 def test_segment_lookup_rejects_segment_from_another_owner_chain(
@@ -235,6 +429,101 @@ def test_empty_segment_list_returns_materialized_page(sqlite_session_factory: se
     assert result.limit == 20
 
 
+def test_segment_pagination_uses_id_to_break_duplicate_position_ties(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(_dataset("dataset-1", "workspace-1"))
+        session.add(_document("document-1", "workspace-1", "dataset-1"))
+        session.add_all(
+            [
+                _segment("segment-c", "workspace-1", "dataset-1", "document-1"),
+                _segment("segment-a", "workspace-1", "dataset-1", "document-1"),
+                _segment("segment-b", "workspace-1", "dataset-1", "document-1"),
+            ]
+        )
+
+    store = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    document_ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    ids = [
+        store.list_segments(document_ref, SegmentListFilter(page=page, limit=1)).items[0].values["id"]
+        for page in (1, 2, 3)
+    ]
+
+    assert ids == ["segment-a", "segment-b", "segment-c"]
+
+
+@pytest.mark.parametrize("owner_change", ["dataset_tenant", "document_tenant", "document_dataset", "deleted_document"])
+def test_segment_list_rejects_rows_with_a_changed_owner_chain(
+    sqlite_session_factory: sessionmaker[Session], owner_change: str
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        dataset = _dataset("dataset-1", "workspace-1")
+        document = _document("document-1", "workspace-1", "dataset-1")
+        session.add_all([dataset, document, _segment("segment-1", "workspace-1", "dataset-1", "document-1")])
+        session.flush()
+        if owner_change == "dataset_tenant":
+            dataset.tenant_id = "other-workspace"
+        elif owner_change == "document_tenant":
+            document.tenant_id = "other-workspace"
+        elif owner_change == "document_dataset":
+            document.dataset_id = "other-dataset"
+        else:
+            session.delete(document)
+
+    page = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory).list_segments(
+        DatasetRef("workspace-1", "dataset-1").document("document-1"), SegmentListFilter()
+    )
+
+    assert page.items == ()
+    assert page.total == 0
+
+
+def test_segment_presentation_signs_detached_snapshot_without_database_io(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    file_id = "00000000-0000-0000-0000-000000000001"
+    with sqlite_session_factory.begin() as session:
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.content = f"![image](/files/{file_id}/image-preview?sign=old)"
+        session.add_all(
+            [
+                _dataset("dataset-1", "workspace-1"),
+                _document("document-1", "workspace-1", "dataset-1"),
+                segment,
+                _upload(file_id, "workspace-1", "image.png"),
+                SegmentAttachmentBinding(
+                    tenant_id="workspace-1",
+                    dataset_id="dataset-1",
+                    document_id="document-1",
+                    segment_id="segment-1",
+                    attachment_id=file_id,
+                ),
+            ]
+        )
+
+    repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    detail = repository.get_segment(DatasetRef("workspace-1", "dataset-1").document("document-1").segment("segment-1"))
+    assert detail is not None
+    assert "sign_content" not in detail.data.values
+    statements: list[str] = []
+    engine = sqlite_session_factory.kw["bind"]
+
+    def executed(_connection, _cursor, statement: str, *_args: object) -> None:
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", executed)
+    try:
+        record = SegmentPresentationAdapter().present((detail.data,))[0]
+    finally:
+        event.remove(engine, "before_cursor_execute", executed)
+
+    assert statements == []
+    assert "sign=old" not in record.sign_content
+    assert "?timestamp=" in record.sign_content
+    assert "?timestamp=" in record.attachments[0].source_url
+
+
 def test_postgresql_keyword_filter_keeps_json_array_guard(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -262,11 +551,20 @@ def test_postgresql_keyword_filter_keeps_json_array_guard(
 
 
 def _application(
-    factory: sessionmaker[Session], *, indexing: SegmentIndex | None = None
+    factory: sessionmaker[Session],
+    *,
+    indexing: SegmentIndex | None = None,
+    store: SQLAlchemySegmentRepository | None = None,
+    dispatcher: SegmentBatchImportDispatcher | None = None,
+    legacy_permissions_enabled: bool = False,
 ) -> DatasetSegmentApplicationService:
-    datasets = SQLAlchemyDatasetRepository(session_factory=factory)
+    datasets = SQLAlchemyDatasetRepository(
+        session_factory=factory,
+        revoke_keys_after_commit=lambda _session, _tokens: None,
+    )
     index = create_autospec(SegmentIndex, instance=True, spec_set=True)
     index.count_tokens.return_value = 0
+    index.count_tokens_many.side_effect = lambda _dataset, texts: [0] * len(texts)
     state = create_autospec(SegmentIndexingState, instance=True, spec_set=True)
     state.is_segment_indexing.return_value = False
     state.is_document_indexing.return_value = False
@@ -274,17 +572,18 @@ def _application(
         dataset_access=DatasetAccessService(
             datasets=datasets,
             workspace_roles=WorkspaceRepository(session_factory=factory),
-            legacy_permissions_enabled=False,
+            legacy_permissions_enabled=legacy_permissions_enabled,
         ),
         scopes=datasets,
-        store=SQLAlchemySegmentRepository(session_factory=factory),
+        store=store if store is not None else SQLAlchemySegmentRepository(session_factory=factory),
+        presenter=SegmentPresentationAdapter(),
         limits=SegmentLimitsStub(),
         text_hash=generate_text_hash,
         index=indexing or index,
         uploads=SQLAlchemyKnowledgeUploadRepository(session_factory=factory),
         model_guard=create_autospec(SegmentModelGuard, instance=True, spec_set=True),
         indexing_state=state,
-        batch_dispatcher=create_autospec(SegmentBatchImportDispatcher, instance=True, spec_set=True),
+        batch_dispatcher=dispatcher or create_autospec(SegmentBatchImportDispatcher, instance=True, spec_set=True),
         job_id_factory=lambda: "job-1",
     )
 
@@ -319,7 +618,119 @@ def test_mutations_use_request_actor_without_a_flask_request(
         assert segment.status == SegmentStatus.COMPLETED
 
 
-def test_list_reads_dataset_and_document_once(sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_batch_segment_create_rolls_back_every_row_after_a_late_transaction_failure(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    upload = _upload("attachment-1", "workspace-1", "attachment.csv")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _dataset("dataset-1", "workspace-1"),
+                _document("document-1", "workspace-1", "dataset-1"),
+                upload,
+            ]
+        )
+    now = datetime(2026, 1, 1)
+    records = tuple(
+        SegmentCreateRecord(
+            segment_id=f"segment-{position}",
+            content=f"content-{position}",
+            answer=None,
+            word_count=9,
+            tokens=0,
+            index_node_id=f"node-{position}",
+            index_node_hash=f"hash-{position}",
+            created_by="account-1",
+            indexing_at=now,
+            completed_at=now,
+            attachment_ids=(upload.id,) if position == 2 else (),
+        )
+        for position in (1, 2)
+    )
+    engine = sqlite_session_factory.kw["bind"]
+
+    def fail_after_binding_insert(_connection, _cursor, statement: str, *_args: object) -> None:
+        if "INSERT INTO segment_attachment_bindings" in statement:
+            raise RuntimeError("late binding failure")
+
+    event.listen(engine, "after_cursor_execute", fail_after_binding_insert)
+    try:
+        with pytest.raises(RuntimeError, match="late binding failure"):
+            SQLAlchemySegmentRepository(session_factory=sqlite_session_factory).create_segments(
+                DatasetRef("workspace-1", "dataset-1").document("document-1"),
+                records,
+            )
+    finally:
+        event.remove(engine, "after_cursor_execute", fail_after_binding_insert)
+
+    with sqlite_session_factory() as session:
+        assert session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == "document-1")).all() == []
+        assert (
+            session.scalars(
+                select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.document_id == "document-1")
+            ).all()
+            == []
+        )
+        document = session.get(Document, "document-1")
+        assert document is not None
+        assert document.word_count == 0
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        IndexingStatus.WAITING,
+        IndexingStatus.PARSING,
+        IndexingStatus.CLEANING,
+        IndexingStatus.SPLITTING,
+        IndexingStatus.INDEXING,
+    ],
+)
+@pytest.mark.parametrize("runtime_mode", [DatasetRuntimeMode.RAG_PIPELINE, DatasetRuntimeMode.GENERAL])
+def test_active_document_rejects_segment_create(
+    sqlite_session_factory: sessionmaker[Session],
+    status: IndexingStatus,
+    runtime_mode: DatasetRuntimeMode,
+) -> None:
+    dataset = _dataset("dataset-1", "workspace-1")
+    dataset.runtime_mode = runtime_mode
+    document = _document("document-1", "workspace-1", "dataset-1")
+    document.indexing_status = status
+    with sqlite_session_factory.begin() as session:
+        session.add_all([dataset, document])
+
+    with pytest.raises(SegmentDocumentMutationBusyError, match="being indexed"):
+        SQLAlchemySegmentRepository(session_factory=sqlite_session_factory).create_segments(
+            DatasetRef("workspace-1", "dataset-1").document("document-1"),
+            (_segment_create_record("segment-1"),),
+        )
+
+    with sqlite_session_factory() as session:
+        assert session.get(DocumentSegment, "segment-1") is None
+
+
+@pytest.mark.parametrize("status", [IndexingStatus.COMPLETED, IndexingStatus.ERROR])
+def test_rag_pipeline_terminal_document_allows_segment_create(
+    sqlite_session_factory: sessionmaker[Session],
+    status: IndexingStatus,
+) -> None:
+    dataset = _dataset("dataset-1", "workspace-1")
+    dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
+    document = _document("document-1", "workspace-1", "dataset-1")
+    document.indexing_status = status
+    with sqlite_session_factory.begin() as session:
+        session.add_all([dataset, document])
+
+    SQLAlchemySegmentRepository(session_factory=sqlite_session_factory).create_segments(
+        DatasetRef("workspace-1", "dataset-1").document("document-1"),
+        (_segment_create_record("segment-1"),),
+    )
+
+    with sqlite_session_factory() as session:
+        assert session.get(DocumentSegment, "segment-1") is not None
+
+
+def test_list_revalidates_owner_chain_for_paginated_reads(sqlite_session_factory: sessionmaker[Session]) -> None:
     with sqlite_session_factory.begin() as session:
         session.add(_dataset("dataset-1", "workspace-1"))
         session.add(_document("document-1", "workspace-1", "dataset-1"))
@@ -341,7 +752,7 @@ def test_list_reads_dataset_and_document_once(sqlite_session_factory: sessionmak
         event.remove(engine, "before_cursor_execute", record)
     assert page.items == ()
     assert sum("FROM datasets" in statement for statement in statements) == 1
-    assert sum("JOIN documents" in statement or "FROM documents" in statement for statement in statements) == 1
+    assert sum("JOIN documents" in statement or "FROM documents" in statement for statement in statements) == 3
 
 
 @pytest.mark.parametrize(
@@ -372,17 +783,19 @@ def test_model_guard_translates_provider_errors(error: Exception, kind: str) -> 
 
 
 def test_redis_state_uses_existing_keys_and_decodes_status() -> None:
+    from services.knowledge.indexing.locks import KnowledgeIndexingLock
     from services.knowledge.segments.adapters import RedisSegmentClient
 
     redis = create_autospec(RedisSegmentClient, instance=True, spec_set=True)
     redis.get.side_effect = [b"running", b"completed"]
-    state = RedisSegmentIndexingState(redis)
+    locks = create_autospec(KnowledgeIndexingLock, instance=True, spec_set=True)
+    state = RedisSegmentIndexingState(redis, locks=locks)
 
     assert state.is_document_indexing("document-1") is True
     state.set_batch_waiting("job-1")
     assert state.get_batch_status("job-1") == "completed"
     redis.get.assert_any_call("document_document-1_indexing")
-    redis.setnx.assert_called_once_with("segment_batch_import_job-1", "waiting")
+    redis.set.assert_called_once_with("segment_batch_import_job-1", "waiting", nx=True, ex=86_400)
 
 
 def test_child_chunk_mutations_preserve_explicit_actors(
@@ -441,6 +854,10 @@ class IndexRedisStub:
         del name, value
         return True
 
+    def set(self, name: str | bytes, value: object, *, nx: bool = False, ex: int | None = None) -> bool:
+        del name, value, nx, ex
+        return True
+
     def setex(self, name: str, time: int, value: object) -> bool:
         del name, time, value
         return True
@@ -453,6 +870,7 @@ class IndexRedisStub:
 @dataclass
 class VectorProbe:
     active_transactions: set[Connection]
+    child_publication_depth: int = 0
     fail: bool = False
     writes: int = 0
     deleted_ids: list[str] = field(default_factory=list)
@@ -460,7 +878,9 @@ class VectorProbe:
     batches: list[tuple[str, ...]] = field(default_factory=list)
 
     def add_texts(self, documents: Sequence[IndexDocument], **_kwargs: object) -> None:
-        assert not self.active_transactions, "Index I/O must not hold a DB transaction"
+        assert not self.active_transactions or self.child_publication_depth > 0, (
+            "Only child publication may retain owner/file locks during index I/O"
+        )
         self.writes += len(documents)
         if self.fail:
             raise RuntimeError("index unavailable")
@@ -471,14 +891,20 @@ class VectorProbe:
 
     def delete_by_ids(self, ids: Sequence[str]) -> None:
         assert ids
-        assert not self.active_transactions
+        assert not self.active_transactions or self.child_publication_depth > 0
         if self.fail:
             raise RuntimeError("index unavailable")
         self.deleted_ids.extend(ids)
 
     def create_multimodal(self, documents: Sequence[IndexDocument], **kwargs: object) -> None:
         assert not self.active_transactions
-        assert kwargs["upload_files"]
+        upload_file_keys = kwargs["upload_file_keys"]
+        assert isinstance(upload_file_keys, dict)
+        assert upload_file_keys
+        assert all(
+            isinstance(file_id, str) and isinstance(key, str) and key == f"key-{file_id}"
+            for file_id, key in upload_file_keys.items()
+        )
         self.add_texts(documents)
 
 
@@ -510,7 +936,7 @@ def indexing_probe(
         assert dataset.tenant_id == "workspace-1"
         assert session is None
         assert vector_type == "qdrant"
-        assert not active
+        assert not active or probe.child_publication_depth > 0
         return probe
 
     class TokenModel:
@@ -527,6 +953,27 @@ def indexing_probe(
     monkeypatch.setattr(indexing_module, "Vector", vector)
     monkeypatch.setattr(indexing_module.ModelManager, "for_tenant", lambda **_kwargs: ModelLookup())
     repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    original_child_mutation = repository.child_mutation
+
+    @contextmanager
+    def child_mutation(
+        segment_ref: SegmentRef,
+        *,
+        added: Sequence[ChildChunkState] = (),
+        updated: Sequence[ChildChunkState] = (),
+        deleted: Sequence[ChildChunkState] = (),
+    ) -> Generator[None]:
+        # Allow vector I/O only inside the real child owner/file-lock scope.
+        # Tokenization, attachment, summary and ordinary segment paths retain
+        # their existing transaction-free assertions.
+        with original_child_mutation(segment_ref, added=added, updated=updated, deleted=deleted):
+            probe.child_publication_depth += 1
+            try:
+                yield
+            finally:
+                probe.child_publication_depth -= 1
+
+    monkeypatch.setattr(repository, "child_mutation", child_mutation)
 
     def dispatch(kind: str, *args: object) -> None:
         assert not active
@@ -541,69 +988,21 @@ def indexing_probe(
         enable_task=lambda *args: dispatch("enable", *args),
         disable_task=lambda *args: dispatch("disable", *args),
     )
-    yield _application(sqlite_session_factory, indexing=gateway), repository, probe
+    yield _application(sqlite_session_factory, indexing=gateway, store=repository), repository, probe
     event.remove(engine, "begin", begin)
     event.remove(engine, "commit", finish)
     event.remove(engine, "rollback", finish)
 
 
-class SegmentUpdateEntry(Protocol):
-    def __call__(
-        self,
-        context: RequestContext,
-        *,
-        dataset_id: str,
-        document_id: str,
-        segment_id: str,
-        values: Mapping[str, object],
-    ) -> SegmentDetail: ...
+@pytest.fixture
+def segment_update(indexing_probe: IndexingProbe) -> Callable[..., SegmentDetail]:
+    app, _, _ = indexing_probe
+    return app.update_segment
 
 
-@pytest.fixture(params=["console", "service_api"])
-def segment_update(
-    request: pytest.FixtureRequest, indexing_probe: IndexingProbe, sqlite_session_factory: sessionmaker[Session]
-) -> SegmentUpdateEntry:
-    app, repository, _ = indexing_probe
-    if request.param == "console":
-        return app.update_segment
-
-    def update(
-        context: RequestContext,
-        *,
-        dataset_id: str,
-        document_id: str,
-        segment_id: str,
-        values: Mapping[str, object],
-    ) -> SegmentDetail:
-        with sqlite_session_factory() as session:
-            dataset = session.get(Dataset, dataset_id)
-            document = session.get(Document, document_id)
-            segment = session.get(DocumentSegment, segment_id)
-            assert dataset is not None
-            assert document is not None
-            assert segment is not None
-            result = SegmentService.update_segment(
-                SegmentUpdateArgs.model_validate(values),
-                segment,
-                document,
-                dataset,
-                session,
-                actor_id=context.account_id,
-                mutations=app.mutations,
-            )
-            assert result.content == (values.get("content") or segment.content)
-        ref = DatasetRef(context.active_workspace_id, dataset_id).document(document_id).segment(segment_id)
-        detail = repository.get_segment(ref)
-        assert detail is not None
-        return detail
-
-    return update
-
-
-@pytest.mark.parametrize("segment_update", ["service_api"], indirect=True)
 @pytest.mark.parametrize("doc_form", list(IndexStructureType))
 def test_enable_only_patch_queues_reindexing_without_replacing_content(
-    segment_update: SegmentUpdateEntry,
+    segment_update: Callable[..., SegmentDetail],
     indexing_probe: IndexingProbe,
     sqlite_session_factory: sessionmaker[Session],
     doc_form: IndexStructureType,
@@ -653,10 +1052,9 @@ def test_enable_only_patch_queues_reindexing_without_replacing_content(
         assert document.word_count == word_count
 
 
-@pytest.mark.parametrize("segment_update", ["service_api"], indirect=True)
 @pytest.mark.parametrize("values", [{"content": "changed"}, {"keywords": ["replacement"]}])
 def test_reenable_patch_with_edits_keeps_synchronous_index_update(
-    segment_update: SegmentUpdateEntry,
+    segment_update: Callable[..., SegmentDetail],
     indexing_probe: IndexingProbe,
     sqlite_session_factory: sessionmaker[Session],
     values: dict[str, object],
@@ -686,12 +1084,10 @@ def test_reenable_patch_with_edits_keeps_synchronous_index_update(
     assert probe.writes == 1
 
 
-@pytest.mark.parametrize("entry", ["console", "service_api"])
 @pytest.mark.parametrize("enabled", [True, False])
 def test_delete_segment_with_legacy_scalar_keywords(
     indexing_probe: IndexingProbe,
     sqlite_session_factory: sessionmaker[Session],
-    entry: str,
     enabled: bool,
 ) -> None:
     app, _, probe = indexing_probe
@@ -705,37 +1101,24 @@ def test_delete_segment_with_legacy_scalar_keywords(
         assert document is not None
         document.word_count = segment.word_count
 
-    if entry == "console":
-        app.delete_segment(
-            RequestContext("request", None, "author", "workspace-1"),
-            dataset_id="dataset-1",
-            document_id="document-1",
-            segment_id="segment-1",
-        )
-    else:
-        with sqlite_session_factory() as session:
-            dataset = session.get(Dataset, "dataset-1")
-            document = session.get(Document, "document-1")
-            segment = session.get(DocumentSegment, "segment-1")
-            assert dataset is not None
-            assert document is not None
-            assert segment is not None
-            SegmentService.delete_segment(segment, document, dataset, session, mutations=app.mutations)
+    app.delete_segment(
+        RequestContext("request", None, "author", "workspace-1"),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="segment-1",
+    )
 
     with sqlite_session_factory() as session:
         assert session.get(DocumentSegment, "segment-1") is None
         document = session.get(Document, "document-1")
         assert document is not None
         assert document.word_count == 0
-    if enabled:
-        assert probe.tasks == [("delete", (["index-1"], "dataset-1", "document-1", ["segment-1"], []))]
-    else:
-        assert probe.tasks == []
+    assert probe.tasks == [("delete", (["index-1"], "dataset-1", "document-1", ["segment-1"], []))]
 
 
 @pytest.mark.parametrize("keywords", ["legacy-scalar", 42, {"invalid": "object"}, [{"invalid": "item"}]])
 def test_update_repairs_legacy_keywords_without_validating_presentation_first(
-    segment_update: SegmentUpdateEntry,
+    segment_update: Callable[..., SegmentDetail],
     sqlite_session_factory: sessionmaker[Session],
     keywords: object,
 ) -> None:
@@ -764,23 +1147,22 @@ def test_update_repairs_legacy_keywords_without_validating_presentation_first(
 
 @pytest.mark.parametrize("content", ["original", "changed text"])
 @pytest.mark.parametrize(
-    ("attachment_values", "expected_ids", "removed_original"),
+    ("attachment_values", "expected_ids"),
     [
-        ({}, ["image-1"], False),
-        ({"attachment_ids": None}, ["image-1"], False),
-        ({"attachment_ids": []}, [], True),
-        ({"attachment_ids": ["image-2"]}, ["image-2"], True),
+        ({}, ["image-1"]),
+        ({"attachment_ids": None}, ["image-1"]),
+        ({"attachment_ids": []}, []),
+        ({"attachment_ids": ["image-2"]}, ["image-2"]),
     ],
     ids=["omitted", "null", "clear", "replace"],
 )
 def test_segment_update_preserves_or_replaces_attachments(
-    segment_update: SegmentUpdateEntry,
+    segment_update: Callable[..., SegmentDetail],
     indexing_probe: IndexingProbe,
     sqlite_session_factory: sessionmaker[Session],
     content: str,
     attachment_values: dict[str, object],
     expected_ids: list[str],
-    removed_original: bool,
 ) -> None:
     app, _, probe = indexing_probe
     context = RequestContext("request", None, "author", "workspace-1")
@@ -798,6 +1180,7 @@ def test_segment_update_preserves_or_replaces_attachments(
         values={"content": "original", "attachment_ids": ["image-1"]},
     )
     assert [attachment.id for attachment in created.data.attachments] == ["image-1"]
+    deleted_before = tuple(probe.deleted_ids)
 
     updated = segment_update(
         context,
@@ -818,11 +1201,78 @@ def test_segment_update_preserves_or_replaces_attachments(
             )
         )
     assert attachment_ids == expected_ids
-    assert ("image-1" in probe.deleted_ids) is removed_original
+    assert "image-1" not in probe.deleted_ids[len(deleted_before) :]
+
+
+def test_removing_shared_attachment_keeps_vector_and_other_owner_binding(
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    app, _, probe = indexing_probe
+    context = RequestContext("request", None, "author", "workspace-1")
+    with sqlite_session_factory.begin() as session:
+        dataset = session.get_one(Dataset, "dataset-1")
+        dataset.is_multimodal = True
+        session.add(_upload("shared-image", "workspace-1", "shared.png"))
+
+    first = app.create_segment(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        values={"content": "first", "attachment_ids": ["shared-image"]},
+    )
+    second = app.create_segment(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        values={"content": "second", "attachment_ids": ["shared-image"]},
+    )
+    probe.deleted_ids.clear()
+
+    app.update_segment(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id=first.data.id,
+        values={"attachment_ids": []},
+    )
+
+    assert "shared-image" not in probe.deleted_ids
+    with sqlite_session_factory() as session:
+        bindings = session.scalars(
+            select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.attachment_id == "shared-image")
+        ).all()
+    assert [binding.segment_id for binding in bindings] == [second.data.id]
+
+
+@pytest.mark.parametrize("attachment_id", ["missing-image", "foreign-image"])
+def test_segment_create_rejects_unowned_attachments_before_persisting_rows(
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    attachment_id: str,
+) -> None:
+    app, _, probe = indexing_probe
+    with sqlite_session_factory.begin() as session:
+        session.add(_upload("foreign-image", "workspace-2", "foreign.png"))
+
+    with pytest.raises(SegmentUploadFileNotFoundError, match="current workspace"):
+        app.create_segment(
+            RequestContext("request", None, "author", "workspace-1"),
+            dataset_id="dataset-1",
+            document_id="document-1",
+            values={"content": "segment", "attachment_ids": [attachment_id]},
+        )
+
+    assert probe.writes == 0
+    with sqlite_session_factory() as session:
+        assert session.scalars(select(DocumentSegment)).all() == []
+        assert session.scalars(select(SegmentAttachmentBinding)).all() == []
 
 
 def test_segment_indexing_and_summary_use_closed_read_sessions(
-    segment_update: SegmentUpdateEntry, indexing_probe: IndexingProbe, sqlite_session_factory: sessionmaker[Session]
+    segment_update: Callable[..., SegmentDetail],
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     from models.dataset import DocumentSegmentSummary
 
@@ -1016,8 +1466,73 @@ def test_batch_status_and_delete_only_modify_scoped_segments(
         assert document.word_count == 0
 
 
+def test_status_publish_accepted_then_error_restores_state_and_same_action_retries(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(_dataset("dataset-1", "workspace-1"))
+        session.add(_document("document-1", "workspace-1", "dataset-1"))
+        session.add(_segment("segment-1", "workspace-1", "dataset-1", "document-1"))
+
+    accepted: list[tuple[object, ...]] = []
+
+    def disable(*args: object) -> None:
+        accepted.append(args)
+        if len(accepted) == 1:
+            raise RuntimeError("broker accepted before disconnect")
+
+    repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    gateway = SegmentIndexingGateway(
+        segments=repository,
+        uploads=SQLAlchemyKnowledgeUploadRepository(session_factory=sqlite_session_factory),
+        redis=IndexRedisStub(),
+        new_session=sqlite_session_factory,
+        delete_task=lambda *_args: None,
+        enable_task=lambda *_args: None,
+        disable_task=disable,
+    )
+    application = _application(sqlite_session_factory, indexing=gateway)
+    context = RequestContext("request", None, "account-1", "workspace-1")
+
+    with pytest.raises(SegmentStatusUpdateError, match="broker accepted"):
+        application.change_segment_status(
+            context,
+            dataset_id="dataset-1",
+            document_id="document-1",
+            segment_ids=("segment-1",),
+            action="disable",
+        )
+
+    with sqlite_session_factory() as session:
+        restored = session.get(DocumentSegment, "segment-1")
+        assert restored is not None
+        assert restored.enabled is True
+        assert restored.disabled_at is None
+        assert restored.disabled_by is None
+
+    application.change_segment_status(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_ids=("segment-1",),
+        action="disable",
+    )
+
+    with sqlite_session_factory() as session:
+        disabled = session.get(DocumentSegment, "segment-1")
+        assert disabled is not None
+        assert disabled.enabled is False
+        assert disabled.disabled_by == "account-1"
+        assert disabled.disabled_at is not None
+        assert disabled.disabled_at.microsecond == 0
+    assert accepted == [
+        (["segment-1"], "dataset-1", "document-1"),
+        (["segment-1"], "dataset-1", "document-1"),
+    ]
+
+
 def test_child_regeneration_reuses_splitter_outside_transaction(
-    segment_update: SegmentUpdateEntry,
+    segment_update: Callable[..., SegmentDetail],
     indexing_probe: IndexingProbe,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
@@ -1085,7 +1600,7 @@ def test_child_regeneration_reuses_splitter_outside_transaction(
     ],
 )
 def test_summary_updates_preserve_generation_and_manual_edit_rules(
-    segment_update: SegmentUpdateEntry,
+    segment_update: Callable[..., SegmentDetail],
     indexing_probe: IndexingProbe,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
@@ -1308,7 +1823,7 @@ def test_economy_index_shares_persistence_with_existing_keyword_calls(
 
 @pytest.mark.parametrize("generated_summary", [None, "", " \n\t "], ids=["exception", "empty", "whitespace"])
 def test_summary_generation_failure_preserves_the_completed_segment(
-    segment_update: SegmentUpdateEntry,
+    segment_update: Callable[..., SegmentDetail],
     indexing_probe: IndexingProbe,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
@@ -1452,193 +1967,6 @@ def test_summary_noop_does_not_open_a_database_transaction(
     finally:
         event.remove(engine, "begin", record_connection)
     assert connections == []
-
-
-def test_service_api_child_mutations_refresh_rows_and_release_read_transactions(
-    indexing_probe: IndexingProbe,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    app, repository, _ = indexing_probe
-    context = RequestContext("request", None, "author", "workspace-1")
-    parent = app.create_segment(context, dataset_id="dataset-1", document_id="document-1", values={"content": "parent"})
-    ref = DatasetRef("workspace-1", "dataset-1").document("document-1").segment(parent.data.id)
-    with sqlite_session_factory() as session:
-        dataset = session.get(Dataset, "dataset-1")
-        document = session.get(Document, "document-1")
-        segment = session.get(DocumentSegment, parent.data.id)
-        assert dataset is not None
-        assert document is not None
-        assert segment is not None
-        child = SegmentService.create_child_chunk(
-            "first",
-            segment,
-            document,
-            dataset,
-            session,
-            actor_id="creator",
-            mutations=app.mutations,
-        )
-        child_id = child.id
-        assert child.position == 1
-        assert child.created_by == "creator"
-        updated = SegmentService.update_child_chunk(
-            "second",
-            child,
-            segment,
-            document,
-            dataset,
-            session,
-            actor_id="editor",
-            mutations=app.mutations,
-        )
-        assert updated.content == "second"
-        assert updated.updated_by == "editor"
-        SegmentService.delete_child_chunk(updated, dataset, session, mutations=app.mutations)
-        assert session.get(ChildChunk, child_id) is None
-        SegmentService.delete_segment(segment, document, dataset, session, mutations=app.mutations)
-        assert document.word_count == 0
-    assert repository.get_segment(ref) is None
-
-
-@pytest.mark.parametrize("operation", ["create", "update", "delete"])
-def test_service_api_child_index_failure_preserves_rows_and_legacy_errors(
-    indexing_probe: IndexingProbe,
-    sqlite_session_factory: sessionmaker[Session],
-    operation: str,
-) -> None:
-    from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
-
-    app, repository, probe = indexing_probe
-    context = RequestContext("request", None, "author", "workspace-1")
-    parent = app.create_segment(context, dataset_id="dataset-1", document_id="document-1", values={"content": "parent"})
-    created = app.create_child_chunk(
-        context,
-        dataset_id="dataset-1",
-        document_id="document-1",
-        segment_id=parent.data.id,
-        content="original",
-    )
-    ref = DatasetRef("workspace-1", "dataset-1").document("document-1").segment(parent.data.id)
-    before = repository.get_children(ref)
-    probe.fail = True
-    expected = ChildChunkDeleteIndexError if operation == "delete" else ChildChunkIndexingError
-    with sqlite_session_factory() as session:
-        dataset = session.get(Dataset, "dataset-1")
-        document = session.get(Document, "document-1")
-        segment = session.get(DocumentSegment, parent.data.id)
-        child = session.get(ChildChunk, created.id)
-        assert dataset is not None
-        assert document is not None
-        assert segment is not None
-        assert child is not None
-
-        def mutate() -> None:
-            if operation == "create":
-                SegmentService.create_child_chunk(
-                    "new",
-                    segment,
-                    document,
-                    dataset,
-                    session,
-                    actor_id="editor",
-                    mutations=app.mutations,
-                )
-            elif operation == "update":
-                SegmentService.update_child_chunk(
-                    "changed",
-                    child,
-                    segment,
-                    document,
-                    dataset,
-                    session,
-                    actor_id="editor",
-                    mutations=app.mutations,
-                )
-            else:
-                SegmentService.delete_child_chunk(child, dataset, session, mutations=app.mutations)
-
-        with pytest.raises(expected, match="index unavailable"):
-            mutate()
-    assert repository.get_children(ref) == before
-
-
-@pytest.mark.parametrize(
-    ("values", "answer"),
-    [
-        ({"answer": "new answer"}, "new answer"),
-        ({"content": "new question", "answer": "new answer"}, "new answer"),
-        # An omitted answer keeps the stored one.
-        ({"content": "new question"}, "answer"),
-        ({"keywords": ["keyword"]}, "answer"),
-        # An explicit answer is saved as sent, even when it is empty or null.
-        ({"answer": ""}, ""),
-        ({"content": "new question", "answer": None}, None),
-    ],
-)
-def test_service_api_partial_qa_update_uses_shared_word_count_and_indexing(
-    indexing_probe: IndexingProbe,
-    sqlite_session_factory: sessionmaker[Session],
-    values: dict[str, object],
-    answer: str | None,
-) -> None:
-    app, _, _ = indexing_probe
-    with sqlite_session_factory.begin() as session:
-        document = session.get(Document, "document-1")
-        assert document is not None
-        document.doc_form = IndexStructureType.QA_INDEX
-    created = app.create_segment(
-        RequestContext("request", None, "author", "workspace-1"),
-        dataset_id="dataset-1",
-        document_id="document-1",
-        values={"content": "question", "answer": "answer"},
-    )
-    with sqlite_session_factory() as session:
-        dataset = session.get(Dataset, "dataset-1")
-        document = session.get(Document, "document-1")
-        segment = session.get(DocumentSegment, created.data.id)
-        assert dataset is not None
-        assert document is not None
-        assert segment is not None
-        updated = SegmentService.update_segment(
-            SegmentUpdateArgs.model_validate(values),
-            segment,
-            document,
-            dataset,
-            session,
-            actor_id="editor",
-            mutations=app.mutations,
-        )
-        assert updated.content == values.get("content", "question")
-        assert updated.answer == answer
-        assert updated.word_count == len(updated.content) + len(answer or "")
-        assert document.word_count == updated.word_count
-        if "content" in values:
-            assert updated.tokens == updated.word_count
-
-
-@pytest.mark.parametrize("owner_field", ["tenant_id", "dataset_id", "document_id"])
-def test_legacy_segment_mutation_rejects_mismatched_rows_before_dispatch(
-    owner_field: str, unbound_session: Session
-) -> None:
-    from services.knowledge.segments.application import SegmentMutationService
-
-    dataset = _dataset("dataset-1", "workspace-1")
-    document = _document("document-1", "workspace-1", "dataset-1")
-    segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
-    setattr(segment, owner_field, "foreign-owner")
-    mutations = create_autospec(SegmentMutationService, instance=True, spec_set=True)
-    with pytest.raises(ValueError, match="Segment does not belong"):
-        SegmentService.update_segment(
-            SegmentUpdateArgs(content="new"),
-            segment,
-            document,
-            dataset,
-            unbound_session,
-            actor_id="author",
-            mutations=mutations,
-        )
-    mutations.update_segment.assert_not_called()
-    assert not unbound_session.in_transaction()
 
 
 def _persist_index_batch(
@@ -1825,3 +2153,130 @@ def test_batch_parent_child_index_uses_shared_splitter_without_open_transactions
         assert children is not None
         assert len(children) == 1
         assert children[0].data.content == segment_id
+
+
+@pytest.mark.parametrize(
+    ("owner_change", "expected_ids"),
+    [
+        ("valid", ("segment-1",)),
+        ("dataset_tenant", ()),
+        ("document_tenant", ()),
+        ("document_dataset", ()),
+        ("document_status", ()),
+        ("document_disabled", ()),
+        ("document_archived", ()),
+        ("segment_tenant", ()),
+        ("segment_dataset", ()),
+        ("segment_status", ()),
+        ("segment_disabled", ()),
+    ],
+)
+def test_retrieval_snapshot_authorizes_complete_current_owner_chain(
+    sqlite_session_factory: sessionmaker[Session],
+    owner_change: str,
+    expected_ids: tuple[str, ...],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        dataset = _dataset("dataset-1", "workspace-1")
+        document = _document("document-1", "workspace-1", "dataset-1")
+        document.indexing_status = IndexingStatus.COMPLETED
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.index_node_id = "node-1"
+        if owner_change == "dataset_tenant":
+            dataset.tenant_id = "other-workspace"
+        elif owner_change == "document_tenant":
+            document.tenant_id = "other-workspace"
+        elif owner_change == "document_dataset":
+            document.dataset_id = "other-dataset"
+        elif owner_change == "document_status":
+            document.indexing_status = IndexingStatus.ERROR
+        elif owner_change == "document_disabled":
+            document.enabled = False
+        elif owner_change == "document_archived":
+            document.archived = True
+        elif owner_change == "segment_tenant":
+            segment.tenant_id = "other-workspace"
+        elif owner_change == "segment_dataset":
+            segment.dataset_id = "other-dataset"
+        elif owner_change == "segment_status":
+            segment.status = SegmentStatus.ERROR
+        elif owner_change == "segment_disabled":
+            segment.enabled = False
+        session.add_all([dataset, document, segment])
+
+    snapshot = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory).get_retrieval_snapshot(
+        DatasetRef("workspace-1", "dataset-1"),
+        node_pairs=(("document-1", "node-1"),),
+        summary_pairs=(),
+        attachment_pairs=(),
+    )
+
+    assert tuple(segment.id for segment in snapshot.segments) == expected_ids
+    assert snapshot.children == ()
+    assert snapshot.attachments == ()
+    assert snapshot.summaries == {}
+
+
+@pytest.mark.parametrize(
+    "status", [IndexingStatus.WAITING, IndexingStatus.PARSING, IndexingStatus.SPLITTING, IndexingStatus.INDEXING]
+)
+def test_segment_update_rechecks_queued_document_under_row_lock(
+    sqlite_session_factory: sessionmaker[Session],
+    status: IndexingStatus,
+) -> None:
+    document = _document("document-1", "workspace-1", "dataset-1")
+    segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_dataset("dataset-1", "workspace-1"), document, segment])
+    with sqlite_session_factory.begin() as session:
+        session.get_one(Document, document.id).indexing_status = status
+    with pytest.raises(SegmentDocumentMutationBusyError):
+        SQLAlchemySegmentRepository(session_factory=sqlite_session_factory).save_segment(
+            DatasetRef("workspace-1", "dataset-1").document("document-1").segment("segment-1"),
+            {"content": "must not publish"},
+        )
+    with sqlite_session_factory() as session:
+        assert session.get_one(DocumentSegment, segment.id).content == "content"
+
+
+@pytest.mark.parametrize(
+    ("values", "answer"),
+    [
+        ({"answer": "new answer"}, "new answer"),
+        ({"content": "new question", "answer": "new answer"}, "new answer"),
+        ({"content": "new question"}, "answer"),
+        ({"keywords": ["keyword"]}, "answer"),
+    ],
+)
+def test_partial_qa_update_preserves_answer_and_document_word_count(
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    values: dict[str, object],
+    answer: str,
+) -> None:
+    application, _, _ = indexing_probe
+    with sqlite_session_factory.begin() as session:
+        session.get_one(Document, "document-1").doc_form = IndexStructureType.QA_INDEX
+    context = RequestContext("request", None, "author", "workspace-1")
+    created = application.create_segment(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        values={"content": "question", "answer": "answer"},
+    )
+    updated = application.update_segment(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id=created.data.id,
+        values=values,
+    )
+    assert updated.data.content == values.get("content", "question")
+    assert updated.data.answer == answer
+    with sqlite_session_factory() as session:
+        segment = session.get_one(DocumentSegment, created.data.id)
+        document = session.get_one(Document, "document-1")
+        assert segment.word_count == len(segment.content) + len(answer)
+        assert document.word_count == segment.word_count
+        if "content" in values or "answer" in values:
+            assert segment.tokens == segment.word_count

@@ -16,6 +16,7 @@ from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
+    NotFoundError,
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
@@ -29,16 +30,17 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse, UploadConfig
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
-from models import Account, UploadFile
-from models.enums import CreatorUserRole
+from models import Account
+from services.entities.upload_file import FileUploadActor, UploadFileRecord
+from services.errors.file import FileNotExistsError as FileNotExistsServiceError
 from services.feature_service import FeatureService
-from services.file_service import FileUploadActor, FileUploadResult
 
 register_response_schema_models(
     console_ns,
@@ -97,31 +99,31 @@ def _file_upload_errors() -> Generator[None]:
         raise BlockedFileExtensionError(blocked_extension_error.description) from blocked_extension_error
 
 
-def upload_file_from_request(*, current_user: Account, resource_tenant_id: str | None = None) -> UploadFile:
+def upload_file_from_request(*, current_user: Account, resource_tenant_id: str | None = None) -> UploadFileRecord:
     """Validate the multipart request and persist the file under the requested resource tenant."""
     file, filename, source = _parse_file_upload()
     if source == "datasets" and not current_user.is_dataset_editor:
         raise Forbidden()
 
-    default_file_size_limit = (
-        FeatureService.get_knowledge_file_size_limit(resource_tenant_id or current_user.current_tenant_id)
-        if source == "datasets"
-        else None
-    )
+    tenant_id = resource_tenant_id or current_user.current_tenant_id
+    if tenant_id is None:
+        raise Forbidden()
+
+    default_file_size_limit = FeatureService.get_knowledge_file_size_limit(tenant_id) if source == "datasets" else None
 
     with _file_upload_errors():
         return application_services().files.upload_file(
             filename=filename,
             content=file.stream.read(),
             mimetype=file.mimetype,
-            user=current_user,
-            tenant_id=resource_tenant_id,
-            source=source,
+            actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id=tenant_id,
+            allowed_extensions=frozenset(DOCUMENT_EXTENSIONS) if source == "datasets" else None,
             default_file_size_limit=default_file_size_limit,
         )
 
 
-def upload_file_from_request_context(*, request_context: RequestContext, resource_tenant_id: str) -> FileUploadResult:
+def upload_file_from_request_context(*, request_context: RequestContext, resource_tenant_id: str) -> UploadFileRecord:
     """Admit a Console upload and pass only its creator and resource owner to storage."""
     file, filename, source = _parse_file_upload()
     if source == "datasets" and not current_account_with_tenant().account.is_dataset_editor:
@@ -132,13 +134,13 @@ def upload_file_from_request_context(*, request_context: RequestContext, resourc
     )
     actor = FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT)
     with _file_upload_errors():
-        return application_services().files.upload_file_for_actor(
+        return application_services().files.upload_file(
             actor=actor,
-            resource_tenant_id=resource_tenant_id,
+            tenant_id=resource_tenant_id,
             filename=filename,
             content=file.stream.read(),
             mimetype=file.mimetype,
-            source=source,
+            allowed_extensions=frozenset(DOCUMENT_EXTENSIONS) if source == "datasets" else None,
             default_file_size_limit=default_file_size_limit,
         )
 
@@ -192,7 +194,10 @@ class FilePreviewApi(Resource):
     def get(self, request_context: RequestContext, file_id: UUID) -> dict[str, object]:
         current_tenant_id = request_context.active_workspace_id
         file_id_str = str(file_id)
-        text = application_services().files.get_file_preview(file_id=file_id_str, tenant_id=current_tenant_id)
+        try:
+            text = application_services().files.get_file_preview(file_id=file_id_str, tenant_id=current_tenant_id)
+        except FileNotExistsServiceError as error:
+            raise NotFoundError(description=error.description or "File not found") from error
         return dump_response(TextContentResponse, {"content": text})
 
 

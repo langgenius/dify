@@ -6,14 +6,15 @@ from typing import Any, Literal
 import httpx
 
 from core.file import remote_fetcher
-from core.file.remote_file_metadata import InvalidRemoteFileMetadataError, guess_file_info_from_response
+from core.file.remote_file_metadata import FileInfo, InvalidRemoteFileMetadataError, guess_file_info_from_response
+from core.helper import ssrf_proxy
 from core.helper.ssrf_proxy import MaxRetriesExceededError
 from core.tools.errors import ToolSSRFError
 from graphon.file import helpers as file_helpers
-from models import Account
-from models.model import EndUser
+from services.entities.upload_file import FileUploadActor
 from services.errors.file import FileTooLargeError
-from services.file_service import FileService, FileUploadActor
+from services.file_service import FileService
+from services.file_upload_policy import file_size_limit
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,62 +70,44 @@ class RemoteFileService:
     def fetch_info(self, *, url: str) -> RemoteFileInfoResult:
         response = self._request("HEAD", url=url)
         if response.status_code != httpx.codes.OK:
-            response = self._request("GET", url=url, timeout=3)
-        self._ensure_success(response)
-
-        content_length = response.headers.get("Content-Length")
+            response.close()
+            response = self._request("GET", url=url, timeout=3, stream_response=True)
         try:
-            parsed_content_length = int(content_length) if content_length is not None else None
-        except ValueError as error:
-            raise RemoteFileInvalidResponseError("The remote response has an invalid Content-Length header") from error
-
-        return RemoteFileInfoResult(
-            content_type=response.headers.get("Content-Type", "application/octet-stream"),
-            content_length=parsed_content_length,
-        )
+            self._ensure_success(response)
+            return RemoteFileInfoResult(
+                content_type=response.headers.get("Content-Type", "application/octet-stream"),
+                content_length=self._content_length(response),
+            )
+        finally:
+            response.close()
 
     def upload_from_url(
         self,
         *,
         url: str,
-        user: Account | EndUser | FileUploadActor,
-        tenant_id: str | None = None,
+        actor: FileUploadActor,
+        tenant_id: str,
     ) -> RemoteFileUploadResult:
-        """Fetch and persist a remote file under the requested tenant.
+        """Fetch and persist a remote file under an explicitly admitted tenant."""
 
-        For Account or EndUser, tenant_id=None (including when omitted) uses
-        the account's current workspace or the end user's tenant. An explicit
-        tenant_id takes precedence. FileUploadActor requires an explicit
-        tenant_id; it is checked before fetching the remote file.
-        """
-        if isinstance(user, FileUploadActor) and tenant_id is None:
-            raise TypeError("tenant_id is required when uploading with FileUploadActor")
-
-        response = self._fetch_for_upload(url=url)
+        metadata = self._fetch_for_upload(url=url)
         try:
-            file_info = guess_file_info_from_response(response)
-        except InvalidRemoteFileMetadataError as error:
-            raise RemoteFileInvalidResponseError("The remote response contains invalid file metadata") from error
-        except ValueError as error:
-            # Unclassified parser failures are server bugs, not invalid request parameters.
-            raise RuntimeError("Unexpected remote file metadata parsing failure") from error
-
-        if any(separator in file_info.filename for separator in ("/", "\\")):
-            raise RemoteFileInvalidResponseError("The remote response contains an invalid filename")
-
-        if not self._files.is_file_size_within_limit(
-            extension=file_info.extension.lstrip(".").lower(),
-            file_size=file_info.size,
-        ):
-            raise FileTooLargeError()
-
-        content = response.content if response.request.method == "GET" else self._fetch_content(url=url)
+            metadata_info = self._file_info(metadata)
+            self._response_limit(metadata_info)
+            if metadata.request.method == "GET":
+                file_info, content = self._read_upload_response(metadata)
+                metadata = None
+            else:
+                file_info, content = self._fetch_content(url=url)
+        finally:
+            if metadata is not None:
+                metadata.close()
 
         upload_file = self._files.upload_file(
             filename=file_info.filename,
             content=content,
             mimetype=file_info.mimetype,
-            user=user,
+            actor=actor,
             tenant_id=tenant_id,
             source_url=url,
         )
@@ -166,11 +149,24 @@ class RemoteFileService:
 
     @classmethod
     def _fetch_for_upload(cls, *, url: str) -> httpx.Response:
+        """Return a successful metadata response whose lifetime belongs to the caller."""
+
         response = cls._request("HEAD", url=url)
         if response.status_code != httpx.codes.OK:
-            response = cls._request("GET", url=url, timeout=3, follow_redirects=True)
+            response.close()
+            response = cls._request(
+                "GET",
+                url=url,
+                timeout=3,
+                follow_redirects=True,
+                stream_response=True,
+            )
 
-        cls._ensure_success(response)
+        try:
+            cls._ensure_success(response)
+        except Exception:
+            response.close()
+            raise
         return response
 
     @staticmethod
@@ -186,7 +182,73 @@ class RemoteFileService:
         raise RemoteFileUnavailableError(f"The remote file request returned HTTP {response.status_code}")
 
     @classmethod
-    def _fetch_content(cls, *, url: str) -> bytes:
-        response = cls._request("GET", url=url)
-        cls._ensure_success(response)
-        return response.content
+    def _fetch_content(cls, *, url: str) -> tuple[FileInfo, bytes]:
+        response = cls._request("GET", url=url, follow_redirects=True, stream_response=True)
+        return cls._read_upload_response(response)
+
+    @classmethod
+    def _read_upload_response(cls, response: httpx.Response) -> tuple[FileInfo, bytes]:
+        try:
+            cls._ensure_success(response)
+            metadata_info = cls._file_info(response)
+            limit = cls._response_limit(metadata_info)
+            try:
+                buffered = ssrf_proxy.buffer_response(response, max_response_bytes=max(limit, 1))
+            except ssrf_proxy.ResponseTooLargeError as error:
+                raise FileTooLargeError() from error
+            except ssrf_proxy.UnsupportedResponseEncodingError as error:
+                raise RemoteFileInvalidResponseError(
+                    "The remote response uses an unsupported content encoding"
+                ) from error
+            if len(buffered.content) > limit:
+                raise FileTooLargeError()
+            file_info = cls._file_info(buffered, include_content=True)
+            final_limit = cls._response_limit(file_info)
+            if len(buffered.content) > final_limit:
+                raise FileTooLargeError()
+            return file_info, buffered.content
+        except httpx.RequestError as error:
+            raise RemoteFileUnavailableError("The remote file request failed while reading its content") from error
+        finally:
+            response.close()
+
+    @classmethod
+    def _file_info(cls, response: httpx.Response, *, include_content: bool = False) -> FileInfo:
+        metadata = httpx.Response(
+            response.status_code,
+            headers=response.headers,
+            content=response.content if include_content else b"",
+            request=response.request,
+        )
+        try:
+            file_info = guess_file_info_from_response(metadata)
+        except InvalidRemoteFileMetadataError as error:
+            raise RemoteFileInvalidResponseError("The remote response contains invalid file metadata") from error
+        except ValueError as error:
+            # Unclassified parser failures are server bugs, not invalid request parameters.
+            raise RuntimeError("Unexpected remote file metadata parsing failure") from error
+
+        if any(separator in file_info.filename for separator in ("/", "\\")):
+            raise RemoteFileInvalidResponseError("The remote response contains an invalid filename")
+        return file_info
+
+    @staticmethod
+    def _response_limit(file_info: FileInfo) -> int:
+        extension = file_info.extension.lstrip(".").lower()
+        limit = file_size_limit(extension=extension)
+        if file_info.size >= 0 and file_info.size > limit:
+            raise FileTooLargeError()
+        return limit
+
+    @staticmethod
+    def _content_length(response: httpx.Response) -> int | None:
+        value = response.headers.get("Content-Length")
+        if value is None:
+            return None
+        try:
+            size = int(value)
+        except ValueError as error:
+            raise RemoteFileInvalidResponseError("The remote response has an invalid Content-Length header") from error
+        if size < 0:
+            raise RemoteFileInvalidResponseError("The remote response has an invalid Content-Length header")
+        return size

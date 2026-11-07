@@ -44,6 +44,7 @@ from services.knowledge.dataset_access import DatasetAccessService
 @dataclass(frozen=True, slots=True)
 class DataSourceServices:
     providers: DatasourceProviderService
+    website: WebsiteService
     api_key_auth: DataSourceApiKeyAuthService
     oauth: Mapping[str, DataSourceOAuthService]
     bindings: DataSourceBindingApplicationService
@@ -107,6 +108,9 @@ def build_data_source_services(
     )
     return DataSourceServices(
         providers=providers,
+        website=WebsiteService(
+            providers=providers,
+        ),
         api_key_auth=DataSourceApiKeyAuthService(
             bindings=SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client),
             validator=ProviderApiKeyAuthCredentialValidator(),
@@ -134,4 +138,6 @@ def build_data_source_services(
 
 
 def build_website_service(*, database_client: sessionmaker[Session]) -> WebsiteService:
-    return WebsiteService(providers=build_data_source_credentials(database_client=database_client).providers)
+    return WebsiteService(
+        providers=build_data_source_credentials(database_client=database_client).providers,
+    )

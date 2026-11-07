@@ -41,6 +41,7 @@ from core.workflow.variable_prefixes import (
     SYSTEM_VARIABLE_NODE_ID,
 )
 from enums import WorkflowKind
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
@@ -75,7 +76,7 @@ from libs import helper
 from .account import Account
 from .base import DefaultFieldsDCMixin, TypeBase
 from .engine import db
-from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
+from .enums import DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 
 # UploadFile and workflow execution models use TypeBase; importing the class object keeps
 # their relationship joins explicit.

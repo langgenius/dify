@@ -38,8 +38,8 @@ from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
 from models.model import App, AppMode
-from repositories.factory import DifyAPIRepositoryFactory
-from repositories.human_input_errors import FormAlreadyHandledError
+from repositories.workflow.factory import WorkflowRepositoryFactory
+from services.errors.human_input import FormAlreadyHandledError
 from tasks.app_generate.workflow_execute_task import resume_app_execution
 
 _file_access_controller = DatabaseFileAccessController()
@@ -286,7 +286,7 @@ class HumanInputService:
             raise InvalidFormDataError(str(exc)) from exc
 
     def enqueue_resume(self, workflow_run_id: str) -> None:
-        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+        workflow_run_repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
         workflow_run = workflow_run_repo.get_workflow_run_by_id_without_tenant(workflow_run_id)
 
         if workflow_run is None:
@@ -319,7 +319,7 @@ class HumanInputService:
         if workflow_run_id is None:
             return None
 
-        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+        workflow_run_repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
 
         if pause_entity is None or pause_entity.resumed_at is not None:

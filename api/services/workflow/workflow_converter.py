@@ -28,6 +28,9 @@ from models import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, AppModelConfig, IconType, load_annotation_reply_config
 from models.workflow import Workflow, WorkflowType
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
+from services.file_reference_parser import trusted_upload_file_ids
 
 
 class _NodeType(TypedDict):
@@ -107,6 +110,13 @@ class WorkflowConverter:
         new_app.created_by = account.id
         new_app.maintainer = account.id
         new_app.updated_by = account.id
+        lock_and_validate_owned_upload_files_in_session(
+            session,
+            tenant_id=new_app.tenant_id,
+            upload_file_ids=tuple(
+                sorted(trusted_upload_file_ids({"icon_type": new_app.icon_type, "icon": new_app.icon}))
+            ),
+        )
         session.add(new_app)
         session.flush()
 
@@ -233,6 +243,11 @@ class WorkflowConverter:
             _conversation_variables=[],
         )
 
+        lock_new_workflow_upload_file_references(
+            session,
+            tenant_id=app_model.tenant_id,
+            current_payloads=(workflow.graph, workflow._conversation_variables),
+        )
         session.add(workflow)
         session.commit()
 

@@ -24,11 +24,11 @@ from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
 from core.workflow.human_input_policy import HumanInputSurface
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from libs.external_api import error_responses
-from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 
@@ -100,7 +100,7 @@ class WorkflowEventsApi(Resource):
             raise NotWorkflowAppError()
 
         session_maker = sessionmaker(db.engine)
-        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
             tenant_id=app_model.tenant_id,
             run_id=workflow_run_id,

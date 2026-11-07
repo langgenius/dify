@@ -128,7 +128,7 @@ import pytest  # Testing framework
 # Application imports
 from configs import dify_config  # Configuration settings for file upload limits
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS  # Supported file types
-from models.enums import CreatorUserRole  # User role enumeration for file attribution
+from enums.creator import CreatorUserRole
 
 
 class TestFileTypeValidation:

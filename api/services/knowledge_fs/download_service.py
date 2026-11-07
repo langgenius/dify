@@ -8,7 +8,7 @@ from contextlib import contextmanager, suppress
 from tempfile import NamedTemporaryFile
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from services.file_service import FileService
+from services.file_service import _dedupe_zip_entry_name, _sanitize_zip_entry_name
 from services.knowledge_fs.object_storage import (
     KnowledgeFSObjectStorageCorruptError,
     KnowledgeFSObjectStorageError,
@@ -62,8 +62,8 @@ class KnowledgeFSDownloadService:
                 tmp_path = tmp.name
                 with ZipFile(tmp, mode="w", compression=ZIP_DEFLATED) as archive:
                     for descriptor in descriptors:
-                        safe_name = FileService._sanitize_zip_entry_name(descriptor.filename)
-                        entry_name = FileService._dedupe_zip_entry_name(safe_name, used_names)
+                        safe_name = _sanitize_zip_entry_name(descriptor.filename)
+                        entry_name = _dedupe_zip_entry_name(safe_name, used_names)
                         used_names.add(entry_name)
                         with archive.open(entry_name, "w") as entry:
                             for chunk in self.load_stream(descriptor):

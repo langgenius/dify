@@ -1,32 +1,101 @@
 from collections.abc import Callable
-from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from dataclasses import dataclass, field
+from typing import override
+from unittest.mock import create_autospec, patch
 
 import pytest
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.entities.knowledge_entities import PreviewDetail
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
 from enums import DeploymentEdition
-from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, DatasetProcessRule
-from models.enums import CreatorUserRole, ProcessRuleMode
+from models.enums import ProcessRuleMode
 from models.model import UploadFile
 from services.credentials.refresh import CredentialRefreshUnavailableError
-from services.knowledge.indexing.adapters.estimate import (
-    IndexingEstimateAdapter,
-    SQLAlchemyProcessRuleReader,
+from services.data_source.website_service import WebsiteService
+from services.entities.upload_file import CreatedUploadArtifact
+from services.extraction.contracts import (
+    DatasourceType,
+    ExtractedImage,
+    ExtractionResult,
+    ExtractSetting,
+    NotionInfo,
+    UploadFileExtractionInput,
 )
+from services.extraction.images import ExtractionImageWriter
+from services.file_service import FileService
+from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapter, SQLAlchemyProcessRuleReader
 from services.knowledge.indexing.estimate import (
     IndexingEstimateExecutionError,
     IndexingEstimateProviderUnavailableError,
 )
-from services.knowledge.resource_scope import DatasetRef
+
+
+class _CommitUnknownSession(Session):
+    @override
+    def commit(self) -> None:
+        super().commit()
+        raise RuntimeError("commit result unknown")
+
+
+class _FileServiceFake(FileService):
+    def __init__(self) -> None:
+        self.deleted_files: list[tuple[str, str]] = []
+        self.deleted_artifacts: list[CreatedUploadArtifact] = []
+
+    @override
+    def delete_file(self, *, tenant_id: str, file_id: str) -> None:
+        self.deleted_files.append((tenant_id, file_id))
+
+    @override
+    def delete_uncommitted_artifact(self, *, artifact: CreatedUploadArtifact) -> None:
+        self.deleted_artifacts.append(artifact)
+
+
+@dataclass
+class _PreviewProcessor:
+    documents: list[Document] = field(default_factory=list)
+    callback_file_id: str | None = None
+    error: Exception | None = None
+
+    def transform(self, *_args: object, **kwargs: object) -> list[Document]:
+        if self.callback_file_id is not None:
+            callback = kwargs["on_upload_file_created"]
+            assert callable(callback)
+            callback(self.callback_file_id)
+        if self.error is not None:
+            raise self.error
+        return self.documents
+
+
+@dataclass(frozen=True)
+class _ProcessorFactory:
+    processor: _PreviewProcessor
+
+    def init_index_processor(self) -> _PreviewProcessor:
+        return self.processor
+
+
+def _file_extract_setting() -> ExtractSetting:
+    return ExtractSetting(
+        datasource_type=DatasourceType.FILE,
+        upload_file=UploadFileExtractionInput(
+            id="source-upload",
+            tenant_id="workspace-1",
+            key="source/file.pdf",
+            created_by="account-1",
+        ),
+    )
+
+
+@pytest.fixture
+def website_service() -> WebsiteService:
+    return create_autospec(WebsiteService, instance=True, spec_set=True)
 
 
 def _dataset(dataset_id: str, workspace_id: str) -> Dataset:
@@ -79,26 +148,53 @@ def test_process_rule_reader_loads_tenant_scoped_rule(sqlite_session_factory: se
     assert reader.get_by_id(dataset_ref=DatasetRef("workspace-2", "dataset-1"), process_rule_id="rule-1") is None
 
 
-@pytest.mark.parametrize("doc_form", ["text_model", "hierarchical_model", "qa_model"])
+@pytest.mark.parametrize(
+    ("doc_form", "mode", "expected_is_automatic"),
+    [
+        ("text_model", "automatic", True),
+        ("hierarchical_model", "hierarchical", True),
+        ("qa_model", "custom", False),
+    ],
+)
 def test_estimates_segments_and_limits_previews(
-    sqlite_session_factory: sessionmaker[Session], doc_form: str, config_overrides: Callable[..., None]
+    sqlite_session_factory: sessionmaker[Session],
+    doc_form: str,
+    mode: str,
+    expected_is_automatic: bool,
+    config_overrides: Callable[..., None],
+    website_service: WebsiteService,
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    processor = MagicMock()
-    processor.extract.return_value = [Document(page_content="source")]
-    processor.transform.return_value = [
-        Document(
-            page_content=f"question-{i}",
-            metadata={"answer": f"answer-{i}"},
-            children=[ChildDocument(page_content="child")],
+    files = _FileServiceFake()
+    processor = _PreviewProcessor(
+        documents=[
+            Document(
+                page_content=f"question-{i}",
+                metadata={"answer": f"answer-{i}"},
+                children=[ChildDocument(page_content="child")],
+            )
+            for i in range(11)
+        ]
+    )
+    with (
+        patch(
+            "services.knowledge.indexing.adapters.estimate.ExtractProcessor.extract",
+            return_value=ExtractionResult(documents=[Document(page_content="source")]),
+        ) as extract,
+        patch(
+            "services.knowledge.indexing.adapters.estimate.IndexProcessorFactory",
+            return_value=_ProcessorFactory(processor),
+        ),
+    ):
+        result = IndexingEstimateAdapter(
+            session_factory=sqlite_session_factory, files=files, website=website_service
+        ).run(
+            "workspace-1",
+            [ExtractSetting(datasource_type=DatasourceType.WEBSITE)],
+            {"mode": mode},
+            doc_form,
         )
-        for i in range(11)
-    ]
-    with patch("services.knowledge.indexing.adapters.estimate.IndexProcessorFactory") as factory:
-        factory.return_value.init_index_processor.return_value = processor
-        result = IndexingEstimateAdapter(session_factory=sqlite_session_factory).run(
-            "workspace-1", [ExtractSetting(datasource_type=DatasourceType.WEBSITE)], {"mode": "automatic"}, doc_form
-        )
+
     if doc_form == "qa_model":
         assert result.total_segments == 220
         assert len(result.qa_preview) == 10
@@ -107,74 +203,185 @@ def test_estimates_segments_and_limits_previews(
         assert result.total_segments == 11
         assert len(result.preview) == 10
         assert result.preview[0].child_chunks == ["child"]
+    assert extract.call_args.kwargs["is_automatic"] is expected_is_automatic
+    assert extract.call_args.kwargs.get("capture_source_version", False) is False
+    assert extract.call_args.kwargs["image_writer"] is None
+    assert extract.call_args.kwargs["website_service"] is website_service
 
 
 def test_estimate_enforces_batch_limit(
-    sqlite_session_factory: sessionmaker[Session], config_overrides: Callable[..., None]
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    website_service: WebsiteService,
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, BATCH_UPLOAD_LIMIT=1)
+    files = _FileServiceFake()
+
     with pytest.raises(IndexingEstimateExecutionError, match="batch upload limit"):
-        IndexingEstimateAdapter(session_factory=sqlite_session_factory).run(
-            "workspace-1", [ExtractSetting(datasource_type=DatasourceType.WEBSITE)] * 2, {"mode": "automatic"}
+        IndexingEstimateAdapter(session_factory=sqlite_session_factory, files=files, website=website_service).run(
+            "workspace-1",
+            [ExtractSetting(datasource_type=DatasourceType.WEBSITE)] * 2,
+            {"mode": "automatic"},
         )
 
 
-@pytest.mark.parametrize("storage_fails", [False, True])
-def test_preview_cleanup_commits_before_summary_and_excludes_foreign_files(
-    sqlite_session_factory: sessionmaker[Session], storage_fails: bool
+def test_preview_cleans_file_reported_by_transform_callback(
+    sqlite_session_factory: sessionmaker[Session], website_service: WebsiteService
 ) -> None:
-    image_ids = []
-    with sqlite_session_factory.begin() as session:
-        for tenant in ["workspace-1", "foreign"]:
-            upload = UploadFile(
-                tenant_id=tenant,
-                storage_type=StorageType.LOCAL,
-                key=f"{tenant}/image.png",
-                name="image.png",
-                size=10,
-                extension="png",
-                mime_type="image/png",
-                created_by_role=CreatorUserRole.ACCOUNT,
-                created_by="user",
-                created_at=datetime.now(UTC),
-                used=True,
-            )
-            image_ids.append(upload.id)
-            session.add(upload)
-    processor = MagicMock()
-    processor.transform.return_value = [Document(page_content="preview")]
-
-    def summary(
-        _tenant, previews: list[PreviewDetail], _settings, _language, *, session: Session
-    ) -> list[PreviewDetail]:
-        assert not session.in_transaction()
-        with sqlite_session_factory() as observer:
-            assert observer.get(UploadFile, image_ids[0]) is None
-            assert observer.get(UploadFile, image_ids[1]) is not None
-        return [PreviewDetail(content=previews[0].content, summary="summary")]
-
-    processor.generate_summary_preview.side_effect = summary
+    files = _FileServiceFake()
+    processor = _PreviewProcessor(
+        documents=[Document(page_content="preview")],
+        callback_file_id="transform-upload-1",
+    )
     with (
-        patch("services.knowledge.indexing.adapters.estimate.IndexProcessorFactory") as factory,
-        patch("services.knowledge.indexing.adapters.estimate.get_image_upload_file_ids", return_value=image_ids),
-        patch("services.knowledge.indexing.adapters.estimate.storage") as storage,
+        patch(
+            "services.knowledge.indexing.adapters.estimate.ExtractProcessor.extract",
+            return_value=ExtractionResult(documents=[Document(page_content="source")]),
+        ),
+        patch(
+            "services.knowledge.indexing.adapters.estimate.IndexProcessorFactory",
+            return_value=_ProcessorFactory(processor),
+        ),
     ):
-        factory.return_value.init_index_processor.return_value = processor
-        if storage_fails:
-            storage.delete.side_effect = OSError("storage unavailable")
-        result = IndexingEstimateAdapter(session_factory=sqlite_session_factory).run(
+        result = IndexingEstimateAdapter(
+            session_factory=sqlite_session_factory, files=files, website=website_service
+        ).run(
             "workspace-1",
             [ExtractSetting(datasource_type=DatasourceType.WEBSITE)],
-            {"mode": "automatic", "summary_index_setting": {"enable": True}},
+            {"mode": "automatic", "rules": {}},
             "text_model",
         )
-        storage.delete.assert_called_once_with("workspace-1/image.png")
-    assert result.preview[0].summary == "summary"
+
+    assert result.total_segments == 1
+    assert files.deleted_files == [("workspace-1", "transform-upload-1")]
+    assert files.deleted_artifacts == []
+
+
+def test_preview_extract_failure_deletes_only_uncommitted_artifact_keys(
+    sqlite_session_factory: sessionmaker[Session], website_service: WebsiteService
+) -> None:
+    files = create_autospec(FileService, instance=True, spec_set=True)
+    processor = _PreviewProcessor()
+    artifacts: list[CreatedUploadArtifact] = []
+
+    def fail_extract(*_args: object, **kwargs: object) -> ExtractionResult[Document]:
+        writer = kwargs["image_writer"]
+        assert isinstance(writer, ExtractionImageWriter)
+        writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
+        artifacts.extend(writer.created_upload_artifacts)
+        raise RuntimeError("extract failed")
+
+    with (
+        patch("services.knowledge.indexing.adapters.estimate.ExtractProcessor.extract", side_effect=fail_extract),
+        patch(
+            "services.knowledge.indexing.adapters.estimate.IndexProcessorFactory",
+            return_value=_ProcessorFactory(processor),
+        ),
+        patch("services.knowledge.indexing.adapters.estimate.storage.save"),
+    ):
+        with pytest.raises(IndexingEstimateExecutionError, match="extract failed"):
+            IndexingEstimateAdapter(session_factory=sqlite_session_factory, files=files, website=website_service).run(
+                "workspace-1",
+                [_file_extract_setting()],
+                {"mode": "automatic"},
+                "text_model",
+            )
+
+    [artifact] = artifacts
+    files.delete_uncommitted_artifact.assert_called_once_with(artifact=artifact)
+    files.delete_file.assert_not_called()
+    with sqlite_session_factory() as session:
+        assert session.get(UploadFile, artifact.id) is None
+
+
+def test_preview_transform_failure_cleans_extraction_and_published_artifacts_by_their_own_boundaries(
+    sqlite_session_factory: sessionmaker[Session], website_service: WebsiteService
+) -> None:
+    files = create_autospec(FileService, instance=True, spec_set=True)
+    processor = _PreviewProcessor(
+        callback_file_id="published-transform-upload-1",
+        error=RuntimeError("transform failed"),
+    )
+    artifacts: list[CreatedUploadArtifact] = []
+
+    def extract(*_args: object, **kwargs: object) -> ExtractionResult[Document]:
+        writer = kwargs["image_writer"]
+        assert isinstance(writer, ExtractionImageWriter)
+        writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
+        artifacts.extend(writer.created_upload_artifacts)
+        return ExtractionResult(documents=[Document(page_content="source")])
+
+    with (
+        patch("services.knowledge.indexing.adapters.estimate.ExtractProcessor.extract", side_effect=extract),
+        patch(
+            "services.knowledge.indexing.adapters.estimate.IndexProcessorFactory",
+            return_value=_ProcessorFactory(processor),
+        ),
+        patch("services.knowledge.indexing.adapters.estimate.storage.save"),
+    ):
+        with pytest.raises(IndexingEstimateExecutionError, match="transform failed"):
+            IndexingEstimateAdapter(session_factory=sqlite_session_factory, files=files, website=website_service).run(
+                "workspace-1",
+                [_file_extract_setting()],
+                {"mode": "automatic", "rules": {}},
+                "text_model",
+            )
+
+    [artifact] = artifacts
+    files.delete_uncommitted_artifact.assert_called_once_with(artifact=artifact)
+    files.delete_file.assert_called_once_with(
+        tenant_id="workspace-1",
+        file_id="published-transform-upload-1",
+    )
+    with sqlite_session_factory() as session:
+        assert session.get(UploadFile, artifact.id) is None
+
+
+def test_preview_commit_failure_never_deletes_by_uncommitted_blob_key(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    website_service: WebsiteService,
+) -> None:
+    session_factory: sessionmaker[Session] = sessionmaker(
+        bind=sqlite_engine, class_=_CommitUnknownSession, expire_on_commit=False
+    )
+    files = create_autospec(FileService, instance=True, spec_set=True)
+    processor = _PreviewProcessor(documents=[Document(page_content="preview")])
+    artifacts: list[CreatedUploadArtifact] = []
+
+    def extract(*_args: object, **kwargs: object) -> ExtractionResult[Document]:
+        writer = kwargs["image_writer"]
+        assert isinstance(writer, ExtractionImageWriter)
+        writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
+        artifacts.extend(writer.created_upload_artifacts)
+        return ExtractionResult(documents=[Document(page_content="source")])
+
+    with (
+        patch("services.knowledge.indexing.adapters.estimate.ExtractProcessor.extract", side_effect=extract),
+        patch(
+            "services.knowledge.indexing.adapters.estimate.IndexProcessorFactory",
+            return_value=_ProcessorFactory(processor),
+        ),
+        patch("services.knowledge.indexing.adapters.estimate.storage.save"),
+    ):
+        with pytest.raises(IndexingEstimateExecutionError, match="commit result unknown"):
+            IndexingEstimateAdapter(session_factory=session_factory, files=files, website=website_service).run(
+                "workspace-1",
+                [_file_extract_setting()],
+                {"mode": "automatic", "rules": {}},
+                "text_model",
+            )
+
+    [artifact] = artifacts
+    files.delete_file.assert_called_once_with(tenant_id="workspace-1", file_id=artifact.id)
+    files.delete_uncommitted_artifact.assert_not_called()
+    with sqlite_session_factory() as session:
+        assert session.get(UploadFile, artifact.id) is not None
 
 
 @pytest.mark.parametrize("provider", [None, "embedding-provider"])
 def test_estimate_selects_dataset_embedding_and_rejects_foreign_tenant(
-    sqlite_session_factory: sessionmaker[Session], provider: str | None
+    sqlite_session_factory: sessionmaker[Session], provider: str | None, website_service: WebsiteService
 ) -> None:
     with sqlite_session_factory.begin() as session:
         dataset = _dataset("dataset-1", "workspace-1")
@@ -182,7 +389,9 @@ def test_estimate_selects_dataset_embedding_and_rejects_foreign_tenant(
         dataset.embedding_model_provider = provider
         dataset.embedding_model = "embedding-model"
         session.add(dataset)
-    adapter = IndexingEstimateAdapter(session_factory=sqlite_session_factory)
+    files = _FileServiceFake()
+    adapter = IndexingEstimateAdapter(session_factory=sqlite_session_factory, files=files, website=website_service)
+
     with (
         patch("services.knowledge.indexing.adapters.estimate.ModelManager.for_tenant") as manager,
         patch("services.knowledge.indexing.adapters.estimate.IndexProcessorFactory"),
@@ -210,8 +419,11 @@ def test_estimate_translates_infrastructure_errors(
     sqlite_session_factory: sessionmaker[Session],
     processor_error: Exception,
     expected_error: type[Exception],
+    website_service: WebsiteService,
 ) -> None:
-    adapter = IndexingEstimateAdapter(session_factory=sqlite_session_factory)
+    files = _FileServiceFake()
+    adapter = IndexingEstimateAdapter(session_factory=sqlite_session_factory, files=files, website=website_service)
+
     with (
         patch("services.knowledge.indexing.adapters.estimate.IndexProcessorFactory", side_effect=processor_error),
         pytest.raises(expected_error, match="provider unavailable|processor failed|temporarily unavailable"),

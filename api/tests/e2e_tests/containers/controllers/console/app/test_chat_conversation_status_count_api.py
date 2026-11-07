@@ -7,13 +7,14 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from constants import HEADER_NAME_CSRF_TOKEN
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType

@@ -144,7 +144,7 @@ def test_workspace_operations_preserve_scope_and_tenant(
     assert len(listed) == 1
     assert set(listed[0].dataset_ids) == {"dataset", "other-dataset"}
     assert repository.list_workspace_keys("foreign") == ()
-    with pytest.raises(ApiKeyNotFoundError):
+    with pytest.raises(ApiKeyResourceNotFoundError):
         repository.delete_workspace_key("foreign", key.id)
     repository.delete_workspace_key("tenant", key.id)
     assert repository.list_workspace_keys("tenant") == ()

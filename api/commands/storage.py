@@ -3,8 +3,9 @@ from typing import cast
 
 import click
 import sqlalchemy as sa
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from extensions.ext_database import db
@@ -12,36 +13,88 @@ from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
 from models.model import UploadFile
+from repositories.file.reference_queries import candidate_batches
+from repositories.file.upload_file_reclamation import find_referenced_upload_file_ids_in_session
+from repositories.file.upload_file_repository import UploadFileRepository
+from services.entities.upload_file import UploadFileReferenceCandidate
+from services.file_adapters import UPLOAD_FILE_REFERENCE_QUERIES, build_upload_file_reclaimer
+
+_STORAGE_FILE_TABLES = (
+    ("upload_files", "key"),
+    ("tool_files", "file_key"),
+)
+
+
+def _find_orphaned_upload_files(
+    session_factory: sessionmaker[Session],
+) -> dict[str, tuple[UploadFileReferenceCandidate, ...]]:
+    """Return UploadFiles not retained by any registered owning domain."""
+
+    candidates_by_tenant: dict[str, list[UploadFileReferenceCandidate]] = {}
+    with session_factory.begin() as session:
+        uploads = session.scalars(select(UploadFile).order_by(UploadFile.tenant_id, UploadFile.id)).all()
+        for upload in uploads:
+            candidates_by_tenant.setdefault(upload.tenant_id, []).append(
+                UploadFileReferenceCandidate(id=upload.id, key=upload.key)
+            )
+
+        orphaned: dict[str, tuple[UploadFileReferenceCandidate, ...]] = {}
+        for tenant_id, candidates in candidates_by_tenant.items():
+            referenced_ids = find_referenced_upload_file_ids_in_session(
+                session,
+                tenant_id=tenant_id,
+                candidates=candidates,
+                reference_queries=UPLOAD_FILE_REFERENCE_QUERIES,
+                retry_on_contention=False,
+            )
+            unreferenced = tuple(candidate for candidate in candidates if candidate.id not in referenced_ids)
+            if unreferenced:
+                orphaned[tenant_id] = unreferenced
+    return orphaned
+
+
+def _delete_orphaned_upload_files(
+    session_factory: sessionmaker[Session],
+    orphaned: dict[str, tuple[UploadFileReferenceCandidate, ...]],
+) -> tuple[str, ...]:
+    """Recheck and delete UploadFile metadata without deleting storage blobs."""
+
+    files = UploadFileRepository(session_factory=session_factory)
+    reclaimer = build_upload_file_reclaimer(session_factory=session_factory, files=files)
+    deleted_ids: list[str] = []
+    for tenant_id, candidates in orphaned.items():
+        for batch in candidate_batches(candidates):
+            deleted_ids.extend(
+                reclaimer.delete_unreferenced_files(
+                    tenant_id=tenant_id,
+                    file_ids=tuple(candidate.id for candidate in batch),
+                    delete_blob=lambda _key: None,
+                    retry_on_contention=False,
+                )
+            )
+    return tuple(deleted_ids)
+
+
+def _registered_storage_keys() -> set[str]:
+    """Read the current storage keys that still have a database owner."""
+    keys: set[str] = set()
+    for table, key_column in _STORAGE_FILE_TABLES:
+        click.echo(click.style(f"- Listing files from table {table}", fg="white"))
+        with db.engine.begin() as connection:
+            rows = connection.execute(sa.text(f"SELECT {key_column} FROM {table}"))
+            keys.update(str(row[0]) for row in rows if row[0] is not None)
+    return keys
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
 @click.command("clear-orphaned-file-records", help="Clear orphaned file records.")
 def clear_orphaned_file_records(force: bool):
     """
-    Clear orphaned file records in the database.
-    """
+    Clear orphaned UploadFile records in the database.
 
-    # define tables and columns to process
-    files_tables = [
-        {"table": "upload_files", "id_column": "id", "key_column": "key"},
-        {"table": "tool_files", "id_column": "id", "key_column": "file_key"},
-    ]
-    ids_tables = [
-        {"type": "uuid", "table": "message_files", "column": "upload_file_id"},
-        {"type": "text", "table": "documents", "column": "data_source_info"},
-        {"type": "text", "table": "document_segments", "column": "content"},
-        {"type": "text", "table": "messages", "column": "answer"},
-        {"type": "text", "table": "workflow_node_executions", "column": "inputs"},
-        {"type": "text", "table": "workflow_node_executions", "column": "process_data"},
-        {"type": "text", "table": "workflow_node_executions", "column": "outputs"},
-        {"type": "text", "table": "conversations", "column": "introduction"},
-        {"type": "text", "table": "conversations", "column": "system_instruction"},
-        {"type": "text", "table": "accounts", "column": "avatar"},
-        {"type": "text", "table": "apps", "column": "icon"},
-        {"type": "text", "table": "sites", "column": "icon"},
-        {"type": "json", "table": "messages", "column": "inputs"},
-        {"type": "json", "table": "messages", "column": "message"},
-    ]
+    ToolFile metadata is intentionally excluded until its owning domains share
+    a complete liveness protocol.
+    """
 
     # notify user and ask for confirmation
     click.echo(
@@ -49,19 +102,8 @@ def clear_orphaned_file_records(force: bool):
             "This command will first find and delete orphaned file records from the message_files table,", fg="yellow"
         )
     )
-    click.echo(
-        click.style(
-            "and then it will find and delete orphaned file records in the following tables:",
-            fg="yellow",
-        )
-    )
-    for files_table in files_tables:
-        click.echo(click.style(f"- {files_table['table']}", fg="yellow"))
-    click.echo(
-        click.style("The following tables and columns will be scanned to find orphaned file records:", fg="yellow")
-    )
-    for ids_table in ids_tables:
-        click.echo(click.style(f"- {ids_table['table']} ({ids_table['column']})", fg="yellow"))
+    click.echo(click.style("and then delete unreferenced upload_files using registered owner checks.", fg="yellow"))
+    click.echo(click.style("ToolFile metadata is not modified by this command.", fg="yellow"))
     click.echo("")
 
     click.echo(click.style("!!! USE WITH CAUTION !!!", fg="red"))
@@ -134,120 +176,59 @@ def clear_orphaned_file_records(force: bool):
     except Exception as e:
         click.echo(click.style(f"Error deleting orphaned message_files records: {str(e)}", fg="red"))
 
-    # clean up the orphaned records in the rest of the *_files tables
+    # UploadFile liveness is owned by the same domain-query registry as online
+    # reclamation. This covers opaque canonical references and direct owner rows
+    # such as WorkflowNodeExecutionOffload.file_id without a second table list.
     try:
-        # fetch file id and keys from each table
-        all_files_in_tables = []
-        for files_table in files_tables:
-            click.echo(click.style(f"- Listing file records in table {files_table['table']}", fg="white"))
-            query = f"SELECT {files_table['id_column']}, {files_table['key_column']} FROM {files_table['table']}"
-            with db.engine.begin() as conn:
-                rs = conn.execute(sa.text(query))
-            for i in rs:
-                all_files_in_tables.append({"table": files_table["table"], "id": str(i[0]), "key": i[1]})
-        click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
-
-        # fetch referred table and columns
-        guid_regexp = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-        all_ids_in_tables = []
-        for ids_table in ids_tables:
-            query = ""
-            match ids_table["type"]:
-                case "uuid":
-                    click.echo(
-                        click.style(
-                            f"- Listing file ids in column {ids_table['column']} in table {ids_table['table']}",
-                            fg="white",
-                        )
-                    )
-                    c = ids_table["column"]
-                    query = f"SELECT {c} FROM {ids_table['table']} WHERE {c} IS NOT NULL"
-                    with db.engine.begin() as conn:
-                        rs = conn.execute(sa.text(query))
-                    for i in rs:
-                        all_ids_in_tables.append({"table": ids_table["table"], "id": str(i[0])})
-                case "text":
-                    t = ids_table["table"]
-                    click.echo(
-                        click.style(
-                            f"- Listing file-id-like strings in column {ids_table['column']} in table {t}",
-                            fg="white",
-                        )
-                    )
-                    query = (
-                        f"SELECT regexp_matches({ids_table['column']}, '{guid_regexp}', 'g') AS extracted_id "
-                        f"FROM {ids_table['table']}"
-                    )
-                    with db.engine.begin() as conn:
-                        rs = conn.execute(sa.text(query))
-                    for i in rs:
-                        for j in i[0]:
-                            all_ids_in_tables.append({"table": ids_table["table"], "id": j})
-                case "json":
-                    click.echo(
-                        click.style(
-                            (
-                                f"- Listing file-id-like JSON string in column {ids_table['column']} "
-                                f"in table {ids_table['table']}"
-                            ),
-                            fg="white",
-                        )
-                    )
-                    query = (
-                        f"SELECT regexp_matches({ids_table['column']}::text, '{guid_regexp}', 'g') AS extracted_id "
-                        f"FROM {ids_table['table']}"
-                    )
-                    with db.engine.begin() as conn:
-                        rs = conn.execute(sa.text(query))
-                    for i in rs:
-                        for j in i[0]:
-                            all_ids_in_tables.append({"table": ids_table["table"], "id": j})
-                case _:
-                    pass
-        click.echo(click.style(f"Found {len(all_ids_in_tables)} file ids in tables.", fg="white"))
-
-    except Exception as e:
-        click.echo(click.style(f"Error fetching keys: {str(e)}", fg="red"))
+        upload_sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
+        orphaned_uploads = _find_orphaned_upload_files(upload_sessions)
+        orphaned_upload_ids = tuple(
+            candidate.id for candidates in orphaned_uploads.values() for candidate in candidates
+        )
+        if orphaned_upload_ids:
+            click.echo(click.style(f"Found {len(orphaned_upload_ids)} orphaned upload_files records.", fg="white"))
+            for file_id in orphaned_upload_ids:
+                click.echo(click.style(f"- orphaned upload file id: {file_id}", fg="black"))
+            if not force:
+                click.confirm(
+                    f"Do you want to delete all {len(orphaned_upload_ids)} orphaned upload_files records?",
+                    abort=True,
+                )
+            deleted_upload_ids = _delete_orphaned_upload_files(upload_sessions, orphaned_uploads)
+            click.echo(click.style(f"Removed {len(deleted_upload_ids)} orphaned upload_files records.", fg="green"))
+        else:
+            click.echo(click.style("No orphaned upload_files records found.", fg="green"))
+    except Exception as error:
+        click.echo(click.style(f"Error deleting orphaned upload_files records: {error}", fg="red"))
         return
-
-    # find orphaned files
-    all_files = [file["id"] for file in all_files_in_tables]
-    all_ids = [file["id"] for file in all_ids_in_tables]
-    orphaned_files = list(set(all_files) - set(all_ids))
-    if not orphaned_files:
-        click.echo(click.style("No orphaned file records found. There is nothing to delete.", fg="green"))
-        return
-    click.echo(click.style(f"Found {len(orphaned_files)} orphaned file records.", fg="white"))
-    for file in orphaned_files:
-        click.echo(click.style(f"- orphaned file id: {file}", fg="black"))
-    if not force:
-        click.confirm(f"Do you want to proceed to delete all {len(orphaned_files)} orphaned file records?", abort=True)
-
-    # delete orphaned records for each file
-    try:
-        for files_table in files_tables:
-            click.echo(click.style(f"- Deleting orphaned file records in table {files_table['table']}", fg="white"))
-            query = f"DELETE FROM {files_table['table']} WHERE {files_table['id_column']} IN :ids"
-            with db.engine.begin() as conn:
-                conn.execute(sa.text(query), {"ids": tuple(orphaned_files)})
-    except Exception as e:
-        click.echo(click.style(f"Error deleting orphaned file records: {str(e)}", fg="red"))
-        return
-    click.echo(click.style(f"Removed {len(orphaned_files)} orphaned file records.", fg="green"))
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
-@click.command("remove-orphaned-files-on-storage", help="Remove orphaned files on the storage.")
-def remove_orphaned_files_on_storage(force: bool):
+@click.option(
+    "--writers-stopped",
+    is_flag=True,
+    help="Confirm API, worker, retention, and file-reference writers are stopped and drained.",
+)
+@click.command(
+    "remove-orphaned-files-on-storage",
+    help="Maintenance-only orphan cleanup; stop file writers before running.",
+)
+def remove_orphaned_files_on_storage(force: bool, writers_stopped: bool) -> None:
     """
-    Remove orphaned files on the storage.
+    Remove orphaned storage objects during a stopped-writer maintenance window.
+
+    Stop API, Celery, retention, and workflow writers, drain active file
+    operations, then pass ``--writers-stopped``. The command refreshes database
+    keys immediately before deletion, but that current read cannot replace the
+    writer pause.
     """
 
+    if not writers_stopped:
+        raise click.UsageError(
+            "Refusing orphan deletion until all file writers are stopped and drained; "
+            "rerun with --writers-stopped after establishing the maintenance window."
+        )
     # define tables and columns to process
-    files_tables = [
-        {"table": "upload_files", "key_column": "key"},
-        {"table": "tool_files", "key_column": "file_key"},
-    ]
     storage_paths = ["image_files", "tools", "upload_files"]
 
     # notify user and ask for confirmation
@@ -255,8 +236,8 @@ def remove_orphaned_files_on_storage(force: bool):
     click.echo(
         click.style("by comparing the files on the storage with the records in the following tables:", fg="yellow")
     )
-    for files_table in files_tables:
-        click.echo(click.style(f"- {files_table['table']}", fg="yellow"))
+    for table, _key_column in _STORAGE_FILE_TABLES:
+        click.echo(click.style(f"- {table}", fg="yellow"))
     click.echo(click.style("The following paths on the storage will be scanned to find orphaned files:", fg="yellow"))
     for storage_path in storage_paths:
         click.echo(click.style(f"- {storage_path}", fg="yellow"))
@@ -280,8 +261,8 @@ def remove_orphaned_files_on_storage(force: bool):
     click.echo(
         click.style(
             (
-                "It is also recommended to run this during the maintenance window, "
-                "as this may cause high load on your instance."
+                "This command must run in a maintenance window after API, Celery, retention, "
+                "workflow, and file-reference writers are stopped and active file operations are drained."
             ),
             fg="yellow",
         )
@@ -293,15 +274,8 @@ def remove_orphaned_files_on_storage(force: bool):
     click.echo(click.style("Starting orphaned files cleanup.", fg="white"))
 
     # fetch file id and keys from each table
-    all_files_in_tables = []
     try:
-        for files_table in files_tables:
-            click.echo(click.style(f"- Listing files from table {files_table['table']}", fg="white"))
-            query = f"SELECT {files_table['key_column']} FROM {files_table['table']}"
-            with db.engine.begin() as conn:
-                rs = conn.execute(sa.text(query))
-            for i in rs:
-                all_files_in_tables.append(str(i[0]))
+        all_files_in_tables = _registered_storage_keys()
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
     except Exception as e:
         click.echo(click.style(f"Error fetching keys: {str(e)}", fg="red"))
@@ -322,7 +296,7 @@ def remove_orphaned_files_on_storage(force: bool):
     click.echo(click.style(f"Found {len(all_files_on_storage)} files on storage.", fg="white"))
 
     # find orphaned files
-    orphaned_files = list(set(all_files_on_storage) - set(all_files_in_tables))
+    orphaned_files = sorted(set(all_files_on_storage) - all_files_in_tables)
     if not orphaned_files:
         click.echo(click.style("No orphaned files found. There is nothing to remove.", fg="green"))
         return
@@ -331,6 +305,26 @@ def remove_orphaned_files_on_storage(force: bool):
         click.echo(click.style(f"- orphaned file: {file}", fg="black"))
     if not force:
         click.confirm(f"Do you want to proceed to remove all {len(orphaned_files)} orphaned files?", abort=True)
+
+    # The maintenance pause is the exclusion fence for storage objects that
+    # have no UploadFile row to lock. Refresh owners at the last possible point
+    # so an object registered during the scan is never deleted from this run.
+    try:
+        current_registered_files = _registered_storage_keys()
+    except Exception as error:
+        raise click.ClickException(f"Could not recheck current storage owners: {error}") from error
+    newly_referenced = set(orphaned_files) & current_registered_files
+    if newly_referenced:
+        click.echo(
+            click.style(
+                f"Keeping {len(newly_referenced)} files that gained a database owner during the scan.",
+                fg="yellow",
+            )
+        )
+    orphaned_files = [file for file in orphaned_files if file not in newly_referenced]
+    if not orphaned_files:
+        click.echo(click.style("No unowned files remain after the current-owner recheck.", fg="green"))
+        return
 
     # delete orphaned files
     removed_files = 0
@@ -368,8 +362,8 @@ def file_usage(
     """
     Query file usages and show where files are referenced in the database.
 
-    This command reuses the same reference checking logic as clear-orphaned-file-records
-    and displays detailed information about where each file is referenced.
+    This diagnostic scans its legacy reference-column catalog and displays
+    detailed information about where each file is referenced.
     """
     # define tables and columns to process
     files_tables = [

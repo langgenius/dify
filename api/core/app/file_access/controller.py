@@ -7,8 +7,8 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
+from enums.creator import CreatorUserRole
 from models import ToolFile, UploadFile
-from models.enums import CreatorUserRole
 
 from .protocols import FileAccessControllerProtocol
 from .scope import FileAccessScope, get_current_file_access_scope

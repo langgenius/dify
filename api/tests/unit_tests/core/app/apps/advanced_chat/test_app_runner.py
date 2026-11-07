@@ -26,6 +26,7 @@ from models.model import AppMode, IconType, MessageAnnotation
 from models.model import Conversation as _app_runner_input_moderation_Conversation
 from models.model import Message as _app_runner_input_moderation_Message
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 """SQLite-backed conversation-variable synchronization tests for AdvancedChatAppRunner."""
 
@@ -64,6 +65,7 @@ def _runner(workflow_variables: list[object]) -> AdvancedChatAppRunner:
     return AdvancedChatAppRunner(
         application_generate_entity=MagicMock(),
         queue_manager=MagicMock(),
+        knowledge_retrieval=make_knowledge_retriever(),
         conversation=conversation,
         message=_app_runner_conversation_variables_Message(id="77777777-7777-7777-7777-777777777777"),
         dialogue_count=1,
@@ -251,6 +253,7 @@ class TestAppRunnerInputModerationCases:
         runner = AdvancedChatAppRunner(
             application_generate_entity=gen,
             queue_manager=mock_queue_manager,
+            knowledge_retrieval=make_knowledge_retriever(),
             conversation=conversation,
             message=message,
             dialogue_count=1,

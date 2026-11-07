@@ -92,7 +92,7 @@ from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.workflow_tool_references import WorkflowToolTarget
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
-from tests.helpers.unit.model_factories import make_account, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
@@ -956,6 +956,14 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
             enable_api=False,
         )
         session.add(app)
+        if operation == "icon":
+            session.add(
+                make_upload_file(
+                    file_id="new",
+                    tenant_id=context.active_workspace_id,
+                    created_by=context.account_id,
+                )
+            )
     service = ConsoleAppService(
         apps=ConsoleAppRepository(session_factory=factory),
         access=Access(),
