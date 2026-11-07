@@ -1,6 +1,7 @@
 import contextlib
 import unittest
 from datetime import UTC, datetime, timedelta
+from typing import TypedDict, override
 
 import pytest
 import pytz
@@ -19,11 +20,12 @@ complete compatibility between frontend and backend cron processing.
 class TestCronCompatibility(unittest.TestCase):
     """Test enhanced cron syntax compatibility with frontend."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Set up test environment with fixed time."""
         self.base_time = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
 
-    def test_enhanced_dayofweek_syntax(self):
+    def test_enhanced_dayofweek_syntax(self) -> None:
         """Test enhanced day-of-week syntax compatibility."""
         test_cases = [
             ("0 9 * * 7", 0),  # Sunday as 7
@@ -45,7 +47,7 @@ class TestCronCompatibility(unittest.TestCase):
                 assert next_time.hour == 9
                 assert next_time.minute == 0
 
-    def test_enhanced_month_syntax(self):
+    def test_enhanced_month_syntax(self) -> None:
         """Test enhanced month syntax compatibility."""
         test_cases = [
             ("0 9 1 JAN *", 1),  # January abbreviation
@@ -70,7 +72,7 @@ class TestCronCompatibility(unittest.TestCase):
                 assert next_time.day == 1
                 assert next_time.hour == 9
 
-    def test_predefined_expressions(self):
+    def test_predefined_expressions(self) -> None:
         """Test predefined cron expressions compatibility."""
         test_cases = [
             ("@yearly", lambda dt: dt.month == 1 and dt.day == 1 and dt.hour == 0),
@@ -88,7 +90,7 @@ class TestCronCompatibility(unittest.TestCase):
                 assert next_time is not None
                 assert validator(next_time), f"Validator failed for {expr}: {next_time}"
 
-    def test_special_characters(self):
+    def test_special_characters(self) -> None:
         """Test special characters in cron expressions."""
         test_cases = [
             "0 9 ? * 1",  # ? wildcard
@@ -105,7 +107,7 @@ class TestCronCompatibility(unittest.TestCase):
                 except Exception as e:
                     self.fail(f"Expression '{expr}' should be valid but raised: {e}")
 
-    def test_range_and_list_syntax(self):
+    def test_range_and_list_syntax(self) -> None:
         """Test range and list syntax with abbreviations."""
         test_cases = [
             "0 9 * * MON-FRI",  # Weekday range with abbreviations
@@ -123,7 +125,7 @@ class TestCronCompatibility(unittest.TestCase):
                 except Exception as e:
                     self.fail(f"Expression '{expr}' should be valid but raised: {e}")
 
-    def test_invalid_enhanced_syntax(self):
+    def test_invalid_enhanced_syntax(self) -> None:
         """Test that invalid enhanced syntax is properly rejected."""
         invalid_expressions = [
             "0 12 * JANUARY *",  # Full month name (not supported)
@@ -140,7 +142,7 @@ class TestCronCompatibility(unittest.TestCase):
                 with pytest.raises((CroniterBadCronError, ValueError)):
                     calculate_next_run_at(expr, "UTC", self.base_time)
 
-    def test_edge_cases_with_enhanced_syntax(self):
+    def test_edge_cases_with_enhanced_syntax(self) -> None:
         """Test edge cases with enhanced syntax."""
         test_cases = [
             ("0 0 29 FEB *", lambda dt: dt.month == 2 and dt.day == 29),  # Feb 29 with month abbreviation
@@ -174,11 +176,12 @@ class TestCronCompatibility(unittest.TestCase):
 class TestTimezoneCompatibility(unittest.TestCase):
     """Test timezone compatibility between frontend and backend."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Set up test environment."""
         self.base_time = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
 
-    def test_timezone_consistency(self):
+    def test_timezone_consistency(self) -> None:
         """Test that calculations are consistent across different timezones."""
         timezones = [
             "UTC",
@@ -202,7 +205,7 @@ class TestTimezoneCompatibility(unittest.TestCase):
                 assert local_time.hour == 12
                 assert local_time.minute == 0
 
-    def test_dst_handling(self):
+    def test_dst_handling(self) -> None:
         """Test DST boundary handling."""
         # Test around DST spring forward (March 2024)
         dst_base = datetime(2024, 3, 8, 10, 0, 0, tzinfo=UTC)
@@ -220,7 +223,7 @@ class TestTimezoneCompatibility(unittest.TestCase):
         except Exception as e:
             self.fail(f"DST handling failed: {e}")
 
-    def test_half_hour_timezones(self):
+    def test_half_hour_timezones(self) -> None:
         """Test timezones with half-hour offsets."""
         timezones_with_offsets = [
             ("Asia/Kolkata", 17, 30),  # UTC+5:30 -> 12:00 UTC = 17:30 IST
@@ -243,7 +246,7 @@ class TestTimezoneCompatibility(unittest.TestCase):
                     # Some complex timezone calculations might vary
                     pass
 
-    def test_invalid_timezone_handling(self):
+    def test_invalid_timezone_handling(self) -> None:
         """Test handling of invalid timezones."""
         expression = "0 12 * * *"
         invalid_timezone = "Invalid/Timezone"
@@ -255,11 +258,12 @@ class TestTimezoneCompatibility(unittest.TestCase):
 class TestFrontendBackendIntegration(unittest.TestCase):
     """Test integration patterns that mirror frontend usage."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Set up test environment."""
         self.base_time = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
 
-    def test_execution_time_calculator_pattern(self):
+    def test_execution_time_calculator_pattern(self) -> None:
         """Test the pattern used by execution-time-calculator.ts."""
         # This mirrors the exact usage from execution-time-calculator.ts:47
         test_data = {
@@ -293,13 +297,18 @@ class TestFrontendBackendIntegration(unittest.TestCase):
             assert local_time.minute == 30
             assert local_time.second == 0
 
-    def test_schedule_service_integration(self):
+    def test_schedule_service_integration(self) -> None:
         """Test integration with ScheduleService patterns."""
         from core.workflow.nodes.trigger_schedule.entities import VisualConfig
         from services.trigger.schedule_service import ScheduleService
 
         # Test enhanced syntax through visual config conversion
-        visual_configs = [
+        class _VisualCase(TypedDict):
+            frequency: str
+            config: VisualConfig
+            expected_cron: str
+
+        visual_configs: list[_VisualCase] = [
             # Test with month abbreviations
             {
                 "frequency": "monthly",
@@ -323,7 +332,7 @@ class TestFrontendBackendIntegration(unittest.TestCase):
                 next_time = calculate_next_run_at(cron_expr, "UTC", self.base_time)
                 assert next_time is not None
 
-    def test_error_handling_consistency(self):
+    def test_error_handling_consistency(self) -> None:
         """Test that error handling matches frontend expectations."""
         invalid_expressions = [
             "60 10 1 * *",  # Invalid minute
@@ -344,7 +353,7 @@ class TestFrontendBackendIntegration(unittest.TestCase):
         # Note: Empty/whitespace expressions are not tested here as they are
         # not expected in normal usage due to database constraints (nullable=False)
 
-    def test_performance_requirements(self):
+    def test_performance_requirements(self) -> None:
         """Test that complex expressions parse within reasonable time."""
         import time
 
@@ -386,12 +395,13 @@ the enhanced cron syntax introduced in the frontend, ensuring full compatibility
 class TestEnhancedCronSyntax(unittest.TestCase):
     """Test enhanced cron syntax in calculate_next_run_at."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Set up test with fixed time."""
         # Monday, January 15, 2024, 10:00 AM UTC
         self.base_time = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
 
-    def test_month_abbreviations(self):
+    def test_month_abbreviations(self) -> None:
         """Test month abbreviations (JAN, FEB, etc.)."""
         test_cases = [
             ("0 12 1 JAN *", 1),  # January
@@ -417,7 +427,7 @@ class TestEnhancedCronSyntax(unittest.TestCase):
                 assert result.hour == 12
                 assert result.minute == 0
 
-    def test_weekday_abbreviations(self):
+    def test_weekday_abbreviations(self) -> None:
         """Test weekday abbreviations (SUN, MON, etc.)."""
         test_cases = [
             ("0 9 * * SUN", 6),  # Sunday (weekday() = 6)
@@ -437,7 +447,7 @@ class TestEnhancedCronSyntax(unittest.TestCase):
                 assert result.hour == 9
                 assert result.minute == 0
 
-    def test_sunday_dual_representation(self):
+    def test_sunday_dual_representation(self) -> None:
         """Test Sunday as both 0 and 7."""
         base_time = datetime(2024, 1, 14, 10, 0, 0, tzinfo=UTC)  # Sunday
 
@@ -459,7 +469,7 @@ class TestEnhancedCronSyntax(unittest.TestCase):
         assert result_0 == result_7
         assert result_0 == result_sun
 
-    def test_predefined_expressions(self):
+    def test_predefined_expressions(self) -> None:
         """Test predefined expressions (@daily, @weekly, etc.)."""
         test_cases = [
             ("@yearly", lambda dt: dt.month == 1 and dt.day == 1 and dt.hour == 0 and dt.minute == 0),
@@ -477,7 +487,7 @@ class TestEnhancedCronSyntax(unittest.TestCase):
                 assert result is not None, f"Failed to parse: {expr}"
                 assert validator(result), f"Validator failed for {expr}: {result}"
 
-    def test_question_mark_wildcard(self):
+    def test_question_mark_wildcard(self) -> None:
         """Test ? wildcard character."""
         # ? in day position with specific weekday
         result_question = calculate_next_run_at("0 9 ? * 1", "UTC", self.base_time)  # Monday
@@ -495,7 +505,7 @@ class TestEnhancedCronSyntax(unittest.TestCase):
         # Results should be identical
         assert result_question == result_star
 
-    def test_last_day_of_month(self):
+    def test_last_day_of_month(self) -> None:
         """Test 'L' for last day of month."""
         expr = "0 12 L * *"  # Last day of month at noon
 
@@ -507,7 +517,7 @@ class TestEnhancedCronSyntax(unittest.TestCase):
         assert result.day == 29  # 2024 is a leap year
         assert result.hour == 12
 
-    def test_range_with_abbreviations(self):
+    def test_range_with_abbreviations(self) -> None:
         """Test ranges using abbreviations."""
         test_cases = [
             "0 9 * * MON-FRI",  # Weekday range
@@ -521,7 +531,7 @@ class TestEnhancedCronSyntax(unittest.TestCase):
                 assert result is not None, f"Failed to parse range expression: {expr}"
                 assert result > self.base_time
 
-    def test_list_with_abbreviations(self):
+    def test_list_with_abbreviations(self) -> None:
         """Test lists using abbreviations."""
         test_cases = [
             ("0 9 * * SUN,WED,FRI", [6, 2, 4]),  # Specific weekdays
@@ -538,7 +548,7 @@ class TestEnhancedCronSyntax(unittest.TestCase):
                 else:  # Month test
                     assert result.month in expected_values
 
-    def test_mixed_syntax(self):
+    def test_mixed_syntax(self) -> None:
         """Test mixed traditional and enhanced syntax."""
         test_cases = [
             "30 14 15 JAN,JUN,DEC *",  # Numbers + month abbreviations
@@ -552,7 +562,7 @@ class TestEnhancedCronSyntax(unittest.TestCase):
                 assert result is not None, f"Failed to parse mixed syntax: {expr}"
                 assert result > self.base_time
 
-    def test_complex_enhanced_expressions(self):
+    def test_complex_enhanced_expressions(self) -> None:
         """Test complex expressions with multiple enhanced features."""
         # Note: Some of these might not be supported by croniter, that's OK
         complex_expressions = [
@@ -575,11 +585,12 @@ class TestEnhancedCronSyntax(unittest.TestCase):
 class TestTimezoneHandlingEnhanced(unittest.TestCase):
     """Test timezone handling with enhanced syntax."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Set up test with fixed time."""
         self.base_time = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
 
-    def test_enhanced_syntax_with_timezones(self):
+    def test_enhanced_syntax_with_timezones(self) -> None:
         """Test enhanced syntax works correctly across timezones."""
         timezones = ["UTC", "America/New_York", "Asia/Tokyo", "Europe/London"]
         expression = "0 12 * * MON"  # Monday at noon
@@ -596,7 +607,7 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
                 assert local_time.hour == 12
                 assert local_time.minute == 0
 
-    def test_predefined_expressions_with_timezones(self):
+    def test_predefined_expressions_with_timezones(self) -> None:
         """Test predefined expressions work with different timezones."""
         expression = "@daily"
         timezones = ["UTC", "America/New_York", "Asia/Tokyo"]
@@ -612,7 +623,7 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
                 assert local_time.hour == 0
                 assert local_time.minute == 0
 
-    def test_dst_with_enhanced_syntax(self):
+    def test_dst_with_enhanced_syntax(self) -> None:
         """Test DST handling with enhanced syntax."""
         # DST spring forward date in 2024
         dst_base = datetime(2024, 3, 8, 10, 0, 0, tzinfo=UTC)
@@ -640,7 +651,7 @@ class TestDstTransitionRegression(unittest.TestCase):
     for zones such as Europe/Dublin, Africa/Casablanca and Africa/El_Aaiun.
     """
 
-    def test_fall_back_ambiguous_times_do_not_crash(self):
+    def test_fall_back_ambiguous_times_do_not_crash(self) -> None:
         """Zones with a fall-back clock change must not raise."""
         # Europe/Dublin falls back on 2026-10-25: 01:00 local occurs twice.
         # Africa/Casablanca and Africa/El_Aaiun change clocks on 2026-03-29.
@@ -658,7 +669,7 @@ class TestDstTransitionRegression(unittest.TestCase):
                 assert result.tzinfo is not None
                 assert result > base_time
 
-    def test_spring_forward_nonexistent_times_do_not_crash(self):
+    def test_spring_forward_nonexistent_times_do_not_crash(self) -> None:
         """A cron time that does not exist locally must be skipped, not raise."""
         # Europe/Dublin springs forward on 2026-03-29: 01:30 local does not
         # exist. The next run is shifted to the first existing time (02:00).
@@ -672,11 +683,12 @@ class TestDstTransitionRegression(unittest.TestCase):
 class TestErrorHandlingEnhanced(unittest.TestCase):
     """Test error handling for enhanced syntax."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Set up test with fixed time."""
         self.base_time = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
 
-    def test_invalid_enhanced_syntax(self):
+    def test_invalid_enhanced_syntax(self) -> None:
         """Test that invalid enhanced syntax raises appropriate errors."""
         invalid_expressions = [
             "0 12 * JANUARY *",  # Full month name
@@ -693,7 +705,7 @@ class TestErrorHandlingEnhanced(unittest.TestCase):
                 with pytest.raises((CroniterBadCronError, ValueError)):
                     calculate_next_run_at(expr, "UTC", self.base_time)
 
-    def test_boundary_values_with_enhanced_syntax(self):
+    def test_boundary_values_with_enhanced_syntax(self) -> None:
         """Test boundary values work with enhanced syntax."""
         # Valid boundary expressions
         valid_expressions = [
@@ -716,11 +728,12 @@ class TestErrorHandlingEnhanced(unittest.TestCase):
 class TestPerformanceEnhanced(unittest.TestCase):
     """Test performance with enhanced syntax."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Set up test with fixed time."""
         self.base_time = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
 
-    def test_complex_expression_performance(self):
+    def test_complex_expression_performance(self) -> None:
         """Test that complex enhanced expressions parse within reasonable time."""
         import time
 
@@ -756,7 +769,7 @@ class TestPerformanceEnhanced(unittest.TestCase):
         # Should be fast (less than 100ms for all expressions)
         assert execution_time < 100, "Enhanced expressions should parse quickly"
 
-    def test_multiple_calculations_performance(self):
+    def test_multiple_calculations_performance(self) -> None:
         """Test performance when calculating multiple next times."""
         import time
 
@@ -784,11 +797,12 @@ class TestPerformanceEnhanced(unittest.TestCase):
 class TestRegressionEnhanced(unittest.TestCase):
     """Regression tests to ensure enhanced syntax doesn't break existing functionality."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Set up test with fixed time."""
         self.base_time = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
 
-    def test_traditional_syntax_still_works(self):
+    def test_traditional_syntax_still_works(self) -> None:
         """Ensure traditional cron syntax continues to work."""
         traditional_expressions = [
             "15 10 1 * *",  # Monthly 1st at 10:15
@@ -805,7 +819,7 @@ class TestRegressionEnhanced(unittest.TestCase):
                 assert result is not None, f"Traditional expression failed: {expr}"
                 assert result > self.base_time
 
-    def test_convert_12h_to_24h_unchanged(self):
+    def test_convert_12h_to_24h_unchanged(self) -> None:
         """Ensure convert_12h_to_24h function is unchanged."""
         test_cases = [
             ("12:00 AM", (0, 0)),  # Midnight
