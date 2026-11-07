@@ -106,8 +106,9 @@ This test suite follows a comprehensive testing strategy that covers:
 ================================================================================
 """
 
-from typing import Literal
-from unittest.mock import Mock, patch
+from collections.abc import Iterator
+from typing import Any, Literal
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -156,7 +157,7 @@ class DocumentValidationTestDataFactory:
         indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
-        **kwargs,
+        **kwargs: Any,
     ) -> Dataset:
         """
         Create a Dataset with specified attributes.
@@ -189,7 +190,7 @@ class DocumentValidationTestDataFactory:
         process_rule: ProcessRule | None = None,
         doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
         indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
-        **kwargs,
+        **kwargs: Any,
     ) -> KnowledgeConfig:
         """
         Create a KnowledgeConfig for service-level validation, including invalid values.
@@ -413,7 +414,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
     """
 
     @pytest.fixture
-    def mock_model_manager(self):
+    def mock_model_manager(self) -> Iterator[MagicMock]:
         """
         Mock ModelManager for testing.
 
@@ -423,7 +424,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         with patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
-    def test_check_dataset_model_setting_high_quality_success(self, mock_model_manager) -> None:
+    def test_check_dataset_model_setting_high_quality_success(self, mock_model_manager: MagicMock) -> None:
         """
         Test successful validation for high_quality indexing.
 
@@ -457,7 +458,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
             model=dataset.embedding_model,
         )
 
-    def test_check_dataset_model_setting_economy_skips_validation(self, mock_model_manager) -> None:
+    def test_check_dataset_model_setting_economy_skips_validation(self, mock_model_manager: MagicMock) -> None:
         """
         Test that economy indexing skips model validation.
 
@@ -478,7 +479,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         # Assert
         mock_model_manager.assert_not_called()
 
-    def test_check_dataset_model_setting_llm_bad_request_error(self, mock_model_manager) -> None:
+    def test_check_dataset_model_setting_llm_bad_request_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for LLMBadRequestError.
 
@@ -508,7 +509,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         ):
             DatasetService.check_dataset_model_setting(dataset)
 
-    def test_check_dataset_model_setting_provider_token_error(self, mock_model_manager) -> None:
+    def test_check_dataset_model_setting_provider_token_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for ProviderTokenNotInitError.
 
@@ -562,7 +563,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
     """
 
     @pytest.fixture
-    def mock_model_manager(self):
+    def mock_model_manager(self) -> Iterator[MagicMock]:
         """
         Mock ModelManager for testing.
 
@@ -572,7 +573,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
         with patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
-    def test_check_embedding_model_setting_success(self, mock_model_manager) -> None:
+    def test_check_embedding_model_setting_success(self, mock_model_manager: MagicMock) -> None:
         """
         Test successful validation of embedding model.
 
@@ -604,7 +605,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
             model=embedding_model,
         )
 
-    def test_check_embedding_model_setting_llm_bad_request_error(self, mock_model_manager) -> None:
+    def test_check_embedding_model_setting_llm_bad_request_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for LLMBadRequestError.
 
@@ -632,7 +633,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
         ):
             DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model)
 
-    def test_check_embedding_model_setting_provider_token_error(self, mock_model_manager) -> None:
+    def test_check_embedding_model_setting_provider_token_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for ProviderTokenNotInitError.
 
@@ -684,7 +685,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
     """
 
     @pytest.fixture
-    def mock_model_manager(self):
+    def mock_model_manager(self) -> Iterator[MagicMock]:
         """
         Mock ModelManager for testing.
 
@@ -694,7 +695,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
         with patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
-    def test_check_reranking_model_setting_success(self, mock_model_manager) -> None:
+    def test_check_reranking_model_setting_success(self, mock_model_manager: MagicMock) -> None:
         """
         Test successful validation of reranking model.
 
@@ -726,7 +727,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
             model=reranking_model,
         )
 
-    def test_check_reranking_model_setting_llm_bad_request_error(self, mock_model_manager) -> None:
+    def test_check_reranking_model_setting_llm_bad_request_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for LLMBadRequestError.
 
@@ -754,7 +755,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
         ):
             DatasetService.check_reranking_model_setting(tenant_id, reranking_model_provider, reranking_model)
 
-    def test_check_reranking_model_setting_provider_token_error(self, mock_model_manager) -> None:
+    def test_check_reranking_model_setting_provider_token_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for ProviderTokenNotInitError.
 
@@ -808,7 +809,7 @@ class TestDocumentServiceDocumentCreateArgsValidate:
     """
 
     @pytest.fixture
-    def mock_validation_methods(self):
+    def mock_validation_methods(self) -> Iterator[dict[str, MagicMock]]:
         """
         Mock validation methods for testing.
 
@@ -824,7 +825,9 @@ class TestDocumentServiceDocumentCreateArgsValidate:
                 "process_rule_validate": mock_process_rule_validate,
             }
 
-    def test_document_create_args_validate_with_data_source_success(self, mock_validation_methods) -> None:
+    def test_document_create_args_validate_with_data_source_success(
+        self, mock_validation_methods: dict[str, MagicMock]
+    ) -> None:
         """
         Test successful validation with data source only.
 
@@ -849,7 +852,9 @@ class TestDocumentServiceDocumentCreateArgsValidate:
         mock_validation_methods["data_source_validate"].assert_called_once_with(knowledge_config)
         mock_validation_methods["process_rule_validate"].assert_not_called()
 
-    def test_document_create_args_validate_with_process_rule_success(self, mock_validation_methods) -> None:
+    def test_document_create_args_validate_with_process_rule_success(
+        self, mock_validation_methods: dict[str, MagicMock]
+    ) -> None:
         """
         Test successful validation with process rule only.
 
@@ -874,7 +879,9 @@ class TestDocumentServiceDocumentCreateArgsValidate:
         mock_validation_methods["process_rule_validate"].assert_called_once_with(knowledge_config)
         mock_validation_methods["data_source_validate"].assert_not_called()
 
-    def test_document_create_args_validate_with_both_success(self, mock_validation_methods) -> None:
+    def test_document_create_args_validate_with_both_success(
+        self, mock_validation_methods: dict[str, MagicMock]
+    ) -> None:
         """
         Test successful validation with both data source and process rule.
 
