@@ -16,6 +16,10 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_CSRF_TOKEN, HIDDEN_VALUE, UNKNOWN_VALUE
+from controllers.console.workspace.plugin import (
+    PluginFetchDynamicSelectOptionsApi,
+    PluginFetchDynamicSelectOptionsWithCredentialsApi,
+)
 from controllers.console.workspace.trigger_providers import (
     TriggerOAuthAuthorizeApi,
     TriggerOAuthCallbackApi,
@@ -237,6 +241,11 @@ def harness(
         login_manager.init_app(app)
         blueprint = Blueprint("console", __name__, url_prefix="/console/api")
         api = ExternalApi(blueprint)
+        api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
+        api.add_resource(
+            PluginFetchDynamicSelectOptionsWithCredentialsApi,
+            "/workspaces/current/plugin/parameters/dynamic-options-with-credentials",
+        )
         api.add_resource(TriggerProviderListApi, "/workspaces/current/triggers")
         api.add_resource(TriggerProviderInfoApi, "/workspaces/current/trigger-provider/<path:provider>/info")
         api.add_resource(TriggerProviderIconApi, "/workspaces/current/trigger-provider/<path:provider>/icon")
