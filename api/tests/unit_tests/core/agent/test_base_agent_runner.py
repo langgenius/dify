@@ -206,11 +206,15 @@ def _dataset_tool(name: str) -> DatasetRetrieverTool:
 
 
 @pytest.fixture
-def database_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Bind legacy global-session writes to a real SQLite Session."""
+def database_session(sqlite_session: Session) -> Session:
+    """Read persisted agent thoughts through the test SQLite session."""
 
-    monkeypatch.setattr(module.db, "session", sqlite_session)
     return sqlite_session
+
+
+def _reload(session: Session, thought_id: str) -> MessageAgentThought | None:
+    session.expire_all()
+    return session.get(MessageAgentThought, thought_id)
 
 
 @pytest.fixture
@@ -310,7 +314,7 @@ def test_create_agent_thought_persists_row(
 ) -> None:
     thought_id = runner.create_agent_thought("message-1", "message", "tool", "input", files)
 
-    stored = database_session.get(MessageAgentThought, thought_id)
+    stored = _reload(database_session, thought_id)
     assert stored is not None
     assert stored.message_id == "message-1"
     assert stored.message_files == expected_files
@@ -326,7 +330,7 @@ def _persist_thought(session: Session, *, tool: str = "tool1;tool2") -> MessageA
 
 
 def test_save_agent_thought_rejects_missing_row(runner: BaseAgentRunner, database_session: Session) -> None:
-    assert database_session.get(MessageAgentThought, "missing") is None
+    assert _reload(database_session, "missing") is None
     with pytest.raises(ValueError, match="agent thought not found"):
         runner.save_agent_thought("missing", None, None, None, None, None, None, [], None)
 
@@ -366,7 +370,7 @@ def test_save_agent_thought_full_update(
         usage,
     )
 
-    stored = database_session.get(MessageAgentThought, thought.id)
+    stored = _reload(database_session, thought.id)
     assert stored is not None
     assert stored.answer == "answer"
     assert stored.tokens == 3
@@ -386,7 +390,7 @@ def test_save_agent_thought_uses_label_fallback(
 
     runner.save_agent_thought(thought.id, None, None, None, None, None, None, [], None)
 
-    stored = database_session.get(MessageAgentThought, thought.id)
+    stored = _reload(database_session, thought.id)
     assert stored is not None
     assert json.loads(stored.tool_labels_str)["unknown_tool"]["en_US"] == "unknown_tool"
 
@@ -401,7 +405,7 @@ def test_save_agent_thought_preserves_existing_labels(
 
     runner.save_agent_thought(thought.id, None, None, None, None, None, None, [], None)
 
-    stored = database_session.get(MessageAgentThought, thought.id)
+    stored = _reload(database_session, thought.id)
     assert stored is not None
     assert json.loads(stored.tool_labels_str)["tool1"]["en_US"] == "existing"
 
@@ -437,7 +441,7 @@ def test_save_agent_thought_serialization_fallbacks(
         None,
     )
 
-    stored = database_session.get(MessageAgentThought, thought.id)
+    stored = _reload(database_session, thought.id)
     assert stored is not None
     assert isinstance(stored.tool_input, str)
     assert isinstance(stored.observation, str)
@@ -454,7 +458,7 @@ def test_save_agent_thought_accepts_empty_message_ids(
     thought = _persist_thought(database_session)
     runner.save_agent_thought(thought.id, None, None, None, None, "meta_string", None, messages_ids, None)  # type: ignore[arg-type]
 
-    stored = database_session.get(MessageAgentThought, thought.id)
+    stored = _reload(database_session, thought.id)
     assert stored is not None
     assert stored.tool_meta_str == "meta_string"
 

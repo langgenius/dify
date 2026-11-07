@@ -22,13 +22,13 @@ from core.app.entities.app_invoke_entities import (
 from core.app.file_access import DatabaseFileAccessController
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.db.session_factory import create_session
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.tools.__base.tool import Tool
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
-from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import file_manager
 from graphon.model_runtime.entities import (
@@ -275,11 +275,11 @@ class BaseAgentRunner(AppRunner):
             created_by=self.user_id,
         )
 
-        db.session.add(thought)
-        db.session.commit()
-        agent_thought_id = str(thought.id)
+        with create_session() as session:
+            session.add(thought)
+            session.commit()
+            agent_thought_id = str(thought.id)
         self.agent_thought_count += 1
-        db.session.close()
 
         return agent_thought_id
 
@@ -299,77 +299,77 @@ class BaseAgentRunner(AppRunner):
         Save agent thought
         """
         stmt = select(MessageAgentThought).where(MessageAgentThought.id == agent_thought_id)
-        agent_thought = db.session.scalar(stmt)
-        if not agent_thought:
-            raise ValueError("agent thought not found")
+        with create_session() as session:
+            agent_thought = session.scalar(stmt)
+            if not agent_thought:
+                raise ValueError("agent thought not found")
 
-        if thought:
-            existing_thought = agent_thought.thought or ""
-            agent_thought.thought = f"{existing_thought}{thought}"
+            if thought:
+                existing_thought = agent_thought.thought or ""
+                agent_thought.thought = f"{existing_thought}{thought}"
 
-        if tool_name:
-            agent_thought.tool = tool_name
+            if tool_name:
+                agent_thought.tool = tool_name
 
-        if tool_input:
-            if isinstance(tool_input, dict):
-                try:
-                    tool_input = json.dumps(tool_input, ensure_ascii=False)
-                except Exception:
-                    tool_input = json.dumps(tool_input)
+            if tool_input:
+                if isinstance(tool_input, dict):
+                    try:
+                        tool_input = json.dumps(tool_input, ensure_ascii=False)
+                    except Exception:
+                        tool_input = json.dumps(tool_input)
 
-            agent_thought.tool_input = tool_input
+                agent_thought.tool_input = tool_input
 
-        if observation:
-            if isinstance(observation, dict):
-                try:
-                    observation = json.dumps(observation, ensure_ascii=False)
-                except Exception:
-                    observation = json.dumps(observation)
+            if observation:
+                if isinstance(observation, dict):
+                    try:
+                        observation = json.dumps(observation, ensure_ascii=False)
+                    except Exception:
+                        observation = json.dumps(observation)
 
-            agent_thought.observation = observation
+                agent_thought.observation = observation
 
-        if answer:
-            agent_thought.answer = answer
+            if answer:
+                agent_thought.answer = answer
 
-        if messages_ids is not None and len(messages_ids) > 0:
-            agent_thought.message_files = json.dumps(messages_ids)
+            if messages_ids is not None and len(messages_ids) > 0:
+                agent_thought.message_files = json.dumps(messages_ids)
 
-        if llm_usage:
-            agent_thought.message_token = llm_usage.prompt_tokens
-            agent_thought.message_price_unit = llm_usage.prompt_price_unit
-            agent_thought.message_unit_price = llm_usage.prompt_unit_price
-            agent_thought.answer_token = llm_usage.completion_tokens
-            agent_thought.answer_price_unit = llm_usage.completion_price_unit
-            agent_thought.answer_unit_price = llm_usage.completion_unit_price
-            agent_thought.tokens = llm_usage.total_tokens
-            agent_thought.total_price = llm_usage.total_price
+            if llm_usage:
+                agent_thought.message_token = llm_usage.prompt_tokens
+                agent_thought.message_price_unit = llm_usage.prompt_price_unit
+                agent_thought.message_unit_price = llm_usage.prompt_unit_price
+                agent_thought.answer_token = llm_usage.completion_tokens
+                agent_thought.answer_price_unit = llm_usage.completion_price_unit
+                agent_thought.answer_unit_price = llm_usage.completion_unit_price
+                agent_thought.tokens = llm_usage.total_tokens
+                agent_thought.total_price = llm_usage.total_price
 
-        # check if tool labels is not empty
-        labels = agent_thought.tool_labels or {}
-        tools = agent_thought.tool.split(";") if agent_thought.tool else []
-        for tool in tools:
-            if not tool:
-                continue
-            if tool not in labels:
-                tool_label = ToolManager.get_tool_label(tool)
-                if tool_label:
-                    labels[tool] = tool_label.to_dict()
-                else:
-                    labels[tool] = {"en_US": tool, "zh_Hans": tool}
+            # check if tool labels is not empty
+            labels = agent_thought.tool_labels or {}
+            tools = agent_thought.tool.split(";") if agent_thought.tool else []
+            for tool in tools:
+                if not tool:
+                    continue
+                if tool not in labels:
+                    tool_label = ToolManager.get_tool_label(tool)
+                    if tool_label:
+                        labels[tool] = tool_label.to_dict()
+                    else:
+                        labels[tool] = {"en_US": tool, "zh_Hans": tool}
 
-        agent_thought.tool_labels_str = json.dumps(labels)
+            agent_thought.tool_labels_str = json.dumps(labels)
 
-        if tool_invoke_meta is not None:
-            if isinstance(tool_invoke_meta, dict):
-                try:
-                    tool_invoke_meta = json.dumps(tool_invoke_meta, ensure_ascii=False)
-                except Exception:
-                    tool_invoke_meta = json.dumps(tool_invoke_meta)
+            if tool_invoke_meta is not None:
+                if isinstance(tool_invoke_meta, dict):
+                    try:
+                        tool_invoke_meta = json.dumps(tool_invoke_meta, ensure_ascii=False)
+                    except Exception:
+                        tool_invoke_meta = json.dumps(tool_invoke_meta)
 
-            agent_thought.tool_meta_str = tool_invoke_meta
+                agent_thought.tool_meta_str = tool_invoke_meta
 
-        db.session.commit()
-        db.session.close()
+            session.commit()
 
     def organize_agent_history(self, prompt_messages: list[PromptMessage], *, session: Session) -> list[PromptMessage]:
         """
