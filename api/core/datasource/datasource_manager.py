@@ -169,7 +169,7 @@ class DatasourceManager:
                 doc_runtime.runtime.credentials = dict(credentials)
             if datasource_param is None:
                 raise ValueError("datasource_param is required for ONLINE_DOCUMENT streaming")
-            inner_gen: Generator[DatasourceMessage, None, None] = doc_runtime.get_online_document_page_content(
+            inner_gen: Generator[DatasourceMessage] = doc_runtime.get_online_document_page_content(
                 user_id=user_id,
                 datasource_parameters=GetOnlineDocumentPageContentRequest(
                     workspace_id=datasource_param.workspace_id,
@@ -216,7 +216,7 @@ class DatasourceManager:
         variable_pool: Any,
         datasource_param: DatasourceParameter | None = None,
         online_drive_request: OnlineDriveDownloadFileParam | None = None,
-    ) -> Generator[StreamChunkEvent | StreamCompletedEvent, None, None]:
+    ) -> Generator[StreamChunkEvent | StreamCompletedEvent]:
         ds_type = DatasourceProviderType.value_of(datasource_type)
 
         messages = cls.stream_online_results(

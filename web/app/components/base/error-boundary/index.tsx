@@ -50,7 +50,7 @@ class ErrorBoundaryInner extends React.Component<
   },
   ErrorBoundaryState
 > {
-  constructor(props: any) {
+  constructor(props: ErrorBoundaryInner['props']) {
     super(props)
     this.state = {
       hasError: false,
@@ -81,12 +81,15 @@ class ErrorBoundaryInner extends React.Component<
     if (this.props.onError) this.props.onError(error, errorInfo)
   }
 
-  override componentDidUpdate(prevProps: any) {
+  override componentDidUpdate(prevProps: ErrorBoundaryInner['props']) {
     const { resetKeys, resetOnPropsChange } = this.props
     const { hasError } = this.state
 
     if (hasError && prevProps.resetKeys !== resetKeys) {
-      if (resetKeys?.some((key, idx) => key !== prevProps.resetKeys?.[idx]))
+      if (
+        (resetKeys?.length ?? 0) !== (prevProps.resetKeys?.length ?? 0) ||
+        resetKeys?.some((key, idx) => key !== prevProps.resetKeys?.[idx])
+      )
         this.props.resetErrorBoundary()
     }
 

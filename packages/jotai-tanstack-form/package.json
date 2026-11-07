@@ -11,13 +11,14 @@
   },
   "scripts": {
     "test": "vp test",
-    "type-check": "tsc"
+    "type-check": "tsrs --noEmit"
   },
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@tanstack/form-core": "catalog:",
     "@typescript/native": "catalog:",
     "jotai": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

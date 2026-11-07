@@ -3,7 +3,6 @@
   "action.delete": "Hapus plugin",
   "action.deleteContentLeft": "Apakah Anda ingin menghapus",
   "action.deleteContentRight": "Plugin?",
-  "action.deleteSuccess": "Plugin berhasil dihapus",
   "action.pluginInfo": "Info plugin",
   "allCategories": "Semua Kategori",
   "auth.addApi": "Menambahkan Kunci API",
@@ -302,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Panduan penerbitan templat",
-  "upgrade.close": "Tutup",
   "upgrade.description": "Tentang menginstal plugin berikut",
-  "upgrade.successfulTitle": "Instal berhasil",
   "upgrade.title": "Instal Plugin",
   "upgrade.upgrade": "Pasang",
   "upgrade.upgrading": "Menginstal..."

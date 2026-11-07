@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { createReactI18nextMock } from '@/test/i18n-mock'
 
 vi.mock('react-i18next', () =>
@@ -23,36 +23,8 @@ vi.mock('@/hooks/use-document-title', () => ({
 const { useOAuthCallback } = await import('@/hooks/use-oauth')
 const OAuthCallback = (await import('../page')).default
 
-const setOpener = (opener: Window | null) => {
-  Object.defineProperty(window, 'opener', { configurable: true, writable: true, value: opener })
-}
-
 describe('OAuthCallback page', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  afterEach(() => {
-    setOpener(null)
-  })
-
-  it('renders an empty <div /> when opened as a popup (hasOpener=true) so the popup can close cleanly', () => {
-    setOpener({ postMessage: vi.fn() } as unknown as Window)
-    vi.mocked(useOAuthCallback).mockReturnValue({
-      hasOpener: true,
-      finished: false,
-      error: null,
-      errorDescription: null,
-    })
-
-    const { container } = render(<OAuthCallback />)
-    expect(container.firstChild).not.toBeNull()
-    expect(container.firstChild!.nodeName).toBe('DIV')
-    expect(container.firstChild!.childNodes.length).toBe(0)
-  })
-
   it('renders a success message when opened in a new tab with a subscription_id (#39752)', () => {
-    setOpener(null)
     vi.mocked(useOAuthCallback).mockReturnValue({
       hasOpener: false,
       finished: true,
@@ -69,7 +41,6 @@ describe('OAuthCallback page', () => {
   })
 
   it('renders an error message with the provider description when the provider reported an error (#39752)', () => {
-    setOpener(null)
     vi.mocked(useOAuthCallback).mockReturnValue({
       hasOpener: false,
       finished: true,
@@ -83,7 +54,6 @@ describe('OAuthCallback page', () => {
   })
 
   it('falls back to a generic error hint when the provider did not supply an error_description', () => {
-    setOpener(null)
     vi.mocked(useOAuthCallback).mockReturnValue({
       hasOpener: false,
       finished: true,

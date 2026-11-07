@@ -4,6 +4,7 @@ import type { SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
+import { useMutation } from '@tanstack/react-query'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
@@ -11,7 +12,7 @@ import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkingMode } from '@/models/datasets'
 import { useParams } from '@/next/navigation'
-import { useAddSegment } from '@/service/knowledge/use-segment'
+import { consoleQuery } from '@/service/console'
 import { formatNumber } from '@/utils/format'
 import { IndexingType } from '../../create/step-two'
 import { useSegmentListContext } from './completed'
@@ -62,7 +63,9 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     setAttachments(attachments)
   }, [])
 
-  const { mutateAsync: addSegment } = useAddSegment()
+  const { mutateAsync: addSegment } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segment.post.mutationOptions(),
+  )
 
   const handleSave = useCallback(async () => {
     const params: SegmentUpdater = { content: '', attachment_ids: [] }
@@ -93,7 +96,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
 
     setLoading(true)
     await addSegment(
-      { datasetId, documentId, body: params },
+      { params: { dataset_id: datasetId, document_id: documentId }, body: params },
       {
         onSuccess() {
           toast.success(

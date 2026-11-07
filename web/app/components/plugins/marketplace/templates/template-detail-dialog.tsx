@@ -1,11 +1,11 @@
 'use client'
 
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
-import { useTheme } from 'next-themes'
 import { useCallback } from 'react'
 import { useLocale, useTranslation } from '#i18n'
+import { marketplaceLinks } from '@/features/marketplace/links'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import MarketplaceDetailDialogFrame from '../detail-dialog/frame'
-import { getTemplateLinkInMarketplace } from '../utils'
 
 const MARKETPLACE_INSTALL_MESSAGE_TYPE = 'dify-marketplace:install-template'
 
@@ -24,14 +24,12 @@ export default function TemplateDetailDialog({
 }: TemplateDetailDialogProps) {
   const { t } = useTranslation(['plugin'])
   const locale = useLocale()
-  // resolvedTheme maps the "system" preference to the concrete light/dark
-  // value the marketplace page expects.
-  const { resolvedTheme } = useTheme()
+  const theme = useResolvedTheme()
   const detailLabel = t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })
-  const detailURL = getTemplateLinkInMarketplace(template, {
+  const detailURL = marketplaceLinks.template(template, {
     language: locale,
     source: globalThis.location?.origin,
-    theme: resolvedTheme,
+    theme,
     view: 'modal',
   })
   const handleMessage = useCallback(

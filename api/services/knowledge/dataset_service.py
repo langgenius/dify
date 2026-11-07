@@ -17,15 +17,18 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.workflow.file_reference import resolve_file_record_id
 from enums import CloudPlan, DeploymentEdition
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
+from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_redis import redis_client
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
@@ -49,6 +52,7 @@ from models.dataset import (
     DocumentSegment,
     ExternalKnowledgeBindings,
     Pipeline,
+    build_built_in_field_values,
 )
 from models.enums import (
     DatasetRuntimeMode,
@@ -65,6 +69,7 @@ from models.workflow import Workflow
 from repositories.knowledge import dataset_api_key_bindings
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form, get_latest_dataset_process_rule
 from repositories.knowledge.segment_repository import query_child_chunks
+from services.auth.resource_access_token_contracts import DatasetServiceApiGrant
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -100,6 +105,7 @@ from services.knowledge.segments.application import (
     validate_segment_values,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.rbac import contracts as rbac_contracts
 from services.tag_application_service import TagTargetQuery
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
@@ -128,11 +134,11 @@ class AutoDisableLogsDict(TypedDict):
 
 class DatasetService:
     @staticmethod
-    def _can_manage_all_datasets(tenant_id: str, account_id: str, *, session: Session) -> bool:
+    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
         if not dify_config.RBAC_ENABLED:
             return False
 
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id, session=session)
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
         workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
         return "dataset.create_and_management" in workspace_permission_keys
 
@@ -147,20 +153,30 @@ class DatasetService:
         tag_ids=None,
         include_all=False,
         accessible_dataset_ids: list[str] | None = None,
-        include_own_datasets: bool = False,
+        creator_ids: list[str] | None = None,
         *,
         tags: TagTargetQuery,
+        service_api_grant: DatasetServiceApiGrant | None = None,
     ):
-        """Return visible datasets for a tenant, using the injected session for auxiliary permission lookups."""
+        """Return datasets under account or Dataset Service API visibility.
+
+        Service API callers skip account ACLs while retaining the tenant boundary.
+        A resource-scoped grant further restricts the query to its authorized IDs.
+        """
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
-        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+        if service_api_grant is not None:
+            if service_api_grant.tenant_id != tenant_id:
+                raise ValueError("Dataset Service API grant does not match the requested workspace.")
+            if service_api_grant.dataset_ids is not None:
+                query = query.where(Dataset.id.in_(service_api_grant.dataset_ids))
+        elif dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
-            if include_own_datasets and user:
+            if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             query = query.where(accessible_filter)
 
-        if user:
+        if service_api_grant is None and user:
             # get permitted dataset ids
             dataset_permission = session.scalars(
                 select(DatasetPermission).where(
@@ -177,9 +193,7 @@ class DatasetService:
                     return [], 0
             else:
                 if dify_config.RBAC_ENABLED:
-                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(
-                        str(tenant_id), str(user.id), session=session
-                    )
+                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
                     should_show_all_datasets = include_all and can_manage_all_datasets
                 else:
                     should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
@@ -215,7 +229,7 @@ class DatasetService:
                                     ),
                                 )
                             )
-        else:
+        elif service_api_grant is None:
             if dify_config.RBAC_ENABLED:
                 # Without an account we cannot resolve RBAC resource visibility.
                 query = query.where(sa.false())
@@ -226,6 +240,9 @@ class DatasetService:
         if search:
             escaped_search = helper.escape_like_pattern(search)
             query = query.where(Dataset.name.ilike(f"%{escaped_search}%", escape="\\"))
+
+        if creator_ids:
+            query = query.where(Dataset.created_by.in_(creator_ids))
 
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
@@ -270,7 +287,6 @@ class DatasetService:
         tenant_id: str,
         user=None,
         accessible_dataset_ids: list[str] | None = None,
-        include_own_datasets: bool = False,
         *,
         session: Session,
     ):
@@ -285,7 +301,7 @@ class DatasetService:
                 dataset_id for dataset_id in accessible_dataset_ids if dataset_id in requested_dataset_ids
             ]
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
-            if include_own_datasets and user:
+            if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             stmt = stmt.where(accessible_filter)
 
@@ -382,7 +398,7 @@ class DatasetService:
         enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
             tenant_id,
             account.id,
-            enterprise_rbac_service.RBACResourceType.DATASET,
+            rbac_contracts.RBACResourceType.DATASET,
             dataset.id,
         )
         return dataset
@@ -435,7 +451,16 @@ class DatasetService:
             pipeline_id=pipeline.id,
         )
         session.add(dataset)
+        session.flush()
+        dataset_id = dataset.id
+        creator_id = current_user.id
         session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            creator_id,
+            rbac_contracts.RBACResourceType.DATASET,
+            dataset_id,
+        )
         return dataset
 
     @staticmethod
@@ -465,12 +490,12 @@ class DatasetService:
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
-            except LLMBadRequestError:
+            except LLMBadRequestError as caught_error:
                 raise ValueError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
+                ) from caught_error
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset is unavailable, due to: {ex.description}")
+                raise ValueError(f"The dataset is unavailable, due to: {ex.description}") from ex
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -482,12 +507,12 @@ class DatasetService:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=embedding_model,
             )
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def check_is_multimodal_model(tenant_id: str, model_provider: str, model: str):
@@ -503,12 +528,11 @@ class DatasetService:
             model_schema = text_embedding_model.get_model_schema(model_instance.model_name, model_instance.credentials)
             if not model_schema:
                 raise ValueError("Model schema not found")
-            if model_schema.features and ModelFeature.VISION in model_schema.features:
-                return True
-            else:
-                return False
-        except LLMBadRequestError:
-            raise ValueError("No Model available. Please configure a valid provider in the Settings -> Model Provider.")
+            return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
+        except LLMBadRequestError as caught_error:
+            raise ValueError(
+                "No Model available. Please configure a valid provider in the Settings -> Model Provider."
+            ) from caught_error
 
     @staticmethod
     def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str):
@@ -520,12 +544,12 @@ class DatasetService:
                 model_type=ModelType.RERANK,
                 model=reranking_model,
             )
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Rerank Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def update_dataset(dataset_id, data, user, *, session: Session):
@@ -889,12 +913,12 @@ class DatasetService:
                 session,
             )
             filtered_data["collection_binding_id"] = dataset_collection_binding.id
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def _handle_embedding_model_update_when_technique_unchanged(dataset, data, filtered_data, session: Session):
@@ -972,12 +996,12 @@ class DatasetService:
             if current_provider_str != new_provider_str or data["embedding_model"] != dataset.embedding_model:
                 DatasetService._apply_new_embedding_settings(dataset, data, filtered_data, session)
                 return "update"
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
         return None
 
     @staticmethod
@@ -1158,13 +1182,13 @@ class DatasetService:
                         dataset.is_multimodal = is_multimodal
                         dataset.collection_binding_id = dataset_collection_binding.id
                         dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
-                    except LLMBadRequestError:
+                    except LLMBadRequestError as caught_error:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
                             "in the Settings -> Model Provider."
-                        )
+                        ) from caught_error
                     except ProviderTokenNotInitError as ex:
-                        raise ValueError(ex.description)
+                        raise ValueError(ex.description) from ex
             else:
                 # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
                 # Skip embedding model checks if not provided in the update request
@@ -1222,13 +1246,13 @@ class DatasetService:
                                         knowledge_configuration.embedding_model,
                                     )
                                     dataset.is_multimodal = is_multimodal
-                    except LLMBadRequestError:
+                    except LLMBadRequestError as caught_error:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
                             "in the Settings -> Model Provider."
-                        )
+                        ) from caught_error
                     except ProviderTokenNotInitError as ex:
-                        raise ValueError(ex.description)
+                        raise ValueError(ex.description) from ex
                 elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                     if dataset.keyword_number != knowledge_configuration.keyword_number:
                         dataset.keyword_number = knowledge_configuration.keyword_number
@@ -1256,6 +1280,11 @@ class DatasetService:
         # silently degrade to unrestricted (access-all) once its last binding is gone.
         dataset_api_key_bindings.delete_keys_scoped_only_to(session, str(dataset.id))
 
+        build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
+            tenant_id=dataset.tenant_id,
+            resource_type=ResourceAccessTokenResourceType.KNOWLEDGE,
+            resource_id=dataset.id,
+        )
         session.delete(dataset)
         session.commit()
         return True
@@ -1637,8 +1666,10 @@ class DocumentService:
 
     @staticmethod
     def get_document_download_url(document: Document, session: Session) -> str:
-        """
-        Return a signed download URL for an upload-file document.
+        """Return a signed URL for a file-backed document in the caller's tenant.
+
+        Requires a legacy upload or pipeline local-file reference to an existing tenant-owned
+        UploadFile. On success the URL downloads that file; invalid or missing links raise 404.
         """
         upload_file = DocumentService._get_upload_file_for_upload_file_document(document, session)
         return file_helpers.get_signed_file_url(upload_file_id=upload_file.id, as_attachment=True)
@@ -1708,7 +1739,7 @@ class DocumentService:
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except NoPermissionError as e:
-            raise Forbidden(str(e))
+            raise Forbidden(str(e)) from e
 
         upload_files_by_document_id = DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset_id,
@@ -1734,14 +1765,25 @@ class DocumentService:
         invalid_source_message: str,
         missing_file_message: str,
     ) -> str:
-        """
-        Normalize and validate `Document -> UploadFile` linkage for download flows.
-        """
-        if document.data_source_type != DataSourceType.UPLOAD_FILE:
-            raise NotFound(invalid_source_message)
+        """Resolve a file-backed document's UploadFile id without trusting its source metadata.
 
+        Legacy uploads use ``upload_file_id``; pipeline local files use ``real_file_id``
+        after conversion or ``related_id``/``reference`` when created in a pipeline.
+        Other source types and absent references raise 404; callers must still load the
+        UploadFile within the document's tenant before using the resolved id.
+        """
         data_source_info: dict[str, Any] = document.data_source_info_dict or {}
-        upload_file_id: str | None = data_source_info.get("upload_file_id")
+        if document.data_source_type == DataSourceType.UPLOAD_FILE:
+            upload_file_id = data_source_info.get("upload_file_id")
+        elif document.data_source_type == DataSourceType.LOCAL_FILE:
+            file_reference = (
+                data_source_info.get("real_file_id")
+                or data_source_info.get("related_id")
+                or data_source_info.get("reference")
+            )
+            upload_file_id = resolve_file_record_id(file_reference) if isinstance(file_reference, str) else None
+        else:
+            raise NotFound(invalid_source_message)
         if not upload_file_id:
             raise NotFound(missing_file_message)
 
@@ -1749,9 +1791,7 @@ class DocumentService:
 
     @staticmethod
     def _get_upload_file_for_upload_file_document(document: Document, session: Session) -> UploadFile:
-        """
-        Load the `UploadFile` row for an upload-file document.
-        """
+        """Load a file-backed document's UploadFile within its tenant or raise 404."""
         upload_file_id = DocumentService._get_upload_file_id_for_upload_file_document(
             document,
             invalid_source_message="Document does not have an uploaded file to download.",
@@ -1771,8 +1811,10 @@ class DocumentService:
         tenant_id: str,
         session: Session,
     ) -> dict[str, UploadFile]:
-        """
-        Batch load upload files keyed by document id for ZIP downloads.
+        """Load tenant-owned UploadFiles for file-backed documents keyed by document id.
+
+        Requires every requested document and file to exist in the given dataset and tenant.
+        Returns a complete mapping on success; missing or unsupported sources raise 404.
         """
         document_id_list: list[str] = list(document_ids)
 
@@ -1822,9 +1864,9 @@ class DocumentService:
                 Document.tenant_id == dataset_ref.tenant_id,
                 Document.dataset_id == dataset_ref.dataset_id,
                 Document.id.in_(document_ids),
-                Document.enabled == True,
+                Document.enabled.is_(True),
                 Document.indexing_status == IndexingStatus.COMPLETED,
-                Document.archived == False,
+                Document.archived.is_(False),
             )
         ).all()
         return documents
@@ -1834,7 +1876,7 @@ class DocumentService:
         documents = session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
-                Document.enabled == True,
+                Document.enabled.is_(True),
             )
         ).all()
 
@@ -1845,9 +1887,9 @@ class DocumentService:
         documents = session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
-                Document.enabled == True,
+                Document.enabled.is_(True),
                 Document.indexing_status == IndexingStatus.COMPLETED,
-                Document.archived == False,
+                Document.archived.is_(False),
             )
         ).all()
 
@@ -1919,29 +1961,31 @@ class DocumentService:
 
     @staticmethod
     def check_archived(document):
-        if document.archived:
-            return True
-        else:
-            return False
+        return bool(document.archived)
 
     @staticmethod
     def delete_document(document, session: Session):
-        # trigger document_was_deleted signal
         file_id = None
         if document.data_source_type == DataSourceType.UPLOAD_FILE:
             if document.data_source_info:
                 data_source_info = document.data_source_info_dict
                 if data_source_info and "upload_file_id" in data_source_info:
                     file_id = data_source_info["upload_file_id"]
-        document_was_deleted.send(
-            document.id,
-            dataset_id=document.dataset_id,
-            doc_form=document.doc_form,
-            file_id=file_id,
-        )
+        # Read everything cleanup needs before the row is deleted and expired.
+        document_id, dataset_id, doc_form = document.id, document.dataset_id, document.doc_form
 
         session.delete(document)
         session.commit()
+
+        # Dispatch cleanup only after the deletion commits, as bulk deletion does. An
+        # in-flight indexing run either sees the document gone and discards what it
+        # wrote, or finished writing before the commit, so cleanup still finds it.
+        document_was_deleted.send(
+            document_id,
+            dataset_id=dataset_id,
+            doc_form=doc_form,
+            file_id=file_id,
+        )
 
     @staticmethod
     def delete_documents(
@@ -2139,7 +2183,7 @@ class DocumentService:
         knowledge_config: KnowledgeConfig,
         account: Account | Any,
         dataset_process_rule: DatasetProcessRule | None = None,
-        created_from: str = DocumentCreatedFrom.WEB,
+        created_from: DocumentCreatedFrom = DocumentCreatedFrom.WEB,
         *,
         session: Session,
     ) -> tuple[list[Document], str]:
@@ -2392,7 +2436,7 @@ class DocumentService:
                             Document.dataset_id == dataset.id,
                             Document.tenant_id == account.current_tenant_id,
                             Document.data_source_type == DataSourceType.UPLOAD_FILE,
-                            Document.enabled == True,
+                            Document.enabled.is_(True),
                             Document.name.in_(file_names),
                         )
                     ).all()
@@ -2406,7 +2450,7 @@ class DocumentService:
                     if knowledge_config.duplicate and document:
                         document.dataset_process_rule_id = dataset_process_rule.id
                         document.updated_at = naive_utc_now()
-                        document.created_from = created_from
+                        document.created_from = DocumentCreatedFrom(created_from)
                         document.doc_form = IndexStructureType(knowledge_config.doc_form)
                         document.doc_language = knowledge_config.doc_language
                         document.data_source_info = json.dumps(data_source_info)
@@ -2447,12 +2491,14 @@ class DocumentService:
                             Document.dataset_id == dataset.id,
                             Document.tenant_id == account.current_tenant_id,
                             Document.data_source_type == DataSourceType.NOTION_IMPORT,
-                            Document.enabled == True,
+                            Document.enabled.is_(True),
                         )
                     ).all()
                 )
                 if documents:
                     for document in documents:
+                        if document.data_source_info is None:
+                            raise ValueError("Notion document data source information is missing.")
                         data_source_info = json.loads(document.data_source_info)
                         exist_page_ids.append(data_source_info["notion_page_id"])
                         exist_document[data_source_info["notion_page_id"]] = document.id
@@ -2506,10 +2552,7 @@ class DocumentService:
                         "only_main_content": website_info.only_main_content,
                         "mode": "crawl",
                     }
-                    if len(url) > 255:
-                        document_name = url[:200] + "..."
-                    else:
-                        document_name = url
+                    document_name = url[:200] + "..." if len(url) > 255 else url
                     document = DocumentService.build_document(
                         dataset,
                         dataset_process_rule.id,
@@ -2857,32 +2900,33 @@ class DocumentService:
         if dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True:
             need_summary = True
 
+        document_data_source_type: DataSourceType = DataSourceType(data_source_type)
+        document_created_from: DocumentCreatedFrom = DocumentCreatedFrom(created_from)
+        document_form_type: IndexStructureType = IndexStructureType(document_form)
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=position,
-            data_source_type=data_source_type,
+            data_source_type=document_data_source_type,
             data_source_info=json.dumps(data_source_info),
             dataset_process_rule_id=process_rule_id,
             batch=batch,
             name=name,
-            created_from=created_from,
+            created_from=document_created_from,
             created_by=account.id,
-            doc_form=document_form,
+            doc_form=document_form_type,
             doc_language=document_language,
             need_summary=need_summary,
         )
-        doc_metadata = {}
         if dataset.built_in_field_enabled:
-            doc_metadata = {
-                BuiltInField.document_name: name,
-                BuiltInField.uploader: account.name,
-                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.source: data_source_type,
-            }
-        if doc_metadata:
-            document.doc_metadata = doc_metadata
+            now = naive_utc_now()
+            document.doc_metadata = build_built_in_field_values(
+                document_name=name,
+                uploader=account.name,
+                upload_date=now,
+                last_update_date=now,
+                data_source_type=data_source_type,
+            )
         return document
 
     @staticmethod
@@ -2893,8 +2937,8 @@ class DocumentService:
             session.scalar(
                 select(func.count(Document.id)).where(
                     Document.completed_at.isnot(None),
-                    Document.enabled == True,
-                    Document.archived == False,
+                    Document.enabled.is_(True),
+                    Document.archived.is_(False),
                     Document.tenant_id == current_user.current_tenant_id,
                 )
             )
@@ -2994,7 +3038,7 @@ class DocumentService:
                             sa.and_(
                                 DataSourceOauthBinding.tenant_id == account.current_tenant_id,
                                 DataSourceOauthBinding.provider == "notion",
-                                DataSourceOauthBinding.disabled == False,
+                                DataSourceOauthBinding.disabled.is_(False),
                                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
                             )
                         )
@@ -3022,7 +3066,10 @@ class DocumentService:
                             "only_main_content": website_info.only_main_content,
                             "mode": "crawl",
                         }
-            document.data_source_type = document_data.data_source.info_list.data_source_type
+            updated_data_source_type: DataSourceType = DataSourceType(
+                document_data.data_source.info_list.data_source_type
+            )
+            document.data_source_type = updated_data_source_type
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
 
@@ -3037,8 +3084,10 @@ class DocumentService:
         document.cleaning_completed_at = None
         document.splitting_completed_at = None
         document.updated_at = naive_utc_now()
-        document.created_from = created_from
-        document.doc_form = IndexStructureType(document_data.doc_form)
+        updated_created_from: DocumentCreatedFrom = DocumentCreatedFrom(created_from)
+        updated_doc_form: IndexStructureType = IndexStructureType(document_data.doc_form)
+        document.created_from = updated_created_from
+        document.doc_form = updated_doc_form
         session.add(document)
         session.commit()
         # update document segment
@@ -3198,9 +3247,6 @@ class DocumentService:
 
             unique_pre_processing_rule_dicts = {}
             for pre_processing_rule in knowledge_config.process_rule.rules.pre_processing_rules:
-                if not pre_processing_rule.id:
-                    raise ValueError("Process rule pre_processing_rules id is required")
-
                 if not isinstance(pre_processing_rule.enabled, bool):
                     raise ValueError("Process rule pre_processing_rules enabled is invalid")
 

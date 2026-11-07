@@ -1,5 +1,7 @@
 'use client'
+
 import type { FC } from 'react'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import type { GenRes } from '@/service/debug'
@@ -23,14 +25,12 @@ import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/promp
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { AppModeEnum } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 
 type ISimplePromptInput = {
-  mode: AppModeEnum
+  mode: ConfigurationAppMode
   promptTemplate: string
   promptVariables: PromptVariable[]
   readonly?: boolean
@@ -54,11 +54,9 @@ const Prompt: FC<ISimplePromptInput> = ({
   const { t } = useTranslation(['appDebug'])
   const titleId = useId()
   const title =
-    mode !== AppModeEnum.COMPLETION
+    mode !== 'completion'
       ? t(($) => $.chatSubTitle, { ns: 'appDebug' })
       : t(($) => $.completionSubTitle, { ns: 'appDebug' })
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
   const featuresStore = useFeaturesStore()
   const { features, setFeatures } = featuresStore!.getState()
 
@@ -66,6 +64,7 @@ const Prompt: FC<ISimplePromptInput> = ({
   const {
     appId,
     modelConfig,
+    modelModeType,
     dataSets,
     setModelConfig,
     setPrevPromptConfig,
@@ -176,7 +175,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     setModelConfig(newModelConfig)
     setPrevPromptConfig(modelConfig.configs)
 
-    if (mode !== AppModeEnum.COMPLETION) {
+    if (mode !== 'completion') {
       setIntroduction(res.opening_statement || '')
       const newFeatures = produce(features, (draft) => {
         draft.opening = {
@@ -200,22 +199,22 @@ const Prompt: FC<ISimplePromptInput> = ({
     >
       <div className="rounded-xl bg-background-section-burn">
         {!noTitle && (
-          <div className="flex h-11 items-center justify-between pr-2.5 pl-3">
+          <div className="flex h-11 items-center justify-between ps-3 pe-2.5">
             <div className="flex items-center space-x-1">
               <h2 id={titleId} className="system-sm-semibold-uppercase text-text-secondary">
                 {title}
               </h2>
               {!readonly && (
                 <Infotip>
-                  <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+                  <InfotipTrigger aria-labelledby={titleId} className="ms-1" />
                   <InfotipContent aria-labelledby={titleId} className="w-45">
                     {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
                   </InfotipContent>
                 </Infotip>
               )}
             </div>
-            <div className="flex items-center">
-              {!readonly && !isMobile && <AutomaticBtn onClick={showAutomaticTrue} />}
+            <div className="flex items-center max-sm:hidden">
+              {!readonly && <AutomaticBtn onClick={showAutomaticTrue} />}
             </div>
           </div>
         )}
@@ -227,7 +226,7 @@ const Prompt: FC<ISimplePromptInput> = ({
           onHeightChange={setEditorHeight}
           hideResize={noResize}
           footer={
-            <div className="flex rounded-b-xl bg-background-default pb-2 pl-4">
+            <div className="flex rounded-b-xl bg-background-default ps-4 pb-2">
               <div className="h-4.5 rounded-md bg-components-badge-bg-gray-soft px-1 text-xs leading-4.5 text-text-tertiary">
                 {promptTemplate.length}
               </div>
@@ -314,7 +313,7 @@ const Prompt: FC<ISimplePromptInput> = ({
       {showAutomatic && (
         <GetAutomaticResModal
           flowId={appId}
-          mode={mode as AppModeEnum}
+          modelMode={modelModeType}
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}

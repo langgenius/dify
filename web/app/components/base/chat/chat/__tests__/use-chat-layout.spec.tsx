@@ -9,6 +9,8 @@ let capturedResizeCallbacks: ResizeCallback[] = []
 let disconnectSpy: ReturnType<typeof vi.fn>
 let rafCallbacks: FrameRequestCallback[] = []
 
+const bodyWidthDescriptor = Object.getOwnPropertyDescriptor(document.body, 'clientWidth')
+
 const makeChatItem = (overrides: Partial<ChatItem> = {}): ChatItem => ({
   id: `item-${Math.random().toString(36).slice(2)}`,
   content: 'Test content',
@@ -128,6 +130,9 @@ describe('useChatLayout', () => {
   })
 
   afterEach(() => {
+    if (bodyWidthDescriptor)
+      Object.defineProperty(document.body, 'clientWidth', bodyWidthDescriptor)
+    else Reflect.deleteProperty(document.body, 'clientWidth')
     vi.useRealTimers()
     vi.unstubAllGlobals()
   })
@@ -194,6 +199,7 @@ describe('useChatLayout', () => {
       const container = screen.getByTestId('chat-container') as HTMLDivElement
 
       act(() => {
+        flushAnimationFrames()
         fireEvent.scroll(container)
         flushAnimationFrames()
       })
@@ -217,6 +223,8 @@ describe('useChatLayout', () => {
         flushAnimationFrames()
         vi.runAllTimers()
       })
+
+      expect(container.scrollTop).toBe(10)
 
       act(() => {
         container.scrollTop = 420
@@ -244,6 +252,7 @@ describe('useChatLayout', () => {
       )
 
       act(() => {
+        flushAnimationFrames()
         fireEvent.scroll(container)
         flushAnimationFrames()
       })

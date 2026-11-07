@@ -17,7 +17,7 @@ const IdeaOutput: FC<Props> = ({ value, onChange }) => {
 
   return (
     <Collapsible className="mt-4 text-[0px]">
-      <CollapsibleTrigger className="group mb-1.5 flex cursor-pointer flex-wrap items-center text-left text-sm/5 font-medium text-text-primary focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden">
+      <CollapsibleTrigger className="group mb-1.5 flex cursor-pointer flex-wrap items-center text-left text-sm/5 font-medium text-text-primary">
         <span className="mr-1 system-sm-semibold-uppercase text-text-secondary">
           {t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appGeneration' })}
         </span>

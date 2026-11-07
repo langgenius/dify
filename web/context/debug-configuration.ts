@@ -1,8 +1,9 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RefObject } from 'react'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Collection } from '@/app/components/tools/types'
 import type { ExternalDataTool } from '@/models/common'
-import type { DataSet } from '@/models/datasets'
 import type {
   AnnotationReplyConfig,
   BlockStatus,
@@ -31,7 +32,7 @@ import {
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
 import { PromptMode } from '@/models/debug'
-import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
+import { ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 
 type IDebugConfiguration = {
   readonly?: boolean
@@ -39,7 +40,7 @@ type IDebugConfiguration = {
   onOpenFeatures: () => void
   appId: string
   isTrailFinished: boolean
-  mode: AppModeEnum
+  mode: ConfigurationAppMode
   modelModeType: ModelModeType
   promptMode: PromptMode
   setPromptMode: (promptMode: PromptMode) => void
@@ -98,8 +99,8 @@ type IDebugConfiguration = {
   // model_config
   modelConfig: ModelConfig
   setModelConfig: (modelConfig: ModelConfig) => void
-  dataSets: DataSet[]
-  setDataSets: (dataSet: DataSet[]) => void
+  dataSets: DatasetDetailWithPartialMembersResponse[]
+  setDataSets: (dataSet: DatasetDetailWithPartialMembersResponse[]) => void
   showSelectDataSet: () => void
   // dataset config
   datasetConfigs: DatasetConfigs
@@ -122,7 +123,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   appId: '',
   onOpenFeatures: noop,
   isTrailFinished: false,
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   modelModeType: ModelModeType.chat,
   promptMode: PromptMode.simple,
   setPromptMode: noop,

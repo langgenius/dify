@@ -41,35 +41,41 @@ describe('amplitude init helper', () => {
   })
 
   describe('ensureAmplitudeInitialized', () => {
-    it('should initialize amplitude only once across concurrent calls', async () => {
+    it('initializes once for concurrent calls and notifies readiness only after plugins are registered', async () => {
+      const { getIsAmplitudeInitialized, subscribeAmplitudeInitialization } =
+        await import('../init')
+      const listener = vi.fn(() => {
+        expect(amplitude.add).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'page-name-enrichment' }),
+        )
+        expect(amplitude.add).toHaveBeenCalledWith({ name: 'session-replay' })
+        expect(getIsAmplitudeInitialized()).toBe(true)
+      })
+      const removedListener = vi.fn()
+      subscribeAmplitudeInitialization(removedListener)()
+      const unsubscribe = subscribeAmplitudeInitialization(listener)
+      expect(getIsAmplitudeInitialized()).toBe(false)
       await Promise.all([
         ensureAmplitudeInitialized({ sessionReplaySampleRate: 0.8 }),
         ensureAmplitudeInitialized({ sessionReplaySampleRate: 0.2 }),
       ])
 
       expect(amplitude.init).toHaveBeenCalledTimes(1)
+      expect(amplitude.init).toHaveBeenCalledWith('test-api-key', {
+        autocapture: {
+          sessions: true,
+          pageViews: true,
+          formInteractions: true,
+          fileDownloads: true,
+          attribution: true,
+        },
+      })
       expect(sessionReplayPlugin).toHaveBeenCalledTimes(1)
       expect(sessionReplayPlugin).toHaveBeenCalledWith({ sampleRate: 0.8 })
-      expect(amplitude.add).toHaveBeenCalledTimes(2)
-    })
-
-    it('should expose readiness after initialization completes', async () => {
-      const { getIsAmplitudeInitialized } = await import('../init')
-
-      expect(getIsAmplitudeInitialized()).toBe(false)
-      await ensureAmplitudeInitialized()
-
-      expect(getIsAmplitudeInitialized()).toBe(true)
-    })
-
-    it('should notify readiness subscribers after plugins are registered', async () => {
-      const { subscribeAmplitudeInitialization } = await import('../init')
-      const listener = vi.fn()
-      const unsubscribe = subscribeAmplitudeInitialization(listener)
-
-      await ensureAmplitudeInitialized()
-
       expect(listener).toHaveBeenCalledTimes(1)
+      expect(removedListener).not.toHaveBeenCalled()
+      await ensureAmplitudeInitialized()
+      expect(amplitude.init).toHaveBeenCalledTimes(1)
       unsubscribe()
     })
 

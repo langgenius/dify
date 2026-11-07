@@ -124,7 +124,6 @@ const CollectionSection = ({
     if (!section) return
 
     if (typeof IntersectionObserver === 'undefined') {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- This is the hydration fallback for browsers without IntersectionObserver.
       setIsMounted(true)
       return
     }
@@ -234,7 +233,10 @@ const CollectionSection = ({
                   </span>
                   <span
                     aria-hidden
-                    className={cn(styles.partnerActionIcon, 'i-ri-external-link-line size-3')}
+                    className={cn(
+                      styles.partnerActionIcon,
+                      'i-ri-external-link-line size-3 [&:dir(rtl)]:-scale-x-100',
+                    )}
                   />
                 </a>
               </>

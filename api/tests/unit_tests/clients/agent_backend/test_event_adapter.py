@@ -1,10 +1,7 @@
 from decimal import Decimal
 
-import pytest
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import (
     AgentRunUsage,
-    DeferredToolCallPayload,
     PydanticAIStreamRunEvent,
     RunCancelledEvent,
     RunCancelledEventData,
@@ -15,11 +12,11 @@ from dify_agent.protocol import (
     RunSucceededEvent,
     RunSucceededEventData,
 )
+from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic_ai.messages import FinalResultEvent
 
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
-    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
@@ -30,7 +27,7 @@ from clients.agent_backend import (
 )
 
 
-def test_event_adapter_maps_run_started():
+def test_event_adapter_maps_run_started() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(RunStartedEvent(id="1-0", run_id="run-1"))
 
     assert adapted == [
@@ -41,7 +38,7 @@ def test_event_adapter_maps_run_started():
     ]
 
 
-def test_event_adapter_maps_pydantic_ai_stream_event():
+def test_event_adapter_maps_pydantic_ai_stream_event() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(
         PydanticAIStreamRunEvent(
             id="2-0",
@@ -55,10 +52,11 @@ def test_event_adapter_maps_pydantic_ai_stream_event():
     assert isinstance(event, AgentBackendStreamInternalEvent)
     assert event.type == AgentBackendInternalEventType.STREAM_EVENT
     assert event.event_kind == "final_result"
+    assert isinstance(event.data, dict)
     assert event.data["event_kind"] == "final_result"
 
 
-def test_event_adapter_maps_pydantic_ai_stream_event_agent_message_delta_annotation():
+def test_event_adapter_maps_pydantic_ai_stream_event_agent_message_delta_annotation() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(
         PydanticAIStreamRunEvent(
             id="2-0",
@@ -77,8 +75,8 @@ def test_event_adapter_maps_pydantic_ai_stream_event_agent_message_delta_annotat
     ]
 
 
-def test_event_adapter_maps_run_succeeded_to_final_output():
-    snapshot = CompositorSessionSnapshot(layers=[])
+def test_event_adapter_maps_run_succeeded_to_final_output() -> None:
+    snapshot = SessionSnapshot(layers={})
     adapted = AgentBackendRunEventAdapter().adapt(
         RunSucceededEvent(
             id="3-0",
@@ -129,7 +127,7 @@ def test_event_adapter_maps_run_succeeded_to_final_output():
     ]
 
 
-def test_event_adapter_maps_run_failed_to_failed_result():
+def test_event_adapter_maps_run_failed_to_failed_result() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(
         RunFailedEvent(
             id="4-0",
@@ -170,103 +168,7 @@ def test_event_adapter_maps_run_failed_to_failed_result():
     ]
 
 
-def test_event_adapter_maps_deferred_tool_call_success_to_internal_event():
-    snapshot = CompositorSessionSnapshot(layers=[])
-    deferred_tool_call = DeferredToolCallPayload(
-        tool_call_id="tool-call-1",
-        tool_name="ask_human",
-        args={"question": "Need review"},
-        metadata={"layer_type": "dify.ask_human", "schema_version": 1},
-    )
-    adapted = AgentBackendRunEventAdapter().adapt(
-        RunSucceededEvent(
-            id="5-0",
-            run_id="run-1",
-            data=RunSucceededEventData(deferred_tool_call=deferred_tool_call, session_snapshot=snapshot),
-        )
-    )
-
-    assert adapted == [
-        AgentBackendDeferredToolCallInternalEvent(
-            run_id="run-1",
-            source_event_id="5-0",
-            deferred_tool_call=deferred_tool_call,
-            message="Need review",
-            session_snapshot=snapshot,
-        )
-    ]
-
-
-def test_event_adapter_rejects_deferred_tool_call_success_without_payload():
-    snapshot = CompositorSessionSnapshot(layers=[])
-
-    with pytest.raises(TypeError, match="deferred_tool_call branch is missing payload"):
-        _ = AgentBackendRunEventAdapter().adapt(
-            RunSucceededEvent(
-                id="5-1",
-                run_id="run-1",
-                data=RunSucceededEventData(deferred_tool_call=None, session_snapshot=snapshot),
-            )
-        )
-
-
-def test_event_adapter_uses_deferred_tool_call_title_as_pause_message_fallback():
-    snapshot = CompositorSessionSnapshot(layers=[])
-    deferred_tool_call = DeferredToolCallPayload(
-        tool_call_id="tool-call-1",
-        tool_name="ask_human",
-        args={"title": "Review required"},
-        metadata={},
-    )
-
-    adapted = AgentBackendRunEventAdapter().adapt(
-        RunSucceededEvent(
-            id="5-2",
-            run_id="run-1",
-            data=RunSucceededEventData(deferred_tool_call=deferred_tool_call, session_snapshot=snapshot),
-        )
-    )
-
-    assert adapted == [
-        AgentBackendDeferredToolCallInternalEvent(
-            run_id="run-1",
-            source_event_id="5-2",
-            deferred_tool_call=deferred_tool_call,
-            message="Review required",
-            session_snapshot=snapshot,
-        )
-    ]
-
-
-def test_event_adapter_uses_generic_deferred_tool_call_pause_message_when_args_have_no_label():
-    snapshot = CompositorSessionSnapshot(layers=[])
-    deferred_tool_call = DeferredToolCallPayload(
-        tool_call_id="tool-call-1",
-        tool_name="ask_human",
-        args={"question": "   ", "title": "   "},
-        metadata={},
-    )
-
-    adapted = AgentBackendRunEventAdapter().adapt(
-        RunSucceededEvent(
-            id="5-3",
-            run_id="run-1",
-            data=RunSucceededEventData(deferred_tool_call=deferred_tool_call, session_snapshot=snapshot),
-        )
-    )
-
-    assert adapted == [
-        AgentBackendDeferredToolCallInternalEvent(
-            run_id="run-1",
-            source_event_id="5-3",
-            deferred_tool_call=deferred_tool_call,
-            message="Agent backend requested external input via deferred tool 'ask_human'.",
-            session_snapshot=snapshot,
-        )
-    ]
-
-
-def test_event_adapter_maps_run_cancelled_to_terminal_cancelled():
+def test_event_adapter_maps_run_cancelled_to_terminal_cancelled() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(
         RunCancelledEvent(
             id="6-0",

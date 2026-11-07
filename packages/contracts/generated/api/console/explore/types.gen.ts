@@ -9,6 +9,16 @@ export type RecommendedAppListResponse = {
   recommended_apps: Array<RecommendedAppResponse>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type LearnDifyAppListResponse = {
   recommended_apps: Array<RecommendedAppResponse>
 }
@@ -23,6 +33,11 @@ export type RecommendedAppDetailResponse = {
   name: string
   package_url?: string | null
   version_id?: string | null
+}
+
+export type RecommendedAppNotFoundError = ErrorResponse & {
+  code: 'recommended_app_not_found'
+  status: 404
 }
 
 export type BannerListResponse = Array<BannerResponse>
@@ -108,6 +123,12 @@ export type GetExploreAppsData = {
   url: '/explore/apps'
 }
 
+export type GetExploreAppsErrors = {
+  default: ErrorResponse
+}
+
+export type GetExploreAppsError = GetExploreAppsErrors[keyof GetExploreAppsErrors]
+
 export type GetExploreAppsResponses = {
   200: RecommendedAppListResponse
 }
@@ -122,6 +143,13 @@ export type GetExploreAppsLearnDifyData = {
   }
   url: '/explore/apps/learn-dify'
 }
+
+export type GetExploreAppsLearnDifyErrors = {
+  default: ErrorResponse
+}
+
+export type GetExploreAppsLearnDifyError =
+  GetExploreAppsLearnDifyErrors[keyof GetExploreAppsLearnDifyErrors]
 
 export type GetExploreAppsLearnDifyResponses = {
   200: LearnDifyAppListResponse
@@ -140,8 +168,12 @@ export type GetExploreAppsByAppIdData = {
 }
 
 export type GetExploreAppsByAppIdErrors = {
-  404: unknown
+  404: RecommendedAppNotFoundError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetExploreAppsByAppIdError =
+  GetExploreAppsByAppIdErrors[keyof GetExploreAppsByAppIdErrors]
 
 export type GetExploreAppsByAppIdResponses = {
   200: RecommendedAppDetailResponse
@@ -158,6 +190,12 @@ export type GetExploreBannersData = {
   }
   url: '/explore/banners'
 }
+
+export type GetExploreBannersErrors = {
+  default: ErrorResponse
+}
+
+export type GetExploreBannersError = GetExploreBannersErrors[keyof GetExploreBannersErrors]
 
 export type GetExploreBannersResponses = {
   200: BannerListResponse

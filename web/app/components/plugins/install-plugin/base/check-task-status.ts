@@ -1,4 +1,3 @@
-import type { PluginStatus } from '../../types'
 import { checkTaskStatus as fetchCheckTaskStatus } from '@/service/plugins'
 import { sleep } from '@/utils'
 import { TaskStatus } from '../../types'
@@ -24,9 +23,7 @@ function checkTaskStatus() {
     }
     const res = await fetchCheckTaskStatus(taskId)
     const { plugins } = res.task
-    const plugin = plugins.find(
-      (p: PluginStatus) => p.plugin_unique_identifier === pluginUniqueIdentifier,
-    )
+    const plugin = plugins.find((p) => p.plugin_unique_identifier === pluginUniqueIdentifier)
     if (!plugin) {
       nextStatus = TaskStatus.failed
       return {

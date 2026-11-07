@@ -3,6 +3,7 @@ import logging
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
+from typing import cast
 from urllib.parse import urlparse
 
 import yaml
@@ -95,8 +96,8 @@ class SnippetDslService:
         # Validate import mode
         try:
             mode = ImportMode(import_mode)
-        except ValueError:
-            raise ValueError(f"Invalid import_mode: {import_mode}")
+        except ValueError as caught_error:
+            raise ValueError(f"Invalid import_mode: {import_mode}") from caught_error
 
         # Get YAML content
         content: str = ""
@@ -435,7 +436,7 @@ class SnippetDslService:
         else:
             # Create new snippet
             snippet = CustomizedSnippet(
-                tenant_id=account.current_tenant_id,
+                tenant_id=cast(str, account.current_tenant_id),
                 name=snippet_name,
                 description=snippet_description,
                 type=snippet_type.value,

@@ -81,7 +81,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
     const isOctetStream = (contentType || '').toLowerCase() === 'application/octet-stream'
 
     const normalized = data
-      .filter((row) => typeof row.key === 'string' && (row.key as string).trim() !== '')
+      .filter((row) => typeof row.key === 'string' && row.key.trim() !== '')
       .map((row) => ({
         name: String(row.key),
         type: isTextPlain

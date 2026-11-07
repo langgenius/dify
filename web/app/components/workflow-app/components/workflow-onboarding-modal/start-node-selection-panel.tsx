@@ -45,7 +45,8 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         open={showTriggerSelector}
         onOpenChange={setShowTriggerSelector}
         onSelect={handleTriggerSelect}
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         standalonePanel={TabType.Start}
         availableBlocksTypes={[
           BlockEnum.TriggerSchedule,

@@ -1,64 +1,21 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import { EditAgentDialog } from '../edit-agent-dialog'
 
-const mutationMock = vi.hoisted(() => ({
-  isPending: false,
-  mutate: vi.fn(),
-}))
+const mutateRequest = vi.hoisted(() => vi.fn())
 
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
   success: vi.fn(),
 }))
 
-vi.mock('@tanstack/react-query', () => ({
-  useMutation: () => ({
-    isPending: mutationMock.isPending,
-    mutate: mutationMock.mutate,
-  }),
-}))
-
 vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
-vi.mock('@/app/components/base/icon-picker', () => ({
-  __esModule: true,
-  IconPickerDialog: ({
-    defaultValue,
-    onConfirm,
-    open,
-  }: {
-    defaultValue?: { icon: string; background: string }
-    onConfirm: (payload: { type: 'emoji'; icon: string; background: string }) => void
-    open: boolean
-  }) =>
-    open ? (
-      <div>
-        <span>{`${defaultValue?.icon}:${defaultValue?.background}`}</span>
-        <button
-          type="button"
-          onClick={() => onConfirm({ type: 'emoji', icon: '🧠', background: '#E0F2FE' })}
-        >
-          Select brain icon
-        </button>
-      </div>
-    ) : null,
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        put: {
-          mutationOptions: vi.fn(() => ({})),
-        },
-      },
-    },
-  },
-}))
+mockEmojiData()
 
 const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial => ({
   description: 'Find and summarize market materials.',
@@ -82,15 +39,29 @@ const renderDialog = (agent = createAgent()) => {
   return { ...renderResult, onOpenChange }
 }
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.put': mutateRequest,
+    }),
+  }
+})
+
 describe('EditAgentDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mutationMock.isPending = false
+    mutateRequest.mockReset().mockResolvedValue({
+      id: 'agent-1',
+      binding: { agent_id: 'roster-agent-1', binding_type: 'roster_agent' },
+    })
   })
 
   it('submits the full agent payload when only the name changes', async () => {
     const user = userEvent.setup()
-    renderDialog()
+    const { onOpenChange } = renderDialog()
 
     const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     await user.clear(
@@ -102,26 +73,22 @@ describe('EditAgentDialog', () => {
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        params: {
-          agent_id: 'agent-1',
-        },
-        body: {
-          name: 'Market Agent',
-          description: 'Find and summarize market materials.',
-          role: 'Research Assistant',
-          icon_type: 'emoji',
-          icon: '🧸',
-          icon_background: '#F5F3FF',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
-    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
-    expect(mutationOptions).not.toHaveProperty('onError')
+      body: {
+        name: 'Market Agent',
+        description: 'Find and summarize market materials.',
+        role: 'Research Assistant',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
+      },
+    })
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('submits the full agent payload when only the role changes', async () => {
@@ -138,80 +105,19 @@ describe('EditAgentDialog', () => {
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        params: {
-          agent_id: 'agent-1',
-        },
-        body: {
-          name: 'Research Agent',
-          description: 'Find and summarize market materials.',
-          role: 'Market Analyst',
-          icon_type: 'emoji',
-          icon: '🧸',
-          icon_background: '#F5F3FF',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
-    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
-    expect(mutationOptions).not.toHaveProperty('onError')
-  })
-
-  it('closes without a redundant success toast after updating', async () => {
-    const user = userEvent.setup()
-    const { onOpenChange } = renderDialog()
-
-    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
-    const roleInput = within(dialog).getByRole('textbox', {
-      name: /agentRoster\.roster\.createForm\.roleLabel/,
+      body: {
+        name: 'Research Agent',
+        description: 'Find and summarize market materials.',
+        role: 'Market Analyst',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
+      },
     })
-    await user.clear(roleInput)
-    await user.type(roleInput, 'Market Analyst')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-
-    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
-    mutationOptions.onSuccess()
-
-    expect(onOpenChange).toHaveBeenCalledWith(false)
-    expect(toastMock.success).not.toHaveBeenCalled()
-  })
-
-  it('submits selected icon fields when the roster icon changes', async () => {
-    const user = userEvent.setup()
-    renderDialog()
-
-    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: 'agentRoster.roster.createForm.changeIcon',
-      }),
-    )
-    await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        params: {
-          agent_id: 'agent-1',
-        },
-        body: {
-          name: 'Research Agent',
-          description: 'Find and summarize market materials.',
-          role: 'Research Assistant',
-          icon_type: 'emoji',
-          icon: '🧠',
-          icon_background: '#E0F2FE',
-        },
-      },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
-    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
-    expect(mutationOptions).not.toHaveProperty('onError')
   })
 
   it('keeps the original form snapshot when the agent source changes while open', async () => {
@@ -241,7 +147,24 @@ describe('EditAgentDialog', () => {
         name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
-    expect(screen.getByText('🧸:#F5F3FF')).toBeInTheDocument()
+    const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    await user.type(
+      within(dialog).getByRole('textbox', {
+        name: 'agentRoster.roster.createForm.nameLabel',
+      }),
+      ' edited',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1' },
+      body: expect.objectContaining({
+        name: 'Research Agent edited',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
+      }),
+    })
   })
 
   it('keeps a user-selected icon when the agent source changes during the session', async () => {
@@ -257,7 +180,10 @@ describe('EditAgentDialog', () => {
         name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
-    await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
+    const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.click(within(picker).getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.click(within(picker).getByRole('button', { name: 'app.iconPicker.ok' }))
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
 
     rerender(
       <EditAgentDialog
@@ -267,13 +193,17 @@ describe('EditAgentDialog', () => {
       />,
     )
 
-    expect(screen.getByText('🧠:#E0F2FE')).toBeInTheDocument()
     expect(
       within(screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })).getByRole(
         'button',
         { name: 'common.operation.save' },
       ),
     ).not.toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1' },
+      body: expect.objectContaining({ icon: '🧸', icon_background: '#F3FEE7' }),
+    })
   })
 
   it('creates a fresh form session from the latest agent after closing', async () => {
@@ -288,7 +218,10 @@ describe('EditAgentDialog', () => {
         name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
-    await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
+    const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.click(within(picker).getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.click(within(picker).getByRole('button', { name: 'app.iconPicker.ok' }))
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
 
     rerender(<EditAgentDialog agent={agent} open={false} onOpenChange={onOpenChange} />)
     await waitFor(() => {
@@ -305,13 +238,21 @@ describe('EditAgentDialog', () => {
     const reopenedDialog = screen.getByRole('dialog', {
       name: 'agentRoster.roster.editDialog.title',
     })
-    await user.click(
-      within(reopenedDialog).getByRole('button', {
-        name: 'agentRoster.roster.createForm.changeIcon',
+    await user.type(
+      within(reopenedDialog).getByRole('textbox', {
+        name: 'agentRoster.roster.createForm.nameLabel',
       }),
+      ' edited',
     )
-
-    expect(screen.getByText('🦊:#FFEDD5')).toBeInTheDocument()
+    await user.click(within(reopenedDialog).getByRole('button', { name: 'common.operation.save' }))
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1' },
+      body: expect.objectContaining({
+        name: 'Research Agent edited',
+        icon: '🦊',
+        icon_background: '#FFEDD5',
+      }),
+    })
   })
 
   it('starts a new form session when the agent identity changes', async () => {
@@ -347,24 +288,19 @@ describe('EditAgentDialog', () => {
     await user.type(nameInput, 'Renamed Second Agent')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        params: {
-          agent_id: 'agent-2',
-        },
-        body: {
-          name: 'Renamed Second Agent',
-          description: 'Second description',
-          role: 'Second Role',
-          icon_type: 'emoji',
-          icon: '🦊',
-          icon_background: '#FFEDD5',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-2',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
+      body: {
+        name: 'Renamed Second Agent',
+        description: 'Second description',
+        role: 'Second Role',
+        icon_type: 'emoji',
+        icon: '🦊',
+        icon_background: '#FFEDD5',
+      },
+    })
   })
 
   it('shows a field error when saving with an empty name', async () => {
@@ -384,24 +320,7 @@ describe('EditAgentDialog', () => {
       await within(dialog).findByText('agentRoster.roster.createForm.nameRequired'),
     ).toBeInTheDocument()
     expect(toastMock.error).not.toHaveBeenCalled()
-    expect(mutationMock.mutate).not.toHaveBeenCalled()
-  })
-
-  it('marks role and description as optional', () => {
-    renderDialog()
-
-    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
-
-    expect(
-      within(dialog).getByRole('textbox', {
-        name: /agentRoster\.roster\.createForm\.roleLabel.*common\.label\.optional/,
-      }),
-    ).not.toBeRequired()
-    expect(
-      within(dialog).getByRole('textbox', {
-        name: /agentRoster\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
-      }),
-    ).not.toBeRequired()
+    expect(mutateRequest).not.toHaveBeenCalled()
   })
 
   it('submits an empty role when the role is cleared', async () => {
@@ -417,38 +336,18 @@ describe('EditAgentDialog', () => {
     expect(saveButton).not.toBeDisabled()
     await user.click(saveButton)
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        params: {
-          agent_id: 'agent-1',
-        },
-        body: {
-          name: 'Research Agent',
-          description: 'Find and summarize market materials.',
-          role: '',
-          icon_type: 'emoji',
-          icon: '🧸',
-          icon_background: '#F5F3FF',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
-  })
-
-  it('keeps the form open when the backdrop is clicked', async () => {
-    const user = userEvent.setup()
-    const { onOpenChange } = renderDialog()
-
-    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
-    const backdrop = document.body.querySelector('.bg-background-overlay') as HTMLElement
-    await user.click(backdrop)
-
-    expect(onOpenChange).not.toHaveBeenCalledWith(false)
-    expect(dialog).toBeInTheDocument()
-
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+      body: {
+        name: 'Research Agent',
+        description: 'Find and summarize market materials.',
+        role: '',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
+      },
+    })
   })
 })

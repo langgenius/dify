@@ -25,8 +25,11 @@ class SystemFeatureService:
 
     @classmethod
     def get_public_system_features(cls) -> feature_entities.SystemFeatureModel:
-        """Build the non-sensitive bootstrap snapshot shared by Console and Web."""
-        system_features = feature_entities.SystemFeatureModel(deployment_edition=dify_config.DEPLOYMENT_EDITION)
+        """Build the shared public snapshot, including the Agent tracing deployment gate."""
+        system_features = feature_entities.SystemFeatureModel(
+            deployment_edition=dify_config.DEPLOYMENT_EDITION,
+            agent_tracing_api_collection_enabled=dify_config.OPS_AGENT_TRACE_ENABLED,
+        )
         system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
@@ -145,7 +148,6 @@ class SystemFeatureService:
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
         system_features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
         system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
-        system_features.enable_collaboration_mode = dify_config.ENABLE_COLLABORATION_MODE
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
         system_features.enable_change_email = dify_config.ENABLE_CHANGE_EMAIL
@@ -153,7 +155,6 @@ class SystemFeatureService:
         system_features.enable_learn_app = dify_config.ENABLE_LEARN_APP
         system_features.webapp_auth.allow_public_access = dify_config.WEBAPP_PUBLIC_ACCESS_ENABLED
         system_features.enable_step_by_step_tour = dify_config.ENABLE_STEP_BY_STEP_TOUR
-        system_features.knowledge_fs_enabled = dify_config.KNOWLEDGE_FS_ENABLED
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features: feature_entities.SystemFeatureModel) -> None:

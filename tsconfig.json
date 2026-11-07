@@ -1,4 +1,7 @@
 {
   "extends": "./packages/tsconfig/node.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  },
   "include": ["*.ts"]
 }

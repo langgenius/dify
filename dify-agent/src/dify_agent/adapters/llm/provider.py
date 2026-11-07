@@ -97,7 +97,9 @@ class DifyApiLLMClient:
         if missing:
             raise UserError(f"Agent LLM Gateway requires execution context fields: {', '.join(missing)}")
 
-        caller = context.model_dump(mode="json")
+        # Application tracing policy belongs to the collector, not the strict
+        # metering-gateway caller DTO. Keep it out even when its value is None.
+        caller = context.model_dump(mode="json", exclude={"tracing"})
         caller.update(
             {
                 "invocation_id": invocation_id,
@@ -192,7 +194,9 @@ class DifyApiLLMProvider(Provider[DifyLLMClient]):
         )
 
     @override
-    def _set_http_client(self, http_client: httpx.AsyncClient) -> None:
+    def _set_http_client(  # type: ignore[override]  # pyrefly: ignore[bad-override]
+        self, http_client: httpx.AsyncClient
+    ) -> None:
         self._client.http_client = http_client
 
     @property

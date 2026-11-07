@@ -79,7 +79,7 @@ class FileService:
         mimetype: str,
         user: Account | EndUser | FileUploadActor,
         tenant_id: str | None = None,
-        source: Literal["datasets"] | None = None,
+        source: Literal["datasets", "knowledge_fs"] | None = None,
         source_url: str = "",
         default_file_size_limit: int | None = None,
     ) -> UploadFile:
@@ -434,7 +434,7 @@ class FileService:
     def build_upload_files_zip_tempfile(
         *,
         upload_files: Sequence[UploadFile],
-    ) -> Generator[str, None, None]:  # Changed from Iterator[str]
+    ) -> Generator[str]:  # Changed from Iterator[str]
         """
         Build a ZIP from `UploadFile`s and yield a tempfile path.
 

@@ -1,11 +1,13 @@
 'use client'
 
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  WorkflowTriggerResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { AppTrigger } from '@/service/use-tools'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
@@ -16,16 +18,16 @@ import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { useAppTriggers, useInvalidateAppTriggers } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
+import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 
 function TriggerIcon({
   trigger,
   triggerPlugins,
 }: {
-  trigger: AppTrigger
+  trigger: WorkflowTriggerResponse
   triggerPlugins: TriggerWithProvider[]
 }) {
   const blockType =
@@ -60,19 +62,28 @@ function TriggerAccessPointItem({
 }: {
   appId: string
   canManageAccessPoint: boolean
-  trigger: AppTrigger
+  trigger: WorkflowTriggerResponse
   triggerPlugins: TriggerWithProvider[]
 }) {
   const { t } = useTranslation(['agentV2', 'appOverview', 'common'])
-  const invalidateTriggers = useInvalidateAppTriggers()
+  const queryClient = useQueryClient()
   const updateTriggerMutation = useMutation(
     consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions({
+      context: { silent: true },
       scope: {
         id: `app-trigger-toggle:${appId}:${trigger.id}`,
       },
-      onSuccess: () => invalidateTriggers(appId),
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
+            input: { params: { app_id: appId } },
+          }),
+        }),
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )
@@ -114,7 +125,7 @@ function TriggerAccessPointItem({
       </span>
       <span
         className={`flex shrink-0 items-center gap-1 system-xs-semibold-uppercase ${
-          enabled ? 'text-text-success' : 'text-text-tertiary'
+          enabled ? 'text-text-secondary' : 'text-text-tertiary'
         }`}
       >
         <StatusDot size="small" status={enabled ? 'success' : 'disabled'} />
@@ -145,7 +156,12 @@ export function TriggerAccessPointCard({
 }: TriggerAccessPointCardProps) {
   const { t } = useTranslation(['appOverview', 'deployments', 'navigation'])
   const docLink = useDocLink()
-  const { data: response, isLoading } = useAppTriggers(appInfo.id)
+  const { data: response, isLoading } = useQuery(
+    consoleQuery.apps.byAppId.triggers.get.queryOptions({
+      input: { params: { app_id: appInfo.id } },
+      enabled: !!appInfo.id,
+    }),
+  )
   const { data: triggerPlugins = [] } = useAllTriggerPlugins()
   const setTriggerStatuses = useTriggerStatusStore((state) => state.setTriggerStatuses)
   const triggers = useMemo(() => response?.data ?? [], [response?.data])
@@ -198,7 +214,7 @@ export function TriggerAccessPointCard({
               href={docLink('/use-dify/nodes/trigger/overview')}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-text-accent hover:underline"
+              className="text-text-accent underline"
             >
               {t(($) => $['overview.triggerInfo.learnAboutTriggers'], {
                 ns: 'appOverview',

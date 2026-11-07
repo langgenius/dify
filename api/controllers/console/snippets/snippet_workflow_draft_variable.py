@@ -50,6 +50,7 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableResponse,
 )
 from graphon.variables.types import SegmentType
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -98,6 +99,7 @@ def _snippet_draft_var_prerequisite[T, **P, R](
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables")
 class SnippetWorkflowVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
     @console_ns.doc("get_snippet_workflow_variables")
     @console_ns.doc(description="List draft workflow variables without values (paginated, snippet scope)")
@@ -346,6 +348,7 @@ class SnippetSystemVariableCollectionApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/environment-variables")
 class SnippetEnvironmentVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_snippet_environment_variables")
     @console_ns.doc(description="Get environment variables from snippet draft workflow graph")
     @console_ns.response(

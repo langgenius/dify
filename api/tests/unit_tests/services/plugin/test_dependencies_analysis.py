@@ -7,6 +7,7 @@ dependencies via marketplace.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,38 +17,38 @@ from services.plugin.dependencies_analysis import DependenciesAnalysisService
 
 
 class TestAnalyzeToolDependency:
-    def test_valid_three_part_id(self):
+    def test_valid_three_part_id(self) -> None:
         result = DependenciesAnalysisService.analyze_tool_dependency("langgenius/google/google")
         assert result == "langgenius/google"
 
-    def test_single_part_expands_to_langgenius(self):
+    def test_single_part_expands_to_langgenius(self) -> None:
         result = DependenciesAnalysisService.analyze_tool_dependency("websearch")
         assert result == "langgenius/websearch"
 
-    def test_invalid_format_raises(self):
-        with pytest.raises(ValueError):
+    def test_invalid_format_raises(self) -> None:
+        with pytest.raises(ValueError, match="Invalid plugin id bad/format"):
             DependenciesAnalysisService.analyze_tool_dependency("bad/format")
 
-    def test_plugin_id_reference_is_preserved(self):
+    def test_plugin_id_reference_is_preserved(self) -> None:
         assert DependenciesAnalysisService.analyze_tool_provider_reference("acme/search") == "acme/search"
 
 
 class TestAnalyzeModelProviderDependency:
-    def test_valid_three_part_id(self):
+    def test_valid_three_part_id(self) -> None:
         result = DependenciesAnalysisService.analyze_model_provider_dependency("langgenius/openai/openai")
         assert result == "langgenius/openai"
 
-    def test_google_maps_to_gemini(self):
+    def test_google_maps_to_gemini(self) -> None:
         result = DependenciesAnalysisService.analyze_model_provider_dependency("langgenius/google/google")
         assert result == "langgenius/gemini"
 
-    def test_single_part_expands(self):
+    def test_single_part_expands(self) -> None:
         result = DependenciesAnalysisService.analyze_model_provider_dependency("anthropic")
         assert result == "langgenius/anthropic"
 
 
 class TestExtractExternalNodeDependencies:
-    def test_legacy_agent_includes_strategy_and_plugin_tools(self):
+    def test_legacy_agent_includes_strategy_and_plugin_tools(self) -> None:
         node_data = {
             "type": "agent",
             "agent_strategy_provider_name": "langgenius/agent/agent",
@@ -69,7 +70,7 @@ class TestExtractExternalNodeDependencies:
             "acme/custom",
         ]
 
-    def test_legacy_agent_accepts_plugin_id_strategy_and_legacy_tool_provider(self):
+    def test_legacy_agent_accepts_plugin_id_strategy_and_legacy_tool_provider(self) -> None:
         node_data = {
             "type": "agent",
             "agent_strategy_provider_name": "acme/strategy",
@@ -90,7 +91,7 @@ class TestExtractExternalNodeDependencies:
             "langgenius/search",
         ]
 
-    def test_legacy_agent_skips_invalid_strategy_and_non_tool_parameters(self):
+    def test_legacy_agent_skips_invalid_strategy_and_non_tool_parameters(self) -> None:
         node_data = {
             "type": "agent",
             "agent_strategy_provider_name": "invalid/provider/with/extra",
@@ -109,20 +110,22 @@ class TestExtractExternalNodeDependencies:
             ({"type": "agent", "agent_parameters": "invalid"}, []),
         ],
     )
-    def test_direct_plugin_references(self, node_data, expected):
+    def test_direct_plugin_references(self, node_data: dict[str, object], expected: list[str]) -> None:
         assert DependenciesAnalysisService.extract_external_node_dependencies(node_data) == expected
 
 
 class TestGetLeakedDependencies:
-    def _make_dependency(self, identifier: str, dep_type=PluginDependencyType.Marketplace):
+    def _make_dependency(
+        self, identifier: str, dep_type: PluginDependencyType = PluginDependencyType.Marketplace
+    ) -> PluginDependency:
         return PluginDependency(
             type=dep_type,
             value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier=identifier),
         )
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
-    def test_returns_empty_when_all_present(self, mock_installer_cls):
-        mock_installer_cls.return_value.fetch_missing_dependencies.return_value = []
+    def test_returns_empty_when_all_present(self, mock_installer_cls: MagicMock) -> None:
+        mock_installer_cls.return_value.fetch_missing_dependencies.return_value = list[object]()
         deps = [self._make_dependency("org/plugin:1.0.0@hash")]
 
         result = DependenciesAnalysisService.get_leaked_dependencies("t1", deps)
@@ -130,7 +133,7 @@ class TestGetLeakedDependencies:
         assert result == []
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
-    def test_returns_missing_with_version_extracted(self, mock_installer_cls):
+    def test_returns_missing_with_version_extracted(self, mock_installer_cls: MagicMock) -> None:
         missing = MagicMock()
         missing.plugin_unique_identifier = "org/plugin:1.2.3@hash"
         missing.current_identifier = "org/plugin:1.0.0@oldhash"
@@ -144,7 +147,7 @@ class TestGetLeakedDependencies:
         assert result[0].value.version == "1.2.3"
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
-    def test_skips_present_dependencies(self, mock_installer_cls):
+    def test_skips_present_dependencies(self, mock_installer_cls: MagicMock) -> None:
         missing = MagicMock()
         missing.plugin_unique_identifier = "org/missing:1.0.0@hash"
         missing.current_identifier = None
@@ -161,7 +164,9 @@ class TestGetLeakedDependencies:
 
 
 class TestGenerateDependencies:
-    def _make_installation(self, source, identifier, meta=None):
+    def _make_installation(
+        self, source: PluginInstallationSource, identifier: str, meta: dict[str, object] | None = None
+    ) -> MagicMock:
         install = MagicMock()
         install.source = source
         install.plugin_unique_identifier = identifier
@@ -169,7 +174,7 @@ class TestGenerateDependencies:
         return install
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
-    def test_github_source(self, mock_installer_cls):
+    def test_github_source(self, mock_installer_cls: MagicMock) -> None:
         install = self._make_installation(
             PluginInstallationSource.Github,
             "org/plugin:1.0.0@hash",
@@ -181,10 +186,11 @@ class TestGenerateDependencies:
 
         assert len(result) == 1
         assert result[0].type == PluginDependencyType.Github
+        assert isinstance(result[0].value, PluginDependency.Github)
         assert result[0].value.repo == "org/repo"
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
-    def test_marketplace_source(self, mock_installer_cls):
+    def test_marketplace_source(self, mock_installer_cls: MagicMock) -> None:
         install = self._make_installation(PluginInstallationSource.Marketplace, "org/plugin:1.0.0@hash")
         mock_installer_cls.return_value.fetch_plugin_installation_by_ids.return_value = [install]
 
@@ -193,7 +199,7 @@ class TestGenerateDependencies:
         assert result[0].type == PluginDependencyType.Marketplace
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
-    def test_package_source(self, mock_installer_cls):
+    def test_package_source(self, mock_installer_cls: MagicMock) -> None:
         install = self._make_installation(PluginInstallationSource.Package, "org/plugin:1.0.0@hash")
         mock_installer_cls.return_value.fetch_plugin_installation_by_ids.return_value = [install]
 
@@ -202,7 +208,7 @@ class TestGenerateDependencies:
         assert result[0].type == PluginDependencyType.Package
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
-    def test_remote_source_raises(self, mock_installer_cls):
+    def test_remote_source_raises(self, mock_installer_cls: MagicMock) -> None:
         install = self._make_installation(PluginInstallationSource.Remote, "org/plugin:1.0.0@hash")
         mock_installer_cls.return_value.fetch_plugin_installation_by_ids.return_value = [install]
 
@@ -210,8 +216,8 @@ class TestGenerateDependencies:
             DependenciesAnalysisService.generate_dependencies("t1", ["p1"])
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
-    def test_deduplicates_input_ids(self, mock_installer_cls):
-        mock_installer_cls.return_value.fetch_plugin_installation_by_ids.return_value = []
+    def test_deduplicates_input_ids(self, mock_installer_cls: MagicMock) -> None:
+        mock_installer_cls.return_value.fetch_plugin_installation_by_ids.return_value = list[object]()
 
         DependenciesAnalysisService.generate_dependencies("t1", ["p1", "p1", "p2"])
 
@@ -220,7 +226,7 @@ class TestGenerateDependencies:
 
 
 class TestGenerateLatestDependencies:
-    def test_returns_empty_when_marketplace_disabled(self, config_overrides):
+    def test_returns_empty_when_marketplace_disabled(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(MARKETPLACE_ENABLED=False)
 
         result = DependenciesAnalysisService.generate_latest_dependencies(["p1"])
@@ -228,7 +234,9 @@ class TestGenerateLatestDependencies:
         assert result == []
 
     @patch("services.plugin.dependencies_analysis.marketplace")
-    def test_returns_marketplace_deps_when_enabled(self, mock_marketplace, config_overrides):
+    def test_returns_marketplace_deps_when_enabled(
+        self, mock_marketplace: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
         config_overrides(MARKETPLACE_ENABLED=True)
         manifest = MagicMock()
         manifest.latest_package_identifier = "org/plugin:2.0.0@newhash"

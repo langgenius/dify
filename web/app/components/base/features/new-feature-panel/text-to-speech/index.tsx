@@ -105,12 +105,14 @@ const TextToSpeech = ({ disabled, onChange }: Props) => {
                 open={modalOpen && !disabled}
                 onOpen={setModalOpen}
                 onChange={onChange}
-              >
-                <Button className="w-full" disabled={disabled}>
-                  <RiEqualizer2Line className="size-4" />
-                  {t(($) => $['voice.voiceSettings.title'], { ns: 'appDebug' })}
-                </Button>
-              </VoiceSettings>
+                disabled={disabled}
+                trigger={
+                  <Button className="w-full" disabled={disabled}>
+                    <RiEqualizer2Line className="size-4" />
+                    {t(($) => $['voice.voiceSettings.title'], { ns: 'appDebug' })}
+                  </Button>
+                }
+              />
             )}
           </>
         )}

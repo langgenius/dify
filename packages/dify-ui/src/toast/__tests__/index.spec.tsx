@@ -1,43 +1,7 @@
-import type { ToastManager, ToastViewportProps } from '../index'
 import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import {
-  createToast,
-  createToastManager,
-  ToastCard,
-  ToastPortal,
-  ToastProvider,
-  ToastViewport,
-  useToastManager,
-} from '../index'
-
-function ToastCards() {
-  const { toasts } = useToastManager<Record<string, never>>()
-  return toasts.map((item) => <ToastCard key={item.id} toast={item} />)
-}
-
-function ExampleToastHost({
-  manager,
-  timeout,
-  limit,
-  offset,
-}: {
-  manager: ToastManager
-  timeout?: number
-  limit?: number
-  offset?: ToastViewportProps['offset']
-}) {
-  return (
-    <ToastProvider toastManager={manager} timeout={timeout} limit={limit}>
-      <ToastPortal>
-        <ToastViewport offset={offset}>
-          <ToastCards />
-        </ToastViewport>
-      </ToastPortal>
-    </ToastProvider>
-  )
-}
+import { createToast, createToastManager, Toaster } from '../index'
 
 const manager = createToastManager()
 const toast = createToast(manager)
@@ -62,7 +26,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should render a success toast when called through the typed shortcut', async () => {
-    const screen = await render(<ExampleToastHost manager={manager} />)
+    const screen = await render(<Toaster toastManager={manager} />)
 
     toast.success('Saved', {
       description: 'Your changes are available now.',
@@ -75,13 +39,13 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should keep multiple toast roots mounted in a collapsed stack', async () => {
-    const screen = await render(<ExampleToastHost manager={manager} />)
+    const screen = await render(<Toaster toastManager={manager} />)
 
-    toast('First toast')
+    toast.info('First toast')
     await expect.element(screen.getByText('First toast')).toBeInTheDocument()
 
-    toast('Second toast')
-    toast('Third toast')
+    toast.info('Second toast')
+    toast.info('Third toast')
 
     await expect.element(screen.getByText('Third toast')).toBeInTheDocument()
     expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(3)
@@ -103,12 +67,12 @@ describe('@langgenius/dify-ui/toast', () => {
         >
           Underlying action
         </button>
-        <ExampleToastHost manager={manager} timeout={0} />
+        <Toaster toastManager={manager} timeout={0} />
       </React.Fragment>,
     )
 
-    toast('Older notification')
-    toast('Newest notification')
+    toast.info('Older notification')
+    toast.info('Newest notification')
 
     const newestToast = screen.getByRole('dialog', { name: 'Newest notification' })
     await expect.element(newestToast).toBeInTheDocument()
@@ -170,11 +134,11 @@ describe('@langgenius/dify-ui/toast', () => {
               height: 20,
             }}
           />
-          <ExampleToastHost manager={manager} timeout={0} offset={{ top: 120 }} />
+          <Toaster toastManager={manager} timeout={0} offset={{ top: 120 }} />
         </React.Fragment>,
       )
 
-      toast('Directional notification')
+      toast.info('Directional notification')
 
       const toastDialog = screen.getByRole('dialog', { name: 'Directional notification' })
       await expect.element(toastDialog).toBeInTheDocument()
@@ -230,12 +194,12 @@ describe('@langgenius/dify-ui/toast', () => {
               height: 20,
             }}
           />
-          <ExampleToastHost manager={manager} timeout={0} />
+          <Toaster toastManager={manager} timeout={0} />
         </React.Fragment>,
       )
 
-      toast('Background notification')
-      toast('Front notification')
+      toast.info('Background notification')
+      toast.info('Front notification')
 
       const backgroundToast = screen.getByRole('dialog', { name: 'Background notification' })
       await expect.element(backgroundToast).toBeInTheDocument()
@@ -258,12 +222,14 @@ describe('@langgenius/dify-ui/toast', () => {
     }
   })
 
-  it('should render a neutral toast when called directly', async () => {
-    const screen = await render(<ExampleToastHost manager={manager} />)
+  it('should render the type passed to the callable API', async () => {
+    const screen = await render(<Toaster toastManager={manager} />)
 
-    toast('Neutral toast')
+    toast('Typed toast', { type: 'warning' })
 
-    await expect.element(screen.getByText('Neutral toast')).toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('dialog', { name: 'Typed toast' }))
+      .toHaveAttribute('data-type', 'warning')
   })
 
   it('should isolate toasts between managers', async () => {
@@ -271,8 +237,8 @@ describe('@langgenius/dify-ui/toast', () => {
     const localToast = createToast(localManager)
     const screen = await render(
       <React.Fragment>
-        <ExampleToastHost manager={manager} />
-        <ExampleToastHost manager={localManager} />
+        <Toaster toastManager={manager} />
+        <Toaster toastManager={localManager} />
       </React.Fragment>,
     )
 
@@ -293,9 +259,9 @@ describe('@langgenius/dify-ui/toast', () => {
   it('should apply custom positioning to the viewport', async () => {
     const localManager = createToastManager()
     const localToast = createToast(localManager)
-    const screen = await render(<ExampleToastHost manager={localManager} offset={{ top: 80 }} />)
+    const screen = await render(<Toaster toastManager={localManager} offset={{ top: 80 }} />)
 
-    localToast('Positioned viewport')
+    localToast.info('Positioned viewport')
 
     const viewport = screen.getByRole('region', { name: 'Notifications' })
     await expect.element(screen.getByText('Positioned viewport')).toBeInTheDocument()
@@ -307,19 +273,19 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should mark overflow toasts as limited when the stack exceeds the configured limit', async () => {
-    const screen = await render(<ExampleToastHost manager={manager} limit={1} />)
+    const screen = await render(<Toaster toastManager={manager} limit={1} />)
 
-    toast('First toast')
-    toast('Second toast')
+    toast.info('First toast')
+    toast.info('Second toast')
 
     await expect.element(screen.getByText('Second toast')).toBeInTheDocument()
     expect(document.body.querySelector('[data-limited]')).toBeInTheDocument()
   })
 
   it('should dismiss a toast when dismiss(id) is called', async () => {
-    const screen = await render(<ExampleToastHost manager={manager} />)
+    const screen = await render(<Toaster toastManager={manager} />)
 
-    const toastId = toast('Closable', {
+    const toastId = toast.info('Closable', {
       description: 'This toast can be removed.',
     })
 
@@ -334,9 +300,9 @@ describe('@langgenius/dify-ui/toast', () => {
 
   it('should close a toast when the dismiss button is clicked', async () => {
     const onClose = vi.fn()
-    const screen = await render(<ExampleToastHost manager={manager} />)
+    const screen = await render(<Toaster toastManager={manager} />)
 
-    toast('Dismiss me', {
+    toast.info('Dismiss me', {
       description: 'Manual dismissal path.',
       onClose,
     })
@@ -391,11 +357,11 @@ describe('@langgenius/dify-ui/toast', () => {
           >
             Underlying action
           </button>
-          <ExampleToastHost manager={manager} />
+          <Toaster toastManager={manager} />
         </React.Fragment>,
       )
 
-      toast('Dismiss me', {
+      toast.info('Dismiss me', {
         timeout: 0,
       })
 
@@ -436,9 +402,9 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should pass the host timeout to added toasts', async () => {
-    const screen = await render(<ExampleToastHost manager={manager} timeout={1000} />)
+    const screen = await render(<Toaster toastManager={manager} timeout={1000} />)
 
-    toast('Auto dismiss')
+    toast.info('Auto dismiss')
     await expect.element(screen.getByText('Auto dismiss')).toBeInTheDocument()
 
     await vi.advanceTimersByTimeAsync(999)
@@ -452,9 +418,9 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should keep a toast persistent when its timeout is zero', async () => {
-    const screen = await render(<ExampleToastHost manager={manager} timeout={1000} />)
+    const screen = await render(<Toaster toastManager={manager} timeout={1000} />)
 
-    toast('Persistent', {
+    toast.info('Persistent', {
       timeout: 0,
     })
 
@@ -465,7 +431,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should update an existing toast', async () => {
-    const screen = await render(<ExampleToastHost manager={manager} />)
+    const screen = await render(<Toaster toastManager={manager} />)
 
     const toastId = toast.info('Loading', {
       description: 'Preparing your data…',
@@ -484,9 +450,9 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should upsert an existing toast when add is called with the same id', async () => {
-    const screen = await render(<ExampleToastHost manager={manager} />)
+    const screen = await render(<Toaster toastManager={manager} />)
 
-    toast('Draft saving', {
+    toast.info('Draft saving', {
       id: 'draft-save-status',
       description: 'Saving changes…',
     })
@@ -507,9 +473,9 @@ describe('@langgenius/dify-ui/toast', () => {
 
   it('should render and invoke toast action props', async () => {
     const onAction = vi.fn()
-    const screen = await render(<ExampleToastHost manager={manager} />)
+    const screen = await render(<Toaster toastManager={manager} />)
 
-    toast('Action toast', {
+    toast.info('Action toast', {
       actionProps: {
         children: 'Undo',
         onClick: onAction,
@@ -523,7 +489,7 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should transition a promise toast from loading to success', async () => {
-    const screen = await render(<ExampleToastHost manager={manager} />)
+    const screen = await render(<Toaster toastManager={manager} />)
 
     let resolvePromise: ((value: string) => void) | undefined
     const promise = new Promise<string>((resolve) => {
@@ -540,12 +506,27 @@ describe('@langgenius/dify-ui/toast', () => {
       error: 'Failed',
     })
 
-    await expect.element(screen.getByText('Saving…')).toBeInTheDocument()
+    await expect.element(screen.getByRole('dialog', { name: 'Saving…' })).toBeInTheDocument()
 
     resolvePromise?.('Your changes are available now.')
     await promise
 
     await expect.element(screen.getByText('Saved')).toBeInTheDocument()
     await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
+  })
+
+  it('should use a string promise result as the toast title', async () => {
+    const screen = await render(<Toaster toastManager={manager} />)
+
+    await toast
+      .promise(Promise.reject(new Error('Denied')), {
+        loading: 'Uploading…',
+        success: 'Uploaded',
+        error: (error) => (error as Error).message,
+      })
+      .catch(() => undefined)
+
+    await expect.element(screen.getByRole('dialog', { name: 'Denied' })).toBeInTheDocument()
+    expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(1)
   })
 })

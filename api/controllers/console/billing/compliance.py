@@ -1,3 +1,5 @@
+from typing import assert_never
+
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -9,9 +11,15 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.billing.error import (
+    BillingOperationFailedError,
     BillingOperationFailedErrorResponse,
+    BillingRequestInProgressError,
+    BillingUnavailableError,
     BillingUnavailableErrorResponse,
     BillingUnprocessableEntityErrorResponse,
+    ComplianceDocumentNotFoundError,
+    ComplianceDownloadForbiddenError,
+    ComplianceRateLimitError,
     ComplianceRateLimitErrorResponse,
     to_billing_request_error,
 )
@@ -20,9 +28,12 @@ from controllers.console.wraps import model_validate
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from libs.helper import dump_response, extract_remote_ip
 from machinery.context import RequestContext
-from services.errors.billing import BillingError
+from services.billing_client import billing
+from services.errors.billing import ComplianceRateLimitExceededError, UnknownErrorReason
 
 
 class ComplianceDownloadQuery(BaseModel):
@@ -44,8 +55,48 @@ register_response_schema_models(
 )
 
 
+def _compliance_download_error(error: billing.BillingComplianceUpstreamError) -> BaseHTTPException:
+    match error.reason:
+        case "COMPLIANCE_DOCUMENT_NOT_FOUND":
+            return ComplianceDocumentNotFoundError()
+        case "COMPLIANCE_DOWNLOAD_FORBIDDEN":
+            return ComplianceDownloadForbiddenError()
+        case "REQUEST_IN_PROGRESS":
+            return BillingRequestInProgressError()
+        case (
+            ""
+            | "CODEC"
+            | "VALIDATOR"
+            | "UNKNOWN"
+            | "INVALID_SECRET_KEY"
+            | "MISSING_TENANT_ID"
+            | "INVALID_TENANT_ID"
+            | "MISSING_ACCOUNT_ID"
+            | "INVALID_ACCOUNT_ID"
+            | "MISSING_PREFILLED_EMAIL"
+            | "INVALID_COMPLIANCE_DOWNLOAD_REQUEST"
+            | "MISSING_DOC_NAME"
+            | "MISSING_IP_ADDRESS"
+            | "MISSING_DEVICE_INFO"
+            | "COMPLIANCE_DOWNLOAD_FAILED"
+        ):
+            return to_billing_request_error(error)
+        case UnknownErrorReason() | None:
+            return to_billing_request_error(error)
+        case unreachable:
+            assert_never(unreachable)
+
+
 @console_ns.route("/compliance/download")
 class ComplianceApi(Resource):
+    @error_responses(
+        BillingOperationFailedError,
+        BillingRequestInProgressError,
+        BillingUnavailableError,
+        ComplianceDocumentNotFoundError,
+        ComplianceDownloadForbiddenError,
+        ComplianceRateLimitError,
+    )
     @console_ns.doc(params=query_params_from_model(ComplianceDownloadQuery))
     @console_ns.doc("download_compliance_document")
     @console_ns.doc(description="Get compliance document download link")
@@ -82,6 +133,8 @@ class ComplianceApi(Resource):
                 ip_address=ip_address,
                 device_info=device_info,
             )
-        except BillingError as error:
-            raise to_billing_request_error(error) from error
+        except ComplianceRateLimitExceededError as error:
+            raise ComplianceRateLimitError() from error
+        except billing.BillingComplianceUpstreamError as error:
+            raise _compliance_download_error(error) from error
         return dump_response(ComplianceDownloadResponse, data)

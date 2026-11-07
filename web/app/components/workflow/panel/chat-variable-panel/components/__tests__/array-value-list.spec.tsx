@@ -7,20 +7,36 @@ describe('ArrayValueList', () => {
   it('updates string items, appends a row, and removes an item', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    const { container } = render(
-      <ArrayValueList isString list={['alpha', 'beta']} onChange={onChange} />,
-    )
+    function StringArray() {
+      const [list, setList] = useState<Array<string | number | undefined>>(['alpha', 'beta'])
+      return (
+        <ArrayValueList
+          isString
+          list={list}
+          onChange={(value) => {
+            setList(value)
+            onChange(value)
+          }}
+        />
+      )
+    }
+    render(<StringArray />)
 
     await user.type(
       screen.getByRole('textbox', { name: 'workflow.chatVariable.modal.arrayValue 1' }),
       'x',
     )
-    await user.click(screen.getByText('workflow.chatVariable.modal.addArrayValue'))
-    await user.click(container.querySelector('button') as HTMLButtonElement)
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.chatVariable.modal.addArrayValue' }),
+    )
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[0]!)
 
     expect(onChange).toHaveBeenNthCalledWith(1, ['alphax', 'beta'])
-    expect(onChange).toHaveBeenNthCalledWith(2, ['alpha', 'beta', undefined])
-    expect(onChange).toHaveBeenNthCalledWith(3, ['beta'])
+    expect(onChange).toHaveBeenNthCalledWith(2, ['alphax', 'beta', undefined])
+    expect(onChange).toHaveBeenNthCalledWith(3, ['beta', undefined])
+    expect(
+      screen.getAllByRole('textbox').map((input) => (input as HTMLInputElement).value),
+    ).toEqual(['beta', ''])
   })
 
   it('edits decimal numbers and keeps cleared rows empty instead of converting them to zero', async () => {
@@ -51,7 +67,9 @@ describe('ArrayValueList', () => {
     await user.tab()
     expect(input).toHaveValue('')
     expect(onChange).toHaveBeenLastCalledWith([undefined])
-    await user.click(screen.getByText('workflow.chatVariable.modal.addArrayValue'))
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.chatVariable.modal.addArrayValue' }),
+    )
 
     expect(onChange).toHaveBeenLastCalledWith([undefined, undefined])
   })

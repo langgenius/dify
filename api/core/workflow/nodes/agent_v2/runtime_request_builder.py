@@ -5,9 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.agent_stub.protocol import AgentStubFileMapping
-from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
 from dify_agent.layers.config import (
     DifyConfigFileConfig,
     DifyConfigLayerConfig,
@@ -22,6 +20,7 @@ from dify_agent.layers.execution_context import (
 from dify_agent.layers.knowledge import (
     DifyKnowledgeBaseLayerConfig,
     DifyKnowledgeDatasetConfig,
+    DifyKnowledgeMetadataConditions,
     DifyKnowledgeMetadataFilteringConfig,
     DifyKnowledgeModelConfig,
     DifyKnowledgeQueryConfig,
@@ -35,7 +34,9 @@ from dify_agent.layers.shell import (
     DifyShellLayerConfig,
     DifyShellSecretRefConfig,
 )
-from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
+from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol.knowledge_fs import KnowledgeFsError
+from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.exc import OperationalError
 
@@ -51,14 +52,17 @@ from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm.model_access import resolve_model_context_window
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
+from extensions.tracing import application_tracing_hooks
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template
+from libs.workflow_template_values import resolve_template_value
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentKnowledgeMetadataFilteringConfig,
     AgentKnowledgeModelConfig,
     AgentKnowledgeRetrievalConfig,
+    AgentKnowledgeSpaceConfig,
     AgentSoulConfig,
     AgentSoulToolsConfig,
     DeclaredArrayItem,
@@ -70,6 +74,7 @@ from models.agent_config_entities import (
     WorkflowPreviousNodeOutputRef,
 )
 from models.provider_ids import ModelProviderID
+from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import (
     MentionKind,
     build_node_job_mention_resolver,
@@ -138,10 +143,7 @@ class WorkflowAgentRuntimeBuildContext:
     # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
-    session_snapshot: CompositorSessionSnapshot | None = None
-    # ENG-638: set when resuming after a submitted ask_human HITL form; threads
-    # the human's answer back into the second Agent run keyed by tool_call_id.
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    session_snapshot: SessionSnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,6 +195,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
                 invoke_from=context.dify_context.invoke_from,
+                knowledge_fs_spaces=tuple(agent_soul.knowledge.spaces),
             )
         except WorkflowAgentDifyToolsBuildError as error:
             raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
@@ -220,7 +223,10 @@ class WorkflowAgentRuntimeRequestBuilder:
             runtime_config_skills=runtime_config_skills,
         )
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
-        knowledge_config = build_knowledge_layer_config(agent_soul)
+        try:
+            knowledge_fs_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
+        except KnowledgeFsError as exc:
+            raise WorkflowAgentRuntimeRequestBuildError(exc.code, exc.message) from exc
         context_window_tokens = resolve_model_context_window(
             run_context=context.dify_context,
             provider_name=agent_soul.model.model_provider,
@@ -231,6 +237,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             agent_soul.model.plugin_id,
         )
 
+        tracing_hooks = application_tracing_hooks()
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
@@ -261,6 +268,14 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_config_version_kind="snapshot",
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
+                    trace_id=context.dify_context.trace_session_id,
+                    tracing=(
+                        tracing_hooks.prepare_workflow_agent(
+                            context, get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID)
+                        )
+                        if tracing_hooks is not None
+                        else None
+                    ),
                 ),
                 backend_binding_ref=context.backend_binding_ref,
                 agent_soul_prompt=soul_prompt or None,
@@ -271,13 +286,12 @@ class WorkflowAgentRuntimeRequestBuilder:
                 ),
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
-                knowledge=knowledge_config,
+                knowledge=build_knowledge_layer_config(agent_soul, variable_pool=context.variable_pool),
+                knowledge_fs=knowledge_fs_config,
                 config_layer_config=config_layer_config,
-                ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
-                deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
             )
@@ -299,6 +313,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...],
     ) -> WorkflowAgentToolLayers:
         # Production workflow runs intentionally keep existing plugin configs on
         # the direct `dify.plugin.tools` route. This builder emits plugin tools
@@ -309,6 +324,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             user_id=user_id,
             tools=tools,
             invoke_from=invoke_from,
+            knowledge_fs_spaces=knowledge_fs_spaces,
         )
 
     @staticmethod
@@ -367,8 +383,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             lines.append(f"- User query: {query}")
 
         if uploaded_files is not None:
-            lines.append("- Uploaded workflow files:")
-            lines.append(f"  - sys.files: {uploaded_files}")
+            lines.extend(("- Uploaded workflow files:", f"  - sys.files: {uploaded_files}"))
 
         if resolved_outputs:
             lines.append("- Previous node outputs:")
@@ -749,7 +764,9 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
     )
 
 
-def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBaseLayerConfig | None:
+def build_knowledge_layer_config(
+    agent_soul: AgentSoulConfig, *, variable_pool: VariablePoolReader | None = None
+) -> DifyKnowledgeBaseLayerConfig | None:
     """Map Agent Soul knowledge sets into one Dify knowledge-base layer.
 
     Agent Soul DTO validation owns malformed set rejection. Runtime mapping is
@@ -757,6 +774,11 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
     policy, dataset refs, retrieval controls, and metadata-filtering controls.
     ``score_threshold=None`` means disabled threshold filtering and maps to the
     inner retrieval request's ``0.0`` default through the Agent backend DTO.
+    Preconditions: ``agent_soul`` is validated. Workflow callers provide the
+    current run's variable pool; ``None`` preserves standalone literal filters.
+    Postconditions: Return no layer for empty sets, otherwise map every set
+    without mutating the saved configuration. Missing manual-filter references
+    raise ``WorkflowAgentRuntimeRequestBuildError``.
     """
     if not agent_soul.knowledge.sets:
         return None
@@ -780,7 +802,9 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
                     value=knowledge_set.query.value,
                 ),
                 retrieval=_knowledge_retrieval_config(knowledge_set.retrieval),
-                metadata_filtering=_knowledge_metadata_filtering_config(knowledge_set.metadata_filtering),
+                metadata_filtering=_knowledge_metadata_filtering_config(
+                    knowledge_set.metadata_filtering, variable_pool=variable_pool
+                ),
             )
             for knowledge_set in agent_soul.knowledge.sets
         ],
@@ -827,17 +851,42 @@ def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> Dif
 
 def _knowledge_metadata_filtering_config(
     metadata_filtering: AgentKnowledgeMetadataFilteringConfig,
+    *,
+    variable_pool: VariablePoolReader | None,
 ) -> DifyKnowledgeMetadataFilteringConfig:
+    """Map validated metadata settings to the runtime DTO.
+
+    Preconditions: A supplied pool belongs to the current workflow run.
+    Postconditions: Resolve only value-taking manual filters with a pool,
+    preserving saved settings and stripping editor-only fields. Value-free
+    operators ignore retained templates. Missing required references raise
+    ``WorkflowAgentRuntimeRequestBuildError`` without changing the settings.
+    """
+    conditions = metadata_filtering.conditions
+    if conditions is not None and metadata_filtering.mode == "manual" and variable_pool is not None:
+        try:
+            conditions = conditions.model_copy(
+                update={
+                    "conditions": [
+                        condition.model_copy(update={"value": resolve_template_value(condition.value, variable_pool)})
+                        if condition.comparison_operator not in ("empty", "not empty")
+                        else condition
+                        for condition in conditions.conditions
+                    ]
+                }
+            )
+        except ValueError as error:
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "agent_metadata_filter_variable_not_found", str(error)
+            ) from error
+
     return DifyKnowledgeMetadataFilteringConfig(
         mode=metadata_filtering.mode,
         model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
-        conditions=cast(
-            Any,
-            metadata_filtering.conditions.model_dump(
-                mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}
-            ),
+        conditions=DifyKnowledgeMetadataConditions.model_validate(
+            conditions.model_dump(mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}),
         )
-        if metadata_filtering.conditions is not None
+        if conditions is not None
         else None,
     )
 
@@ -851,20 +900,6 @@ def _knowledge_model_config(model: AgentKnowledgeModelConfig | None) -> DifyKnow
         mode=model.mode,
         completion_params=model.completion_params,
     )
-
-
-def build_ask_human_layer_config(agent_soul: AgentSoulConfig) -> DifyAskHumanLayerConfig | None:
-    """Enable the dify.ask_human deferred tool when the soul configures human involvement.
-
-    HITL is opt-in: only when at least one human contact is configured does the
-    model get the ``ask_human`` tool (recipients for the resulting form come from
-    those contacts, ENG-635). Returns ``None`` to leave the tool off entirely.
-    The tool/field guardrails use the layer defaults; ``human.tools`` semantics are
-    out of scope this round.
-    """
-    if not agent_soul.human.contacts:
-        return None
-    return DifyAskHumanLayerConfig()
 
 
 def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, str]]) -> None:
@@ -1032,9 +1067,7 @@ def _cli_tool_enabled(item: object) -> bool:
         return False
     if data.get("pre_authorized") is False or _permission_denied(data):
         return False
-    if _dangerous_without_acknowledgement(data):
-        return False
-    return True
+    return not _dangerous_without_acknowledgement(data)
 
 
 def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:

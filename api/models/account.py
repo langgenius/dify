@@ -4,12 +4,12 @@ from dataclasses import field
 from datetime import datetime
 from typing import TypedDict
 from uuid import uuid4
+from warnings import deprecated
 
 import sqlalchemy as sa
 from flask_login import UserMixin
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
-from typing_extensions import deprecated
 
 from configs import dify_config
 from enums.account import TenantAccountRole
@@ -315,7 +315,7 @@ class TenantPluginPermission(TypeBase):
     install_permission: Mapped[TenantPluginInstallPermission] = mapped_column(
         EnumText(TenantPluginInstallPermission, length=16),
         nullable=False,
-        default=TenantPluginInstallPermission.EVERYONE,
+        default=TenantPluginInstallPermission.ADMINS,
     )
     debug_permission: Mapped[TenantPluginDebugPermission] = mapped_column(
         EnumText(TenantPluginDebugPermission, length=16),

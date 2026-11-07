@@ -17,10 +17,10 @@ import {
 type Params = {
   id: string
   payload: LoopNodeType
-  runInputData: Record<string, any>
+  runInputData: Record<string, unknown>
   runResult: NodeTracing
   loopRunResult: NodeTracing[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: (data: Record<string, unknown>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
   varSelectorsToVarInputs: (variables: ValueSelector[]) => InputVar[]
 }
@@ -76,7 +76,7 @@ const useSingleRunFormParams = ({
   }, [runResult, loopRunResult, t])
 
   const setInputVarValues = useCallback(
-    (newPayload: Record<string, any>) => {
+    (newPayload: Record<string, unknown>) => {
       setRunInputData(newPayload)
     },
     [setRunInputData],

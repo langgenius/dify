@@ -299,12 +299,11 @@ Then(
 Then(
   'I should see the workspace default chat model in the Agent v2 model selector',
   async function (this: DifyWorld) {
-    const response = await this.getConsoleClient().workspaces.current.defaultModel.get({
-      query: { model_type: 'llm' },
-    })
-    if (!response.data) throw new Error('The workspace default chat model is not configured.')
+    const defaultModel = this.agentBuilder.fixtures.defaultChatModel
+    if (!defaultModel)
+      throw new Error('Resolve the workspace default chat model before creating the Agent.')
 
-    await expect(getAgentModelSelector(this.getPage())).toContainText(response.data.model, {
+    await expect(getAgentModelSelector(this.getPage())).toContainText(defaultModel.model, {
       timeout: 30_000,
     })
   },

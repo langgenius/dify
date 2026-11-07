@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
 import { AdvancedActions } from '../advanced-actions'
 
@@ -27,13 +28,14 @@ function submit(target: HTMLElement, options: KeyboardEventInit = {}) {
 }
 
 describe('AdvancedActions', () => {
-  it('confirms from the property input and the confirm button', () => {
+  it('confirms from the property input and the confirm button', async () => {
+    const user = userEvent.setup()
     const onConfirm = vi.fn()
     const onCancel = vi.fn()
     render(<Editor onConfirm={onConfirm} onCancel={onCancel} isConfirmDisabled={false} />)
     expect(submit(screen.getByRole('textbox')).defaultPrevented).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: /operation.confirm/ }))
-    fireEvent.click(screen.getByRole('button', { name: /operation.cancel/ }))
+    await user.click(screen.getByRole('button', { name: /operation.confirm/ }))
+    await user.click(screen.getByRole('button', { name: /operation.cancel/ }))
     expect(onConfirm).toHaveBeenCalledTimes(2)
     expect(onCancel).toHaveBeenCalledOnce()
   })

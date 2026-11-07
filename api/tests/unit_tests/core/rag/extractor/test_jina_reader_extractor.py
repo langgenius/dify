@@ -8,7 +8,7 @@ from services.data_source.website_service import WebsiteService
 
 
 class TestJinaReaderWebExtractor:
-    def test_extract_crawl_mode_returns_document(self, mocker: MockerFixture):
+    def test_extract_crawl_mode_returns_document(self, mocker: MockerFixture) -> None:
         mocker.patch(
             "core.rag.extractor.jina_reader_extractor.WebsiteService.get_crawl_url_data",
             return_value={
@@ -36,7 +36,7 @@ class TestJinaReaderWebExtractor:
             "title": "title",
         }
 
-    def test_extract_crawl_mode_with_missing_data_returns_empty(self, mocker: MockerFixture):
+    def test_extract_crawl_mode_with_missing_data_returns_empty(self, mocker: MockerFixture) -> None:
         mocker.patch(
             "core.rag.extractor.jina_reader_extractor.WebsiteService.get_crawl_url_data",
             return_value=None,
@@ -52,7 +52,7 @@ class TestJinaReaderWebExtractor:
 
         assert extractor.extract() == []
 
-    def test_extract_non_crawl_mode_returns_empty(self, mocker: MockerFixture):
+    def test_extract_non_crawl_mode_returns_empty(self, mocker: MockerFixture) -> None:
         mock_get_crawl = mocker.patch(
             "core.rag.extractor.jina_reader_extractor.WebsiteService.get_crawl_url_data",
             return_value={"content": "unused"},

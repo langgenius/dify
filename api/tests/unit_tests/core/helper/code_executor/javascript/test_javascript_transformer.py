@@ -2,7 +2,7 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.javascript.javascript_transformer import NodeJsTemplateTransformer
 
 
-def test_get_runner_script():
+def test_get_runner_script() -> None:
     code = JavascriptCodeProvider.get_default_code()
     inputs = {"arg1": "hello, ", "arg2": "world!"}
     script = NodeJsTemplateTransformer.assemble_runner_script(code, inputs)

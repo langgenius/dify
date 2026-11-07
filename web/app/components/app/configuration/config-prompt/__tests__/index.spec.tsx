@@ -1,100 +1,26 @@
 import type { IPromptProps } from '../index'
 import type { PromptItem, PromptVariable } from '@/models/debug'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { PromptRole } from '@/models/debug'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createDebugConfigurationFixture } from '@/test/fixtures/debug-configuration'
+import { ModelModeType } from '@/types/app'
 import Prompt from '../index'
 
-type DebugConfiguration = {
-  isAdvancedMode: boolean
-  currentAdvancedPrompt: PromptItem | PromptItem[]
-  setCurrentAdvancedPrompt: (prompt: PromptItem | PromptItem[], isUserChanged?: boolean) => void
-  modelModeType: ModelModeType
-  dataSets: Array<{
-    id: string
-    name?: string
-  }>
-  hasSetBlockStatus: {
-    context: boolean
-    history: boolean
-    query: boolean
-  }
-}
+type DebugConfiguration = ReturnType<typeof createDebugConfigurationFixture>
 
 const defaultPromptVariables: PromptVariable[] = [
   { key: 'var', name: 'Variable', type: 'string', required: true },
 ]
 
-let mockSimplePromptInputProps: IPromptProps | null = null
-
-vi.mock('../simple-prompt-input', () => ({
-  default: (props: IPromptProps) => {
-    mockSimplePromptInputProps = props
-    return (
-      <div
-        data-testid="simple-prompt-input"
-        data-mode={props.mode}
-        data-template={props.promptTemplate}
-        data-readonly={props.readonly ?? false}
-        data-no-title={props.noTitle ?? false}
-        data-gradient-border={props.gradientBorder ?? false}
-        data-editor-height={props.editorHeight ?? ''}
-        data-no-resize={props.noResize ?? false}
-        onClick={() => props.onChange?.('mocked prompt', props.promptVariables)}
-      >
-        SimplePromptInput Mock
-      </div>
-    )
-  },
-}))
-
-type AdvancedMessageInputProps = {
-  isChatMode: boolean
-  type: PromptRole
-  value: string
-  onTypeChange: (value: PromptRole) => void
-  canDelete: boolean
-  onDelete: () => void
-  onChange: (value: string) => void
-  promptVariables: PromptVariable[]
-  isContextMissing: boolean
-  onHideContextMissingTip: () => void
-  noResize?: boolean
-}
-
-vi.mock('../advanced-prompt-input', () => ({
-  default: (props: AdvancedMessageInputProps) => {
-    return (
-      <div
-        data-testid="advanced-message-input"
-        data-type={props.type}
-        data-value={props.value}
-        data-chat-mode={props.isChatMode}
-        data-can-delete={props.canDelete}
-        data-context-missing={props.isContextMissing}
-      >
-        <button type="button" onClick={() => props.onChange('updated text')}>
-          change
-        </button>
-        <button type="button" onClick={() => props.onTypeChange(PromptRole.assistant)}>
-          type
-        </button>
-        <button type="button" onClick={props.onDelete}>
-          delete
-        </button>
-        <button type="button" onClick={props.onHideContextMissingTip}>
-          hide-context
-        </button>
-      </div>
-    )
-  },
-}))
 const getContextValue = (overrides: Partial<DebugConfiguration> = {}): DebugConfiguration => {
-  return {
-    setCurrentAdvancedPrompt: vi.fn(),
+  return createDebugConfigurationFixture({
     isAdvancedMode: false,
     currentAdvancedPrompt: [],
     modelModeType: ModelModeType.chat,
@@ -105,7 +31,7 @@ const getContextValue = (overrides: Partial<DebugConfiguration> = {}): DebugConf
       query: false,
     },
     ...overrides,
-  }
+  })
 }
 
 const renderComponent = (
@@ -113,46 +39,39 @@ const renderComponent = (
   contextOverrides: Partial<DebugConfiguration> = {},
 ) => {
   const mergedProps: IPromptProps = {
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     promptTemplate: 'initial template',
     promptVariables: defaultPromptVariables,
-    onChange: vi.fn(),
     ...props,
   }
   const contextValue = getContextValue(contextOverrides)
 
-  return {
-    contextValue,
-    ...render(
-      <ConfigContext.Provider value={contextValue as any}>
-        <Prompt {...mergedProps} />
-      </ConfigContext.Provider>,
-    ),
+  function ControlledPrompt() {
+    const [prompt, setPrompt] = React.useState(contextValue.currentAdvancedPrompt)
+    return (
+      <EventEmitterContextProvider>
+        <ConfigContext.Provider
+          value={{
+            ...contextValue,
+            currentAdvancedPrompt: prompt,
+            setCurrentAdvancedPrompt: setPrompt,
+          }}
+        >
+          <Prompt {...mergedProps} />
+          <output aria-label="Configured prompt">{JSON.stringify(prompt)}</output>
+        </ConfigContext.Provider>
+      </EventEmitterContextProvider>
+    )
   }
+  return render(<ControlledPrompt />)
 }
 
+const configuredPrompt = (): DebugConfiguration['currentAdvancedPrompt'] =>
+  JSON.parse(screen.getByLabelText('Configured prompt').textContent!)
+
 describe('Prompt config component', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockSimplePromptInputProps = null
-  })
-
-  // Rendering simple mode
-  it('should render simple prompt when advanced mode is disabled', () => {
-    const onChange = vi.fn()
-    renderComponent({ onChange }, { isAdvancedMode: false })
-
-    const simplePrompt = screen.getByTestId('simple-prompt-input')
-    expect(simplePrompt)!.toBeInTheDocument()
-    expect(simplePrompt)!.toHaveAttribute('data-mode', AppModeEnum.CHAT)
-    expect(mockSimplePromptInputProps?.promptTemplate).toBe('initial template')
-    fireEvent.click(simplePrompt)
-    expect(onChange).toHaveBeenCalledWith('mocked prompt', defaultPromptVariables)
-    expect(screen.queryByTestId('advanced-message-input')).toBeNull()
-  })
-
-  // Rendering advanced chat messages
-  it('should render advanced chat prompts and show context missing tip when dataset context is not set', () => {
+  it('should render advanced chat prompts and show context missing tip when dataset context is not set', async () => {
+    const user = userEvent.setup()
     const currentAdvancedPrompt: PromptItem[] = [
       { role: PromptRole.user, text: 'first' },
       { role: PromptRole.assistant, text: 'second' },
@@ -163,148 +82,123 @@ describe('Prompt config component', () => {
         isAdvancedMode: true,
         currentAdvancedPrompt,
         modelModeType: ModelModeType.chat,
-        dataSets: [{ id: 'ds' } as unknown as DebugConfiguration['dataSets'][number]],
+        dataSets: [createDatasetFixture({ id: 'ds' })],
         hasSetBlockStatus: { context: false, history: true, query: true },
       },
     )
 
-    const renderedMessages = screen.getAllByTestId('advanced-message-input')
-    expect(renderedMessages).toHaveLength(2)
-    expect(renderedMessages[0])!.toHaveAttribute('data-context-missing', 'true')
-    fireEvent.click(screen.getAllByText('hide-context')[0]!)
-    expect(screen.getAllByTestId('advanced-message-input')[0])!.toHaveAttribute(
-      'data-context-missing',
-      'false',
-    )
+    expect(screen.getAllByRole('textbox')).toHaveLength(2)
+    expect(screen.getAllByText('appDebug.promptMode.contextMissing')).toHaveLength(2)
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.ok' })[0]!)
+    expect(screen.queryByText('appDebug.promptMode.contextMissing')).not.toBeInTheDocument()
   })
 
-  // Chat message mutations
-  it('should update chat prompt value and call setter with user change flag', () => {
+  it('persists edited chat text while preserving the other message', async () => {
     const currentAdvancedPrompt: PromptItem[] = [
       { role: PromptRole.user, text: 'first' },
       { role: PromptRole.assistant, text: 'second' },
     ]
-    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
         isAdvancedMode: true,
         currentAdvancedPrompt,
         modelModeType: ModelModeType.chat,
-        setCurrentAdvancedPrompt,
       },
     )
 
-    fireEvent.click(screen.getAllByText('change')[0]!)
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith(
-      [
+    const editor = screen.getAllByRole('textbox')[0]!
+    await replacePromptEditorText(editor, 'updated text')
+    await waitFor(() =>
+      expect(configuredPrompt()).toEqual([
         { role: PromptRole.user, text: 'updated text' },
         { role: PromptRole.assistant, text: 'second' },
-      ],
-      true,
+      ]),
     )
   })
 
-  it('should update chat prompt role when type changes', () => {
+  it('should update chat prompt role when type changes', async () => {
+    const user = userEvent.setup()
     const currentAdvancedPrompt: PromptItem[] = [
       { role: PromptRole.user, text: 'first' },
       { role: PromptRole.user, text: 'second' },
     ]
-    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
         isAdvancedMode: true,
         currentAdvancedPrompt,
         modelModeType: ModelModeType.chat,
-        setCurrentAdvancedPrompt,
       },
     )
 
-    fireEvent.click(screen.getAllByText('type')[1]!)
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith([
+    await user.click(screen.getAllByText('user')[1]!)
+    await user.click(screen.getByText('assistant'))
+    expect(screen.getByText('assistant')).toBeInTheDocument()
+    expect(screen.getByText('user')).toBeInTheDocument()
+    expect(configuredPrompt()).toEqual([
       { role: PromptRole.user, text: 'first' },
       { role: PromptRole.assistant, text: 'second' },
     ])
   })
 
-  it('should delete chat prompt item', () => {
-    const currentAdvancedPrompt: PromptItem[] = [
-      { role: PromptRole.user, text: 'first' },
-      { role: PromptRole.assistant, text: 'second' },
-    ]
-    const setCurrentAdvancedPrompt = vi.fn()
-    renderComponent(
-      {},
-      {
-        isAdvancedMode: true,
-        currentAdvancedPrompt,
-        modelModeType: ModelModeType.chat,
-        setCurrentAdvancedPrompt,
-      },
-    )
-
-    fireEvent.click(screen.getAllByText('delete')[0]!)
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith([
-      { role: PromptRole.assistant, text: 'second' },
-    ])
-  })
-
-  // Add message behavior
-  it('should append a mirrored role message when clicking add in chat mode', () => {
+  it('should append a mirrored role message when clicking add in chat mode', async () => {
+    const user = userEvent.setup()
     const currentAdvancedPrompt: PromptItem[] = [{ role: PromptRole.user, text: 'first' }]
-    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
         isAdvancedMode: true,
         currentAdvancedPrompt,
         modelModeType: ModelModeType.chat,
-        setCurrentAdvancedPrompt,
       },
     )
 
-    fireEvent.click(screen.getByText('appDebug.promptMode.operation.addMessage'))
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith([
+    await user.click(
+      screen.getByRole('button', { name: 'appDebug.promptMode.operation.addMessage' }),
+    )
+    expect(configuredPrompt()).toEqual([
       { role: PromptRole.user, text: 'first' },
       { role: PromptRole.assistant, text: '' },
     ])
   })
 
-  it('should append a user role when the last chat prompt is from assistant', () => {
+  it('should append a user role when the last chat prompt is from assistant', async () => {
+    const user = userEvent.setup()
     const currentAdvancedPrompt: PromptItem[] = [{ role: PromptRole.assistant, text: 'reply' }]
-    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
         isAdvancedMode: true,
         currentAdvancedPrompt,
         modelModeType: ModelModeType.chat,
-        setCurrentAdvancedPrompt,
       },
     )
 
-    fireEvent.click(screen.getByText('appDebug.promptMode.operation.addMessage'))
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith([
+    await user.click(
+      screen.getByRole('button', { name: 'appDebug.promptMode.operation.addMessage' }),
+    )
+    expect(configuredPrompt()).toEqual([
       { role: PromptRole.assistant, text: 'reply' },
       { role: PromptRole.user, text: '' },
     ])
   })
 
-  it('should insert a system message when adding to an empty chat prompt list', () => {
-    const setCurrentAdvancedPrompt = vi.fn()
+  it('should insert a system message when adding to an empty chat prompt list', async () => {
+    const user = userEvent.setup()
     renderComponent(
       {},
       {
         isAdvancedMode: true,
         currentAdvancedPrompt: [],
         modelModeType: ModelModeType.chat,
-        setCurrentAdvancedPrompt,
       },
     )
 
-    fireEvent.click(screen.getByText('appDebug.promptMode.operation.addMessage'))
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith([{ role: PromptRole.system, text: '' }])
+    await user.click(
+      screen.getByRole('button', { name: 'appDebug.promptMode.operation.addMessage' }),
+    )
+    expect(configuredPrompt()).toEqual([{ role: PromptRole.system, text: '' }])
   })
 
   it('should not show add button when reaching max prompt length', () => {
@@ -324,24 +218,21 @@ describe('Prompt config component', () => {
     expect(screen.queryByText('appDebug.promptMode.operation.addMessage')).toBeNull()
   })
 
-  // Completion mode
-  it('should update completion prompt value and flag as user change', () => {
-    const setCurrentAdvancedPrompt = vi.fn()
+  it('persists edited completion prompt text', async () => {
     renderComponent(
       {},
       {
         isAdvancedMode: true,
         currentAdvancedPrompt: { role: PromptRole.user, text: 'single' },
         modelModeType: ModelModeType.completion,
-        setCurrentAdvancedPrompt,
       },
     )
 
-    fireEvent.click(screen.getByText('change'))
+    const editor = screen.getByRole('textbox')
+    await replacePromptEditorText(editor, 'updated text')
 
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith(
-      { role: PromptRole.user, text: 'updated text' },
-      true,
+    await waitFor(() =>
+      expect(configuredPrompt()).toEqual({ role: PromptRole.user, text: 'updated text' }),
     )
   })
 })

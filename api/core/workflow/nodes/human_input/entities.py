@@ -13,20 +13,26 @@ from typing import Annotated, Any, Literal, Self, assert_never, override
 
 from pydantic import BaseModel, Field, NonNegativeInt, field_validator, model_validator
 
+from core.workflow.human_input_adapter import DeliveryChannelConfig
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.file.enums import FileTransferMethod, FileType
-from graphon.nodes.base.variable_template_parser import VariableTemplateParser
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
 from graphon.variables.segments import Segment
 
 from . import _exc as exc
 from .enums import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
 
-_OUTPUT_VARIABLE_PATTERN = re.compile(
+OUTPUT_VARIABLE_PATTERN = re.compile(
     r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}",
 )
+
+
+def extract_output_variable_names(form_content: str) -> tuple[str, ...]:
+    """Return source-ordered output slots using the authoring DSL grammar."""
+
+    return tuple(match.group("field_name") for match in OUTPUT_VARIABLE_PATTERN.finditer(form_content))
 
 
 class StringSource(BaseModel):
@@ -229,7 +235,7 @@ class UserActionConfig(BaseModel):
     # It also serves as the identifiers of output handle.
     #
     # The id must be a valid identifier (satisfy the _IDENTIFIER_PATTERN above.)
-    id: str = Field(max_length=20, pattern=_IDENTIFIER_PATTERN.pattern)
+    id: str = Field(max_length=20, pattern=_IDENTIFIER_PATTERN)
     title: str = Field(max_length=100)
     button_style: ButtonStyle = ButtonStyle.DEFAULT
 
@@ -246,10 +252,29 @@ class UserActionConfig(BaseModel):
         return value
 
 
+def validate_unique_input_names(inputs: Sequence[FormInputConfig]) -> None:
+    seen_names: set[str] = set()
+    for form_input in inputs:
+        name = form_input.output_variable_name
+        if name in seen_names:
+            raise ValueError(f"duplicated output_variable_name '{name}' in inputs")
+        seen_names.add(name)
+
+
+def validate_unique_action_ids(user_actions: Sequence[UserActionConfig]) -> None:
+    seen_ids: set[str] = set()
+    for action in user_actions:
+        action_id = action.id
+        if action_id in seen_ids:
+            raise ValueError(f"duplicated user action id '{action_id}'")
+        seen_ids.add(action_id)
+
+
 class HumanInputNodeData(BaseNodeData):
     """Human Input node data."""
 
     type: NodeType = BuiltinNodeTypes.HUMAN_INPUT
+    title: str = ""
     form_content: str = ""
     inputs: list[FormInputConfig] = Field(default_factory=list[FormInputConfig])
     user_actions: list[UserActionConfig] = Field(default_factory=list[UserActionConfig])
@@ -259,25 +284,13 @@ class HumanInputNodeData(BaseNodeData):
     @field_validator("inputs")
     @classmethod
     def _validate_inputs(cls, inputs: list[FormInputConfig]) -> list[FormInputConfig]:
-        seen_names: set[str] = set()
-        for form_input in inputs:
-            name = form_input.output_variable_name
-            if name in seen_names:
-                msg = f"duplicated output_variable_name '{name}' in inputs"
-                raise ValueError(msg)
-            seen_names.add(name)
+        validate_unique_input_names(inputs)
         return inputs
 
     @field_validator("user_actions")
     @classmethod
     def _validate_user_actions(cls, user_actions: list[UserActionConfig]) -> list[UserActionConfig]:
-        seen_ids: set[str] = set()
-        for action in user_actions:
-            action_id = action.id
-            if action_id in seen_ids:
-                msg = f"duplicated user action id '{action_id}'"
-                raise ValueError(msg)
-            seen_ids.add(action_id)
+        validate_unique_action_ids(user_actions)
         return user_actions
 
     def expiration_time(self, start_time: datetime) -> datetime:
@@ -290,36 +303,7 @@ class HumanInputNodeData(BaseNodeData):
                 assert_never(self.timeout_unit)
 
     def outputs_field_names(self) -> Sequence[str]:
-        return [match.group("field_name") for match in _OUTPUT_VARIABLE_PATTERN.finditer(self.form_content)]
-
-    def extract_variable_selector_to_variable_mapping(
-        self,
-        node_id: str,
-    ) -> Mapping[str, Sequence[str]]:
-        variable_mappings: dict[str, Sequence[str]] = {}
-
-        def _add_variable_selectors(selectors: Sequence[Sequence[str]]) -> None:
-            for selector in selectors:
-                if len(selector) < SELECTORS_LENGTH:
-                    continue
-                qualified_variable_mapping_key = f"{node_id}.#{'.'.join(selector[:SELECTORS_LENGTH])}#"
-                variable_mappings[qualified_variable_mapping_key] = list(
-                    selector[:SELECTORS_LENGTH],
-                )
-
-        form_template_parser = VariableTemplateParser(template=self.form_content)
-        _add_variable_selectors(
-            [selector.value_selector for selector in form_template_parser.extract_variable_selectors()]
-        )
-
-        for form_input in self.inputs:
-            selectors = form_input.extract_variable_selectors()
-            for selector in selectors:
-                value_key = ".".join(selector)
-                qualified_variable_mapping_key = f"{node_id}.#{value_key}#"
-                variable_mappings[qualified_variable_mapping_key] = selector
-
-        return variable_mappings
+        return list(extract_output_variable_names(self.form_content))
 
     def find_action_text(self, action_id: str) -> str:
         """Resolve action display text by id."""
@@ -391,3 +375,10 @@ def validate_human_input_submission(
         missing_list = ", ".join(missing_inputs)
         msg = f"Missing required inputs: {missing_list}"
         raise HumanInputSubmissionValidationError(msg)
+
+
+class HumanInputNodeDataFull(HumanInputNodeData):
+    # This model is the full definition of HumanInputNodeData.
+    #
+    # The model above lacks some fields due to migration between Graphon and Dify. This model add them back.
+    delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list[DeliveryChannelConfig])

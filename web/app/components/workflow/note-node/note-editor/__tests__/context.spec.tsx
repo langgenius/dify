@@ -1,6 +1,6 @@
 import type { LexicalEditor } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { $getRoot } from 'lexical'
 import { useEffect } from 'react'
 import { NoteEditorContextProvider } from '../context'
@@ -61,32 +61,6 @@ const ContextProbe = ({ onReady }: { onReady?: (editor: LexicalEditor) => void }
 }
 
 describe('NoteEditorContextProvider', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Provider should expose the store and render the wrapped editor tree.
-  describe('Rendering', () => {
-    it('should render children with the note editor store defaults', async () => {
-      let editor: LexicalEditor | null = null
-
-      render(
-        <NoteEditorContextProvider value={emptyValue}>
-          <ContextProbe onReady={(instance) => (editor = instance)} />
-        </NoteEditorContextProvider>,
-      )
-
-      expect(screen.getByText('not-bold')).toBeInTheDocument()
-
-      await waitFor(() => {
-        expect(editor).not.toBeNull()
-      })
-
-      expect(editor!.isEditable()).toBe(true)
-      expect(readEditorText(editor!)).toBe('')
-    })
-  })
-
   // Invalid or empty editor state should fall back to an empty lexical state.
   describe('Editor State Initialization', () => {
     it.each([
@@ -112,6 +86,7 @@ describe('NoteEditorContextProvider', () => {
       })
 
       expect(readEditorText(editor!)).toBe('')
+      expect(editor!.isEditable()).toBe(true)
     })
 
     it('should restore lexical content and forward editable prop', async () => {
