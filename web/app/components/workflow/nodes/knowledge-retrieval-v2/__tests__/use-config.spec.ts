@@ -35,6 +35,15 @@ describe('knowledge-retrieval-v2/use-config', () => {
     }
   }
 
+  it('removes the last metadata filter from the real canvas node data', () => {
+    const { result, data } = setup(createData({ metadata_filters: { tags: ['policy'] } }))
+    expect(data()).toHaveProperty('metadata_filters')
+
+    act(() => result.current.handleMetadataFilterChange('tags', []))
+
+    expect(data()).not.toHaveProperty('metadata_filters')
+  })
+
   it('updates the query selector', () => {
     const { result, data } = setup()
 
