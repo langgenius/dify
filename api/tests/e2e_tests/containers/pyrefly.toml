@@ -69,8 +69,6 @@ project-excludes = [
   "services/tools/test_tools_transform_service.py",
   "services/tools/test_workflow_tools_manage_service.py",
   "services/workflow/test_workflow_converter.py",
-  "services/workflow/test_workflow_deletion.py",
-  "services/workflow/test_workflow_node_execution_service_repository.py",
   "tasks/test_add_document_to_index_task.py",
   "tasks/test_batch_clean_document_task.py",
   "tasks/test_batch_create_segment_to_index_task.py",

@@ -36,7 +36,7 @@ class TestWorkflowDeletion:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role="owner",
+            role="owner",  # pyrefly: ignore[bad-argument-type]
             current=True,
         )
         session.add(join)
@@ -48,8 +48,8 @@ class TestWorkflowDeletion:
             tenant_id=tenant.id,
             name=f"App {uuid4()}",
             description="",
-            mode="workflow",
-            icon_type="emoji",
+            mode="workflow",  # pyrefly: ignore[bad-argument-type]
+            icon_type="emoji",  # pyrefly: ignore[bad-argument-type]
             icon="bot",
             icon_background="#FFFFFF",
             enable_site=False,
@@ -102,7 +102,7 @@ class TestWorkflowDeletion:
         session.flush()
         return provider
 
-    def test_delete_workflow_success(self, db_session_with_containers: Session):
+    def test_delete_workflow_success(self, db_session_with_containers: Session) -> None:
         tenant, account = self._create_tenant_and_account(db_session_with_containers)
         app = self._create_app(db_session_with_containers, tenant=tenant, account=account)
         workflow = self._create_workflow(
@@ -121,7 +121,7 @@ class TestWorkflowDeletion:
         db_session_with_containers.expire_all()
         assert db_session_with_containers.get(Workflow, workflow_id) is None
 
-    def test_delete_draft_workflow_raises_error(self, db_session_with_containers: Session):
+    def test_delete_draft_workflow_raises_error(self, db_session_with_containers: Session) -> None:
         tenant, account = self._create_tenant_and_account(db_session_with_containers)
         app = self._create_app(db_session_with_containers, tenant=tenant, account=account)
         workflow = self._create_workflow(
@@ -136,7 +136,7 @@ class TestWorkflowDeletion:
                 workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow.id),
             )
 
-    def test_delete_workflow_in_use_by_app_raises_error(self, db_session_with_containers: Session):
+    def test_delete_workflow_in_use_by_app_raises_error(self, db_session_with_containers: Session) -> None:
         tenant, account = self._create_tenant_and_account(db_session_with_containers)
         app = self._create_app(db_session_with_containers, tenant=tenant, account=account)
         workflow = self._create_workflow(
@@ -153,7 +153,7 @@ class TestWorkflowDeletion:
                 workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow.id),
             )
 
-    def test_delete_workflow_published_as_tool_raises_error(self, db_session_with_containers: Session):
+    def test_delete_workflow_published_as_tool_raises_error(self, db_session_with_containers: Session) -> None:
         tenant, account = self._create_tenant_and_account(db_session_with_containers)
         app = self._create_app(db_session_with_containers, tenant=tenant, account=account)
         workflow = self._create_workflow(
