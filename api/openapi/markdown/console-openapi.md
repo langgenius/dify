@@ -16222,11 +16222,7 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/parameters/dynamic-options
-**Fetch options for an admitted workspace caller**
-
-Preconditions: admission and request-model validation succeeded.
-Postconditions: valid sibling values and the workspace builder query reach
-the service together; malformed values fail before plugin dispatch.
+**Require an admitted caller; reject malformed sibling values before daemon I/O**
 
 #### Parameters
 
@@ -16266,6 +16262,8 @@ the service together; malformed values fail before plugin dispatch.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/parameters/dynamic-tree-options
+**Require an admitted tool caller; return nested options with validated sibling values**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |

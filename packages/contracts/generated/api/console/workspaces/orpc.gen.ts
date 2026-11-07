@@ -2987,21 +2987,15 @@ export const marketplace2 = {
 }
 
 /**
- * Fetch options for an admitted workspace caller
- *
- * Preconditions: admission and request-model validation succeeded.
- * Postconditions: valid sibling values and the workspace builder query reach
- * the service together; malformed values fail before plugin dispatch.
+ * Require an admitted caller; reject malformed sibling values before daemon I/O
  */
 export const get48 = oc
   .route({
-    description:
-      'Preconditions: admission and request-model validation succeeded.\nPostconditions: valid sibling values and the workspace builder query reach\nthe service together; malformed values fail before plugin dispatch.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentPluginParametersDynamicOptions',
     path: '/workspaces/current/plugin/parameters/dynamic-options',
-    summary: 'Fetch options for an admitted workspace caller',
+    summary: 'Require an admitted caller; reject malformed sibling values before daemon I/O',
     tags: ['console'],
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery }))
@@ -3034,12 +3028,16 @@ export const dynamicOptionsWithCredentials = {
   post: post46,
 }
 
+/**
+ * Require an admitted tool caller; return nested options with validated sibling values
+ */
 export const get49 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentPluginParametersDynamicTreeOptions',
     path: '/workspaces/current/plugin/parameters/dynamic-tree-options',
+    summary: 'Require an admitted tool caller; return nested options with validated sibling values',
     tags: ['console'],
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsQuery }))
