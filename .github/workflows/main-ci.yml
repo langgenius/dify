@@ -215,6 +215,7 @@ jobs:
               - 'web/**'
               - 'cli/**'
               - 'skills/**'
+              - 'connectors/**'
               - 'e2e/**'
               - 'sdks/nodejs-client/**'
               - 'packages/**'
