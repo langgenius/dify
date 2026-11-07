@@ -115,6 +115,11 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             split_documents.append(document_node)
                 all_documents.extend(split_documents)
         elif rules.parent_mode == ParentMode.FULL_DOC:
+            if not documents:
+                # Nothing was extracted; paragraph mode above handles the same
+                # input by producing no chunks, so mirror that instead of
+                # crashing on documents[0] below.
+                return all_documents
             page_content = "\n".join([document.page_content for document in documents])
             document = Document(page_content=page_content, metadata=documents[0].metadata)
             multimodel_documents = self._get_content_files(
