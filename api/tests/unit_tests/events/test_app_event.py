@@ -197,7 +197,7 @@ class TestAppModelConfigWasUpdatedSignal:
         from events.event_handlers.update_app_dataset_join_when_app_model_config_updated import handle
 
         with pytest.raises(TypeError, match="session"):
-            handle(app_model, app_model_config=None)  # pyrefly: ignore
+            handle(app_model, app_model_config=None)  # pyrefly: ignore[missing-argument]
 
     @pytest.mark.parametrize("sqlite_session", [(App, Account, AppModelConfig, AppDatasetJoin)], indirect=True)
     def test_reuses_provided_session_without_committing(

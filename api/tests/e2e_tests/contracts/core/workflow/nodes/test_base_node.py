@@ -23,7 +23,7 @@ class _SampleNode(Node[_SampleNodeData]):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> None:  # pyrefly: ignore
+    def _run(self) -> None:  # pyrefly: ignore[bad-override]
         raise NotImplementedError
 
 
@@ -118,7 +118,7 @@ def test_missing_generic_argument_raises_type_error() -> None:
             def version(cls) -> str:
                 return "1"
 
-            def _run(self) -> None:  # pyrefly: ignore
+            def _run(self) -> None:  # pyrefly: ignore[bad-override]
                 raise NotImplementedError
 
 
