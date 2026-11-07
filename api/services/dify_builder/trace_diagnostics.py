@@ -312,6 +312,10 @@ def project(record: Mapping[str, Any]) -> dict[str, Any]:
         "unknown",
     }:
         result["reason"] = reason
+    if code == "provider_invocation_failed":
+        # Null explicitly means unavailable, including historical observations.
+        status = record.get("http_status")
+        result["http_status"] = status if type(status) is int and 100 <= status <= 599 else None
     details = record.get("validation_details")
     if code in {"validation_refused", "response_schema_invalid"} and isinstance(details, (list, tuple)):
         result["validation_details"] = [
@@ -399,6 +403,31 @@ def failure_reason(error: Exception | None) -> FailureReason:
     return "unknown"
 
 
+def failure_http_status(error: Exception | None) -> int | None:
+    """Read an observed provider status from at most eight explicit causes.
+
+    Accept typed HTTP responses or the existing validated daemon 502 envelope.
+    Return None when unavailable; never inspect arbitrary exception text,
+    implicit context, requests, headers or bodies, or grant retry authority.
+    """
+    from httpx import HTTPStatusError
+
+    from core.plugin.impl.exc import PluginInvokeError
+    from core.plugin.impl.model import _metadata_gateway_unavailable
+
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen and len(seen) < 8:
+        seen.add(id(current))
+        if isinstance(current, HTTPStatusError):
+            status = current.response.status_code
+            return status if type(status) is int and 100 <= status <= 599 else None
+        if isinstance(current, PluginInvokeError) and _metadata_gateway_unavailable(current):
+            return 502
+        current = current.__cause__
+    return None
+
+
 def _failure_reason(error: BaseException) -> FailureReason:
     """Accept a provider/setup exception and return only an observational code.
 
@@ -470,6 +499,7 @@ def report(
             "attempt": attempt,
             "fallback_used": fallback_used,
             "reason": failure_reason(error) if error else None,
+            "http_status": failure_http_status(error) if code == "provider_invocation_failed" else None,
             "validation_codes": [validation_code] if validation_code else None,
             "validation_details": validation_details,
             "node_id": node_id,
