@@ -25,7 +25,7 @@ class CeleryTask(TypeBase):
     date_done: Mapped[datetime | None] = mapped_column(
         DateTime,
         insert_default=naive_utc_now,
-        default=None,
+        default_factory=lambda: None,
         onupdate=naive_utc_now,
         nullable=True,
     )
@@ -49,5 +49,5 @@ class CeleryTaskSet(TypeBase):
     taskset_id: Mapped[str] = mapped_column(String(155), unique=True)
     result: Mapped[bytes | None] = mapped_column(BinaryData, nullable=True, default=None)
     date_done: Mapped[datetime | None] = mapped_column(
-        DateTime, insert_default=naive_utc_now, default=None, nullable=True
+        DateTime, insert_default=naive_utc_now, default_factory=lambda: None, nullable=True
     )
