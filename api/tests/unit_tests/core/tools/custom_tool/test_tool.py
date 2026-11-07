@@ -10,7 +10,7 @@ from urllib.parse import parse_qsl
 
 import httpx
 import pytest
-from httpx._models import Response
+from httpx import Response
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
