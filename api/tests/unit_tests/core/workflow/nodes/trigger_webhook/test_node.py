@@ -902,3 +902,148 @@ def test_webhook_data_field_defaults():
     assert data.response_body == ""
     assert data.webhook_id is None
     assert data.timeout == 30
+
+
+def test_webhook_node_missing_file_param_outputs_none():
+    """A declared file parameter absent from the request should be None, not the whole files mapping."""
+    data = WebhookData(
+        title="Test Webhook Missing File Param",
+        method=Method.POST,
+        content_type=ContentType.FORM_DATA,
+        body=[
+            WebhookBodyParameter(name="other_file", type="file", required=False),
+            WebhookBodyParameter(name="missing_file", type="file", required=False),
+        ],
+    )
+
+    variable_pool = _webhook_file_conversion_build_webhook_variable_pool(
+        {
+            "webhook_data": {
+                "headers": {},
+                "query_params": {},
+                "body": {},
+                "files": {
+                    "other_file": create_test_file_dict("other.jpg"),
+                },
+            }
+        }
+    )
+
+    node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
+
+    with (
+        patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
+        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
+        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
+    ):
+        mock_file_obj = Mock()
+        mock_file_factory.return_value = mock_file_obj
+
+        mock_segment = Mock()
+        mock_segment.value = mock_file_obj
+        mock_segment_factory.return_value = mock_segment
+
+        mock_file_var = Mock()
+        mock_file_variable.return_value = mock_file_var
+
+        result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["other_file"] == mock_file_var
+    # the missing parameter must not pick up another parameter's file
+    assert result.outputs["missing_file"] is None
+
+
+def test_webhook_node_none_file_entry_outputs_none():
+    """A file parameter sent as None should resolve to None, not the whole files mapping."""
+    data = WebhookData(
+        title="Test Webhook None File Entry",
+        method=Method.POST,
+        content_type=ContentType.FORM_DATA,
+        body=[
+            WebhookBodyParameter(name="none_entry", type="file", required=False),
+        ],
+    )
+
+    variable_pool = _webhook_file_conversion_build_webhook_variable_pool(
+        {
+            "webhook_data": {
+                "headers": {},
+                "query_params": {},
+                "body": {},
+                "files": {"none_entry": None},
+            }
+        }
+    )
+
+    node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["none_entry"] is None
+
+
+def test_webhook_node_non_dict_file_entry_outputs_none():
+    """A file parameter sent as a non-dict value should resolve to None, not the whole files mapping."""
+    data = WebhookData(
+        title="Test Webhook Non-dict File Entry",
+        method=Method.POST,
+        content_type=ContentType.FORM_DATA,
+        body=[
+            WebhookBodyParameter(name="bad_entry", type="file", required=False),
+        ],
+    )
+
+    variable_pool = _webhook_file_conversion_build_webhook_variable_pool(
+        {
+            "webhook_data": {
+                "headers": {},
+                "query_params": {},
+                "body": {},
+                "files": {"bad_entry": "not_a_dict"},
+            }
+        }
+    )
+
+    node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["bad_entry"] is None
+
+
+def test_webhook_node_file_var_build_failure_outputs_none():
+    """When the file variable cannot be built, the parameter should be None, not the whole files mapping."""
+    file_dict = create_test_file_dict("broken.jpg")
+
+    data = WebhookData(
+        title="Test Webhook File Build Failure",
+        method=Method.POST,
+        content_type=ContentType.FORM_DATA,
+        body=[
+            WebhookBodyParameter(name="broken_file", type="file", required=False),
+        ],
+    )
+
+    variable_pool = _webhook_file_conversion_build_webhook_variable_pool(
+        {
+            "webhook_data": {
+                "headers": {},
+                "query_params": {},
+                "body": {},
+                "files": {
+                    "broken_file": file_dict,
+                },
+            }
+        }
+    )
+
+    node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
+
+    with patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory:
+        mock_file_factory.side_effect = ValueError("invalid file mapping")
+
+        result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["broken_file"] is None
