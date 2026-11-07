@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
 from models.account import Account, Tenant
 from models.model import App, AppMode
@@ -79,7 +80,7 @@ This test suite covers:
 class TestBuiltinToolProviderValidation:
     """Test suite for BuiltinToolProvider model validation and operations."""
 
-    def test_builtin_tool_provider_creation_with_required_fields(self):
+    def test_builtin_tool_provider_creation_with_required_fields(self) -> None:
         """Test creating a builtin tool provider with all required fields."""
         # Arrange
         tenant_id = str(uuid4())
@@ -103,7 +104,7 @@ class TestBuiltinToolProviderValidation:
         assert builtin_provider.name == "Google API Key 1"
         assert builtin_provider.encrypted_credentials == json.dumps(credentials)
 
-    def test_builtin_tool_provider_credentials_property(self):
+    def test_builtin_tool_provider_credentials_property(self) -> None:
         """Test credentials property parses JSON correctly."""
         # Arrange
         credentials_data = {
@@ -127,7 +128,7 @@ class TestBuiltinToolProviderValidation:
         assert result["api_key"] == "sk-test123"
         assert result["auth_type"] == "api_key"
 
-    def test_builtin_tool_provider_credentials_empty_when_none(self):
+    def test_builtin_tool_provider_credentials_empty_when_none(self) -> None:
         """Test credentials property returns empty dict when encrypted_credentials is None."""
         # Arrange
         builtin_provider = BuiltinToolProvider(
@@ -144,7 +145,7 @@ class TestBuiltinToolProviderValidation:
         # Assert
         assert result == {}
 
-    def test_builtin_tool_provider_credentials_empty_when_empty_string(self):
+    def test_builtin_tool_provider_credentials_empty_when_empty_string(self) -> None:
         """Test credentials property returns empty dict when encrypted_credentials is empty."""
         # Arrange
         builtin_provider = BuiltinToolProvider(
@@ -161,7 +162,7 @@ class TestBuiltinToolProviderValidation:
         # Assert
         assert result == {}
 
-    def test_builtin_tool_provider_default_values(self):
+    def test_builtin_tool_provider_default_values(self) -> None:
         """Test builtin tool provider default values."""
         # Arrange & Act
         builtin_provider = BuiltinToolProvider(
@@ -176,7 +177,7 @@ class TestBuiltinToolProviderValidation:
         assert builtin_provider.credential_type == "api-key"
         assert builtin_provider.expires_at == -1
 
-    def test_builtin_tool_provider_with_oauth_credential_type(self):
+    def test_builtin_tool_provider_with_oauth_credential_type(self) -> None:
         """Test builtin tool provider with OAuth credential type."""
         # Arrange
         credentials = {
@@ -192,7 +193,7 @@ class TestBuiltinToolProviderValidation:
             provider="google",
             name="Google OAuth",
             encrypted_credentials=json.dumps(credentials),
-            credential_type="oauth2",
+            credential_type=CredentialType.OAUTH2,
             expires_at=1735689600,
         )
 
@@ -201,7 +202,7 @@ class TestBuiltinToolProviderValidation:
         assert builtin_provider.expires_at == 1735689600
         assert builtin_provider.credentials["access_token"] == "oauth_token_123"
 
-    def test_builtin_tool_provider_is_default_flag(self):
+    def test_builtin_tool_provider_is_default_flag(self) -> None:
         """Test is_default flag for builtin tool provider."""
         # Arrange
         provider1 = BuiltinToolProvider(
@@ -223,7 +224,7 @@ class TestBuiltinToolProviderValidation:
         assert provider1.is_default is True
         assert provider2.is_default is False
 
-    def test_builtin_tool_provider_unique_constraint_fields(self):
+    def test_builtin_tool_provider_unique_constraint_fields(self) -> None:
         """Test unique constraint fields (tenant_id, provider, name)."""
         # Arrange
         tenant_id = str(uuid4())
@@ -243,7 +244,7 @@ class TestBuiltinToolProviderValidation:
         assert builtin_provider.provider == provider_name
         assert builtin_provider.name == credential_name
 
-    def test_builtin_tool_provider_multiple_credentials_same_provider(self):
+    def test_builtin_tool_provider_multiple_credentials_same_provider(self) -> None:
         """Test multiple credential sets for the same provider."""
         # Arrange
         tenant_id = str(uuid4())
@@ -275,7 +276,7 @@ class TestBuiltinToolProviderValidation:
 class TestApiToolProviderValidation:
     """Test suite for ApiToolProvider model validation and operations."""
 
-    def test_api_tool_provider_creation_with_required_fields(self):
+    def test_api_tool_provider_creation_with_required_fields(self) -> None:
         """Test creating an API tool provider with all required fields."""
         # Arrange
         tenant_id = str(uuid4())
@@ -306,7 +307,7 @@ class TestApiToolProviderValidation:
         assert api_provider.schema_type_str == ApiProviderSchemaType.OPENAPI
         assert api_provider.description == "Custom API for testing"
 
-    def test_api_tool_provider_schema_type_property(self):
+    def test_api_tool_provider_schema_type_property(self) -> None:
         """Test schema_type property converts string to enum."""
         # Arrange
         api_provider = ApiToolProvider(
@@ -327,10 +328,10 @@ class TestApiToolProviderValidation:
         # Assert
         assert result == ApiProviderSchemaType.OPENAPI
 
-    def test_api_tool_provider_tools_property(self):
+    def test_api_tool_provider_tools_property(self) -> None:
         """Test tools property parses JSON and returns ApiToolBundle list."""
         # Arrange
-        tools_data = [
+        tools_data: list[dict[str, object]] = [
             {
                 "author": "test",
                 "server_url": "https://api.weather.com",
@@ -382,7 +383,7 @@ class TestApiToolProviderValidation:
         assert result[0].operation_id == "getWeather"
         assert result[1].operation_id == "getLocation"
 
-    def test_api_tool_provider_credentials_property(self):
+    def test_api_tool_provider_credentials_property(self) -> None:
         """Test credentials property parses JSON correctly."""
         # Arrange
         credentials_data = {
@@ -411,7 +412,7 @@ class TestApiToolProviderValidation:
         assert result["api_key_header"] == "Authorization"
         assert result["api_key_value"] == "Bearer test_token"
 
-    def test_api_tool_provider_with_privacy_policy(self):
+    def test_api_tool_provider_with_privacy_policy(self) -> None:
         """Test API tool provider with privacy policy."""
         # Arrange
         privacy_policy_url = "https://example.com/privacy"
@@ -433,7 +434,7 @@ class TestApiToolProviderValidation:
         # Assert
         assert api_provider.privacy_policy == privacy_policy_url
 
-    def test_api_tool_provider_with_custom_disclaimer(self):
+    def test_api_tool_provider_with_custom_disclaimer(self) -> None:
         """Test API tool provider with custom disclaimer."""
         # Arrange
         disclaimer = "This API is provided as-is without warranty."
@@ -455,7 +456,7 @@ class TestApiToolProviderValidation:
         # Assert
         assert api_provider.custom_disclaimer == disclaimer
 
-    def test_api_tool_provider_default_custom_disclaimer(self):
+    def test_api_tool_provider_default_custom_disclaimer(self) -> None:
         """Test API tool provider default custom_disclaimer is empty string."""
         # Arrange & Act
         api_provider = ApiToolProvider(
@@ -473,7 +474,7 @@ class TestApiToolProviderValidation:
         # Assert
         assert api_provider.custom_disclaimer == ""
 
-    def test_api_tool_provider_unique_constraint_fields(self):
+    def test_api_tool_provider_unique_constraint_fields(self) -> None:
         """Test unique constraint fields (name, tenant_id)."""
         # Arrange
         tenant_id = str(uuid4())
@@ -496,7 +497,7 @@ class TestApiToolProviderValidation:
         assert api_provider.tenant_id == tenant_id
         assert api_provider.name == provider_name
 
-    def test_api_tool_provider_with_no_auth(self):
+    def test_api_tool_provider_with_no_auth(self) -> None:
         """Test API tool provider with no authentication."""
         # Arrange
         credentials = {"auth_type": "none"}
@@ -517,7 +518,7 @@ class TestApiToolProviderValidation:
         # Assert
         assert api_provider.credentials["auth_type"] == "none"
 
-    def test_api_tool_provider_with_api_key_query_auth(self):
+    def test_api_tool_provider_with_api_key_query_auth(self) -> None:
         """Test API tool provider with API key in query parameter."""
         # Arrange
         credentials = {
@@ -547,7 +548,7 @@ class TestApiToolProviderValidation:
 class TestToolOAuthModels:
     """Test suite for OAuth client models (system and tenant level)."""
 
-    def test_oauth_system_client_creation(self):
+    def test_oauth_system_client_creation(self) -> None:
         """Test creating a system-level OAuth client."""
         # Arrange
         plugin_id = "builtin.google"
@@ -568,7 +569,7 @@ class TestToolOAuthModels:
         assert oauth_client.provider == provider
         assert oauth_client.encrypted_oauth_params == oauth_params
 
-    def test_oauth_system_client_unique_constraint(self):
+    def test_oauth_system_client_unique_constraint(self) -> None:
         """Test unique constraint on plugin_id and provider."""
         # Arrange
         plugin_id = "builtin.github"
@@ -585,7 +586,7 @@ class TestToolOAuthModels:
         assert oauth_client.plugin_id == plugin_id
         assert oauth_client.provider == provider
 
-    def test_oauth_tenant_client_creation(self):
+    def test_oauth_tenant_client_creation(self) -> None:
         """Test creating a tenant-level OAuth client."""
         # Arrange
         tenant_id = str(uuid4())
@@ -607,7 +608,7 @@ class TestToolOAuthModels:
         assert oauth_client.plugin_id == plugin_id
         assert oauth_client.provider == provider
 
-    def test_oauth_tenant_client_enabled_default(self):
+    def test_oauth_tenant_client_enabled_default(self) -> None:
         """Test OAuth tenant client enabled flag has init=False and uses server default."""
         # Arrange & Act
         oauth_client = ToolOAuthTenantClient(
@@ -621,7 +622,7 @@ class TestToolOAuthModels:
         oauth_client.enabled = True
         assert oauth_client.enabled is True
 
-    def test_oauth_tenant_client_oauth_params_property(self):
+    def test_oauth_tenant_client_oauth_params_property(self) -> None:
         """Test oauth_params property parses JSON correctly."""
         # Arrange
         params_data = {
@@ -645,7 +646,7 @@ class TestToolOAuthModels:
         assert result["client_id"] == "test_client_123"
         assert result["redirect_uri"] == "https://app.example.com/callback"
 
-    def test_oauth_tenant_client_oauth_params_empty_when_none(self):
+    def test_oauth_tenant_client_oauth_params_empty_when_none(self) -> None:
         """Test oauth_params returns empty dict when encrypted_oauth_params is None."""
         # Arrange
         oauth_client = ToolOAuthTenantClient(
@@ -653,8 +654,7 @@ class TestToolOAuthModels:
             plugin_id="builtin.test",
             provider="test",
         )
-        # encrypted_oauth_params has init=False, set it to None
-        oauth_client.encrypted_oauth_params = None
+        # encrypted_oauth_params has init=False, so a transient instance reads it as None
 
         # Act
         result = oauth_client.oauth_params
@@ -662,7 +662,7 @@ class TestToolOAuthModels:
         # Assert
         assert result == {}
 
-    def test_oauth_tenant_client_disabled_state(self):
+    def test_oauth_tenant_client_disabled_state(self) -> None:
         """Test OAuth tenant client can be disabled."""
         # Arrange
         oauth_client = ToolOAuthTenantClient(
@@ -681,7 +681,7 @@ class TestToolOAuthModels:
 class TestToolLabelBinding:
     """Test suite for ToolLabelBinding model."""
 
-    def test_tool_label_binding_creation(self):
+    def test_tool_label_binding_creation(self) -> None:
         """Test creating a tool label binding."""
         # Arrange
         tool_id = "google.search"
@@ -700,7 +700,7 @@ class TestToolLabelBinding:
         assert label_binding.tool_type == tool_type
         assert label_binding.label_name == label_name
 
-    def test_tool_label_binding_unique_constraint(self):
+    def test_tool_label_binding_unique_constraint(self) -> None:
         """Test unique constraint on tool_id and label_name."""
         # Arrange
         tool_id = "openai.text_generation"
@@ -717,7 +717,7 @@ class TestToolLabelBinding:
         assert label_binding.tool_id == tool_id
         assert label_binding.label_name == label_name
 
-    def test_tool_label_binding_multiple_labels_same_tool(self):
+    def test_tool_label_binding_multiple_labels_same_tool(self) -> None:
         """Test multiple labels can be bound to the same tool."""
         # Arrange
         tool_id = "google.search"
@@ -739,7 +739,7 @@ class TestToolLabelBinding:
         assert binding1.tool_id == binding2.tool_id
         assert binding1.label_name != binding2.label_name
 
-    def test_tool_label_binding_different_tool_types(self):
+    def test_tool_label_binding_different_tool_types(self) -> None:
         """Test label bindings for different tool types."""
         # Arrange
         tool_types = [ToolProviderType.BUILT_IN, ToolProviderType.API, ToolProviderType.WORKFLOW]
@@ -757,7 +757,7 @@ class TestToolLabelBinding:
 class TestCredentialStorage:
     """Test suite for credential storage and encryption patterns."""
 
-    def test_builtin_provider_credential_storage_format(self):
+    def test_builtin_provider_credential_storage_format(self) -> None:
         """Test builtin provider stores credentials as JSON string."""
         # Arrange
         credentials = {
@@ -779,7 +779,7 @@ class TestCredentialStorage:
         assert isinstance(provider.encrypted_credentials, str)
         assert provider.credentials == credentials
 
-    def test_api_provider_credential_storage_format(self):
+    def test_api_provider_credential_storage_format(self) -> None:
         """Test API provider stores credentials as JSON string."""
         # Arrange
         credentials = {
@@ -805,7 +805,7 @@ class TestCredentialStorage:
         assert isinstance(provider.credentials_str, str)
         assert provider.credentials == credentials
 
-    def test_builtin_provider_complex_credential_structure(self):
+    def test_builtin_provider_complex_credential_structure(self) -> None:
         """Test builtin provider with complex nested credential structure."""
         # Arrange
         credentials = {
@@ -832,7 +832,7 @@ class TestCredentialStorage:
         assert provider.credentials["oauth_config"]["access_token"] == "token123"
         assert provider.credentials["additional_headers"]["X-Custom-Header"] == "value"
 
-    def test_api_provider_credential_update_pattern(self):
+    def test_api_provider_credential_update_pattern(self) -> None:
         """Test pattern for updating API provider credentials."""
         # Arrange
         original_credentials = {"auth_type": "api_key_header", "api_key_value": "old_key"}
@@ -855,7 +855,7 @@ class TestCredentialStorage:
         # Assert
         assert provider.credentials["api_key_value"] == "new_key"
 
-    def test_builtin_provider_credential_expiration(self):
+    def test_builtin_provider_credential_expiration(self) -> None:
         """Test builtin provider credential expiration tracking."""
         # Arrange
         future_timestamp = 1735689600  # Future date
@@ -889,7 +889,7 @@ class TestCredentialStorage:
         assert expired_provider.expires_at == past_timestamp
         assert never_expires_provider.expires_at == -1
 
-    def test_oauth_client_credential_storage(self):
+    def test_oauth_client_credential_storage(self) -> None:
         """Test OAuth client credential storage pattern."""
         # Arrange
         oauth_credentials = {
@@ -923,7 +923,7 @@ class TestCredentialStorage:
 class TestToolProviderRelationships:
     """Test suite for tool provider relationships and associations."""
 
-    def test_builtin_provider_tenant_relationship(self):
+    def test_builtin_provider_tenant_relationship(self) -> None:
         """Test builtin provider belongs to a tenant."""
         # Arrange
         tenant_id = str(uuid4())
@@ -939,7 +939,7 @@ class TestToolProviderRelationships:
         # Assert
         assert provider.tenant_id == tenant_id
 
-    def test_api_provider_user_relationship(self):
+    def test_api_provider_user_relationship(self) -> None:
         """Test API provider belongs to a user."""
         # Arrange
         user_id = str(uuid4())
@@ -960,7 +960,7 @@ class TestToolProviderRelationships:
         # Assert
         assert provider.user_id == user_id
 
-    def test_multiple_providers_same_tenant(self):
+    def test_multiple_providers_same_tenant(self) -> None:
         """Test multiple providers can belong to the same tenant."""
         # Arrange
         tenant_id = str(uuid4())
@@ -996,7 +996,7 @@ class TestToolProviderRelationships:
         assert builtin2.tenant_id == tenant_id
         assert api1.tenant_id == tenant_id
 
-    def test_tool_label_bindings_for_provider_tools(self):
+    def test_tool_label_bindings_for_provider_tools(self) -> None:
         """Test tool label bindings can be associated with provider tools."""
         # Arrange
         provider_name = "google"

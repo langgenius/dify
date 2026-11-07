@@ -25,7 +25,7 @@ const useIsHydrated = () =>
     () => false,
   )
 
-export default function ThemeSelector() {
+export function ThemeSelector() {
   const direction = useDirection()
   const { t } = useTranslation(['common'])
   const { preference, setPreference } = useThemePreference()
@@ -60,7 +60,7 @@ export default function ThemeSelector() {
               <span className="grow px-1 system-md-regular">
                 {t(($) => $[option.labelKey], { ns: 'common' })}
               </span>
-              <MenuRadioItemIndicator data-testid={`${option.value}-icon`} />
+              <MenuRadioItemIndicator />
             </MenuRadioItem>
           ))}
         </MenuRadioGroup>

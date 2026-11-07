@@ -1,22 +1,17 @@
 import logging
-import secrets
-import time
 from collections.abc import Mapping
 from typing import Any
 
-from flask import Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeEventResponse
-from core.plugin.impl.exc import PluginNotFoundError
+from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
-from core.trigger.utils.encryption import create_trigger_provider_encrypter_for_subscription
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -27,8 +22,6 @@ from models.trigger import TriggerSubscription, WorkflowPluginTrigger
 from models.workflow import Workflow
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
-from services.workflow.entities import PluginTriggerDispatchData
-from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
 
 logger = logging.getLogger(__name__)
 
@@ -72,82 +65,6 @@ class TriggerService:
             request=request,
             payload=payload,
         )
-
-    @classmethod
-    def process_endpoint(cls, endpoint_id: str, request: Request) -> Response | None:
-        """
-        Extract and process data from incoming endpoint request.
-
-        Args:
-            endpoint_id: Endpoint ID
-            request: Request
-        """
-        timestamp = int(time.time())
-        subscription: TriggerSubscription | None = None
-        try:
-            subscription = TriggerProviderService.get_subscription_by_endpoint(endpoint_id)
-        except PluginNotFoundError:
-            return Response(status=404, response="Trigger provider not found")
-        except Exception:
-            return Response(status=500, response="Failed to get subscription by endpoint")
-
-        if not subscription:
-            return None
-
-        provider_id = TriggerProviderID(subscription.provider_id)
-        controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-            tenant_id=subscription.tenant_id, provider_id=provider_id
-        )
-        encrypter, _ = create_trigger_provider_encrypter_for_subscription(
-            tenant_id=subscription.tenant_id,
-            controller=controller,
-            subscription=subscription,
-        )
-        dispatch_response: TriggerDispatchResponse = controller.dispatch(
-            request=request,
-            subscription=subscription.to_entity(),
-            credentials=encrypter.decrypt(subscription.credentials),
-            credential_type=CredentialType.of(subscription.credential_type),
-        )
-
-        if dispatch_response.events:
-            request_id = f"trigger_request_{timestamp}_{secrets.token_hex(6)}"
-
-            # save the request and payload to storage as persistent data
-            TriggerHttpRequestCachingService.persist_request(request_id, request)
-            TriggerHttpRequestCachingService.persist_payload(request_id, dispatch_response.payload)
-
-            # Validate event names
-            for event_name in dispatch_response.events:
-                if controller.get_event(event_name) is None:
-                    logger.error(
-                        "Event name %s not found in provider %s for endpoint %s",
-                        event_name,
-                        subscription.provider_id,
-                        endpoint_id,
-                    )
-                    raise ValueError(f"Event name {event_name} not found in provider {subscription.provider_id}")
-
-            plugin_trigger_dispatch_data = PluginTriggerDispatchData(
-                user_id=dispatch_response.user_id,
-                tenant_id=subscription.tenant_id,
-                endpoint_id=endpoint_id,
-                provider_id=subscription.provider_id,
-                subscription_id=subscription.id,
-                timestamp=timestamp,
-                events=list(dispatch_response.events),
-                request_id=request_id,
-            )
-            dispatch_data = plugin_trigger_dispatch_data.model_dump(mode="json")
-            dispatch_triggered_workflows_async.delay(dispatch_data)
-
-            logger.info(
-                "Queued async dispatching for %d triggers on endpoint %s with request_id %s",
-                len(dispatch_response.events),
-                endpoint_id,
-                request_id,
-            )
-        return dispatch_response.response
 
     @classmethod
     def sync_plugin_trigger_relationships(cls, app: App, workflow: Workflow):
