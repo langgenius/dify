@@ -188,8 +188,8 @@ export const useResultSender = ({
           completionChunks.push(chunk)
           runState.setCompletionRes(completionChunks.join(''))
         },
-        onCompleted: () => {
-          if (stopInactiveRequest()) return
+        onCompleted: (hasError) => {
+          if (isEnd || stopInactiveRequest()) return
           if (isTimeout) {
             notify({
               type: 'warning',
@@ -198,18 +198,18 @@ export const useResultSender = ({
             return
           }
 
+          isEnd = true
           runState.setRespondingFalse()
           runState.resetRunState()
-          runState.setMessageId(tempMessageId)
-          onCompleted(runState.getCompletionRes(), taskId, true)
-          isEnd = true
+          if (!hasError) runState.setMessageId(tempMessageId)
+          onCompleted(runState.getCompletionRes(), taskId, !hasError)
         },
         onMessageReplace: (messageReplace) => {
           completionChunks = [messageReplace.answer]
           runState.setCompletionRes(completionChunks.join(''))
         },
         onError: () => {
-          if (stopInactiveRequest()) return
+          if (isEnd || stopInactiveRequest()) return
           if (isTimeout) {
             notify({
               type: 'warning',
@@ -218,10 +218,10 @@ export const useResultSender = ({
             return
           }
 
+          isEnd = true
           runState.setRespondingFalse()
           runState.resetRunState()
           onCompleted(runState.getCompletionRes(), taskId, false)
-          isEnd = true
         },
         getAbortController: (abortController) => {
           runState.abortControllerRef.current = abortController
