@@ -6050,11 +6050,6 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/agent-detail/monitoring/time-range-picker.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/features/agent-v2/agent-detail/section-surface.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
