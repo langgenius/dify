@@ -12,6 +12,7 @@ import core.tools.utils.message_transformer as mt
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_dict, safe_json_value
 from models.tools import ToolFile
 
@@ -70,13 +71,14 @@ class TestMessageTransformerCases:
         _FakeToolFileManager.last_call = None
 
     @staticmethod
-    def test_transform_tool_invoke_messages_mimetype_key_present_but_none():
-        # Arrange: a BLOB message whose meta contains a mime_type key set to None
+    @pytest.mark.parametrize("mime_type", [None, ""], ids=["none", "empty"])
+    def test_transform_tool_invoke_messages_with_empty_mimetype_can_be_extracted(mime_type: str | None) -> None:
+        """An empty BLOB MIME survives transformation and extracts as an octet-stream attachment."""
         blob = b"hello"
         msg = ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.BLOB,
             message=ToolInvokeMessage.BlobMessage(blob=blob),
-            meta={"mime_type": None, "filename": "greeting"},
+            meta={"mime_type": mime_type, "filename": "greeting"},
         )
 
         # Act
@@ -89,7 +91,7 @@ class TestMessageTransformerCases:
             )
         )
 
-        # Assert: default to application/octet-stream when mime_type is present but None
+        # The file manager receives a usable MIME type for either empty value.
         assert _FakeToolFileManager.last_call is not None
         assert _FakeToolFileManager.last_call["mimetype"] == "application/octet-stream"
 
@@ -99,10 +101,16 @@ class TestMessageTransformerCases:
         assert o.type == ToolInvokeMessage.MessageType.BINARY_LINK
         assert isinstance(o.message, ToolInvokeMessage.TextMessage)
         assert o.message.text.endswith(".bin")
-        # meta is preserved (still contains mime_type: None)
-        assert "mime_type" in (o.meta or {})
-        assert o.meta["mime_type"] is None
+        # The transformer preserves the original MIME metadata.
+        assert o.meta is not None
+        assert o.meta["mime_type"] == mime_type
         assert o.meta["tool_file_id"] == "fake-tool-file-id"
+
+        binaries = list(ToolEngine._extract_tool_response_binary_and_text(out))
+
+        assert len(binaries) == 1
+        assert binaries[0].mimetype == "application/octet-stream"
+        assert binaries[0].url == o.message.text
 
     @staticmethod
     def test_transform_tool_invoke_messages_prefers_filename_extension_over_mimetype():
