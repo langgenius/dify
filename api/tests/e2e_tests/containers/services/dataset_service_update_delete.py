@@ -92,8 +92,8 @@ class DatasetUpdateDeleteTestDataFactory:
         app = App(
             tenant_id=tenant_id,
             name=name,
-            mode="chat",
-            icon_type="emoji",
+            mode="chat",  # pyrefly: ignore[bad-argument-type]
+            icon_type="emoji",  # pyrefly: ignore[bad-argument-type]
             icon="icon",
             icon_background="#FFFFFF",
             enable_site=True,
@@ -118,7 +118,7 @@ class TestDatasetServiceDeleteDataset:
     Comprehensive integration tests for DatasetService.delete_dataset method.
     """
 
-    def test_delete_dataset_success(self, db_session_with_containers: Session):
+    def test_delete_dataset_success(self, db_session_with_containers: Session) -> None:
         """
         Test successful deletion of a dataset.
 
@@ -148,7 +148,7 @@ class TestDatasetServiceDeleteDataset:
         assert db_session_with_containers.get(Dataset, dataset.id) is None
         mock_dataset_was_deleted.send.assert_called_once_with(dataset)
 
-    def test_delete_dataset_not_found(self, db_session_with_containers: Session):
+    def test_delete_dataset_not_found(self, db_session_with_containers: Session) -> None:
         """
         Test handling when dataset is not found.
 
@@ -173,7 +173,7 @@ class TestDatasetServiceDeleteDataset:
         # Assert
         assert result is False
 
-    def test_delete_dataset_permission_denied_error(self, db_session_with_containers: Session):
+    def test_delete_dataset_permission_denied_error(self, db_session_with_containers: Session) -> None:
         """
         Test error handling when user lacks permission.
 
@@ -209,7 +209,7 @@ class TestDatasetServiceDatasetUseCheck:
     Comprehensive integration tests for DatasetService.dataset_use_check method.
     """
 
-    def test_dataset_use_check_in_use(self, db_session_with_containers: Session):
+    def test_dataset_use_check_in_use(self, db_session_with_containers: Session) -> None:
         """
         Test detection when dataset is in use.
 
@@ -236,7 +236,7 @@ class TestDatasetServiceDatasetUseCheck:
         # Assert
         assert result is True
 
-    def test_dataset_use_check_not_in_use(self, db_session_with_containers: Session):
+    def test_dataset_use_check_not_in_use(self, db_session_with_containers: Session) -> None:
         """
         Test detection when dataset is not in use.
 
@@ -267,7 +267,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
     Comprehensive integration tests for DatasetService.update_dataset_api_status method.
     """
 
-    def test_update_dataset_api_status_enable_success(self, db_session_with_containers: Session):
+    def test_update_dataset_api_status_enable_success(self, db_session_with_containers: Session) -> None:
         """
         Test successful enabling of dataset API access.
 
@@ -299,7 +299,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         assert dataset.updated_by == owner.id
         assert dataset.updated_at == current_time
 
-    def test_update_dataset_api_status_disable_success(self, db_session_with_containers: Session):
+    def test_update_dataset_api_status_disable_success(self, db_session_with_containers: Session) -> None:
         """
         Test successful disabling of dataset API access.
 
@@ -330,7 +330,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         assert dataset.enable_api is False
         assert dataset.updated_by == owner.id
 
-    def test_update_dataset_api_status_missing_current_user_error(self, db_session_with_containers: Session):
+    def test_update_dataset_api_status_missing_current_user_error(self, db_session_with_containers: Session) -> None:
         """
         Test error handling when current_user is missing.
 
