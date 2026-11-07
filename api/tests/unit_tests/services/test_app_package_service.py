@@ -5,6 +5,7 @@ import io
 import json
 import zipfile
 from collections.abc import Callable, Generator, Mapping
+from contextlib import AbstractContextManager, nullcontext
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
@@ -12,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 import yaml
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
@@ -46,6 +47,9 @@ from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageExportFailedError,
     RosterAgentPackageTooLargeError,
+    RosterReferenceNotAcceptedError,
+    WorkspaceSkillProblem,
+    WorkspaceSkillUnavailableError,
 )
 from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
 from services.agent.package_resource_importer import AgentPackageResourceImporter
@@ -103,9 +107,14 @@ def _tool_file(session: Session, storage: _MemoryStorage, key: str, payload: byt
 
 
 def _source(
-    session: Session, storage: _MemoryStorage, *, mode: AppMode = AppMode.WORKFLOW, published: bool = False
+    session: Session,
+    storage: _MemoryStorage,
+    *,
+    mode: AppMode = AppMode.WORKFLOW,
+    published: bool = False,
+    app_id: str = "app-1",
 ) -> App:
-    app = make_app(mode=mode, name="Inline Workflow")
+    app = make_app(app_id=app_id, mode=mode, name="Inline Workflow")
     nodes = [
         {
             "id": f"node-{index}",
@@ -343,22 +352,27 @@ def _bindings_by_node(session: Session, app_id: str | None) -> dict[str, Workflo
     return {row.node_id: row for row in rows}
 
 
+def _package_storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _MemoryStorage:
+    """Route package resource reads and writes to memory, for an export and import on SQLite."""
+    backend = _MemoryStorage()
+    monkeypatch.setattr("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(
+        "services.app_package_service.AgentPackageResourceExporter",
+        lambda: AgentPackageResourceExporter(storage_backend=backend),
+    )
+    monkeypatch.setattr(
+        "services.app_package_service.AgentPackageResourceImporter",
+        lambda: AgentPackageResourceImporter(storage_backend=backend),
+    )
+    monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
+    return backend
+
+
 class TestWorkflowPackageServiceCases:
     @staticmethod
     @pytest.fixture
     def storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _MemoryStorage:
-        backend = _MemoryStorage()
-        monkeypatch.setattr("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine))
-        monkeypatch.setattr(
-            "services.app_package_service.AgentPackageResourceExporter",
-            lambda: AgentPackageResourceExporter(storage_backend=backend),
-        )
-        monkeypatch.setattr(
-            "services.app_package_service.AgentPackageResourceImporter",
-            lambda: AgentPackageResourceImporter(storage_backend=backend),
-        )
-        monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
-        return backend
+        return _package_storage(monkeypatch, sqlite_engine)
 
     @staticmethod
     @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
@@ -742,6 +756,77 @@ class TestWorkflowPackageServiceCases:
         assert {rows["node-1"].binding_type, rows["node-2"].binding_type} == {WorkflowAgentBindingType.INLINE_AGENT}
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("package", "node_ids"),
+        [
+            pytest.param(_roster_export, ["node-3"], id="with-inline-agents"),
+            pytest.param(
+                lambda _session, _storage: _roster_archive(
+                    {"binding_type": "roster_agent", "agent_id": "a"}
+                ).getvalue(),
+                ["node-1"],
+                id="roster-only",
+            ),
+            pytest.param(
+                lambda _session, _storage: _roster_archive(
+                    {"binding_type": "roster_agent", "agent_id": "a", "package_ref": None}
+                ).getvalue(),
+                ["node-1"],
+                id="null-package-ref",
+            ),
+        ],
+    )
+    def test_reader_refuses_roster_references_when_asked(
+        sqlite_session: Session,
+        storage: _MemoryStorage,
+        package: Callable[[Session, _MemoryStorage], bytes],
+        node_ids: list[str],
+    ) -> None:
+        with pytest.raises(RosterReferenceNotAcceptedError) as exc_info:
+            AppPackageService().read_package(
+                io.BytesIO(package(sqlite_session, storage)), refuse_roster_references=True
+            )
+        assert exc_info.value.node_ids == node_ids
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("package", "outcome"),
+        [
+            pytest.param(
+                _roster_export,
+                pytest.raises(InvalidRosterAgentPackageError, match="Agent references are invalid"),
+                id="with-inline-agents",
+            ),
+            pytest.param(
+                lambda _session, _storage: _roster_archive(
+                    {"binding_type": "roster_agent", "agent_id": "a"}
+                ).getvalue(),
+                nullcontext(),
+                id="roster-only",
+            ),
+        ],
+    )
+    def test_reader_reads_roster_references_as_before_by_default(
+        sqlite_session: Session,
+        storage: _MemoryStorage,
+        package: Callable[[Session, _MemoryStorage], bytes],
+        outcome: AbstractContextManager[object],
+    ) -> None:
+        """The console import reads roster links as it did before the openapi import could refuse them."""
+        with outcome:
+            prepared = AppPackageService().read_package(io.BytesIO(package(sqlite_session, storage)))
+            assert prepared is not None
+            assert prepared.agents == {}
+            prepared.close()
+
+    @staticmethod
+    def test_reader_accepts_a_null_package_ref_as_a_roster_reference() -> None:
+        content = _roster_archive({"binding_type": "roster_agent", "agent_id": "a", "package_ref": None})
+        prepared = AppPackageService().read_package(content, accept_roster_references=True)
+        assert prepared is not None
+        prepared.close()
+
+    @staticmethod
     def test_unresolvable_roster_reference_fails_the_import(sqlite_session: Session, storage: _MemoryStorage) -> None:
         content = _roster_export(sqlite_session, storage)
 
@@ -777,6 +862,240 @@ class TestWorkflowPackageServiceCases:
         row = _bindings_by_node(sqlite_session, confirmed.app_id)["node-3"]
         assert row.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
         assert row.agent_id == "roster-agent-1"
+
+
+def _publish_skill(
+    session: Session, storage: _MemoryStorage, skill: Skill, marker: str, *, version_number: int
+) -> None:
+    """Publish a source-workspace Skill version whose SKILL.md carries ``marker``."""
+    archive = _tool_file(session, storage, f"tools/{skill.name}-{version_number}.zip", _skill(skill.name, marker))
+    version = SkillVersion(
+        id=str(uuid4()),
+        skill_id=skill.id,
+        version_number=version_number,
+        version_name=f"{version_number}.0",
+        publish_note="",
+        manifest=SkillVersionManifest(name=skill.name, display_name=skill.display_name, description=marker, files=[]),
+        archive_tool_file_id=archive.id,
+        archive_size=archive.size,
+        hash_code=f"{skill.name}-{version_number}",
+        published_by="account-1",
+    )
+    skill.latest_published_version_id = version.id
+    session.add_all([skill, version])
+    session.commit()
+
+
+def _workspace_skill(
+    name: str,
+    *,
+    tenant_id: str = "tenant-2",
+    skill_id: str | None = None,
+    latest_published_version_id: str | None = None,
+) -> Skill:
+    return Skill(
+        id=skill_id or str(uuid4()),
+        tenant_id=tenant_id,
+        name=name,
+        display_name=name.title(),
+        description=name,
+        latest_published_version_id=latest_published_version_id,
+        created_by="account-1",
+        updated_by="account-1",
+    )
+
+
+def _bind_second_workspace_skill(session: Session, storage: _MemoryStorage, *, agent: int) -> None:
+    """Bind a published workspace Skill named ``second``, at priority 1, to source Agent ``agent``."""
+    skill = _workspace_skill("second", tenant_id="tenant-1")
+    _publish_skill(session, storage, skill, "Second skill", version_number=1)
+    session.add(
+        AgentSkillBindingSnapshot(
+            tenant_id="tenant-1",
+            agent_id=f"source-agent-{agent}",
+            config_snapshot_id=f"source-snapshot-{agent}",
+            skill_id=skill.id,
+            priority=1,
+            created_by="account-1",
+        )
+    )
+    session.commit()
+
+
+def _skill_section(content: bytes) -> tuple[list[tuple[str, str]], list[tuple[str, int]], list[str]]:
+    """The first Agent's linked workspace Skill zips (name, digest) and notes (name, priority), and config Skills."""
+    data, manifest = _read_export(content)
+    resources = AppPackageManifest.model_validate(manifest).agent_resources["agent_1"]
+    packages = data["agent_packages"]
+    assert isinstance(packages, dict)
+    package = AgentPackage.model_validate(packages["agent_1"])
+    return (
+        [(item.name, item.sha256) for item in resources.skills if item.scope == "workspace"],
+        [(item.name, item.priority) for item in package.workspace_skills],
+        [item.name for item in package.soul.config_skills],
+    )
+
+
+def _export(app: App, *, preserve_agent_bindings: bool) -> bytes:
+    with AppPackageService().export_app(
+        may_bundle=_bundle_any_app, app_model=app, preserve_agent_bindings=preserve_agent_bindings
+    ) as exported:
+        return exported.archive.read()
+
+
+class TestWorkspaceSkillLinkCases:
+    """An export writes each workspace Skill as a link with a copy; the import's flag chooses which it uses."""
+
+    @staticmethod
+    @pytest.fixture
+    def storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _MemoryStorage:
+        return _package_storage(monkeypatch, sqlite_engine)
+
+    @staticmethod
+    @pytest.mark.parametrize("preserve_agent_bindings", [True, False])
+    def test_export_writes_workspace_skills_as_links_whatever_the_flag(
+        sqlite_session: Session, storage: _MemoryStorage, preserve_agent_bindings: bool
+    ) -> None:
+        content = _export(_source(sqlite_session, storage), preserve_agent_bindings=preserve_agent_bindings)
+
+        linked_zips, exported_notes, exported_config_skills = _skill_section(content)
+        assert ([name for name, _digest in linked_zips], exported_notes, exported_config_skills) == (
+            ["workspace"],
+            [("workspace", 0)],
+            ["research"],
+        )
+        prepared = AppPackageService().read_package(io.BytesIO(content))
+        assert prepared is not None
+        prepared.close()
+
+    @staticmethod
+    @pytest.mark.parametrize("preserve_agent_bindings", [True, False])
+    def test_export_writes_the_latest_published_skill(
+        sqlite_session: Session, storage: _MemoryStorage, preserve_agent_bindings: bool
+    ) -> None:
+        app = _source(sqlite_session, storage)
+        skill = sqlite_session.get(Skill, "source-workspace-skill")
+        assert skill is not None
+        _publish_skill(sqlite_session, storage, skill, "Edited in the Skill Hub", version_number=2)
+
+        content = _export(app, preserve_agent_bindings=preserve_agent_bindings)
+
+        _data, manifest = _read_export(content)
+        resources = AppPackageManifest.model_validate(manifest).agent_resources["agent_1"]
+        [path] = [item.path for item in resources.skills if item.name == "workspace"]
+        with zipfile.ZipFile(io.BytesIO(content)) as archive, zipfile.ZipFile(io.BytesIO(archive.read(path))) as nested:
+            assert b"Edited in the Skill Hub" in nested.read("SKILL.md")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("preserve_agent_bindings", "links", "config_skills"),
+        [
+            (True, [("target-workspace-skill", 3)], ["research"]),
+            (False, [], ["research", "workspace"]),
+        ],
+    )
+    def test_import_links_workspace_skills_only_when_preserving_bindings(
+        sqlite_session: Session,
+        storage: _MemoryStorage,
+        preserve_agent_bindings: bool,
+        links: list[tuple[str, int]],
+        config_skills: list[str],
+    ) -> None:
+        app = _source(sqlite_session, storage)
+        sqlite_session.execute(update(AgentSkillBindingSnapshot).values(priority=3))
+        sqlite_session.add(_workspace_skill("workspace", skill_id="target-workspace-skill"))
+        sqlite_session.commit()
+        content = _export(app, preserve_agent_bindings=True)
+
+        result = _import(sqlite_session, content, preserve_agent_bindings=preserve_agent_bindings)
+
+        assert result.status == ImportStatus.COMPLETED, result.error
+        binding = _bindings_by_node(sqlite_session, result.app_id)["node-1"]
+        snapshot = sqlite_session.get(AgentConfigSnapshot, binding.current_snapshot_id)
+        assert snapshot is not None
+        draft_links = sqlite_session.scalars(
+            select(AgentSkillBinding).where(AgentSkillBinding.agent_id == binding.agent_id)
+        ).all()
+        snapshot_links = sqlite_session.scalars(
+            select(AgentSkillBindingSnapshot).where(AgentSkillBindingSnapshot.config_snapshot_id == snapshot.id)
+        ).all()
+        assert [(row.skill_id, row.priority) for row in draft_links] == links
+        assert [(row.skill_id, row.priority) for row in snapshot_links] == links
+        soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        assert [item.name for item in soul.config_skills] == config_skills
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("present", "problems"),
+        [
+            pytest.param(
+                {},
+                {"second": WorkspaceSkillProblem.NOT_FOUND, "workspace": WorkspaceSkillProblem.NOT_FOUND},
+                id="none-present",
+            ),
+            pytest.param(
+                {"workspace": "published-version"},
+                {"second": WorkspaceSkillProblem.NOT_FOUND},
+                id="one-published",
+            ),
+            pytest.param(
+                {"workspace": None},
+                {"second": WorkspaceSkillProblem.NOT_FOUND, "workspace": WorkspaceSkillProblem.NOT_PUBLISHED},
+                id="one-never-published",
+            ),
+        ],
+    )
+    def test_linking_check_names_every_unavailable_skill(
+        sqlite_session: Session,
+        storage: _MemoryStorage,
+        present: dict[str, str | None],
+        problems: dict[str, WorkspaceSkillProblem],
+    ) -> None:
+        app = _source(sqlite_session, storage)
+        _bind_second_workspace_skill(sqlite_session, storage, agent=2)
+        sqlite_session.add_all(
+            [_workspace_skill(name, latest_published_version_id=version) for name, version in present.items()]
+        )
+        sqlite_session.commit()
+        prepared = AppPackageService().read_package(
+            io.BytesIO(_export(app, preserve_agent_bindings=True)), accept_roster_references=True
+        )
+        assert prepared is not None
+
+        with prepared, pytest.raises(WorkspaceSkillUnavailableError) as exc_info:
+            prepared.require_workspace_skills(tenant_id="tenant-2")
+
+        assert exc_info.value.problems == problems
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("priority", "outcome"),
+        [
+            pytest.param(1, nullcontext(), id="distinct"),
+            pytest.param(
+                0,
+                pytest.raises(InvalidRosterAgentPackageError, match="share priority 0"),
+                id="shared",
+            ),
+        ],
+    )
+    def test_only_the_linking_check_refuses_workspace_skills_that_share_a_priority(
+        sqlite_session: Session, storage: _MemoryStorage, priority: int, outcome: AbstractContextManager[object]
+    ) -> None:
+        """Links at one priority would break the binding table's unique key; a copy import never writes them."""
+        app = _source(sqlite_session, storage)
+        _bind_second_workspace_skill(sqlite_session, storage, agent=1)
+        content = _export(app, preserve_agent_bindings=True)
+
+        def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
+            packages = data["agent_packages"]
+            assert isinstance(packages, dict)
+            packages["agent_1"]["workspace_skills"][1]["priority"] = priority
+
+        prepared = AppPackageService().read_package(io.BytesIO(_rewrite(content, mutate)))
+        assert prepared is not None
+        with prepared, outcome:
+            prepared.require_workspace_skills(tenant_id="tenant-1")
 
 
 """Ordinary App packages preserve DSLs and enforce container integrity."""
@@ -820,7 +1139,9 @@ def _roster_archive(binding: dict[str, object], agent_job: dict[str, object] | N
             "workflow": {"graph": {"nodes": [{"id": "node-1", "data": node_data}], "edges": []}},
         }
     )
-    with AppPackageService().export(dsl=dsl, name="Roster", workflow_tools=[]) as package:
+    with AppPackageService().export(
+        dsl=dsl, name="Roster", accept_roster_references=True, workflow_tools=[]
+    ) as package:
         return io.BytesIO(package.archive.read())
 
 
