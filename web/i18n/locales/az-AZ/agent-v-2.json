@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "Yaradılma vaxtı",
   "agentDetail.logs.table.endUser": "Son istifadəçi",
   "agentDetail.logs.table.messageCount": "Mesaj sayı",
-  "agentDetail.logs.table.operationRate": "Əməliyyat qiymətləndirməsi",
+  "agentDetail.logs.table.operationRate": "Operator qiymətləndirməsi",
   "agentDetail.logs.table.source": "Mənbə",
   "agentDetail.logs.table.title": "Başlıq",
   "agentDetail.logs.table.unread": "Oxunmamış",

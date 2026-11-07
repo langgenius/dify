@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "Erstellungszeit",
   "agentDetail.logs.table.endUser": "Endbenutzer",
   "agentDetail.logs.table.messageCount": "Nachr. Anzahl",
-  "agentDetail.logs.table.operationRate": "Operationsrate",
+  "agentDetail.logs.table.operationRate": "Admin-Bewertung",
   "agentDetail.logs.table.source": "Quelle",
   "agentDetail.logs.table.title": "Titel",
   "agentDetail.logs.table.unread": "Ungelesen",

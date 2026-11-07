@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "وقت الإنشاء",
   "agentDetail.logs.table.endUser": "المستخدم النهائي",
   "agentDetail.logs.table.messageCount": "عدد الرسائل",
-  "agentDetail.logs.table.operationRate": "معدل العمليات",
+  "agentDetail.logs.table.operationRate": "معدل المسؤول",
   "agentDetail.logs.table.source": "المصدر",
   "agentDetail.logs.table.title": "العنوان",
   "agentDetail.logs.table.unread": "غير مقروء",

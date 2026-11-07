@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "زمان ایجاد",
   "agentDetail.logs.table.endUser": "کاربر نهایی",
   "agentDetail.logs.table.messageCount": "تعداد پیام",
-  "agentDetail.logs.table.operationRate": "نرخ عملیات",
+  "agentDetail.logs.table.operationRate": "امتیاز اپراتور",
   "agentDetail.logs.table.source": "منبع",
   "agentDetail.logs.table.title": "عنوان",
   "agentDetail.logs.table.unread": "خوانده‌نشده",
