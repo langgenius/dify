@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "Vnaprej izpolni skrita polja",
   "overview.status.disable": "Onemogočeno",
   "overview.triggerInfo.learnAboutTriggers": "Več o sprožilcih",
-  "overview.triggerInfo.triggerStatusDescription": "Sprožilci se tukaj prikažejo po objavi različice, ki jih vsebuje."
+  "overview.triggerInfo.triggerStatusDescription": "Sprožilci se prikažejo tukaj po objavi."
 }

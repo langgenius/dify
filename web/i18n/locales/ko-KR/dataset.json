@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "서비스 API 엔드포인트",
   "serviceApi.card.title": "백엔드 서비스 API",
   "serviceApi.disabled": "비활성화됨",
-  "serviceApi.enabled": "서비스 중",
+  "serviceApi.enabled": "활성화됨",
   "serviceApi.title": "서비스 API",
   "unavailable": "사용 불가",
   "unknownError": "알 수 없는 오류",

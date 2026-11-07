@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "Titik Akhir API Layanan",
   "serviceApi.card.title": "API layanan backend",
   "serviceApi.disabled": "Dinonaktifkan",
-  "serviceApi.enabled": "Sedang Beroperasi",
+  "serviceApi.enabled": "Diaktifkan",
   "serviceApi.title": "API Layanan",
   "unavailable": "Tidak tersedia",
   "unknownError": "Kesalahan tidak diketahui",

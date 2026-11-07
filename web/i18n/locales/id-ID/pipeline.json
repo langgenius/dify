@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "Buka untuk menambahkan dokumen",
   "common.preparingDataSource": "Menyiapkan Sumber Data",
   "common.processing": "Pengolahan",
-  "common.publishAs": "Publikasikan sebagai Alur Pengetahuan",
+  "common.publishAs": "Publikasikan sebagai Pipeline Pengetahuan",
   "common.publishAsPipeline.description": "Deskripsi pengetahuan",
   "common.publishAsPipeline.descriptionPlaceholder": "Silakan masukkan deskripsi Knowledge Pipeline ini. (Opsional)",
   "common.publishAsPipeline.name": "Nama & ikon pipa",

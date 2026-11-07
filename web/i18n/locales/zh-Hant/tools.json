@@ -150,7 +150,7 @@
   "mcp.modal.timeoutPlaceholder": "三十",
   "mcp.modal.title": "新增 MCP 伺服器 (HTTP)",
   "mcp.modal.useDynamicClientRegistration": "使用動態客戶端註冊",
-  "mcp.noConfigured": "未配置的伺服器",
+  "mcp.noConfigured": "未設定的伺服器",
   "mcp.noTools": "沒有可用的工具",
   "mcp.onlyTool": "包含 1 個工具",
   "mcp.operation.edit": "編輯",

@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "Precompila i campi nascosti",
   "overview.status.disable": "Disabilita",
   "overview.triggerInfo.learnAboutTriggers": "Scopri di più sui trigger",
-  "overview.triggerInfo.triggerStatusDescription": "Gli inneschi appariranno qui dopo la pubblicazione della versione che li contiene."
+  "overview.triggerInfo.triggerStatusDescription": "I trigger vengono visualizzati qui dopo la pubblicazione."
 }

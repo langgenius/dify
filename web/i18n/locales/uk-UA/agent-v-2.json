@@ -161,7 +161,7 @@
   "agentDetail.configure.preview.chatFeatures": "Функції чату",
   "agentDetail.configure.preview.empty.defaultAgentName": "Агент",
   "agentDetail.configure.preview.empty.description": "Запустіть агента як готовий чат, саме так, як його побачать користувачі після публікації.",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Цей запуск агента було зупинено після досягнення максимальної кількості запитів до моделі. Спробуйте ще раз або розділіть завдання на менші кроки.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Цей запуск агента зупинено після досягнення ліміту запитів до моделі. Спробуйте ще раз або розбийте завдання на менші кроки.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Цей запуск агента було зупинено через досягнення обмеження часу. Спробуйте ще раз або розділіть завдання на менші кроки.",
   "agentDetail.configure.preview.inputPlaceholder": "Надіслати повідомлення {{name}}",
   "agentDetail.configure.preview.restart": "Почати заново",

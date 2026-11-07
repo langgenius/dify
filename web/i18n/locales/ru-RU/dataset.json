@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "Конечная точка API сервиса",
   "serviceApi.card.title": "API бэкенд-сервиса",
   "serviceApi.disabled": "Отключено",
-  "serviceApi.enabled": "На службе",
+  "serviceApi.enabled": "Включено",
   "serviceApi.title": "Сервисный API",
   "unavailable": "Недоступно",
   "unknownError": "Неизвестная ошибка",

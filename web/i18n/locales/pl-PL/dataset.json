@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "Punkt końcowy API usługi",
   "serviceApi.card.title": "Usługa backendowa API",
   "serviceApi.disabled": "Niepełnosprawny",
-  "serviceApi.enabled": "W serwisie",
+  "serviceApi.enabled": "Włączone",
   "serviceApi.title": "Interfejs API usługi",
   "unavailable": "Niedostępny",
   "unknownError": "Nieznany błąd",

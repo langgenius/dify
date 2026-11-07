@@ -150,7 +150,7 @@
   "mcp.modal.timeoutPlaceholder": "三十",
   "mcp.modal.title": "MCP サーバー（HTTP）を追加",
   "mcp.modal.useDynamicClientRegistration": "動的クライアント登録を使用する",
-  "mcp.noConfigured": "未設定",
+  "mcp.noConfigured": "未設定のサーバー",
   "mcp.noTools": "利用可能なツールはありません",
   "mcp.onlyTool": "1 つのツールが含まれています",
   "mcp.operation.edit": "編集",

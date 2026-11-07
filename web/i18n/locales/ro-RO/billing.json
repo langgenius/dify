@@ -88,7 +88,7 @@
   "plansCommon.memberAfter": "Membru",
   "plansCommon.messageRequest.title": "{{count,number}} credite de mesaje",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} mesaje/lună",
-  "plansCommon.messageRequest.tooltip": "Cote de invocare a mesajelor pentru diferite planuri utilizând modele OpenAI (cu excepția gpt4). Mesajele peste limită vor utiliza cheia API OpenAI.",
+  "plansCommon.messageRequest.tooltip": "Creditele pentru mesaje te ajută să încerci cu ușurință în Dify diferite modele de la OpenAI, Anthropic, Gemini, xAI, DeepSeek și Tongyi. Creditele sunt consumate în funcție de tipul modelului. După ce se epuizează, poți trece la propria cheie API.",
   "plansCommon.modelProviders": "Furnizori de modele",
   "plansCommon.month": "lună",
   "plansCommon.mostPopular": "Cel mai popular",

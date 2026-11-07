@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "پیش‌پر کردن فیلدهای پنهان",
   "overview.status.disable": "غیرفعال",
   "overview.triggerInfo.learnAboutTriggers": "درباره محرک‌ها بیشتر بدانید",
-  "overview.triggerInfo.triggerStatusDescription": "محرک‌ها پس از انتشار نسخه‌ای که شامل آن‌هاست، در اینجا ظاهر می‌شوند."
+  "overview.triggerInfo.triggerStatusDescription": "تریگرها پس از انتشار در اینجا نمایش داده می‌شوند."
 }

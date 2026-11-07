@@ -88,7 +88,7 @@
   "plansCommon.memberAfter": "Anggota",
   "plansCommon.messageRequest.title": "kredit pesan {{count,number}}",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} kredit pesan/bulan",
-  "plansCommon.messageRequest.tooltip": "Kredit pesan disediakan untuk membantu Anda mencoba berbagai model OpenAI dengan mudah di Dify. Kredit digunakan berdasarkan jenis model. Setelah habis, Anda dapat beralih ke kunci API OpenAI Anda sendiri.",
+  "plansCommon.messageRequest.tooltip": "Kredit pesan disediakan untuk membantu Anda mencoba berbagai model dari OpenAI, Anthropic, Gemini, xAI, DeepSeek, dan Tongyi di Dify dengan mudah. Kredit digunakan berdasarkan jenis model. Setelah habis, Anda dapat beralih ke kunci API Anda sendiri.",
   "plansCommon.modelProviders": "Mendukung OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replite",
   "plansCommon.month": "bulan",
   "plansCommon.mostPopular": "Populer",

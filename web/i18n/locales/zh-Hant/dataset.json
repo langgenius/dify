@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "服務 API 端點",
   "serviceApi.card.title": "後端服務 API",
   "serviceApi.disabled": "已停用",
-  "serviceApi.enabled": "使用中",
+  "serviceApi.enabled": "已啟用",
   "serviceApi.title": "服務 API",
   "unavailable": "不可用",
   "unknownError": "未知錯誤",

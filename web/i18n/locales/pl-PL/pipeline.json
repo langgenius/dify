@@ -15,7 +15,7 @@
   "inputField.manage": "Zarządzać",
   "publishToast.desc": "Gdy potok nie zostanie opublikowany, można zmodyfikować strukturę fragmentów w węźle bazy wiedzy, a aranżacja potoku i zmiany zostaną automatycznie zapisane jako wersja robocza.",
   "publishToast.title": "Ten rurociąg nie został jeszcze opublikowany",
-  "ragToolSuggestions.noRecommendationPlugins": "Brak polecanych wtyczek, znajdź więcej w <CustomLink>Marketplacu</CustomLink>",
+  "ragToolSuggestions.noRecommendationPlugins": "Brak polecanych integracji. Więcej znajdziesz w <CustomLink>Marketplace</CustomLink>",
   "ragToolSuggestions.title": "Propozycje dotyczące RAG",
   "result.resultPreview.error": "Wystąpił błąd podczas wykonywania",
   "result.resultPreview.footerTip": "W trybie testowym, podgląd do {{count}} fragmentów",

@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "ຕື່ມຂໍ້ມູນຟິວທີ່ຊ່ອນຢູ່ລ່ວງໜ້າ",
   "overview.status.disable": "ປິດໃຊ້ງານ",
   "overview.triggerInfo.learnAboutTriggers": "ຮຽນຮູ້ເພີ່ມເຕີມກ່ຽວກັບຕົວກະຕຸ້ນ",
-  "overview.triggerInfo.triggerStatusDescription": "Triggers ຈະປາກົດຢູ່ບ່ອນນີ້ຫຼັງຈາກທ່ານເຜີຍແຜ່ເວີຊັນທີ່ມີພວກມັນ."
+  "overview.triggerInfo.triggerStatusDescription": "ຕົວກະຕຸ້ນຈະສະແດງຢູ່ບ່ອນນີ້ຫຼັງຈາກທີ່ທ່ານເຜີຍແຜ່."
 }

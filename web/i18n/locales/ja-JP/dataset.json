@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "サービスAPIエンドポイント",
   "serviceApi.card.title": "バックエンドサービスAPI",
   "serviceApi.disabled": "無効",
-  "serviceApi.enabled": "サービス中",
+  "serviceApi.enabled": "有効",
   "serviceApi.title": "サービスAPI",
   "unavailable": "利用不可",
   "unknownError": "不明なエラー",

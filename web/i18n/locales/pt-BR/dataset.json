@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "Endpoint da API de Serviço",
   "serviceApi.card.title": "API de serviço de backend",
   "serviceApi.disabled": "Desativado",
-  "serviceApi.enabled": "Em serviço",
+  "serviceApi.enabled": "Ativado",
   "serviceApi.title": "API de Serviço",
   "unavailable": "Indisponível",
   "unknownError": "Erro desconhecido",
