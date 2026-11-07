@@ -138,6 +138,28 @@ const Editor: FC<Props> = ({
   const resourceKind = useAtomValue(editorResourceKindAtom)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
+  const workflowNodesMap = React.useMemo(() => {
+    return availableNodes.reduce((acc, node) => {
+      acc[node.id] = {
+        title: node.data.title,
+        type: node.data.type,
+        width: node.width,
+        height: node.height,
+        position: node.position,
+        ...(node.data.type === BlockEnum.LLM && {
+          modelProvider: (node.data as { model?: ModelConfig }).model?.provider,
+        }),
+      }
+      if (node.data.type === BlockEnum.Start) {
+        acc.sys = {
+          title: t(($) => $['blocks.start'], { ns: 'workflow' }),
+          type: BlockEnum.Start,
+        }
+      }
+      return acc
+    }, {} as any)
+  }, [availableNodes, t])
+
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
       <div
@@ -315,12 +337,23 @@ const Editor: FC<Props> = ({
           {/* Min: 80 Max: 560. Header: 24 */}
           <div className={cn('pb-2', isExpand && 'flex grow flex-col')}>
             {!(isSupportJinja && editionType === EditionType.jinja2) ? (
+              // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- Delegating container click to nested contenteditable editor
               <div
                 className={cn(
                   isExpand ? 'grow' : 'max-h-134',
                   'relative min-h-14 overflow-y-auto px-3',
+                  !readOnly && 'cursor-text',
                   editorContainerClassName,
                 )}
+                onClick={(e) => {
+                  if (readOnly) return
+                  const editable = e.currentTarget.querySelector<HTMLElement>(
+                    '[contenteditable="true"]',
+                  )
+                  if (editable && document.activeElement !== editable) {
+                    editable.focus()
+                  }
+                }}
               >
                 <PromptEditor
                   key={controlPromptEditorRerenderKey}
@@ -352,25 +385,7 @@ const Editor: FC<Props> = ({
                     show: true,
                     variables: nodesOutputVars || [],
                     getVarType,
-                    workflowNodesMap: availableNodes.reduce((acc, node) => {
-                      acc[node.id] = {
-                        title: node.data.title,
-                        type: node.data.type,
-                        width: node.width,
-                        height: node.height,
-                        position: node.position,
-                        ...(node.data.type === BlockEnum.LLM && {
-                          modelProvider: (node.data as { model?: ModelConfig }).model?.provider,
-                        }),
-                      }
-                      if (node.data.type === BlockEnum.Start) {
-                        acc.sys = {
-                          title: t(($) => $['blocks.start'], { ns: 'workflow' }),
-                          type: BlockEnum.Start,
-                        }
-                      }
-                      return acc
-                    }, {} as any),
+                    workflowNodesMap,
                     showManageInputField: resourceKind === 'knowledge-pipeline',
                     onManageInputField: () => setShowInputFieldPanel?.(true),
                   }}
