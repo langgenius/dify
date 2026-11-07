@@ -45,7 +45,9 @@ class MockSearchQuery:
 
     def fetchall(self):
         data = _mock_tables.get(self._table_name, {})
-        results = []
+        # Vector search rows are (distance, id, text, meta) while full-text rows
+        # are (id, text, meta, embedding, score); consumers unpack by position.
+        results: list[tuple[Any, ...]] = []
         for row in list(data.values())[: self._limit_val]:
             if not self._apply_filter(row):
                 continue

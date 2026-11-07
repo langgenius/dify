@@ -5,7 +5,7 @@ import time
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any, NotRequired, TypedDict, override
 
 import httpx
 import qdrant_client
@@ -50,6 +50,18 @@ if TYPE_CHECKING:
 _TIDB_CLOUD_REQUEST_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
 
 
+class QdrantConnectionParams(TypedDict):
+    """Keyword arguments accepted by ``qdrant_client.QdrantClient``."""
+
+    path: NotRequired[str]
+    url: NotRequired[str]
+    api_key: NotRequired[str | None]
+    timeout: NotRequired[int]
+    verify: NotRequired[bool]
+    grpc_port: NotRequired[int]
+    prefer_grpc: NotRequired[bool]
+
+
 class TidbOnQdrantConfig(BaseModel):
     endpoint: str
     api_key: str | None = None
@@ -59,7 +71,7 @@ class TidbOnQdrantConfig(BaseModel):
     prefer_grpc: bool = False
     replication_factor: int = 1
 
-    def to_qdrant_params(self):
+    def to_qdrant_params(self) -> QdrantConnectionParams:
         if self.endpoint and self.endpoint.startswith("path:"):
             path = self.endpoint.replace("path:", "")
             if not os.path.isabs(path):
@@ -70,10 +82,11 @@ class TidbOnQdrantConfig(BaseModel):
 
             return {"path": path}
         else:
+            # QdrantClient declares timeout as Optional[int], so truncate here.
             return {
                 "url": self.endpoint,
                 "api_key": self.api_key,
-                "timeout": self.timeout,
+                "timeout": int(self.timeout),
                 "verify": False,
                 "grpc_port": self.grpc_port,
                 "prefer_grpc": self.prefer_grpc,

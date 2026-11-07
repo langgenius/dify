@@ -36,8 +36,10 @@ def _build_fake_elasticsearch_modules():
                 create=MagicMock(),
             )
 
-    elasticsearch.Elasticsearch = Elasticsearch
-    elasticsearch.ConnectionError = ConnectionError
+    # The stub is a plain ModuleType instance, so attributes must be assigned
+    # through __dict__ (direct assignment is not a tracked attribute).
+    elasticsearch.__dict__["Elasticsearch"] = Elasticsearch
+    elasticsearch.__dict__["ConnectionError"] = ConnectionError
     elasticsearch.__dict__["NotFoundError"] = NotFoundError
     return {"elasticsearch": elasticsearch}
 

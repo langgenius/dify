@@ -25,6 +25,7 @@ class TestLindormVectorStore(AbstractVectorTest):
                 username=Config.SEARCH_USERNAME,
                 password=Config.SEARCH_PWD,
             ),
+            using_ugc=False,
         )
 
     @override
@@ -46,6 +47,7 @@ class TestLindormVectorStoreUGC(AbstractVectorTest):
                 password=Config.SEARCH_PWD,
                 using_ugc=Config.USING_UGC,
             ),
+            using_ugc=True,
             routing_value=self.collection_name,
         )
 

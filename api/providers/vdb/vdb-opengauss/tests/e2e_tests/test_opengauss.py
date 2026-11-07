@@ -14,6 +14,7 @@ class OpenGaussTest(AbstractVectorTest):
         max_retries = 5
         retry_delay = 20
         retry_count = 0
+        config: OpenGaussConfig | None = None
         while retry_count < max_retries:
             try:
                 config = OpenGaussConfig(
@@ -30,6 +31,9 @@ class OpenGaussTest(AbstractVectorTest):
                 retry_count += 1
                 if retry_count < max_retries:
                     time.sleep(retry_delay)
+        if config is None:
+            raise RuntimeError("Failed to initialize OpenGauss config after retries")
+
         self.vector = OpenGauss(
             collection_name=self.collection_name,
             config=config,

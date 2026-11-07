@@ -41,13 +41,13 @@ def _build_fake_opensearch_modules():
             self.get = MagicMock(return_value={"_id": "id"})
             self.exists = MagicMock(return_value=True)
 
-    opensearch_helpers.BulkIndexError = BulkIndexError
-    opensearch_helpers.bulk = MagicMock()
-    opensearch_exceptions.NotFoundError = NotFoundError
+    opensearch_helpers.__dict__["BulkIndexError"] = BulkIndexError
+    opensearch_helpers.__dict__["bulk"] = MagicMock()
+    opensearch_exceptions.__dict__["NotFoundError"] = NotFoundError
 
-    opensearchpy.OpenSearch = OpenSearch
-    opensearchpy.NotFoundError = NotFoundError
-    opensearchpy.helpers = opensearch_helpers
+    opensearchpy.__dict__["OpenSearch"] = OpenSearch
+    opensearchpy.__dict__["NotFoundError"] = NotFoundError
+    opensearchpy.__dict__["helpers"] = opensearch_helpers
 
     return {
         "opensearchpy": opensearchpy,

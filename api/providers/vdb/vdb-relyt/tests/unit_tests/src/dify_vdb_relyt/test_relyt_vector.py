@@ -21,7 +21,7 @@ def _build_fake_relyt_modules():
         def __init__(self, dim):
             self.dim = dim
 
-    pgvecto_rs_sqlalchemy.VECTOR = VECTOR
+    pgvecto_rs_sqlalchemy.__dict__["VECTOR"] = VECTOR
     return {
         "pgvecto_rs": pgvecto_rs,
         "pgvecto_rs.sqlalchemy": pgvecto_rs_sqlalchemy,

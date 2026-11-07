@@ -20,7 +20,7 @@ def _build_fake_iris_module():
         conn.cursor.return_value = MagicMock()
         return conn
 
-    iris.connect = MagicMock(side_effect=connect)
+    iris.__dict__["connect"] = MagicMock(side_effect=connect)
     return iris
 
 
@@ -31,7 +31,7 @@ def iris_module(monkeypatch: pytest.MonkeyPatch):
     import dify_vdb_iris.iris_vector as module
 
     reloaded = importlib.reload(module)
-    reloaded._pool_instance = None
+    reloaded.__dict__["_pool_instance"] = None
     return reloaded
 
 
@@ -336,7 +336,7 @@ def test_iris_vector_full_text_search_paths(iris_module, monkeypatch: pytest.Mon
 
     fake_libs = types.ModuleType("libs")
     fake_helper = types.ModuleType("libs.helper")
-    fake_helper.escape_like_pattern = lambda value: value.replace("%", "\\%")
+    fake_helper.__dict__["escape_like_pattern"] = lambda value: value.replace("%", "\\%")
     monkeypatch.setitem(sys.modules, "libs", fake_libs)
     monkeypatch.setitem(sys.modules, "libs.helper", fake_helper)
 

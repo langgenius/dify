@@ -52,12 +52,12 @@ def _opensearch_build_fake_opensearch_modules():
 
     helpers = SimpleNamespace(bulk=MagicMock())
 
-    opensearchpy.OpenSearch = OpenSearch
-    opensearchpy.Urllib3AWSV4SignerAuth = Urllib3AWSV4SignerAuth
-    opensearchpy.Urllib3HttpConnection = Urllib3HttpConnection
-    opensearchpy.NotFoundError = NotFoundError
-    opensearchpy.helpers = helpers
-    opensearchpy_helpers.BulkIndexError = BulkIndexError
+    opensearchpy.__dict__["OpenSearch"] = OpenSearch
+    opensearchpy.__dict__["Urllib3AWSV4SignerAuth"] = Urllib3AWSV4SignerAuth
+    opensearchpy.__dict__["Urllib3HttpConnection"] = Urllib3HttpConnection
+    opensearchpy.__dict__["NotFoundError"] = NotFoundError
+    opensearchpy.__dict__["helpers"] = helpers
+    opensearchpy_helpers.__dict__["BulkIndexError"] = BulkIndexError
 
     return {
         "opensearchpy": opensearchpy,
@@ -109,7 +109,7 @@ class TestOpensearchCases:
                     return "creds"
 
             boto3 = types.ModuleType("boto3")
-            boto3.Session = _Session
+            boto3.__dict__["Session"] = _Session
             monkeypatch.setitem(sys.modules, "boto3", boto3)
 
             config = _opensearch_config(
@@ -377,13 +377,13 @@ def _opensearch_vector_build_fake_opensearch_modules():
 
     helpers = SimpleNamespace(bulk=MagicMock())
 
-    opensearchpy.OpenSearch = OpenSearch
-    opensearchpy.Urllib3AWSV4SignerAuth = Urllib3AWSV4SignerAuth
-    opensearchpy.Urllib3HttpConnection = Urllib3HttpConnection
-    opensearchpy.NotFoundError = NotFoundError
-    opensearchpy.helpers = helpers
-    opensearchpy_helpers.BulkIndexError = BulkIndexError
-    opensearchpy_exceptions.NotFoundError = NotFoundError
+    opensearchpy.__dict__["OpenSearch"] = OpenSearch
+    opensearchpy.__dict__["Urllib3AWSV4SignerAuth"] = Urllib3AWSV4SignerAuth
+    opensearchpy.__dict__["Urllib3HttpConnection"] = Urllib3HttpConnection
+    opensearchpy.__dict__["NotFoundError"] = NotFoundError
+    opensearchpy.__dict__["helpers"] = helpers
+    opensearchpy_helpers.__dict__["BulkIndexError"] = BulkIndexError
+    opensearchpy_exceptions.__dict__["NotFoundError"] = NotFoundError
 
     return {
         "opensearchpy": opensearchpy,
@@ -459,7 +459,7 @@ class TestOpensearchVectorCases:
                 return "creds"
 
         boto3 = types.ModuleType("boto3")
-        boto3.Session = _Session
+        boto3.__dict__["Session"] = _Session
         monkeypatch.setitem(sys.modules, "boto3", boto3)
 
         config = _opensearch_vector_config(

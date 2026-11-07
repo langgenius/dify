@@ -1,5 +1,5 @@
+import json
 from contextlib import contextmanager
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import dify_vdb_analyticdb.analyticdb_vector_sql as sql_module
@@ -76,7 +76,8 @@ def test_initialize_runs_when_cache_is_missing(monkeypatch: pytest.MonkeyPatch):
     lock.__exit__.return_value = None
     monkeypatch.setattr(sql_module.redis_client, "lock", MagicMock(return_value=lock))
     monkeypatch.setattr(sql_module.redis_client, "get", MagicMock(return_value=None))
-    monkeypatch.setattr(sql_module.redis_client, "set", MagicMock())
+    set_mock = MagicMock()
+    monkeypatch.setattr(sql_module.redis_client, "set", set_mock)
 
     vector = AnalyticdbVectorBySql.__new__(AnalyticdbVectorBySql)
     vector.config = AnalyticdbVectorBySqlConfig(**_config_values())
@@ -85,7 +86,7 @@ def test_initialize_runs_when_cache_is_missing(monkeypatch: pytest.MonkeyPatch):
     vector._initialize()
 
     vector._initialize_vector_database.assert_called_once()
-    sql_module.redis_client.set.assert_called_once()
+    set_mock.assert_called_once()
 
 
 def test_create_connection_pool_uses_psycopg2_pool(monkeypatch: pytest.MonkeyPatch):
@@ -94,12 +95,13 @@ def test_create_connection_pool_uses_psycopg2_pool(monkeypatch: pytest.MonkeyPat
     vector.databaseName = "knowledgebase"
 
     pool_instance = MagicMock()
-    monkeypatch.setattr(sql_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool_instance))
+    pool_cls = MagicMock(return_value=pool_instance)
+    monkeypatch.setattr(sql_module.psycopg2.pool, "SimpleConnectionPool", pool_cls)
 
     pool = vector._create_connection_pool()
 
     assert pool is pool_instance
-    sql_module.psycopg2.pool.SimpleConnectionPool.assert_called_once()
+    pool_cls.assert_called_once()
 
 
 def test_get_cursor_context_manager_handles_connection_lifecycle():
@@ -132,15 +134,22 @@ def test_add_texts_inserts_only_documents_with_metadata(monkeypatch: pytest.Monk
     vector._get_cursor = _cursor_context
 
     monkeypatch.setattr(sql_module.uuid, "uuid4", lambda: "prefix-id")
-    monkeypatch.setattr(sql_module.psycopg2.extras, "execute_batch", MagicMock())
+    execute_batch_mock = MagicMock()
+    monkeypatch.setattr(sql_module.psycopg2.extras, "execute_batch", execute_batch_mock)
 
+    # Deliberately no metadata: the JSON round-trip keeps the runtime None while
+    # staying inside the repo's no-new-cast / no-Any-import rules.
+    no_metadata = json.loads("null")
     docs = [
         Document(page_content="doc 1", metadata={"doc_id": "d1", "document_id": "doc-1"}),
-        SimpleNamespace(page_content="doc 2", metadata=None),
+        Document.model_construct(
+            page_content="doc 2",
+            metadata=no_metadata,
+        ),
     ]
     vector.add_texts(docs, [[0.1, 0.2], [0.2, 0.3]])
 
-    execute_args = sql_module.psycopg2.extras.execute_batch.call_args.args
+    execute_args = execute_batch_mock.call_args.args
     assert execute_args[0] is cursor
     assert len(execute_args[2]) == 1
 
@@ -388,7 +397,8 @@ def test_create_collection_if_not_exists_creates_table_indexes_and_cache(monkeyp
     lock.__exit__.return_value = None
     monkeypatch.setattr(sql_module.redis_client, "lock", MagicMock(return_value=lock))
     monkeypatch.setattr(sql_module.redis_client, "get", MagicMock(return_value=None))
-    monkeypatch.setattr(sql_module.redis_client, "set", MagicMock())
+    set_mock = MagicMock()
+    monkeypatch.setattr(sql_module.redis_client, "set", set_mock)
 
     cursor = MagicMock()
 
@@ -402,7 +412,7 @@ def test_create_collection_if_not_exists_creates_table_indexes_and_cache(monkeyp
 
     assert any("CREATE TABLE IF NOT EXISTS dify.collection" in call.args[0] for call in cursor.execute.call_args_list)
     assert any("CREATE INDEX collection_embedding_idx" in call.args[0] for call in cursor.execute.call_args_list)
-    sql_module.redis_client.set.assert_called_once()
+    set_mock.assert_called_once()
 
 
 def test_create_collection_if_not_exists_raises_for_non_existing_error(monkeypatch: pytest.MonkeyPatch):

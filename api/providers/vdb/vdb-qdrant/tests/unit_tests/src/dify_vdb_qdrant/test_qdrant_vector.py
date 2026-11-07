@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
+from models.base import TypeBase
 from models.dataset import Dataset, DatasetCollectionBinding
 from models.enums import CollectionBindingType
 
@@ -107,26 +108,28 @@ def _build_fake_qdrant_modules():
             super().__init__(**kwargs)
             self._load = MagicMock()
 
-    qdrant_client.QdrantClient = QdrantClient
-    qdrant_http_models.FilterSelector = FilterSelector
-    qdrant_http_models.HnswConfigDiff = HnswConfigDiff
-    qdrant_http_models.PayloadSchemaType = SimpleNamespace(KEYWORD="KEYWORD")
-    qdrant_http_models.TextIndexParams = TextIndexParams
-    qdrant_http_models.TextIndexType = SimpleNamespace(TEXT="TEXT")
-    qdrant_http_models.TokenizerType = SimpleNamespace(MULTILINGUAL="MULTILINGUAL")
-    qdrant_http_models.VectorParams = VectorParams
-    qdrant_http_models.Distance = _Distance()
-    qdrant_http_models.PointStruct = PointStruct
-    qdrant_http_models.Filter = Filter
-    qdrant_http_models.FieldCondition = FieldCondition
-    qdrant_http_models.MatchValue = MatchValue
-    qdrant_http_models.MatchAny = MatchAny
-    qdrant_http_models.MatchText = MatchText
-    qdrant_http_exceptions.UnexpectedResponse = UnexpectedResponseError
+    # The stubs are plain ModuleType instances, so attributes must be assigned
+    # through __dict__ (direct assignment is not a tracked attribute).
+    qdrant_client.__dict__["QdrantClient"] = QdrantClient
+    qdrant_http_models.__dict__["FilterSelector"] = FilterSelector
+    qdrant_http_models.__dict__["HnswConfigDiff"] = HnswConfigDiff
+    qdrant_http_models.__dict__["PayloadSchemaType"] = SimpleNamespace(KEYWORD="KEYWORD")
+    qdrant_http_models.__dict__["TextIndexParams"] = TextIndexParams
+    qdrant_http_models.__dict__["TextIndexType"] = SimpleNamespace(TEXT="TEXT")
+    qdrant_http_models.__dict__["TokenizerType"] = SimpleNamespace(MULTILINGUAL="MULTILINGUAL")
+    qdrant_http_models.__dict__["VectorParams"] = VectorParams
+    qdrant_http_models.__dict__["Distance"] = _Distance()
+    qdrant_http_models.__dict__["PointStruct"] = PointStruct
+    qdrant_http_models.__dict__["Filter"] = Filter
+    qdrant_http_models.__dict__["FieldCondition"] = FieldCondition
+    qdrant_http_models.__dict__["MatchValue"] = MatchValue
+    qdrant_http_models.__dict__["MatchAny"] = MatchAny
+    qdrant_http_models.__dict__["MatchText"] = MatchText
+    qdrant_http_exceptions.__dict__["UnexpectedResponse"] = UnexpectedResponseError
 
-    qdrant_http.models = qdrant_http_models
-    qdrant_local_mod.QdrantLocal = QdrantLocal
-    qdrant_local_pkg.qdrant_local = qdrant_local_mod
+    qdrant_http.__dict__["models"] = qdrant_http_models
+    qdrant_local_mod.__dict__["QdrantLocal"] = QdrantLocal
+    qdrant_local_pkg.__dict__["qdrant_local"] = qdrant_local_mod
 
     return {
         "qdrant_client": qdrant_client,
@@ -428,7 +431,7 @@ def test_vector_reads_uncommitted_annotation_binding(
     # Separate connections must not see each other's uncommitted rows. An
     # in-memory SQLite engine would share a connection and hide this regression.
     engine = create_engine(f"sqlite:///{tmp_path / 'bindings.db'}")
-    DatasetCollectionBinding.__table__.create(engine)
+    TypeBase.metadata.create_all(engine)
     monkeypatch.setattr(Vector, "get_vector_factory", staticmethod(lambda _: qdrant_module.QdrantVectorFactory))
     monkeypatch.setattr(qdrant_module, "current_app", SimpleNamespace(config=SimpleNamespace(root_path="/root")))
     monkeypatch.setattr(qdrant_module.dify_config, "VECTOR_STORE", "qdrant")
