@@ -4,6 +4,7 @@ from typing import Never
 
 import httpx
 
+from core.helper import ssrf_proxy
 from services.auth.errors import (
     DataSourceApiKeyAuthCredentialValidationError,
     DataSourceApiKeyAuthProviderUnavailableError,
@@ -49,7 +50,7 @@ class FirecrawlAuth:
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _post_request(self, url, data, headers):
-        return httpx.post(url, headers=headers, json=data, timeout=_CREDENTIAL_TIMEOUT)
+        return ssrf_proxy.post(url, headers=headers, json=data, timeout=_CREDENTIAL_TIMEOUT, max_retries=0)
 
     def _handle_error(self, response) -> Never:
         if (
@@ -61,6 +62,8 @@ class FirecrawlAuth:
         try:
             payload = response.json()
         except json.JSONDecodeError:
+            payload = {}
+        if not isinstance(payload, dict):
             payload = {}
         error_message = payload.get("error") or payload.get("message") or (response.text or "Unknown error occurred")
         raise DataSourceApiKeyAuthCredentialValidationError(

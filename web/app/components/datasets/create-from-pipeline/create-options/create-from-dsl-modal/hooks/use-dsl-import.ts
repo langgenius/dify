@@ -1,4 +1,5 @@
 'use client'
+import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +7,8 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { toast } from '@/app/notifications'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
-import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 export const CreateFromDSLModalTab = {
   FROM_FILE: 'from-file',
@@ -24,28 +26,6 @@ type UseDSLImportOptions = {
 type DSLVersions = {
   importedVersion: string
   systemVersion: string
-}
-type ImportErrorResponse = {
-  message?: unknown
-  error?: unknown
-}
-const getNonEmptyString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') return undefined
-
-  const trimmedValue = value.trim()
-  return trimmedValue || undefined
-}
-const getImportErrorMessage = async (error: unknown): Promise<string | undefined> => {
-  if (error instanceof Response && !error.bodyUsed) {
-    try {
-      const errorData = (await error.clone().json()) as ImportErrorResponse
-      return getNonEmptyString(errorData.message) ?? getNonEmptyString(errorData.error)
-    } catch {}
-  }
-
-  if (error instanceof Error) return getNonEmptyString(error.message)
-
-  return undefined
 }
 export const useDSLImport = ({
   activeTab = CreateFromDSLModalTab.FROM_FILE,
@@ -65,8 +45,12 @@ export const useDSLImport = ({
   const [isConfirming, setIsConfirming] = useState(false)
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const isCreatingRef = useRef(false)
-  const { mutateAsync: importDSL } = useImportPipelineDSL()
-  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm()
+  const { mutateAsync: importDSL } = useMutation(
+    consoleQuery.rag.pipelines.imports.post.mutationOptions(),
+  )
+  const { mutateAsync: importDSLConfirm } = useMutation(
+    consoleQuery.rag.pipelines.imports.byImportId.confirm.post.mutationOptions(),
+  )
   const notifyError = useCallback(
     (message?: string) => {
       toast.error(message || t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
@@ -98,14 +82,12 @@ export const useDSLImport = ({
       let response
       if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
         response = await importDSL({
-          mode: DSLImportMode.YAML_CONTENT,
-          yaml_content: fileContent || '',
+          body: { mode: DSLImportMode.YAML_CONTENT, yaml_content: fileContent || '' },
         })
       }
       if (currentTab === CreateFromDSLModalTab.FROM_URL) {
         response = await importDSL({
-          mode: DSLImportMode.YAML_URL,
-          yaml_url: dslUrlValue || '',
+          body: { mode: DSLImportMode.YAML_URL, yaml_url: dslUrlValue || '' },
         })
       }
       if (!response) {
@@ -149,7 +131,7 @@ export const useDSLImport = ({
         notifyError(response.error)
       }
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     } finally {
       isCreatingRef.current = false
     }
@@ -171,7 +153,7 @@ export const useDSLImport = ({
     if (!importId) return
     setIsConfirming(true)
     try {
-      const response = await importDSLConfirm(importId)
+      const response = await importDSLConfirm({ params: { import_id: importId } })
       if (!response) {
         notifyError()
         return
@@ -180,18 +162,17 @@ export const useDSLImport = ({
       if (status === DSLImportStatus.COMPLETED) {
         onSuccess?.()
         setShowConfirmModal(false)
-        toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
         if (pipeline_id) await handleCheckPluginDependencies(pipeline_id, true)
         push(`/datasets/${dataset_id}/pipeline`)
       } else if (status === DSLImportStatus.FAILED) {
         notifyError(error)
       }
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     } finally {
       setIsConfirming(false)
     }
-  }, [importId, importDSLConfirm, notifyError, t, onSuccess, handleCheckPluginDependencies, push])
+  }, [importId, importDSLConfirm, notifyError, onSuccess, handleCheckPluginDependencies, push])
   const handleCancelConfirm = useCallback(() => {
     setShowConfirmModal(false)
   }, [])

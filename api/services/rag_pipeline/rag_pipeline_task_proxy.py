@@ -8,9 +8,9 @@ from celery.canvas import Signature
 
 from configs import dify_config
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
+from core.db.session_factory import session_factory
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
-from extensions.ext_database import db
 from services.feature_service import FeatureService
 from services.file_service import FileService
 
@@ -37,7 +37,7 @@ class RagPipelineTaskProxy:
         text = [item.model_dump() for item in self._rag_pipeline_invoke_entities]
         # Convert list to proper JSON string
         json_text = json.dumps(text)
-        upload_file = FileService(db.engine).upload_text(
+        upload_file = FileService(session_factory.get_session_maker()).upload_text(
             json_text, self._RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME, self._user_id, self._dataset_tenant_id
         )
         logger.info(

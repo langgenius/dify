@@ -3,6 +3,7 @@ import type {
   AppSuggestedQuestionsAfterAnswerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type {
   MetadataFilteringConditions,
   MetadataFilteringModeEnum,
@@ -57,7 +58,7 @@ export type PromptVariable = {
   key: string
   name: string
   type: string // "string" | "number" | "select",
-  default?: string | number | boolean
+  default?: string | number | boolean | FileEntity | FileEntity[]
   required?: boolean
   options?: string[]
   max_length?: number
@@ -84,7 +85,9 @@ export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig & {
   prompt?: string
 }
 
-export type SpeechToTextConfig = MoreLikeThisConfig
+export type SpeechToTextConfig = {
+  enabled: boolean
+}
 
 export type TextToSpeechConfig = {
   enabled: boolean
@@ -93,7 +96,9 @@ export type TextToSpeechConfig = {
   autoPlay?: TtsAutoPlay
 }
 
-export type CitationConfig = MoreLikeThisConfig
+export type CitationConfig = {
+  enabled: boolean
+}
 
 export type AnnotationReplyConfig = {
   id: string
@@ -119,7 +124,9 @@ export type ModerationConfig = MoreLikeThisConfig & {
   } & Partial<Record<string, unknown>>
 }
 
-type RetrieverResourceConfig = MoreLikeThisConfig
+type RetrieverResourceConfig = {
+  enabled: boolean
+}
 export type AgentConfig = {
   enabled: boolean
   strategy: AgentStrategy

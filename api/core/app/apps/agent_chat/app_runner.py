@@ -1,5 +1,5 @@
 import logging
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -22,6 +22,9 @@ from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPro
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.model import App, Conversation, Message
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,6 +32,9 @@ class AgentChatAppRunner(AppRunner):
     """
     Agent Application Runner
     """
+
+    def __init__(self, *, execution_driver: "WorkflowRunDriver") -> None:
+        self._execution_driver = execution_driver
 
     def run(
         self,
@@ -225,6 +231,7 @@ class AgentChatAppRunner(AppRunner):
             raise ValueError(f"Invalid agent strategy: {agent_entity.strategy}")
 
         runner = runner_cls(
+            execution_driver=self._execution_driver,
             session=session,
             tenant_id=app_config.tenant_id,
             application_generate_entity=application_generate_entity,

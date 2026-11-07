@@ -2,8 +2,6 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
-from core.tools.errors import WorkflowToolHumanInputNotSupportedError
-from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.entities import OutputVariableEntity
 from graphon.variables.input_entities import VariableEntity
 
@@ -44,13 +42,6 @@ class WorkflowToolConfigurationUtils:
                 outputs_by_variable[variable] = entity
 
         return [outputs_by_variable[variable] for variable in variable_order]
-
-    @classmethod
-    def ensure_no_human_input_nodes(cls, graph: Mapping[str, Any]) -> None:
-        nodes = graph.get("nodes", [])
-        for node in nodes:
-            if node.get("data", {}).get("type") == BuiltinNodeTypes.HUMAN_INPUT:
-                raise WorkflowToolHumanInputNotSupportedError()
 
     @classmethod
     def check_is_synced(

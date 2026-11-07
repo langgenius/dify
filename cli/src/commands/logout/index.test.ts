@@ -1,8 +1,9 @@
 import type { TestWorld } from '@test/fixtures/kernel'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
+import { PENDING_FILE_NAME } from '@/auth/pending-login'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
 import { session } from '@/plugins/session'
@@ -32,6 +33,24 @@ it('revokes the session on the server and clears local state', async () => {
   })
 })
 
+it('drops a pending --no-wait login', async () => {
+  const w = await testContext({ login: true, argv: ['logout'] })
+  worlds.push(w)
+  const pendingFile = join(w.dir, PENDING_FILE_NAME)
+  writeFileSync(pendingFile, 'device_code: stale\n')
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(existsSync(pendingFile)).toBe(false)
+})
+
+it('drops a pending --no-wait login when nobody is logged in', async () => {
+  const w = await testContext({ login: false, argv: ['logout'] })
+  worlds.push(w)
+  const pendingFile = join(w.dir, PENDING_FILE_NAME)
+  writeFileSync(pendingFile, 'device_code: stale\n')
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({ code: 'not_logged_in' })
+  expect(existsSync(pendingFile)).toBe(false)
+})
+
 it('still clears local state and reports a failed server revoke', async () => {
   const w = await testContext({ login: true, argv: ['logout'] })
   worlds.push(w)
@@ -53,4 +72,15 @@ it('refuses under an env login', async () => {
     code: 'usage_invalid_flag',
     message: 'nothing to log out: the login comes from DIFY_TOKEN',
   })
+})
+
+it('refuses under an env login without dropping a pending interactive login', async () => {
+  const w = await testContext({ login: false, env: true, argv: ['logout'] })
+  worlds.push(w)
+  const pendingFile = join(w.dir, PENDING_FILE_NAME)
+  writeFileSync(pendingFile, 'device_code: dc-1\n')
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+  })
+  expect(existsSync(pendingFile)).toBe(true)
 })

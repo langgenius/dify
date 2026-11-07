@@ -64,7 +64,7 @@ export const useFieldList = ({
       if (isVarUsedInNodes([VARIABLE_PREFIX, nodeId, itemToRemove!.variable || ''])) {
         showRemoveVarConfirm()
         setRemovedVar([VARIABLE_PREFIX, nodeId, itemToRemove!.variable || ''])
-        setRemoveIndex(index as number)
+        setRemoveIndex(index)
         return
       }
       const newInputFields = inputFieldsRef.current.filter((_, i) => i !== index)
@@ -124,15 +124,18 @@ export const useFieldList = ({
       t,
     ],
   )
-  const handleOpenInputFieldEditor = useCallback((id?: string) => {
-    const index = inputFieldsRef.current.findIndex((field) => field.variable === id)
-    editingFieldIndex.current = index
-    toggleInputFieldEditPanel?.({
-      onClose: handleCloseInputFieldEditor,
-      onSubmit: handleSubmitField,
-      initialData: inputFieldsRef.current[index],
-    })
-  }, [])
+  const handleOpenInputFieldEditor = useCallback(
+    (id?: string) => {
+      const index = inputFieldsRef.current.findIndex((field) => field.variable === id)
+      editingFieldIndex.current = index
+      toggleInputFieldEditPanel?.({
+        onClose: handleCloseInputFieldEditor,
+        onSubmit: handleSubmitField,
+        initialData: inputFieldsRef.current[index],
+      })
+    },
+    [handleCloseInputFieldEditor, handleSubmitField, toggleInputFieldEditPanel],
+  )
   return {
     inputFields,
     handleListSortChange,

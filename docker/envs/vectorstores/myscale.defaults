@@ -1,0 +1,9 @@
+# Defaults for MyScale. Copy this file to myscale.env to customize its client connection.
+# docker/.env takes precedence. Server users are configured in volumes/myscale/config/users.d/.
+
+MYSCALE_PASSWORD=${MYSCALE_PASSWORD-}
+MYSCALE_DATABASE=${MYSCALE_DATABASE-dify}
+# MYSCALE_FTS_PARAMS=
+MYSCALE_HOST=${MYSCALE_HOST-myscale}
+MYSCALE_PORT=${MYSCALE_PORT-8123}
+MYSCALE_USER=${MYSCALE_USER-default}

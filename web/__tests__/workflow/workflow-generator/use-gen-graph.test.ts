@@ -1,12 +1,16 @@
+import type { WorkflowGenerateResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import { act, renderHook } from '@testing-library/react'
 import useGenGraph from '../../../app/components/workflow/workflow-generator/use-gen-graph'
 
 describe('useGenGraph', () => {
   beforeEach(() => {
-    sessionStorage.clear()
+    for (const key of ['history', 'mode-a', 'mode-b']) {
+      sessionStorage.removeItem(`workflow-gen-${key}-versions`)
+      sessionStorage.removeItem(`workflow-gen-${key}-version-index`)
+    }
   })
 
-  const makeResponse = (label: string) => ({
+  const makeResponse = (label: string): WorkflowGenerateResponse => ({
     graph: {
       nodes: [
         {
@@ -22,40 +26,24 @@ describe('useGenGraph', () => {
     message: label,
   })
 
-  it('starts with an empty version list and undefined current', () => {
-    const { result } = renderHook(() => useGenGraph({ storageKey: 'k1' }))
-    expect(result.current.versions).toEqual([])
-    expect(result.current.current).toBeUndefined()
-  })
-
-  it('appends versions and tracks the latest one as current', () => {
-    const { result } = renderHook(() => useGenGraph({ storageKey: 'k2' }))
-
+  it('persists batched generations and the selected older version across remounts', () => {
+    const { result, unmount } = renderHook(() => useGenGraph({ storageKey: 'history' }))
     act(() => {
-      result.current.addVersion(makeResponse('v1') as never)
+      result.current.addVersion(makeResponse('first'))
+      result.current.addVersion(makeResponse('latest'))
     })
-    expect(result.current.versions).toHaveLength(1)
-    expect(result.current.current?.message).toBe('v1')
+    expect(result.current.current?.message).toBe('latest')
 
-    act(() => {
-      result.current.addVersion(makeResponse('v2') as never)
-    })
-    expect(result.current.versions).toHaveLength(2)
-    expect(result.current.current?.message).toBe('v2')
-    expect(result.current.currentVersionIndex).toBe(1)
-  })
+    act(() => result.current.setCurrentVersionIndex(0))
+    expect(result.current.current?.message).toBe('first')
+    unmount()
 
-  it('allows switching back to an older version', () => {
-    const { result } = renderHook(() => useGenGraph({ storageKey: 'k3' }))
-    act(() => {
-      result.current.addVersion(makeResponse('a') as never)
-      result.current.addVersion(makeResponse('b') as never)
-    })
-
-    act(() => {
-      result.current.setCurrentVersionIndex(0)
-    })
-    expect(result.current.current?.message).toBe('a')
+    const restored = renderHook(() => useGenGraph({ storageKey: 'history' }))
+    expect(restored.result.current.versions).toEqual([
+      makeResponse('first'),
+      makeResponse('latest'),
+    ])
+    expect(restored.result.current.current?.message).toBe('first')
   })
 
   it('isolates state by storageKey', () => {
@@ -63,7 +51,7 @@ describe('useGenGraph', () => {
     const { result: r2 } = renderHook(() => useGenGraph({ storageKey: 'mode-b' }))
 
     act(() => {
-      r1.current.addVersion(makeResponse('only-a') as never)
+      r1.current.addVersion(makeResponse('only-a'))
     })
 
     expect(r1.current.versions).toHaveLength(1)

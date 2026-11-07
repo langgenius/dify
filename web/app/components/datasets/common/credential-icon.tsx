@@ -1,6 +1,6 @@
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type CredentialIconProps = {
   avatarUrl?: string
@@ -16,58 +16,29 @@ const ICON_BG_COLORS = [
   'bg-components-icon-bg-teal-solid',
 ]
 
-export const CredentialIcon: React.FC<CredentialIconProps> = ({
-  avatarUrl,
-  name,
-  size = 20,
-  className = '',
-}) => {
-  const [showAvatar, setShowAvatar] = useState(!!avatarUrl && avatarUrl !== 'default')
-  const firstLetter = useMemo(() => name.charAt(0).toUpperCase(), [name])
-  const bgColor = useMemo(
-    () => ICON_BG_COLORS[firstLetter.charCodeAt(0) % ICON_BG_COLORS.length],
-    [firstLetter],
-  )
-
-  const onImgLoadError = useCallback(() => {
-    setShowAvatar(false)
-  }, [])
-
-  if (avatarUrl && avatarUrl !== 'default' && showAvatar) {
-    return (
-      <div
-        aria-hidden="true"
-        className={cn(
-          'flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-divider-regular',
-          className,
-        )}
-        style={{ width: `${size}px`, height: `${size}px` }}
-      >
-        <img
-          alt=""
-          src={avatarUrl}
-          width={size}
-          height={size}
-          className="shrink-0 object-contain"
-          onError={onImgLoadError}
-        />
-      </div>
-    )
-  }
+export function CredentialIcon({ avatarUrl, name, size = 20, className }: CredentialIconProps) {
+  const initial = getAvatarInitial(name)
+  const bgColor = ICON_BG_COLORS[initial.codePointAt(0)! % ICON_BG_COLORS.length]
 
   return (
-    <div
+    <Avatar
       aria-hidden="true"
-      className={cn(
-        'flex shrink-0 items-center justify-center rounded-md border border-divider-regular',
-        bgColor,
-        className,
-      )}
-      style={{ width: `${size}px`, height: `${size}px` }}
+      className={cn('rounded-md border border-divider-regular', className)}
+      style={{ width: size, height: size }}
     >
-      <span className="bg-linear-to-b from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text text-[13px] leading-[1.2] font-semibold text-transparent opacity-90">
-        {firstLetter}
-      </span>
-    </div>
+      <AvatarFallback className={bgColor}>
+        <span className="bg-linear-to-b from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text text-[13px] leading-[1.2] font-semibold text-transparent opacity-90">
+          {initial}
+        </span>
+      </AvatarFallback>
+      <AvatarImage
+        keepMounted
+        src={avatarUrl && avatarUrl !== 'default' ? avatarUrl : undefined}
+        alt=""
+        width={size}
+        height={size}
+        className="object-contain"
+      />
+    </Avatar>
   )
 }

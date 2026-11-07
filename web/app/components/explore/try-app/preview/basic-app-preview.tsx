@@ -3,8 +3,11 @@ import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-a
 import type { FC } from 'react'
 import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Collection } from '@/app/components/tools/types'
 import type { ModelConfig } from '@/models/debug'
 import type { PromptVariable } from '@/types/app'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
+import { useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { clone } from 'es-toolkit/object'
 import * as React from 'react'
@@ -16,6 +19,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectToolCollections } from '@/app/components/tools/utils/query-select'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import {
   ANNOTATION_DEFAULT,
@@ -24,9 +28,8 @@ import {
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
-import { useAllToolProviders } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { useGetTryAppDataSets } from '@/service/use-try-app'
 import { AgentStrategy, ModelModeType, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
@@ -295,7 +298,7 @@ const normalizeExternalDataToolFormItem = (item: Record<string, unknown>) => {
 const normalizeAgentTool = (
   tool: Record<string, unknown>,
   deletedTools: TrialAppDetailResponse['deleted_tools'] | undefined,
-  collectionList: ReturnType<typeof useAllToolProviders>['data'] | undefined,
+  collectionList: Collection[] | undefined,
 ): AgentToolItem => {
   const providerId = getString(tool.provider_id)
   const providerName = getString(tool.provider_name)
@@ -327,11 +330,14 @@ const normalizeAgentTool = (
 }
 
 const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
-  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } =
-    useAllToolProviders()
+  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } = useQuery(
+    consoleQuery.workspaces.current.toolProviders.get.queryOptions({
+      input: { query: {} },
+      select: selectToolCollections,
+    }),
+  )
   const collectionList = collectionListFromServer?.map((item) => {
     return {
       ...item,
@@ -610,12 +616,12 @@ const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
             <div className="flex size-full shrink-0 flex-col sm:w-1/2">
               <Config />
             </div>
-            {!isMobile && (
+            {!isBelowSm && (
               <div
                 className="relative flex h-full w-1/2 grow flex-col overflow-y-auto"
                 style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}
               >
-                <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
+                <div className="flex grow flex-col rounded-ss-2xl border-s-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg">
                   <Debug
                     isPreview
                     onSetting={noop}

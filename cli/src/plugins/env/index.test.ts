@@ -23,6 +23,17 @@ it('rejects a token without a server with exit 2', async () => {
   await expect(new Context().get(env)).rejects.toMatchObject({ code: 'usage_invalid_flag' })
 })
 
+it('names the rename when the v1 DIFY_HOST stands in for DIFY_SERVER', async () => {
+  delete process.env.DIFY_SERVER
+  process.env.DIFY_HOST = 'https://dify.example'
+  process.env.DIFY_TOKEN = 'dfoa_x'
+  await expect(new Context().get(env)).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+    message: 'DIFY_TOKEN requires DIFY_SERVER to be set',
+    hint: 'DIFY_HOST was renamed to DIFY_SERVER; set DIFY_SERVER instead',
+  })
+})
+
 it('rejects a non-http server url', async () => {
   process.env.DIFY_SERVER = 'ftp://x'
   await expect(new Context().get(env)).rejects.toMatchObject({ code: 'usage_invalid_flag' })

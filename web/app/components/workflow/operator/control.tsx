@@ -10,8 +10,8 @@ import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 import AddBlock from './add-block'
+import { ExportImage } from './export-image'
 import { useOperator } from './hooks'
-import MoreActions from './more-actions'
 import TipPopup from './tip-popup'
 
 const pressedModeClassName =
@@ -138,7 +138,7 @@ const Control = () => {
           <span aria-hidden className="i-ri-function-add-line size-4" />
         </IconButton>
       </TipPopup>
-      <MoreActions />
+      <ExportImage />
     </div>
   )
 }

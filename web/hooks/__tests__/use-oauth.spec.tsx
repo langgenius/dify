@@ -1,8 +1,9 @@
 import { renderHook } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useOAuthCallback } from '../use-oauth'
 
+const originalUrl = window.location.href
 const originalOpener = window.opener
 const originalClose = window.close
 
@@ -18,6 +19,8 @@ describe('useOAuthCallback', () => {
   afterEach(() => {
     setOpener(originalOpener)
     window.close = originalClose
+    window.history.replaceState({}, '', originalUrl)
+    vi.restoreAllMocks()
   })
 
   it('posts a success message and closes the popup when window.opener is present and a subscription_id is in the query', () => {

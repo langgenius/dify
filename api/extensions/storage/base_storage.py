@@ -1,7 +1,7 @@
 """Abstract interface for file storage implementations."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 
 
 class BaseStorage(ABC):
@@ -48,3 +48,10 @@ class BaseStorage(ABC):
         If a storage backend doesn't support scanning, it will raise NotImplementedError.
         """
         raise NotImplementedError("This storage backend doesn't support scanning")
+
+    @staticmethod
+    def _filter_scan_keys(keys: Iterable[str], files: bool, directories: bool) -> list[str]:
+        """Filter recursive object listings; directory entries end with '/'."""
+        if not files and not directories:
+            raise ValueError("At least one of files or directories must be True")
+        return [key for key in keys if (key.endswith("/") and directories) or (not key.endswith("/") and files)]

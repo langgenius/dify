@@ -1,5 +1,4 @@
 import type { IntegrationRouteSearchParams } from '@/app/components/integrations/routes'
-import IntegrationsPage from '@/app/components/integrations'
 import { getIntegrationRouteTargetBySlug } from '@/app/components/integrations/routes'
 import { notFound, redirect } from '@/next/navigation'
 
@@ -18,7 +17,7 @@ const IntegrationsRoutePage = async ({ params, searchParams }: IntegrationsRoute
 
   if (target.type === 'not-found') notFound()
 
-  return <IntegrationsPage section={target.section} syncDocumentTitle />
+  return null
 }
 
 export default IntegrationsRoutePage

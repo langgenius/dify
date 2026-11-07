@@ -68,6 +68,8 @@ export type RequestOptions<TResponseType extends HttpResponseType = 'json'> = {
   data?: HttpRequestBody
   headers?: Headers
   responseType?: TResponseType
+  /** Body fields whose API contract accepts text beyond the generic string limit. */
+  unboundedBodyStringFields?: readonly string[]
 }
 
 export type HttpClientSettings = Required<Omit<DifyClientConfig, 'apiKey'>> & {
@@ -491,7 +493,7 @@ export class HttpClient {
     }
 
     if (isRecord(data) && !Array.isArray(data) && !isFormData(data) && !isPipeableStream(data)) {
-      validateParams(data)
+      validateParams(data, options.unboundedBodyStringFields)
     }
 
     const url = buildRequestUrl(this.settings.baseUrl, path, query)
@@ -503,19 +505,20 @@ export class HttpClient {
     let attempt = 0
     while (true) {
       const preparedBody = prepareRequestBody(method, data)
-      const requestHeaders: Headers = {
+      const requestHeaders = new globalThis.Headers({
         Authorization: `Bearer ${apiKey}`,
         ...preparedBody.headers,
-        ...headers,
+      })
+      for (const [name, value] of Object.entries(headers ?? {})) {
+        requestHeaders.set(name, value)
       }
 
       if (
         typeof process !== 'undefined' &&
         !!process.versions?.node &&
-        !requestHeaders['User-Agent'] &&
-        !requestHeaders['user-agent']
+        !requestHeaders.has('User-Agent')
       ) {
-        requestHeaders['User-Agent'] = DEFAULT_USER_AGENT
+        requestHeaders.set('User-Agent', DEFAULT_USER_AGENT)
       }
 
       const timeoutContext = createTimeoutContext(timeout * 1000)
@@ -557,7 +560,12 @@ export class HttpClient {
       } catch (error) {
         const mapped = mapTransportError(error, timeoutContext)
         const shouldRetryRequest =
-          preparedBody.replayable && shouldRetry(mapped, attempt, maxRetries)
+          preparedBody.replayable &&
+          (method === 'GET' ||
+            method === 'PUT' ||
+            method === 'DELETE' ||
+            mapped instanceof RateLimitError) &&
+          shouldRetry(mapped, attempt, maxRetries)
         if (!shouldRetryRequest) {
           throw mapped
         }

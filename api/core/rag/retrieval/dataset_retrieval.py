@@ -6,8 +6,9 @@ import threading
 import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
-from typing import Any, Union, cast
+from typing import Any, cast
 
+from dify_trace_sdk.events import DatasetRetrieved
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
 from sqlalchemy import and_, func, literal, or_, select, update
@@ -35,9 +36,6 @@ from core.entities.model_entities import ModelStatus
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_context import with_credit_usage_created_by, with_credit_usage_metadata
 from core.model_manager import ModelInstance, ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.utils import measure_time
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
@@ -80,6 +78,7 @@ from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMU
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from libs.datetime_utils import Timing, measure_time
 from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import (
@@ -95,6 +94,7 @@ from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
 from models.enums import CreatorUserRole, DatasetQuerySource
 from repositories.knowledge.dataset_read_repository import get_dataset_available_document_count
+from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 from repositories.knowledge.segment_read_adapter import sign_segment_content
 from services.feature_service import FeatureService
 from services.knowledge.external.service import ExternalDatasetService
@@ -317,9 +317,12 @@ class DatasetRetrieval:
                 dataset_ids = [i.segment.dataset_id for i in records]
                 document_ids = [i.segment.document_id for i in records]
                 datasets = retrieval_session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
-                documents = retrieval_session.scalars(
-                    select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
-                ).all()
+                documents = get_retrieval_source_documents(
+                    tenant_id=request.tenant_id,
+                    dataset_ids=available_datasets_ids,
+                    document_ids=document_ids,
+                    session=retrieval_session,
+                )
 
                 dataset_map = {i.id: i for i in datasets}
                 document_map = {i.id: i for i in documents}
@@ -466,10 +469,7 @@ class DatasetRetrieval:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = self._get_available_datasets(tenant_id, dataset_ids)
 
-        if inputs:
-            inputs = {key: str(value) for key, value in inputs.items()}
-        else:
-            inputs = {}
+        inputs = {key: str(value) for key, value in inputs.items()} if inputs else {}
         available_datasets_ids = [dataset.id for dataset in available_datasets]
         metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
             session,
@@ -537,6 +537,7 @@ class DatasetRetrieval:
                 retriever_from=invoke_from.to_source(),
                 score=item.metadata.get("score"),
                 content=item.page_content,
+                doc_metadata=item.metadata,
             )
             retrieval_resource_list.append(source)
         # deal with dify documents
@@ -562,10 +563,7 @@ class DatasetRetrieval:
                         segment_content = sign_segment_content(segment, session=session)
 
                     # If summary exists, prepend it to the content
-                    if record.summary:
-                        final_content = f"{record.summary}\n{segment_content}"
-                    else:
-                        final_content = segment_content
+                    final_content = f"{record.summary}\n{segment_content}" if record.summary else segment_content
 
                     document_context_list.append(
                         DocumentContext(
@@ -597,8 +595,8 @@ class DatasetRetrieval:
                     document_ids = [record.segment.document_id for record in authorized_records]
                     dataset_document_stmt = select(DatasetDocument).where(
                         DatasetDocument.id.in_(document_ids),
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
                     )
                     documents = session.execute(dataset_document_stmt).scalars().all()  # type: ignore
                     dataset_stmt = select(Dataset).where(
@@ -951,7 +949,7 @@ class DatasetRetrieval:
         flask_app: Flask,
         documents: list[Document],
         message_id: str | None = None,
-        timer: dict[str, Any] | None = None,
+        timer: Timing | None = None,
     ):
         """Handle retrieval end."""
         with flask_app.app_context():
@@ -1064,17 +1062,29 @@ class DatasetRetrieval:
 
             self._send_trace_task(message_id, documents, timer)
 
-    def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: dict[str, Any] | None):
-        """Send trace task if trace manager is available."""
-        trace_manager: TraceQueueManager | None = (
-            self.application_generate_entity.trace_manager if self.application_generate_entity else None
-        )
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.DATASET_RETRIEVAL_TRACE, message_id=message_id, documents=documents, timer=timer
-                )
+    def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: Timing | None):
+        trace_scope = self.application_generate_entity.trace_scope if self.application_generate_entity else None
+        if trace_scope is None or timer is None:
+            return
+        trace_scope.emit(
+            DatasetRetrieved(
+                message_id=message_id,
+                # Embeddings only bloat traces.
+                documents=[
+                    document.model_dump(
+                        mode="json",
+                        exclude={
+                            "vector": True,
+                            "children": {"__all__": {"vector"}},
+                            "attachments": {"__all__": {"vector"}},
+                        },
+                    )
+                    for document in documents
+                ],
+                started_at=timer.started_at,
+                ended_at=timer.ended_at,
             )
+        )
 
     @staticmethod
     def _resolve_creator_user_role(user_from: str) -> CreatorUserRole | None:
@@ -1209,12 +1219,16 @@ class DatasetRetrieval:
                         all_documents.extend(documents)
                 else:
                     if top_k > 0:
+                        # top_k=0 is a legal explicit value (the SINGLE-retrieval
+                        # tool path reads the stored top_k as-is); only a missing
+                        # entry falls back to the default.
+                        dataset_top_k = retrieval_model.get("top_k")
                         # retrieval source
                         documents = RetrievalService.retrieve(
                             retrieval_method=retrieval_model["search_method"],
                             dataset_id=dataset.id,
                             query=query,
-                            top_k=retrieval_model.get("top_k") or 4,
+                            top_k=dataset_top_k if dataset_top_k is not None else 4,
                             score_threshold=retrieval_model.get("score_threshold", 0.0)
                             if retrieval_model["score_threshold_enabled"]
                             else 0.0,
@@ -1399,7 +1413,9 @@ class DatasetRetrieval:
             tool = DatasetMultiRetrieverTool.from_dataset(
                 dataset_ids=[dataset.id for dataset in available_datasets],
                 tenant_id=tenant_id,
-                top_k=retrieve_config.top_k or 4,
+                # top_k=0 is a legal explicit value (the non-tool MULTIPLE path
+                # honors it); only None falls back to the default.
+                top_k=retrieve_config.top_k if retrieve_config.top_k is not None else 4,
                 score_threshold=retrieve_config.score_threshold,
                 hit_callbacks=[hit_callback],
                 return_resource=return_resource,
@@ -1485,7 +1501,7 @@ class DatasetRetrieval:
             similarity = cosine_similarity(query_tfidf, document_tfidf)
             similarities.append(similarity)
 
-        for document, score in zip(documents, similarities):
+        for document, score in zip(documents, similarities, strict=False):
             # format document
             if document.metadata is not None:
                 document.metadata["score"] = score
@@ -1523,8 +1539,8 @@ class DatasetRetrieval:
         document_query = select(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
-            DatasetDocument.enabled == True,
-            DatasetDocument.archived == False,
+            DatasetDocument.enabled.is_(True),
+            DatasetDocument.archived.is_(False),
         )
         filters = []  # type: ignore
         metadata_condition = None
@@ -1643,7 +1659,7 @@ class DatasetRetrieval:
         try:
             # handle invoke result
             invoke_result = cast(
-                Generator[LLMResult, None, None],
+                Generator[LLMResult],
                 model_instance.invoke_llm(
                     prompt_messages=prompt_messages,
                     model_parameters=model_config.parameters,
@@ -1692,7 +1708,12 @@ class DatasetRetrieval:
 
             case "not contains":
                 escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.notlike(f"%{escaped_value}%", escape="\\"))
+                filters.append(
+                    or_(
+                        json_field.is_(None),
+                        json_field.notlike(f"%{escaped_value}%", escape="\\"),
+                    )
+                )
 
             case "start with":
                 escaped_value = escape_like_pattern(str(value))
@@ -1712,9 +1733,11 @@ class DatasetRetrieval:
             case "is not" | "≠":
                 match value:
                     case str():
-                        filters.append(json_field != value)
+                        filters.append(or_(json_field.is_(None), json_field != value))
                     case int() | float():
-                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                        filters.append(
+                            or_(json_field.is_(None), DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                        )
 
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
@@ -1745,9 +1768,10 @@ class DatasetRetrieval:
                 if not value_list:
                     # `field in []` is False, `field not in []` is True
                     filters.append(literal(condition == "not in"))
+                elif condition == "in":
+                    filters.append(json_field.in_(value_list))
                 else:
-                    op = json_field.in_ if condition == "in" else json_field.notin_
-                    filters.append(op(value_list))
+                    filters.append(or_(json_field.is_(None), json_field.notin_(value_list)))
             case _:
                 pass
 
@@ -1824,7 +1848,7 @@ class DatasetRetrieval:
         model_mode = ModelMode(mode)
         input_text = query
 
-        prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
+        prompt_template: CompletionModelPromptTemplate | list[ChatModelMessage]
         if model_mode == ModelMode.CHAT:
             prompt_template = []
             system_prompt_messages = ChatModelMessage(role=PromptMessageRole.SYSTEM, text=METADATA_FILTER_SYSTEM_PROMPT)
@@ -2077,8 +2101,8 @@ class DatasetRetrieval:
                 select(DocumentModel.dataset_id, func.count(DocumentModel.id).label("available_document_count"))
                 .where(
                     DocumentModel.indexing_status == "completed",
-                    DocumentModel.enabled == True,
-                    DocumentModel.archived == False,
+                    DocumentModel.enabled.is_(True),
+                    DocumentModel.archived.is_(False),
                     DocumentModel.dataset_id.in_(dataset_ids),
                 )
                 .group_by(DocumentModel.dataset_id)

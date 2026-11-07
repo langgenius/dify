@@ -35,7 +35,7 @@ def _app_model_config(**values: object) -> AppModelConfig:
     return config
 
 
-def test_model_and_prompt_come_from_soul():
+def test_model_and_prompt_come_from_soul() -> None:
     d = AgentAppConfigManager._synthesize_config_dict(_soul(), None, annotation_reply=None)
     assert d["model"] == {
         "provider": "langgenius/openai/openai",
@@ -50,7 +50,7 @@ def test_model_and_prompt_come_from_soul():
     ]
 
 
-def test_feature_flags_come_from_app_model_config_when_present():
+def test_feature_flags_come_from_app_model_config_when_present() -> None:
     # Q3: opener/follow-up/etc. live on app_model_config; model/prompt stay from Soul.
     app_model_config = _app_model_config(
         opening_statement="Hi, I'm Iris.",
@@ -71,7 +71,7 @@ def test_feature_flags_come_from_app_model_config_when_present():
     assert d["pre_prompt"] == "You are Iris."
 
 
-def test_missing_soul_model_leaves_no_model_key():
+def test_missing_soul_model_leaves_no_model_key() -> None:
     d = AgentAppConfigManager._synthesize_config_dict(AgentSoulConfig(), None, annotation_reply=None)
     assert "model" not in d
     assert d["pre_prompt"] == ""
@@ -85,7 +85,7 @@ def test_missing_soul_model_leaves_no_model_key():
     }
 
 
-def test_soul_file_upload_overrides_legacy_app_model_config():
+def test_soul_file_upload_overrides_legacy_app_model_config() -> None:
     app_model_config = _app_model_config(
         file_upload={
             "enabled": False,
@@ -109,14 +109,14 @@ def test_soul_file_upload_overrides_legacy_app_model_config():
     }
 
 
-def test_prompt_type_defaults_to_simple():
+def test_prompt_type_defaults_to_simple() -> None:
     # PromptTemplateConfigManager.convert requires prompt_type; an Agent App with
     # no legacy app_model_config must still get the "simple" slot synthesized.
     d = AgentAppConfigManager._synthesize_config_dict(_soul(), None, annotation_reply=None)
     assert d["prompt_type"] == "simple"
 
 
-def test_get_app_config_has_null_model_config_id_without_legacy_row():
+def test_get_app_config_has_null_model_config_id_without_legacy_row() -> None:
     # An Agent App has no app_model_config row; the conversation's
     # app_model_config_id (a UUID column) must be NULL, not "".
     app_model = App(

@@ -91,7 +91,8 @@ const WorkflowVariableBlockComponent = ({
         (payload: UpdateWorkflowNodesMapPayload) => {
           setLocalWorkflowNodesMap(payload.workflowNodesMap)
           setLocalAvailableVariables(payload.availableVariables)
-          return true
+          // Every rendered variable block must receive this broadcast update.
+          return false
         },
         COMMAND_PRIORITY_EDITOR,
       ),
@@ -100,15 +101,16 @@ const WorkflowVariableBlockComponent = ({
 
   const handleVariableJump = useCallback(() => {
     const workflowContainer = document.getElementById('workflow-container')
-    const { clientWidth, clientHeight } = workflowContainer!
+    if (!workflowContainer || !node?.position) return
+    const { clientWidth, clientHeight } = workflowContainer
 
     const { setViewport } = reactflow
     const { transform } = store.getState()
     const zoom = transform[2]
-    const position = node!.position
+    const position = node.position
     setViewport({
-      x: (clientWidth - 400 - node!.width! * zoom) / 2 - position!.x * zoom,
-      y: (clientHeight - node!.height! * zoom) / 2 - position!.y * zoom,
+      x: (clientWidth - 400 - (node.width ?? 0) * zoom) / 2 - position.x * zoom,
+      y: (clientHeight - (node.height ?? 0) * zoom) / 2 - position.y * zoom,
       zoom: transform[2],
     })
   }, [node, reactflow, store])

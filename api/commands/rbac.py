@@ -24,11 +24,11 @@ from models import (
     TenantAccountJoin,
     TenantAccountRole,
 )
-from services.enterprise.rbac_service import (
-    LegacyAgentRoleMigration,
+from services.enterprise.rbac_service import RBACService
+from services.rbac.contracts import (
+    AgentRoleMigration,
     ListOption,
     RBACResourceType,
-    RBACService,
     ReplaceMemberBindings,
     ReplaceUserAccessPolicies,
 )
@@ -148,7 +148,7 @@ class _AgentAccessBootstrapReason(StrEnum):
 
 def _agent_manage_role_event(
     tenant_id: str | None,
-    entry: LegacyAgentRoleMigration,
+    entry: AgentRoleMigration,
     *,
     apply: bool,
     kind: _AgentMigrationEventKind,
@@ -239,33 +239,14 @@ def _replace_member_role(
     operator_account_id: str,
     member_account_id: str,
     role_id: str,
-    *,
-    session: Session,
 ) -> str:
     RBACService.MemberRoles.replace(
         tenant_id=tenant_id,
         account_id=operator_account_id,
         member_account_id=member_account_id,
         role_ids=[role_id],
-        session=session,
     )
     return member_account_id
-
-
-def _replace_member_role_with_new_session(
-    tenant_id: str,
-    operator_account_id: str,
-    member_account_id: str,
-    role_id: str,
-) -> str:
-    with session_factory.create_session() as session:
-        return _replace_member_role(
-            tenant_id=tenant_id,
-            operator_account_id=operator_account_id,
-            member_account_id=member_account_id,
-            role_id=role_id,
-            session=session,
-        )
 
 
 @click.command(
@@ -342,21 +323,14 @@ def migrate_member_roles_to_rbac(
 
         if replace_jobs:
             if workers == 1:
-                with session_factory.create_session() as session:
-                    for member_account_id, resolved_role_id in replace_jobs:
-                        _replace_member_role(
-                            workspace_id,
-                            owner_account_id,
-                            member_account_id,
-                            resolved_role_id,
-                            session=session,
-                        )
-                        migrated_count += 1
+                for member_account_id, resolved_role_id in replace_jobs:
+                    _replace_member_role(workspace_id, owner_account_id, member_account_id, resolved_role_id)
+                    migrated_count += 1
             else:
                 with ThreadPoolExecutor(max_workers=workers) as executor:
                     futures = [
                         executor.submit(
-                            _replace_member_role_with_new_session,
+                            _replace_member_role,
                             workspace_id,
                             owner_account_id,
                             member_account_id,
@@ -461,6 +435,36 @@ def _workspace_member_account_id_batches(tenant_id: str, batch_size: int) -> Ite
 
         yield [str(row.account_id) for row in rows]
         last_join_id = str(rows[-1].id)
+
+
+def _workspace_non_admin_account_id_batches(
+    tenant_id: str,
+    operator_account_id: str,
+    batch_size: int,
+) -> Iterator[list[str]]:
+    """Yield workspace members except accounts bound to RBAC's builtin Owner/Admin roles.
+
+    Resource administrators receive access implicitly through RBAC and their
+    resource access-policy bindings are locked. Resolve their current RBAC
+    bindings in batches instead of relying on the legacy workspace role column.
+    """
+    for batch in _workspace_member_account_id_batches(tenant_id, batch_size):
+        member_roles = RBACService.MemberRoles.batch_get(
+            tenant_id=tenant_id,
+            account_id=operator_account_id,
+            member_account_ids=batch,
+        )
+        protected_account_ids = {
+            member.account_id
+            for member in member_roles
+            if any(
+                role.is_builtin and role.category == "global_system_default" and role.role_tag in {"owner", "admin"}
+                for role in member.roles
+            )
+        }
+        writable_batch = [account_id for account_id in batch if account_id not in protected_account_ids]
+        if writable_batch:
+            yield writable_batch
 
 
 def _replace_resource_whitelist(
@@ -725,7 +729,7 @@ def migrate_resource_whitelist_scopes_to_automatic_include(
         migrated_count += 1
 
         if scope is RBACResourceWhitelistScope.ALL:
-            for batch in _workspace_member_account_id_batches(workspace_id, member_batch_size):
+            for batch in _workspace_non_admin_account_id_batches(workspace_id, operator_account_id, member_batch_size):
                 _replace_resource_default_access_policies(
                     current_resource_type,
                     tenant_id=workspace_id,
@@ -877,7 +881,7 @@ def migrate_only_me_resource_whitelist_scopes_to_automatic_include(
         )
         migrated_count += 1
 
-        for batch in _workspace_member_account_id_batches(workspace_id, member_batch_size):
+        for batch in _workspace_non_admin_account_id_batches(workspace_id, operator_account_id, member_batch_size):
             _replace_resource_default_access_policies(
                 current_resource_type,
                 tenant_id=workspace_id,
@@ -1187,7 +1191,11 @@ def _report_backing_app_specific_whitelist(options: _AgentAccessBootstrapOptions
 
 
 def _write_agent_access_rows(options: _AgentAccessBootstrapOptions) -> None:
-    for batch in _workspace_member_account_id_batches(options.tenant_id, options.member_batch_size):
+    for batch in _workspace_non_admin_account_id_batches(
+        options.tenant_id,
+        options.operator_account_id,
+        options.member_batch_size,
+    ):
         RBACService.AgentAccess.replace_user_access_policies(
             tenant_id=options.tenant_id,
             account_id=options.operator_account_id,

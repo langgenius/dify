@@ -13,7 +13,7 @@ import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,6 +38,7 @@ from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
+from libs.url_utils import github_blob_to_raw_url
 from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
@@ -69,6 +70,8 @@ class RagPipelineImportInfo(BaseModel):
     imported_dsl_version: str = ""
     error: str = ""
     dataset_id: str | None = None
+    # Internal creation outcome for post-commit authorization; never part of the DSL response.
+    dataset_created: bool = Field(default=False, exclude=True)
 
 
 class RagPipelinePendingData(PendingImportOwner):
@@ -111,8 +114,8 @@ class RagPipelineDslService:
         # Validate import mode
         try:
             mode = ImportMode(import_mode)
-        except ValueError:
-            raise ValueError(f"Invalid import_mode: {import_mode}")
+        except ValueError as caught_error:
+            raise ValueError(f"Invalid import_mode: {import_mode}") from caught_error
 
         # Get YAML content
         content: str = ""
@@ -125,13 +128,8 @@ class RagPipelineDslService:
                 )
             try:
                 parsed_url = urlparse(yaml_url)
-                if (
-                    parsed_url.scheme == "https"
-                    and parsed_url.netloc == "github.com"
-                    and parsed_url.path.endswith((".yml", ".yaml"))
-                ):
-                    yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
-                    yaml_url = yaml_url.replace("/blob/", "/")
+                if parsed_url.path.endswith((".yml", ".yaml")):
+                    yaml_url = github_blob_to_raw_url(yaml_url)
                 response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
                 raw_content = response.content
@@ -275,6 +273,7 @@ class RagPipelineDslService:
             graph = workflow.get("graph", {})
             nodes = graph.get("nodes", [])
             dataset_id = None
+            dataset_created = False
             for node in nodes:
                 if node.get("data", {}).get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
                     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
@@ -285,13 +284,14 @@ class RagPipelineDslService:
                     ):
                         raise ValueError("Chunk structure is not compatible with the published pipeline")
                     if not dataset:
+                        dataset_created = True
                         datasets = self._session.scalars(
                             select(Dataset).where(Dataset.tenant_id == account.current_tenant_id)
                         ).all()
                         names = [dataset.name for dataset in datasets]
                         generate_name = generate_incremental_name(names, name)
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=generate_name,
                             description=description,
                             icon_info={
@@ -350,6 +350,7 @@ class RagPipelineDslService:
                 status=status,
                 pipeline_id=pipeline.id,
                 dataset_id=dataset_id,
+                dataset_created=dataset_created,
                 imported_dsl_version=imported_version,
             )
 
@@ -428,12 +429,14 @@ class RagPipelineDslService:
             graph = workflow.get("graph", {})
             nodes = graph.get("nodes", [])
             dataset_id = None
+            dataset_created = False
             for node in nodes:
                 if node.get("data", {}).get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
                     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
                     if not dataset:
+                        dataset_created = True
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=name,
                             description=description,
                             icon_info={
@@ -500,6 +503,7 @@ class RagPipelineDslService:
                 status=ImportStatus.COMPLETED,
                 pipeline_id=pipeline.id,
                 dataset_id=dataset_id,
+                dataset_created=dataset_created,
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),
             )
@@ -626,14 +630,14 @@ class RagPipelineDslService:
             workflow = Workflow(
                 tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
-                features="{}",
+                _features="{}",
                 type=WorkflowType.RAG_PIPELINE,
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
-                environment_variables=environment_variables,
-                conversation_variables=conversation_variables,
-                rag_pipeline_variables=rag_pipeline_variables_list,
+                _environment_variables=environment_variables,
+                _conversation_variables=conversation_variables,
+                _rag_pipeline_variables=rag_pipeline_variables_list,
             )
             self._session.add(workflow)
             self._session.flush()

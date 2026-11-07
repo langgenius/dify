@@ -1,15 +1,11 @@
-import type { Member } from '@/models/common'
-import { screen, within } from '@testing-library/react'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberRow from '../member-row'
 
-vi.mock('@/hooks/use-format-time-from-now')
-vi.mock('@/service/access-control/use-member-roles')
-
-const member: Member = {
+const member: AccountWithRoleResponse = {
   id: 'member-1',
   name: 'Member User',
   email: 'member@example.com',
@@ -17,96 +13,86 @@ const member: Member = {
   avatar_url: '',
   role: 'normal',
   roles: [],
-  last_active_at: '1731000000',
-  last_login_at: '1731000000',
-  created_at: '1731000000',
+  last_active_at: 1731000000,
+  last_login_at: 1731000000,
+  created_at: 1731000000,
   status: 'active',
 }
 
-const renderMemberRow = (onOpenDetails = vi.fn()) => {
+const renderMemberRow = (onRemove = vi.fn()) => {
   renderWithConsoleQuery(
-    <table>
-      <tbody>
-        <MemberRow
-          member={member}
-          roles={[{ id: 'role-1', name: 'Editor' }]}
-          isCurrentUser={false}
-          canManage
-          canTransferOwnership={false}
-          allowMultipleRoles={false}
-          onOpenDetails={onOpenDetails}
-          onTransferOwnership={vi.fn()}
-        />
-      </tbody>
-    </table>,
+    <Dialog<AccountWithRoleResponse>>
+      {({ payload }) => (
+        <>
+          <table>
+            <tbody>
+              <MemberRow
+                onRemove={onRemove}
+                member={member}
+                roles={[{ id: 'role-1', name: 'Editor' }]}
+                isCurrentUser={false}
+                canManage
+                canTransferOwnership={false}
+                allowMultipleRoles={false}
+              />
+            </tbody>
+          </table>
+          <DialogContent>
+            <DialogTitle>{payload?.name}</DialogTitle>
+            <DialogClose>Close details</DialogClose>
+          </DialogContent>
+        </>
+      )}
+    </Dialog>,
   )
-  return onOpenDetails
 }
 
 describe('MemberRow details entry points', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(useFormatTimeFromNow).mockReturnValue({
-      formatTimeFromNow: () => 'just now',
-    })
-    vi.mocked(useUpdateRolesOfMember).mockReturnValue({
-      mutateAsync: vi.fn(),
-    } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
-  })
-
-  it.each([
-    ['email', 'member@example.com'],
-    ['last activity', 'just now'],
-    ['role', 'Editor'],
-    ['avatar', 'M'],
-  ])('should open details once when clicking the %s', async (_region, text) => {
+  it.each(['name button', 'email'])('opens the member details from the %s', async (target) => {
     const user = userEvent.setup()
-    const onOpenDetails = renderMemberRow()
-
-    await user.click(within(screen.getByRole('row')).getByText(text))
-
-    expect(onOpenDetails).toHaveBeenCalledExactlyOnceWith(member)
-  })
-
-  it.each(['pointer', 'Enter', 'Space'])(
-    'should open details once from the name button with %s',
-    async (interaction) => {
-      const user = userEvent.setup()
-      const onOpenDetails = renderMemberRow()
-      const nameButton = screen.getByRole('button', { name: 'Member User' })
-
-      if (interaction === 'pointer') {
-        await user.click(nameButton)
-      } else {
-        nameButton.focus()
-        await user.keyboard(interaction === 'Enter' ? '{Enter}' : ' ')
-      }
-
-      expect(onOpenDetails).toHaveBeenCalledExactlyOnceWith(member)
-    },
-  )
-
-  it('should keep member menu and its portaled confirmation separate from details', async () => {
-    const user = userEvent.setup()
-    const onOpenDetails = renderMemberRow()
-
+    renderMemberRow()
+    const trigger = screen.getByRole('button', { name: 'Member User' })
     await user.click(
-      screen.getByRole('button', { name: /workspaceMembers\.members\.memberActions/ }),
+      target === 'name button'
+        ? trigger
+        : within(screen.getByRole('row')).getByText('member@example.com'),
     )
-    expect(screen.getByRole('menu')).toBeInTheDocument()
-    expect(onOpenDetails).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: member.name })).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    await user.click(screen.getByRole('button', { name: 'Close details' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
 
+  it('keeps details and member actions as separate keyboard stops', async () => {
+    const user = userEvent.setup()
+    renderMemberRow()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Member User' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('dialog', { name: member.name })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Member User' })).toHaveFocus())
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'workspaceMembers.members.memberActions: Member User' }),
+    ).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('requests removal without opening member details', async () => {
+    const user = userEvent.setup()
+    const onRemove = vi.fn()
+    renderMemberRow(onRemove)
+    const trigger = screen.getByRole('button', { name: /workspaceMembers\.members\.memberActions/ })
+    await user.click(trigger)
     await user.click(
       screen.getByRole('menuitem', { name: 'workspaceMembers.members.removeFromTeam' }),
     )
-    const confirmation = screen.getByRole('alertdialog')
-    expect(onOpenDetails).not.toHaveBeenCalled()
-
-    await user.click(
-      within(confirmation).getByText('workspaceMembers.members.removeFromTeamConfirmDescription'),
-    )
-    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.cancel' }))
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(onOpenDetails).not.toHaveBeenCalled()
+    expect(onRemove).toHaveBeenCalledExactlyOnceWith(screen.getByRole('row'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

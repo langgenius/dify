@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "Məcburilik tələbi yalnız modelin nəticə çıxarması üçün istinad kimi istifadə olunur və çıxış parametrlərinin məcburi yoxlanılmasını təmin etmir.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "Növ",
   "nodes.parameterExtractor.advancedSetting": "Əlavə parametr",
-  "nodes.parameterExtractor.extractParametersNotSet": "Çıxarılacaq parametrlər təyin edilməyib",
+  "nodes.parameterExtractor.extractParametersNotSet": "Heç bir çıxarma parametri konfiqurasiya edilməyib",
   "nodes.parameterExtractor.importFromTool": "Alətlərdən idxal et",
   "nodes.parameterExtractor.instruction": "Təlimat",
   "nodes.parameterExtractor.instructionTip": "Parametr çıxarıcısının parametrləri necə çıxaracağını anlamasına kömək etmək üçün əlavə təlimatlar daxil edin.",

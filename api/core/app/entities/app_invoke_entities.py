@@ -1,7 +1,8 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
+from dify_trace_sdk.emitter import TraceScope
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from constants import UUID_NIL
@@ -19,10 +20,7 @@ from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
-
-if TYPE_CHECKING:
-    from core.ops.ops_trace_manager import TraceQueueManager
-
+from repositories.entities.workflow_execution import WorkflowExecutionTiming
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
 
@@ -61,8 +59,9 @@ class InvokeFrom(StrEnum):
         """Whether a run from this entry point is attributed to a workspace
         Account rather than an end user. Console contexts (debugger/explore)
         run as the signed-in Account; webapp/service-api/trigger run as an
-        EndUser. Single source of truth for the created-by-role / user-type
-        split shared by the app runners and MCP identity forwarding."""
+        EndUser by default. Explicit caller identity takes precedence: scheduled
+        workflows can use SERVICE_API with an Account. This inference is shared
+        by app runners without caller metadata and MCP identity forwarding."""
         return self in (InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE)
 
 
@@ -103,6 +102,7 @@ class DifyRunContext(BaseModel):
     app_type: CreditUsageAppType | None = None
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
+    workflow_tool_invocation_id: str | None = None
 
     @field_validator("created_by", mode="before")
     @classmethod
@@ -201,8 +201,8 @@ class AppGenerateEntity(BaseModel):
     # extra parameters, like: auto_generate_conversation_name
     extras: dict[str, Any] = Field(default_factory=dict)
 
-    # tracing instance
-    trace_manager: "TraceQueueManager | None" = Field(default=None, exclude=True, repr=False)
+    # Process-local: a resumed execution creates its scope again.
+    trace_scope: TraceScope | None = Field(default=None, exclude=True, repr=False)
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -307,6 +307,9 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
     workflow_run_id: str | None = None
+    workflow_execution_timing: WorkflowExecutionTiming = Field(
+        default_factory=WorkflowExecutionTiming, exclude=True, repr=False
+    )
     query: str
 
     class SingleIterationRunEntity(BaseModel):
@@ -337,7 +340,14 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
 
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
+    # Every new execution supplies its actual role. Legacy snapshots are normalized when loaded.
+    user_from: UserFrom
     workflow_execution_id: str
+    workflow_execution_timing: WorkflowExecutionTiming = Field(
+        default_factory=WorkflowExecutionTiming, exclude=True, repr=False
+    )
+    # Legacy synchronous Tool callers cannot resume a paused execution.
+    allow_human_input: bool = True
 
     class SingleIterationRunEntity(BaseModel):
         """
@@ -374,16 +384,3 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     document_id: str | None = None
     original_document_id: str | None = None
     start_node_id: str | None = None
-
-
-from core.ops.ops_trace_manager import TraceQueueManager
-
-AppGenerateEntity.model_rebuild()
-EasyUIBasedAppGenerateEntity.model_rebuild()
-ConversationAppGenerateEntity.model_rebuild()
-ChatAppGenerateEntity.model_rebuild()
-CompletionAppGenerateEntity.model_rebuild()
-AgentChatAppGenerateEntity.model_rebuild()
-AdvancedChatAppGenerateEntity.model_rebuild()
-WorkflowAppGenerateEntity.model_rebuild()
-RagPipelineGenerateEntity.model_rebuild()

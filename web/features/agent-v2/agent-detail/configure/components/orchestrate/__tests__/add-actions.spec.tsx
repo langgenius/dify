@@ -16,7 +16,15 @@ function RegisteredActionProbe({ onRegister }: { onRegister: () => void }) {
 function ActionsProbe() {
   const actions = useAgentOrchestrateAddActions()
 
-  return <div>{actions.skills ? 'registered' : 'empty'}</div>
+  return (
+    <button
+      type="button"
+      disabled={!actions.skills}
+      onClick={() => actions.skills?.({ skillSource: 'upload' })}
+    >
+      add skill
+    </button>
+  )
 }
 
 function ToggleRegisteredActionProbe({ onRegister }: { onRegister: () => void }) {
@@ -34,19 +42,8 @@ function ToggleRegisteredActionProbe({ onRegister }: { onRegister: () => void })
 }
 
 describe('AgentOrchestrateAddActionsProvider', () => {
-  it('registers add actions for editable drafts', () => {
-    const action = vi.fn()
-
-    render(
-      <AgentOrchestrateAddActionsProvider>
-        <RegisteredActionProbe onRegister={action} />
-      </AgentOrchestrateAddActionsProvider>,
-    )
-
-    expect(screen.getByText('registered')).toBeInTheDocument()
-  })
-
-  it('does not expose add actions while viewing a version', () => {
+  it('does not expose add actions while viewing a version', async () => {
+    const user = userEvent.setup()
     const action = vi.fn()
 
     render(
@@ -57,7 +54,9 @@ describe('AgentOrchestrateAddActionsProvider', () => {
       </AgentOrchestrateViewingVersionContext>,
     )
 
-    expect(screen.getByText('empty')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'add skill' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'add skill' }))
+    expect(action).not.toHaveBeenCalled()
   })
 
   it('unregisters add actions when the owning section unmounts', async () => {
@@ -70,12 +69,15 @@ describe('AgentOrchestrateAddActionsProvider', () => {
       </AgentOrchestrateAddActionsProvider>,
     )
 
-    expect(screen.getByText('registered')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'add skill' }))
+    expect(action).toHaveBeenCalledExactlyOnceWith({ skillSource: 'upload' })
 
     await user.click(screen.getByRole('button', { name: 'remove action' }))
 
     await waitFor(() => {
-      expect(screen.getByText('empty')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'add skill' })).toBeDisabled()
     })
+    await user.click(screen.getByRole('button', { name: 'add skill' }))
+    expect(action).toHaveBeenCalledOnce()
   })
 })

@@ -1,7 +1,7 @@
 'use client'
 
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { ComponentProps } from 'react'
+import type { ReactNode } from 'react'
 import type { AccessPointStatus } from '@/app/components/base/access-point/status'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -10,12 +10,11 @@ import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
-import { ApiSecretKeyButton } from './api-secret-key-button'
 import { useAccessPointStatusLabel } from './use-access-point-status-label'
 import { getAppApiReferencePath } from './utils'
 
 type ServiceApiCardViewProps = {
-  apiKeyButtonProps: ComponentProps<typeof ApiSecretKeyButton>
+  apiKeyAction: ReactNode
   apiUrl: string
   appMode?: AppDetailWithSite['mode']
   available: boolean
@@ -27,7 +26,7 @@ type ServiceApiCardViewProps = {
 }
 
 export function ServiceApiCardView({
-  apiKeyButtonProps,
+  apiKeyAction,
   apiUrl,
   appMode,
   available,
@@ -59,7 +58,7 @@ export function ServiceApiCardView({
       switchLoading={switchLoading}
       actions={
         <>
-          <ApiSecretKeyButton {...apiKeyButtonProps} />
+          {apiKeyAction}
           {available && apiReferenceUrl ? (
             <Link
               href={apiReferenceUrl}

@@ -196,22 +196,23 @@ def build_account_services(
         sessions=RedisAccountSessionGateway(redis=redis),
         now=naive_utc_now,
     )
+    activation = AccountActivationService(
+        tokens=invitation_tokens,
+        accounts=activation_accounts,
+        workspace_policy=DeploymentWorkspaceInvitePolicy(),
+        eligibility=BillingAccountActivationEligibility(
+            enabled=deployment_edition == DeploymentEdition.CLOUD,
+        ),
+        membership_cache=BillingWorkspaceMembershipCache(
+            enabled=deployment_edition == DeploymentEdition.CLOUD,
+        ),
+        member_access_sync=RBACWorkspaceMemberAccessSync(
+            enabled=dify_config.RBAC_ENABLED,
+        ),
+    )
     return AccountServices(
         lifecycle=lifecycle,
-        activation=AccountActivationService(
-            tokens=invitation_tokens,
-            accounts=activation_accounts,
-            workspace_policy=DeploymentWorkspaceInvitePolicy(),
-            eligibility=BillingAccountActivationEligibility(
-                enabled=deployment_edition == DeploymentEdition.CLOUD,
-            ),
-            membership_cache=BillingWorkspaceMembershipCache(
-                enabled=deployment_edition == DeploymentEdition.CLOUD,
-            ),
-            member_access_sync=RBACWorkspaceMemberAccessSync(
-                enabled=dify_config.RBAC_ENABLED,
-            ),
-        ),
+        activation=activation,
         identity=AccountIdentityGateway(accounts=accounts, redis=redis),
         access=AccountAccessService(
             accounts=accounts,
@@ -226,6 +227,7 @@ def build_account_services(
             invitations=AccountActivationConsoleAuthInvitationGateway(
                 tokens=invitation_tokens,
                 accounts=activation_accounts,
+                activation=activation,
             ),
             policies=DeploymentConsoleAuthPolicyGateway(
                 billing_enabled=deployment_edition == DeploymentEdition.CLOUD,

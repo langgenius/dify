@@ -1,4 +1,4 @@
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import PoweredByBrand from './powered-by-brand'
 
@@ -49,9 +49,9 @@ const WorkflowPreviewCard = ({
           <div className="h-16 w-full rounded-lg bg-components-input-bg-normal"></div>
         </div>
         <div className="flex items-center justify-between px-4 py-3">
-          <Button size="small">
+          <div aria-hidden="true" className={buttonVariants({ size: 'small' })}>
             <div className="h-2 w-10 rounded-xs bg-text-quaternary opacity-20"></div>
-          </Button>
+          </div>
           <Button variant="primary" size="small" disabled>
             <span className="i-ri-play-large-line size-4" />
             <span>Execute</span>

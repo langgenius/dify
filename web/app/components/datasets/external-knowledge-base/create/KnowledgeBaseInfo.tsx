@@ -26,7 +26,7 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
             id={nameInputId}
             value={name}
             onValueChange={(nextValue) => onChange({ name: nextValue })}
-            placeholder={t(($) => $.externalKnowledgeNamePlaceholder, { ns: 'dataset' }) ?? ''}
+            placeholder={t(($) => $.externalKnowledgeNamePlaceholder, { ns: 'dataset' })}
           />
         </div>
         <div className="flex flex-col gap-1 self-stretch">
@@ -40,9 +40,7 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
               id={descriptionInputId}
               value={description}
               onChange={(e) => onChange({ description: e.target.value })}
-              placeholder={
-                t(($) => $.externalKnowledgeDescriptionPlaceholder, { ns: 'dataset' }) ?? ''
-              }
+              placeholder={t(($) => $.externalKnowledgeDescriptionPlaceholder, { ns: 'dataset' })}
               className={`flex h-20 items-start self-stretch rounded-lg bg-components-input-bg-normal p-3 py-2 ${description ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder'} system-sm-regular`}
             />
           </div>
