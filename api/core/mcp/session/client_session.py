@@ -8,6 +8,7 @@ from configs import dify_config
 from core.mcp import types
 from core.mcp.entities import SUPPORTED_PROTOCOL_VERSIONS, RequestContext
 from core.mcp.session.base_session import BaseSession, RequestResponder
+from extensions.otel import trace_span
 
 DEFAULT_CLIENT_INFO = types.Implementation(name="Dify", version=dify_config.project.version)
 
@@ -109,7 +110,9 @@ class ClientSession(
         self._logging_callback = logging_callback or _default_logging_callback
         self._message_handler = message_handler or _default_message_handler
 
+    @trace_span()
     def initialize(self) -> types.InitializeResult:
+        """On an entered session, negotiate the protocol and notify readiness, or raise."""
         # Only set capabilities if non-default callbacks are provided
         # This prevents servers from attempting callbacks when we don't actually support them
         sampling = types.SamplingCapability() if self._sampling_callback is not _default_sampling_callback else None

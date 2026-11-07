@@ -697,3 +697,164 @@ class TestMcpToolCasesTools:
                 )
                 if expected_total:
                     assert usage.total_tokens == expected_total
+
+
+class TestMcpToolSpans:
+    @staticmethod
+    @pytest.mark.parametrize("enabled", [False, True])
+    def test_remote_mcp_entry_span_on_failure(enabled: bool, config_overrides, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The real remote entry preserves validation errors and records its span only when enabled."""
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+        from opentelemetry.trace import StatusCode
+
+        from extensions.otel.decorators import base
+
+        config_overrides(ENABLE_OTEL=enabled, DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+        monkeypatch.delenv("ENABLE_OTEL_FOR_INSTRUMENT", raising=False)
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        monkeypatch.setattr(base, "get_tracer", provider.get_tracer)
+        try:
+            with pytest.raises(ToolInvokeError, match="no end-user context"):
+                _build_forwarding_tool().invoke_remote_mcp_tool({"input": "private-input"})
+            spans = exporter.get_finished_spans()
+            assert len(spans) == int(enabled)
+            if enabled:
+                assert spans[0].name == "core.tools.mcp_tool.tool.MCPTool.invoke_remote_mcp_tool"
+                assert spans[0].status.status_code == StatusCode.ERROR
+                assert not spans[0].attributes
+        finally:
+            provider.shutdown()
+
+    @staticmethod
+    def test_remote_mcp_entry_span_on_success(
+        config_overrides, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+    ) -> None:
+        """A persisted provider and real MCP session keep every remote stage inside the entry span."""
+        from contextlib import contextmanager
+        from queue import Queue
+        from threading import Thread
+
+        from cryptography.fernet import Fernet
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        import core.mcp.mcp_client as mcp_client_module
+        from core.helper import encrypter
+        from core.mcp.types import (
+            LATEST_PROTOCOL_VERSION,
+            JSONRPCMessage,
+            JSONRPCRequest,
+            JSONRPCResponse,
+            SessionMessage,
+        )
+        from extensions.ext_database import db
+        from extensions.otel.decorators import base
+        from models.tools import MCPToolProvider
+
+        tool = _build_mcp_tool()
+        cipher = Fernet(Fernet.generate_key())
+        server_url = "https://example.invalid/mcp"
+
+        def decrypt_token(tenant_id: str, token: str) -> str:
+            assert tenant_id == tool.tenant_id
+            return cipher.decrypt(token.encode()).decode()
+
+        monkeypatch.setattr(encrypter, "decrypt_token", decrypt_token)
+        monkeypatch.setattr(type(db), "engine", property(lambda _self: sqlite_engine))
+        with Session(sqlite_engine) as session:
+            session.add(
+                MCPToolProvider(
+                    name="span-test-provider",
+                    server_identifier=tool.server_identifier,
+                    server_url=cipher.encrypt(server_url.encode()).decode(),
+                    server_url_hash="span-test-url-hash",
+                    icon=None,
+                    tenant_id=tool.tenant_id,
+                    user_id="user-1",
+                )
+            )
+            session.commit()
+
+        config_overrides(ENABLE_OTEL=True)
+        monkeypatch.delenv("ENABLE_OTEL_FOR_INSTRUMENT", raising=False)
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        monkeypatch.setattr(base, "get_tracer", provider.get_tracer)
+        incoming: Queue[SessionMessage | Exception | None] = Queue()
+        outgoing: Queue[SessionMessage | None] = Queue()
+
+        def respond() -> None:
+            while (message := outgoing.get(timeout=5)) is not None:
+                request = message.message.root
+                if isinstance(request, JSONRPCRequest):
+                    results = {
+                        "initialize": {
+                            "protocolVersion": LATEST_PROTOCOL_VERSION,
+                            "capabilities": {},
+                            "serverInfo": {"name": "memory-peer", "version": "1"},
+                        },
+                        "tools/call": {"content": [{"type": "text", "text": "ok"}]},
+                    }
+                    incoming.put(
+                        SessionMessage(
+                            message=JSONRPCMessage(
+                                JSONRPCResponse(jsonrpc="2.0", id=request.id, result=results[request.method])
+                            )
+                        )
+                    )
+
+        @contextmanager
+        def transport(**_kwargs):
+            yield incoming, outgoing, lambda: None
+
+        @contextmanager
+        def sse_transport(**_kwargs):
+            pytest.fail("The /mcp URL must select streamable HTTP directly")
+            yield incoming, outgoing
+
+        monkeypatch.setattr(mcp_client_module, "sse_client", sse_transport)
+        monkeypatch.setattr(mcp_client_module, "streamablehttp_client", transport)
+        peer = Thread(target=respond, daemon=True)
+        peer.start()
+        try:
+            assert tool.invoke_remote_mcp_tool({"value": "x"}) == CallToolResult(
+                content=[TextContent(type="text", text="ok")]
+            )
+            spans = {span.name: span for span in exporter.get_finished_spans()}
+            entry_name = "core.tools.mcp_tool.tool.MCPTool.invoke_remote_mcp_tool"
+            prefix = "core.mcp.mcp_client.MCPClient."
+            initialize = "core.mcp.session.client_session.ClientSession.initialize"
+            assert set(spans) == {
+                prefix + "connect_server",
+                prefix + "invoke_tool",
+                prefix + "cleanup",
+                initialize,
+                entry_name,
+            }
+            assert spans[entry_name].parent is None
+            assert spans[entry_name].context is not None
+            for span in spans.values():
+                assert not span.attributes
+                assert not span.events
+            entry_context = spans[entry_name].context
+            assert entry_context is not None
+            for name in ("connect_server", "invoke_tool", "cleanup"):
+                stage_parent = spans[prefix + name].parent
+                assert stage_parent is not None
+                assert stage_parent.span_id == entry_context.span_id
+            initialize_parent = spans[initialize].parent
+            connect_context = spans[prefix + "connect_server"].context
+            assert initialize_parent is not None
+            assert connect_context is not None
+            assert initialize_parent.span_id == connect_context.span_id
+        finally:
+            outgoing.put(None)
+            peer.join(timeout=5)
+            provider.shutdown()
+            assert not peer.is_alive()

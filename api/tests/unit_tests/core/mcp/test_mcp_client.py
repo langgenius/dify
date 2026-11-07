@@ -22,6 +22,7 @@ from core.mcp.types import (
     ErrorData,
     JSONRPCError,
     JSONRPCMessage,
+    JSONRPCNotification,
     JSONRPCRequest,
     JSONRPCResponse,
     ListToolsRequest,
@@ -1081,3 +1082,172 @@ def test_empty_string_is_an_opaque_continuation_cursor() -> None:
         assert len(requests) == 2
         assert requests[1].params is not None
         assert requests[1].params.cursor == ""
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_mcp_stage_spans(enabled: bool, config_overrides, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Exercise transport entry, handshake, RPCs and cleanup with an in-memory peer."""
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+    from opentelemetry.trace import StatusCode
+
+    from core.mcp.types import LATEST_PROTOCOL_VERSION
+    from extensions.otel.decorators import base
+
+    config_overrides(ENABLE_OTEL=enabled)
+    monkeypatch.delenv("ENABLE_OTEL_FOR_INSTRUMENT", raising=False)
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(base, "get_tracer", provider.get_tracer)
+    incoming: Queue[SessionMessage | Exception | None] = Queue()
+    outgoing: Queue[SessionMessage | None] = Queue()
+    methods: list[str] = []
+    closed: list[bool] = []
+
+    def respond() -> None:
+        while (message := outgoing.get(timeout=5)) is not None:
+            request = message.message.root
+            if isinstance(request, JSONRPCRequest | JSONRPCNotification):
+                methods.append(request.method)
+            if isinstance(request, JSONRPCRequest):
+                results = {
+                    "initialize": {
+                        "protocolVersion": LATEST_PROTOCOL_VERSION,
+                        "capabilities": {},
+                        "serverInfo": {"name": "memory-peer", "version": "1"},
+                    },
+                    "tools/list": {"tools": []},
+                    "tools/call": {"content": [{"type": "text", "text": "private-result"}]},
+                }
+                incoming.put(
+                    SessionMessage(
+                        message=JSONRPCMessage(
+                            JSONRPCResponse(jsonrpc="2.0", id=request.id, result=results[request.method])
+                        )
+                    )
+                )
+
+    @contextmanager
+    def transport(**_kwargs):
+        try:
+            yield incoming, outgoing
+        finally:
+            closed.append(True)
+
+    peer = Thread(target=respond, daemon=True)
+    peer.start()
+    client = MCPClient("https://example.invalid/sse")
+    try:
+        with provider.get_tracer(__name__).start_as_current_span("parent") as parent:
+            client.connect_server(transport, "sse")
+            assert client.list_tools() == []
+            assert client.invoke_tool("private-tool", {"value": "private-input"}) == CallToolResult(
+                content=[TextContent(type="text", text="private-result")]
+            )
+            client.cleanup()
+            assert client._session is None
+            assert closed == [True]
+        spans = {span.name: span for span in exporter.get_finished_spans() if span.name != "parent"}
+        prefix = "core.mcp.mcp_client.MCPClient."
+        expected = {prefix + name for name in ("connect_server", "list_tools", "invoke_tool", "cleanup")}
+        initialize = "core.mcp.session.client_session.ClientSession.initialize"
+        assert set(spans) == (expected | {initialize} if enabled else set())
+        if enabled:
+            for name, span in spans.items():
+                assert span.status.status_code == StatusCode.OK
+                assert not span.attributes
+                assert not span.events
+                assert span.parent is not None
+                expected_parent = (
+                    spans[prefix + "connect_server"].context if name == initialize else parent.get_span_context()
+                )
+                assert expected_parent is not None
+                assert span.parent.span_id == expected_parent.span_id
+        assert methods == ["initialize", "notifications/initialized", "tools/list", "tools/call"]
+    finally:
+        client.cleanup()
+        outgoing.put(None)
+        peer.join(timeout=5)
+        provider.shutdown()
+        assert not peer.is_alive()
+
+
+def test_mcp_with_path_span_tree(config_overrides, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The production context manager emits all stages under the calling span."""
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    import core.mcp.mcp_client as mcp_client_module
+    from core.mcp.auth_client import MCPClientWithAuthRetry
+    from core.mcp.types import LATEST_PROTOCOL_VERSION
+    from extensions.otel.decorators import base
+
+    config_overrides(ENABLE_OTEL=True)
+    monkeypatch.delenv("ENABLE_OTEL_FOR_INSTRUMENT", raising=False)
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(base, "get_tracer", provider.get_tracer)
+    incoming: Queue[SessionMessage | Exception | None] = Queue()
+    outgoing: Queue[SessionMessage | None] = Queue()
+
+    def respond() -> None:
+        while (message := outgoing.get(timeout=5)) is not None:
+            request = message.message.root
+            if isinstance(request, JSONRPCRequest):
+                results = {
+                    "initialize": {
+                        "protocolVersion": LATEST_PROTOCOL_VERSION,
+                        "capabilities": {},
+                        "serverInfo": {"name": "memory-peer", "version": "1"},
+                    },
+                    "tools/call": {"content": [{"type": "text", "text": "ok"}]},
+                }
+                incoming.put(
+                    SessionMessage(
+                        message=JSONRPCMessage(
+                            JSONRPCResponse(jsonrpc="2.0", id=request.id, result=results[request.method])
+                        )
+                    )
+                )
+
+    @contextmanager
+    def transport(**_kwargs):
+        yield incoming, outgoing, lambda: None
+
+    @contextmanager
+    def sse_transport(**_kwargs):
+        pytest.fail("The /mcp URL must select streamable HTTP directly")
+        yield incoming, outgoing
+
+    monkeypatch.setattr(mcp_client_module, "sse_client", sse_transport)
+    monkeypatch.setattr(mcp_client_module, "streamablehttp_client", transport)
+    peer = Thread(target=respond, daemon=True)
+    peer.start()
+    try:
+        with provider.get_tracer(__name__).start_as_current_span("parent") as parent:
+            with MCPClientWithAuthRetry("https://example.invalid/mcp") as client:
+                assert client.invoke_tool("t", {"value": "x"}) == CallToolResult(
+                    content=[TextContent(type="text", text="ok")]
+                )
+        spans = {span.name: span for span in exporter.get_finished_spans() if span.name != "parent"}
+        prefix = "core.mcp.mcp_client.MCPClient."
+        initialize = "core.mcp.session.client_session.ClientSession.initialize"
+        assert set(spans) == {prefix + "connect_server", prefix + "invoke_tool", prefix + "cleanup", initialize}
+        for name in ("connect_server", "invoke_tool", "cleanup"):
+            stage_parent = spans[prefix + name].parent
+            assert stage_parent is not None
+            assert stage_parent.span_id == parent.get_span_context().span_id
+        initialize_parent = spans[initialize].parent
+        connect_context = spans[prefix + "connect_server"].context
+        assert initialize_parent is not None
+        assert connect_context is not None
+        assert initialize_parent.span_id == connect_context.span_id
+    finally:
+        outgoing.put(None)
+        peer.join(timeout=5)
+        provider.shutdown()
+        assert not peer.is_alive()
