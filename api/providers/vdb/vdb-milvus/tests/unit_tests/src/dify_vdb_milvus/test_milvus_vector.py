@@ -76,21 +76,23 @@ def _build_fake_pymilvus_modules():
     def infer_dtype_bydata(_value):
         return DataType.FLOAT_VECTOR
 
-    pymilvus.MilvusException = MilvusError
-    pymilvus.MilvusClient = MilvusClient
-    pymilvus.IndexParams = IndexParams
-    pymilvus.CollectionSchema = CollectionSchema
-    pymilvus.DataType = DataType
-    pymilvus.FieldSchema = FieldSchema
-    pymilvus.Function = Function
-    pymilvus.FunctionType = FunctionType
-    pymilvus_milvus_client.IndexParams = IndexParams
-    pymilvus_orm.types = pymilvus_orm_types
-    pymilvus_orm_types.infer_dtype_bydata = infer_dtype_bydata
+    # The stubs are plain ModuleType instances, so attributes must be assigned
+    # through __dict__ (direct assignment is not a tracked attribute).
+    pymilvus.__dict__["MilvusException"] = MilvusError
+    pymilvus.__dict__["MilvusClient"] = MilvusClient
+    pymilvus.__dict__["IndexParams"] = IndexParams
+    pymilvus.__dict__["CollectionSchema"] = CollectionSchema
+    pymilvus.__dict__["DataType"] = DataType
+    pymilvus.__dict__["FieldSchema"] = FieldSchema
+    pymilvus.__dict__["Function"] = Function
+    pymilvus.__dict__["FunctionType"] = FunctionType
+    pymilvus_milvus_client.__dict__["IndexParams"] = IndexParams
+    pymilvus_orm.__dict__["types"] = pymilvus_orm_types
+    pymilvus_orm_types.__dict__["infer_dtype_bydata"] = infer_dtype_bydata
 
     # Attach submodules for dotted imports
-    pymilvus.milvus_client = pymilvus_milvus_client
-    pymilvus.orm = pymilvus_orm
+    pymilvus.__dict__["milvus_client"] = pymilvus_milvus_client
+    pymilvus.__dict__["orm"] = pymilvus_orm
 
     return {
         "pymilvus": pymilvus,

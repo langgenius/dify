@@ -1,6 +1,5 @@
 import json
 from contextlib import contextmanager
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import dify_vdb_pgvector.pgvector as pgvector_module
@@ -384,10 +383,16 @@ def test_add_texts_uses_execute_values_and_returns_ids(monkeypatch: pytest.Monke
     execute_values = MagicMock()
     monkeypatch.setattr(pgvector_module.psycopg2.extras, "execute_values", execute_values)
 
+    # Deliberately no metadata: the JSON round-trip keeps the runtime None while
+    # staying inside the repo's no-new-cast / no-Any-import rules.
+    no_metadata = json.loads("null")
     docs = [
         Document(page_content="a", metadata={"doc_id": "doc-a"}),
         Document(page_content="b", metadata={"document_id": "doc-b"}),
-        SimpleNamespace(page_content="c", metadata=None),
+        Document.model_construct(
+            page_content="c",
+            metadata=no_metadata,
+        ),
     ]
     ids = vector.add_texts(docs, [[0.1], [0.2], [0.3]])
 

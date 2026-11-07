@@ -6,12 +6,12 @@ from _pytest.monkeypatch import MonkeyPatch
 from tcvectordb import RPCVectorDBClient
 from tcvectordb.model import enum
 from tcvectordb.model.collection import FilterIndexConfig
+from tcvectordb.model.collection_view import Embedding
 from tcvectordb.model.document import AnnSearch, Document, Filter, KeywordSearch, Rerank
 from tcvectordb.model.enum import ReadConsistency
 from tcvectordb.model.index import FilterIndex, HNSWParams, Index, IndexField, VectorIndex
 from tcvectordb.rpc.model.collection import RPCCollection
 from tcvectordb.rpc.model.database import RPCDatabase
-from xinference_client.types import Embedding
 
 
 class MockTcvectordbClass:
@@ -78,6 +78,11 @@ class MockTcvectordbClass:
         filter_index_config: FilterIndexConfig | None = None,
         indexes: list[IndexField] | None = None,
     ) -> RPCCollection:
+        # RPCCollection requires these arguments to be set; every test passes them.
+        assert index is not None
+        assert embedding is not None
+        assert ttl_config is not None
+        assert filter_index_config is not None
         return RPCCollection(
             RPCDatabase(
                 name="dify",

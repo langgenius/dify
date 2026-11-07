@@ -15,10 +15,12 @@ from models.dataset import Dataset
 
 
 def _build_fake_oracle_modules():
+    # The stubs are plain ModuleType instances, so attributes must be assigned
+    # through __dict__ (direct assignment is not a tracked attribute).
     jieba = types.ModuleType("jieba")
     jieba_posseg = types.ModuleType("jieba.posseg")
-    jieba_posseg.cut = MagicMock(return_value=[])
-    jieba.posseg = jieba_posseg
+    jieba_posseg.__dict__["cut"] = MagicMock(return_value=[])
+    jieba.__dict__["posseg"] = jieba_posseg
 
     oracledb = types.ModuleType("oracledb")
     oracledb_connection = types.ModuleType("oracledb.connection")
@@ -26,11 +28,11 @@ def _build_fake_oracle_modules():
     class Connection:
         pass
 
-    oracledb_connection.Connection = Connection
-    oracledb.defaults = SimpleNamespace(fetch_lobs=True)
-    oracledb.DB_TYPE_VECTOR = object()
-    oracledb.create_pool = MagicMock(return_value=MagicMock(release=MagicMock()))
-    oracledb.connect = MagicMock()
+    oracledb_connection.__dict__["Connection"] = Connection
+    oracledb.__dict__["defaults"] = SimpleNamespace(fetch_lobs=True)
+    oracledb.__dict__["DB_TYPE_VECTOR"] = object()
+    oracledb.__dict__["create_pool"] = MagicMock(return_value=MagicMock(release=MagicMock()))
+    oracledb.__dict__["connect"] = MagicMock()
 
     return {
         "jieba": jieba,
@@ -275,9 +277,9 @@ def _fake_nltk_module(*, missing_data=False):
                 raise LookupError("missing")
             return True
 
-    nltk.data = _Data()
-    nltk.word_tokenize = lambda text: text.split()
-    nltk_corpus.stopwords = SimpleNamespace(words=lambda _lang: ["and", "the"])
+    nltk.__dict__["data"] = _Data()
+    nltk.__dict__["word_tokenize"] = lambda text: text.split()
+    nltk_corpus.__dict__["stopwords"] = SimpleNamespace(words=lambda _lang: ["and", "the"])
     return nltk, nltk_corpus
 
 

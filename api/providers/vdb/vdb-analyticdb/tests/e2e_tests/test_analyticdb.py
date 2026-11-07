@@ -20,6 +20,8 @@ class AnalyticdbVectorTest(AbstractVectorTest):
                     host="test_host",
                     port=5432,
                     account="test_account",
+                    min_connection=1,
+                    max_connection=2,
                     account_password="test_passwd",
                     namespace="difytest_namespace",
                 ),
