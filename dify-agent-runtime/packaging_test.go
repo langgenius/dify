@@ -143,8 +143,8 @@ func TestDockerfileBuildsAndCopiesAllBinaries(t *testing.T) {
 		"CMD":    `CMD ["shellctl", "serve", "--listen", "0.0.0.0:5004"]`,
 		"EXPOSE": "EXPOSE 5004",
 		"USER":   "USER dify",
-		"bash": "bash",
-		"git":  "git",
+		"bash":   "bash",
+		"git":    "git",
 		// iproute2 is required by the OpenShell runtime backend: its sandbox
 		// supervisor needs the ip helper for network-namespace isolation.
 		"iproute2": "iproute2",
@@ -160,5 +160,39 @@ func TestDockerfileBuildsAndCopiesAllBinaries(t *testing.T) {
 	// Must NOT reference the Python shellctl-server
 	if strings.Contains(content, "shellctl-server") {
 		t.Error("Dockerfile must not reference shellctl-server (Python)")
+	}
+}
+
+// Shared acceptance tests must compare runtime implementations, not different
+// Python/Node versions or sandbox isolation helpers in their images.
+func TestRustImageMatchesGoRuntimeToolchain(t *testing.T) {
+	root := projectRoot(t)
+	read := func(name string) string {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join(root, "docker", name))
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		return string(data)
+	}
+	goImage := read("Dockerfile")
+	rustImage := read("Dockerfile.rust")
+	for _, prefix := range []string{"FROM python:", "ARG NODE_VERSION=", "ARG PNPM_VERSION=", "ARG UV_VERSION="} {
+		found := false
+		for line := range strings.SplitSeq(goImage, "\n") {
+			if strings.HasPrefix(line, prefix) {
+				found = true
+				if !strings.Contains(rustImage, line+"\n") {
+					t.Errorf("Rust image must match the Go runtime toolchain: %s", line)
+				}
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Go image is missing toolchain directive %s", prefix)
+		}
+	}
+	if !strings.Contains(rustImage, "        iproute2 \\\n") {
+		t.Error("Rust image must include the ip helper required by sandbox network isolation")
 	}
 }

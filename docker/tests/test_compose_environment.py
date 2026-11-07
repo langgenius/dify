@@ -48,6 +48,9 @@ class ComposeEnvironmentTests(unittest.TestCase):
 
     def render(self, *compose_args, all_profiles=True):
         inputs = set(re.findall(r"\$\{(\w+)", (DOCKER_DIR / "docker-compose.yaml").read_text()))
+        for flag, value in zip(compose_args, compose_args[1:]):
+            if flag in ("-f", "--file"):
+                inputs.update(re.findall(r"\$\{(\w+)", (self.project / value).read_text()))
         for source in (DOCKER_DIR / "envs").rglob("*.defaults"):
             inputs.update(re.findall(r"\$\{(\w+)", source.read_text()))
         env = {key: value for key, value in os.environ.items() if key not in inputs and not key.startswith("COMPOSE_")}
@@ -1086,6 +1089,100 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.assertEqual(values["DIFY_AGENT_RUNTIME_BACKEND"], "e2b")
         self.assertEqual(values["DIFY_AGENT_E2B_API_KEY"], "service-api-key")
         self.assertEqual(values["DIFY_AGENT_E2B_TEMPLATE"], "custom-template")
+
+    def test_base_stack_keeps_rust_canary_disabled(self):
+        self.copy_template(
+            "envs/core-services/dify-agent.defaults",
+            "envs/core-services/dify-agent.env",
+        )
+        services = self.render()
+        self.assertNotIn("local_sandbox_rust", services)
+        values = services["agent_backend"]["environment"]
+        self.assertEqual(values["DIFY_AGENT_RUNTIME_BACKEND"], "local")
+        self.assertEqual(values["DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT"], "http://local_sandbox:5004")
+        for key in (
+            "DIFY_AGENT_LOCAL_SANDBOX_RUST_ENDPOINT",
+            "DIFY_AGENT_LOCAL_SANDBOX_RUST_AUTH_TOKEN",
+            "DIFY_AGENT_LOCAL_SANDBOX_RUST_CANARY_PERCENT",
+            "DIFY_AGENT_LOCAL_SANDBOX_PREFLIGHT_TIMEOUT_SECONDS",
+        ):
+            self.assertNotIn(key, values)
+
+    def test_rust_overlay_inherits_credentials_and_keeps_go_state_separate(self):
+        self.copy_template("docker-compose.rust-runtime.yaml", "docker-compose.rust-runtime.yaml")
+        baseline = self.render()
+        services = self.render("-f", "docker-compose.yaml", "-f", "docker-compose.rust-runtime.yaml")
+        values = services["agent_backend"]["environment"]
+        rust = services["local_sandbox_rust"]
+        self.assertEqual(
+            values["DIFY_AGENT_LOCAL_SANDBOX_RUST_ENDPOINT"],
+            "http://local_sandbox_rust:5004",
+        )
+        self.assertEqual(values["DIFY_AGENT_LOCAL_SANDBOX_RUST_CANARY_PERCENT"], "100")
+        self.assertEqual(values["DIFY_AGENT_LOCAL_SANDBOX_PREFLIGHT_TIMEOUT_SECONDS"], "1")
+        self.assertEqual(values["DIFY_AGENT_LOCAL_SANDBOX_RUST_AUTH_TOKEN"], "test-sandbox-token")
+        self.assertEqual(rust["environment"]["SHELLCTL_AUTH_TOKEN"], "test-sandbox-token")
+        self.assertFalse(rust.get("ports"))
+        go_volumes = {volume["source"] for volume in services["local_sandbox"]["volumes"]}
+        rust_volumes = {volume["source"] for volume in rust["volumes"]}
+        self.assertEqual(
+            rust_volumes,
+            {
+                "dify_agent_local_sandbox_rust_home",
+                "dify_agent_local_sandbox_rust_workspace",
+            },
+        )
+        self.assertTrue(go_volumes.isdisjoint(rust_volumes))
+        for name in baseline.keys() - {"agent_backend"}:
+            self.assertEqual(services[name], baseline[name], name)
+
+    def test_rust_overlay_root_overrides_preserve_zero_percent_drain(self):
+        self.copy_template("docker-compose.rust-runtime.yaml", "docker-compose.rust-runtime.yaml")
+        self.copy_template(
+            "envs/core-services/dify-agent.defaults",
+            "envs/core-services/dify-agent.env",
+        )
+        initial_root = (self.project / ".env").read_text()
+        for percentage in (0, 1, 100):
+            with self.subTest(percentage=percentage):
+                (self.project / ".env").write_text(initial_root)
+                self.override_root(
+                    {
+                        "DIFY_AGENT_LOCAL_SANDBOX_RUST_ENDPOINT": "http://canary.internal:5004",
+                        "DIFY_AGENT_LOCAL_SANDBOX_RUST_AUTH_TOKEN": "independent-rust-test-token",
+                        "DIFY_AGENT_LOCAL_SANDBOX_RUST_CANARY_PERCENT": str(percentage),
+                        "DIFY_AGENT_LOCAL_SANDBOX_PREFLIGHT_TIMEOUT_SECONDS": "2.5",
+                    }
+                )
+                services = self.render(
+                    "-f",
+                    "docker-compose.yaml",
+                    "-f",
+                    "docker-compose.rust-runtime.yaml",
+                )
+                values = services["agent_backend"]["environment"]
+                self.assertEqual(
+                    values["DIFY_AGENT_LOCAL_SANDBOX_RUST_ENDPOINT"],
+                    "http://canary.internal:5004",
+                )
+                self.assertEqual(
+                    values["DIFY_AGENT_LOCAL_SANDBOX_RUST_CANARY_PERCENT"],
+                    str(percentage),
+                )
+                self.assertEqual(values["DIFY_AGENT_LOCAL_SANDBOX_PREFLIGHT_TIMEOUT_SECONDS"], "2.5")
+                self.assertEqual(
+                    values["DIFY_AGENT_LOCAL_SANDBOX_RUST_AUTH_TOKEN"],
+                    "independent-rust-test-token",
+                )
+                self.assertEqual(
+                    services["local_sandbox_rust"]["environment"]["SHELLCTL_AUTH_TOKEN"],
+                    "independent-rust-test-token",
+                )
+                self.assertEqual(values["DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN"], "test-sandbox-token")
+                self.assertEqual(
+                    services["local_sandbox"]["environment"]["SHELLCTL_AUTH_TOKEN"],
+                    "test-sandbox-token",
+                )
 
     def test_generator_creates_only_root_env_and_preserves_edits(self):
         for source in (

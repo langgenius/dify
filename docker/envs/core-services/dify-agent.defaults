@@ -63,6 +63,16 @@ DIFY_AGENT_INNER_API_KEY=${DIFY_AGENT_INNER_API_KEY:-${PLUGIN_DIFY_INNER_API_KEY
 DIFY_AGENT_RUNTIME_BACKEND=${DIFY_AGENT_RUNTIME_BACKEND:-local}
 DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=${DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT:-${DIFY_AGENT_SHELLCTL_ENTRYPOINT:-http://local_sandbox:5004}}
 # Set DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN only in docker/.env; Compose supplies it to both services.
+# Optional Rust canary. The base stack stays Go-only; enable the separate
+# docker-compose.rust-runtime.yaml overlay to start the Rust service.
+# With that overlay, set these overrides in docker/.env, not a service env file:
+# Compose interpolates them into both agent_backend and local_sandbox_rust.
+# Zero stops new Rust admissions while the endpoint keeps existing rust+ refs usable.
+# An unset/empty Rust token inherits the shared Local token; never copy a secret here.
+# DIFY_AGENT_LOCAL_SANDBOX_RUST_ENDPOINT=
+# DIFY_AGENT_LOCAL_SANDBOX_RUST_AUTH_TOKEN=
+# DIFY_AGENT_LOCAL_SANDBOX_RUST_CANARY_PERCENT=0
+# DIFY_AGENT_LOCAL_SANDBOX_PREFLIGHT_TIMEOUT_SECONDS=1
 # E2B_API_KEY and E2B_API_TOKEN remain accepted as deployment-level fallbacks.
 DIFY_AGENT_E2B_API_KEY=${DIFY_AGENT_E2B_API_KEY:-${E2B_API_KEY:-${E2B_API_TOKEN:-}}}
 DIFY_AGENT_E2B_TEMPLATE=${DIFY_AGENT_E2B_TEMPLATE:-difys-default-team/dify-agent-local-sandbox}
