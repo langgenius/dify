@@ -36,7 +36,7 @@ class TestWorkflowDeletion:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role="owner",  # pyrefly: ignore
+            role="owner",  # pyrefly: ignore[bad-argument-type]
             current=True,
         )
         session.add(join)
@@ -48,8 +48,8 @@ class TestWorkflowDeletion:
             tenant_id=tenant.id,
             name=f"App {uuid4()}",
             description="",
-            mode="workflow",  # pyrefly: ignore
-            icon_type="emoji",  # pyrefly: ignore
+            mode="workflow",  # pyrefly: ignore[bad-argument-type]
+            icon_type="emoji",  # pyrefly: ignore[bad-argument-type]
             icon="bot",
             icon_background="#FFFFFF",
             enable_site=False,

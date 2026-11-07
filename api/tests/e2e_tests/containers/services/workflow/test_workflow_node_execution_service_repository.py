@@ -40,7 +40,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
-            triggered_from="workflow-run",  # pyrefly: ignore
+            triggered_from="workflow-run",  # pyrefly: ignore[bad-argument-type]
             workflow_run_id=workflow_run_id,
             index=index,
             predecessor_node_id=None,
