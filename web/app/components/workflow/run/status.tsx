@@ -2,11 +2,15 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
+import { ENABLE_HITL_IM } from '@/config'
 import { useDocLink } from '@/context/i18n'
-import { useWorkflowPausedDetails } from '@/service/use-log'
+import { resolveConsoleHumanInputFormURL } from '@/features/human-input/console/links'
+import { consoleQuery } from '@/service/console'
+import { basePath } from '@/utils/var'
 
 type ResultProps = {
   status: string
@@ -29,12 +33,16 @@ const StatusPanel: FC<ResultProps> = ({
   workflowRunId,
   onOpenTracingTab,
 }) => {
-  const { t } = useTranslation(['runLog', 'workflow', 'appLog', 'workflowHumanInput'])
+  const { t } = useTranslation(['runLog', 'workflow', 'appLog', 'workflowHumanInput', 'share'])
   const docLink = useDocLink()
-  const { data: pausedDetails } = useWorkflowPausedDetails({
-    workflowRunId: workflowRunId || '',
-    enabled: status === 'paused',
-  })
+  const { data: pausedDetails } = useQuery(
+    consoleQuery.workflow.byWorkflowRunId.pauseDetails.get.queryOptions({
+      input:
+        status === 'paused' && workflowRunId
+          ? { params: { workflow_run_id: workflowRunId } }
+          : skipToken,
+    }),
+  )
 
   const pausedReasons = useMemo(() => {
     const reasons: string[] = []
@@ -55,13 +63,24 @@ const StatusPanel: FC<ResultProps> = ({
     const hasHumanInputNode = paused_nodes.some((node) => node.pause_type.type === 'human_input')
     if (hasHumanInputNode) {
       paused_nodes.forEach((node) => {
-        if (node.pause_type.type === 'human_input') {
-          inputURLs.push(node.pause_type.backstage_input_url)
+        if (node.pause_type.type === 'human_input' && node.pause_type.backstage_input_url) {
+          if (!ENABLE_HITL_IM && node.pause_type.form_version === '2') return
+          inputURLs.push(
+            node.pause_type.form_version === '2'
+              ? resolveConsoleHumanInputFormURL(node.pause_type.backstage_input_url, basePath)
+              : node.pause_type.backstage_input_url,
+          )
         }
       })
     }
     return inputURLs
   }, [pausedDetails])
+
+  const hasUnavailableV2Form =
+    !ENABLE_HITL_IM &&
+    pausedDetails?.paused_nodes.some(
+      (node) => node.pause_type.type === 'human_input' && node.pause_type.form_version === '2',
+    )
 
   const partialSucceededTip = exceptionCounts ? (
     <Trans
@@ -235,6 +254,11 @@ const StatusPanel: FC<ResultProps> = ({
                 <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />
               )}
             </div>
+            {hasUnavailableV2Form && (
+              <p className="system-xs-regular text-text-tertiary">
+                {t(($) => $['humanInputV2.unavailable'], { ns: 'share' })}
+              </p>
+            )}
             {pausedInputURLs.length > 0 && (
               <div className="flex flex-col gap-y-0.5">
                 <div className="system-2xs-medium-uppercase text-text-tertiary">

@@ -6,7 +6,7 @@ import { Kbd } from '@langgenius/dify-ui/kbd'
 import { detectPlatform, formatForDisplay } from '@tanstack/react-hotkeys'
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 
 function noopSubscribe() {
@@ -41,7 +41,7 @@ export function MainNavSearchButton({
           type="button"
           aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
           aria-keyshortcuts={ariaKeyShortcuts}
-          className="flex h-8 items-center gap-1.5 overflow-hidden rounded-[10px] p-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          className="flex h-8 items-center gap-1.5 overflow-hidden rounded-[10px] p-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
         />
       }
     >

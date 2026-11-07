@@ -64,4 +64,67 @@ describe('AccessPointUrl', () => {
     expect(screen.queryByText(endpointProps.unavailableLabel)).not.toBeInTheDocument()
     expect(screen.queryByText(endpointProps.value)).not.toBeInTheDocument()
   })
+
+  it.each(['loading', 'unavailable'] as const)(
+    'exposes disabled URL actions in the %s state without activating them',
+    async (state) => {
+      const user = userEvent.setup()
+      const onRegenerate = vi.fn()
+      render(
+        <AccessPointUrl
+          {...endpointProps}
+          enabled={false}
+          loading={state === 'loading'}
+          unavailable={state === 'unavailable'}
+          showOpen
+          showQrCode
+          showRegenerate
+          copyLabel="Copy URL"
+          openLabel="Open"
+          qrCodeLabel="Show QR code"
+          regenerateLabel="Regenerate URL"
+          onRegenerate={onRegenerate}
+        />,
+      )
+
+      for (const name of ['Copy URL', 'Show QR code', 'Regenerate URL', 'Open']) {
+        const action = screen.getByRole('button', { name })
+        expect(action).toBeDisabled()
+        await user.click(action)
+      }
+      expect(onRegenerate).not.toHaveBeenCalled()
+    },
+  )
+
+  it('retains the regenerate action and focus while a request is pending', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn()
+    const { rerender } = render(
+      <AccessPointUrl
+        {...endpointProps}
+        enabled
+        showRegenerate
+        regenerateLabel="Regenerate URL"
+        onRegenerate={onRegenerate}
+      />,
+    )
+    const regenerate = screen.getByRole('button', { name: 'Regenerate URL' })
+    await user.click(regenerate)
+
+    rerender(
+      <AccessPointUrl
+        {...endpointProps}
+        enabled
+        showRegenerate
+        regenerateLabel="Regenerate URL"
+        regenerating
+        onRegenerate={onRegenerate}
+      />,
+    )
+
+    expect(regenerate).toHaveFocus()
+    expect(regenerate).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Enter}')
+    expect(onRegenerate).toHaveBeenCalledTimes(1)
+  })
 })

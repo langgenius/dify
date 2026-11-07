@@ -1,8 +1,6 @@
 import type { KeyboardEvent, MouseEvent, MouseEventHandler, ReactElement } from 'react'
 import type { TriggerOption } from './test-run-menu'
-import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
 import { cloneElement, isValidElement } from 'react'
-import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 
 export type ShortcutMapping = {
   option: TriggerOption
@@ -11,31 +9,6 @@ export type ShortcutMapping = {
 
 export const getNormalizedShortcutKey = (event: Pick<KeyboardEvent, 'key'>) => {
   return event.key === '`' ? '~' : event.key
-}
-
-export const OptionRow = ({
-  option,
-  shortcutKey,
-  onSelect,
-}: {
-  option: TriggerOption
-  shortcutKey?: string
-  onSelect: (option: TriggerOption) => void
-}) => {
-  return (
-    <DropdownMenuItem
-      className="h-auto px-3 py-1.5 system-md-regular"
-      onClick={() => onSelect(option)}
-    >
-      <div className="flex min-w-0 flex-1 items-center">
-        <div className="flex size-6 shrink-0 items-center justify-center">{option.icon}</div>
-        <span className="ml-2 truncate">{option.name}</span>
-      </div>
-      {shortcutKey && (
-        <ShortcutKbd displayKey={shortcutKey} className="ml-2" textColor="secondary" />
-      )}
-    </DropdownMenuItem>
-  )
 }
 
 export function handleShortcutMenuKeyDown(

@@ -138,7 +138,9 @@ Then('I should see the Agent v2 Embedded configuration dialog', async function (
 
   await expect(dialog).toBeVisible()
   await expect(dialog.getByText('Embed on website')).toBeVisible()
-  await expect(dialog.getByText(/iframe|script/i)).toBeVisible()
+  const preview = dialog.getByRole('region', { name: /iframe/i })
+  await expect(preview).toBeVisible()
+  await expect(preview).toContainText('<iframe')
 })
 
 When('I open Agent v2 Web app customization', async function (this: DifyWorld) {

@@ -48,11 +48,11 @@ const Textarea = ({
         onBlur={onBlur}
         placeholder={t(($) => $['input.placeholder'], { ns: 'datasetHitTesting' }) as string}
       />
-      <div className="absolute top-0 right-0 flex items-center">
+      <div className="absolute inset-e-0 top-0 flex items-center">
         <span
           aria-hidden
           className={cn(
-            'i-custom-vender-solid-shapes-corner h-5 w-3.25',
+            'i-custom-vender-solid-shapes-corner h-5 w-3.25 rtl:-scale-x-100',
             cn('text-background-section-burn', isOverLimit && 'text-util-colors-red-red-100'),
           )}
         />
@@ -60,7 +60,7 @@ const Textarea = ({
           <Tooltip>
             <TooltipTrigger
               render={
-                <div className="bg-util-colors-red-red-100 py-1 pr-2 system-2xs-medium-uppercase text-util-colors-red-red-600">
+                <div className="bg-util-colors-red-red-100 py-1 pe-2 system-2xs-medium-uppercase text-util-colors-red-red-600">
                   {`${text.length}/200`}
                 </div>
               }
@@ -70,7 +70,7 @@ const Textarea = ({
             </TooltipContent>
           </Tooltip>
         ) : (
-          <div className="bg-background-section-burn py-1 pr-2 system-2xs-medium-uppercase text-text-tertiary">
+          <div className="bg-background-section-burn py-1 pe-2 system-2xs-medium-uppercase text-text-tertiary">
             {`${text.length}/200`}
           </div>
         )}

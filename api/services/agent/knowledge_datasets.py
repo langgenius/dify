@@ -35,7 +35,7 @@ def get_tenant_knowledge_dataset_rows(*, session: Session, tenant_id: str, datas
     a dataset row, so they are treated as missing instead of breaking the
     UUID-typed dataset lookup.
     """
-    from services.dataset_service import DatasetService
+    from services.knowledge.dataset_service import DatasetService
 
     valid_ids: list[str] = []
     for dataset_id in dataset_ids:

@@ -98,7 +98,7 @@ function RadioCard<Value = string>(props: Props<Value>) {
     </>
   )
   const rootClassName = cn(
-    'group/radio-card relative rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3 transition-colors',
+    'group/radio-card relative rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3',
     'has-data-checked:border-[1.5px] has-data-checked:bg-components-option-card-option-selected-bg',
     className,
   )

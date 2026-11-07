@@ -8,6 +8,9 @@
   "apps.fullTip2": "Đã đạt giới hạn kế hoạch",
   "apps.fullTip2des": "Chúng tôi khuyên bạn nên xóa các ứng dụng không hoạt động để giải phóng dung lượng, hoặc liên hệ với chúng tôi.",
   "buyPermissionDeniedTip": "Vui lòng liên hệ với quản trị viên doanh nghiệp của bạn để đăng ký",
+  "errors.operationFailed": "Không thể hoàn tất yêu cầu này. Vui lòng thử lại sau. Nếu sự cố vẫn tiếp diễn, hãy liên hệ bộ phận hỗ trợ.",
+  "errors.requestInProgress": "Yêu cầu trước đó của bạn vẫn đang được xử lý. Vui lòng thử lại sau giây lát.",
+  "errors.unavailable": "Dịch vụ này tạm thời không khả dụng. Vui lòng thử lại sau.",
   "plans.community.btnText": "Bắt đầu với Cộng đồng",
   "plans.community.description": "Dành cho người dùng cá nhân, nhóm nhỏ hoặc các dự án phi thương mại",
   "plans.community.features": [
@@ -46,6 +49,7 @@
     "Hỗ trợ Email & Trò chuyện Ưu tiên"
   ],
   "plans.premium.includesTitle": "Mọi thứ từ Cộng đồng, cộng thêm:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Cao cấp",
   "plans.premium.price": "Có thể mở rộng",
   "plans.premium.priceTip": "Dựa trên Thị trường Đám mây",
@@ -69,6 +73,7 @@
   "plansCommon.comparePlanAndFeatures": "So sánh các kế hoạch & tính năng",
   "plansCommon.currentPlan": "Kế hoạch Hiện tại",
   "plansCommon.days": "ngày",
+  "plansCommon.discountedAnnualPrice": "Giá hằng năm sau giảm giá: ",
   "plansCommon.documentProcessingPriority": "Ưu tiên Xử lý Tài liệu",
   "plansCommon.documentProcessingPriorityTip": "Để có mức độ ưu tiên xử lý tài liệu cao hơn, vui lòng nâng cấp gói của bạn.",
   "plansCommon.documentProcessingPriorityUpgrade": "Xử lý nhiều dữ liệu với độ chính xác cao và tốc độ nhanh hơn.",
@@ -87,6 +92,7 @@
   "plansCommon.modelProviders": "Nhà cung cấp Mô hình",
   "plansCommon.month": "tháng",
   "plansCommon.mostPopular": "Phổ biến nhất",
+  "plansCommon.originalAnnualPrice": "Giá hằng năm ban đầu: ",
   "plansCommon.priceTip": "mỗi không gian làm việc/",
   "plansCommon.priority.priority": "Ưu tiên",
   "plansCommon.priority.standard": "Tiêu chuẩn",

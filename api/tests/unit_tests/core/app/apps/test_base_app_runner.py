@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -27,6 +32,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueMessageFileEvent,
 )
+from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -36,13 +42,346 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
+from models.enums import CreatorUserRole
 from models.model import App, AppMode, Message, MessageFile
+from models.tools import ToolFile
+
+"""Test multimodal image output handling in BaseAppRunner."""
 
 
+class TestBaseAppRunnerMultimodal:
+    """Test that BaseAppRunner correctly handles multimodal image content."""
+
+    @pytest.fixture
+    def mock_user_id(self):
+        """Mock user ID."""
+        return str(uuid4())
+
+    @pytest.fixture
+    def mock_tenant_id(self):
+        """Mock tenant ID."""
+        return str(uuid4())
+
+    @pytest.fixture
+    def mock_message_id(self):
+        """Mock message ID."""
+        return str(uuid4())
+
+    @pytest.fixture
+    def mock_queue_manager(self):
+        """Create a mock queue manager."""
+        manager = MagicMock()
+        manager.invoke_from = InvokeFrom.SERVICE_API
+        return manager
+
+    @pytest.fixture
+    def tool_file(self, mock_user_id: str, mock_tenant_id: str) -> ToolFile:
+        """Create a real transient tool-file model returned by the external file manager."""
+        return ToolFile(
+            user_id=mock_user_id,
+            tenant_id=mock_tenant_id,
+            conversation_id=None,
+            file_key="generated/image.png",
+            mimetype="image/png",
+            original_url="http://example.com/image.png",
+            name="image.png",
+            size=68,
+        )
+
+    def test_handle_multimodal_image_content_with_url(
+        self,
+        mock_user_id,
+        mock_tenant_id,
+        mock_message_id,
+        mock_queue_manager,
+        tool_file,
+        sqlite_session: Session,
+    ):
+        """Test handling image from URL."""
+        # Arrange
+        image_url = "http://example.com/image.png"
+        content = ImagePromptMessageContent(
+            url=image_url,
+            format="png",
+            mime_type="image/png",
+        )
+
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+            # Setup mock tool file manager
+            mock_mgr = MagicMock()
+            mock_mgr.create_file_by_url.return_value = tool_file
+            mock_mgr_class.return_value = mock_mgr
+
+            message_file_id = AppRunner()._handle_multimodal_image_content(
+                session=sqlite_session,
+                content=content,
+                message_id=mock_message_id,
+                user_id=mock_user_id,
+                tenant_id=mock_tenant_id,
+                queue_manager=mock_queue_manager,
+            )
+
+        mock_mgr.create_file_by_url.assert_called_once_with(
+            user_id=mock_user_id,
+            tenant_id=mock_tenant_id,
+            file_url=image_url,
+            conversation_id=None,
+        )
+        message_file = sqlite_session.get(MessageFile, message_file_id)
+        assert message_file is not None
+        assert message_file.message_id == mock_message_id
+        assert message_file.type == FileType.IMAGE
+        assert message_file.transfer_method == FileTransferMethod.TOOL_FILE
+        assert message_file.belongs_to == "assistant"
+        assert message_file.created_by == mock_user_id
+        assert message_file.upload_file_id == tool_file.id
+        mock_queue_manager.publish.assert_not_called()
+
+    def test_handle_multimodal_image_content_with_base64(
+        self,
+        mock_user_id,
+        mock_tenant_id,
+        mock_message_id,
+        mock_queue_manager,
+        tool_file,
+        sqlite_session: Session,
+    ):
+        """Test handling image from base64 data."""
+        # Arrange
+        import base64
+
+        # Create a small test image (1x1 PNG)
+        test_image_data = base64.b64encode(
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
+        ).decode()
+        content = ImagePromptMessageContent(
+            base64_data=test_image_data,
+            format="png",
+            mime_type="image/png",
+        )
+
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+            # Setup mock tool file manager
+            mock_mgr = MagicMock()
+            mock_mgr.create_file_by_raw.return_value = tool_file
+            mock_mgr_class.return_value = mock_mgr
+
+            message_file_id = AppRunner()._handle_multimodal_image_content(
+                session=sqlite_session,
+                content=content,
+                message_id=mock_message_id,
+                user_id=mock_user_id,
+                tenant_id=mock_tenant_id,
+                queue_manager=mock_queue_manager,
+            )
+
+        mock_mgr.create_file_by_raw.assert_called_once()
+        call_kwargs = mock_mgr.create_file_by_raw.call_args[1]
+        assert call_kwargs["user_id"] == mock_user_id
+        assert call_kwargs["tenant_id"] == mock_tenant_id
+        assert call_kwargs["conversation_id"] is None
+        assert "file_binary" in call_kwargs
+        assert call_kwargs["mimetype"] == "image/png"
+        assert call_kwargs["filename"].startswith("generated_image")
+        assert call_kwargs["filename"].endswith(".png")
+        assert sqlite_session.get(MessageFile, message_file_id) is not None
+        mock_queue_manager.publish.assert_not_called()
+
+    def test_handle_multimodal_image_content_with_base64_data_uri(
+        self,
+        mock_user_id,
+        mock_tenant_id,
+        mock_message_id,
+        mock_queue_manager,
+        tool_file,
+        sqlite_session: Session,
+    ):
+        """Test handling image from base64 data with URI prefix."""
+        # Arrange
+        # Data URI format: data:image/png;base64,<base64_data>
+        test_image_data = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
+        content = ImagePromptMessageContent(
+            base64_data=f"data:image/png;base64,{test_image_data}",
+            format="png",
+            mime_type="image/png",
+        )
+
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+            # Setup mock tool file manager
+            mock_mgr = MagicMock()
+            mock_mgr.create_file_by_raw.return_value = tool_file
+            mock_mgr_class.return_value = mock_mgr
+
+            message_file_id = AppRunner()._handle_multimodal_image_content(
+                session=sqlite_session,
+                content=content,
+                message_id=mock_message_id,
+                user_id=mock_user_id,
+                tenant_id=mock_tenant_id,
+                queue_manager=mock_queue_manager,
+            )
+
+        mock_mgr.create_file_by_raw.assert_called_once()
+        call_kwargs = mock_mgr.create_file_by_raw.call_args[1]
+        assert "file_binary" in call_kwargs
+        assert sqlite_session.get(MessageFile, message_file_id) is not None
+
+    def test_handle_multimodal_image_content_without_url_or_base64(
+        self,
+        mock_user_id,
+        mock_tenant_id,
+        mock_message_id,
+        mock_queue_manager,
+        sqlite_session: Session,
+    ):
+        """Test handling image content without URL or base64 data."""
+        # Arrange
+        content = ImagePromptMessageContent(
+            url="",
+            base64_data="",
+            format="png",
+            mime_type="image/png",
+        )
+
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+            result = AppRunner()._handle_multimodal_image_content(
+                session=sqlite_session,
+                content=content,
+                message_id=mock_message_id,
+                user_id=mock_user_id,
+                tenant_id=mock_tenant_id,
+                queue_manager=mock_queue_manager,
+            )
+
+        assert result is None
+        assert sqlite_session.scalar(select(func.count()).select_from(MessageFile)) == 0
+        mock_mgr_class.assert_not_called()
+        mock_queue_manager.publish.assert_not_called()
+
+    def test_handle_multimodal_image_content_with_error(
+        self,
+        mock_user_id,
+        mock_tenant_id,
+        mock_message_id,
+        mock_queue_manager,
+        sqlite_session: Session,
+    ):
+        """Test handling image content when an error occurs."""
+        # Arrange
+        image_url = "http://example.com/image.png"
+        content = ImagePromptMessageContent(
+            url=image_url,
+            format="png",
+            mime_type="image/png",
+        )
+
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+            mock_mgr = MagicMock()
+            mock_mgr.create_file_by_url.side_effect = Exception("Network error")
+            mock_mgr_class.return_value = mock_mgr
+
+            result = AppRunner()._handle_multimodal_image_content(
+                session=sqlite_session,
+                content=content,
+                message_id=mock_message_id,
+                user_id=mock_user_id,
+                tenant_id=mock_tenant_id,
+                queue_manager=mock_queue_manager,
+            )
+
+        assert result is None
+        assert sqlite_session.scalar(select(func.count()).select_from(MessageFile)) == 0
+        mock_queue_manager.publish.assert_not_called()
+
+    def test_handle_multimodal_image_content_debugger_mode(
+        self,
+        mock_user_id,
+        mock_tenant_id,
+        mock_message_id,
+        mock_queue_manager,
+        tool_file,
+        sqlite_session: Session,
+    ):
+        """Test that debugger mode sets correct created_by_role."""
+        # Arrange
+        image_url = "http://example.com/image.png"
+        content = ImagePromptMessageContent(
+            url=image_url,
+            format="png",
+            mime_type="image/png",
+        )
+        mock_queue_manager.invoke_from = InvokeFrom.DEBUGGER
+
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+            mock_mgr = MagicMock()
+            mock_mgr.create_file_by_url.return_value = tool_file
+            mock_mgr_class.return_value = mock_mgr
+
+            message_file_id = AppRunner()._handle_multimodal_image_content(
+                session=sqlite_session,
+                content=content,
+                message_id=mock_message_id,
+                user_id=mock_user_id,
+                tenant_id=mock_tenant_id,
+                queue_manager=mock_queue_manager,
+            )
+
+        message_file = sqlite_session.get(MessageFile, message_file_id)
+        assert message_file is not None
+        assert message_file.created_by_role == CreatorUserRole.ACCOUNT
+
+    def test_handle_multimodal_image_content_service_api_mode(
+        self,
+        mock_user_id,
+        mock_tenant_id,
+        mock_message_id,
+        mock_queue_manager,
+        tool_file,
+        sqlite_session: Session,
+    ):
+        """Test that service API mode sets correct created_by_role."""
+        # Arrange
+        image_url = "http://example.com/image.png"
+        content = ImagePromptMessageContent(
+            url=image_url,
+            format="png",
+            mime_type="image/png",
+        )
+        mock_queue_manager.invoke_from = InvokeFrom.SERVICE_API
+
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+            mock_mgr = MagicMock()
+            mock_mgr.create_file_by_url.return_value = tool_file
+            mock_mgr_class.return_value = mock_mgr
+
+            message_file_id = AppRunner()._handle_multimodal_image_content(
+                session=sqlite_session,
+                content=content,
+                message_id=mock_message_id,
+                user_id=mock_user_id,
+                tenant_id=mock_tenant_id,
+                queue_manager=mock_queue_manager,
+            )
+
+        message_file = sqlite_session.get(MessageFile, message_file_id)
+        assert message_file is not None
+        assert message_file.created_by_role == CreatorUserRole.END_USER
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+@dataclass(eq=False, repr=False)
 class _DummyParameterRule:
-    def __init__(self, name: str, use_template: str | None = None) -> None:
-        self.name = name
-        self.use_template = use_template
+    name: str
+    use_template: str | None = None
 
 
 class _TokenCountingModel:
@@ -538,11 +877,31 @@ class TestAppRunner:
 
     def test_moderation_for_inputs_returns_result(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
-        monkeypatch.setattr(
-            "core.app.apps.base_app_runner.InputModeration.check",
-            lambda self, app_id, tenant_id, app_config, inputs, query, message_id, trace_manager: (True, {}, ""),
+        moderation_calls: list[dict[str, object]] = []
+
+        def check(self: object, **kwargs: object) -> tuple[bool, dict[str, object], str]:
+            moderation_calls.append(kwargs)
+            return True, {}, ""
+
+        monkeypatch.setattr("core.app.apps.base_app_runner.InputModeration.check", check)
+        trace_scope = TraceScope(
+            emitter=_TraceRecorder(),
+            tenant_id="tenant",
+            app_id="app",
+            user_id="user",
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
         )
-        app_generate_entity = AppGenerateEntity.model_construct(app_config=None, trace_manager=None)
+        app_generate_entity = AppGenerateEntity(
+            task_id="task",
+            inputs={},
+            files=[],
+            user_id="user",
+            stream=False,
+            invoke_from=InvokeFrom.WEB_APP,
+            trace_scope=trace_scope,
+        )
 
         result = runner.moderation_for_inputs(
             app_id="app",
@@ -554,6 +913,17 @@ class TestAppRunner:
         )
 
         assert result == (True, {}, "")
+        assert moderation_calls == [
+            {
+                "app_id": "app",
+                "tenant_id": "tenant",
+                "app_config": None,
+                "inputs": {},
+                "query": "q",
+                "message_id": "msg",
+                "trace_scope": trace_scope,
+            }
+        ]
 
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_query_app_annotations_to_reply(

@@ -57,7 +57,7 @@ function InputNumberWithSlider({
       <div className="flex h-8 items-center justify-between space-x-2">
         <input
           aria-label={label}
-          value={value}
+          value={Number.isFinite(value) ? value : ''}
           className="block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-[13px] text-components-input-text-filled outline-hidden"
           type="number"
           min={min}

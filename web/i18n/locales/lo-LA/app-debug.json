@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "ສ້າງຫຼາຍຂໍ້ຄວາມພ້ອມກັນ, ຈາກນັ້ນແກ້ໄຂ ແລະ ສ້າງຕໍ່",
   "feature.moreLikeThis.tip": "ການໃຊ້ຄຸນສົມບັດນີ້ຈະມີຄ່າໃຊ້ຈ່າຍ tokens ເພີ່ມເຕີມ",
   "feature.moreLikeThis.title": "ຂໍ້ຄວາມທີ່ຄ້າຍຄືກັນນີ້",
+  "feature.showThoughts.description": "ສະແດງເນື້ອຫາການຄິດຂອງໂມເດລໃນການສົນທະນາ.",
+  "feature.showThoughts.title": "ສະແດງຂະບວນການຄິດ",
   "feature.speechToText.description": "ສາມາດໃຊ້ການປ້ອນຂໍ້ມູນດ້ວຍສຽງໃນການສົນທະນາໄດ້.",
   "feature.speechToText.title": "ປ່ຽນສຽງເປັນຂໍ້ຄວາມ",
   "feature.suggestedQuestionsAfterAnswer.description": "ການຕັ້ງຄ່າຄຳຖາມແນະນຳຖັດໄປຈະຊ່ວຍໃຫ້ຜູ້ໃຊ້ມີການສົນທະນາທີ່ດີຂຶ້ນ.",

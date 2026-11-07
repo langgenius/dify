@@ -1,199 +1,111 @@
-import type { LexicalEditor } from 'lexical'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, render, waitFor } from '@testing-library/react'
+import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
+import type { EventEmitterValue } from '@/context/event-emitter'
+import { act, waitFor } from '@testing-library/react'
 import { $getRoot } from 'lexical'
+import { useEffect } from 'react'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { CustomTextNode } from '../custom-text/node'
 import UpdateBlock, {
   PROMPT_EDITOR_INSERT_QUICKLY,
   PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
 } from '../update-block'
-import { CaptureEditorPlugin } from './test-utils'
+import {
+  readEditorStateValue,
+  readRootTextContent,
+  renderLexicalEditor,
+  selectRootEnd,
+  waitForEditorReady,
+} from './test-helpers'
 
-const { mockUseEventEmitterContextContext } = vi.hoisted(() => ({
-  mockUseEventEmitterContextContext: vi.fn(),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => mockUseEventEmitterContextContext(),
-}))
-
-type TestEvent = {
-  type: string
-  instanceId?: string
-  payload?: string
-}
-
-const readEditorText = (editor: LexicalEditor) => {
-  let content = ''
-
-  editor.getEditorState().read(() => {
-    content = $getRoot().getTextContent()
-  })
-
-  return content
-}
-
-const selectRootEnd = (editor: LexicalEditor) => {
-  act(() => {
-    editor.update(() => {
-      $getRoot().selectEnd()
-    })
-  })
-}
-
-const setup = (props?: { instanceId?: string; withEventEmitter?: boolean }) => {
-  const callbacks: Array<(event: TestEvent) => void> = []
-
-  const eventEmitter =
-    props?.withEventEmitter === false
-      ? null
-      : {
-          useSubscription: vi.fn((callback: (event: TestEvent) => void) => {
-            callbacks.push(callback)
-          }),
-        }
-
-  mockUseEventEmitterContextContext.mockReturnValue({ eventEmitter })
-
-  let editor: LexicalEditor | null = null
-  const onReady = (value: LexicalEditor) => {
-    editor = value
+const setup = async () => {
+  let emitter: EventEmitter<EventEmitterValue> | null = null
+  const CaptureEmitter = () => {
+    const { eventEmitter } = useEventEmitterContextContext()
+    useEffect(() => {
+      emitter = eventEmitter
+    }, [eventEmitter])
+    return null
   }
-
-  render(
-    <LexicalComposer
-      initialConfig={{
-        namespace: 'update-block-plugin-test',
-        onError: (error: Error) => {
-          throw error
-        },
-        nodes: [CustomTextNode],
-      }}
-    >
-      <UpdateBlock instanceId={props?.instanceId} />
-      <CaptureEditorPlugin onReady={onReady} />
-    </LexicalComposer>,
-  )
-
-  const emit = (event: TestEvent) => {
-    act(() => {
-      callbacks.forEach((callback) => callback(event))
-    })
-  }
-
+  const view = renderLexicalEditor({
+    namespace: 'update-block',
+    nodes: [CustomTextNode],
+    children: (
+      <EventEmitterContextProvider>
+        <CaptureEmitter />
+        <UpdateBlock instanceId="editor-1" />
+      </EventEmitterContextProvider>
+    ),
+  })
+  const editor = await waitForEditorReady(view.getEditor)
   return {
-    callbacks,
-    emit,
-    eventEmitter,
-    getEditor: () => editor,
+    ...view,
+    editor,
+    emit: (event: EventEmitterValue) => {
+      act(() => {
+        emitter!.emit(event)
+      })
+    },
   }
 }
 
-describe('UpdateBlock', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('applies updates only to the addressed editor and unsubscribes on unmount', async () => {
+  const { editor, emit, unmount } = await setup()
+  emit({
+    type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+    instanceId: 'editor-1',
+    payload: 'First line\nSecond line',
   })
-
-  describe('Subscription setup', () => {
-    it('should register two subscriptions when event emitter is available', () => {
-      const { callbacks, eventEmitter } = setup({ instanceId: 'instance-1' })
-
-      expect(eventEmitter).not.toBeNull()
-      expect(eventEmitter?.useSubscription).toHaveBeenCalledTimes(2)
-      expect(callbacks).toHaveLength(2)
-    })
-
-    it('should render without subscriptions when event emitter is null', () => {
-      const { callbacks, eventEmitter } = setup({ withEventEmitter: false })
-
-      expect(eventEmitter).toBeNull()
-      expect(callbacks).toHaveLength(0)
-    })
+  await waitFor(() =>
+    expect(
+      readEditorStateValue(editor, () =>
+        $getRoot()
+          .getChildren()
+          .map((node) => node.getTextContent())
+          .join('\n'),
+      ),
+    ).toBe('First line\nSecond line'),
+  )
+  emit({
+    type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+    instanceId: 'other-editor',
+    payload: 'Wrong editor',
   })
-
-  describe('Update value event', () => {
-    it('should update editor state when update event matches instance id', async () => {
-      const { emit, getEditor } = setup({ instanceId: 'instance-1' })
-
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      emit({
-        type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
-        instanceId: 'instance-1',
-        payload: 'updated text',
-      })
-
-      await waitFor(() => {
-        expect(readEditorText(editor!)).toBe('updated text')
-      })
-    })
-
-    it('should ignore update event when instance id does not match', async () => {
-      const { emit, getEditor } = setup({ instanceId: 'instance-1' })
-
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      emit({
-        type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
-        instanceId: 'instance-2',
-        payload: 'should not apply',
-      })
-
-      await waitFor(() => {
-        expect(readEditorText(editor!)).toBe('')
-      })
-    })
+  expect(
+    readEditorStateValue(editor, () =>
+      $getRoot()
+        .getChildren()
+        .map((node) => node.getTextContent())
+        .join('\n'),
+    ),
+  ).toBe('First line\nSecond line')
+  unmount()
+  emit({
+    type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+    instanceId: 'editor-1',
+    payload: 'Too late',
   })
+  expect(
+    readEditorStateValue(editor, () =>
+      $getRoot()
+        .getChildren()
+        .map((node) => node.getTextContent())
+        .join('\n'),
+    ),
+  ).toBe('First line\nSecond line')
+})
 
-  describe('Quick insert event', () => {
-    it('should insert slash when quick insert event matches instance id', async () => {
-      const { emit, getEditor } = setup({ instanceId: 'instance-1' })
-
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      selectRootEnd(editor!)
-
-      emit({
-        type: PROMPT_EDITOR_INSERT_QUICKLY,
-        instanceId: 'instance-1',
-      })
-
-      await waitFor(() => {
-        expect(readEditorText(editor!)).toBe('/')
-      })
-    })
-
-    it('should ignore quick insert event when instance id does not match', async () => {
-      const { emit, getEditor } = setup({ instanceId: 'instance-1' })
-
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      selectRootEnd(editor!)
-
-      emit({
-        type: PROMPT_EDITOR_INSERT_QUICKLY,
-        instanceId: 'instance-2',
-      })
-
-      await waitFor(() => {
-        expect(readEditorText(editor!)).toBe('')
-      })
-    })
+it('inserts the quick-command slash at the selection only for the matching editor', async () => {
+  const { editor, emit } = await setup()
+  emit({
+    type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+    instanceId: 'editor-1',
+    payload: 'Prompt ',
   })
+  await waitFor(() => expect(readRootTextContent(editor)).toBe('Prompt '))
+  selectRootEnd(editor)
+  emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId: 'other-editor' })
+  expect(readRootTextContent(editor)).toBe('Prompt ')
+  emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId: 'editor-1' })
+  await waitFor(() => expect(readRootTextContent(editor)).toBe('Prompt /'))
 })

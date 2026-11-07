@@ -1,5 +1,4 @@
 from contextlib import nullcontext
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -23,9 +22,7 @@ from models.agent import (
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
-from services.agent.workspace_service import AgentWorkspaceService
 
 
 def test_retire_unowned_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -51,9 +48,9 @@ def test_retire_unowned_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> N
     assert exc_info.value is error
 
 
-def _workflow_only_agent(*, backing_app_id: str | None = None) -> Agent:
+def _workflow_only_agent(*, agent_id: str = "agent-1", backing_app_id: str | None = None) -> Agent:
     return Agent(
-        id="agent-1",
+        id=agent_id,
         tenant_id="tenant-1",
         name="Inline Agent",
         description="",
@@ -123,7 +120,10 @@ def test_retire_unowned_requires_an_exact_persisted_workflow_owner_key(
     if mismatched_key is not None and mismatched_key != "tenant_id":
         binding_key[mismatched_key] = mismatched_values[mismatched_key]
     binding = WorkflowAgentNodeBinding(
-        **binding_key,
+        tenant_id=binding_key["tenant_id"],
+        app_id=binding_key["app_id"],
+        workflow_id=binding_key["workflow_id"],
+        workflow_version=binding_key["workflow_version"],
         node_id="agent-node",
         binding_type=WorkflowAgentBindingType.INLINE_AGENT,
         agent_id=agent.id,
@@ -245,34 +245,28 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
     )
 
 
-def test_hidden_app_enqueue_failure_prevents_agent_purge_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
-    context = MagicMock()
-    session = context.__enter__.return_value
-    session.scalars.side_effect = [
-        SimpleNamespace(
-            all=MagicMock(
-                return_value=[
-                    SimpleNamespace(backing_app_id="hidden-app-1"),
-                    SimpleNamespace(backing_app_id="hidden-app-2"),
-                ]
-            )
-        ),
-        SimpleNamespace(all=MagicMock(return_value=[])),
-        SimpleNamespace(all=MagicMock(return_value=[])),
-        SimpleNamespace(all=MagicMock(return_value=[])),
-        SimpleNamespace(all=MagicMock(return_value=[])),
+def test_hidden_app_enqueue_failure_prevents_agent_purge_enqueue(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    # Two orphaned workflow-only Agents, each backed by its own hidden App. Only the broker is faked:
+    # archiving, resource retirement and the hidden-App delete all run against the seeded rows.
+    owners = [("agent-1", "hidden-app-1"), ("agent-2", "hidden-app-2")]
+    agents = [_workflow_only_agent(agent_id=agent_id, backing_app_id=app_id) for agent_id, app_id in owners]
+    hidden_apps = [
+        App(
+            id=app_id,
+            tenant_id="tenant-1",
+            name="Inline Agent runtime",
+            mode=AppMode.AGENT,
+            status=AppStatus.NORMAL,
+            enable_site=False,
+            enable_api=False,
+        )
+        for _, app_id in owners
     ]
-    monkeypatch.setattr(
-        "services.agent.retirement_service.session_factory.create_session",
-        lambda: context,
-    )
-    monkeypatch.setattr(
-        WorkflowAgentRetirementService,
-        "archive_unowned",
-        MagicMock(return_value=["agent-1", "agent-2"]),
-    )
-    monkeypatch.setattr(AgentWorkspaceService, "retire_all_for_app", MagicMock(return_value=[]))
-    monkeypatch.setattr(AgentHomeSnapshotService, "retire_all_for_agent", MagicMock(return_value=[]))
+    sqlite_session.add_all([*agents, *hidden_apps])
+    sqlite_session.commit()
     error = RuntimeError("broker unavailable")
     cleanup_app = MagicMock(side_effect=[None, error])
     monkeypatch.setattr("services.agent.retirement_service.remove_app_and_related_data_task.delay", cleanup_app)

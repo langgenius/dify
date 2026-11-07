@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from pydantic import JsonValue
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -20,7 +21,9 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from models.model import App, AppMode
 from models.provider import ProviderType
 from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError, PreparedAgentLLMInvocation
+from services.billing_client import billing
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 
 def _request() -> AgentLLMInvokeRequest:
@@ -176,24 +179,25 @@ def test_prepare_defers_cached_quota_status_to_authoritative_reservation(
 def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     request = _request()
     _persist_app(sqlite_session, request=request, mode=AppMode.WORKFLOW)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
     model_instance, _ = _model_instance()
     reservation = MagicMock(commit_before_delivery=True)
-    model_instance.reserve_quota = MagicMock(return_value=reservation)
+    mock_reserve_quota = mocker.patch.object(model_instance, "reserve_quota", return_value=reservation)
     prepared = _prepare(service, request, model_instance)
     provider_chunk = _chunk("done", usage=_usage())
 
-    def provider_stream() -> Generator[LLMResultChunk, None, None]:
+    def provider_stream() -> Generator[LLMResultChunk]:
         yield provider_chunk
 
     with patch.object(ModelInstance, "invoke_llm", return_value=provider_stream()) as provider_invoke:
         chunks = list(service.invoke(prepared))
 
     assert chunks == [provider_chunk]
-    model_instance.reserve_quota.assert_called_once_with(
+    mock_reserve_quota.assert_called_once_with(
         request_id=request.caller.invocation_id,
         app_type=CreditUsageAppType.WORKFLOW,
         created_by=CreditUsageCreatedBy.AGENT_NODE,
@@ -204,7 +208,7 @@ def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
     provider_invoke.assert_called_once()
 
 
-def test_gateway_forwards_prompt_messages_without_revalidation() -> None:
+def test_gateway_forwards_prompt_messages_without_revalidation(mocker: MockerFixture) -> None:
     request = _request()
     prompt_messages: list[dict[str, JsonValue]] = [
         {
@@ -227,18 +231,18 @@ def test_gateway_forwards_prompt_messages_without_revalidation() -> None:
         },
     ]
     request.target.prompt_messages = prompt_messages
-    model_instance = MagicMock(spec=ModelInstance)
-    model_instance.invoke_llm.return_value = iter([])
+    model_instance = make_model_instance(provider=request.target.provider, model=request.target.model)
+    invoke = mocker.patch.object(model_instance, "invoke_llm", return_value=iter([]))
     prepared = PreparedAgentLLMInvocation(request=request, model_instance=model_instance)
 
     assert list(AgentLLMInnerService().invoke(prepared)) == []
-    assert model_instance.invoke_llm.call_args.kwargs["prompt_messages"] is prompt_messages
+    assert invoke.call_args.kwargs["prompt_messages"] is prompt_messages
 
 
-def test_standalone_agent_app_gateway_is_attributed_to_app() -> None:
+def test_standalone_agent_app_gateway_is_attributed_to_app(mocker: MockerFixture) -> None:
     request = _request()
-    model_instance = MagicMock(spec=ModelInstance)
-    model_instance.invoke_llm.return_value = iter([])
+    model_instance = make_model_instance(provider=request.target.provider, model=request.target.model)
+    invoke = mocker.patch.object(model_instance, "invoke_llm", return_value=iter([]))
     prepared = PreparedAgentLLMInvocation(
         request=request,
         model_instance=model_instance,
@@ -246,16 +250,16 @@ def test_standalone_agent_app_gateway_is_attributed_to_app() -> None:
     )
 
     assert list(AgentLLMInnerService().invoke(prepared)) == []
-    request_metadata = model_instance.invoke_llm.call_args.kwargs["request_metadata"]
+    request_metadata = invoke.call_args.kwargs["request_metadata"]
     assert request_metadata["created_by"] is CreditUsageCreatedBy.APP
     assert request_metadata["agent_config_version_kind"] == "draft"
 
 
-def test_agent_build_draft_gateway_is_attributed_to_build_draft() -> None:
+def test_agent_build_draft_gateway_is_attributed_to_build_draft(mocker: MockerFixture) -> None:
     request = _request()
     request.caller.agent_config_version_kind = "build_draft"
-    model_instance = MagicMock(spec=ModelInstance)
-    model_instance.invoke_llm.return_value = iter([])
+    model_instance = make_model_instance(provider=request.target.provider, model=request.target.model)
+    invoke = mocker.patch.object(model_instance, "invoke_llm", return_value=iter([]))
     prepared = PreparedAgentLLMInvocation(
         request=request,
         model_instance=model_instance,
@@ -263,7 +267,7 @@ def test_agent_build_draft_gateway_is_attributed_to_build_draft() -> None:
     )
 
     assert list(AgentLLMInnerService().invoke(prepared)) == []
-    request_metadata = model_instance.invoke_llm.call_args.kwargs["request_metadata"]
+    request_metadata = invoke.call_args.kwargs["request_metadata"]
     assert request_metadata["created_by"] is CreditUsageCreatedBy.BUILD_DRAFT
     assert request_metadata["agent_config_version_kind"] == "build_draft"
 
@@ -297,19 +301,19 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
     effective_charges = 0
     reserve_request_ids: list[str] = []
 
-    def reserve(*, request_id: str, **_: object) -> dict[str, object]:
+    def reserve(*, request_id: str, **_: object) -> billing.QuotaReserveReply:
         reserve_request_ids.append(request_id)
         reservation_id = reservations_by_request.setdefault(request_id, "reservation-1")
-        return {"reservation_id": reservation_id, "available": 97, "reserved": 3}
+        return billing.QuotaReserveReply(reservation_id=reservation_id, available=97, reserved=3)
 
-    def commit(*, reservation_id: str, actual_amount: int, **_: object) -> dict[str, object]:
+    def commit(*, reservation_id: str, actual_amount: int, **_: object) -> billing.QuotaCommitReply:
         nonlocal effective_charges
         if reservation_id not in committed_reservations:
             committed_reservations.add(reservation_id)
             effective_charges += actual_amount
-        return {"available": 97, "reserved": 0, "refunded": 0}
+        return billing.QuotaCommitReply(available=97, reserved=0, refunded=0)
 
-    def provider_invoke(*_: object, **__: object) -> Generator[LLMResultChunk, None, None]:
+    def provider_invoke(*_: object, **__: object) -> Generator[LLMResultChunk]:
         yield _chunk("done", usage=_usage())
 
     with (
@@ -334,16 +338,17 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
 def test_gateway_releases_reservation_when_provider_fails_before_delivery(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     request = _request()
     _persist_app(sqlite_session, request=request)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
     model_instance, _ = _model_instance()
     reservation = MagicMock(commit_before_delivery=True)
-    model_instance.reserve_quota = MagicMock(return_value=reservation)
+    mocker.patch.object(model_instance, "reserve_quota", return_value=reservation)
     prepared = _prepare(service, request, model_instance)
 
-    def failing_stream() -> Generator[LLMResultChunk, None, None]:
+    def failing_stream() -> Generator[LLMResultChunk]:
         raise RuntimeError("provider failed")
         yield
 
@@ -358,6 +363,7 @@ def test_gateway_releases_reservation_when_provider_fails_before_delivery(
 def test_gateway_buffers_usage_based_quota_until_terminal_usage(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     request = _request()
     _persist_app(sqlite_session, request=request)
@@ -366,11 +372,11 @@ def test_gateway_buffers_usage_based_quota_until_terminal_usage(
     events: list[str] = []
     reservation = MagicMock(commit_before_delivery=False)
     reservation.commit.side_effect = lambda _usage: events.append("commit")
-    model_instance.reserve_quota = MagicMock(return_value=reservation)
+    mocker.patch.object(model_instance, "reserve_quota", return_value=reservation)
     prepared = _prepare(service, request, model_instance)
     terminal_usage = _usage(total_tokens=21)
 
-    def provider_stream() -> Generator[LLMResultChunk, None, None]:
+    def provider_stream() -> Generator[LLMResultChunk]:
         events.append("provider:first")
         yield _chunk("first")
         events.append("provider:last")

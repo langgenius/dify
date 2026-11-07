@@ -1,4 +1,4 @@
-import pc from 'picocolors'
+import { createColors } from 'picocolors'
 
 export type ColorScheme = {
   bold: (s: string) => string
@@ -28,6 +28,9 @@ export function colorScheme(enabled: boolean): ColorScheme {
       failureIcon: () => '✗',
     }
   }
+  // createColors(true) forces ANSI output regardless of TTY/env so this module
+  // never reads the environment itself; callers decide enablement via colorEnabled.
+  const pc = createColors(true)
   return {
     bold: (s) => pc.bold(s),
     dim: (s) => pc.dim(s),
@@ -41,9 +44,8 @@ export function colorScheme(enabled: boolean): ColorScheme {
   }
 }
 
-export function colorEnabled(isTTY: boolean): boolean {
-  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '') return false
-  if (process.env.DIFYCTL_NO_COLOR !== undefined && process.env.DIFYCTL_NO_COLOR !== '')
-    return false
-  return isTTY
+export const NO_COLOR_ENV = 'NO_COLOR'
+
+export function colorEnabled(isTTY: boolean, env: NodeJS.ProcessEnv): boolean {
+  return isTTY && env[NO_COLOR_ENV] === undefined
 }

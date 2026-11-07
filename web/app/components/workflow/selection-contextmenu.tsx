@@ -3,8 +3,8 @@ import type { I18nKeysWithPrefix } from '@/types/i18n'
 import {
   ContextMenuContent,
   ContextMenuGroup,
+  ContextMenuGroupLabel,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuSeparator,
 } from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
@@ -109,7 +109,9 @@ const unsupportedSnippetNodeTypes = new Set([
   BlockEnum.End,
   BlockEnum.Start,
   BlockEnum.HumanInput,
+  BlockEnum.HumanInputV2,
   BlockEnum.KnowledgeRetrieval,
+  BlockEnum.KnowledgeRetrievalV2,
 ])
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {
@@ -409,7 +411,6 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
           return returnToCanvas ? (flowStore.getState().domNode ?? true) : true
         }}
         className="w-60"
-        sideOffset={4}
         onKeyDown={(event) => {
           if (getNodesReadOnly()) return
           handleWorkflowMenuKeyDown(event, [
@@ -463,7 +464,8 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
         <ContextMenuSeparator />
         <ContextMenuGroup>
           <ContextMenuItem
-            className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
+            variant="destructive"
+            className="justify-between px-3"
             onClick={handleDeleteNodes}
           >
             <span>
@@ -476,9 +478,9 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
         {menuSections.map((section, sectionIndex) => (
           <ContextMenuGroup key={section.titleKey}>
             {sectionIndex > 0 && <ContextMenuSeparator />}
-            <ContextMenuLabel>
+            <ContextMenuGroupLabel>
               {t(($) => $[section.titleKey], { defaultValue: section.titleKey, ns: 'workflow' })}
-            </ContextMenuLabel>
+            </ContextMenuGroupLabel>
             {section.items.map((item) => {
               return (
                 <ContextMenuItem

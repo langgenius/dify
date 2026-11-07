@@ -44,8 +44,9 @@ export const useFormatDetector = () => {
           setSelectedIsLink(false)
         }
 
-        if ($isListItemNode(parent) || $isListItemNode(node)) setSelectedIsBullet(true)
-        else setSelectedIsBullet(false)
+        let ancestor = node
+        while (!$isListItemNode(ancestor) && ancestor.getParent()) ancestor = ancestor.getParent()!
+        setSelectedIsBullet($isListItemNode(ancestor))
       }
     })
   }, [editor, noteEditorStore])

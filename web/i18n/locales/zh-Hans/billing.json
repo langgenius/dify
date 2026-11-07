@@ -8,6 +8,9 @@
   "apps.fullTip2": "计划限制已达到",
   "apps.fullTip2des": "推荐您清理不活跃的应用或者联系我们",
   "buyPermissionDeniedTip": "请联系企业管理员订阅",
+  "errors.operationFailed": "无法完成此请求，请稍后重试。如果问题持续存在，请联系支持团队。",
+  "errors.requestInProgress": "上一个请求仍在处理中，请稍后再试。",
+  "errors.unavailable": "服务暂时不可用，请稍后再试。",
   "plans.community.btnText": "开始使用",
   "plans.community.description": "适用于开源爱好者、个人开发者以及非商业项目",
   "plans.community.features": [
@@ -46,6 +49,7 @@
     "优先电子邮件和聊天支持"
   ],
   "plans.premium.includesTitle": "Community 版的所有功能，加上：",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Premium",
   "plans.premium.price": "可扩展",
   "plans.premium.priceTip": "基于 Cloud Marketplace",
@@ -69,6 +73,7 @@
   "plansCommon.comparePlanAndFeatures": "对比套餐 & 功能特性",
   "plansCommon.currentPlan": "当前计划",
   "plansCommon.days": "天",
+  "plansCommon.discountedAnnualPrice": "优惠年付价格：",
   "plansCommon.documentProcessingPriority": "文档处理",
   "plansCommon.documentProcessingPriorityTip": "如需更高的文档处理优先级，请升级您的套餐。",
   "plansCommon.documentProcessingPriorityUpgrade": "以更快的速度、更高的精度处理更多的数据。",
@@ -87,6 +92,7 @@
   "plansCommon.modelProviders": "支持 OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate",
   "plansCommon.month": "月",
   "plansCommon.mostPopular": "最受欢迎",
+  "plansCommon.originalAnnualPrice": "原年付价格：",
   "plansCommon.priceTip": "每个团队空间/",
   "plansCommon.priority.priority": "优先",
   "plansCommon.priority.standard": "标准",

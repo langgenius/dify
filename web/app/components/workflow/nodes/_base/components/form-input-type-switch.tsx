@@ -19,7 +19,7 @@ type TypeOptionProps = {
 }
 
 const optionClassName =
-  'cursor-pointer border-0 px-2.5 py-1.5 text-text-tertiary transition-none hover:text-text-tertiary data-checked:border-0 data-checked:text-text-secondary data-checked:shadow-black/5 data-checked:hover:bg-components-segmented-control-item-active-bg data-checked:hover:text-text-secondary data-disabled:text-text-tertiary data-disabled:data-checked:bg-components-segmented-control-item-active-bg data-disabled:data-checked:text-text-secondary data-disabled:data-checked:shadow-xs data-disabled:data-checked:shadow-black/5'
+  'cursor-pointer border-0 px-2.5 py-1.5 text-text-tertiary hover:text-text-tertiary data-checked:border-0 data-checked:text-text-secondary data-checked:shadow-black/5 data-checked:hover:bg-components-segmented-control-item-active-bg data-checked:hover:text-text-secondary data-disabled:text-text-tertiary data-disabled:data-checked:bg-components-segmented-control-item-active-bg data-disabled:data-checked:text-text-secondary data-disabled:data-checked:shadow-xs data-disabled:data-checked:shadow-black/5'
 
 function TypeOption({ children, label, selected, value }: TypeOptionProps) {
   const option = (

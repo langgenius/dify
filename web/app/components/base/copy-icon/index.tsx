@@ -8,10 +8,8 @@ type Props = Readonly<{
   content: string
 }>
 
-const prefixEmbedded = 'overview.appInfo.embedded'
-
 const CopyIcon = ({ content }: Props) => {
-  const { t } = useTranslation(['appOverview'])
+  const { t } = useTranslation(['common'])
   const { copied, copy, reset } = useClipboard()
 
   const handleCopy = useCallback(() => {
@@ -19,8 +17,8 @@ const CopyIcon = ({ content }: Props) => {
   }, [copy, content])
 
   const tooltipText = copied
-    ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
-    : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })
+    ? t(($) => $['operation.copied'], { ns: 'common' })
+    : t(($) => $['operation.copy'], { ns: 'common' })
   /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
   const safeTooltipText = tooltipText || ''
 

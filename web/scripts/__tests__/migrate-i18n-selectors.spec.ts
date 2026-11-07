@@ -5,7 +5,6 @@ import { transformSource } from '../migrate-i18n-selectors'
 describe('migrate-i18n-selectors', () => {
   describe('Source Transformation', () => {
     it('should migrate flat t and Trans keys without reformatting surrounding code', () => {
-      // Arrange
       const source = `import { Trans, useTranslation } from 'react-i18next'
 
 export function Example() {
@@ -14,10 +13,8 @@ export function Example() {
 }
 `
 
-      // Act
       const result = transformSource(source, 'example.tsx')
 
-      // Assert
       expect(result.output).toBe(`import { Trans, useTranslation } from 'react-i18next'
 
 export function Example() {
@@ -29,7 +26,6 @@ export function Example() {
     })
 
     it('should use property access for identifier keys and normalize existing selectors', () => {
-      // Arrange
       const source = `import { useTranslation } from 'react-i18next'
 const { t } = useTranslation('app')
 const loadingSelector = $ => $["loading"]
@@ -37,10 +33,8 @@ const dottedSelector = $ => $["account.changeEmail.title"]
 t('loading')
 `
 
-      // Act
       const result = transformSource(source, 'example.ts')
 
-      // Assert
       expect(result.output).toBe(`import { useTranslation } from 'react-i18next'
 const { t } = useTranslation('app')
 const loadingSelector = $ => $.loading
@@ -51,7 +45,6 @@ t($ => $.loading)
     })
 
     it('should migrate global, instance, dynamic, and fallback translation calls', () => {
-      // Arrange
       const source = `import { t as globalT } from 'i18next'
 import { useTranslation } from '#i18n'
 
@@ -62,10 +55,8 @@ t(\`dynamic.\${kind}\`)
 t('withFallback', 'Fallback')
 `
 
-      // Act
       const result = transformSource(source, 'example.ts')
 
-      // Assert
       expect(result.output).toBe(`import { t as globalT } from 'i18next'
 import { useTranslation } from '#i18n'
 
@@ -79,7 +70,6 @@ t($ => $.withFallback, { defaultValue: 'Fallback' })
     })
 
     it('should leave an unrelated t binding unchanged in another lexical scope', () => {
-      // Arrange
       const source = `import { useTranslation } from 'react-i18next'
 
 function renderUnrelated() {
@@ -93,10 +83,8 @@ export function Example() {
 }
 `
 
-      // Act
       const result = transformSource(source, 'example.tsx')
 
-      // Assert
       expect(result.output).toBe(`import { useTranslation } from 'react-i18next'
 
 function renderUnrelated() {
@@ -113,7 +101,6 @@ export function Example() {
     })
 
     it('should migrate legacy translation callback aliases and explicitly untyped callbacks', () => {
-      // Arrange
       const source = `type Translate = (key: string, options: { ns: string }) => string
 
 export function translateAlias(t: Translate) {
@@ -125,10 +112,8 @@ export function translateLegacy(t: any) {
 }
 `
 
-      // Act
       const result = transformSource(source, 'example.ts')
 
-      // Assert
       expect(result.output).toBe(`type Translate = (key: string, options: { ns: string }) => string
 
 export function translateAlias(t: Translate) {
@@ -143,7 +128,6 @@ export function translateLegacy(t: any) {
     })
 
     it('should follow aliased translation factory bindings without trusting shadowed names', () => {
-      // Arrange
       const source = `import { useTranslation as useI18n } from 'react-i18next'
 import { getTranslation as loadTranslation } from '@/i18n/server'
 
@@ -159,10 +143,8 @@ export async function Example() {
 }
 `
 
-      // Act
       const result = transformSource(source, 'example.tsx')
 
-      // Assert
       expect(result.output).toBe(`import { useTranslation as useI18n } from 'react-i18next'
 import { getTranslation as loadTranslation } from '@/i18n/server'
 
@@ -181,7 +163,6 @@ export async function Example() {
     })
 
     it('should not rewrite fallback arguments for a shadowed imported t binding', () => {
-      // Arrange
       const source = `import { t } from 'i18next'
 
 function renderUnrelated(t: (selector: ($: Record<string, string>) => string, fallback: string) => string) {
@@ -191,10 +172,8 @@ function renderUnrelated(t: (selector: ($: Record<string, string>) => string, fa
 export const translated = t($ => $['global.key'], 'Global fallback')
 `
 
-      // Act
       const result = transformSource(source, 'example.ts')
 
-      // Assert
       expect(result.output).toBe(`import { t } from 'i18next'
 
 function renderUnrelated(t: (selector: ($: Record<string, string>) => string, fallback: string) => string) {
@@ -207,7 +186,6 @@ export const translated = t($ => $['global.key'], { defaultValue: 'Global fallba
     })
 
     it('should leave a shadowed Trans component key unchanged', () => {
-      // Arrange
       const source = `import { Trans } from 'react-i18next'
 
 function Local({ Trans }: { Trans: (props: { i18nKey: string }) => null }) {
@@ -217,10 +195,8 @@ function Local({ Trans }: { Trans: (props: { i18nKey: string }) => null }) {
 export const translated = <Trans i18nKey="global.key" />
 `
 
-      // Act
       const result = transformSource(source, 'example.tsx')
 
-      // Assert
       expect(result.output).toBe(`import { Trans } from 'react-i18next'
 
 function Local({ Trans }: { Trans: (props: { i18nKey: string }) => null }) {
@@ -233,21 +209,17 @@ export const translated = <Trans i18nKey={$ => $['global.key']} />
     })
 
     it('should be idempotent after selectors are migrated', () => {
-      // Arrange
       const source = `import { useTranslation } from 'react-i18next'
 const { t } = useTranslation('app')
 t($ => $['account.changeEmail.title'])
 `
 
-      // Act
       const result = transformSource(source, 'example.ts')
 
-      // Assert
       expect(result).toEqual({ changes: 0, output: source })
     })
 
     it('should preserve selector-compatible casts, parameters, identifiers, and map entries', () => {
-      // Arrange
       const source = `import type { SelectorKey, SelectorParam } from 'i18next'
 import { useTranslation } from 'react-i18next'
 
@@ -268,15 +240,12 @@ export function translate(selector: SelectorParam<'app'>, key: string, kind: key
 }
 `
 
-      // Act
       const result = transformSource(source, 'example.ts')
 
-      // Assert
       expect(result).toEqual({ changes: 0, output: source })
     })
 
     it('should adapt local react-i18next translation mocks', () => {
-      // Arrange
       const source = `import { vi } from 'vite-plus/test'
 
 vi.mock('react-i18next', () => ({
@@ -291,10 +260,8 @@ const businessProps = {
 }
 `
 
-      // Act
       const result = transformSource(source, 'example.spec.ts')
 
-      // Assert
       expect(result.output).toBe(`import { vi } from 'vite-plus/test'
 
 vi.mock('react-i18next', async () => {
@@ -319,7 +286,6 @@ const businessProps = {
     })
 
     it('should adapt selector mocks from the local i18n facade', () => {
-      // Arrange
       const source = `import { vi } from 'vite-plus/test'
 
 vi.mock('#i18n', () => ({
@@ -329,10 +295,8 @@ vi.mock('#i18n', () => ({
 }))
 `
 
-      // Act
       const result = transformSource(source, 'example.spec.ts')
 
-      // Assert
       expect(result.output).toContain(`vi.mock('#i18n', async () => {`)
       expect(result.output).toContain(
         `const { withSelectorKey } = await import('@/test/i18n-mock')`,
@@ -345,7 +309,6 @@ vi.mock('#i18n', () => ({
     })
 
     it('should defer mock callbacks declared outside a hoisted factory', () => {
-      // Arrange
       const source = `import { vi } from 'vite-plus/test'
 
 const mockTranslation = (key: string) => key
@@ -357,10 +320,8 @@ vi.mock('#i18n', () => ({
 }))
 `
 
-      // Act
       const result = transformSource(source, 'example.spec.ts')
 
-      // Assert
       expect(result.output).toContain(
         't: withSelectorKey((...args: Parameters<typeof mockTranslation>) => mockTranslation(...args))',
       )
@@ -371,7 +332,6 @@ vi.mock('#i18n', () => ({
     })
 
     it('should preserve selector-aware i18next mock adapters', () => {
-      // Arrange
       const source = `import type { Namespace, SelectorParam } from 'i18next'
 import { vi } from 'vite-plus/test'
 
@@ -384,15 +344,12 @@ vi.mock('i18next', async (importOriginal) => {
 })
 `
 
-      // Act
       const result = transformSource(source, 'example.spec.ts')
 
-      // Assert
       expect(result).toEqual({ changes: 0, output: source })
     })
 
     it('should transform a multiline JSX Trans mock without overlapping edits', () => {
-      // Arrange
       const source = `import type { ReactNode } from 'react'
 import { vi } from 'vite-plus/test'
 
@@ -420,7 +377,6 @@ vi.mock('react-i18next', () => ({
 }))
 `
 
-      // Act
       const result = transformSource(source, 'example.spec.tsx')
       const diagnostics =
         ts.transpileModule(result.output, {
@@ -429,7 +385,6 @@ vi.mock('react-i18next', () => ({
           reportDiagnostics: true,
         }).diagnostics ?? []
 
-      // Assert
       expect(
         diagnostics.filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error),
       ).toEqual([])
@@ -442,7 +397,6 @@ vi.mock('react-i18next', () => ({
     })
 
     it('should adapt only translation values configured through a referenced hoisted mock', () => {
-      // Arrange
       const source = `import { vi } from 'vite-plus/test'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
@@ -461,10 +415,8 @@ const businessProps = {
 }
 `
 
-      // Act
       const result = transformSource(source, 'example.spec.ts')
 
-      // Assert
       expect(result.output).toBe(`import { vi } from 'vite-plus/test'
 import { withSelectorKey } from '@/test/i18n-mock'
 

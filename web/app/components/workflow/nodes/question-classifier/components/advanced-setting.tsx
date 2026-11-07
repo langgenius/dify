@@ -73,7 +73,7 @@ const AdvancedSetting: FC<Props> = ({
       {!hideMemorySetting && (
         <MemoryConfig
           className="mt-4"
-          readonly={false}
+          readonly={!!readonly}
           config={{ data: memory }}
           onChange={onMemoryChange}
           canSetRoleName={false}

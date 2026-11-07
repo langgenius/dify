@@ -1,8 +1,9 @@
 'use client'
 
 import type { CSSProperties } from 'react'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useState } from 'react'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type PublisherAvatarProps = {
   avatarUrl: string
@@ -36,40 +37,24 @@ export default function PublisherAvatar({
   size = 24,
   className,
 }: PublisherAvatarProps) {
-  const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null)
   const shapeClass = isOrganization ? 'rounded-md' : 'rounded-full'
-  const shouldShowImage = Boolean(avatarUrl) && failedAvatarUrl !== avatarUrl
-  const fallbackLetter = name?.[0]?.toUpperCase() || 'U'
+  const fallbackLetter = getAvatarInitial(name)
 
   return (
-    <div
+    <Avatar
+      aria-hidden="true"
       style={{ width: size, height: size }}
-      className={cn(
-        'relative shrink-0 overflow-hidden border-[0.5px] border-divider-regular',
-        shapeClass,
-        className,
-      )}
+      className={cn('border-[0.5px] border-divider-regular', shapeClass, className)}
     >
-      {shouldShowImage ? (
-        <img
-          src={avatarUrl}
-          alt={name}
-          className={cn('size-full object-cover', shapeClass)}
-          onError={() => setFailedAvatarUrl(avatarUrl)}
-        />
-      ) : (
-        <div
-          className={cn('flex size-full items-center justify-center', shapeClass)}
-          style={{ background: DEFAULT_AVATAR_BG }}
+      <AvatarFallback style={{ background: DEFAULT_AVATAR_BG }}>
+        <span
+          className={cn(getFallbackTextClass(size), 'font-semibold')}
+          style={DEFAULT_AVATAR_LETTER_STYLE}
         >
-          <span
-            className={cn(getFallbackTextClass(size), 'font-semibold')}
-            style={DEFAULT_AVATAR_LETTER_STYLE}
-          >
-            {fallbackLetter}
-          </span>
-        </div>
-      )}
-    </div>
+          {fallbackLetter}
+        </span>
+      </AvatarFallback>
+      <AvatarImage keepMounted src={avatarUrl || undefined} alt="" />
+    </Avatar>
   )
 }

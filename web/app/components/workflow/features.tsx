@@ -1,22 +1,24 @@
+import type { WorkflowFeaturesConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { StartNodeType } from './nodes/start/types'
 import type { CommonNodeType, InputVar, Node } from './types'
 import type { PromptVariable } from '@/models/debug'
-import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
 import { useNodes } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { editorAppIdAtom, isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { updateFeatures } from '@/service/workflow'
-import { useIsChatMode, useNodesReadOnly } from './hooks/use-workflow'
+import { useNodesReadOnly } from './hooks/use-workflow'
 import useConfig from './nodes/start/use-config'
 import { useStore } from './store'
 import { InputVarType } from './types'
 
 const Features = () => {
   const setShowFeaturesPanel = useStore((s) => s.setShowFeaturesPanel)
-  const appId = useStore((s) => s.appId)
-  const isChatMode = useIsChatMode()
+  const appId = useAtomValue(editorAppIdAtom)
+  const isChatflow = useAtomValue(isChatflowAtom)
   const { nodesReadOnly } = useNodesReadOnly()
   const featuresStore = useFeaturesStore()
   const nodes = useNodes<CommonNodeType>()
@@ -44,7 +46,7 @@ const Features = () => {
       const currentFeatures = featuresStore.getState().features
 
       // Transform features to match the expected server format (same as doSyncWorkflowDraft)
-      const transformedFeatures: WorkflowDraftFeaturesPayload = {
+      const transformedFeatures: WorkflowFeaturesConfigPayload = {
         opening_statement: currentFeatures.opening?.enabled
           ? currentFeatures.opening?.opening_statement || ''
           : '',
@@ -81,7 +83,7 @@ const Features = () => {
   return (
     <NewFeaturePanel
       show
-      isChatMode={isChatMode}
+      isChatMode={isChatflow}
       disabled={nodesReadOnly}
       onChange={handleFeaturesChange}
       onClose={() => setShowFeaturesPanel(false)}

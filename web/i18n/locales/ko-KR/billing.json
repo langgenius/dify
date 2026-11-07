@@ -8,6 +8,9 @@
   "apps.fullTip2": "계획 한도에 도달했습니다.",
   "apps.fullTip2des": "비활성 애플리케이션을 정리하여 사용량을 줄이거나 저희에게 문의하는 것이 좋습니다.",
   "buyPermissionDeniedTip": "구독하려면 엔터프라이즈 관리자에게 문의하세요",
+  "errors.operationFailed": "이 요청을 완료할 수 없습니다. 나중에 다시 시도해 주세요. 문제가 계속되면 지원팀에 문의하세요.",
+  "errors.requestInProgress": "이전 요청이 아직 처리 중입니다. 잠시 후 다시 시도해 주세요.",
+  "errors.unavailable": "이 서비스는 일시적으로 사용할 수 없습니다. 나중에 다시 시도해 주세요.",
   "plans.community.btnText": "커뮤니티 시작하기",
   "plans.community.description": "개인 사용자, 소규모 팀 또는 비상업적 프로젝트를 위한",
   "plans.community.features": [
@@ -46,6 +49,7 @@
     "우선 이메일 및 채팅 지원"
   ],
   "plans.premium.includesTitle": "커뮤니티의 모든 것, 여기에 추가로:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "프리미엄",
   "plans.premium.price": "확장 가능",
   "plans.premium.priceTip": "클라우드 마켓플레이스를 기반으로",
@@ -69,6 +73,7 @@
   "plansCommon.comparePlanAndFeatures": "계획 및 기능 비교",
   "plansCommon.currentPlan": "현재 요금제",
   "plansCommon.days": "일",
+  "plansCommon.discountedAnnualPrice": "할인된 연간 요금: ",
   "plansCommon.documentProcessingPriority": "문서 처리 우선순위",
   "plansCommon.documentProcessingPriorityTip": "더 높은 문서 처리 우선순위가 필요하면 플랜을 업그레이드하세요.",
   "plansCommon.documentProcessingPriorityUpgrade": "더 높은 정확성과 빠른 속도로 데이터를 처리합니다.",
@@ -87,6 +92,7 @@
   "plansCommon.modelProviders": "모델 제공자",
   "plansCommon.month": "월",
   "plansCommon.mostPopular": "가장 인기 있는",
+  "plansCommon.originalAnnualPrice": "기존 연간 요금: ",
   "plansCommon.priceTip": "작업 공간당/",
   "plansCommon.priority.priority": "우선",
   "plansCommon.priority.standard": "표준",

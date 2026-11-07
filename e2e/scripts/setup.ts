@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { waitForUrl } from '../support/process.ts'
@@ -106,9 +106,38 @@ function getAgentBackendBaseUrl() {
   return undefined
 }
 
+export const getManagedSandboxEnvironment = () => {
+  const externalSandbox =
+    process.env.DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT?.trim() ||
+    process.env.DIFY_AGENT_SHELLCTL_ENTRYPOINT?.trim() ||
+    process.env.E2E_SHELLCTL_URL?.trim()
+  const token =
+    process.env.E2E_SHELLCTL_AUTH_TOKEN ||
+    process.env.DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN ||
+    process.env.DIFY_AGENT_SHELLCTL_AUTH_TOKEN ||
+    (externalSandbox ? '' : randomBytes(32).toString('hex'))
+
+  if (!token.trim()) {
+    throw new Error(
+      'A nonblank sandbox auth token (E2E_SHELLCTL_AUTH_TOKEN or the Agent sandbox token) is required for an existing sandbox or when explicitly configured.',
+    )
+  }
+
+  return {
+    E2E_SHELLCTL_AUTH_TOKEN: token,
+    DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: token,
+    DIFY_AGENT_SHELLCTL_AUTH_TOKEN: token,
+  }
+}
+
 export const getAgentBackendEnvironment = async () => {
   const apiEnv = await getApiEnvironment()
   const redisPassword = process.env.REDIS_PASSWORD || apiEnv.REDIS_PASSWORD || 'difyai123456'
+  const sandboxToken =
+    process.env.E2E_SHELLCTL_AUTH_TOKEN ||
+    process.env.DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN ||
+    process.env.DIFY_AGENT_SHELLCTL_AUTH_TOKEN ||
+    ''
 
   return {
     DIFY_AGENT_INNER_API_KEY:
@@ -136,8 +165,8 @@ export const getAgentBackendEnvironment = async () => {
     DIFY_AGENT_REDIS_PREFIX: process.env.DIFY_AGENT_REDIS_PREFIX || 'dify-agent-e2e',
     DIFY_AGENT_REDIS_URL:
       process.env.DIFY_AGENT_REDIS_URL || `redis://:${redisPassword}@127.0.0.1:6379/0`,
-    DIFY_AGENT_SHELLCTL_AUTH_TOKEN:
-      process.env.DIFY_AGENT_SHELLCTL_AUTH_TOKEN || process.env.E2E_SHELLCTL_AUTH_TOKEN || '',
+    DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: sandboxToken,
+    DIFY_AGENT_SHELLCTL_AUTH_TOKEN: sandboxToken,
     DIFY_AGENT_SHELLCTL_ENTRYPOINT:
       process.env.DIFY_AGENT_SHELLCTL_ENTRYPOINT || process.env.E2E_SHELLCTL_URL || shellctlUrl,
   }
@@ -400,6 +429,8 @@ const ensureShellctlSandboxImage = async () => {
 }
 
 export const startShellctlSandbox = async () => {
+  const { E2E_SHELLCTL_AUTH_TOKEN: token } = getManagedSandboxEnvironment()
+
   if (await isTcpPortReachable(shellctlHost, shellctlPort)) {
     const listenerDescription = await getTcpPortListenerDescription(shellctlPort)
     const listenerMessage = listenerDescription ? `\n\nPort listener:\n${listenerDescription}` : ''
@@ -428,12 +459,12 @@ export const startShellctlSandbox = async () => {
       ...(process.platform === 'linux' ? ['--add-host', 'host.docker.internal:host-gateway'] : []),
       '-p',
       `${shellctlHost}:${shellctlPort}:5004`,
-      ...(process.env.E2E_SHELLCTL_AUTH_TOKEN
-        ? ['-e', `SHELLCTL_AUTH_TOKEN=${process.env.E2E_SHELLCTL_AUTH_TOKEN}`]
-        : []),
+      '-e',
+      'SHELLCTL_AUTH_TOKEN',
       shellctlImage,
     ],
     cwd: rootDir,
+    env: { SHELLCTL_AUTH_TOKEN: token },
   })
 }
 

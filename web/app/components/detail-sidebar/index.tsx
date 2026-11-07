@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -10,6 +11,7 @@ import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { usePathname } from '@/next/navigation'
 import { DETAIL_SIDEBAR_TOGGLE_HOTKEY } from './hotkeys'
 import { detailSidebarModeAtom, setDetailSidebarModeAtom } from './state'
 
@@ -20,7 +22,6 @@ type DetailSidebarRenderProps = {
 
 type DetailSidebarFrameProps = {
   className?: string
-  compact?: boolean
   renderTop: (props: DetailSidebarRenderProps) => ReactNode
   renderSection: (props: Pick<DetailSidebarRenderProps, 'expand'>) => ReactNode
 }
@@ -43,7 +44,6 @@ function SecondarySidebarHelpMenu({ triggerClassName }: { triggerClassName?: str
 
 export function DetailSidebarFrame({
   className,
-  compact = false,
   renderTop,
   renderSection,
 }: DetailSidebarFrameProps) {
@@ -51,9 +51,12 @@ export function DetailSidebarFrame({
     ...userProfileQueryOptions(),
     select: (data) => data.meta.currentEnv,
   })
+  const compact = useMediaQuery('(width < 48rem)', {})
   const storedMode = useAtomValue(detailSidebarModeAtom)
   const setStoredMode = useSetAtom(setDetailSidebarModeAtom)
-  const [compactExpanded, setCompactExpanded] = useState(false)
+  const pathname = usePathname()
+  const [compactExpandedOn, setCompactExpandedOn] = useState<{ pathname: string } | null>(null)
+  const compactExpanded = compactExpandedOn?.pathname === pathname
   const [hoverPreviewOpen, setHoverPreviewOpen] = useState(false)
   const closePreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   if (compact && hoverPreviewOpen) setHoverPreviewOpen(false)
@@ -64,11 +67,12 @@ export function DetailSidebarFrame({
       ? 'preview'
       : 'collapsed'
   const visibleExpanded = sidebarView !== 'collapsed'
+  const overlayExpanded = sidebarView === 'preview' || (compact && expanded)
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   function handleToggleDetailNavigation() {
     if (compact) {
-      setCompactExpanded((expanded) => !expanded)
+      setCompactExpandedOn(compactExpanded ? null : { pathname })
       return
     }
 
@@ -131,7 +135,7 @@ export function DetailSidebarFrame({
     <div
       className={cn(
         'relative flex h-full w-16 min-w-0 shrink-0 bg-background-body p-1 transition-[width] motion-reduce:transition-none',
-        'data-[sidebar-view=expanded]:w-62',
+        !compact && 'data-[sidebar-view=expanded]:w-62',
         className,
       )}
       data-sidebar-view={sidebarView}
@@ -142,11 +146,11 @@ export function DetailSidebarFrame({
         className={cn(
           'flex min-h-0 w-14 shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg',
           'data-visible-expanded:z-40 data-visible-expanded:w-60',
-          'data-preview:absolute data-preview:inset-y-1 data-preview:left-1',
-          'data-preview:bg-components-panel-bg-blur data-preview:shadow-[0px_12px_16px_0px_var(--color-shadow-shadow-5),0px_4px_6px_0px_var(--color-shadow-shadow-1)] data-preview:backdrop-blur-[5px]',
+          'data-overlay:absolute data-overlay:inset-y-1 data-overlay:inset-s-1',
+          'data-overlay:bg-components-panel-bg-blur data-overlay:shadow-[0px_12px_16px_0px_var(--color-shadow-shadow-5),0px_4px_6px_0px_var(--color-shadow-shadow-1)] data-overlay:backdrop-blur-[5px]',
         )}
         data-visible-expanded={visibleExpanded || undefined}
-        data-preview={sidebarView === 'preview' || undefined}
+        data-overlay={overlayExpanded || undefined}
       >
         <div className="flex min-h-0 flex-1 flex-col" onMouseEnter={openHoverPreview}>
           {renderTop({

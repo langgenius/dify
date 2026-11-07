@@ -26,7 +26,7 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from extensions.ext_redis import RedisClientWrapper, redis_client
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class AppQueueManager(ABC):
         q: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
 
         self._q = q
-        self._graph_runtime_state: GraphRuntimeState | None = None
+        self._graph_runtime_state: RuntimeState | None = None
         self._stopped_cache: TTLCache[tuple, bool] = TTLCache(maxsize=1, ttl=1)
         self._cache_lock = threading.Lock()
         self._listener_segment_completed = threading.Event()
@@ -152,12 +152,12 @@ class AppQueueManager(ABC):
         self.publish(QueueErrorEvent(error=e), pub_from)
 
     @property
-    def graph_runtime_state(self) -> GraphRuntimeState | None:
+    def graph_runtime_state(self) -> RuntimeState | None:
         """Retrieve the attached graph runtime state, if available."""
         return self._graph_runtime_state
 
     @graph_runtime_state.setter
-    def graph_runtime_state(self, graph_runtime_state: GraphRuntimeState | None) -> None:
+    def graph_runtime_state(self, graph_runtime_state: RuntimeState | None) -> None:
         """Attach the live graph runtime state reference for downstream consumers."""
         self._graph_runtime_state = graph_runtime_state
 
@@ -188,22 +188,20 @@ class AppQueueManager(ABC):
     @classmethod
     def set_stop_flag(
         cls, task_id: str, invoke_from: InvokeFrom, user_id: str, *, redis: RedisClientWrapper | None = None
-    ) -> None:
-        """
-        Set task stop flag
-        :return:
-        """
+    ) -> bool:
+        """Set the task stop flag only for its owner; return whether it was accepted."""
         client = redis if redis is not None else redis_client
         result: Any | None = client.get(cls._generate_task_belong_cache_key(task_id))
         if result is None:
-            return
+            return False
 
         user_prefix = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
         if result.decode("utf-8") != f"{user_prefix}-{user_id}":
-            return
+            return False
 
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
         client.setex(stopped_cache_key, 600, 1)
+        return True
 
     @classmethod
     def set_stop_flag_no_user_check(cls, task_id: str) -> None:
@@ -238,10 +236,7 @@ class AppQueueManager(ABC):
             )
             return False
 
-        if result is not None:
-            return True
-
-        return False
+        return result is not None
 
     @classmethod
     def _generate_task_belong_cache_key(cls, task_id: str) -> str:

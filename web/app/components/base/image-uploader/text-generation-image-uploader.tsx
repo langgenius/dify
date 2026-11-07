@@ -31,17 +31,20 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({ onUpload, disable
       }}
     >
       <PopoverTrigger
+        disabled={disabled}
         render={
-          <div
+          <button
+            type="button"
             className={`relative flex h-8 items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary hover:bg-components-button-tertiary-bg-hover ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} `}
           >
             <span aria-hidden className="mr-2 i-custom-vender-line-general-link-03 size-4" />
             {t(($) => $['imageUploader.pasteImageLink'], { ns: 'common' })}
-          </div>
+          </button>
         }
       />
       <PopoverContent
-        placement="top-start"
+        side="top"
+        align="start"
         sideOffset={0}
         className="border-none bg-transparent shadow-none"
       >
@@ -79,12 +82,12 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
       limit={+settings.image_file_size_limit!}
     >
       {(hovering) => (
-        <div
+        <span
           className={`flex h-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary ${hovering && 'hover:bg-components-button-tertiary-bg-hover'} `}
         >
           <span aria-hidden className="mr-2 i-custom-vender-line-images-image-plus size-4" />
           {t(($) => $['imageUploader.uploadFromComputer'], { ns: 'common' })}
-        </div>
+        </span>
       )}
     </Uploader>
   )

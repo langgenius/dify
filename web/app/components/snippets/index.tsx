@@ -1,9 +1,12 @@
 'use client'
 
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { snippetIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import SnippetLayout from './components/snippet-layout'
 import SnippetMain from './components/snippet-main'
@@ -23,7 +26,8 @@ const SnippetPageLoading = ({ snippetId }: SnippetPageProps) => {
   )
 }
 
-const SnippetPage = ({ snippetId }: SnippetPageProps) => {
+const SnippetPage = () => {
+  const { snippetId } = useAtomValue(snippetIdentityAtom)
   const { data, isLoading } = useSnippetInit(snippetId)
   const publishedNodesData = useMemo(() => {
     if (!data) return []
@@ -58,8 +62,6 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
     <SnippetLayout snippetId={snippetId} snippet={data.snippet} section="orchestrate">
       <WorkflowWithDefaultContext edges={initialWorkflowEdgesData} nodes={initialWorkflowNodesData}>
         <SnippetMain
-          key={snippetId}
-          snippetId={snippetId}
           payload={data.published}
           draftPayload={data.draft}
           hasInitialDraftChanges={data.hasDraftChanges}
@@ -78,9 +80,11 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
 
 const SnippetPageWrapper = ({ snippetId }: SnippetPageProps) => {
   return (
-    <WorkflowContextProvider key={snippetId}>
-      <SnippetPage snippetId={snippetId} />
-    </WorkflowContextProvider>
+    <EditorResourceScope resource={{ kind: 'snippet', snippetId }}>
+      <WorkflowContextProvider>
+        <SnippetPage />
+      </WorkflowContextProvider>
+    </EditorResourceScope>
   )
 }
 
