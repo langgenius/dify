@@ -23,6 +23,7 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.credit_usage import CreditUsageAppType
+from machinery.message_history import MessageHistory
 from models.model import AppMode
 
 
@@ -53,6 +54,41 @@ def _build_workflow_app_config(app_mode: AppMode) -> WorkflowUIBasedAppConfig:
         app_mode=app_mode,
         workflow_id=f"{app_mode.value}-workflow-id",
     )
+
+
+@pytest.mark.parametrize("parent", [None, "parent-id"])
+def test_selected_service_api_history_survives_generate_entity_and_graph_context_serialization(
+    parent: str | None,
+) -> None:
+    """Explicit root/parent selection survives both queue and pause-state boundaries."""
+    history = MessageHistory(
+        app_id="app-id", conversation_id="conversation-id", message_ids=(parent,) if parent else ()
+    )
+    entity = AdvancedChatAppGenerateEntity(
+        task_id="task-id",
+        app_config=_build_workflow_app_config(AppMode.ADVANCED_CHAT),
+        inputs={},
+        files=[],
+        user_id="end-user-id",
+        stream=True,
+        invoke_from=InvokeFrom.SERVICE_API,
+        query="edited query",
+        conversation_id="conversation-id",
+        message_history=history,
+        parent_message_id=parent,
+    )
+    restored = AdvancedChatAppGenerateEntity.model_validate_json(entity.model_dump_json())
+    assert restored.message_history == history
+    assert restored.parent_message_id == parent
+    context = DifyRunContext(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.SERVICE_API,
+        message_history=restored.message_history,
+    )
+    assert DifyRunContext.model_validate_json(context.model_dump_json()).message_history == history
 
 
 def _create_workflow_generate_entity(trace_scope: TraceScope) -> WorkflowAppGenerateEntity:

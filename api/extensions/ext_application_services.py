@@ -162,6 +162,7 @@ from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
+from services.message_branch_service import MessageBranchService
 from services.message_feedback_service import MessageFeedbackService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_more_like_this_generator import MessageMoreLikeThisGenerator
@@ -338,6 +339,7 @@ class ApplicationServices:
     human_input_file_uploads: HumanInputFileUploadService
     message_feedbacks: MessageFeedbackService
     message_queries: MessageQueryService
+    message_branches: MessageBranchService
     message_file_previews: MessageFilePreviewService
     message_suggested_questions: MessageSuggestedQuestions
     message_more_like_this: MessageMoreLikeThisService
@@ -759,6 +761,7 @@ def build_application_services(
             remote_files=remote_file_service,
         ),
         message_feedbacks=MessageFeedbackService(repository=messages),
+        message_branches=MessageBranchService(messages=messages),
         message_queries=MessageQueryService(
             messages=messages,
             files=message_files,

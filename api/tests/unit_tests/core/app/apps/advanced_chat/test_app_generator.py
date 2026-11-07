@@ -2,27 +2,35 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 from decimal import Decimal
+from inspect import unwrap
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Literal
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+from flask import Flask
 from pydantic import BaseModel, ValidationError
 from pytest_mock import MockerFixture
+from redis import Redis
 from sqlalchemy import Engine as _app_generator_Engine
 from sqlalchemy import event as sqlalchemy_event
+from sqlalchemy import select
 from sqlalchemy.engine import Engine as _advanced_chat_app_generator_Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.advanced_chat.app_generator as app_generator_module
 import core.workflow.nodes.human_input.entities  # noqa: F401
 from constants import UUID_NIL
+from controllers.service_api.app.completion import ChatApi
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -36,6 +44,7 @@ from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
+    ModelConfigWithCredentialsEntity,
     UserFrom,
     WorkflowAppGenerateEntity,
 )
@@ -43,9 +52,16 @@ from core.app.file_access import DatabaseFileAccessController
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
+from core.model_manager import ModelInstance
 from core.workflow import node_factory as node_factory_module
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
+from enums import DeploymentEdition
+from extensions.application_services.message_branches import resolve_message_history
+from extensions.ext_application_services import build_application_services
+from extensions.ext_database import db
+from extensions.ext_redis import RedisClientWrapper
+from factories import variable_factory
 from graphon.engine import Engine as _pause_resume_Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import (
@@ -74,13 +90,22 @@ from models.account import Account as _app_generator_Account
 from models.account import Account as _pause_resume_Account
 from models.enums import ConversationFromSource, EndUserType, MessageStatus
 from models.model import App, AppMode, Conversation, EndUser, Message
+from models.workflow import ConversationVariable, WorkflowType
 from models.workflow import Workflow as _app_generator_Workflow
 from models.workflow import Workflow as _pause_resume_Workflow
-from models.workflow import WorkflowType
 from services.errors.conversation import ConversationNotExistsError
 from services.workflow_run_agg import WorkflowRunAgg
+from tasks.app_generate.workflow_execute_task import AppExecutionParams
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_upload_file
+from tests.helpers.unit.core.message_branch_model import RecordingBranchModel
+from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.model_factories import (
+    make_app,
+    make_conversation,
+    make_end_user,
+    make_message,
+    make_upload_file,
+)
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -1340,65 +1365,20 @@ class TestAdvancedChatAppGeneratorInternals:
         assert app_config.additional_features.show_retrieve_source is True
         assert captured["application_generate_entity"].query == "hello"
 
-    def test_generate_service_api_sets_parent_message_id(
-        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: _app_generator_Engine
-    ):
+    def test_service_api_explicit_parent_requires_admission_adapter(self, unbound_session: Session) -> None:
+        """An unconfigured internal caller cannot bypass explicit branch admission."""
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
-
-        app_config = WorkflowUIBasedAppConfig(
-            tenant_id="tenant",
-            app_id="app",
-            app_mode=AppMode.ADVANCED_CHAT,
-            additional_features=AppAdditionalFeatures(),
-            variables=[],
-            workflow_id="workflow-id",
-        )
-
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.AdvancedChatAppConfigManager.get_app_config",
-            lambda app_model, workflow: app_config,
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
-            lambda features_dict, is_vision=False: None,
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
-            lambda **kwargs: SimpleNamespace(),
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
-            lambda **kwargs: SimpleNamespace(),
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=sqlite_engine, session=unbound_session),
-        )
-
-        captured = {}
-
-        def _fake_generate(**kwargs):
-            captured.update(kwargs)
-            return {"ok": True}
-
-        monkeypatch.setattr(generator, "_generate", _fake_generate)
-
-        app_model = _app_generator_make_app()
-        workflow = _app_generator_make_workflow()
-        user = _make_end_user(end_user_id="end-user", session_id="session")
-
-        generator.generate(
-            app_model=app_model,
-            workflow=workflow,
-            user=user,
-            args={"query": "hello", "inputs": {}, "parent_message_id": "p1"},
-            invoke_from=InvokeFrom.SERVICE_API,
-            workflow_run_id="run-id",
-            streaming=False,
-            session=unbound_session,
-        )
-
-        assert captured["application_generate_entity"].parent_message_id == UUID_NIL
+        with pytest.raises(ValueError, match="selection is not configured"):
+            generator.generate(
+                app_model=_app_generator_make_app(),
+                workflow=_app_generator_make_workflow(),
+                user=_make_end_user(),
+                args={"query": "hello", "inputs": {}, "parent_message_id": "p1"},
+                invoke_from=InvokeFrom.SERVICE_API,
+                workflow_run_id="run-id",
+                streaming=False,
+                session=unbound_session,
+            )
 
 
 class TestAdvancedChatAppGeneratorResume:
@@ -2109,3 +2089,236 @@ def test_resume_emits_resumption_start_reason(mocker: MockerFixture) -> None:
     resumed_events = _run_with_optional_pause(resumed_state, pause_on=None)
     resume_start = next(event for event in resumed_events if isinstance(event, GraphRunStartedEvent))
     assert resume_start.reason == WorkflowStartReason.RESUMPTION
+
+
+@pytest.mark.parametrize(
+    ("streaming", "parent_index", "fail"),
+    [
+        (False, None, False),
+        (False, 0, False),
+        (False, 1, False),
+        (True, None, False),
+        (True, 0, False),
+        (True, 1, False),
+        (False, "omitted", False),
+        (True, "omitted", False),
+        (True, 0, True),
+    ],
+)
+def test_service_api_branch_runs_real_graph_with_only_selected_model_history(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: _app_generator_Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    parent_index: int | None | Literal["omitted"],
+    streaming: bool,
+    fail: bool,
+) -> None:
+    """API/blocking and serialized worker/SSE paths invoke the actual graph and model.
+
+    Only provider configuration is supplied in-process. Controllers, admission,
+    repositories, record creation, runner, node factory, memory, graph execution
+    and response conversion remain real; no Celery broker is started locally.
+    """
+    if not hasattr(os, "register_at_fork"):
+
+        def register_without_fork(*, after_in_child: Callable[[], None]) -> None:
+            """Windows has no fork; this test runs the graph in threads only."""
+            return None
+
+        monkeypatch.setattr(os, "register_at_fork", register_without_fork, raising=False)
+    app_record = make_app(
+        app_id=str(uuid4()), tenant_id=str(uuid4()), mode=AppMode.ADVANCED_CHAT, workflow_id=str(uuid4())
+    )
+    end_user = make_end_user(
+        end_user_id=str(uuid4()),
+        tenant_id=app_record.tenant_id,
+        app_id=app_record.id,
+        end_user_type=EndUserType.SERVICE_API,
+    )
+    conversation = make_conversation(
+        conversation_id=str(uuid4()),
+        app_id=app_record.id,
+        mode=AppMode.ADVANCED_CHAT,
+        inputs={},
+        from_source=ConversationFromSource.API,
+        from_end_user_id=end_user.id,
+        is_deleted=False,
+    )
+    graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "llm",
+                "data": {
+                    "type": "llm",
+                    "title": "LLM",
+                    "model": {"provider": "recording", "name": "branch-test", "mode": "chat", "completion_params": {}},
+                    "prompt_template": [{"role": "system", "text": "State: {{#conversation.state#}}"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                    "memory": {"window": {"enabled": True, "size": 20}, "query_prompt_template": "{{#sys.query#}}"},
+                },
+            },
+            {"id": "answer", "data": {"type": "answer", "title": "Answer", "answer": "{{#llm.text#}}"}},
+        ],
+        "edges": [{"source": "start", "target": "llm"}, {"source": "llm", "target": "answer"}],
+    }
+    workflow = _app_generator_make_workflow(
+        workflow_id=app_record.workflow_id or str(uuid4()), tenant_id=app_record.tenant_id, app_id=app_record.id
+    )
+    workflow.version = "1"
+    workflow.graph = json.dumps(graph)
+    variable_id = str(uuid4())
+    variable = variable_factory.build_conversation_variable_from_mapping(
+        {"id": variable_id, "name": "state", "value_type": "string", "value": "default-state"}
+    )
+    workflow.conversation_variables = [variable]
+    current = variable_factory.build_conversation_variable_from_mapping(
+        {"id": variable_id, "name": "state", "value_type": "string", "value": "current-state"}
+    )
+    current_variable = ConversationVariable.from_variable(
+        app_id=app_record.id, conversation_id=conversation.id, variable=current
+    )
+    old = [
+        make_message(
+            message_id=str(uuid4()),
+            app_id=app_record.id,
+            conversation_id=conversation.id,
+            query=f"old query {i}",
+            answer=f"old answer {i}",
+            inputs={},
+            message={},
+            answer_tokens=1,
+            from_source=ConversationFromSource.API,
+            from_end_user_id=end_user.id,
+            created_at=datetime(2026, 1, 1) + timedelta(seconds=i),
+        )
+        for i in range(3)
+    ]
+    for i, message in enumerate(old):
+        message.parent_message_id = old[i - 1].id if i else None
+    with sqlite_session_factory.begin() as session:
+        session.add_all([app_record, end_user, conversation, workflow, current_variable, *old])
+    config = make_model_config(provider="recording", model="branch-test", mode="chat")
+    provider = RecordingBranchModel(
+        provider_schema=config.provider_model_bundle.configuration.provider,
+        model_runtime=config.provider_model_bundle.model_type_instance.model_runtime,
+    )
+    config.provider_model_bundle.model_type_instance = provider
+    provider.fail = fail
+    model = ModelInstance(provider_model_bundle=config.provider_model_bundle, model="branch-test", credentials={})
+
+    def recording_model_config(
+        *,
+        node_data_model: object,
+        credentials_provider: object,
+        model_factory: object,
+    ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+        """Resolve the test provider at the credential boundary without network I/O."""
+        return model, config
+
+    monkeypatch.setattr(node_factory_module, "fetch_model_config", recording_model_config)
+    flask_app = Flask(__name__)
+    flask_app.config.update(SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url), SECRET_KEY="branch-unit-test")
+    db.init_app(flask_app)
+    redis_client = Redis()
+    redis = RedisClientWrapper()
+    redis.initialize(redis_client)
+    parent = old[parent_index].id if isinstance(parent_index, int) else None
+    payload = {
+        "query": "edited question",
+        "inputs": {},
+        "conversation_id": conversation.id,
+        "parent_message_id": parent,
+        "response_mode": "streaming" if streaming else "blocking",
+        "user": "test-user",
+    }
+    if parent_index == "omitted":
+        payload.pop("parent_message_id")
+    try:
+        with flask_app.test_request_context(json=payload):
+            flask_app.extensions["application_services"] = build_application_services(
+                database_client=sqlite_session_factory,
+                deployment_edition=DeploymentEdition.COMMUNITY,
+                initialization_password="",
+                redis=redis,
+            )
+            with sqlite_session_factory() as session:
+                if streaming:
+                    args = dict(payload)
+                    if parent_index != "omitted":
+                        history = resolve_message_history(
+                            app=app_record,
+                            workflow=workflow,
+                            end_user_id=end_user.id,
+                            conversation_id=conversation.id,
+                            parent_message_id=parent,
+                        )
+                        args["message_history"] = history.model_dump(mode="json")
+                    queued = AppExecutionParams.new(
+                        app_model=app_record,
+                        workflow=workflow,
+                        user=end_user,
+                        args=args,
+                        invoke_from=InvokeFrom.SERVICE_API,
+                        streaming=True,
+                    )
+                    restored = AppExecutionParams.model_validate_json(queued.model_dump_json())
+                    result = AdvancedChatAppGenerator(
+                        execution_driver=WorkflowRunAgg.run,
+                        message_history_resolver=resolve_message_history,
+                    ).generate(
+                        app_model=app_record,
+                        workflow=workflow,
+                        user=end_user,
+                        args=restored.args,
+                        invoke_from=restored.invoke_from,
+                        workflow_run_id=restored.workflow_run_id,
+                        streaming=True,
+                        session=session,
+                    )
+                    chunks = list(result)
+                    terminal = "error" if fail else "message_end"
+                    assert any(isinstance(chunk, Mapping) and chunk.get("event") == terminal for chunk in chunks)
+                else:
+                    result = unwrap(ChatApi.post)(ChatApi(), session=session, app_model=app_record, end_user=end_user)
+                    assert result.get_json()["answer"] == "new answer"
+            texts = [message.content for message in provider.recorded]
+            assert "State: current-state" in texts
+            assert "edited question" in texts
+            assert ("old query 1" in texts) == (parent_index in (1, "omitted"))
+            assert ("old query 2" in texts) == (parent_index == "omitted")
+            assert ("old query 0" in texts) == (parent_index in (0, 1, "omitted"))
+            with sqlite_session_factory() as session:
+                saved = list(session.scalars(select(Message).where(Message.conversation_id == conversation.id)))
+                generated = [message for message in saved if message.id not in {message.id for message in old}]
+                assert len(generated) == 1
+                assert generated[0].parent_message_id == (UUID_NIL if parent_index == "omitted" else parent)
+                assert generated[0].answer == ("" if fail else "new answer")
+                assert {(message.query, message.answer) for message in saved if message.id in {m.id for m in old}} == {
+                    (message.query, message.answer) for message in old
+                }
+                generated_id = generated[0].id
+            if not fail and parent_index != "omitted":
+                with (
+                    flask_app.test_request_context(
+                        json={
+                            **payload,
+                            "query": "follow question",
+                            "parent_message_id": generated_id,
+                            "response_mode": "blocking",
+                        }
+                    ),
+                    sqlite_session_factory() as session,
+                ):
+                    followed = unwrap(ChatApi.post)(ChatApi(), session=session, app_model=app_record, end_user=end_user)
+                    assert followed.get_json()["answer"] == "new answer"
+                follow_texts = [message.content for message in provider.recorded]
+                assert "edited question" in follow_texts
+                assert "follow question" in follow_texts
+                assert "old query 2" not in follow_texts
+    finally:
+        redis_client.close()
+        with flask_app.app_context():
+            db.session.remove()
+            db.engine.dispose()
