@@ -34,8 +34,8 @@ class TestHitTestingServiceArguments:
             HitTestingService.hit_testing_args_check({})
 
     def test_hit_testing_args_check_should_raise_error_when_query_too_long(self) -> None:
-        with pytest.raises(ValueError, match="Query cannot exceed 250 characters"):
-            HitTestingService.hit_testing_args_check({"query": "a" * 251})
+        with pytest.raises(ValueError, match="Query cannot exceed 16000 characters"):
+            HitTestingService.hit_testing_args_check({"query": "a" * 16001})
 
     def test_hit_testing_args_check_should_raise_error_when_attachments_not_list(self) -> None:
         with pytest.raises(ValueError, match="Attachment_ids must be a list"):

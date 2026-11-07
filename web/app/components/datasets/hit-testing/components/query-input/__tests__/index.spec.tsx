@@ -136,7 +136,7 @@ describe('QueryInput', () => {
     rerender(
       <QueryInput
         {...defaultProps}
-        queries={[{ content: 'a'.repeat(201), content_type: 'text_query', file_info: null }]}
+        queries={[{ content: 'a'.repeat(16001), content_type: 'text_query', file_info: null }]}
       />,
     )
     expect(textbox).toBeInvalid()
@@ -161,7 +161,18 @@ describe('QueryInput', () => {
     expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
   })
 
-  it('should disable submit button when text exceeds 200 characters', () => {
+  it('should disable submit button when text exceeds 16000 characters', () => {
+    const props = {
+      ...defaultProps,
+      queries: [
+        { content: 'a'.repeat(16001), content_type: 'text_query', file_info: null },
+      ] satisfies DatasetQueryContentResponse[],
+    }
+    render(<QueryInput {...props} />)
+    expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
+  })
+
+  it('should keep submit button enabled for text over the old 200 character limit', () => {
     const props = {
       ...defaultProps,
       queries: [
@@ -169,7 +180,7 @@ describe('QueryInput', () => {
       ] satisfies DatasetQueryContentResponse[],
     }
     render(<QueryInput {...props} />)
-    expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
+    expect(screen.getByRole('button', { name: /input\.testing/ }))!.not.toBeDisabled()
   })
 
   it('should show loading state on submit button when loading', () => {
@@ -272,7 +283,7 @@ describe('QueryInput', () => {
         <QueryInput
           {...defaultProps}
           isExternal={isExternal}
-          queries={[{ content: 'a'.repeat(201), content_type: 'text_query', file_info: null }]}
+          queries={[{ content: 'a'.repeat(16001), content_type: 'text_query', file_info: null }]}
         />,
       )
       fireEvent.submit(textbox.form!)

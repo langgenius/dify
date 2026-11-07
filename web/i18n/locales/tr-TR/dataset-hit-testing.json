@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "Tek parça eklerin sayısı {{limit}} değerini aşamaz",
   "imageUploader.tip": "Resimleri yükleyin veya bırakın (Her biri maksimum {{batchCount}}, {{size}}MB)",
   "imageUploader.tooltip": "Görselleri yükleyin (Maks. {{batchCount}}, her biri {{size}}MB)",
-  "input.countWarning": "En fazla 200 karakter.",
+  "input.countWarning": "En fazla 16000 karakter.",
   "input.placeholder": "Bir metin girin, kısa bir bildirim cümlesi önerilir.",
   "input.testing": "Test Ediliyor",
   "input.title": "Kaynak metin",

@@ -112,14 +112,14 @@ class TestHitTestingPayload:
         assert payload.attachment_ids == ["att_1", "att_2"]
 
     def test_payload_query_too_long(self) -> None:
-        """Test payload rejects query over 250 characters."""
+        """Test payload rejects query over 16000 characters."""
         with pytest.raises(ValueError, match="1 validation error for HitTestingPayload\\\nquery"):
-            HitTestingPayload(query="x" * 251)
+            HitTestingPayload(query="x" * 16001)
 
     def test_payload_query_at_max_length(self) -> None:
-        """Test payload accepts query at exactly 250 characters."""
-        payload = HitTestingPayload(query="x" * 250)
-        assert len(payload.query) == 250
+        """Test payload accepts query at exactly 16000 characters."""
+        payload = HitTestingPayload(query="x" * 16000)
+        assert len(payload.query) == 16000
 
     def test_payload_ignores_unknown_fields_for_compatibility(self) -> None:
         """Top-level fields outside the documented schema remain ignored as before."""

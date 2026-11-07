@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "Število priponk enega kosa ne sme presegati {{limit}}",
   "imageUploader.tip": "Naložite ali povlecite slike (največ {{batchCount}}, {{size}} MB vsaka)",
   "imageUploader.tooltip": "Naloži slike (maksimalno {{batchCount}}, {{size}} MB vsaka)",
-  "input.countWarning": "Do 200 znakov.",
+  "input.countWarning": "Do 16000 znakov.",
   "input.placeholder": "Prosimo, vnesite besedilo, priporočljivo je kratko izjavno poved.",
   "input.testing": "Testiranje",
   "input.title": "Izvorno besedilo",
