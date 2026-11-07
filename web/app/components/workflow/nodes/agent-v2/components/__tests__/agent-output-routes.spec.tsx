@@ -120,6 +120,31 @@ function setup({ data = createData(), connected = false, readonly = false } = {}
 const route = (name: string) => within(screen.getByRole('group', { name }))
 const toggle = () => screen.getByRole('switch', { name: title })
 
+it('enables output routes without crypto.randomUUID and assigns distinct branch handles', async () => {
+  vi.stubGlobal('crypto', {
+    getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+  })
+  try {
+    const { user, nodeData } = setup({
+      data: createData({ agent_output_routes: undefined }),
+    })
+
+    await user.click(toggle())
+
+    const routes = nodeData().agent_output_routes?.routes
+    expect(toggle()).toBeChecked()
+    expect(routes).toHaveLength(2)
+    for (const route of routes!)
+      expect(route.id).toMatch(/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i)
+    expect(new Set(routes?.map((route) => route.id)).size).toBe(2)
+    expect(nodeData()._targetBranches?.map((branch) => branch.id)).toEqual(
+      routes?.map((route) => route.id),
+    )
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
 it('keeps a saved route and its edited condition through enabling, disabling, and re-enabling', async () => {
   const { user, nodeData, edges, store, sync } = setup({
     connected: true,
