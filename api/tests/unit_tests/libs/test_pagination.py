@@ -1,8 +1,22 @@
 import math
+from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import Integer, select
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from libs.pagination import PaginatedResult, clamp_pagination
+from libs.pagination import PaginatedResult, clamp_pagination, paginate_query
+
+
+class _PaginationTestBase(DeclarativeBase):
+    pass
+
+
+class _CountTestRow(_PaginationTestBase):
+    __tablename__ = "_count_order_by_test"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
 
 class TestPaginatedResultPages:
@@ -72,7 +86,7 @@ class TestClampPagination:
         assert clamp_pagination(3, 500, 100) == (3, 100)
 
     def test_the_floor_wins_over_a_cap_below_one(self) -> None:
-        """Whatever the cap says, a page size of zero is the input that breaks the caller."""
+        """whatever the cap says, a page size of zero is the input that breaks the caller."""
         assert clamp_pagination(1, 20, 0) == (1, 1)
 
     def test_no_cap_leaves_a_large_per_page_alone(self) -> None:
@@ -100,3 +114,42 @@ class TestClampPagination:
         page, size = clamp_pagination(total, per_page, 100)
         result = PaginatedResult(items=[object()], total=total, page=page, per_page=size)
         assert (page * size < total) is result.has_next is False
+
+
+class TestPaginateQueryCount:
+    """The count subquery must not carry the statement's ORDER BY.
+
+    A retained ORDER BY forces PostgreSQL to sort the entire match set inside
+    COUNT(*) — on large tables that saturates read IOPS for a value the
+    ordering cannot change (#45734).
+    """
+
+    def test_count_strips_order_by_from_the_wrapped_statement(self) -> None:
+        captured: dict[str, object] = {}
+
+        session = MagicMock()  # guard-ignore: no-new-session-mock -- pagination count test needs a mock session to capture the compiled count SQL without a real DB
+        session.scalar.side_effect = lambda stmt: (captured.__setitem__("count_stmt", stmt), 0)[1]
+        session.scalars.return_value.all.return_value = []
+
+        stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc())
+        paginate_query(stmt, session=session, page=1, per_page=10)
+
+        count_sql = str(captured["count_stmt"].compile(dialect=postgresql.dialect()))
+        assert "ORDER BY" not in count_sql.upper()
+
+    def test_page_query_retains_order_by(self) -> None:
+        """The page query must keep its ORDER BY — only the count loses it."""
+        captured: dict[str, object] = {}
+
+        session = MagicMock()  # guard-ignore: no-new-session-mock -- pagination page-query test needs a mock session to capture the compiled page SQL without a real DB
+        session.scalar.return_value = 0
+        session.scalars.side_effect = lambda stmt: (
+            captured.__setitem__("page_stmt", stmt),
+            MagicMock(all=lambda: []),
+        )[1]
+
+        stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc())
+        paginate_query(stmt, session=session, page=1, per_page=10)
+
+        page_sql = str(captured["page_stmt"].compile(dialect=postgresql.dialect()))
+        assert "ORDER BY" in page_sql.upper()
