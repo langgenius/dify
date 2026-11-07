@@ -5,8 +5,14 @@ from werkzeug.datastructures import Headers
 
 
 def serialize_request(request: Request) -> bytes:
+    """Serialize a readable Flask request for plugin transport.
+
+    Preconditions: the request body is still readable or cached by Flask.
+    Postconditions: preserve the non-empty query and body bytes; omit only
+    Flask's synthetic '?' for an empty query. Reading the body caches it.
+    """
     method = request.method
-    path = request.full_path.rstrip("?")
+    path = request.full_path if request.query_string else request.path
     raw = f"{method} {path} HTTP/1.1\r\n".encode()
 
     for name, value in request.headers.items():

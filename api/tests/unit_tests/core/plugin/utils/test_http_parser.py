@@ -10,6 +10,21 @@ from core.plugin.utils.http_parser import (
 
 
 class TestSerializeRequest:
+    @pytest.mark.parametrize("query", ["", "q=why?", "q=why??", "q=one?&q=two??", "q=why%3F", "?"])
+    def test_preserves_query_data_during_round_trip(self, query: str) -> None:
+        request = Request.from_values(
+            path="/api/search", query_string=query, method="POST", data=b"payload", content_type="text/plain"
+        )
+        assert isinstance(request, Request)
+
+        raw = serialize_request(request)
+
+        target = "/api/search" + (f"?{query}" if query else "")
+        assert raw.startswith(f"POST {target} HTTP/1.1\r\n".encode())
+        restored = deserialize_request(raw)
+        assert restored.query_string == request.query_string
+        assert restored.get_data() == b"payload"
+
     def test_serialize_simple_get_request(self) -> None:
         # Create a simple GET request
         environ = {
