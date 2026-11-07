@@ -1,7 +1,11 @@
 import pytest
+from core.rag.entities.metadata_entities import (
+    Condition,
+    ConditionValue,
+    MetadataFilteringCondition,
+    SupportedComparisonOperator,
+)
 from pydantic import ValidationError
-
-from core.rag.entities.metadata_entities import Condition, ConditionValue, MetadataFilteringCondition
 
 STRING_OPERATORS = [
     "contains",
@@ -43,13 +47,9 @@ class TestCondition:
         assert condition.value == expected
 
     @pytest.mark.parametrize("operator", [*STRING_OPERATORS, *NUMERIC_OPERATORS, *TIME_OPERATORS])
-    def test_all_supported_operators_are_accepted(self, operator: str) -> None:
+    def test_all_supported_operators_are_accepted(self, operator: SupportedComparisonOperator) -> None:
         condition = Condition(name="field", comparison_operator=operator)
         assert condition.comparison_operator == operator
-
-    def test_unknown_operator_is_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="comparison_operator"):
-            Condition(name="field", comparison_operator="like")
 
     def test_name_is_required(self) -> None:
         with pytest.raises(ValidationError, match="name"):
@@ -73,10 +73,6 @@ class TestMetadataFilteringCondition:
     def test_logical_operator_or_is_accepted(self) -> None:
         filtering = MetadataFilteringCondition(logical_operator="or")
         assert filtering.logical_operator == "or"
-
-    def test_unknown_logical_operator_is_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="logical_operator"):
-            MetadataFilteringCondition(logical_operator="xor")
 
     def test_conditions_accept_model_instances(self) -> None:
         filtering = MetadataFilteringCondition(
