@@ -28,6 +28,8 @@
   "menus.plugins": "Integraties",
   "menus.status": "beta",
   "menus.tools": "Tools",
+  "settings.accessToken": "Toegangstokens",
+  "settings.accessTokenDescription": "Maak service-API-tokens die alleen toegang geven tot geselecteerde apps en kennisbanken.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Billing",
   "settings.customEndpoint": "Aangepast eindpunt",

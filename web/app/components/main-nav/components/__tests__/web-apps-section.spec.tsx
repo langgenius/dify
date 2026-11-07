@@ -7,6 +7,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Suspense } from 'react'
 import { renderToReadableStream } from 'react-dom/server.node'
+import { consoleQuery } from '@/service/console'
 import WebAppsSection from '../web-apps-section'
 
 vi.mock('@tanstack/react-virtual')
@@ -21,24 +22,17 @@ vi.mock('@/context/permission-state', async () => {
   const { atom } = await import('jotai')
   return { workspacePermissionKeysAtom: atom(['app_library.access']) }
 })
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    installedApps: {
-      get: {
-        infiniteOptions: (options: {
-          input: (cursor?: string) => { query: { name?: string } }
-        }) => ({
-          ...options,
-          queryKey: ['installed-apps', options.input().query.name ?? ''],
-          queryFn: () => service.list(),
-        }),
-      },
-      byInstalledAppId: {
-        patch: { mutationOptions: () => ({ mutationFn: service.pin }) },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'installedApps.get': service.list,
+      'installedApps.byInstalledAppId.patch': service.pin,
+    }),
+  }
+})
 
 function createApp(index: number): InstalledAppResponse {
   return {
@@ -125,13 +119,10 @@ it.each([
     await user.click(pinAction)
 
     await waitFor(() =>
-      expect(service.pin).toHaveBeenCalledWith(
-        {
-          params: { installed_app_id: `installed-${index}` },
-          body: { is_pinned: nextPinned },
-        },
-        expect.anything(),
-      ),
+      expect(service.pin).toHaveBeenCalledWith({
+        params: { installed_app_id: `installed-${index}` },
+        body: { is_pinned: nextPinned },
+      }),
     )
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   },
@@ -144,7 +135,7 @@ it('keeps the search input focused when a refresh removes all apps', async () =>
   expect(search).toHaveFocus()
   service.list.mockResolvedValue({ installed_apps: [], has_more: false, next_cursor: null })
   await act(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['installed-apps'] })
+    await queryClient.invalidateQueries({ queryKey: consoleQuery.installedApps.get.key() })
   })
   await waitFor(() =>
     expect(screen.getByRole('status')).toHaveTextContent('navigation.mainNav.webApps.noResults'),
@@ -161,7 +152,7 @@ it('keeps focus when clearing empty search results after the unfiltered cache ex
   await waitFor(() =>
     expect(screen.getByRole('status')).toHaveTextContent('navigation.mainNav.webApps.noResults'),
   )
-  queryClient.removeQueries({ queryKey: ['installed-apps', ''] })
+  queryClient.removeQueries({ queryKey: consoleQuery.installedApps.get.key(), type: 'inactive' })
   let finish!: (value: InstalledAppListResponse) => void
   service.list.mockImplementation(
     () =>

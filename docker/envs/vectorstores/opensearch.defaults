@@ -1,0 +1,28 @@
+# Defaults for opensearch. Copy this file to opensearch.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-Qazwsxedc!@#123}
+OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD-${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-Qazwsxedc!@#123}}
+# OPENSEARCH_AWS_REGION=ap-southeast-1
+# OPENSEARCH_AWS_SERVICE=aoss
+# Set OPENSEARCH_MEMLOCK_SOFT in docker/.env; Compose needs it before loading service files.
+# Set OPENSEARCH_MEMLOCK_HARD in docker/.env; Compose needs it before loading service files.
+# Set OPENSEARCH_NOFILE_SOFT in docker/.env; Compose needs it before loading service files.
+# Set OPENSEARCH_NOFILE_HARD in docker/.env; Compose needs it before loading service files.
+OPENSEARCH_HOST=${OPENSEARCH_HOST-opensearch}
+# OPENSEARCH_PORT=9200
+OPENSEARCH_SECURE=${OPENSEARCH_SECURE-true}
+# Bundled demo certificates require an explicit false override; use trusted certificates in production.
+OPENSEARCH_VERIFY_CERTS=${OPENSEARCH_VERIFY_CERTS-true}
+# OPENSEARCH_AUTH_METHOD=basic
+OPENSEARCH_USER=${OPENSEARCH_USER-admin}
+OPENSEARCH_DISCOVERY_TYPE=${OPENSEARCH_DISCOVERY_TYPE:-single-node}
+OPENSEARCH_BOOTSTRAP_MEMORY_LOCK=${OPENSEARCH_BOOTSTRAP_MEMORY_LOCK:-true}
+OPENSEARCH_JAVA_OPTS_MIN=${OPENSEARCH_JAVA_OPTS_MIN:-512m}
+OPENSEARCH_JAVA_OPTS_MAX=${OPENSEARCH_JAVA_OPTS_MAX:-1024m}
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+OPENSEARCH_JAVA_OPTS=-Xms${OPENSEARCH_JAVA_OPTS_MIN:-512m} -Xmx${OPENSEARCH_JAVA_OPTS_MAX:-1024m}
+bootstrap.memory_lock=${OPENSEARCH_BOOTSTRAP_MEMORY_LOCK:-true}
+discovery.type=${OPENSEARCH_DISCOVERY_TYPE:-single-node}

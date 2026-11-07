@@ -1,13 +1,7 @@
 import type { CSSProperties, FC } from 'react'
 import type { ModelAndParameter } from '../types'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,7 +11,6 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import ChatItem from './chat-item'
 import { useDebugWithMultipleModelContext } from './context'
 import ModelParameterTrigger from './model-parameter-trigger'
@@ -86,8 +79,8 @@ const DebugItem: FC<DebugItemProps> = ({ modelAndParameter, className, style }) 
           #{index + 1}
         </div>
         <ModelParameterTrigger modelAndParameter={modelAndParameter} />
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Menu>
+          <MenuTrigger
             render={
               <IconButton
                 aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -97,40 +90,40 @@ const DebugItem: FC<DebugItemProps> = ({ modelAndParameter, className, style }) 
               </IconButton>
             }
           />
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
+          <MenuContent align="end" className="min-w-40">
             {showDuplicate && (
-              <DropdownMenuItem className="system-md-regular" onClick={handleDuplicate}>
+              <MenuItem className="system-md-regular" onClick={handleDuplicate}>
                 {t(($) => $.duplicateModel, { ns: 'appDebug' })}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
             {showDebugAsSingleModel && (
-              <DropdownMenuItem className="system-md-regular" onClick={handleDebugAsSingleModel}>
+              <MenuItem className="system-md-regular" onClick={handleDebugAsSingleModel}>
                 {t(($) => $.debugAsSingleModel, { ns: 'appDebug' })}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
             {showRemove && (
               <>
-                {(showDuplicate || showDebugAsSingleModel) && <DropdownMenuSeparator />}
-                <DropdownMenuItem
+                {(showDuplicate || showDebugAsSingleModel) && <MenuSeparator />}
+                <MenuItem
                   variant="destructive"
                   className="system-md-regular"
                   onClick={handleRemove}
                 >
                   {t(($) => $['operation.remove'], { ns: 'common' })}
-                </DropdownMenuItem>
+                </MenuItem>
               </>
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </MenuContent>
+        </Menu>
       </div>
       <div style={{ height: 'calc(100% - 40px)' }}>
-        {(mode === AppModeEnum.CHAT || mode === AppModeEnum.AGENT_CHAT) &&
+        {(mode === 'chat' || mode === 'agent-chat') &&
           currentProvider &&
           currentModel &&
           currentModel.status === ModelStatusEnum.active && (
             <ChatItem modelAndParameter={modelAndParameter} />
           )}
-        {mode === AppModeEnum.COMPLETION &&
+        {mode === 'completion' &&
           currentProvider &&
           currentModel &&
           currentModel.status === ModelStatusEnum.active && (

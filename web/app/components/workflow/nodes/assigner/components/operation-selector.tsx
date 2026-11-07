@@ -1,17 +1,18 @@
-import type { FC } from 'react'
 import type { WriteMode } from '../types'
 import type { Item } from '../utils'
 import type { VarType } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 import { getOperationItems, isOperationItem } from '../utils'
 
@@ -28,7 +29,7 @@ type OperationSelectorProps = {
   writeModeTypesNum?: WriteMode[]
 }
 
-const OperationSelector: FC<OperationSelectorProps> = ({
+function OperationSelector({
   value,
   onSelect,
   disabled = false,
@@ -38,7 +39,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
   writeModeTypes,
   writeModeTypesArr,
   writeModeTypesNum,
-}) => {
+}: OperationSelectorProps) {
   const { t } = useTranslation(['workflowLogic'])
 
   const items = getOperationItems(
@@ -51,8 +52,8 @@ const OperationSelector: FC<OperationSelectorProps> = ({
   const selectedItem = items.find((item) => item.value === value)
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         disabled={disabled}
         className={cn(
           'group flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 data-popup-open:bg-state-base-hover-alt',
@@ -78,42 +79,40 @@ const OperationSelector: FC<OperationSelectorProps> = ({
             disabled && 'text-components-input-text-placeholder',
           )}
         />
-      </DropdownMenuTrigger>
+      </MenuTrigger>
 
-      <DropdownMenuContent
-        placement="bottom-start"
-        sideOffset={4}
-        className={cn('w-35', popupClassName)}
-      >
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>
+      <MenuContent align="start" className={cn('w-35', popupClassName)}>
+        <MenuGroup>
+          <MenuGroupLabel>
             {t(($) => $['nodes.assigner.operations.title'], { ns: 'workflowLogic' })}
-          </DropdownMenuLabel>
-          {items.map((item) =>
-            !isOperationItem(item) ? (
-              <DropdownMenuSeparator key="divider" />
-            ) : (
-              <DropdownMenuItem
-                key={item.value}
-                className="gap-1 px-2 py-1"
-                onClick={() => onSelect(item)}
-              >
-                <div className="flex min-h-5 grow items-center gap-1 px-1">
-                  <span className="flex grow system-sm-medium text-text-secondary">
-                    {t(($) => $[`nodes.assigner.operations.${item.name}`], { ns: 'workflowLogic' })}
-                  </span>
-                </div>
-                {item.value === value && (
-                  <div className="flex items-center justify-center">
-                    <span aria-hidden className="i-ri-check-line size-4 text-text-accent" />
+          </MenuGroupLabel>
+          <MenuRadioGroup
+            value={value}
+            onValueChange={(nextValue) => {
+              const item = items.find((item) => isOperationItem(item) && item.value === nextValue)
+              if (item && isOperationItem(item)) onSelect(item)
+            }}
+          >
+            {items.map((item) =>
+              !isOperationItem(item) ? (
+                <MenuSeparator key="divider" />
+              ) : (
+                <MenuRadioItem key={item.value} className="py-1" value={item.value} closeOnClick>
+                  <div className="flex min-h-5 grow items-center gap-1 px-1">
+                    <span className="flex grow system-sm-medium text-text-secondary">
+                      {t(($) => $[`nodes.assigner.operations.${item.name}`], {
+                        ns: 'workflowLogic',
+                      })}
+                    </span>
                   </div>
-                )}
-              </DropdownMenuItem>
-            ),
-          )}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+                  <MenuRadioItemIndicator />
+                </MenuRadioItem>
+              ),
+            )}
+          </MenuRadioGroup>
+        </MenuGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

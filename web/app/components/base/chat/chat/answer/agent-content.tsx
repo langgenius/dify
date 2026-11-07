@@ -1,5 +1,7 @@
 import type { FC } from 'react'
 import type { ChatItem } from '../../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { FileResponse } from '@/types/workflow'
 import { memo } from 'react'
 import Thought from '@/app/components/base/chat/chat/thought'
 import { FileList } from '@/app/components/base/file-uploader'
@@ -41,8 +43,14 @@ const AgentContent: FC<AgentContentProps> = ({ item, responding, content }) => {
 
             {!!thought.message_files?.length && (
               <FileList
-                files={getProcessedFilesFromResponse(
-                  thought.message_files.map((item: any) => ({ ...item, related_id: item.id })),
+                files={thought.message_files.flatMap(
+                  (file: FileEntity | (FileResponse & { id?: string })) =>
+                    // Streaming files are normalized already; historical thoughts can carry API metadata.
+                    'transferMethod' in file
+                      ? [file]
+                      : getProcessedFilesFromResponse([
+                          { ...file, related_id: file.id ?? file.related_id },
+                        ]),
                 )}
                 showDeleteAction={false}
                 showDownloadAction={true}

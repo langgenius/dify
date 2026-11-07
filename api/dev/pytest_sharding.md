@@ -22,10 +22,8 @@ on its `generated-stats` branch. Metadata records the source runs. No timing dat
 or generated history is committed to Dify itself.
 
 Every PR, including fork PRs, downloads that same public baseline without a token.
-Unmerged PR observations do not update the shared baseline automatically. The
-initial baseline is explicitly marked as a bootstrap from validated CI on #42593;
-automatic updates use merged PRs only. Keeping the producer in the statistics
-repository avoids needing a cross-repository write token in Dify or additional
+Unmerged PR observations do not update the shared baseline automatically.
+Keeping the producer in the statistics repository avoids needing a cross-repository write token in Dify or additional
 main-branch test runs.
 
 A single planning job downloads the baseline once and publishes both the input

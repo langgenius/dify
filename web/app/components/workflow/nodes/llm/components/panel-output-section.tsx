@@ -103,6 +103,7 @@ const PanelOutputSection: FC<Props> = ({
               <Split className="mt-3" />
               <StructureOutput
                 className="mt-4"
+                readOnly={readOnly}
                 value={inputs.structured_output}
                 onChange={handleStructureOutputChange}
               />

@@ -1,6 +1,6 @@
 # Napredne nastavitve
 
-Če morate prilagoditi konfiguracijo, si oglejte komentarje v naši datoteki .env.example in posodobite ustrezne vrednosti v svoji .env datoteki. Poleg tega boste morda morali prilagoditi docker-compose.yamlsamo datoteko, na primer spremeniti različice slike, preslikave vrat ali namestitve nosilca, glede na vaše specifično okolje in zahteve za uvajanje. Po kakršnih koli spremembah ponovno zaženite docker-compose up -d. Celoten seznam razpoložljivih spremenljivk okolja najdete tukaj .
+Lokalne nastavitve uredite v `docker/.env`. [`.env.example`](../../docker/.env.example) vsebuje nujne vrednosti za privzeto namestitev; izbirne nastavitve in nastavitve posameznih storitev so v [`docker/envs/`](../../docker/envs/). Potrebne predloge kopirajte brez končnice `.example`. Vrednosti v `.env` imajo prednost. Po spremembah v `docker/` zaženite `docker compose up -d`. Glejte [vodnik za Docker](../../docker/README.md).
 
 ## Spremljanje metrik z Grafana
 

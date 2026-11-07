@@ -6,11 +6,17 @@ const { request } = vi.hoisted(() => ({ request: vi.fn<() => Promise<Response>>(
 vi.mock('@/service/base', () => ({ request }))
 // Keep the unrelated marketplace image fallback local; all asset bytes still go
 // through the generated Console client and the browser's real image decoder.
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  MARKETPLACE_API_PREFIX:
-    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7#',
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_API_PREFIX:
+        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7#',
+    },
+  }
+})
 
 async function pngResponse(width: number, height: number) {
   const canvas = document.createElement('canvas')
@@ -35,7 +41,7 @@ async function pngResponse(width: number, height: number) {
 // object URL is unusable. These are the additional browser regression contracts.
 it('decodes binary assets and retires object URLs on source replacement and unmount', async () => {
   request.mockReset()
-  request.mockImplementation(() => pngResponse(2, 3))
+  request.mockResolvedValue(await pngResponse(2, 3))
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 300_000 } },
   })
@@ -49,24 +55,22 @@ it('decodes binary assets and retires object URLs on source replacement and unmo
   const screen = await render(view('_assets/first.png'))
   try {
     await expect
-      .poll(() => screen.getByTestId('gallery-image').element().getAttribute('src'))
-      .toMatch(/^blob:/)
+      .element(screen.getByTestId('gallery-image'), { timeout: 5_000 })
+      .toHaveAttribute('src', expect.stringMatching(/^blob:/))
     const firstImage = screen.getByTestId('gallery-image').element()
     if (!(firstImage instanceof HTMLImageElement)) throw new TypeError('Expected an image')
     await firstImage.decode()
     expect([firstImage.naturalWidth, firstImage.naturalHeight]).toEqual([2, 3])
     const firstUrl = firstImage.src
     expect(revoke).not.toHaveBeenCalled()
-    request.mockImplementation(() => pngResponse(4, 5))
+    request.mockResolvedValue(await pngResponse(4, 5))
     await screen.rerender(view('_assets/second.png'))
     await expect
-      .poll(() => screen.getByTestId('gallery-image').element().getAttribute('src'))
-      .not.toBe(firstUrl)
-    await expect
-      .poll(() => screen.getByTestId('gallery-image').element().getAttribute('src'))
-      .toMatch(/^blob:/)
+      .element(screen.getByTestId('gallery-image'), { timeout: 5_000 })
+      .toHaveAttribute('src', expect.stringMatching(/^blob:/))
     const secondImage = screen.getByTestId('gallery-image').element()
     if (!(secondImage instanceof HTMLImageElement)) throw new TypeError('Expected an image')
+    expect(secondImage.src).not.toBe(firstUrl)
     await secondImage.decode()
     expect([secondImage.naturalWidth, secondImage.naturalHeight]).toEqual([4, 5])
     expect(revoke).toHaveBeenCalledWith(firstUrl)
@@ -115,14 +119,14 @@ it('recovers after a malformed asset causes the real gallery to remove its image
       .element(screen.getByRole('button', { name: /^common\.imageGallery\.previewImage/ }))
       .not.toBeInTheDocument()
 
-    request.mockImplementation(() => pngResponse(6, 7))
+    request.mockResolvedValue(await pngResponse(6, 7))
     await screen.rerender(view('_assets/valid.png'))
     await expect
       .element(screen.getByRole('button', { name: /^common\.imageGallery\.previewImage/ }))
       .toBeVisible()
     await expect
-      .poll(() => screen.getByTestId('gallery-image').element().getAttribute('src'))
-      .toMatch(/^blob:/)
+      .element(screen.getByTestId('gallery-image'), { timeout: 5_000 })
+      .toHaveAttribute('src', expect.stringMatching(/^blob:/))
     const recoveredImage = screen.getByTestId('gallery-image').element()
     if (!(recoveredImage instanceof HTMLImageElement)) throw new TypeError('Expected an image')
     await recoveredImage.decode()

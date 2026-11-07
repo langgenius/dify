@@ -1,8 +1,8 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
-import type { DataSet } from '@/models/datasets'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
@@ -67,7 +67,7 @@ const useSingleRunFormParams = ({
 
   const forms = useMemo(() => {
     const datasetIds = payload.dataset_ids
-    const datasets = datasetIds.reduce<DataSet[]>((acc, id) => {
+    const datasets = datasetIds.reduce<DatasetDetailWithPartialMembersResponse[]>((acc, id) => {
       if (datasetsDetail[id]) acc.push(datasetsDetail[id])
       return acc
     }, [])

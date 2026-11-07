@@ -127,9 +127,11 @@ export const useCommonModalState = ({
   // Mutations
   const { mutate: verifyCredentials, isPending: isVerifyingCredentials } =
     useVerifyAndUpdateTriggerSubscriptionBuilder()
-  const { mutateAsync: createBuilder } = useCreateTriggerSubscriptionBuilder()
-  const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
-  const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder()
+  const { mutateAsync: createBuilder } = useCreateTriggerSubscriptionBuilder({ silent: true })
+  const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription({
+    silent: true,
+  })
+  const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder({ silent: true })
 
   // Schemas
   const manualPropertiesSchema = detail?.declaration?.trigger?.subscription_schema || []
@@ -163,9 +165,9 @@ export const useCommonModalState = ({
             properties,
           },
           {
-            onError: async (error: unknown) => {
+            onError: (error: unknown) => {
               const errorMessage =
-                (await parsePluginErrorMessage(error)) ||
+                parsePluginErrorMessage(error) ||
                 t(($) => $['modal.errors.updateFailed'], { ns: 'pluginTrigger' })
               console.error('Failed to update subscription builder:', error)
               toast.error(errorMessage)
@@ -257,9 +259,9 @@ export const useCommonModalState = ({
           toast.success(t(($) => $['modal.apiKey.verify.success'], { ns: 'pluginTrigger' }))
           setCurrentStep(ApiKeyStep.Configuration)
         },
-        onError: async (error: unknown) => {
+        onError: (error: unknown) => {
           const errorMessage =
-            (await parsePluginErrorMessage(error)) ||
+            parsePluginErrorMessage(error) ||
             t(($) => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
           apiKeyCredentialsFormRef.current?.setFields([
             {
@@ -294,13 +296,12 @@ export const useCommonModalState = ({
 
     buildSubscription(params, {
       onSuccess: () => {
-        toast.success(t(($) => $['subscription.createSuccess'], { ns: 'pluginTrigger' }))
         onClose()
         refetch?.()
       },
-      onError: async (error: unknown) => {
+      onError: (error: unknown) => {
         const errorMessage =
-          (await parsePluginErrorMessage(error)) ||
+          parsePluginErrorMessage(error) ||
           t(($) => $['subscription.createFailed'], { ns: 'pluginTrigger' })
         toast.error(errorMessage)
       },

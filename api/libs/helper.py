@@ -8,6 +8,7 @@ import subprocess
 import time
 import uuid
 from collections.abc import Callable, Generator, Iterable, Mapping
+from contextlib import contextmanager
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
@@ -23,6 +24,7 @@ from typing_extensions import TypedDict
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from extensions.ext_redis import redis_client
+from extensions.redis_names import serialize_redis_name
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 
@@ -225,10 +227,7 @@ def current_timestamp() -> int:
 def email(email):
     # Define a regex pattern for email addresses
     pattern = r"^[\w\.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$"
-    # Use re.fullmatch instead of re.match to reject trailing newlines.
-    # In Python, '$' matches at end-of-string OR just before a trailing newline,
-    # so re.match accepts "user@example.com\n". re.fullmatch requires the entire
-    # string to match, closing the mail header-injection vector. (#39234)
+    # Reject trailing newlines as well as other unconsumed input.
     if re.fullmatch(pattern, email) is not None:
         return email
 
@@ -249,9 +248,9 @@ def uuid_value(value: str | UUID) -> str:
     try:
         uuid_obj = uuid.UUID(value)
         return str(uuid_obj)
-    except ValueError:
+    except ValueError as caught_error:
         error = f"{value} is not a valid uuid."
-        raise ValueError(error)
+        raise ValueError(error) from caught_error
 
 
 def normalize_uuid(value: str | UUID) -> str:
@@ -313,9 +312,9 @@ def timestamp_value(timestamp):
         if int_timestamp < 0:
             raise ValueError
         return int_timestamp
-    except ValueError:
+    except ValueError as caught_error:
         error = f"{timestamp} is not a valid timestamp."
-        raise ValueError(error)
+        raise ValueError(error) from caught_error
 
 
 class StrLen:
@@ -328,9 +327,7 @@ class StrLen:
     def __call__(self, value):
         length = len(value)
         if length > self.max_length:
-            error = "Invalid {arg}: {val}. {arg} cannot exceed length {length}".format(
-                arg=self.argument, val=value, length=self.max_length
-            )
+            error = f"Invalid {self.argument}: {value}. {self.argument} cannot exceed length {self.max_length}"
             raise ValueError(error)
 
         return value
@@ -344,11 +341,9 @@ class DatetimeString:
     def __call__(self, value):
         try:
             datetime.strptime(value, self.format)
-        except ValueError:
-            error = "Invalid {arg}: {val}. {arg} must be conform to the format {format}".format(
-                arg=self.argument, val=value, format=self.format
-            )
-            raise ValueError(error)
+        except ValueError as caught_error:
+            error = f"Invalid {self.argument}: {value}. {self.argument} must be conform to the format {self.format}"
+            raise ValueError(error) from caught_error
 
         return value
 
@@ -400,12 +395,8 @@ def generate_string(n):
 
 
 def extract_remote_ip(request: Request) -> str:
-    if request.headers.get("CF-Connecting-IP"):
-        return cast(str, request.headers.get("CF-Connecting-IP"))
-    elif request.headers.getlist("X-Forwarded-For"):
-        return request.headers.getlist("X-Forwarded-For")[0]
-    else:
-        return cast(str, request.remote_addr)
+    """Use the WSGI address, normalized by opt-in trusted proxy middleware."""
+    return cast(str, request.remote_addr)
 
 
 def generate_text_hash(text: str) -> str:
@@ -425,7 +416,7 @@ def compact_generate_response(
     else:
         stream_response = response
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             yield from stream_response
 
         return Response(
@@ -437,7 +428,7 @@ def compact_generate_response(
 
 def length_prefixed_response(
     magic_number: int,
-    response: Mapping[str, Any] | BaseModel | Generator[str | bytes, None, None] | RateLimitGenerator,
+    response: Mapping[str, Any] | BaseModel | Generator[str | bytes] | RateLimitGenerator,
 ) -> Response:
     """
     This function is used to return a response with a length prefix.
@@ -485,7 +476,7 @@ def length_prefixed_response(
 
     stream_response = response
 
-    def generate() -> Generator[bytes, None, None]:
+    def generate() -> Generator[bytes]:
         for chunk in stream_response:
             if isinstance(chunk, str):
                 yield pack_response_with_length_prefix(chunk.encode("utf-8"))
@@ -571,7 +562,12 @@ class TokenManager:
 
 
 class _RateLimiterRedisClient(Protocol):
+    def eval(self, script: str, numkeys: int, *args: str | int) -> object: ...
+    def register_script(self, script: str) -> Callable[..., Any]: ...
+
     def zadd(self, name: str | bytes, mapping: dict[str | bytes | int | float, float | int | str | bytes]) -> int: ...
+
+    def zrem(self, name: str | bytes, *values: str | bytes) -> int: ...
 
     def zremrangebyscore(self, name: str | bytes, min: str | float, max: str | float) -> int: ...
 
@@ -583,6 +579,44 @@ class _RateLimiterRedisClient(Protocol):
 def _default_rate_limit_member_factory() -> str:
     current_time = int(time.time())
     return f"{current_time}:{secrets.token_urlsafe(nbytes=8)}"
+
+
+_ACQUIRE_RATE_LIMIT_LUA = """
+-- EVAL contract: exactly 1 key and 4 arguments.
+-- KEYS[1]: Physical Redis ZSET key for one rate-limit subject. Members are
+--          unique request IDs; scores are Redis Unix timestamps in seconds.
+-- ARGV[1]: Positive rolling-window duration in seconds.
+-- ARGV[2]: Positive maximum number of accepted requests within that window.
+-- ARGV[3]: Minimum seconds between accepted requests, from 0 to ARGV[1].
+-- ARGV[4]: Unique, nonempty request ID to consume a slot if allowed; an empty
+--          string only queries the delay without consuming a slot.
+-- Returns: 0 when allowed; otherwise the positive number of seconds to wait,
+--          rounded up and accounting for both the window limit and cooldown.
+-- Every call removes scores <= now - window, retaining (now - window, now].
+-- Only an allowed, nonempty request ID is inserted and refreshes the key TTL.
+-- Rejected requests and delay queries do not consume quota or refresh TTL.
+-- Redis TIME and atomic execution keep these decisions consistent across nodes.
+local clock = redis.call('TIME')
+local now = tonumber(clock[1]) + tonumber(clock[2]) / 1000000
+local window = tonumber(ARGV[1])
+local maximum = tonumber(ARGV[2])
+local cooldown = tonumber(ARGV[3])
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now - window)
+local count = redis.call('ZCARD', KEYS[1])
+local wait = 0
+if count >= maximum then
+    local oldest = redis.call('ZRANGE', KEYS[1], count - maximum, count - maximum, 'WITHSCORES')
+    wait = math.max(wait, tonumber(oldest[2]) + window - now)
+end
+local latest = redis.call('ZREVRANGE', KEYS[1], 0, 0, 'WITHSCORES')
+if #latest > 0 then wait = math.max(wait, tonumber(latest[2]) + cooldown - now) end
+if wait > 0 then return math.ceil(wait) end
+if ARGV[4] ~= '' then
+    redis.call('ZADD', KEYS[1], now, ARGV[4])
+    redis.call('EXPIRE', KEYS[1], math.max(window, cooldown))
+end
+return 0
+"""
 
 
 class RateLimiter:
@@ -603,7 +637,37 @@ class RateLimiter:
     def _get_key(self, email: str) -> str:
         return f"{self.prefix}:{email}"
 
+    @contextmanager
+    def reserve(self, email: str) -> Generator[bool]:
+        """Reserve a slot atomically, releasing only this slot if the operation fails."""
+        key = self._get_key(email)
+        member = self._member_factory()
+        script = self._redis_client.register_script("""
+            redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1] - ARGV[2])
+            if redis.call('ZSCORE', KEYS[1], ARGV[4]) then return 1 end
+            if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[3]) then return 0 end
+            redis.call('ZADD', KEYS[1], ARGV[1], ARGV[4])
+            redis.call('EXPIRE', KEYS[1], ARGV[2] * 2)
+            return 1
+        """)
+        acquired = bool(script(keys=[key], args=[int(time.time()), self.time_window, self.max_attempts, member]))
+        try:
+            yield acquired
+        except BaseException:
+            if acquired:
+                try:
+                    self._redis_client.zrem(key, member)
+                except Exception:
+                    logger.exception("Failed to release rate limit reservation")
+            raise
+
     def is_rate_limited(self, email: str) -> bool:
+        """Legacy non-consuming limit query, retained for existing admission policies.
+
+        New callers should use acquire() for atomic admission or retry_after()
+        for a delay query. Migrating existing callers requires auditing when
+        their events should consume quota.
+        """
         key = self._get_key(email)
         current_time = int(time.time())
         window_start_time = current_time - self.time_window
@@ -611,11 +675,14 @@ class RateLimiter:
         self._redis_client.zremrangebyscore(key, "-inf", window_start_time)
         attempts = self._redis_client.zcard(key)
 
-        if attempts and int(attempts) >= self.max_attempts:
-            return True
-        return False
+        return bool(attempts and int(attempts) >= self.max_attempts)
 
     def increment_rate_limit(self, email: str):
+        """Record an event unconditionally, without enforcing admission limits.
+
+        For atomic check-and-consume admission, use acquire() instead of calling
+        is_rate_limited() and this method separately.
+        """
         key = self._get_key(email)
         member = self._member_factory()
         current_time = int(time.time())
@@ -623,11 +690,37 @@ class RateLimiter:
         self._redis_client.zadd(key, {member: current_time})
         self._redis_client.expire(key, self.time_window * 2)
 
+    def acquire(self, subject: str, *, cooldown_seconds: int = 0) -> int:
+        """Atomically consume a slot, or return seconds to wait without consuming it."""
+        return self._atomic_wait(subject, cooldown_seconds, self._member_factory())
+
+    def retry_after(self, subject: str, *, cooldown_seconds: int = 0) -> int:
+        """Read the combined cooldown/window delay without consuming a slot."""
+        return self._atomic_wait(subject, cooldown_seconds, "")
+
+    def _atomic_wait(self, subject: str, cooldown_seconds: int, member: str) -> int:
+        if self.max_attempts <= 0 or self.time_window <= 0 or not 0 <= cooldown_seconds <= self.time_window:
+            raise ValueError("Atomic rate limits require positive limits and a cooldown within the window")
+        # eval bypasses the wrapper's key prefix; Redis time prevents replica clock skew.
+        remaining = self._redis_client.eval(
+            _ACQUIRE_RATE_LIMIT_LUA,
+            1,
+            serialize_redis_name(self._get_key(subject)),
+            self.time_window,
+            self.max_attempts,
+            cooldown_seconds,
+            member,
+        )
+        if not isinstance(remaining, int):
+            raise ValueError("Invalid Redis rate limit response")
+        return remaining
+
     def seconds_until_available(self, email: str) -> int:
         """Seconds until the oldest in-window entry expires, freeing a slot.
 
         Defensive floor of 1 second. Caller should only invoke this after
-        is_rate_limited() returned True.
+        is_rate_limited() returned True. New callers should use retry_after(),
+        which returns 0 when no delay is required.
         """
         key = self._get_key(email)
         oldest = cast(Any, self._redis_client).zrange(key, 0, 0, withscores=True)

@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "필수는 모델 추론을 위한 참고 용도로만 사용되며, 매개변수 출력의 필수 유효성 검사는 아닙니다.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "유형",
   "nodes.parameterExtractor.advancedSetting": "고급 설정",
-  "nodes.parameterExtractor.extractParametersNotSet": "추출 매개변수가 설정되지 않음",
+  "nodes.parameterExtractor.extractParametersNotSet": "구성된 추출 매개변수가 없음",
   "nodes.parameterExtractor.importFromTool": "도구에서 가져오기",
   "nodes.parameterExtractor.instruction": "지시",
   "nodes.parameterExtractor.instructionTip": "매개변수 추출기가 매개변수를 추출하는 방법을 이해하는 데 도움이 되는 추가 지시를 입력하세요.",

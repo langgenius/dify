@@ -56,9 +56,22 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
     testRunMenuRef.current?.toggle()
   }, [isRunDisabled])
 
-  useHotkey(TEST_RUN_MENU_HOTKEY, handleToggleTestRunMenu, {
-    ignoreInputs: true,
-  })
+  useHotkey(
+    TEST_RUN_MENU_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleToggleTestRunMenu()
+    },
+    {
+      enabled: !isRunDisabled,
+      preventDefault: false,
+      stopPropagation: false,
+      ignoreInputs: true,
+    },
+  )
 
   const handleStop = useCallback(() => {
     handleStopRun(workflowRunningData?.task_id || '')

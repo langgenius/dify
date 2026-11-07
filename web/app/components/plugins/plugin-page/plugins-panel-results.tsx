@@ -3,15 +3,9 @@ import type { PluginDetail } from '../types'
 import type { EmbeddedMarketplaceCategory } from './category-marketplace'
 import type { PluginPageContentInset } from './content-inset'
 import type { Collection } from '@/app/components/tools/types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -36,6 +30,7 @@ type PluginsPanelResultsProps = {
   filteredBuiltinTools: Collection[]
   filteredList: Array<PluginDetail & { latest_version: string }>
   hasToolMarketplacePanel: boolean
+  marketplace: MarketplaceLinks | null
   hasVisibleBuiltinTools: boolean
   hasVisiblePlugins: boolean
   hasEmbeddedMarketplace: boolean
@@ -64,6 +59,7 @@ const PluginsPanelResults = ({
   filteredBuiltinTools,
   filteredList,
   hasToolMarketplacePanel,
+  marketplace,
   hasVisibleBuiltinTools,
   hasVisiblePlugins,
   hasEmbeddedMarketplace,
@@ -115,12 +111,7 @@ const PluginsPanelResults = ({
   }, [autoLoadNextPage, containerRef, isFetching, isLastPage, loadNextPage])
 
   return (
-    <ScrollArea
-      className={cn(
-        'min-h-0 grow self-stretch overflow-hidden bg-components-panel-bg',
-        contentFrameClassName,
-      )}
-    >
+    <>
       <div role="status" aria-atomic="true" className="sr-only">
         {isFetching
           ? t(($) => $.loading, { ns: 'common' })
@@ -131,83 +122,82 @@ const PluginsPanelResults = ({
                 (hasVisibleBuiltinTools ? filteredBuiltinTools.length : 0),
             })}
       </div>
-      <ScrollAreaViewport
+      <div
         ref={containerRef}
         aria-label={scrollAreaLabel}
-        className="overscroll-contain"
+        className={cn(
+          'flex min-h-0 grow flex-col self-stretch overflow-y-auto overscroll-contain bg-components-panel-bg',
+          hasEmbeddedMarketplace && 'pt-1',
+          contentFrameClassName,
+        )}
         role={scrollAreaLabel ? 'region' : undefined}
       >
-        <ScrollAreaContent
-          className={cn('flex min-h-full flex-col', hasEmbeddedMarketplace && 'pt-1')}
-        >
-          {showCategoryEmptyState && categoryEmptyState && (
-            <CategoryEmptyState
-              category={categoryEmptyState}
-              showMarketplaceLink={!!categoryMarketplace}
-            />
-          )}
-          {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
-            <List
-              pluginList={filteredList}
-              canDeletePlugin={canDeletePlugin}
-              canUpdatePlugin={canUpdatePlugin}
-              firstPluginTarget={firstPluginTarget}
-            >
-              {filteredBuiltinTools.map((collection, index) => (
-                <button
-                  key={collection.id}
-                  type="button"
-                  aria-pressed={currentBuiltinToolID === collection.id}
-                  className="min-w-0 cursor-pointer appearance-none border-0 bg-transparent p-0 text-left"
-                  data-step-by-step-tour-target={
-                    filteredList.length === 0 && index === 0 ? firstBuiltinToolTarget : undefined
-                  }
-                  onClick={() => onSelectBuiltinTool(collection.id)}
-                >
-                  <IntegrationsToolProviderCard
-                    collection={collection}
-                    current={currentBuiltinToolID === collection.id}
-                    showBuiltInBadge
-                  />
-                </button>
-              ))}
-            </List>
-          )}
-          {!isLastPage && (
-            <div className="flex w-full justify-center py-4">
-              {isFetching ? (
-                <LoadingPlaceholder className="size-8" />
-              ) : autoLoadNextPage ? null : (
-                <Button onClick={loadNextPage}>
-                  {t(($) => $['common.loadMore'], { ns: 'workflow' })}
-                </Button>
-              )}
-              {autoLoadNextPage && (
-                <div ref={loadMoreAnchorRef} className="h-px w-full" aria-hidden />
-              )}
-            </div>
-          )}
-          {hasToolMarketplacePanel && (
-            <BuiltinMarketplacePanel
-              containerRef={containerRef}
-              contentInset={contentInset}
-              keywords={keywords}
-              tagFilterValue={tagFilterValue}
-            />
-          )}
-          {categoryMarketplace && (
-            <CategoryMarketplacePanel
-              category={categoryMarketplace}
-              searchText={keywords}
-              tags={categoryMarketplace === 'trigger' ? tagFilterValue : []}
-            />
-          )}
-        </ScrollAreaContent>
-      </ScrollAreaViewport>
-      <ScrollAreaScrollbar>
-        <ScrollAreaThumb />
-      </ScrollAreaScrollbar>
-    </ScrollArea>
+        {showCategoryEmptyState && categoryEmptyState && (
+          <CategoryEmptyState
+            category={categoryEmptyState}
+            showMarketplaceLink={!!categoryMarketplace}
+          />
+        )}
+        {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
+          <List
+            pluginList={filteredList}
+            canDeletePlugin={canDeletePlugin}
+            canUpdatePlugin={canUpdatePlugin}
+            firstPluginTarget={firstPluginTarget}
+          >
+            {filteredBuiltinTools.map((collection, index) => (
+              <button
+                key={collection.id}
+                type="button"
+                aria-current={currentBuiltinToolID === collection.id ? 'true' : undefined}
+                className="min-w-0 cursor-pointer appearance-none border-0 bg-transparent p-0 text-start"
+                data-step-by-step-tour-target={
+                  filteredList.length === 0 && index === 0 ? firstBuiltinToolTarget : undefined
+                }
+                onClick={() => onSelectBuiltinTool(collection.id)}
+              >
+                <IntegrationsToolProviderCard
+                  collection={collection}
+                  current={currentBuiltinToolID === collection.id}
+                  showBuiltInBadge
+                />
+              </button>
+            ))}
+          </List>
+        )}
+        {!isLastPage && (
+          <div className="flex w-full justify-center py-4">
+            {isFetching ? (
+              <LoadingPlaceholder className="size-8" />
+            ) : autoLoadNextPage ? null : (
+              <Button onClick={loadNextPage}>
+                {t(($) => $['common.loadMore'], { ns: 'workflow' })}
+              </Button>
+            )}
+            {autoLoadNextPage && (
+              <div ref={loadMoreAnchorRef} className="h-px w-full" aria-hidden />
+            )}
+          </div>
+        )}
+        {marketplace && hasToolMarketplacePanel && (
+          <BuiltinMarketplacePanel
+            marketplace={marketplace}
+            containerRef={containerRef}
+            contentInset={contentInset}
+            keywords={keywords}
+            tagFilterValue={tagFilterValue}
+          />
+        )}
+        {marketplace && categoryMarketplace && (
+          <CategoryMarketplacePanel
+            marketplace={marketplace}
+            category={categoryMarketplace}
+            searchText={keywords}
+            tags={categoryMarketplace === 'trigger' ? tagFilterValue : []}
+          />
+        )}
+      </div>
+    </>
   )
 }
 

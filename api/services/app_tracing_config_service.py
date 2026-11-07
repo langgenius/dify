@@ -8,6 +8,14 @@ from machinery.context import RequestContext
 
 
 @dataclass(frozen=True, slots=True)
+class AppTraceSettings:
+    enabled: bool = False
+    tracing_provider: str | None = None
+    capture_content: bool = False
+    capture_agent: bool = True
+
+
+@dataclass(frozen=True, slots=True)
 class AppTracingConfigRecord:
     id: str
     app_id: str
@@ -16,6 +24,14 @@ class AppTracingConfigRecord:
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    configured_secrets: tuple[str, ...] = ()
+    """Secret fields that hold a value. Secrets themselves are never presented."""
+
+
+@dataclass(frozen=True, slots=True)
+class PresentedTracingConfig:
+    values: dict[str, Any]
+    configured_secrets: tuple[str, ...]
 
 
 class AppTracingConfigStore(Protocol):
@@ -34,6 +50,7 @@ class AppTracingConfigStore(Protocol):
         app_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any],
+        activate: bool = False,
     ) -> bool: ...
 
     def update(
@@ -43,6 +60,8 @@ class AppTracingConfigStore(Protocol):
         app_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any],
+        expected: AppTracingConfigRecord,
+        activate: bool = False,
     ) -> bool: ...
 
     def delete(
@@ -53,9 +72,17 @@ class AppTracingConfigStore(Protocol):
         tracing_provider: str,
     ) -> bool: ...
 
+    def set_trace(
+        self, *, workspace_id: str, app_id: str, settings: AppTraceSettings, expected: AppTracingConfigRecord | None
+    ) -> None: ...
+
 
 class TracingConfigProviderGateway(Protocol):
     def validate_provider(self, tracing_provider: str) -> None: ...
+
+    def validate_saved_config(
+        self, *, workspace_id: str, tracing_provider: str, tracing_config: dict[str, Any]
+    ) -> None: ...
 
     def prepare_new_config(
         self,
@@ -80,7 +107,7 @@ class TracingConfigProviderGateway(Protocol):
         workspace_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any] | None,
-    ) -> dict[str, Any]: ...
+    ) -> PresentedTracingConfig: ...
 
 
 class AppTracingConfigError(Exception):
@@ -95,6 +122,11 @@ class AppTracingConfigAppNotFoundError(AppTracingConfigError):
 class AppTracingConfigAlreadyExistsError(AppTracingConfigError):
     def __init__(self) -> None:
         super().__init__("Trace config is exist.")
+
+
+class AppTracingConfigConflictError(AppTracingConfigError):
+    def __init__(self) -> None:
+        super().__init__("Tracing configuration changed. Refresh and try again.")
 
 
 class AppTracingConfigNotFoundError(AppTracingConfigError):
@@ -154,12 +186,12 @@ class AppTracingConfigService:
         if record is None:
             return None
 
-        tracing_config = self._provider.present_config(
+        presented = self._provider.present_config(
             workspace_id=workspace_id,
             tracing_provider=tracing_provider,
             tracing_config=record.tracing_config,
         )
-        return replace(record, tracing_config=tracing_config)
+        return replace(record, tracing_config=presented.values, configured_secrets=presented.configured_secrets)
 
     def create(
         self,
@@ -167,6 +199,8 @@ class AppTracingConfigService:
         app_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any],
+        *,
+        activate: bool = False,
     ) -> None:
         workspace_id = context.active_workspace_id
         current = self._configs.get(
@@ -188,6 +222,7 @@ class AppTracingConfigService:
             app_id=app_id,
             tracing_provider=tracing_provider,
             tracing_config=encrypted_config,
+            activate=activate,
         )
         if not created:
             raise AppTracingConfigAlreadyExistsError
@@ -198,6 +233,8 @@ class AppTracingConfigService:
         app_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any],
+        *,
+        activate: bool = False,
     ) -> None:
         workspace_id = context.active_workspace_id
         current = self._configs.get(
@@ -220,6 +257,8 @@ class AppTracingConfigService:
             app_id=app_id,
             tracing_provider=tracing_provider,
             tracing_config=encrypted_config,
+            expected=current,
+            activate=activate,
         )
         if not updated:
             raise AppTracingConfigNotFoundError
@@ -233,3 +272,25 @@ class AppTracingConfigService:
         )
         if not deleted:
             raise AppTracingConfigNotFoundError
+
+    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
+        expected = None
+        provider = settings.tracing_provider
+        if provider is not None:
+            self._provider.validate_provider(provider)
+        if settings.enabled:
+            if provider is None:
+                raise AppTracingConfigNotFoundError
+            expected = self._configs.get(
+                workspace_id=context.active_workspace_id, app_id=app_id, tracing_provider=provider
+            )
+            if expected is None or not expected.is_active or not expected.tracing_config:
+                raise AppTracingConfigNotFoundError
+            self._provider.validate_saved_config(
+                workspace_id=context.active_workspace_id,
+                tracing_provider=provider,
+                tracing_config=expected.tracing_config,
+            )
+        self._configs.set_trace(
+            workspace_id=context.active_workspace_id, app_id=app_id, settings=settings, expected=expected
+        )

@@ -1,14 +1,14 @@
 import type { Area } from 'react-easy-crop'
-import { createImage } from '@/app/components/base/app-icon-picker/utils'
+import { createImage } from '@/app/components/base/icon-picker/image-crop'
 import {
   createAvatarImageFile,
   createCroppedAvatarImage,
   getBoundedAvatarImageSize,
 } from '../avatar-image'
 
-vi.mock('@/app/components/base/app-icon-picker/utils', async (importOriginal) => {
+vi.mock('@/app/components/base/icon-picker/image-crop', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('@/app/components/base/app-icon-picker/utils')>()
+    await importOriginal<typeof import('@/app/components/base/icon-picker/image-crop')>()
   return {
     ...actual,
     createImage: vi.fn(),
@@ -18,11 +18,13 @@ vi.mock('@/app/components/base/app-icon-picker/utils', async (importOriginal) =>
 const mockedCreateImage = vi.mocked(createImage)
 
 describe('avatar image', () => {
+  afterEach(() => vi.restoreAllMocks())
+
   describe('getBoundedAvatarImageSize', () => {
-    it('downsamples a large square crop to 256 pixels', () => {
-      expect(getBoundedAvatarImageSize({ width: 1000, height: 1000 })).toEqual({
+    it('downsamples a rectangular crop while preserving its aspect ratio', () => {
+      expect(getBoundedAvatarImageSize({ width: 1000, height: 500 })).toEqual({
         width: 256,
-        height: 256,
+        height: 128,
       })
     })
 
@@ -35,7 +37,7 @@ describe('avatar image', () => {
   })
 
   it('draws the selected crop into a bounded high-quality canvas', async () => {
-    const image = {} as HTMLImageElement
+    const image = new Image()
     const expectedBlob = new Blob(['avatar'], { type: 'image/png' })
     const context = {
       drawImage: vi.fn(),

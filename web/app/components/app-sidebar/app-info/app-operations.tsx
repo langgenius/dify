@@ -1,13 +1,13 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -30,11 +30,10 @@ const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
   const { t } = useTranslation(['common'])
   const visibleGroups = operationGroups.filter((group) => group.length > 0)
 
-  if (!visibleGroups.length) return null
-
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
+    <Menu modal={false}>
+      <MenuTrigger
+        disabled={!visibleGroups.length}
         render={
           <IconButton
             aria-label={t(($) => $['operation.moreActionsFor'], {
@@ -48,13 +47,13 @@ const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
+      <MenuContent align="end" className="min-w-40">
         {visibleGroups.map((group, groupIndex) => (
           <Fragment key={group.map((operation) => operation.id).join('-')}>
-            {groupIndex > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuGroup>
+            {groupIndex > 0 && <MenuSeparator />}
+            <MenuGroup>
               {group.map((operation) => (
-                <DropdownMenuItem
+                <MenuItem
                   key={operation.id}
                   variant={operation.variant}
                   className="gap-2 px-3"
@@ -86,13 +85,13 @@ const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
                   >
                     {operation.title}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               ))}
-            </DropdownMenuGroup>
+            </MenuGroup>
           </Fragment>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 

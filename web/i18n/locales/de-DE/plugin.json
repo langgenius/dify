@@ -3,7 +3,6 @@
   "action.delete": "Plugin entfernen",
   "action.deleteContentLeft": "Möchten Sie",
   "action.deleteContentRight": "Plugin?",
-  "action.deleteSuccess": "Plugin erfolgreich entfernt",
   "action.pluginInfo": "Plugin-Info",
   "allCategories": "Alle Kategorien",
   "auth.addApi": "API-Schlüssel hinzufügen",
@@ -302,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Leitfaden zur Vorlagen-Veröffentlichung",
-  "upgrade.close": "Schließen",
   "upgrade.description": "Über die Installation des folgenden Plugins",
-  "upgrade.successfulTitle": "Installation erfolgreich",
   "upgrade.title": "Plugin installieren",
   "upgrade.upgrade": "Installieren",
   "upgrade.upgrading": "Installation..."

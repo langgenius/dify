@@ -3,11 +3,12 @@ import type { FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -15,6 +16,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -23,15 +25,10 @@ import { useTranslation } from 'react-i18next'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import {
-  useAuthorizeMCP,
-  useInvalidateAllMCPTools,
-  useInvalidateMCPTools,
-  useMCPTools,
-  useUpdateMCPTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
+import { selectToolProviderTools } from '../../utils/query-select'
 import ListLoading from './list-loading'
-import OperationDropdown from './operation-dropdown'
+import OperationMenu from './operation-menu'
 import ToolItem from './tool-item'
 
 type Props = Readonly<{
@@ -56,13 +53,20 @@ const MCPDetailContent: FC<Props> = ({
   const { t } = useTranslation(['common', 'tools'])
   const canManageMCP = useCanManageMCP()
 
-  const { data, isFetching: isGettingTools } = useMCPTools(
-    detail.is_team_authorization ? detail.id : '',
+  const queryClient = useQueryClient()
+  const { data, isFetching: isGettingTools } = useQuery(
+    consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryOptions({
+      input: { params: { provider_id: detail.id } },
+      enabled: !!detail.is_team_authorization && !!detail.id,
+      select: selectToolProviderTools,
+    }),
   )
-  const invalidateMCPTools = useInvalidateMCPTools()
-  const invalidateAllMCPTools = useInvalidateAllMCPTools()
-  const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
-  const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
+  const { mutateAsync: updateTools, isPending: isUpdating } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.mcp.update.byProviderId.get.mutationOptions(),
+  )
+  const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.mcp.auth.post.mutationOptions(),
+  )
   const toolList = data?.tools || []
 
   const [isShowUpdateConfirm, { setTrue: showUpdateConfirm, setFalse: hideUpdateConfirm }] =
@@ -71,19 +75,17 @@ const MCPDetailContent: FC<Props> = ({
   const handleUpdateTools = useCallback(async () => {
     hideUpdateConfirm()
     if (!canManageMCP || !detail) return
-    await updateTools(detail.id)
-    invalidateMCPTools(detail.id)
-    invalidateAllMCPTools()
+    await updateTools({ params: { provider_id: detail.id } })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryKey({
+        input: { params: { provider_id: detail.id } },
+      }),
+    })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.mcp.get.queryKey(),
+    })
     onUpdate()
-  }, [
-    canManageMCP,
-    detail,
-    hideUpdateConfirm,
-    invalidateAllMCPTools,
-    invalidateMCPTools,
-    onUpdate,
-    updateTools,
-  ])
+  }, [canManageMCP, detail, hideUpdateConfirm, onUpdate, queryClient, updateTools])
 
   const hasTriggeredAuthorizeRef = useRef(false)
 
@@ -98,9 +100,7 @@ const MCPDetailContent: FC<Props> = ({
     onFirstCreate()
     if (!detail) return
     try {
-      const res = await authorizeMcp({
-        provider_id: detail.id,
-      })
+      const res = await authorizeMcp({ body: { provider_id: detail.id } })
       if (res.result === 'success') handleUpdateTools()
       else if (res.authorization_url) openOAuthPopup(res.authorization_url, handleOAuthCallback)
     } catch {
@@ -138,7 +138,7 @@ const MCPDetailContent: FC<Props> = ({
           <div className="shrink-0 overflow-hidden rounded-xl border border-components-panel-border-subtle">
             <Icon src={detail.icon} />
           </div>
-          <div className="ml-3 w-0 grow">
+          <div className="ms-3 w-0 grow">
             <div className="flex h-5 items-center">
               <div className="truncate system-md-semibold text-text-primary">{detail.name}</div>
             </div>
@@ -150,7 +150,7 @@ const MCPDetailContent: FC<Props> = ({
                       type="button"
                       variant="ghost"
                       size="small"
-                      className="h-auto shrink-0 cursor-pointer rounded bg-transparent p-0 text-left system-xs-regular text-text-secondary hover:bg-transparent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="h-auto shrink-0 cursor-pointer rounded bg-transparent p-0 text-start system-xs-regular text-text-secondary hover:bg-transparent"
                       onClick={() => copy(detail.server_identifier || '')}
                     >
                       {detail.server_identifier}
@@ -176,7 +176,7 @@ const MCPDetailContent: FC<Props> = ({
           </div>
           <div className="flex gap-1">
             {canManageMCP && (
-              <OperationDropdown
+              <OperationMenu
                 onEdit={() => onEdit(detail.id)}
                 onRemove={() => onDelete(detail.id)}
               />
@@ -305,22 +305,22 @@ const MCPDetailContent: FC<Props> = ({
         onOpenChange={(open) => !open && hideUpdateConfirm()}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['mcp.toolUpdateConfirmTitle'], { ns: 'tools' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['mcp.toolUpdateConfirmContent'], { ns: 'tools' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={handleUpdateTools}>
+            <AlertDialogConfirmButton tone="default" onClick={handleUpdateTools}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

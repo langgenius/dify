@@ -1,4 +1,8 @@
 {
+  "callback.error": "Autoryzacja nie powiodła się",
+  "callback.errorHint": "Wróć do poprzedniej strony i spróbuj ponownie.",
+  "callback.success": "Autoryzacja zakończona",
+  "callback.successHint": "Możesz teraz zamknąć tę kartę i wrócić do poprzedniej strony.",
   "connect": "Połącz z",
   "continue": "Kontynuuj",
   "error.authAppInfoFetchFailed": "Nie udało się pobrać informacji o aplikacji w celu autoryzacji",

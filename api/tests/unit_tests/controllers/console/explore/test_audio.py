@@ -10,13 +10,16 @@ import pytest
 from flask import has_request_context, request
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden
 from werkzeug.test import TestResponse
 
 import controllers.console.explore.audio as module
+from controllers.common.errors import UnauthorizedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import AccountTrialAppRecord, App, AppMode, AppModelConfig, InstalledApp
 from services import audio_provider_gateway
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -168,6 +171,14 @@ def test_missing_upload_reaches_runtime_and_returns_specific_error(runtime: _Run
     _error(runtime.request("audio-to-text", upload=False), status=400, code="no_audio_uploaded")
     assert len(runtime.asr_calls) == 1
     assert runtime.asr_calls[0][1:] == (None, None)
+
+
+def test_asr_request_size_limit_preserves_413(runtime: _Runtime) -> None:
+    runtime.harness.app.config["MAX_CONTENT_LENGTH"] = 1
+
+    _error(runtime.request("audio-to-text"), status=413, code="request_entity_too_large")
+
+    assert runtime.asr_calls == []
 
 
 @pytest.mark.parametrize(
@@ -402,15 +413,20 @@ def test_audio_endpoints_apply_admission_before_reading_or_generating_audio(
     [
         (AppDefinitionUnavailableError("app removed"), 400, "app_unavailable", None),
         (AppModelConfigBrokenError(), 400, "app_unavailable", None),
-        (NoAudioUploadedServiceError(), 400, "no_audio_uploaded", None),
-        (AudioTooLargeServiceError("30 MB limit exceeded"), 413, "audio_too_large", "30 MB limit exceeded"),
-        (UnsupportedAudioTypeServiceError(), 415, "unsupported_audio_type", None),
-        (ProviderNotSupportSpeechToTextServiceError(), 400, "provider_not_support_speech_to_text", None),
         (ProviderTokenNotInitError("Missing credentials"), 400, "provider_not_initialize", "Missing credentials"),
         (QuotaExceededError(), 400, "provider_quota_exceeded", None),
         (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support", None),
         (InvokeError("Provider rejected audio"), 400, "completion_request_error", "Provider rejected audio"),
         (ValueError("Invalid audio arguments"), 400, "invalid_param", "Invalid audio arguments"),
+        (UnauthorizedError("Session expired"), 401, "unauthorized", "Session expired"),
+        (AgentVersionNotFoundError(), 404, "agent_version_not_found_error", "Agent config version not found."),
+        (
+            Forbidden("Private provider details"),
+            500,
+            "internal_server_error",
+            "The server encountered an internal error and was unable to complete your request. "
+            "Either the server is overloaded or there is an error in the application.",
+        ),
         (RuntimeError("Unexpected provider failure"), 500, "internal_server_error", None),
     ],
 )
@@ -418,13 +434,30 @@ def test_audio_and_provider_failures_keep_precise_http_contract(
     runtime: _Runtime, operation: _Operation, failure: Exception, status: int, code: str, description: str | None
 ) -> None:
     runtime.error = failure
-    _error(runtime.request(operation), status=status, code=code, message=description)
+    response = runtime.request(operation)
+    _error(response, status=status, code=code, message=description)
+    if status == 401:
+        assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
     assert len(runtime.asr_calls) + len(runtime.tts_calls) == 1
 
 
-def test_asr_disabled_feature_preserves_400(runtime: _Runtime) -> None:
-    runtime.error = SpeechToTextDisabledServiceError()
-    _error(runtime.request("audio-to-text"), status=400, code="speech_to_text_disabled")
+@pytest.mark.parametrize(
+    ("failure", "status", "code", "description"),
+    [
+        (NoAudioUploadedServiceError(), 400, "no_audio_uploaded", None),
+        (AudioTooLargeServiceError("30 MB limit exceeded"), 413, "audio_too_large", "30 MB limit exceeded"),
+        (UnsupportedAudioTypeServiceError(), 415, "unsupported_audio_type", None),
+        (ProviderNotSupportSpeechToTextServiceError(), 400, "provider_not_support_speech_to_text", None),
+        (SpeechToTextDisabledServiceError(), 400, "speech_to_text_disabled", None),
+    ],
+)
+def test_transcription_failures_keep_precise_http_contract(
+    runtime: _Runtime, failure: Exception, status: int, code: str, description: str | None
+) -> None:
+    # Only transcription validates the upload and needs a speech-to-text model; synthesis documents none of these.
+    runtime.error = failure
+    _error(runtime.request("audio-to-text"), status=status, code=code, message=description)
+    assert len(runtime.asr_calls) == 1
 
 
 def test_unsupported_tts_provider_has_specific_error(runtime: _Runtime) -> None:

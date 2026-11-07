@@ -1,100 +1,76 @@
-import type { WorkflowRunningData } from '../../types'
-import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { WorkflowRunningStatus } from '../../types'
+import { act, waitFor } from '@testing-library/react'
+import { useNodes } from 'reactflow'
+import { createNode, createWorkflowRunningData } from '../../__tests__/fixtures'
+import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { useNodeDataUpdate } from '../use-node-data-update'
 
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
-)
+const setup = (readonly = false) => {
+  const sync = vi.fn().mockResolvedValue(undefined)
+  const rendered = renderWorkflowFlowHook(
+    () => ({ ...useNodeDataUpdate(), nodes: useNodes<{ value: string }>() }),
+    {
+      nodes: [
+        createNode({ id: 'node-1', data: { title: 'Node 1', value: 'original' } }),
+        createNode({ id: 'node-2', data: { title: 'Node 2', value: 'untouched' } }),
+      ],
+      hooksStoreProps: { doSyncWorkflowDraft: sync },
+      initialStoreState: readonly ? { workflowRunningData: createWorkflowRunningData() } : {},
+    },
+  )
+  return { ...rendered, sync }
+}
 
-describe('useNodeDataUpdate', () => {
-  beforeEach(() => {
-    resetReactFlowMockState()
-    rfState.nodes = [
-      { id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Node 1', value: 'original' } },
-      { id: 'node-2', position: { x: 300, y: 0 }, data: { title: 'Node 2' } },
-    ]
+it('merges edits into the target node and saves only when draft synchronization is requested', async () => {
+  const { result, store, sync } = setup()
+  await waitFor(() => expect(result.current.nodes).toHaveLength(2))
+  act(() =>
+    result.current.handleNodeDataUpdate({ id: 'node-1', data: { value: 'updated', extra: true } }),
+  )
+  await waitFor(() =>
+    expect(result.current.nodes.find((node) => node.id === 'node-1')?.data).toMatchObject({
+      title: 'Node 1',
+      value: 'updated',
+      extra: true,
+    }),
+  )
+  expect(result.current.nodes.find((node) => node.id === 'node-2')?.data).toMatchObject({
+    title: 'Node 2',
+    value: 'untouched',
   })
-
-  describe('handleNodeDataUpdate', () => {
-    it('should merge data into the target node and call setNodes', () => {
-      const { result } = renderWorkflowHook(() => useNodeDataUpdate(), {
-        hooksStoreProps: {},
-      })
-
-      result.current.handleNodeDataUpdate({
-        id: 'node-1',
-        data: { value: 'updated', extra: true },
-      })
-
-      expect(rfState.setNodes).toHaveBeenCalledOnce()
-      const updatedNodes = rfState.setNodes.mock.calls[0]![0]
-      expect(updatedNodes.find((n: { id: string }) => n.id === 'node-1').data).toEqual({
-        title: 'Node 1',
-        value: 'updated',
-        extra: true,
-      })
-      expect(updatedNodes.find((n: { id: string }) => n.id === 'node-2').data).toEqual({
-        title: 'Node 2',
-      })
-    })
+  expect(sync).not.toHaveBeenCalled()
+  act(() =>
+    result.current.handleNodeDataUpdateWithSyncDraft({ id: 'node-1', data: { value: 'saved' } }),
+  )
+  expect(sync).not.toHaveBeenCalled()
+  act(() => store.getState().flushPendingSync())
+  expect(sync).toHaveBeenCalledOnce()
+  expect(result.current.nodes.find((node) => node.id === 'node-1')?.data).toMatchObject({
+    value: 'saved',
+    extra: true,
   })
+})
 
-  describe('handleNodeDataUpdateWithSyncDraft', () => {
-    it('should update node data and trigger debounced sync draft', () => {
-      const mockDoSync = vi.fn().mockResolvedValue(undefined)
+it('updates the graph and immediately saves with the requested error policy and callback', async () => {
+  const { result, sync } = setup()
+  const callback = { onSuccess: vi.fn() }
+  await waitFor(() => expect(result.current.nodes).toHaveLength(2))
+  act(() =>
+    result.current.handleNodeDataUpdateWithSyncDraft(
+      { id: 'node-1', data: { value: 'saved' } },
+      { sync: true, notRefreshWhenSyncError: true, callback },
+    ),
+  )
+  expect(result.current.nodes.find((node) => node.id === 'node-1')?.data.value).toBe('saved')
+  expect(sync).toHaveBeenCalledExactlyOnceWith(true, callback)
+})
 
-      const { result, store } = renderWorkflowHook(() => useNodeDataUpdate(), {
-        hooksStoreProps: { doSyncWorkflowDraft: mockDoSync },
-      })
-
-      result.current.handleNodeDataUpdateWithSyncDraft({
-        id: 'node-1',
-        data: { value: 'synced' },
-      })
-
-      expect(rfState.setNodes).toHaveBeenCalledOnce()
-
-      store.getState().flushPendingSync()
-      expect(mockDoSync).toHaveBeenCalledOnce()
-    })
-
-    it('should call doSyncWorkflowDraft directly when sync=true', () => {
-      const mockDoSync = vi.fn().mockResolvedValue(undefined)
-      const callback = { onSuccess: vi.fn() }
-
-      const { result } = renderWorkflowHook(() => useNodeDataUpdate(), {
-        hooksStoreProps: { doSyncWorkflowDraft: mockDoSync },
-      })
-
-      result.current.handleNodeDataUpdateWithSyncDraft(
-        { id: 'node-1', data: { value: 'synced' } },
-        { sync: true, notRefreshWhenSyncError: true, callback },
-      )
-
-      expect(mockDoSync).toHaveBeenCalledWith(true, callback)
-    })
-
-    it('should do nothing when nodes are read-only', () => {
-      const mockDoSync = vi.fn().mockResolvedValue(undefined)
-
-      const { result } = renderWorkflowHook(() => useNodeDataUpdate(), {
-        initialStoreState: {
-          workflowRunningData: {
-            result: { status: WorkflowRunningStatus.Running },
-          } as WorkflowRunningData,
-        },
-        hooksStoreProps: { doSyncWorkflowDraft: mockDoSync },
-      })
-
-      result.current.handleNodeDataUpdateWithSyncDraft({
-        id: 'node-1',
-        data: { value: 'should-not-update' },
-      })
-
-      expect(rfState.setNodes).not.toHaveBeenCalled()
-      expect(mockDoSync).not.toHaveBeenCalled()
-    })
-  })
+it('preserves graph data and does not schedule a save while the workflow is running', async () => {
+  const { result, store, sync } = setup(true)
+  await waitFor(() => expect(result.current.nodes).toHaveLength(2))
+  act(() =>
+    result.current.handleNodeDataUpdateWithSyncDraft({ id: 'node-1', data: { value: 'blocked' } }),
+  )
+  act(() => store.getState().flushPendingSync())
+  expect(result.current.nodes.find((node) => node.id === 'node-1')?.data.value).toBe('original')
+  expect(sync).not.toHaveBeenCalled()
 })

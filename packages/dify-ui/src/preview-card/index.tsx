@@ -1,12 +1,10 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
 import { PreviewCard as BasePreviewCard } from '@base-ui/react/preview-card'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { floatingPopupAnimationClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
+import { floatingPopupAnimationClassName, positionerClassName } from '../internal/overlay'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 /**
  * PreviewCard follows Base UI's canonical semantics: a hover/focus-triggered
@@ -26,32 +24,27 @@ const PreviewCardTrigger = BasePreviewCard.Trigger
 const PreviewCardViewport = BasePreviewCard.Viewport
 const createPreviewCardHandle = BasePreviewCard.createHandle
 
+type PreviewCardActions = BasePreviewCard.Root.Actions
+type PreviewCardChangeEventReason = BasePreviewCard.Root.ChangeEventReason
+type PreviewCardChangeEventDetails = BasePreviewCard.Root.ChangeEventDetails
+
 type PreviewCardProps<Payload = unknown> = BasePreviewCard.Root.Props<Payload>
 type PreviewCardHandle<Payload = unknown> = BasePreviewCard.Handle<Payload>
 type PreviewCardTriggerProps<Payload = unknown> = BasePreviewCard.Trigger.Props<Payload>
 type PreviewCardPortalProps = BasePreviewCard.Portal.Props
 type PreviewCardViewportProps = BasePreviewCard.Viewport.Props
 
-type PreviewCardPositionerProps = Omit<BasePreviewCard.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
-}
+type PreviewCardPositionerProps = BasePreviewCard.Positioner.Props
 
 function PreviewCardPositioner({
   className,
-  placement = 'bottom',
   sideOffset = 8,
-  alignOffset = 0,
   ...props
 }: PreviewCardPositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BasePreviewCard.Positioner
-      side={side}
-      align={align}
       sideOffset={sideOffset}
-      alignOffset={alignOffset}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -69,22 +62,24 @@ function PreviewCardPopup({ className, ...props }: PreviewCardPopupProps) {
 }
 
 type PreviewCardContentProps = Omit<PreviewCardPopupProps, 'children'> &
-  Pick<PreviewCardPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+  Pick<PreviewCardPositionerProps, 'alignOffset' | 'side' | 'align' | 'sideOffset'> & {
     children: React.ReactNode
   }
 
 function PreviewCardContent({
   children,
-  placement = 'bottom',
-  sideOffset = 8,
-  alignOffset = 0,
+  side,
+  align,
+  sideOffset,
+  alignOffset,
   className,
   ...props
 }: PreviewCardContentProps) {
   return (
     <PreviewCardPortal>
       <PreviewCardPositioner
-        placement={placement}
+        side={side}
+        align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
       >
@@ -115,6 +110,9 @@ export {
   PreviewCardViewport,
 }
 export type {
+  PreviewCardActions,
+  PreviewCardChangeEventDetails,
+  PreviewCardChangeEventReason,
   PreviewCardContentProps,
   PreviewCardHandle,
   PreviewCardPopupProps,

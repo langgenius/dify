@@ -1,6 +1,6 @@
 # Gelişmiş Kurulum
 
-Yapılandırmayı özelleştirmeniz gerekiyorsa, lütfen [.env.example](../../docker/.env.example) dosyamızdaki yorumlara bakın ve `.env` dosyanızdaki ilgili değerleri güncelleyin. Ayrıca, spesifik dağıtım ortamınıza ve gereksinimlerinize bağlı olarak `docker-compose.yaml` dosyasının kendisinde de, imaj sürümlerini, port eşlemelerini veya hacim bağlantılarını değiştirmek gibi ayarlamalar yapmanız gerekebilir. Herhangi bir değişiklik yaptıktan sonra, lütfen `docker-compose up -d` komutunu tekrar çalıştırın. Kullanılabilir tüm ortam değişkenlerinin tam listesini [burada](https://docs.dify.ai/getting-started/install-self-hosted/environments) bulabilirsiniz.
+Yerel ayarları `docker/.env` içinde düzenleyin. [`.env.example`](../../docker/.env.example) varsayılan dağıtım için gereken başlangıç değerlerini içerir; isteğe bağlı ve hizmete özel ayarlar [`docker/envs/`](../../docker/envs/) altındadır. Gereken şablonları `.example` son eki olmadan kopyalayın. `.env` değerleri önceliklidir. Değişikliklerden sonra `docker/` dizininde `docker compose up -d` çalıştırın. [Docker kılavuzuna](../../docker/README.md) bakın.
 
 ## Grafana ile Metrik İzleme
 

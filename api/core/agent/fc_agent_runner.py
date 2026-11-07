@@ -3,7 +3,7 @@ import logging
 import re
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -100,9 +100,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_message_contents
 
-    def run(
-        self, session: Session, message: Message, query: str, **kwargs: Any
-    ) -> Generator[LLMResultChunk, None, None]:
+    def run(self, session: Session, message: Message, query: str, **kwargs: Any) -> Generator[LLMResultChunk]:
         """
         Run FunctionCall agent application
         """
@@ -127,8 +125,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         final_answer = ""
         prompt_messages: list = []  # Initialize prompt_messages
 
-        # get tracing instance
-        trace_manager = app_generate_entity.trace_manager
+        trace_scope = app_generate_entity.trace_scope
 
         def increase_usage(final_llm_usage_dict: dict[str, LLMUsage | None], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
@@ -175,7 +172,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 "created_by": CreditUsageCreatedBy.APP,
             }
 
-            chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
+            chunks: Generator[LLMResultChunk] | LLMResult = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
                 tools=prompt_messages_tools,
@@ -333,7 +330,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             message=self.message,
                             invoke_from=self.application_generate_entity.invoke_from,
                             agent_tool_callback=self.agent_callback,
-                            trace_manager=trace_manager,
+                            trace_scope=trace_scope,
                             app_id=self.application_generate_entity.app_config.app_id,
                             message_id=self.message.id,
                             conversation_id=self.conversation.id,
@@ -429,17 +426,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         """
         Check if there is any tool call in llm result chunk
         """
-        if llm_result_chunk.delta.message.tool_calls:
-            return True
-        return False
+        return bool(llm_result_chunk.delta.message.tool_calls)
 
     def check_blocking_tool_calls(self, llm_result: LLMResult) -> bool:
         """
         Check if there is any blocking tool call in llm result
         """
-        if llm_result.message.tool_calls:
-            return True
-        return False
+        return bool(llm_result.message.tool_calls)
 
     def extract_tool_calls(self, llm_result_chunk: LLMResultChunk) -> list[tuple[str, str, dict[str, Any]]]:
         """

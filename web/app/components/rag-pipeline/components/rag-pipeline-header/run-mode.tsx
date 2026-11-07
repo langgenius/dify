@@ -49,11 +49,22 @@ export function RunMode({ text }: RunModeProps) {
     handleWorkflowStartRunInWorkflow()
   }
 
-  useHotkey(RAG_PIPELINE_RUN_HOTKEY, handleRun, {
-    enabled: !isDisabled,
-    ignoreInputs: true,
-    preventDefault: true,
-  })
+  useHotkey(
+    RAG_PIPELINE_RUN_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleRun()
+    },
+    {
+      stopPropagation: false,
+      enabled: !isDisabled,
+      ignoreInputs: true,
+      preventDefault: false,
+    },
+  )
 
   if (!canRun) return null
 
@@ -91,8 +102,8 @@ export function RunMode({ text }: RunModeProps) {
         )}
         {!isDisabled && (
           <KbdGroup>
-            {RAG_PIPELINE_RUN_HOTKEY.split('+').map((key) => (
-              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+            {formatForDisplay(RAG_PIPELINE_RUN_HOTKEY, { parts: true }).map((key) => (
+              <Kbd key={key}>{key}</Kbd>
             ))}
           </KbdGroup>
         )}

@@ -1,5 +1,4 @@
 {
-  "workflowGenerator.applied": "Angewendet",
   "workflowGenerator.appliedRefineHint": "Angewendet — jederzeit mit ⌘K → /refine verfeinern",
   "workflowGenerator.applyFailed": "Der Workflow konnte nicht angewendet werden",
   "workflowGenerator.applyToNew": "Neue App erstellen",

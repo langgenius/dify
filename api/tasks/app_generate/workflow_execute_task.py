@@ -3,6 +3,7 @@ import logging
 import uuid
 from collections.abc import Generator, Mapping
 from enum import StrEnum
+from functools import partial
 from typing import Annotated, Any
 
 from celery import shared_task
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
+from core.app.apps.streaming_utils import STREAM_COMPLETE_SIGNAL
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -24,10 +26,10 @@ from core.app.entities.task_entities import WorkflowFinishStreamResponse, Workfl
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
-from graphon.filters import ResponseStreamFilter
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
 from libs.helper import to_timestamp
@@ -36,6 +38,10 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
+from services.app_task_service import AppTaskService
+from services.workflow_execution_identity import build_workflow_execution_identity
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +217,7 @@ class _AppRunner:
     ):
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppGenerator().generate(
+            return AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
@@ -223,10 +229,11 @@ class _AppRunner:
                 session=session,
             )
         if exec_params.app_mode == AppMode.WORKFLOW:
-            return WorkflowAppGenerator().generate(
+            return WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
+                execution_identity=build_workflow_execution_identity(user),
                 args=exec_params.args,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,
@@ -352,19 +359,20 @@ def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None
 
 
 def _publish_streaming_response(
-    response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
+    response_stream: Generator[str | Mapping[str, Any] | BaseModel],
     workflow_run_id: str | uuid.UUID,
     app_mode: AppMode,
     workflow_id: str,
     inputs: Mapping[str, Any],
     started_reason: WorkflowStartReason,
 ) -> None:
-    """Publish workflow stream events and close broken streams with a failed terminal event.
+    """Publish app stream events in order and terminate successful or broken streams.
 
-    `_AppRunner.run()` only handles failures before the generator is returned.
-    Once we start iterating the runtime stream, this helper becomes the last
-    place that can guarantee SSE consumers eventually see a terminal workflow
-    lifecycle event.
+    Accept runtime events for the given app mode and run. A normally exhausted Advanced Chat
+    stream with a published message end, no workflow start, and no errors completes through an
+    internal transport signal after all output is published. It must not invent a workflow run.
+    Other streams require a workflow terminal event; missing terminals produce a failed fallback.
+    Iteration and publish errors also produce a fallback when possible, then propagate.
     """
     normalized_workflow_run_id = str(workflow_run_id)
 
@@ -417,6 +425,8 @@ def _publish_streaming_response(
     topic = MessageBasedAppGenerator.get_response_topic(app_mode, normalized_workflow_run_id)
     started_published = False
     terminal_published = False
+    message_end_published = False
+    stream_failed = False
     last_task_id = normalized_workflow_run_id
     stream_error_message: str | None = None
 
@@ -433,6 +443,7 @@ def _publish_streaming_response(
                 else:
                     payload = json.dumps(event, ensure_ascii=False, default=str)
             except (TypeError, ValueError):
+                stream_failed = True
                 logger.exception("error while encoding event")
                 continue
 
@@ -442,8 +453,21 @@ def _publish_streaming_response(
                 started_published = True
             elif event_name in terminal_events:
                 terminal_published = True
+            elif event_name == "message_end":
+                message_end_published = True
             elif event_name == "error":
+                stream_failed = True
                 stream_error_message = _get_error_message(event) or stream_error_message
+
+        if (
+            app_mode == AppMode.ADVANCED_CHAT
+            and message_end_published
+            and not started_published
+            and not terminal_published
+            and not stream_failed
+        ):
+            topic.publish(STREAM_COMPLETE_SIGNAL)
+            return
     except Exception as exc:
         if not terminal_published:
             logger.exception(
@@ -500,7 +524,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
 
     generate_entity = resumption_context.get_generate_entity()
 
-    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    graph_runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     conversation = None
@@ -559,13 +583,42 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         )
         return
 
+    # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
+    task_id = workflow_run.task_id
+    if task_id is None:
+        try:
+            task_id = str(uuid.UUID(generate_entity.task_id))
+        except ValueError:
+            logger.warning("Invalid saved task ID for workflow run %s", workflow_run_id)
+            return
+        AppTaskService.index_workflow_pause_task(
+            workflow_run=workflow_run,
+            pause_entity=pause_entity,
+            resumption_context=resumption_context,
+            workflow_run_repo=workflow_run_repo,
+        )
+        indexed_run = workflow_run_repo.get_workflow_run_by_id(
+            workflow_run.tenant_id, workflow_run.app_id, workflow_run.id
+        )
+        if indexed_run is None or indexed_run.task_id != task_id:
+            logger.warning("Cannot recover saved task ownership for workflow run %s", workflow_run_id)
+            return
+        workflow_run.task_id = task_id
+    generate_entity.task_id = task_id
+
     # The resumed attempt reuses the paused run's task ID, so cancellation
     # signals armed against that ID before or during the pause would abort it
     # immediately and report it as stopped by the user. This attempt is starting
     # deliberately, so drop them before any engine can observe them.
-    clear_app_task_cancellation_signals(generate_entity.task_id)
-
-    workflow_run_repo.resume_workflow_pause(workflow_run_id, pause_entity)
+    try:
+        workflow_run_repo.resume_workflow_pause(
+            workflow_run_id,
+            pause_entity,
+            before_resume=partial(clear_app_task_cancellation_signals, generate_entity.task_id),
+        )
+    except WorkflowRunNotPausedError:
+        logger.info("Workflow run %s was stopped or resumed by another request", workflow_run_id)
+        return
 
     pause_config = PauseStateLayerConfig(
         session_factory=session_factory,
@@ -617,7 +670,7 @@ def _resume_advanced_chat(
     conversation: Conversation,
     message: Message,
     generate_entity: AdvancedChatAppGenerateEntity,
-    graph_runtime_state: GraphRuntimeState,
+    graph_runtime_state: RuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
@@ -647,7 +700,7 @@ def _resume_advanced_chat(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    generator = AdvancedChatAppGenerator()
+    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
 
     try:
         response = generator.resume(
@@ -685,7 +738,7 @@ def _resume_workflow(
     workflow: Workflow,
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
-    graph_runtime_state: GraphRuntimeState,
+    graph_runtime_state: RuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
@@ -716,7 +769,7 @@ def _resume_workflow(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    generator = WorkflowAppGenerator()
+    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
 
     try:
         response = generator.resume(

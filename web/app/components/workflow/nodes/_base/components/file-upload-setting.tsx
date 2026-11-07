@@ -2,16 +2,17 @@
 import type { FC } from 'react'
 import type { UploadFileSetting } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldItem, FieldLabel, Field as FormField } from '@langgenius/dify-ui/field'
+import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Field from '@/app/components/app/configuration/config-var/config-modal/field'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
-import { useFileUploadConfig } from '@/service/use-common'
+import ConfigField from '@/app/components/app/configuration/config-var/config-modal/field'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { consoleQuery } from '@/service/console'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { SupportUploadFileTypes } from '../../../types'
@@ -50,9 +51,9 @@ const FileUploadSetting: FC<Props> = ({
     allowed_file_types = [],
     allowed_file_extensions = [],
   } = payload
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit, maxFileUploadLimit } =
-    useFileSizeLimit(fileUploadConfigResponse)
+    getFileSizeLimit(fileUploadConfigResponse)
 
   const handleSupportFileTypeChange = useCallback(
     (type: SupportUploadFileTypes) => {
@@ -131,9 +132,9 @@ const FileUploadSetting: FC<Props> = ({
   )
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {!inFeaturePanel && (
-        <Field
+        <ConfigField
           title={t(($) => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' })}
           errorMessage={validationError?.message}
           errorId={errorId}
@@ -169,9 +170,9 @@ const FileUploadSetting: FC<Props> = ({
               customFileTypesErrorId={customFileTypesErrorId}
             />
           </div>
-        </Field>
+        </ConfigField>
       )}
-      <FormField className="mt-4">
+      <Field>
         <Fieldset
           className="flex flex-col items-stretch gap-0"
           render={
@@ -202,12 +203,9 @@ const FileUploadSetting: FC<Props> = ({
             ))}
           </div>
         </Fieldset>
-      </FormField>
+      </Field>
       {isMultiple && (
-        <Field
-          className="mt-4"
-          title={t(($) => $['variableConfig.maxNumberOfUploads'], { ns: 'appDebug' })!}
-        >
+        <ConfigField title={t(($) => $['variableConfig.maxNumberOfUploads'], { ns: 'appDebug' })!}>
           <div>
             <div className="mb-1.5 body-xs-regular text-text-tertiary">
               {t(($) => $['variableConfig.maxNumberTip'], {
@@ -228,12 +226,11 @@ const FileUploadSetting: FC<Props> = ({
               onChange={handleMaxUploadNumLimitChange}
             />
           </div>
-        </Field>
+        </ConfigField>
       )}
       {inFeaturePanel && !hideSupportFileType && (
-        <Field
+        <ConfigField
           title={t(($) => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' })}
-          className="mt-4"
           errorMessage={validationError?.message}
           errorId={errorId}
         >
@@ -268,7 +265,7 @@ const FileUploadSetting: FC<Props> = ({
               customFileTypesErrorId={customFileTypesErrorId}
             />
           </div>
-        </Field>
+        </ConfigField>
       )}
     </div>
   )

@@ -75,7 +75,7 @@ class AnalyticdbVectorBySql:
         )
 
     @contextmanager
-    def _get_cursor(self) -> Generator[Any, None, None]:  # Changed from Iterator[Any]
+    def _get_cursor(self) -> Generator[Any]:  # Changed from Iterator[Any]
         assert self.pool is not None, "Connection pool is not initialized"
         conn = self.pool.getconn()
         cur = conn.cursor()
@@ -212,7 +212,7 @@ class AnalyticdbVectorBySql:
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError("top_k must be a positive integer")
         document_ids_filter = kwargs.get("document_ids_filter")
-        where_clause = "WHERE 1=1"
+        where_clause = "WHERE 1=1 "
         if document_ids_filter:
             document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
             where_clause += f"AND metadata_->>'document_id' IN ({document_ids})"

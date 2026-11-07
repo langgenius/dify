@@ -6,13 +6,14 @@ import {
   PdfLoader,
 } from '@/app/components/base/file-uploader/pdf-highlighter-adapter'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { basePath } from '@/utils/var'
 
 export function SkillPdfPreview({ fileName, url }: { fileName: string; url: string }) {
   return (
     <div className="relative h-full overflow-hidden bg-background-default">
       <span className="sr-only">{fileName}</span>
       <PdfLoader
-        workerSrc="/pdf.worker.min.mjs"
+        workerSrc={`${basePath}/pdf.worker.min.mjs`}
         url={url}
         beforeLoad={<LoadingPlaceholder className="h-full" />}
       >

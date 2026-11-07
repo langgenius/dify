@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "Bắt buộc chỉ được sử dụng làm tài liệu tham khảo cho suy luận mô hình và không phải để xác thực bắt buộc của đầu ra tham số.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "Loại",
   "nodes.parameterExtractor.advancedSetting": "Cài đặt nâng cao",
-  "nodes.parameterExtractor.extractParametersNotSet": "Tham số trích xuất chưa được thiết lập",
+  "nodes.parameterExtractor.extractParametersNotSet": "Chưa cấu hình tham số trích xuất",
   "nodes.parameterExtractor.importFromTool": "Nhập từ công cụ",
   "nodes.parameterExtractor.instruction": "Hướng dẫn",
   "nodes.parameterExtractor.instructionTip": "Nhập hướng dẫn bổ sung để giúp trình trích xuất tham số hiểu rõ hơn về cách trích xuất tham số.",

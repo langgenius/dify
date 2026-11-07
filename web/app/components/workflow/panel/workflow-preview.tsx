@@ -2,17 +2,17 @@ import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/a
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { toast } from '@/app/notifications'
-import { ENABLE_FEATURE_PREVIEW } from '@/config'
+import { ENABLE_FEATURE_PREVIEW, ENABLE_HITL_IM } from '@/config'
 import { submitHumanInputForm } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
+import { editorAppIdAtom, editorResourceAtom } from '../editor-resource/state'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
 import ResultPanel from '../run/result-panel'
 import ResultText from '../run/result-text'
@@ -29,16 +29,12 @@ import { getPreviewPanelMaxWidth } from './panel-width'
 const WorkflowPreview = () => {
   const { t } = useTranslation(['common', 'runLog', 'workflow', 'workflowGenerator'])
   const panelId = useId()
+  const appId = useAtomValue(editorAppIdAtom)
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
-  const appDetail = useAppStore((s) => s.appDetail)
+  const editorResource = useAtomValue(editorResourceAtom)
   const openGenerator = useWorkflowGeneratorStore((s) => s.openGenerator)
-  const generatorMode =
-    appDetail?.mode === AppModeEnum.WORKFLOW
-      ? 'workflow'
-      : appDetail?.mode === AppModeEnum.ADVANCED_CHAT
-        ? 'advanced-chat'
-        : null
+  const generatorMode = editorResource.kind === 'app' ? editorResource.mode : null
   const failedTrace =
     workflowRunningData?.result.status === WorkflowRunningStatus.Failed
       ? workflowRunningData.tracing?.find(
@@ -126,9 +122,15 @@ const WorkflowPreview = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      await submitHumanInputForm(formToken, formData)
+      const form = humanInputFormDataList?.find((item) => item.form_token === formToken)
+      await submitHumanInputForm(
+        formToken,
+        formData,
+        form?.form_version,
+        ENABLE_HITL_IM ? { silent: true } : undefined,
+      )
     },
-    [],
+    [humanInputFormDataList],
   )
 
   const handleOpenTracingTab = useCallback(() => {
@@ -138,7 +140,7 @@ const WorkflowPreview = () => {
   return (
     <div
       id={panelId}
-      className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
+      className="relative flex h-full flex-col rounded-s-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{ width: `${panelWidth}px` }}
     >
       <ResizeHandle
@@ -149,18 +151,18 @@ const WorkflowPreview = () => {
         controls={panelId}
         label={t(($) => $['singleRun.testRun'], { ns: 'workflow' })}
         onResize={setPreviewPanelWidth}
-        className="absolute top-1/2 bottom-0 left-0.75 z-50 h-6 w-0.75 cursor-col-resize bg-state-base-handle"
+        className="absolute inset-s-0.75 top-1/2 bottom-0 z-50 h-6 w-0.75 cursor-col-resize bg-state-base-handle"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
         {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}
-        {ENABLE_FEATURE_PREVIEW && appDetail && generatorMode && failedTrace && (
+        {ENABLE_FEATURE_PREVIEW && appId && generatorMode && failedTrace && (
           <Button
             onClick={() =>
               openGenerator({
                 intent: 'refine',
                 mode: generatorMode,
-                currentAppId: appDetail.id,
+                currentAppId: appId,
                 currentAppMode: generatorMode,
                 initialInstruction: `${refineLabel}: ${failedTrace.title} (${failedTrace.node_id}): ${(failedTrace.error ?? '').slice(0, 2000)}`,
               })
@@ -183,7 +185,7 @@ const WorkflowPreview = () => {
           {showInputsPanel && (
             <div
               className={cn(
-                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+                'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
                 currentTab === 'INPUT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               )}
               onClick={() => switchTab('INPUT')}
@@ -193,7 +195,7 @@ const WorkflowPreview = () => {
           )}
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+              'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'RESULT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
@@ -206,7 +208,7 @@ const WorkflowPreview = () => {
           </div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+              'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
@@ -219,7 +221,7 @@ const WorkflowPreview = () => {
           </div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+              'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
@@ -280,7 +282,7 @@ const WorkflowPreview = () => {
                 workflowRunningData?.resultText &&
                 typeof workflowRunningData?.resultText === 'string' && (
                   <Button
-                    className={cn('mb-4 ml-4')}
+                    className={cn('ms-4 mb-4')}
                     onClick={() => {
                       const content = workflowRunningData?.resultText
                       if (typeof content === 'string') copy(content)
@@ -304,6 +306,7 @@ const WorkflowPreview = () => {
               outputs_truncated={workflowRunningData?.result?.outputs_truncated}
               outputs_full_content={workflowRunningData?.result?.outputs_full_content}
               status={workflowRunningData?.result?.status || ''}
+              workflowRunId={workflowRunningData?.result?.id}
               error={workflowRunningData?.result?.error}
               elapsed_time={workflowRunningData?.result?.elapsed_time}
               total_tokens={workflowRunningData?.result?.total_tokens}
@@ -311,6 +314,11 @@ const WorkflowPreview = () => {
               created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
               exceptionCounts={workflowRunningData?.result?.exceptions_count}
+              externalTrace={
+                appId && workflowRunningData?.result?.id
+                  ? { appId, kind: 'workflow', workflowRunId: workflowRunningData.result.id }
+                  : undefined
+              }
               onOpenTracingTab={handleOpenTracingTab}
             />
           )}
@@ -321,8 +329,23 @@ const WorkflowPreview = () => {
           )}
           {currentTab === 'TRACING' && (
             <TracingPanel
+              key={workflowRunningData?.result.id}
+              externalTraceRun={
+                appId && workflowRunningData?.result?.id
+                  ? { appId, workflowRunId: workflowRunningData.result.id }
+                  : undefined
+              }
               className="bg-background-section-burn"
               list={workflowRunningData?.tracing || []}
+              workflowRun={
+                appId && workflowRunningData?.result.id
+                  ? {
+                      appId,
+                      runId: workflowRunningData.result.id,
+                      status: workflowRunningData.result.status,
+                    }
+                  : undefined
+              }
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
