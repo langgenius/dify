@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -451,7 +450,7 @@ class TestGetHistoryPromptMessages:
         expected_length: int,
     ) -> None:
         mem = self._make_memory(database)
-        cast(MagicMock, mem.model_instance.get_llm_num_tokens).side_effect = token_values
+        mem.model_instance.get_llm_num_tokens.side_effect = token_values
         _persist_message(database, mem.conversation.id)
 
         result = mem.get_history_prompt_messages(max_token_limit=max_token_limit)
@@ -469,7 +468,7 @@ class TestGetHistoryPromptMessages:
         self, database: Database, token_values: list[int], expected_contents: list[str]
     ) -> None:
         mem = self._make_memory(database)
-        cast(MagicMock, mem.model_instance.get_llm_num_tokens).side_effect = token_values
+        mem.model_instance.get_llm_num_tokens.side_effect = token_values
         base_time = datetime.now(UTC).replace(tzinfo=None)
         oldest = _persist_message(
             database, mem.conversation.id, query="old query", answer="old answer", created_at=base_time
