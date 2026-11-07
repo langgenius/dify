@@ -4,7 +4,7 @@ import json
 import operator
 from collections.abc import Iterator
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import Mock, patch
 from urllib.parse import parse_qsl
 
@@ -411,10 +411,15 @@ class TestCustomToolCases:
         )
 
         assert isinstance(response, httpx.Response)
-        captured_kwargs = cast(dict[str, object], captured["kwargs"])
-        captured_params = cast(dict[str, str], captured_kwargs["params"])
-        captured_headers = cast(dict[str, str], captured_kwargs["headers"])
-        assert cast(str, captured["url"]).endswith("/items/123")
+        captured_kwargs = captured["kwargs"]
+        assert isinstance(captured_kwargs, dict)
+        captured_params = captured_kwargs["params"]
+        captured_headers = captured_kwargs["headers"]
+        assert isinstance(captured_params, dict)
+        assert isinstance(captured_headers, dict)
+        url = captured["url"]
+        assert isinstance(url, str)
+        assert url.endswith("/items/123")
         assert captured_params["q"] == "search"
         assert captured_params["key"] == "v"
         assert captured_headers["Content-Type"] == "application/json"
@@ -459,10 +464,14 @@ class TestCustomToolCases:
             parameters={"file": fake_file},
         )
         assert isinstance(response, httpx.Response)
-        captured_headers = cast(dict[str, str], captured["headers"])
-        captured_files = cast(list[tuple[str, object]], captured["files"])
+        captured_headers = captured["headers"]
+        captured_files = captured["files"]
+        assert isinstance(captured_headers, dict)
+        assert isinstance(captured_files, list)
         assert "Content-Type" not in captured_headers
-        assert captured_files[0][0] == "file"
+        first_file = captured_files[0]
+        assert isinstance(first_file, tuple)
+        assert first_file[0] == "file"
 
         # _invoke JSON path
         monkeypatch.setattr(tool, "assembling_request", lambda parameters: {})
