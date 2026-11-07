@@ -240,6 +240,19 @@ def _enable_file_uploads(
 # ===========================================================================
 
 
+def test_split_prompt_messages_keeps_complete_turns_and_leading_assistant() -> None:
+    leading = AssistantPromptMessage(content="leading")
+    first_user = UserPromptMessage(content="first")
+    first_answer = AssistantPromptMessage(content="answer")
+    followup = AssistantPromptMessage(content="followup")
+    second_user = UserPromptMessage(content="second")
+
+    assert memory_module._split_prompt_messages_into_turns([]) == []
+    assert memory_module._split_prompt_messages_into_turns(
+        [leading, first_user, first_answer, followup, second_user]
+    ) == [[leading], [first_user, first_answer, followup], [second_user]]
+
+
 class TestGetHistoryPromptMessages:
     """Tests for persisted history retrieval, file batching, and pruning."""
 
@@ -424,8 +437,8 @@ class TestGetHistoryPromptMessages:
     @pytest.mark.parametrize(
         ("token_values", "max_token_limit", "expected_length"),
         [
-            ([3000, 1500], 2000, 1),
-            ([99999, 99999], 1, 1),
+            ([3000], 2000, 0),
+            ([99999], 1, 0),
             ([50], 2000, 2),
         ],
     )
@@ -443,6 +456,36 @@ class TestGetHistoryPromptMessages:
         result = mem.get_history_prompt_messages(max_token_limit=max_token_limit)
 
         assert len(result) == expected_length
+
+    @pytest.mark.parametrize(
+        ("token_values", "expected_contents"),
+        [
+            ([3000, 1500], ["new query", "new answer"]),
+            ([3000, 2500], []),
+        ],
+    )
+    def test_token_pruning_removes_complete_oldest_turn(
+        self, database: Database, token_values: list[int], expected_contents: list[str]
+    ) -> None:
+        mem = self._make_memory(database)
+        mem.model_instance.get_llm_num_tokens.side_effect = token_values
+        base_time = datetime.now(UTC).replace(tzinfo=None)
+        oldest = _persist_message(
+            database, mem.conversation.id, query="old query", answer="old answer", created_at=base_time
+        )
+        newest = _persist_message(
+            database,
+            mem.conversation.id,
+            query="new query",
+            answer="new answer",
+            created_at=base_time + timedelta(seconds=1),
+        )
+        newest.parent_message_id = oldest.id
+        database.session.commit()
+
+        result = mem.get_history_prompt_messages(max_token_limit=2000)
+
+        assert [prompt.content for prompt in result] == expected_contents
 
 
 # ===========================================================================
@@ -581,6 +624,47 @@ class TestGetHistoryPromptText:
 
 
 class TestPreparedHistory:
+    @pytest.mark.parametrize(
+        ("max_token_limit", "expected_text"),
+        [
+            (100, "Human: old query\nAssistant: old answer\nHuman: new query\nAssistant: new answer"),
+            (75, "Human: new query\nAssistant: new answer"),
+            (50, "Human: new query\nAssistant: new answer"),
+            (49, ""),
+            (0, ""),
+            (-1, ""),
+        ],
+    )
+    def test_detached_history_text_prunes_complete_turns(
+        self, database: Database, max_token_limit: int, expected_text: str
+    ) -> None:
+        conversation = _persist_conversation(database)
+        oldest = _persist_message(database, conversation.id, query="old query", answer="old answer")
+        newest = _persist_message(
+            database,
+            conversation.id,
+            query="new query",
+            answer="new answer",
+            created_at=oldest.created_at + timedelta(seconds=1),
+        )
+        newest.parent_message_id = oldest.id
+        database.session.commit()
+        history = TokenBufferMemory.load_history(
+            conversation=conversation,
+            app_record=database.session.get(App, conversation.app_id),
+            session=database.session,
+            message_limit=None,
+        )
+        database.session.close()
+        model = _make_model_instance()
+
+        def count_tokens(prompts: Sequence[PromptMessage]) -> int:
+            return 25 * len(prompts)
+
+        model.get_llm_num_tokens.side_effect = count_tokens
+
+        assert history.get_prompt_text(model_instance=model, max_token_limit=max_token_limit) == expected_text
+
     @pytest.mark.parametrize("enabled", [True, False])
     @pytest.mark.parametrize("debug", [True, False])
     def test_agent_attachments_use_conversation_soul(self, database: Database, enabled: bool, debug: bool) -> None:
