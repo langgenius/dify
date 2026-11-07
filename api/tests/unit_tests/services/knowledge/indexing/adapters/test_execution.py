@@ -247,6 +247,75 @@ def test_keyword_io_releases_transactions_and_commits_before_unlocking(
     assert segments.resume_indexing(job) == ([], 5)
 
 
+@pytest.mark.parametrize("resume", [False, True])
+def test_parent_child_economy_indexes_children_and_completes_parent(
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    active_transactions: set[Connection],
+    monkeypatch: pytest.MonkeyPatch,
+    resume: bool,
+) -> None:
+    from core.rag.datasource.keyword.jieba import jieba as jieba_module
+    from core.rag.datasource.keyword.jieba.jieba import Jieba
+
+    adapter, _, segments, _, job, _ = backend
+    job = replace(job, source=job.source._replace(document_model=IndexStructureType.PARENT_CHILD_INDEX))
+    with sqlite_session_factory.begin() as session:
+        document = session.get(Document, job.ref.document_id)
+        assert document is not None
+        document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+        rule = DatasetProcessRule(
+            dataset_id="dataset-1",
+            mode=ProcessRuleMode.HIERARCHICAL,
+            rules='{"parent_mode":"full-doc","subchunk_segmentation":{"max_tokens":100}}',
+            created_by="account-1",
+        )
+        session.add(rule)
+        session.flush()
+        document.dataset_process_rule_id = rule.id
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE="database")
+    checking_indexing = True
+
+    class KeywordExtractor:
+        def extract_keywords(self, text: str, _keyword_number: int = 10) -> set[str]:
+            if checking_indexing:
+                assert not active_transactions
+            return set(text.split())
+
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", KeywordExtractor)
+    chunk = IndexDocument(
+        page_content="parent",
+        metadata={"doc_id": "parent-node", "doc_hash": "parent-hash"},
+        children=[ChildDocument(page_content="childword", metadata={"doc_id": "child-node", "doc_hash": "child-hash"})],
+    )
+    segments.save_for_indexing(job, [chunk], [5])
+    if resume:
+        saved, tokens = segments.resume_indexing(job)
+        assert tokens == 5
+        assert saved[0].children is not None
+        assert [child.page_content for child in saved[0].children] == ["childword"]
+        chunks = saved
+    else:
+        chunks = [chunk]
+
+    with Flask(__name__).app_context():
+        adapter.load(job, chunks)
+    checking_indexing = False
+
+    with sqlite_session_factory() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        assert dataset is not None
+        hits = Jieba(dataset).search("childword", session=session)
+        assert [hit.page_content for hit in hits] == ["childword"]
+        assert [hit.metadata["doc_id"] for hit in hits] == ["child-node"]
+        parent = session.scalar(select(DocumentSegment))
+        assert parent is not None
+        assert parent.index_node_id == "parent-node"
+        assert parent.status == SegmentStatus.COMPLETED
+        assert not parent.keywords
+    assert segments.resume_indexing(job) == ([], 5)
+
+
 def test_extract_attaches_document_metadata_and_owns_local_session(backend: BackendFixture) -> None:
     adapter, _, _, sources, job, _ = backend
     text = IndexDocument(page_content="source")
@@ -538,11 +607,14 @@ def _delete_document_row(session_factory: sessionmaker[Session]) -> None:
         session.delete(document)
 
 
+@pytest.mark.parametrize("doc_form", [IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.PARENT_CHILD_INDEX])
 def test_discard_removes_keywords_written_for_a_deleted_document(
-    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session]
+    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], doc_form: IndexStructureType
 ) -> None:
     adapter, _, segments, _, job, redis = backend
-    table = {"existing": ["old-node"], "hello": ["old-node", "node"], "world": ["node"]}
+    job = replace(job, source=job.source._replace(document_model=doc_form))
+    node_id = "child-node" if doc_form == IndexStructureType.PARENT_CHILD_INDEX else "node"
+    table = {"existing": ["old-node"], "hello": ["old-node", node_id], "world": [node_id]}
     with sqlite_session_factory.begin() as session:
         session.add(
             DatasetKeywordTable(
@@ -554,7 +626,18 @@ def test_discard_removes_keywords_written_for_a_deleted_document(
     _delete_document_row(sqlite_session_factory)
 
     with patch(f"{CLEANUP_MODULE}.redis_client", redis):
-        adapter.discard(job, [IndexDocument(page_content="hello world", metadata={"doc_id": "node"})])
+        adapter.discard(
+            job,
+            [
+                IndexDocument(
+                    page_content="hello world",
+                    metadata={"doc_id": "node"},
+                    children=[ChildDocument(page_content="hello world", metadata={"doc_id": "child-node"})]
+                    if doc_form == IndexStructureType.PARENT_CHILD_INDEX
+                    else None,
+                )
+            ],
+        )
 
     assert redis.lock.call_args.args == ("keyword_indexing_lock_dataset-1",)
     _, encoded = segments.get_keyword_table(job.ref.dataset)
@@ -612,14 +695,55 @@ def test_discard_leaves_index_cleanup_to_dataset_deletion(
 
 
 @pytest.mark.parametrize("paused_first", [False, True])
+@pytest.mark.parametrize("doc_form", [IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.PARENT_CHILD_INDEX])
 def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
-    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], paused_first: bool
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    paused_first: bool,
+    doc_form: IndexStructureType,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     adapter, documents, segments, _, job, redis = backend
-    chunk = IndexDocument(page_content="hello world", metadata={"doc_id": "node", "doc_hash": "hash"})
+    job = replace(job, source=job.source._replace(document_model=doc_form))
+    with sqlite_session_factory.begin() as session:
+        document = session.get(Document, job.ref.document_id)
+        assert document is not None
+        document.doc_form = doc_form
+        if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+            rule = DatasetProcessRule(
+                dataset_id=job.ref.dataset.dataset_id,
+                mode=ProcessRuleMode.HIERARCHICAL,
+                rules='{"parent_mode":"full-doc","subchunk_segmentation":{"max_tokens":100}}',
+                created_by="account-1",
+            )
+            session.add(rule)
+            session.flush()
+            document.dataset_process_rule_id = rule.id
+
+    class KeywordExtractor:
+        def extract_keywords(self, text: str, _keyword_number: int = 10) -> set[str]:
+            return set(text.split())
+
+    monkeypatch.setattr("core.rag.datasource.keyword.jieba.jieba.JiebaKeywordTableHandler", KeywordExtractor)
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE="database")
+    chunk = IndexDocument(
+        page_content="hello world",
+        metadata={"doc_id": "node", "doc_hash": "hash"},
+        children=[
+            ChildDocument(page_content="hello world", metadata={"doc_id": "child-node", "doc_hash": "child-hash"})
+        ]
+        if doc_form == IndexStructureType.PARENT_CHILD_INDEX
+        else None,
+    )
     segments.save_for_indexing(job, [chunk], [5])
+    saved, _ = segments.resume_indexing(job)
+    assert len(saved) == 1
+    if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+        assert saved[0].children is not None
+        assert [child.metadata["doc_id"] for child in saved[0].children] == ["child-node"]
     service = DocumentIndexingService(documents=documents, segments=segments, backend=adapter)
     write_keywords = Jieba.update_texts
+    written_nodes: list[list[str]] = []
 
     def cleanup_wins_the_race(
         self: Jieba,
@@ -654,6 +778,8 @@ def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
             replace_existing=replace_existing,
             deleted_ids=deleted_ids,
         )
+        if texts:
+            written_nodes.append([text.metadata["doc_id"] for text in texts])
 
     with (
         Flask(__name__).app_context(),
@@ -666,9 +792,14 @@ def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
         else:
             service.run_in_indexing_status(job.ref)
 
+    expected_node = "child-node" if doc_form == IndexStructureType.PARENT_CHILD_INDEX else "node"
+    assert written_nodes == [[expected_node]]
     _, encoded = segments.get_keyword_table(job.ref.dataset)
     assert encoded is not None
-    assert all("node" not in node_ids for node_ids in json.loads(encoded)["__data__"]["table"].values())
+    assert all(
+        not {"node", "child-node"}.intersection(node_ids)
+        for node_ids in json.loads(encoded)["__data__"]["table"].values()
+    )
 
 
 @pytest.mark.parametrize(
@@ -676,13 +807,13 @@ def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
     [
         # parent-child chunks without children wrote no vectors
         (IndexTechniqueType.HIGH_QUALITY, IndexDocument(page_content="parent", metadata={"doc_id": "node"})),
-        # economy parent-child datasets never write keywords
+        # Economy parent-child documents without children write no keywords either.
         (
             IndexTechniqueType.ECONOMY,
             IndexDocument(
                 page_content="parent",
                 metadata={"doc_id": "node"},
-                children=[ChildDocument(page_content="child", metadata={"doc_id": "child-node"})],
+                children=[],
             ),
         ),
     ],

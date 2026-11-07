@@ -147,35 +147,43 @@ class SegmentIndexingGateway:
     def _regenerate_children(
         self, segment_ref: SegmentRef, snapshot: SegmentIndexingSnapshot, *, replace_existing: bool
     ) -> None:
-        if snapshot.dataset.indexing_technique != "high_quality":
-            raise ValueError("The knowledge base index technique is not high quality!")
+        high_quality = snapshot.dataset.indexing_technique == "high_quality"
         rule = snapshot.process_rule
         if rule is None:
             if replace_existing:
                 return
             raise ValueError("No processing rule found.")
-        manager = ModelManager.for_tenant(tenant_id=snapshot.dataset.tenant_id)
-        model = (
-            manager.get_model_instance(
-                tenant_id=snapshot.dataset.tenant_id,
-                provider=snapshot.dataset.embedding_model_provider,
-                model_type=ModelType.TEXT_EMBEDDING,
-                model=snapshot.dataset.embedding_model,
+        model = None
+        if high_quality:
+            manager = ModelManager.for_tenant(tenant_id=snapshot.dataset.tenant_id)
+            model = (
+                manager.get_model_instance(
+                    tenant_id=snapshot.dataset.tenant_id,
+                    provider=snapshot.dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=snapshot.dataset.embedding_model,
+                )
+                if snapshot.dataset.embedding_model_provider
+                else manager.get_default_model_instance(
+                    tenant_id=snapshot.dataset.tenant_id, model_type=ModelType.TEXT_EMBEDDING
+                )
             )
-            if snapshot.dataset.embedding_model_provider
-            else manager.get_default_model_instance(
-                tenant_id=snapshot.dataset.tenant_id, model_type=ModelType.TEXT_EMBEDDING
-            )
-        )
         children = ParentChildIndexProcessor().split_child_nodes(
             self._document(snapshot), Rule.model_validate(rule.to_dict()["rules"]), rule.mode, model
         )
         previous = self._segments.get_children(segment_ref) or ()
-        vector = self._vector(snapshot)
-        if replace_existing and previous:
-            vector.delete_by_ids([child.index_node_id for child in previous if child.index_node_id])
-        if children:
-            vector.create([Document.model_validate(child.model_dump()) for child in children])
+        documents = [Document.model_validate(child.model_dump()) for child in children]
+        if high_quality:
+            vector = self._vector(snapshot)
+            if replace_existing and previous:
+                vector.delete_by_ids([child.index_node_id for child in previous if child.index_node_id])
+            if documents:
+                vector.create(documents)
+        deleted_ids = [child.index_node_id for child in previous if child.index_node_id] if replace_existing else []
+        if documents or deleted_ids:
+            self._write_keywords(
+                segment_ref.document, snapshot, documents, None, replace_existing=False, deleted_ids=deleted_ids
+            )
         now = naive_utc_now()
         added = tuple(
             ChildChunkState(
@@ -207,8 +215,6 @@ class SegmentIndexingGateway:
         deleted: Sequence[ChildChunkState] = (),
     ) -> None:
         snapshot = self._segments.get_indexing_snapshot(segment_ref)
-        if snapshot.dataset.indexing_technique != "high_quality":
-            return
         documents = [
             Document(
                 page_content=child.data.content,
@@ -221,15 +227,20 @@ class SegmentIndexingGateway:
             )
             for child in (*added, *updated)
         ]
-        vector = self._vector(snapshot)
         deleted_ids = []
         for child in (*updated, *deleted):
             assert child.index_node_id is not None
             deleted_ids.append(child.index_node_id)
-        if deleted_ids:
-            vector.delete_by_ids(deleted_ids)
-        if documents:
-            vector.add_texts(documents, duplicate_check=True)
+        if snapshot.dataset.indexing_technique == "high_quality":
+            vector = self._vector(snapshot)
+            if deleted_ids:
+                vector.delete_by_ids(deleted_ids)
+            if documents:
+                vector.add_texts(documents, duplicate_check=True)
+        if documents or deleted_ids:
+            self._write_keywords(
+                segment_ref.document, snapshot, documents, None, replace_existing=False, deleted_ids=deleted_ids
+            )
 
     @staticmethod
     def _attachment_documents(snapshot: SegmentIndexingSnapshot, files) -> list[Document]:
@@ -325,6 +336,7 @@ class SegmentIndexingGateway:
         keywords_list: Sequence[Sequence[str] | None] | None,
         *,
         replace_existing: bool,
+        deleted_ids: Sequence[str] = (),
     ) -> None:
         dataset_ref = document_ref.dataset
 
@@ -338,6 +350,7 @@ class SegmentIndexingGateway:
             lock=self._redis.lock(f"keyword_indexing_lock_{snapshot.dataset.id}", timeout=600),
             keywords_list=keywords_list,
             replace_existing=replace_existing,
+            deleted_ids=deleted_ids,
         )
 
     def delete(

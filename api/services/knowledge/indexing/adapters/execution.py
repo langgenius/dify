@@ -166,10 +166,7 @@ class IndexingExecutionAdapter:
                 ]
                 for future in futures:
                     future.result()
-        elif (
-            dataset.indexing_technique == IndexTechniqueType.ECONOMY
-            and document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
-        ):
+        elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
             # A future propagates keyword failures; Thread.join() used to hide
             # them and incorrectly let the document become completed.
             with ThreadPoolExecutor(max_workers=1) as executor:
@@ -179,7 +176,7 @@ class IndexingExecutionAdapter:
         """Remove the index entries ``load`` writes for ``chunks`` through ``delete_index_entries``.
 
         Mirrors ``_process_chunk``: child vectors for parent-child documents, body vectors
-        otherwise, and body keywords for economy datasets. Some ids may never have been
+        otherwise, and body or child keywords for economy datasets. Some ids may never have been
         written; each store handles that as it does when document cleanup issues the same call.
         """
         dataset = self._documents.get_indexing_dataset(document.ref.dataset)
@@ -195,10 +192,7 @@ class IndexingExecutionAdapter:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             with self._session_factory() as session:
                 vector_type = Vector.resolve_vector_type(dataset, session=session)
-        writes_keywords = (
-            dataset.indexing_technique == IndexTechniqueType.ECONOMY
-            and document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
-        )
+        writes_keywords = dataset.indexing_technique == IndexTechniqueType.ECONOMY
         delete_index_entries(
             dataset,
             vector_node_ids=node_ids,
@@ -214,16 +208,22 @@ class IndexingExecutionAdapter:
             # instance or session crosses the executor boundary.
             dataset, document = self._documents.get_indexing_models(ref)
             if keywords:
+                keyword_chunks = (
+                    [Document.model_validate(child.model_dump()) for chunk in chunks for child in chunk.children or []]
+                    if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX
+                    else chunks
+                )
                 # Keep the read/modify/write lock while each repository call
                 # closes its transaction before keyword extraction or storage I/O.
-                Jieba(dataset).update_texts(
-                    chunks,
-                    read=lambda: self._segments.get_keyword_table(ref.dataset),
-                    write=lambda storage_type, data, selected: self._segments.save_keyword_table(
-                        ref.dataset, storage_type=storage_type, data=data, keywords=selected
-                    ),
-                    lock=redis_client.lock(f"keyword_indexing_lock_{dataset.id}", timeout=600),
-                )
+                if keyword_chunks:
+                    Jieba(dataset).update_texts(
+                        keyword_chunks,
+                        read=lambda: self._segments.get_keyword_table(ref.dataset),
+                        write=lambda storage_type, data, selected: self._segments.save_keyword_table(
+                            ref.dataset, storage_type=storage_type, data=data, keywords=selected
+                        ),
+                        lock=redis_client.lock(f"keyword_indexing_lock_{dataset.id}", timeout=600),
+                    )
             elif dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 with self._session_factory() as session:
                     vector_type = Vector.resolve_vector_type(dataset, session=session)
