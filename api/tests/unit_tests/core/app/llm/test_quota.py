@@ -103,7 +103,7 @@ def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None]:
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     sessions = []
 
-    def _session():
+    def _session() -> object:
         session = session_maker()
         sessions.append(session)
         return session
@@ -505,7 +505,7 @@ def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining
     engine = sqlite_engine
     with engine.begin() as connection:
         connection.execute(
-            TenantCreditPool.__table__.insert(),
+            TenantCreditPool.__table__.insert(),  # pyrefly: ignore[missing-attribute]
             {
                 "id": "trial-pool",
                 "tenant_id": "tenant-id",
@@ -729,7 +729,7 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage(sqlite_engine: Engi
     engine = sqlite_engine
     with engine.begin() as connection:
         connection.execute(
-            Provider.__table__.insert(),
+            Provider.__table__.insert(),  # pyrefly: ignore[missing-attribute]
             [
                 {
                     "id": "matching-provider",
@@ -786,7 +786,7 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage(sqlite_engine: Engi
         )
 
     with engine.connect() as connection:
-        quota_used_by_id = dict(connection.execute(select(Provider.id, Provider.quota_used)).all())
+        quota_used_by_id = dict(connection.execute(select(Provider.id, Provider.quota_used)).all())  # pyrefly: ignore[no-matching-overload]
 
     assert quota_used_by_id == {
         "matching-provider": 13,
@@ -797,7 +797,7 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage(sqlite_engine: Engi
 
     with engine.begin() as connection:
         connection.execute(
-            Provider.__table__.update().where(Provider.id == "matching-provider").values(quota_limit=13, quota_used=13)
+            Provider.__table__.update().where(Provider.id == "matching-provider").values(quota_limit=13, quota_used=13)  # pyrefly: ignore[missing-attribute]
         )
 
     with (
@@ -843,7 +843,7 @@ def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceed
     engine = sqlite_engine
     with engine.begin() as connection:
         connection.execute(
-            Provider.__table__.insert(),
+            Provider.__table__.insert(),  # pyrefly: ignore[missing-attribute]
             {
                 "id": "matching-provider",
                 "tenant_id": "tenant-id",
