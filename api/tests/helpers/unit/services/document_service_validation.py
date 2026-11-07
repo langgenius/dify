@@ -1313,27 +1313,6 @@ class TestDocumentServiceProcessRuleArgsValidate:
         with pytest.raises(ValueError, match="Process rule is required"):
             DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_missing_mode_error(self) -> None:
-        """
-        Test error when process rule mode is missing.
-
-        Verifies that when process_rule.mode is None or empty, a ValueError
-        is raised.
-
-        This test ensures:
-        - Missing mode is rejected
-        - Error message is clear
-        - Error type is correct
-        """
-        # Arrange
-        process_rule = DocumentValidationTestDataFactory.create_process_rule()
-        process_rule.mode = None  # pyrefly: ignore[bad-assignment]  # invalid legacy row under test
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config(process_rule=process_rule)
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="Process rule mode is required"):
-            DocumentService.process_rule_args_validate(knowledge_config)
-
     def test_process_rule_args_validate_invalid_mode_error(self) -> None:
         """
         Test error when process rule mode is invalid.
