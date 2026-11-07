@@ -1,4 +1,8 @@
+import concurrent.futures
 import logging
+import threading
+import time
+from collections.abc import Collection
 from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
@@ -532,6 +536,131 @@ class TestParagraphIndexProcessor:
                 processor.generate_summary_preview("tenant-1", preview_items, {"enable": True}, session=self.session)
 
         future.cancel.assert_called_once()
+        # The timed-out batch must not wait for the running worker.
+        assert executor.shutdown_kwargs == {"wait": False, "cancel_futures": True}
+
+    def test_generate_summary_preview_timeout_does_not_wait_for_running_worker(
+        self, processor: ParagraphIndexProcessor
+    ) -> None:
+        preview_items = [PreviewDetail(content="chunk-1")]
+        started = threading.Event()
+        release = threading.Event()
+
+        def blocking_generate_summary(*_args: object, **_kwargs: object) -> tuple[str, LLMUsage]:
+            started.set()
+            # Self-release so a failing run cannot block the suite forever.
+            release.wait(timeout=5)
+            return "late-summary", LLMUsage.empty_usage()
+
+        real_wait = concurrent.futures.wait
+
+        def short_wait(
+            fs: Collection[concurrent.futures.Future[str]],
+            timeout: float | None = None,
+            return_when: str = concurrent.futures.ALL_COMPLETED,
+        ) -> tuple[set[concurrent.futures.Future[str]], set[concurrent.futures.Future[str]]]:
+            # Only report the running future as incomplete once it is
+            # actually running, otherwise the timeout path is vacuous.
+            started.wait(timeout=2)
+            return real_wait(fs, timeout=0.05 if timeout is None else min(timeout, 0.05), return_when=return_when)
+
+        outcome: dict[str, BaseException] = {}
+
+        def run() -> None:
+            try:
+                processor.generate_summary_preview("tenant-1", preview_items, {"enable": True}, session=self.session)
+            except BaseException as e:  # captured for assertion below
+                outcome["error"] = e
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.session_factory.create_session",
+                return_value=nullcontext(self.session_factory()),
+            ),
+            patch.object(processor, "generate_summary", side_effect=blocking_generate_summary),
+            patch("concurrent.futures.wait", side_effect=short_wait),
+        ):
+            thread = threading.Thread(target=run)
+            thread.start()
+            try:
+                thread.join(timeout=2)
+                assert not thread.is_alive(), "generate_summary_preview waited for the running worker"
+            finally:
+                release.set()
+            thread.join(timeout=5)
+        assert isinstance(outcome.get("error"), ValueError)
+        assert "timeout" in str(outcome["error"]).lower()
+        # The late result must not mutate the failed request's preview.
+        assert preview_items[0].summary is None
+
+    def test_generate_summary_preview_repeated_timeouts_do_not_accumulate_running_work(
+        self, processor: ParagraphIndexProcessor
+    ) -> None:
+        """Repeated timed-out previews must not pile up running model calls.
+
+        Each round submits a full batch of 10 previews whose model calls block.
+        Without a shared bound, every round would add 10 more running calls;
+        with the bound, rounds after the first fail fast and start no new work.
+        """
+        preview_items = [PreviewDetail(content=f"chunk-{index}") for index in range(10)]
+        release = threading.Event()
+        counter = {"current": 0, "max": 0}
+        counter_lock = threading.Lock()
+
+        def blocking_generate_summary(*_args: object, **_kwargs: object) -> tuple[str, LLMUsage]:
+            with counter_lock:
+                counter["current"] += 1
+                counter["max"] = max(counter["max"], counter["current"])
+            try:
+                # Self-release so a failing run cannot block the suite forever.
+                release.wait(timeout=5)
+                return "late-summary", LLMUsage.empty_usage()
+            finally:
+                with counter_lock:
+                    counter["current"] -= 1
+
+        real_wait = concurrent.futures.wait
+
+        def short_wait(
+            fs: Collection[concurrent.futures.Future[str]],
+            timeout: float | None = None,
+            return_when: str = concurrent.futures.ALL_COMPLETED,
+        ) -> tuple[set[concurrent.futures.Future[str]], set[concurrent.futures.Future[str]]]:
+            # Wait until every submitted future is running or done, so the
+            # timeout path is only taken once the round's work has started.
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline:
+                if all(future.done() or future.running() for future in fs):
+                    break
+                time.sleep(0.005)
+            return real_wait(fs, timeout=0.05 if timeout is None else min(timeout, 0.05), return_when=return_when)
+
+        try:
+            with (
+                patch(
+                    "core.rag.index_processor.processor.paragraph_index_processor.session_factory.create_session",
+                    return_value=nullcontext(self.session_factory()),
+                ),
+                patch.object(
+                    processor, "generate_summary", side_effect=blocking_generate_summary
+                ) as mock_generate_summary,
+                patch("concurrent.futures.wait", side_effect=short_wait),
+            ):
+                for round_index in range(3):
+                    with pytest.raises(ValueError, match="Failed to generate summaries") as exc_info:
+                        processor.generate_summary_preview(
+                            "tenant-1", preview_items, {"enable": True}, session=self.session
+                        )
+                    if round_index > 0:
+                        assert "capacity" in str(exc_info.value).lower()
+            # Only the first round's workers ever started a model call; later
+            # rounds failed fast on the shared capacity bound.
+            assert counter["max"] <= 10
+            assert mock_generate_summary.call_count == 10
+            # Late results must not mutate the failed requests' previews.
+            assert all(item.summary is None for item in preview_items)
+        finally:
+            release.set()
 
     def test_generate_summary_validates_input(self) -> None:
         with pytest.raises(ValueError, match="must be enabled"):

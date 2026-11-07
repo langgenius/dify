@@ -3,6 +3,7 @@
 import contextlib
 import logging
 import re
+import threading
 import uuid
 from collections.abc import Callable
 from typing import Any, TypedDict, cast, override
@@ -52,6 +53,18 @@ from models.dataset import Document as DatasetDocument
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 logger = logging.getLogger(__name__)
+
+
+# Maximum number of summary generations that may run concurrently across all
+# preview requests in this process. Each preview request gets its own executor
+# with up to 10 workers, and a timed-out request cannot cancel a model call
+# that is already running, so without a shared bound repeated timeouts would
+# accumulate unbounded model calls, threads and worker DB sessions. A worker
+# that cannot acquire a slot fails fast instead of starting more work. The
+# bound matches the per-request worker ceiling, so one request can still use
+# the full pool.
+_SUMMARY_PREVIEW_MAX_CONCURRENT_GENERATIONS = 10
+_summary_preview_concurrency = threading.BoundedSemaphore(_SUMMARY_PREVIEW_MAX_CONCURRENT_GENERATIONS)
 
 
 _file_access_controller = DatabaseFileAccessController()
@@ -306,6 +319,18 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         For each segment, concurrently call generate_summary to generate a summary
         and write it to the summary attribute of PreviewDetail.
         In preview mode (indexing-estimate), if any summary generation fails, the method will raise an exception.
+        Summaries are published to the PreviewDetail objects only after the whole
+        batch succeeds, so a timed-out or failed batch leaves the caller's
+        previews untouched.
+
+        Preconditions: preview_texts is a list of PreviewDetail items.
+        Postconditions: on success every item's summary is set; on any failure
+            (including timeout) a ValueError is raised and no item is mutated.
+            At most _SUMMARY_PREVIEW_MAX_CONCURRENT_GENERATIONS summary
+            generations run concurrently across all preview requests, so
+            repeated timeouts cannot accumulate unbounded running model calls,
+            threads or worker DB sessions; a worker that cannot acquire a
+            slot fails fast with a capacity error.
         """
         import concurrent.futures
 
@@ -318,11 +343,38 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         except RuntimeError:
             logger.warning("No Flask application context available, summary generation may fail")
 
-        def process(preview: PreviewDetail) -> None:
-            """Generate summary for a single preview item."""
-            if flask_app:
-                # Ensure Flask app context in worker thread
-                with flask_app.app_context():
+        def process(preview: PreviewDetail) -> str:
+            """Generate summary for a single preview item.
+
+            Returns the summary instead of writing it to the preview: results
+            are published only after the whole batch succeeds, so a late
+            worker can never mutate a failed request's preview items.
+
+            Preconditions: none beyond the enclosing call.
+            Postconditions: on success returns the generated summary; the
+                shared concurrency slot is released on every exit path. At
+                most _SUMMARY_PREVIEW_MAX_CONCURRENT_GENERATIONS
+                generations run concurrently across all preview requests.
+            """
+            if not _summary_preview_concurrency.acquire(blocking=False):
+                raise RuntimeError(
+                    "Summary preview capacity exhausted: too many summary generations are already running"
+                )
+            try:
+                if flask_app:
+                    # Ensure Flask app context in worker thread
+                    with flask_app.app_context():
+                        with session_factory.create_session() as worker_session:
+                            summary, _ = self.generate_summary(
+                                tenant_id,
+                                preview.content,
+                                summary_index_setting,
+                                document_language=doc_language,
+                                session=worker_session,
+                            )
+                        return summary
+                else:
+                    # Fallback: try without app context (may fail)
                     with session_factory.create_session() as worker_session:
                         summary, _ = self.generate_summary(
                             tenant_id,
@@ -331,25 +383,25 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                             document_language=doc_language,
                             session=worker_session,
                         )
-                    preview.summary = summary
-            else:
-                # Fallback: try without app context (may fail)
-                with session_factory.create_session() as worker_session:
-                    summary, _ = self.generate_summary(
-                        tenant_id,
-                        preview.content,
-                        summary_index_setting,
-                        document_language=doc_language,
-                        session=worker_session,
-                    )
-                preview.summary = summary
+                    return summary
+            finally:
+                _summary_preview_concurrency.release()
 
         # Generate summaries concurrently using ThreadPoolExecutor
         # Set a reasonable timeout to prevent hanging (60 seconds per chunk, max 5 minutes total)
         timeout_seconds = min(300, 60 * len(preview_texts))
         errors: list[Exception] = []
+        summaries: dict[concurrent.futures.Future[str], str] = {}
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(preview_texts))) as executor:
+        # Manage the executor explicitly: leaving a `with` block would call
+        # shutdown(wait=True) and block until a running model call finishes,
+        # defeating the timeout. A timed-out batch is shut down without
+        # waiting (queued work is cancelled) so the caller receives the
+        # all-or-nothing failure within the timeout plus the 5s grace below.
+        # A running model call cannot be cancelled; it finishes in the
+        # background and its result is discarded, never published.
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(preview_texts)))
+        try:
             futures = [executor.submit(process, preview) for preview in preview_texts]
             # Wait for all tasks to complete with timeout
             done, not_done = concurrent.futures.wait(futures, timeout=timeout_seconds)
@@ -367,13 +419,15 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 # Wait a bit for cancellation to take effect
                 concurrent.futures.wait(not_done, timeout=5)
 
-            # Collect exceptions from completed futures
+            # Collect results from completed futures
             for future in done:
                 try:
-                    future.result()  # This will raise any exception that occurred
+                    summaries[future] = future.result()  # This will raise any exception that occurred
                 except Exception as e:
                     logger.exception("Error in summary generation future")
                     errors.append(e)
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         # In preview mode (indexing-estimate), if there are any errors, fail the request
         if errors:
@@ -386,6 +440,10 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 error_summary += f" (and {len(errors) - 3} more)"
             logger.error("Summary generation failed in preview mode: %s", error_summary)
             raise ValueError(error_summary)
+
+        # Publish only after the whole batch succeeded.
+        for preview, future in zip(preview_texts, futures, strict=True):
+            preview.summary = summaries[future]
 
         return preview_texts
 
