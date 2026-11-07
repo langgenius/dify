@@ -144,6 +144,38 @@ describe('AgentMonitoringPage', () => {
     })
   })
 
+  it('should include the selected end date in the statistics range', async () => {
+    vi.setSystemTime(new Date('2026-11-07T15:30:00'))
+    try {
+      const user = userEvent.setup()
+      renderPage()
+      await waitFor(() =>
+        expect(mocks.statisticsQueryFn).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            query: { start: '2026-11-07 00:00', end: '2026-11-08 00:00' },
+          }),
+        ),
+      )
+
+      await user.click(screen.getByRole('button', { name: /picker.startDate/ }))
+      await user.click(screen.getByRole('button', { name: /November 6th, 2026/ }))
+      await user.click(screen.getByRole('button', { name: /picker.endDate/ }))
+      await user.click(screen.getByRole('button', { name: /November 6th, 2026/ }))
+      await user.click(screen.getByRole('button', { name: /picker.endDate/ }))
+      await user.click(screen.getByRole('button', { name: /November 7th, 2026/ }))
+
+      await waitFor(() =>
+        expect(mocks.statisticsQueryFn).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            query: { start: '2026-11-06 00:00', end: '2026-11-08 00:00' },
+          }),
+        ),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('should send the selected backend source id through the source query param', async () => {
     const user = userEvent.setup()
 
