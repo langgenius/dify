@@ -17,7 +17,7 @@ from graphon.model_runtime.entities.model_entities import (
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
-def test_fetch_model_reuses_single_model_assembly():
+def test_fetch_model_reuses_single_model_assembly() -> None:
     config = make_model_config(provider="openai", model="gpt-4o-mini", mode="chat")
     provider_model_bundle = config.provider_model_bundle
     provider_model_bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(
@@ -109,14 +109,14 @@ def _make_model_schema_with_defaults() -> AIModelEntity:
     )
 
 
-def test_extract_default_completion_params_collects_rule_defaults():
+def test_extract_default_completion_params_collects_rule_defaults() -> None:
     """_extract_default_completion_params should gather every rule.default."""
     schema = _make_model_schema_with_defaults()
     params = AgentRuntimeSupport._extract_default_completion_params(schema)
     assert params == {"temperature": 0.7, "max_tokens": 2048, "top_p": 1.0}
 
 
-def test_extract_default_completion_params_skips_rules_without_default():
+def test_extract_default_completion_params_skips_rules_without_default() -> None:
     """Rules whose default is None must not appear in the result."""
     schema = AIModelEntity(
         model="test-model",
@@ -145,7 +145,7 @@ def test_extract_default_completion_params_skips_rules_without_default():
     assert params == {"temperature": 0.5}
 
 
-def test_extract_default_completion_params_empty_when_no_defaults():
+def test_extract_default_completion_params_empty_when_no_defaults() -> None:
     """An empty parameter_rules list yields an empty dict."""
     schema = AIModelEntity(
         model="test-model",

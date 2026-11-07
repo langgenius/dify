@@ -27,7 +27,7 @@ HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
 )
 
 
-def test_executor_with_json_body_and_number_variable():
+def test_executor_with_json_body_and_number_variable() -> None:
     # Prepare the variable pool
     variable_pool = VariablePool.from_bootstrap(
         system_variables=default_system_variables(),
@@ -83,7 +83,7 @@ def test_executor_with_json_body_and_number_variable():
     assert '{"number": 42}' in raw_request
 
 
-def test_executor_with_json_body_and_object_variable():
+def test_executor_with_json_body_and_object_variable() -> None:
     # Prepare the variable pool
     variable_pool = VariablePool.from_bootstrap(
         system_variables=default_system_variables(),
@@ -141,7 +141,7 @@ def test_executor_with_json_body_and_object_variable():
     assert '"email": "john@example.com"' in raw_request
 
 
-def test_executor_with_json_body_and_nested_object_variable():
+def test_executor_with_json_body_and_nested_object_variable() -> None:
     # Prepare the variable pool
     variable_pool = VariablePool.from_bootstrap(
         system_variables=default_system_variables(),
@@ -200,7 +200,7 @@ def test_executor_with_json_body_and_nested_object_variable():
     assert '"email": "john@example.com"' in raw_request
 
 
-def test_extract_selectors_from_template_with_newline():
+def test_extract_selectors_from_template_with_newline() -> None:
     variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables())
     variable_pool.add(("node_id", "custom_query"), "line1\nline2")
     node_data = HttpRequestNodeData(
@@ -228,7 +228,7 @@ def test_extract_selectors_from_template_with_newline():
     assert executor.params == [("test", "line1\nline2")]
 
 
-def test_executor_with_form_data():
+def test_executor_with_form_data() -> None:
     # Prepare the variable pool
     variable_pool = VariablePool.from_bootstrap(
         system_variables=default_system_variables(),
@@ -305,7 +305,7 @@ def test_executor_with_form_data():
     assert "42" in raw_request
 
 
-def test_init_headers():
+def test_init_headers() -> None:
     def create_executor(headers: str) -> Executor:
         node_data = HttpRequestNodeData(
             title="test",
@@ -342,7 +342,7 @@ def test_init_headers():
     assert executor.headers == {"aa": "bb", "cc": "dd"}
 
 
-def test_init_params():
+def test_init_params() -> None:
     def create_executor(params: str) -> Executor:
         node_data = HttpRequestNodeData(
             title="test",
@@ -388,7 +388,7 @@ def test_init_params():
     assert executor.params == [("key1", "value1"), ("key2", "value2")]
 
 
-def test_empty_api_key_raises_error_bearer():
+def test_empty_api_key_raises_error_bearer() -> None:
     """Test that empty API key raises AuthorizationConfigError for bearer auth."""
     variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables())
     node_data = HttpRequestNodeData(
@@ -415,7 +415,7 @@ def test_empty_api_key_raises_error_bearer():
         )
 
 
-def test_empty_api_key_raises_error_basic():
+def test_empty_api_key_raises_error_basic() -> None:
     """Test that empty API key raises AuthorizationConfigError for basic auth."""
     variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables())
     node_data = HttpRequestNodeData(
@@ -442,7 +442,7 @@ def test_empty_api_key_raises_error_basic():
         )
 
 
-def test_empty_api_key_raises_error_custom():
+def test_empty_api_key_raises_error_custom() -> None:
     """Test that empty API key raises AuthorizationConfigError for custom auth."""
     variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables())
     node_data = HttpRequestNodeData(
@@ -469,7 +469,7 @@ def test_empty_api_key_raises_error_custom():
         )
 
 
-def test_whitespace_only_api_key_raises_error():
+def test_whitespace_only_api_key_raises_error() -> None:
     """Test that whitespace-only API key raises AuthorizationConfigError."""
     variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables())
     node_data = HttpRequestNodeData(
@@ -496,7 +496,7 @@ def test_whitespace_only_api_key_raises_error():
         )
 
 
-def test_valid_api_key_works():
+def test_valid_api_key_works() -> None:
     """Test that valid API key works correctly for bearer auth."""
     variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables())
     node_data = HttpRequestNodeData(
@@ -527,7 +527,7 @@ def test_valid_api_key_works():
     assert headers["Authorization"] == "Bearer valid-api-key-123"
 
 
-def test_executor_with_json_body_and_unquoted_uuid_variable():
+def test_executor_with_json_body_and_unquoted_uuid_variable() -> None:
     """Test that unquoted UUID variables are correctly handled in JSON body.
 
     This test verifies the fix for issue #31436 where json_repair would truncate
@@ -576,7 +576,7 @@ def test_executor_with_json_body_and_unquoted_uuid_variable():
     assert len(executor.json["rowId"]) == len(test_uuid)
 
 
-def test_executor_with_json_body_and_unquoted_uuid_with_newlines():
+def test_executor_with_json_body_and_unquoted_uuid_with_newlines() -> None:
     """Test that unquoted UUID variables with newlines in JSON are handled correctly.
 
     This is a specific case from issue #31436 where the JSON body contains newlines.
@@ -622,7 +622,7 @@ def test_executor_with_json_body_and_unquoted_uuid_with_newlines():
     assert executor.json == {"rowId": test_uuid}
 
 
-def test_executor_with_json_body_preserves_numbers_and_strings():
+def test_executor_with_json_body_preserves_numbers_and_strings() -> None:
     """Test that numbers are preserved and string values are properly quoted."""
     variable_pool = VariablePool.from_bootstrap(
         system_variables=default_system_variables(),
