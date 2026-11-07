@@ -187,7 +187,7 @@ const createWorkflowComposerState = (
 
 // Scenario: base URL selection and warnings.
 describe('consoleQuery transport context', () => {
-  it('uploads icon files as multipart data through the Console transport', async () => {
+  it('uploads icon files as multipart data and forwards progress through the Console transport', async () => {
     const file = new File(['GIF89a'], 'icon.gif', { type: 'image/gif' })
     const response = { id: 'uploaded-icon', name: file.name, size: file.size }
     const request = vi.fn().mockResolvedValue(
@@ -197,12 +197,14 @@ describe('consoleQuery transport context', () => {
       }),
     )
     const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const onUploadProgress = vi.fn()
     const mutation = new MutationObserver(
       createQueryClient(),
-      consoleQuery.files.upload.post.mutationOptions(),
+      consoleQuery.files.upload.post.mutationOptions({ context: { onUploadProgress } }),
     )
     await expect(mutation.mutate({ body: { file } })).resolves.toEqual(response)
     const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(request.mock.calls[0]?.[2]?.onUploadProgress).toBe(onUploadProgress)
     expect(outgoing.url).toContain('/files/upload')
     expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
     const form = await outgoing.formData()

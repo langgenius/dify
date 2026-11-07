@@ -27,6 +27,7 @@ import {
   retrievalComposerModeAtom,
   retrievalComposerQueryAtom,
   retrievalComposerQueryImagesAtom,
+  retrievalComposerUploadPendingAtom,
   retrievalRetainedImagesAtom,
   retrievalRuntimeQueryFactsAtom,
   retrievalSelectedAtom,
@@ -42,7 +43,6 @@ import { retrievalRuntimeBridgeAtom } from './state/runtime'
 import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
-  retrievalComposerUploadPendingAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
   retrievalRecordImagesAtom,
