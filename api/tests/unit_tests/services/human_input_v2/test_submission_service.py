@@ -9,7 +9,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from core.human_input_v2.entities import IMProvider
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus
 from models.human_input_v2 import HumanInputForm
 from repositories.human_input_v2.delivery_repository import DeliveryCreateParams
 from repositories.human_input_v2.im_channel_repository import IMChannelId

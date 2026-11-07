@@ -16,19 +16,13 @@ import pytest
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.nodes.human_input.entities import FormDefinition, UserActionConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus, RecipientType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import ConversationFromSource, InvokeFrom
 from models.execution_extra_content import ExecutionExtraContent, HumanInputContent
-from models.human_input import (
-    ConsoleRecipientPayload,
-    HumanInputDelivery,
-    HumanInputForm,
-    HumanInputFormRecipient,
-    RecipientType,
-)
+from models.human_input import ConsoleRecipientPayload, HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
+from models.human_input_entities import FormDefinition, UserActionConfig
 from models.model import App, Conversation, Message
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 
@@ -278,7 +272,7 @@ def _create_recipient(
 
 
 def _create_delivery(session: Session, *, form_id: str) -> HumanInputDelivery:
-    from core.workflow.human_input_adapter import DeliveryMethodType
+    from enums.human_input import DeliveryMethodType
     from models.human_input import ConsoleDeliveryPayload
 
     delivery = HumanInputDelivery(

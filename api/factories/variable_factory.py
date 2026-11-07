@@ -6,7 +6,7 @@ shared conversion functions for legacy callers and tests.
 """
 
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 from configs import dify_config
 from core.workflow.llm_environment_variable import (
@@ -37,6 +37,7 @@ from graphon.variables.variables import (
     ObjectVariable,
     SecretVariable,
     StringVariable,
+    Variable,
     VariableBase,
 )
 
@@ -55,7 +56,7 @@ __all__ = [
 _MAX_VARIABLE_DESCRIPTION_LENGTH = 255
 
 
-def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
+def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
     if not mapping.get("name"):
         raise VariableError("missing name")
     description = mapping.get("description", "")
@@ -67,7 +68,7 @@ def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> V
     return _build_variable_from_mapping(mapping=mapping, selector=[CONVERSATION_VARIABLE_NODE_ID, mapping["name"]])
 
 
-def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
+def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
     if not mapping.get("name"):
         raise VariableError("missing name")
     if mapping.get("value_type") == LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE:
@@ -90,7 +91,7 @@ def build_pipeline_variable_from_mapping(mapping: Mapping[str, Any], /) -> Varia
     return mapping["variable"]
 
 
-def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> VariableBase:
+def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> Variable:
     """
     This factory function is used to create the environment variable or the conversation variable,
     not support the File type.
@@ -100,7 +101,7 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
     if (value := mapping.get("value")) is None:
         raise VariableError("missing value")
 
-    result: VariableBase
+    result: Variable
     match value_type:
         case SegmentType.STRING:
             result = StringVariable.model_validate(mapping)
@@ -134,4 +135,4 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
         raise VariableError(f"variable size {result.size} exceeds limit {dify_config.MAX_VARIABLE_SIZE}")
     if not result.selector:
         result = result.model_copy(update={"selector": selector})
-    return cast(VariableBase, result)
+    return result

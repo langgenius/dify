@@ -19,9 +19,9 @@ from configs import dify_config
 from configs.deploy import IMEventTransportMode
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.shared import AccountId, ContactId, IMIdentityId, TenantId
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from dify_app import DifyApp
+from enums.human_input import HumanInputFormStatus
 from extensions import ext_blueprints
 from extensions.ext_key_provider import KeyProviderManager
 from graphon.enums import WorkflowExecutionStatus

@@ -68,7 +68,6 @@ from core.workflow.llm_environment_variable import (
     LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
     LLMEnvironmentVariable,
 )
-from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
@@ -91,6 +90,7 @@ from libs.external_api import error_responses
 from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
 from libs.login import login_required
 from models import Account, App
+from models.human_input_entities import FormInputConfig, UserActionConfig
 from models.model import AppMode
 from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX

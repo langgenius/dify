@@ -33,7 +33,7 @@ from core.app.layers.pause_state_persist_layer import (
 )
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus
 from extensions.ext_redis import RedisClientWrapper
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from graphon.engine.command import AbortCommand

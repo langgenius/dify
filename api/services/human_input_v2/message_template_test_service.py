@@ -13,11 +13,11 @@ from core.human_input_v2.entities import DebugChannel
 from core.human_input_v2.im_integration.adapters.entities import MessageSendingError, ProviderUserId
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.human_input_v2.shared.values import AccountId, IMBindingId, TenantId
-from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData, MessageTemplateConfig
 from graphon.runtime import VariablePool
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.template_resolution import VARIABLE_PATTERN, convert_template
+from models.human_input_delivery import EmailDeliveryConfig
 from models.workflow import NodeNotFoundError, Workflow, WorkflowDataError
 from repositories.human_input_v2.delivery_repository import EmailTargetSnapshot, IMMessageType, IMUserTargetSnapshot
 from repositories.human_input_v2.email_channel.entities import ResendCandidate

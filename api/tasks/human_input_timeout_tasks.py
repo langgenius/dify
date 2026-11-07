@@ -10,7 +10,7 @@ from configs import dify_config
 from core.db.session_factory import session_factory as v2_session_factory
 from core.human_input_v2.shared.values import TenantId
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus

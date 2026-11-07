@@ -31,15 +31,9 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
 )
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
-from core.workflow.nodes.human_input.entities import (
-    ParagraphInputConfig,
-    SelectInputConfig,
-    StringListSource,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
+from enums.human_input import RecipientType, ValueSourceType
 from graphon.engine_events import GraphRunPausedEvent
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HitlRequired
@@ -52,7 +46,8 @@ from models import Account as _workflow_response_converter_truncation_Account
 from models.account import Account as _workflow_pause_events_Account
 from models.account import Account as _workflow_response_converter_human_input_Account
 from models.account import Account as _workflow_response_converter_resumption_Account
-from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputForm, HumanInputFormRecipient
+from models.human_input_entities import ParagraphInputConfig, SelectInputConfig, StringListSource, UserActionConfig
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowType
 
@@ -1825,9 +1820,9 @@ def test_mixed_human_input_versions_preserve_order_and_wire_payloads(sqlite_paus
 
     from core.human_input_v2.resolved_form import ResolvedForm, SelectInput
     from core.human_input_v2.shared.values import TenantId
-    from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
     from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
     from core.workflow.nodes.human_input_v2.runtime import PreparedForm
+    from enums.human_input import HumanInputFormKind, HumanInputFormStatus
     from graphon.entities.pause_reason import SchedulingPause
     from repositories.human_input_v2.form_repository import Form
 
