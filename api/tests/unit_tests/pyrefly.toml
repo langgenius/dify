@@ -217,7 +217,6 @@ project-excludes = [
   "core/workflow/nodes/knowledge_index/test_knowledge_index_node.py",
   "core/workflow/nodes/knowledge_retrieval/test_knowledge_retrieval_node.py",
   "../helpers/unit/core/workflow/nodes/list_operator/node_spec.py",
-  "../e2e_tests/contracts/core/workflow/nodes/llm/test_llm_utils.py",
   "../e2e_tests/contracts/core/workflow/nodes/llm/test_node.py",
   "../e2e_tests/contracts/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py",
   "../helpers/unit/core/workflow/nodes/template_transform/template_transform_node_spec.py",
