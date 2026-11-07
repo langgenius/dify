@@ -51,6 +51,7 @@ async function renderRecipients() {
     role: 'owner',
     plan: null,
     credits: null,
+    max_active_requests: 0,
   })
   const store = createStore()
   store.set(queryClientAtom, client)

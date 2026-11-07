@@ -9,6 +9,7 @@ from unittest.mock import Mock, create_autospec
 import pytest
 from flask import Flask
 from flask_restx import Resource
+from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from controllers.common.errors import (
@@ -221,12 +222,14 @@ class TestWorkspaceCases:
             "role": "owner",
             "plan": CloudPlan.TEAM,
             "credits": -1,
+            "max_active_requests": 5,
         }
         body, status = unwrap(controller.CurrentWorkspaceSummaryApi.get)(
             controller.CurrentWorkspaceSummaryApi(), CONTEXT
         )
         assert status == 200
         assert body["credits"] == -1
+        assert body["max_active_requests"] == 5
         workspaces.management.current_summary.assert_called_once_with(CONTEXT)
 
     @staticmethod
@@ -297,6 +300,13 @@ class TestWorkspaceCases:
                 {"name": "New"},
                 lambda management: management.rename,
                 id="rename",
+            ),
+            pytest.param(
+                controller.WorkspaceSettingsApi,
+                controller.WorkspaceSettingsApi.post,
+                {"max_active_requests": 12},
+                lambda management: management.update_settings,
+                id="settings",
             ),
         ],
     )
@@ -369,3 +379,23 @@ class TestWorkspaceCases:
         urls = {url for resource in console_ns.resources for url in resource.urls}
         assert "/workspaces/current" not in urls
         assert "/workspaces/current/tool-provider" not in urls
+
+    @staticmethod
+    def test_settings_update(app: Flask, workspaces: WorkspaceMocks) -> None:
+        workspaces.management.update_settings.return_value = {
+            "id": "workspace-1",
+            "name": "Original Name",
+            "max_active_requests": 12,
+        }
+        with app.test_request_context(json={"max_active_requests": 12}):
+            body = unwrap(controller.WorkspaceSettingsApi.post)(controller.WorkspaceSettingsApi(), CONTEXT)
+        assert body["result"] == "success"
+        assert body["tenant"]["max_active_requests"] == 12
+        assert body["tenant"]["name"] == "Original Name"
+        workspaces.management.update_settings.assert_called_once_with(CONTEXT, 12)
+
+    @staticmethod
+    def test_negative_limit_is_rejected(app: Flask, workspaces: WorkspaceMocks) -> None:
+        with app.test_request_context(json={"max_active_requests": -1}), pytest.raises(ValidationError):
+            unwrap(controller.WorkspaceSettingsApi.post)(controller.WorkspaceSettingsApi(), CONTEXT)
+        workspaces.management.update_settings.assert_not_called()
