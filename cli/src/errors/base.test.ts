@@ -29,7 +29,7 @@ describe('BaseError', () => {
   it('exit() routes via code map', () => {
     expect(newError(ErrorCode.AuthExpired, 'x').exit()).toBe(ExitCode.Auth)
     expect(newError(ErrorCode.UsageInvalidFlag, 'x').exit()).toBe(ExitCode.Usage)
-    expect(newError(ErrorCode.VersionSkew, 'x').exit()).toBe(ExitCode.VersionCompat)
+    expect(newError(ErrorCode.CatalogUnavailable, 'x').exit()).toBe(ExitCode.Catalog)
   })
 
   it('toString without hint formats "<code>: <message>"', () => {
@@ -130,7 +130,7 @@ describe('error envelope', () => {
   })
 
   it('omits undefined optional fields entirely (no `hint: null`)', () => {
-    const err = newError(ErrorCode.Server5xx, 'upstream broke')
+    const err = newError(ErrorCode.ServerError, 'upstream broke')
     const envelope = err.toEnvelope()
     expect(envelope.error).not.toHaveProperty('hint')
     expect(envelope.error).not.toHaveProperty('http_status')

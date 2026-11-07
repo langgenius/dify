@@ -9,12 +9,12 @@ export type SpeechToTextTarget =
   | {
       type: 'app'
       appId?: string
-      appSourceType: AppSourceType.webApp
+      appSourceType: typeof AppSourceType.webApp
     }
   | {
       type: 'app'
       appId: string
-      appSourceType: Exclude<AppSourceType, AppSourceType.webApp>
+      appSourceType: Exclude<AppSourceType, typeof AppSourceType.webApp>
     }
   | {
       type: 'consoleApp'

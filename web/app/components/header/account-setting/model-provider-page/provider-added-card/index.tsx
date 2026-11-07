@@ -4,17 +4,16 @@ import type { ModelProvider } from '../declarations'
 import type { ModelProviderPluginSummary } from '../index'
 import type { ModelProviderQuotaGetPaid } from '../utils'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import { renderI18nObject } from '@/i18n-config'
-import { consoleQuery } from '@/service/client'
+import { renderI18nObject } from '@/i18n/metadata'
+import { consoleQuery } from '@/service/console'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { hasPermission } from '@/utils/permission'
 import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
@@ -45,13 +44,18 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   provider,
   pluginSummary,
 }) => {
-  const { t } = useTranslation()
-  const { data: deploymentEdition } = useSuspenseQuery({
+  const { t } = useTranslation(['modelProvider'])
+  const {
+    data: { deploymentEdition, rbacEnabled },
+  } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition }) => deployment_edition,
+    select: ({ deployment_edition, rbac_enabled }) => ({
+      deploymentEdition: deployment_edition,
+      rbacEnabled: rbac_enabled,
+    }),
   })
   const language = useLanguage()
-  const refreshModelProviders = useProviderContextSelector((state) => state.refreshModelProviders)
+  const queryClient = useQueryClient()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentProviderName = provider.provider
   const expanded = useModelProviderListExpanded(currentProviderName)
@@ -63,6 +67,11 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     (method) => method === ConfigurationMethodEnum.customizableModel,
   )
   const systemConfig = provider.system_configuration
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canSetPluginPreferences = hasPermission(
+    workspacePermissionKeys,
+    'plugin.plugin_preferences',
+  )
   const {
     data: modelList = [],
     isFetching: loading,
@@ -71,21 +80,34 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   } = useQuery(
     consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
       input: { params: { provider: currentProviderName } },
-      enabled: expanded,
+      enabled: expanded && canSetPluginPreferences,
       refetchOnWindowFocus: false,
       select: normalizeModelProviderModelsResponse,
     }),
   )
   const hasModelList = hasFetchedModelList && !!modelList.length
-  const showCollapsedSection = !expanded || !hasFetchedModelList
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const showCollapsedSection = !canSetPluginPreferences || !expanded || !hasFetchedModelList
+  const cardRef = useRef<HTMLDivElement>(null)
+  const collapsedButtonRef = useRef<HTMLButtonElement>(null)
+  const restoreFocusAfterCollapseRef = useRef(false)
+
+  useLayoutEffect(() => {
+    if (!showCollapsedSection || !restoreFocusAfterCollapseRef.current) return
+
+    // The grid action is visible while focus remains inside the card.
+    if (layout === 'grid') cardRef.current?.focus()
+    collapsedButtonRef.current?.focus()
+    restoreFocusAfterCollapseRef.current = false
+  }, [layout, showCollapsedSection])
   const showModelProvider =
     systemConfig.enabled &&
     MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) &&
     deploymentEdition === 'CLOUD'
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
-  const canAccessCredentials = canUseCredential || canCreateCredential || canManageCredential
+  const canAccessCredentials = rbacEnabled
+    ? canUseCredential || canCreateCredential || canManageCredential
+    : canManageCredential
   const showCredential = supportsPredefinedModel && canAccessCredentials
   const showCustomModelActions = supportsCustomizableModel && canConfigureModels
 
@@ -102,10 +124,15 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
 
   const refreshPluginData = useCallback(async () => {
     await Promise.all([
-      refreshModelProviders(),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
+      }),
       invalidateInstalledPluginList(PluginCategoryEnum.model),
     ])
-  }, [invalidateInstalledPluginList, refreshModelProviders])
+  }, [invalidateInstalledPluginList, queryClient])
 
   const handleOpenModelList = useCallback(() => {
     if (loading) return
@@ -118,6 +145,11 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     refetchModelList().catch(() => {})
   }, [expanded, loading, refetchModelList, setExpanded])
 
+  const handleCollapseModelList = useCallback(() => {
+    restoreFocusAfterCollapseRef.current = true
+    setExpanded(false)
+  }, [setExpanded])
+
   const providerLabel = renderI18nObject(provider.label, language)
   const description = renderI18nObject(provider.description || provider.label, language)
   const organization = currentProviderName.split('/')[0]
@@ -125,6 +157,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   if (layout === 'grid') {
     return (
       <div
+        ref={cardRef}
+        tabIndex={-1}
         className={cn(
           'group relative mb-0 min-h-30 overflow-hidden rounded-xl border-[0.5px] border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs',
           currentProviderName === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
@@ -175,24 +209,30 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             ))}
           </div>
         </div>
-        <div className="absolute right-0 bottom-0 left-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
-          {(showModelProvider || !notConfigured) && (
+        <div className="absolute inset-x-0 bottom-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
+          {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
             <button
+              ref={collapsedButtonRef}
               type="button"
               className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              aria-label={t(($) => $['modelProvider.showModels'], { ns: 'common' })}
               onClick={handleOpenModelList}
             >
               <span className="truncate">
                 {hasModelList
-                  ? t(($) => $['modelProvider.modelsNum'], { ns: 'common', num: modelList.length })
-                  : t(($) => $['modelProvider.showModels'], { ns: 'common' })}
+                  ? t(($) => $['modelProvider.modelsNum'], {
+                      ns: 'modelProvider',
+                      num: modelList.length,
+                    })
+                  : t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
               </span>
               {!loading && (
-                <span aria-hidden className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0" />
+                <span
+                  aria-hidden
+                  className="ms-1 i-ri-arrow-right-s-line size-4 shrink-0 rtl:rotate-180"
+                />
               )}
               {loading && (
-                <span aria-hidden className="ml-1 i-ri-loader-2-line size-3 animate-spin" />
+                <span aria-hidden className="ms-1 i-ri-loader-2-line size-3 animate-spin" />
               )}
             </button>
           )}
@@ -200,10 +240,10 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <div className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg bg-background-default-subtle px-2">
               <span
                 aria-hidden
-                className="mr-1 i-ri-information-2-fill size-4 shrink-0 text-text-accent"
+                className="me-1 i-ri-information-2-fill size-4 shrink-0 text-text-accent"
               />
               <span className="truncate system-xs-medium text-text-secondary">
-                {t(($) => $['modelProvider.configureTip'], { ns: 'common' })}
+                {t(($) => $['modelProvider.configureTip'], { ns: 'modelProvider' })}
               </span>
             </div>
           )}
@@ -219,7 +259,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <ModelList
               provider={provider}
               models={modelList}
-              onCollapse={() => setExpanded(false)}
+              onCollapse={handleCollapseModelList}
               onChange={refreshModelList}
             />
           </div>
@@ -238,7 +278,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           'bg-third-party-model-bg-anthropic',
       )}
     >
-      <div className="flex rounded-t-xl py-2 pr-2 pl-3">
+      <div className="flex rounded-t-xl py-2 ps-3 pe-2">
         <div className="grow px-1 pt-1 pb-0.5">
           <div className="mb-2 flex items-center gap-1">
             <ProviderIcon provider={provider} />
@@ -259,26 +299,31 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         {showCredential && <CredentialPanel provider={provider} />}
       </div>
       {showCollapsedSection && (
-        <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pr-2.75 pl-2 system-xs-medium text-text-tertiary">
-          {(showModelProvider || !notConfigured) && (
+        <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 ps-2 pe-2.75 system-xs-medium text-text-tertiary">
+          {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
             <button
+              ref={collapsedButtonRef}
               type="button"
-              className="flex h-6 items-center rounded-lg border-none bg-transparent pr-1.5 pl-1 text-left outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              aria-label={t(($) => $['modelProvider.showModels'], { ns: 'common' })}
+              className="flex h-6 items-center rounded-lg border-none bg-transparent ps-1 pe-1.5 text-start outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={handleOpenModelList}
             >
               {hasModelList
-                ? t(($) => $['modelProvider.modelsNum'], { ns: 'common', num: modelList.length })
-                : t(($) => $['modelProvider.showModels'], { ns: 'common' })}
-              {!loading && <div className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />}
-              {loading && <div className="ml-0.5 i-ri-loader-2-line size-3 animate-spin" />}
+                ? t(($) => $['modelProvider.modelsNum'], {
+                    ns: 'modelProvider',
+                    num: modelList.length,
+                  })
+                : t(($) => $['modelProvider.showModels'], { ns: 'modelProvider' })}
+              {!loading && (
+                <div className="i-ri-arrow-right-s-line size-4 rtl:rotate-180" aria-hidden="true" />
+              )}
+              {loading && <div className="ms-0.5 i-ri-loader-2-line size-3 animate-spin" />}
             </button>
           )}
           {!showModelProvider && notConfigured && (
-            <div className="flex h-6 items-center pr-1.5 pl-1">
-              <div className="mr-1 i-ri-information-2-fill size-4 text-text-accent" />
+            <div className="flex h-6 items-center ps-1 pe-1.5">
+              <div className="me-1 i-ri-information-2-fill size-4 text-text-accent" />
               <span className="system-xs-medium text-text-secondary">
-                {t(($) => $['modelProvider.configureTip'], { ns: 'common' })}
+                {t(($) => $['modelProvider.configureTip'], { ns: 'modelProvider' })}
               </span>
             </div>
           )}
@@ -293,7 +338,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         <ModelList
           provider={provider}
           models={modelList}
-          onCollapse={() => setExpanded(false)}
+          onCollapse={handleCollapseModelList}
           onChange={refreshModelList}
         />
       )}

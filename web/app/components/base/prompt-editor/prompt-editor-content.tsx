@@ -1,7 +1,7 @@
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { EditorState } from 'lexical'
 import type { FC } from 'react'
 import type {
-  Hotkey,
   ShortcutPopupDisplayMode,
   ShortcutPopupInsertHandler,
 } from './plugins/shortcuts-popup-plugin'
@@ -52,14 +52,19 @@ import {
 } from './plugins/workflow-variable-block'
 
 type ShortcutPopup = {
-  hotkey: Hotkey
+  hotkey: HotkeyChord
   displayMode?: ShortcutPopupDisplayMode
   Popup: React.ComponentType<{ onClose: () => void; onInsert: ShortcutPopupInsertHandler }>
 }
 
 type PromptEditorContentAriaProps = Pick<
   React.AriaAttributes,
-  'aria-controls' | 'aria-haspopup' | 'aria-label' | 'aria-labelledby'
+  | 'aria-controls'
+  | 'aria-haspopup'
+  | 'aria-label'
+  | 'aria-labelledby'
+  | 'aria-describedby'
+  | 'aria-invalid'
 >
 
 type PromptEditorContentProps = PromptEditorContentAriaProps & {
@@ -93,14 +98,13 @@ type PromptEditorContentProps = PromptEditorContentAriaProps & {
 }
 
 const getShortcutPopupKey = (
-  hotkey: Hotkey,
+  hotkey: HotkeyChord,
   displayMode: ShortcutPopupDisplayMode | undefined,
   Popup: React.ComponentType<{ onClose: () => void; onInsert: ShortcutPopupInsertHandler }>,
 ) => {
-  const hotkeyKey = typeof hotkey === 'function' ? hotkey.name || 'custom' : JSON.stringify(hotkey)
   const popupKey = Popup.displayName ?? Popup.name ?? 'Popup'
 
-  return `${popupKey}:${displayMode ?? 'default'}:${hotkeyKey}`
+  return `${popupKey}:${displayMode ?? 'default'}:${hotkey}`
 }
 
 const PromptEditorContent: FC<PromptEditorContentProps> = ({
@@ -108,6 +112,8 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   'aria-haspopup': ariaHasPopup,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   compact,
   className,
   placeholder,
@@ -145,6 +151,8 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
             aria-haspopup={ariaHasPopup}
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledBy}
+            aria-describedby={ariaDescribedBy}
+            aria-invalid={ariaInvalid}
             className={cn(
               'group/editable text-text-secondary outline-hidden group-[.clamp]:max-h-24 group-[.clamp]:overflow-y-auto',
               compact ? 'text-[13px] leading-5' : 'text-sm/6',

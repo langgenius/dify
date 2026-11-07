@@ -1,12 +1,14 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Fragment, memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
@@ -25,7 +27,7 @@ const ZoomType = {
 type ZoomType = (typeof ZoomType)[keyof typeof ZoomType]
 
 const ZoomInOut: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
   const { zoom } = useViewport()
 
@@ -105,47 +107,46 @@ const ZoomInOut: FC = () => {
             />
           </button>
         </TipPopup>
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary">
+        <Menu>
+          <MenuTrigger className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary">
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}%
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            placement="top-start"
-            sideOffset={4}
-            alignOffset={-2}
-            popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-          >
-            <div className="w-36.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
-              {zoomOptions.map((options, groupIndex) => (
-                <Fragment key={options[0]!.key}>
-                  {groupIndex !== 0 && <DropdownMenuSeparator className="my-0" />}
-                  <div className="p-1">
-                    {options.map((option) => (
-                      <DropdownMenuItem
-                        key={option.key}
-                        className="justify-between px-3 py-1.5 system-md-regular text-text-secondary"
-                        onClick={() => handleZoom(option.key)}
-                      >
-                        <span>{option.text}</span>
-                        <div className="flex items-center space-x-0.5">
-                          {option.key === ZoomType.zoomToFit && (
-                            <ShortcutKbd shortcut="workflow.zoom-to-fit" />
-                          )}
-                          {option.key === ZoomType.zoomTo50 && (
-                            <ShortcutKbd shortcut="workflow.zoom-to-50" />
-                          )}
-                          {option.key === ZoomType.zoomTo100 && (
-                            <ShortcutKbd shortcut="workflow.zoom-to-100" />
-                          )}
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
-                  </div>
-                </Fragment>
-              ))}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </MenuTrigger>
+          <MenuPortal>
+            <MenuPositioner sideOffset={4} side="top" align="start" alignOffset={-2}>
+              <MenuPopup>
+                <div className="w-36.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+                  {zoomOptions.map((options, groupIndex) => (
+                    <Fragment key={options[0]!.key}>
+                      {groupIndex !== 0 && <MenuSeparator className="my-0" />}
+                      <div className="p-1">
+                        {options.map((option) => (
+                          <MenuItem
+                            key={option.key}
+                            className="justify-between px-3 py-1.5 system-md-regular text-text-secondary"
+                            onClick={() => handleZoom(option.key)}
+                          >
+                            <span>{option.text}</span>
+                            <div className="flex items-center space-x-0.5">
+                              {option.key === ZoomType.zoomToFit && (
+                                <ShortcutKbd shortcut="workflow.zoom-to-fit" />
+                              )}
+                              {option.key === ZoomType.zoomTo50 && (
+                                <ShortcutKbd shortcut="workflow.zoom-to-50" />
+                              )}
+                              {option.key === ZoomType.zoomTo100 && (
+                                <ShortcutKbd shortcut="workflow.zoom-to-100" />
+                              )}
+                            </div>
+                          </MenuItem>
+                        ))}
+                      </div>
+                    </Fragment>
+                  ))}
+                </div>
+              </MenuPopup>
+            </MenuPositioner>
+          </MenuPortal>
+        </Menu>
         <TipPopup
           title={t(($) => $['operator.zoomIn'], { ns: 'workflow' })}
           shortcut="workflow.zoom-in"

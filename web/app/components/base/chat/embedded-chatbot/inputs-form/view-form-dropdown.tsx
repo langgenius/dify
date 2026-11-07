@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const ViewFormDropdown = ({ iconColor }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   return (
     <Popover>
       <PopoverTrigger
@@ -28,7 +28,7 @@ const ViewFormDropdown = ({ iconColor }: Props) => {
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         alignOffset={4}
         className="border-none bg-transparent shadow-none"

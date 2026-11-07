@@ -1,11 +1,11 @@
-"""Agent Soul-backed config assets for skills, files, env, and note text.
+"""Agent Soul-backed config assets for skills, files, env, note, and prompt text.
 
 This service is the single API-side control plane for Agent config assets. It
 resolves the requested config version (published snapshot, shared draft, or
 per-user build draft), reads only from ``AgentSoulConfig.config_skills``,
-``config_files``, ``env.variables``, and ``config_note``, and mutates only the
-target Soul JSON. Source file refs are tenant-scoped rather than user-scoped:
-config writes can be owned by a build-draft Account while the uploaded
+``config_files``, ``env.variables``, ``config_note``, and ``prompt.system_prompt``,
+and mutates only the target Soul JSON. Source file refs are tenant-scoped rather
+than user-scoped: config writes can be owned by a build-draft Account while the uploaded
 ``ToolFile`` came from an end-user execution context. It intentionally does not
 manage object-storage lifecycle: removing or replacing a config asset drops the
 Soul reference only.
@@ -26,7 +26,7 @@ from typing import Literal
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -50,6 +50,7 @@ from models.model import UploadFile
 from models.tools import ToolFile
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
+from services.skill_management_service import SkillManagementService, SkillManagementServiceError
 
 
 class AgentConfigVersionKind(StrEnum):
@@ -109,6 +110,7 @@ class ConfigPushPayload(BaseModel):
 
 @dataclass(slots=True)
 class AgentConfigTarget:
+    tenant_id: str
     agent_id: str
     version_id: str
     kind: AgentConfigVersionKind
@@ -137,14 +139,11 @@ class ConfigDownloadRequest:
 class AgentConfigService:
     """Read and update Agent Soul-backed config assets for one version target.
 
-    The service owns the lifecycle of its database sessions. Callers may inject
-    a session creator for an alternate engine; production defaults to the
-    application-wide session factory.
+    Mutations lock the parent Agent before the target draft and refresh the
+    locked snapshot. Skill storage and normalization run before these locks.
     """
 
     PREVIEW_MAX_BYTES = 64 * 1024
-
-    _session_factory: Callable[[], Session]
 
     def __init__(
         self,
@@ -153,8 +152,6 @@ class AgentConfigService:
         skill_normalize_service: ConfigSkillNormalizeService | None = None,
         session_factory: Callable[[], Session] | None = None,
     ) -> None:
-        """Initialize external collaborators and the service-owned session creator."""
-
         self._tool_files = tool_file_manager or ToolFileManager()
         self._skill_normalizer = skill_normalize_service or ConfigSkillNormalizeService()
         self._session_factory = session_factory or default_session_factory.create_session
@@ -178,6 +175,7 @@ class AgentConfigService:
                 user_id=user_id,
             )
             return AgentConfigTarget(
+                tenant_id=tenant_id,
                 agent_id=target.agent_id,
                 version_id=target.version_id,
                 kind=target.kind,
@@ -223,7 +221,7 @@ class AgentConfigService:
         return {
             "agent_id": target.agent_id,
             "config_version": self._config_version_payload(target),
-            "items": [self._serialize_skill_item(skill) for skill in target.agent_soul.config_skills],
+            "items": self._skill_items_for_target(target, include_runtime_workspace_skills=False),
         }
 
     def list_files(
@@ -259,8 +257,6 @@ class AgentConfigService:
         name: str,
         user_id: str | None = None,
     ) -> ConfigDownloadRequest:
-        """Authorize one Config reference and return origin-free download metadata."""
-
         target = self.resolve_target(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -269,12 +265,40 @@ class AgentConfigService:
             user_id=user_id,
         )
         if kind == "skill":
-            skill = self._require_skill(target.agent_soul, name=name)
+            try:
+                skill = self._require_skill(target.agent_soul, name=name)
+                return self._resolve_download_request(
+                    tenant_id=tenant_id,
+                    file_kind=skill.file_kind,
+                    file_id=self._available_skill_file_id(skill),
+                    filename=f"{skill.name}.zip",
+                    default_mime_type="application/zip",
+                    missing_code="config_skill_not_found",
+                    missing_message="config skill payload is missing",
+                )
+            except AgentConfigServiceError as exc:
+                if exc.code != "config_skill_not_found":
+                    raise
+
+            runtime_skill = next(
+                (
+                    item
+                    for item in SkillManagementService().list_runtime_agent_skills(
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                        include_draft=config_version_kind != AgentConfigVersionKind.SNAPSHOT,
+                    )
+                    if item["name"] == name
+                ),
+                None,
+            )
+            if runtime_skill is None:
+                raise AgentConfigServiceError("config_skill_not_found", "config skill not found", status_code=404)
             return self._resolve_download_request(
                 tenant_id=tenant_id,
-                file_kind=skill.file_kind,
-                file_id=self._available_skill_file_id(skill),
-                filename=f"{skill.name}.zip",
+                file_kind="tool_file",
+                file_id=str(runtime_skill["file_id"]),
+                filename=f"{runtime_skill['name']}.zip",
                 default_mime_type="application/zip",
                 missing_code="config_skill_not_found",
                 missing_message="config skill payload is missing",
@@ -329,9 +353,46 @@ class AgentConfigService:
             config_version_kind=config_version_kind,
             user_id=user_id,
         )
-        skill = self._require_skill(target.agent_soul, name=name)
-        file_id = self._available_skill_file_id(skill)
-        archive_bytes, _mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=file_id)
+        try:
+            skill = self._require_skill(target.agent_soul, name=name)
+            file_id = self._available_skill_file_id(skill)
+            archive_bytes, _mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=file_id)
+            skill_item = self._serialize_skill_item(skill)
+        except AgentConfigServiceError as exc:
+            if exc.code != "config_skill_not_found":
+                raise
+            try:
+                workspace_archive = SkillManagementService().pull_runtime_agent_skill(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    name=name,
+                    include_draft=config_version_kind != AgentConfigVersionKind.SNAPSHOT,
+                )
+            except SkillManagementServiceError as skill_exc:
+                raise AgentConfigServiceError(
+                    "config_skill_not_found",
+                    "config skill not found",
+                    status_code=404,
+                ) from skill_exc
+            archive_bytes = workspace_archive.payload
+            skill_item = next(
+                (
+                    item
+                    for item in SkillManagementService().list_runtime_agent_skills(
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                    )
+                    if item["name"] == name
+                ),
+                {
+                    "id": name,
+                    "name": name,
+                    "description": "",
+                    "size": None,
+                    "hash": None,
+                    "mime_type": "application/zip",
+                },
+            )
         try:
             archive_items, skill_md = self._inspect_skill_archive(archive_bytes)
         except (OSError, ValueError, zipfile.BadZipFile) as exc:
@@ -341,7 +402,7 @@ class AgentConfigService:
                 status_code=500,
             ) from exc
         return {
-            **self._serialize_skill_item(skill),
+            **skill_item,
             "source": "config_skill_zip",
             "files": archive_items,
             "skill_md": skill_md,
@@ -436,6 +497,34 @@ class AgentConfigService:
         )
         return member_path
 
+    def pull_file(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        name: str,
+        user_id: str | None = None,
+    ) -> ConfigDownload:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        file_ref = self._require_file(target.agent_soul, name=name)
+        file_id = self._available_file_id(file_ref)
+        payload, filename, mime_type = self._load_file_ref_bytes(
+            tenant_id=tenant_id,
+            file_kind=file_ref.file_kind,
+            file_id=file_id,
+        )
+        return ConfigDownload(
+            filename=filename or file_ref.name, mime_type=mime_type or "application/octet-stream", payload=payload
+        )
+
     def download_file_url(
         self,
         *,
@@ -513,6 +602,24 @@ class AgentConfigService:
         filename: str,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        self._require_writable(target, surface=surface)
+        try:
+            skill_ref = self._skill_normalizer.normalize(
+                content=content,
+                filename=filename,
+                requested_name=None,
+                tenant_id=tenant_id,
+                user_id=user_id,
+            )
+        except SkillPackageError as exc:
+            raise AgentConfigServiceError(exc.code, exc.message, status_code=exc.status_code) from exc
         with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
@@ -521,18 +628,9 @@ class AgentConfigService:
                 config_version_id=config_version_id,
                 config_version_kind=config_version_kind,
                 user_id=user_id,
+                for_update=True,
             )
             self._require_writable(target, surface=surface)
-            try:
-                skill_ref, _package = self._skill_normalizer.normalize(
-                    content=content,
-                    filename=filename,
-                    requested_name=None,
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                )
-            except SkillPackageError as exc:
-                raise AgentConfigServiceError(exc.code, exc.message, status_code=exc.status_code) from exc
             agent_soul = target.agent_soul.model_copy(deep=True)
             existing = {item.name: item for item in agent_soul.config_skills}
             order = [item.name for item in agent_soul.config_skills]
@@ -606,6 +704,7 @@ class AgentConfigService:
                 config_version_id=config_version_id,
                 config_version_kind=config_version_kind,
                 user_id=user_id,
+                for_update=True,
             )
             self._require_writable(target, surface=AgentConfigMutationSurface.CONSOLE)
             upload_file = self._require_console_upload_file_source(session, tenant_id=tenant_id, file_id=upload_file_id)
@@ -623,6 +722,53 @@ class AgentConfigService:
                 "config_version": self._config_version_payload(target),
             }
 
+    def push_files_for_console(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        user_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        upload_file_ids: list[str],
+    ) -> dict[str, object]:
+        """Bind a validated batch atomically, replacing same-name files in input order.
+
+        Lock the parent Agent before its draft, as every other draft writer does.
+        Read the snapshot after acquiring both locks so concurrent asset edits survive.
+        Only the batch's effective files are returned; existing unrelated files stay put.
+        """
+        if not upload_file_ids:
+            raise ValueError("upload_file_ids must not be empty")
+
+        with self._session_factory() as session:
+            prepared_files: list[AgentConfigFileRefConfig] = []
+            for file_id in upload_file_ids:
+                upload_file = self._require_console_upload_file_source(session, tenant_id=tenant_id, file_id=file_id)
+                prepared_files = self._upsert_upload_file(current=prepared_files, upload_file=upload_file)
+
+            target = self._resolve_target_in_session(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                config_version_id=config_version_id,
+                config_version_kind=config_version_kind,
+                user_id=user_id,
+                for_update=True,
+            )
+            self._require_writable(target, surface=AgentConfigMutationSurface.CONSOLE)
+            agent_soul = target.agent_soul.model_copy(deep=True)
+            by_name = {item.name: item for item in agent_soul.config_files}
+            by_name.update((item.name, item) for item in prepared_files)
+            agent_soul.config_files = list(by_name.values())
+            target.version.config_snapshot = agent_soul
+            session.commit()
+            target.agent_soul = agent_soul
+            return {
+                "files": [self._serialize_file_item(file_ref) for file_ref in prepared_files],
+                "config_version": self._config_version_payload(target),
+            }
+
     def _push(
         self,
         *,
@@ -634,6 +780,18 @@ class AgentConfigService:
         payload: ConfigPushPayload,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
+        prepared_skills: list[tuple[str, AgentConfigSkillRefConfig | None]] = []
+        if payload.skills:
+            target = self.resolve_target(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                config_version_id=config_version_id,
+                config_version_kind=config_version_kind,
+                user_id=user_id,
+            )
+            self._require_writable(target, surface=surface)
+            prepared_skills = self._prepare_skill_updates(tenant_id=tenant_id, user_id=user_id, updates=payload.skills)
+
         with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
@@ -642,6 +800,7 @@ class AgentConfigService:
                 config_version_id=config_version_id,
                 config_version_kind=config_version_kind,
                 user_id=user_id,
+                for_update=True,
             )
             self._require_writable(target, surface=surface)
             agent_soul = target.agent_soul.model_copy(deep=True)
@@ -653,12 +812,8 @@ class AgentConfigService:
                     updates=payload.files,
                 )
             if payload.skills:
-                agent_soul.config_skills = self._apply_skill_updates(
-                    session,
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    current=agent_soul.config_skills,
-                    updates=payload.skills,
+                agent_soul.config_skills = self._merge_skill_updates(
+                    current=agent_soul.config_skills, updates=prepared_skills
                 )
             if payload.env_text is not None:
                 agent_soul.env.variables = self._apply_env_text(agent_soul.env.variables, payload.env_text)
@@ -736,6 +891,7 @@ class AgentConfigService:
                 config_version_id=config_version_id,
                 config_version_kind=config_version_kind,
                 user_id=user_id,
+                for_update=True,
             )
             self._require_writable(target, surface=surface)
             agent_soul = target.agent_soul.model_copy(deep=True)
@@ -783,6 +939,7 @@ class AgentConfigService:
                 config_version_id=config_version_id,
                 config_version_kind=config_version_kind,
                 user_id=user_id,
+                for_update=True,
             )
             self._require_writable(target, surface=surface)
             agent_soul = target.agent_soul.model_copy(deep=True)
@@ -790,6 +947,57 @@ class AgentConfigService:
             target.version.config_snapshot = agent_soul
             session.commit()
             return {"note": agent_soul.config_note}
+
+    def get_prompt(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        user_id: str | None = None,
+    ) -> dict[str, str]:
+        """Read the saved system prompt verbatim, including unexpanded mentions."""
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        return {"prompt": target.agent_soul.prompt.system_prompt}
+
+    def update_prompt(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        user_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        prompt: str,
+    ) -> dict[str, str]:
+        """Replace only the caller's build-draft prompt; an empty string clears it.
+
+        Already-built run requests retain their prompt. Subsequent requests
+        built from this draft use the saved text and resolve its mentions.
+        """
+        with self._session_factory() as session:
+            target = self._resolve_target_in_session(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                config_version_id=config_version_id,
+                config_version_kind=config_version_kind,
+                user_id=user_id,
+                for_update=True,
+            )
+            self._require_writable(target, surface=AgentConfigMutationSurface.AGENT_STUB)
+            agent_soul = target.agent_soul.model_copy(deep=True)
+            agent_soul.prompt.system_prompt = prompt
+            target.version.config_snapshot = agent_soul
+            session.commit()
+            return {"prompt": agent_soul.prompt.system_prompt}
 
     def _resolve_target_in_session(
         self,
@@ -800,29 +1008,26 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         user_id: str | None,
+        for_update: bool = False,
     ) -> AgentConfigTarget:
-        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-        version: AgentConfigSnapshot | AgentConfigDraft | None
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id, for_update=for_update)
+        version_query: Select[tuple[AgentConfigSnapshot]] | Select[tuple[AgentConfigDraft]]
         try:
             match config_version_kind:
                 case AgentConfigVersionKind.SNAPSHOT:
-                    version = session.scalar(
-                        select(AgentConfigSnapshot).where(
-                            AgentConfigSnapshot.tenant_id == tenant_id,
-                            AgentConfigSnapshot.agent_id == agent_id,
-                            AgentConfigSnapshot.id == config_version_id,
-                        )
+                    version_query = select(AgentConfigSnapshot).where(
+                        AgentConfigSnapshot.tenant_id == tenant_id,
+                        AgentConfigSnapshot.agent_id == agent_id,
+                        AgentConfigSnapshot.id == config_version_id,
                     )
                     writable = False
                 case AgentConfigVersionKind.DRAFT:
-                    version = session.scalar(
-                        select(AgentConfigDraft).where(
-                            AgentConfigDraft.tenant_id == tenant_id,
-                            AgentConfigDraft.agent_id == agent_id,
-                            AgentConfigDraft.id == config_version_id,
-                            AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
-                            AgentConfigDraft.account_id.is_(None),
-                        )
+                    version_query = select(AgentConfigDraft).where(
+                        AgentConfigDraft.tenant_id == tenant_id,
+                        AgentConfigDraft.agent_id == agent_id,
+                        AgentConfigDraft.id == config_version_id,
+                        AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                        AgentConfigDraft.account_id.is_(None),
                     )
                     writable = False
                 case AgentConfigVersionKind.BUILD_DRAFT:
@@ -832,18 +1037,23 @@ class AgentConfigService:
                             "user_id is required for build draft config access",
                             status_code=400,
                         )
-                    version = session.scalar(
-                        select(AgentConfigDraft).where(
-                            AgentConfigDraft.tenant_id == tenant_id,
-                            AgentConfigDraft.agent_id == agent_id,
-                            AgentConfigDraft.id == config_version_id,
-                            AgentConfigDraft.draft_type == AgentConfigDraftType.DEBUG_BUILD,
-                            AgentConfigDraft.account_id == user_id,
-                        )
+                    version_query = select(AgentConfigDraft).where(
+                        AgentConfigDraft.tenant_id == tenant_id,
+                        AgentConfigDraft.agent_id == agent_id,
+                        AgentConfigDraft.id == config_version_id,
+                        AgentConfigDraft.draft_type == AgentConfigDraftType.DEBUG_BUILD,
+                        AgentConfigDraft.account_id == user_id,
                     )
                     writable = True
                 case _:
                     raise AgentConfigServiceError("invalid_config_version_kind", "unsupported config version kind")
+            version_query = version_query.execution_options(autoflush=False)
+            if for_update and config_version_kind != AgentConfigVersionKind.SNAPSHOT:
+                # Re-read under the lock even when this Session already loaded the draft.
+                version_query = version_query.with_for_update().execution_options(
+                    populate_existing=True, autoflush=False
+                )
+            version = session.scalar(version_query)
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
             raise AgentConfigServiceError(
@@ -858,6 +1068,7 @@ class AgentConfigService:
                 status_code=404,
             )
         return AgentConfigTarget(
+            tenant_id=tenant_id,
             agent_id=agent_id,
             version_id=version.id,
             kind=config_version_kind,
@@ -867,9 +1078,18 @@ class AgentConfigService:
         )
 
     @staticmethod
-    def _assert_agent_belongs_to_tenant(session: Session, *, tenant_id: str, agent_id: str) -> None:
+    def _assert_agent_belongs_to_tenant(
+        session: Session, *, tenant_id: str, agent_id: str, for_update: bool = False
+    ) -> None:
         try:
-            found = session.scalar(select(Agent.id).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
+            query = (
+                select(Agent)
+                .where(Agent.id == agent_id, Agent.tenant_id == tenant_id)
+                .execution_options(autoflush=False)
+            )
+            if for_update:
+                query = query.with_for_update().execution_options(populate_existing=True, autoflush=False)
+            found = session.scalar(query)
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
             raise AgentConfigServiceError(
@@ -949,44 +1169,62 @@ class AgentConfigService:
         )
         return [by_name[item_name] for item_name in order if item_name in by_name]
 
-    def _apply_skill_updates(
+    def _prepare_skill_updates(
         self,
-        session: Session,
         *,
         tenant_id: str,
         user_id: str,
-        current: list[AgentConfigSkillRefConfig],
         updates: list[ConfigPushSkillItem],
-    ) -> list[AgentConfigSkillRefConfig]:
-        by_name = {item.name: item for item in current}
-        order = [item.name for item in current]
-        for update in updates:
-            name = validate_config_skill_name(update.name)
-            if update.file_ref is None:
-                by_name.pop(name, None)
+    ) -> list[tuple[str, AgentConfigSkillRefConfig | None]]:
+        # None represents removal. Capture only trusted source metadata before storage I/O.
+        sources: list[tuple[str, tuple[str, str] | None]] = []
+        with self._session_factory() as session:
+            for update in updates:
+                name = validate_config_skill_name(update.name)
+                if update.file_ref is None:
+                    sources.append((name, None))
+                    continue
+                if update.file_ref.kind != "tool_file":
+                    raise AgentConfigServiceError(
+                        "invalid_skill_file_ref",
+                        "config skills must be uploaded as tool files",
+                        status_code=400,
+                    )
+                tool_file = self._require_tool_file_source(session, tenant_id=tenant_id, file_id=update.file_ref.id)
+                sources.append((name, (tool_file.file_key, tool_file.name)))
+
+        prepared: list[tuple[str, AgentConfigSkillRefConfig | None]] = []
+        for name, source in sources:
+            if source is None:
+                prepared.append((name, None))
                 continue
-            if update.file_ref.kind != "tool_file":
-                raise AgentConfigServiceError(
-                    "invalid_skill_file_ref",
-                    "config skills must be uploaded as tool files",
-                    status_code=400,
-                )
-            tool_file = self._require_tool_file_source(
-                session,
-                tenant_id=tenant_id,
-                file_id=update.file_ref.id,
-            )
-            archive_bytes = storage.load_once(tool_file.file_key)
+            file_key, filename = source
+            archive_bytes = storage.load_once(file_key)
             try:
-                skill_ref, _package = self._skill_normalizer.normalize(
+                skill_ref = self._skill_normalizer.normalize(
                     content=archive_bytes,
-                    filename=tool_file.name,
+                    filename=filename,
                     requested_name=name,
                     tenant_id=tenant_id,
                     user_id=user_id,
                 )
             except SkillPackageError as exc:
                 raise AgentConfigServiceError(exc.code, exc.message, status_code=exc.status_code) from exc
+            prepared.append((name, skill_ref))
+        return prepared
+
+    @staticmethod
+    def _merge_skill_updates(
+        *,
+        current: list[AgentConfigSkillRefConfig],
+        updates: list[tuple[str, AgentConfigSkillRefConfig | None]],
+    ) -> list[AgentConfigSkillRefConfig]:
+        by_name = {item.name: item for item in current}
+        order = [item.name for item in current]
+        for name, skill_ref in updates:
+            if skill_ref is None:
+                by_name.pop(name, None)
+                continue
             if name not in order:
                 order.append(name)
             by_name[name] = skill_ref
@@ -1018,10 +1256,12 @@ class AgentConfigService:
     ) -> ToolFile:
         try:
             tool_file = session.scalar(
-                select(ToolFile).where(
+                select(ToolFile)
+                .where(
                     ToolFile.id == file_id,
                     ToolFile.tenant_id == tenant_id,
                 )
+                .execution_options(autoflush=False)
             )
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
@@ -1040,10 +1280,12 @@ class AgentConfigService:
     def _require_console_upload_file_source(session: Session, *, tenant_id: str, file_id: str) -> UploadFile:
         try:
             upload_file = session.scalar(
-                select(UploadFile).where(
+                select(UploadFile)
+                .where(
                     UploadFile.id == file_id,
                     UploadFile.tenant_id == tenant_id,
                 )
+                .execution_options(autoflush=False)
             )
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
@@ -1064,10 +1306,12 @@ class AgentConfigService:
     def _require_upload_file_source(session: Session, *, tenant_id: str, file_id: str) -> UploadFile:
         try:
             upload_file = session.scalar(
-                select(UploadFile).where(
+                select(UploadFile)
+                .where(
                     UploadFile.id == file_id,
                     UploadFile.tenant_id == tenant_id,
                 )
+                .execution_options(autoflush=False)
             )
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
@@ -1153,7 +1397,7 @@ class AgentConfigService:
             "agent_id": target.agent_id,
             "config_version": AgentConfigService._config_version_payload(target),
             "skills": {
-                "items": [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]
+                "items": AgentConfigService._skill_items_for_target(target, include_runtime_workspace_skills=True)
             },
             "files": {
                 "items": [
@@ -1163,6 +1407,26 @@ class AgentConfigService:
             "env_keys": AgentConfigService._env_keys(target.agent_soul),
             "note": target.agent_soul.config_note,
         }
+
+    @staticmethod
+    def _skill_items_for_target(
+        target: AgentConfigTarget, *, include_runtime_workspace_skills: bool
+    ) -> list[dict[str, object]]:
+        items = [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]
+        if not include_runtime_workspace_skills:
+            return items
+
+        seen_names = {str(item["name"]) for item in items}
+        for item in SkillManagementService().list_runtime_agent_skills(
+            tenant_id=target.tenant_id,
+            agent_id=target.agent_id,
+            include_draft=target.kind != AgentConfigVersionKind.SNAPSHOT,
+        ):
+            if item["name"] in seen_names:
+                continue
+            seen_names.add(str(item["name"]))
+            items.append(item)
+        return items
 
     @staticmethod
     def _config_version_payload(target: AgentConfigTarget) -> dict[str, object]:
@@ -1432,12 +1696,7 @@ class AgentConfigService:
             query.append(("as_attachment", "true"))
             uri = urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
 
-        return ConfigDownloadRequest(
-            filename=filename,
-            mime_type=mime_type,
-            size=size,
-            download_uri=uri,
-        )
+        return ConfigDownloadRequest(filename=filename, mime_type=mime_type, size=size, download_uri=uri)
 
 
 __all__ = [

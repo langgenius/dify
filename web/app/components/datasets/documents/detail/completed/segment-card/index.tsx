@@ -1,14 +1,20 @@
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
@@ -16,7 +22,6 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Divider from '@/app/components/base/divider'
 import ImageList from '@/app/components/datasets/common/image-list'
 import { ChunkingMode } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
@@ -33,13 +38,13 @@ import ChunkContent from './chunk-content'
 
 type ISegmentCardProps = {
   loading: boolean
-  detail?: SegmentDetailModel & { document?: { name: string }; status?: string }
+  detail?: SegmentResponse & { document?: { name: string }; status?: string }
   onClick?: () => void
   onChangeSwitch?: (enabled: boolean, segId?: string) => Promise<void>
   onDelete?: (segId: string) => Promise<void>
   onDeleteChildChunk?: (segId: string, childChunkId: string) => Promise<void>
   handleAddNewChildChunk?: (parentChunkId: string) => void
-  onClickSlice?: (childChunk: ChildChunkDetail) => void
+  onClickSlice?: (childChunk: ChildChunkResponse) => void
   onClickEdit?: () => void
   className?: string
   archived?: boolean
@@ -65,7 +70,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   embeddingAvailable,
   focused,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const {
     id,
     position,
@@ -85,6 +90,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   const [showModal, setShowModal] = useState(false)
   const docForm = useDocumentContext((s) => s.docForm)
   const parentMode = useDocumentContext((s) => s.parentMode)
+  const canEdit = useDocumentContext((s) => s.canEdit)
 
   const isGeneralMode = useMemo(() => {
     return docForm === ChunkingMode.text
@@ -129,7 +135,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   const images = useMemo(() => {
     return attachments.map((attachment) => ({
       name: attachment.name,
-      mimeType: attachment.mime_type,
+      // An unknown MIME type is empty, as in File.type.
+      mimeType: attachment.mime_type ?? '',
       sourceUrl: attachment.source_url,
       size: attachment.size,
       extension: attachment.extension,
@@ -137,6 +144,17 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   }, [attachments])
 
   if (loading) return <ParentChunkCardSkeleton />
+
+  const segmentIndex = (
+    <SegmentIndexTag
+      className={cn(contentOpacity)}
+      iconClassName={focused.segmentIndex ? 'text-text-accent' : ''}
+      labelClassName={focused.segmentIndex ? 'text-text-accent' : ''}
+      positionId={position}
+      label={isFullDocMode ? labelPrefix : ''}
+      labelPrefix={labelPrefix}
+    />
+  )
 
   return (
     <div
@@ -152,14 +170,21 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       <div className="relative flex h-5 items-center justify-between">
         <>
           <div className="flex items-center gap-x-2">
-            <SegmentIndexTag
-              className={cn(contentOpacity)}
-              iconClassName={focused.segmentIndex ? 'text-text-accent' : ''}
-              labelClassName={focused.segmentIndex ? 'text-text-accent' : ''}
-              positionId={position}
-              label={isFullDocMode ? labelPrefix : ''}
-              labelPrefix={labelPrefix}
-            />
+            {isFullDocMode ? (
+              segmentIndex
+            ) : (
+              <button
+                type="button"
+                aria-label={`${labelPrefix}-${String(position).padStart(2, '0')} ${t(($) => $['segment.chunkDetail'], { ns: 'datasetDocuments' })}`}
+                className="rounded-sm border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  handleClickCard()
+                }}
+              >
+                {segmentIndex}
+              </button>
+            )}
             <Dot />
             <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>
               {wordCountText}
@@ -187,56 +212,49 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 textCls="text-text-tertiary system-xs-regular"
               />
               {embeddingAvailable && (
-                <div className="absolute -top-2 -right-2.5 z-20 hidden items-center gap-x-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-hover/card:flex">
+                <div className="absolute -top-2 -right-2.5 z-20 hidden items-center gap-x-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-focus-within/card:flex group-hover/card:flex">
                   {!archived && (
                     <>
                       <Tooltip>
                         <TooltipTrigger
                           render={
-                            <button
-                              type="button"
+                            <IconButton
                               aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
-                              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover"
+                              disabled={!canEdit}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 onClickEdit?.()
                               }}
                             >
-                              <RiEditLine
-                                className="size-4 text-text-tertiary"
-                                aria-hidden="true"
-                              />
-                            </button>
+                              <RiEditLine className="size-4" aria-hidden="true" />
+                            </IconButton>
                           }
                         />
-                        <TooltipContent className="system-xs-medium text-text-secondary">
-                          Edit
+                        <TooltipContent>
+                          {t(($) => $['operation.edit'], { ns: 'common' })}
                         </TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger
                           render={
-                            <button
-                              type="button"
+                            <IconButton
                               aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
-                              className="group/delete flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-destructive-hover"
+                              tone="destructive"
+                              disabled={!canEdit}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 setShowModal(true)
                               }}
                             >
-                              <RiDeleteBinLine
-                                className="size-4 text-text-tertiary group-hover/delete:text-text-destructive"
-                                aria-hidden="true"
-                              />
-                            </button>
+                              <RiDeleteBinLine className="size-4" aria-hidden="true" />
+                            </IconButton>
                           }
                         />
-                        <TooltipContent className="system-xs-medium text-text-secondary">
-                          Delete
+                        <TooltipContent>
+                          {t(($) => $['operation.delete'], { ns: 'common' })}
                         </TooltipContent>
                       </Tooltip>
-                      <Divider type="vertical" className="h-3.5 bg-divider-regular" />
+                      <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
                     </>
                   )}
                   <div
@@ -247,7 +265,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                   >
                     <Switch
                       size="md"
-                      disabled={archived || detail?.status !== 'completed'}
+                      aria-label={t(($) => $['batchAction.enable'], { ns: 'dataset' })}
+                      disabled={!canEdit || archived || detail?.status !== 'completed'}
                       checked={enabled}
                       onCheckedChange={async (val) => {
                         await onChangeSwitch?.(val, id)
@@ -262,7 +281,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       </div>
       <ChunkContent
         detail={{
-          answer,
+          answer: answer ?? undefined,
           content,
           sign_content,
         }}
@@ -300,23 +319,24 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       )}
       <AlertDialog open={showModal} onOpenChange={(open) => !open && setShowModal(false)}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['segment.delete'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
+              disabled={!canEdit}
               onClick={async () => {
                 await onDelete?.(id)
               }}
             >
               {t(($) => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

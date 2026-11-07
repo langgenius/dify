@@ -1,10 +1,10 @@
-import type { DataSourceCredential } from '@/types/pipeline'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import * as React from 'react'
 import Item from './item'
 
 type ListProps = {
   currentCredentialId: string
-  credentials: Array<DataSourceCredential>
+  credentials: Array<DatasourceCredentialResponse>
   onCredentialChange: (credentialId: string) => void
 }
 

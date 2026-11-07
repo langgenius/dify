@@ -6,7 +6,7 @@ export class ConcurrentAccessError extends BaseError {
     const msg = `Another process is modifying the file ${filePath}. remove ${filePath}.lock to reset lock.`
 
     super({
-      code: ErrorCode.ClientError,
+      code: ErrorCode.Unknown,
       message: msg,
       hint: `remove ${filePath}.lock to reset lock.`,
     })
@@ -35,7 +35,7 @@ export class BadYamlFormatError extends BaseError {
     const body = snippet ? `\n\n${snippet}` : ''
 
     super({
-      code: ErrorCode.ClientError,
+      code: ErrorCode.Unknown,
       message: `${header}${body}`,
       hint: `Fix the YAML syntax in ${path} or remove the file to reset it.`,
     })

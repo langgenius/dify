@@ -1,20 +1,19 @@
 'use client'
 
-import type { AccessPoint } from '@/app/components/app/deploy/access-point'
-import { Button } from '@langgenius/dify-ui/button'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { useAppWorkflow } from '@/service/use-workflow'
-import { getAppACLCapabilities } from '@/utils/permission'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { getPublishedWorkflowState, isAdvancedApp } from '../shared/utils'
 import { MCPAccessPointCard } from './mcp-card'
@@ -24,40 +23,73 @@ import { WebAppAccessPointCard } from './web-app-card'
 
 type BuiltInAccessPointsProps = {
   appId: string
+  canViewLayout: boolean
+  canDeploy: boolean
+  canManageAccessPoint: boolean
+  canReleaseAndVersion: boolean
   highlightedAccessPoint?: AccessPoint | null
 }
 
-export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAccessPointsProps) {
-  const { t } = useTranslation()
+export function BuiltInAccessPoints({
+  appId,
+  canViewLayout,
+  canDeploy,
+  canManageAccessPoint,
+  canReleaseAndVersion,
+  highlightedAccessPoint,
+}: BuiltInAccessPointsProps) {
+  const { t } = useTranslation(['common', 'deployments'])
   const docLink = useDocLink()
-  const appInfo = useAppStore((state) => state.appDetail)
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const { data: appInfo } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const shouldFetchWorkflow = Boolean(appInfo && isAdvancedApp(appInfo))
-  const { data: workflow, isPending: workflowLoading } = useAppWorkflow(
-    shouldFetchWorkflow ? appId : '',
-  )
-  const capabilities = useMemo(
-    () =>
-      getAppACLCapabilities(appInfo?.permission_keys, {
-        currentUserId,
-        resourceMaintainer: appInfo?.maintainer,
-        workspacePermissionKeys,
-      }),
-    [appInfo?.maintainer, appInfo?.permission_keys, currentUserId, workspacePermissionKeys],
-  )
-  const actions = useAccessPointActions(appId, capabilities.canEdit)
+  const workspace = useAtomValue(currentWorkspaceAtom)
+  const workspaceLoading = useAtomValue(currentWorkspaceLoadingAtom)
+  const canReadWorkflow =
+    canViewLayout &&
+    (systemFeatures.rbac_enabled ||
+      (!workspaceLoading && ['owner', 'admin', 'editor'].includes(workspace.role)))
+  const shouldFetchWorkflow = Boolean(appInfo && isAdvancedApp(appInfo) && canReadWorkflow)
+  const {
+    data: workflow,
+    isError: workflowError,
+    isPending: workflowLoading,
+  } = useAppWorkflow(shouldFetchWorkflow ? appId : '', {
+    retry: (failureCount, error) => {
+      if (getHttpErrorStatus(error) === 403) return false
 
-  if (!appInfo) return <Loading />
+      return failureCount < 3
+    },
+  })
+  const useWorkflowSummary = Boolean(appInfo && isAdvancedApp(appInfo) && !canReadWorkflow)
+  const needsPublishedTriggers =
+    useWorkflowSummary && appInfo?.mode === 'workflow' && Boolean(appInfo.workflow?.id)
+  const triggersQuery = useQuery(
+    consoleQuery.apps.byAppId.triggers.get.queryOptions({
+      input: appInfo?.mode === 'workflow' ? { params: { app_id: appId } } : skipToken,
+      enabled: needsPublishedTriggers,
+      retry: false,
+    }),
+  )
+  const actions = useAccessPointActions(appId, canManageAccessPoint)
+
+  if (!appInfo) return <LoadingPlaceholder />
 
   const workflowState = getPublishedWorkflowState(appInfo, workflow)
-  const builtInLoading = workflowState.isWorkflowApp && workflowLoading
+  const isUnpublished = useWorkflowSummary ? !appInfo.workflow?.id : workflowState.isUnpublished
+  const hasTriggerNode = useWorkflowSummary
+    ? needsPublishedTriggers && Boolean(triggersQuery.data?.data.length)
+    : workflowState.hasTriggerNode
+  const builtInLoading =
+    workflowState.requiresPublishedWorkflow &&
+    (workspaceLoading ||
+      (shouldFetchWorkflow && workflowLoading) ||
+      (needsPublishedTriggers && triggersQuery.isPending))
+  const builtInError =
+    (shouldFetchWorkflow && workflowError) || (needsPublishedTriggers && triggersQuery.isError)
   const appCardsUnavailable =
-    workflowState.isWorkflowApp && (workflowState.isUnpublished || workflowState.hasTriggerNode)
+    workflowState.requiresPublishedWorkflow && (builtInError || isUnpublished || hasTriggerNode)
   const appCardAvailability = builtInLoading
     ? 'loading'
     : appCardsUnavailable
@@ -65,13 +97,20 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
       : 'available'
   const triggerAvailability = builtInLoading
     ? 'loading'
-    : workflowState.isUnpublished || !workflowState.hasTriggerNode
+    : builtInError || isUnpublished || !hasTriggerNode
+      ? 'unavailable'
+      : 'available'
+  const mcpAvailability = builtInLoading
+    ? 'loading'
+    : appCardsUnavailable ||
+        (!workflowState.requiresPublishedWorkflow && !appInfo.model_config?.updated_at) ||
+        (canReadWorkflow && workflowState.isWorkflowApp && !workflowState.hasStartNode)
       ? 'unavailable'
       : 'available'
 
   return (
     <div className="flex h-full flex-col gap-2">
-      {workflowState.isUnpublished && !workflowLoading && (
+      {isUnpublished && !builtInLoading && !builtInError && (
         <div className="flex flex-col items-start gap-2 rounded-xl bg-background-section-burn p-3">
           <div className="flex flex-col gap-0.5">
             <span className="block system-md-semibold text-text-secondary">
@@ -85,16 +124,23 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
               })}
             </span>
           </div>
-          <Button
-            variant="primary"
-            size="medium"
-            disabled={!capabilities.canReleaseAndVersion}
-            render={<Link href={`/app/${appId}/workflow`} />}
-            className="flex items-center gap-1"
-          >
-            {t(($) => $['studio.accessPoint.goToPublish'], { ns: 'deployments' })}
-            <span aria-hidden className="i-ri-arrow-right-line size-4" />
-          </Button>
+          {canReleaseAndVersion ? (
+            <Link
+              href={`/app/${appId}/workflow`}
+              className={cn(
+                buttonVariants({ variant: 'primary', size: 'medium' }),
+                'flex items-center gap-1',
+              )}
+            >
+              {t(($) => $['studio.accessPoint.goToPublish'], { ns: 'deployments' })}
+              <span aria-hidden className="i-ri-arrow-right-line size-4" />
+            </Link>
+          ) : (
+            <Button variant="primary" size="medium" disabled className="flex items-center gap-1">
+              {t(($) => $['studio.accessPoint.goToPublish'], { ns: 'deployments' })}
+              <span aria-hidden className="i-ri-arrow-right-line size-4" />
+            </Button>
+          )}
         </div>
       )}
 
@@ -102,13 +148,10 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
         <WebAppAccessPointCard
           appInfo={appInfo}
           availability={appCardAvailability}
-          canEdit={capabilities.canEdit}
-          canDeploy={capabilities.canDeploy}
-          canManageAccess={capabilities.canReleaseAndVersion}
+          canDeploy={canDeploy}
+          canManageAccessPoint={canManageAccessPoint}
           showAccessControl={systemFeatures.webapp_auth.enabled}
-          onChangeStatus={actions.changeSiteStatus}
           onRefreshApp={actions.refreshAppDetail}
-          onRegenerate={actions.regenerateSiteCode}
           onSaveSiteConfig={actions.saveSiteConfig}
           workflow={workflow}
           highlighted={highlightedAccessPoint === 'webApp'}
@@ -116,30 +159,27 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
         <ServiceApiAccessPointCard
           appInfo={appInfo}
           availability={appCardAvailability}
-          canManage={capabilities.canReleaseAndVersion}
-          onChangeStatus={actions.changeApiStatus}
+          canManage={canManageAccessPoint}
           highlighted={highlightedAccessPoint === 'serviceApi'}
         />
         <MCPAccessPointCard
           appInfo={appInfo}
-          canEdit={capabilities.canEdit}
+          canManageAccessPoint={canManageAccessPoint}
           workflow={workflow}
-          workflowLoading={workflowLoading}
-          triggerModeDisabled={workflowState.hasTriggerNode}
+          availability={mcpAvailability}
           highlighted={highlightedAccessPoint === 'mcp'}
         />
         {workflowState.isWorkflowApp && (
           <TriggerAccessPointCard
             appInfo={appInfo}
             availability={triggerAvailability}
-            canEdit={capabilities.canEdit}
-            onToggleResult={actions.handleResult}
+            canManageAccessPoint={canManageAccessPoint}
             highlighted={highlightedAccessPoint === 'trigger'}
           />
         )}
       </div>
 
-      {workflowState.hasTriggerNode && (
+      {hasTriggerNode && (
         <div className="mt-2 flex min-h-10 items-center gap-2 rounded-xl bg-background-section-burn px-3 py-2 system-xs-regular text-text-tertiary">
           <span aria-hidden className="i-ri-information-line size-4 shrink-0" />
           <span>

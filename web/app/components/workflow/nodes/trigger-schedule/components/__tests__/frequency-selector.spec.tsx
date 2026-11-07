@@ -12,11 +12,11 @@ describe('trigger-schedule/frequency-selector', () => {
     const trigger = screen.getByRole('combobox')
     await user.click(trigger)
 
-    await waitFor(() => {
-      expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    })
-
-    await user.click(await screen.findByText('workflow.nodes.triggerSchedule.frequency.weekly'))
+    await user.click(
+      await screen.findByRole('option', {
+        name: 'workflowIntegrations.nodes.triggerSchedule.frequency.weekly',
+      }),
+    )
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith('weekly')

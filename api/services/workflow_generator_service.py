@@ -16,6 +16,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from core.app.app_config.entities import ModelConfig
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_manager import ModelInstance, ModelManager
 from core.workflow.generator import WorkflowGenerator
 from core.workflow.generator.tool_catalogue import (
@@ -67,7 +68,7 @@ class WorkflowGeneratorService:
         envelope as ``/rule-generate``).
         """
         model_instance, model_parameters, tool_catalogue_entries, tool_catalogue_text, installed_tools = (
-            cls._resolve_generation_context(tenant_id=tenant_id, model_config=model_config)
+            cls._resolve_generation_context(tenant_id=tenant_id, mode=mode, model_config=model_config)
         )
 
         return WorkflowGenerator.generate_workflow_graph(
@@ -107,7 +108,7 @@ class WorkflowGeneratorService:
         single ``result`` SSE event).
         """
         model_instance, model_parameters, tool_catalogue_entries, tool_catalogue_text, installed_tools = (
-            cls._resolve_generation_context(tenant_id=tenant_id, model_config=model_config)
+            cls._resolve_generation_context(tenant_id=tenant_id, mode=mode, model_config=model_config)
         )
 
         yield from WorkflowGenerator.generate_workflow_graph_stream(
@@ -130,6 +131,7 @@ class WorkflowGeneratorService:
         cls,
         *,
         tenant_id: str,
+        mode: WorkflowGenerationModeRequest,
         model_config: ModelConfig,
     ) -> tuple[
         ModelInstance,
@@ -149,7 +151,17 @@ class WorkflowGeneratorService:
         empty set, so we don't reject every tool node just because we couldn't
         enumerate the catalogue).
         """
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        app_type = {
+            "workflow": CreditUsageAppType.WORKFLOW,
+            "advanced-chat": CreditUsageAppType.CHATFLOW,
+        }.get(mode, CreditUsageAppType.UNKNOWN)
+        model_manager = ModelManager.for_tenant(
+            tenant_id=tenant_id,
+            request_metadata={
+                "app_type": app_type,
+                "created_by": CreditUsageCreatedBy.WORKFLOW_GENERATION,
+            },
+        )
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,

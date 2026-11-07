@@ -27,9 +27,8 @@ const Icon = () => {
 }
 
 const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
-  const setHistoryShortcutsEnabled = useStore((s) => s.setHistoryShortcutsEnabled)
   const ref = useRef<HTMLDivElement | null>(null)
   const theme = data.theme
   const { handleThemeChange, handleEditorChange, handleShowAuthorChange } = useNote(id)
@@ -43,7 +42,7 @@ const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
   return (
     <div
       className={cn(
-        'relative flex flex-col rounded-md border shadow-xs hover:shadow-md',
+        'group relative flex flex-col rounded-md border shadow-xs hover:shadow-md',
         THEME_MAP[theme]!.bg,
         data.selected ? THEME_MAP[theme]!.border : 'border-black/5',
       )}
@@ -88,9 +87,8 @@ const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
             <div className={cn(data.selected && 'nodrag nopan nowheel cursor-text')}>
               <NoteEditor
                 containerElement={ref.current}
-                placeholder={t(($) => $['nodes.note.editor.placeholder'], { ns: 'workflow' }) || ''}
+                placeholder={t(($) => $['nodes.note.editor.placeholder'], { ns: 'workflow' })}
                 onChange={handleEditorChange}
-                setHistoryShortcutsEnabled={setHistoryShortcutsEnabled}
               />
             </div>
           </div>

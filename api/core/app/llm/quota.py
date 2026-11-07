@@ -14,6 +14,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.credit_usage import (
+    CreditUsageAppType,
+    CreditUsageAppTypeInput,
+    CreditUsageCreatedBy,
+    CreditUsageCreatedByInput,
+    normalize_credit_usage_app_type,
+    normalize_credit_usage_created_by,
+)
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.errors.error import QuotaExceededError
@@ -25,7 +33,12 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
-from services.credit_pool_service import CreditPoolReservation, CreditPoolService
+from services.credit_pool_service import (
+    CREDIT_USAGE_APP_TYPE_META_KEY,
+    CREDIT_USAGE_CREATED_BY_META_KEY,
+    CreditPoolReservation,
+    CreditPoolService,
+)
 
 
 class ModelQuotaReservationState(StrEnum):
@@ -45,6 +58,8 @@ class ModelQuotaReservation:
     provider_configuration: Any
     quota_unit: QuotaUnit | None = None
     credit_pool_reservation: CreditPoolReservation | None = None
+    app_type: CreditUsageAppType | None = None
+    created_by: CreditUsageCreatedBy | None = None
     requires_settlement: bool = False
     _state: ModelQuotaReservationState = field(default=ModelQuotaReservationState.RESERVED, init=False, repr=False)
 
@@ -76,6 +91,10 @@ class ModelQuotaReservation:
                 provider=self.provider,
                 provider_configuration=self.provider_configuration,
                 used_quota=used_quota,
+                model_type=self.model_type,
+                model=self.model,
+                app_type=self.app_type,
+                created_by=self.created_by,
             )
 
         self._state = ModelQuotaReservationState.COMMITTED
@@ -121,15 +140,21 @@ def reserve_model_quota_for_model(
     model_type: ModelType,
     model: str,
     request_id: str | None = None,
+    app_type: CreditUsageAppTypeInput = None,
+    created_by: CreditUsageCreatedByInput = None,
 ) -> ModelQuotaReservation:
     """Reserve system-hosted model quota before invoking the provider."""
     provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    effective_app_type = normalize_credit_usage_app_type(app_type)
+    effective_created_by = normalize_credit_usage_created_by(created_by)
     reservation = ModelQuotaReservation(
         tenant_id=tenant_id,
         provider=provider,
         model_type=model_type,
         model=model,
         provider_configuration=provider_configuration,
+        app_type=effective_app_type,
+        created_by=effective_created_by,
     )
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return reservation
@@ -166,6 +191,8 @@ def reserve_model_quota_for_model(
                 "model_type": model_type.value,
                 "model": model,
             }
+        reservation_meta[CREDIT_USAGE_CREATED_BY_META_KEY] = effective_created_by
+        reservation_meta[CREDIT_USAGE_APP_TYPE_META_KEY] = effective_app_type
         reservation.credit_pool_reservation = CreditPoolService.reserve_credits(
             tenant_id=tenant_id,
             credits_required=amount,
@@ -183,7 +210,13 @@ def reserve_model_quota_for_model(
 
 
 def reserve_llm_quota_for_model(
-    *, tenant_id: str, provider: str, model: str, request_id: str | None = None
+    *,
+    tenant_id: str,
+    provider: str,
+    model: str,
+    request_id: str | None = None,
+    app_type: CreditUsageAppTypeInput = None,
+    created_by: CreditUsageCreatedByInput = None,
 ) -> ModelQuotaReservation:
     """Reserve system-hosted LLM quota before invoking the provider."""
     return reserve_model_quota_for_model(
@@ -192,6 +225,8 @@ def reserve_llm_quota_for_model(
         model_type=ModelType.LLM,
         model=model,
         request_id=request_id,
+        app_type=app_type,
+        created_by=created_by,
     )
 
 
@@ -286,13 +321,31 @@ def _deduct_free_model_quota(
         raise QuotaExceededError(f"Model provider {provider} quota exceeded.")
 
 
-def _deduct_used_model_quota(*, tenant_id: str, provider: str, provider_configuration, used_quota: int | None) -> None:
+def _deduct_used_model_quota(
+    *,
+    tenant_id: str,
+    provider: str,
+    provider_configuration,
+    used_quota: int | None,
+    model_type: ModelType | None = None,
+    model: str | None = None,
+    app_type: CreditUsageAppTypeInput = None,
+    created_by: CreditUsageCreatedByInput = None,
+) -> None:
     """Apply a resolved model quota charge against the current provider quota bucket."""
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return
 
     system_configuration = provider_configuration.system_configuration
     if used_quota is not None and system_configuration.current_quota_type is not None:
+        metadata: dict[str, object] = {"provider": provider}
+        if model is not None:
+            metadata["model"] = model
+        if model_type is not None:
+            metadata["model_type"] = model_type.value
+        metadata[CREDIT_USAGE_APP_TYPE_META_KEY] = normalize_credit_usage_app_type(app_type)
+        metadata[CREDIT_USAGE_CREATED_BY_META_KEY] = normalize_credit_usage_created_by(created_by)
+
         match system_configuration.current_quota_type:
             case ProviderQuotaType.TRIAL:
                 from services.credit_pool_service import CreditPoolService
@@ -300,6 +353,7 @@ def _deduct_used_model_quota(*, tenant_id: str, provider: str, provider_configur
                 CreditPoolService.deduct_credits_capped(
                     tenant_id=tenant_id,
                     credits_required=used_quota,
+                    metadata=metadata,
                     session=db.session(),
                 )
             case ProviderQuotaType.PAID:
@@ -309,6 +363,7 @@ def _deduct_used_model_quota(*, tenant_id: str, provider: str, provider_configur
                     tenant_id=tenant_id,
                     credits_required=used_quota,
                     pool_type="paid",
+                    metadata=metadata,
                     session=db.session(),
                 )
             case ProviderQuotaType.FREE:
@@ -322,7 +377,15 @@ def _deduct_used_model_quota(*, tenant_id: str, provider: str, provider_configur
                 return
 
 
-def deduct_llm_quota_for_model(*, tenant_id: str, provider: str, model: str, usage: LLMUsage) -> None:
+def deduct_llm_quota_for_model(
+    *,
+    tenant_id: str,
+    provider: str,
+    model: str,
+    usage: LLMUsage,
+    app_type: CreditUsageAppTypeInput = None,
+    created_by: CreditUsageCreatedByInput = None,
+) -> None:
     """Deduct tenant-bound quota for the resolved LLM model identity."""
     provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
     used_quota = _resolve_llm_used_quota(
@@ -335,6 +398,10 @@ def deduct_llm_quota_for_model(*, tenant_id: str, provider: str, model: str, usa
         provider=provider,
         provider_configuration=provider_configuration,
         used_quota=used_quota,
+        model_type=ModelType.LLM,
+        model=model,
+        app_type=app_type,
+        created_by=created_by,
     )
 
 

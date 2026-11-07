@@ -19,10 +19,12 @@ from controllers.inner_api.plugin.plugin import (
     PluginDownloadFileRequestApi,
     PluginFetchAppInfoApi,
     PluginInvokeAppApi,
+    PluginInvokeDatasourceApi,
     PluginInvokeEncryptApi,
     PluginInvokeLLMApi,
     PluginInvokeLLMWithStructuredOutputApi,
     PluginInvokeModerationApi,
+    PluginInvokeMultimodalEmbeddingApi,
     PluginInvokeParameterExtractorNodeApi,
     PluginInvokeQuestionClassifierNodeApi,
     PluginInvokeRerankApi,
@@ -31,22 +33,30 @@ from controllers.inner_api.plugin.plugin import (
     PluginInvokeTextEmbeddingApi,
     PluginInvokeToolApi,
     PluginInvokeTTSApi,
+    PluginModelCatalogApi,
     PluginUploadFileRequestApi,
 )
+from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.plugin.entities.request import RequestInvokeDatasource, RequestInvokeTextEmbedding, RequestListModels
 from core.workflow.file_reference import build_file_reference
+from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_tenant
 
 
 def _tenant() -> Tenant:
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = "tenant-id"
-    return tenant
+    return make_tenant(tenant_id="tenant-id", name="Test Tenant")
 
 
 def _user() -> Account:
     user = Account(name="Test User", email="user@example.com")
     user.id = "user-id"
     return user
+
+
+def _text_embedding_payload() -> RequestInvokeTextEmbedding:
+    return RequestInvokeTextEmbedding(provider="openai", model="text-embedding-3-small", texts=["hello"])
 
 
 def _extract_raw_post(cls):
@@ -109,6 +119,57 @@ class TestPluginInvokeTextEmbeddingApi:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
+    @patch("controllers.inner_api.plugin.plugin.PluginModelBackwardsInvocation")
+    def test_post_classifies_rate_limit_for_internal_consumers(self, mock_invocation, api_instance):
+        mock_invocation.invoke_text_embedding.side_effect = RuntimeError(
+            "Connection Error, 429 RESOURCE_EXHAUSTED. Please try again later."
+        )
+        raw_post = _extract_raw_post(PluginInvokeTextEmbeddingApi)
+
+        result = raw_post(
+            api_instance,
+            user_model=_user(),
+            tenant_model=_tenant(),
+            payload=_text_embedding_payload(),
+        )
+
+        assert result == {
+            "data": None,
+            "error": "Connection Error, 429 RESOURCE_EXHAUSTED. Please try again later.",
+            "error_code": "rate_limited",
+            "retryable": True,
+            "status": 429,
+        }
+
+    @patch("controllers.inner_api.plugin.plugin.PluginModelBackwardsInvocation")
+    def test_post_keeps_unknown_failures_non_retryable(self, mock_invocation, api_instance):
+        mock_invocation.invoke_text_embedding.side_effect = ValueError("invalid model input")
+        raw_post = _extract_raw_post(PluginInvokeTextEmbeddingApi)
+
+        result = raw_post(
+            api_instance,
+            user_model=_user(),
+            tenant_model=_tenant(),
+            payload=_text_embedding_payload(),
+        )
+
+        assert result == {
+            "data": None,
+            "error": "invalid model input",
+            "error_code": "invocation_failed",
+            "retryable": False,
+        }
+
+
+class TestPluginInvokeMultimodalEmbeddingApi:
+    @pytest.fixture
+    def api_instance(self):
+        return PluginInvokeMultimodalEmbeddingApi()
+
+    def test_has_post_method(self, api_instance):
+        assert hasattr(api_instance, "post")
+        assert callable(api_instance.post)
+
 
 class TestPluginInvokeRerankApi:
     """Test PluginInvokeRerankApi endpoint"""
@@ -120,6 +181,83 @@ class TestPluginInvokeRerankApi:
     def test_has_post_method(self, api_instance):
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
+
+
+class TestPluginModelCatalogApi:
+    @pytest.fixture
+    def api_instance(self):
+        return PluginModelCatalogApi()
+
+    @patch("controllers.inner_api.plugin.plugin.PluginModelBackwardsInvocation")
+    def test_post_lists_models_in_the_resolved_tenant_scope(self, mock_invocation, api_instance, app: Flask):
+        mock_invocation.list_models.return_value = {"items": [], "next_offset": None}
+        mock_tenant = _tenant()
+        mock_user = _user()
+        mock_payload = RequestListModels(model_type=ModelType.LLM)
+
+        raw_post = _extract_raw_post(PluginModelCatalogApi)
+        result = raw_post(
+            api_instance,
+            user_model=mock_user,
+            tenant_model=mock_tenant,
+            payload=mock_payload,
+        )
+
+        mock_invocation.list_models.assert_called_once_with(
+            tenant_id="tenant-id",
+            user_id="user-id",
+            payload=mock_payload,
+        )
+        assert result == {"data": {"items": [], "next_offset": None}, "error": ""}
+
+
+class TestPluginInvokeDatasourceApi:
+    @pytest.fixture
+    def api_instance(self):
+        return PluginInvokeDatasourceApi()
+
+    @patch("controllers.inner_api.plugin.plugin.length_prefixed_response")
+    @patch("controllers.inner_api.plugin.plugin.PluginDatasourceBackwardsInvocation")
+    def test_post_delegates_to_dify_datasource_runtime(
+        self,
+        mock_invocation,
+        mock_length_prefixed_response,
+        api_instance,
+        app: Flask,
+    ):
+        mock_tenant = _tenant()
+        mock_user = _user()
+        mock_payload = RequestInvokeDatasource(
+            tenant_id="tenant-id",
+            user_id="user-id",
+            provider="langgenius/notion_datasource/notion_datasource",
+            datasource="notion_datasource",
+            datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
+            credential_id="credential-id",
+            operation="get_online_document_pages",
+        )
+        invocation = object()
+        stream = object()
+        mock_invocation.invoke.return_value = invocation
+        mock_invocation.convert_to_event_stream.return_value = stream
+        mock_length_prefixed_response.return_value = "response"
+
+        raw_post = _extract_raw_post(PluginInvokeDatasourceApi)
+        result = raw_post(
+            api_instance,
+            user_model=mock_user,
+            tenant_model=mock_tenant,
+            payload=mock_payload,
+        )
+
+        assert result == "response"
+        mock_invocation.invoke.assert_called_once_with(
+            user_id="user-id",
+            tenant=mock_tenant,
+            payload=mock_payload,
+        )
+        mock_invocation.convert_to_event_stream.assert_called_once_with(invocation)
+        mock_length_prefixed_response.assert_called_once_with(0xF, stream)
 
 
 class TestPluginInvokeTTSApi:
@@ -280,7 +418,7 @@ class TestPluginUploadFileRequestApi:
         """Test that post() generates a signed URL and returns it"""
         # Arrange
         mock_get_uri.return_value = "/files/upload/for-plugin?sign=1"
-        monkeypatch.setattr(plugin_module.dify_config, "INTERNAL_FILES_URL", "http://api:5001")
+        apply_config_overrides(monkeypatch, INTERNAL_FILES_URL="http://api:5001")
         tenant = _tenant()
         user = _user()
         mock_payload = MagicMock()
@@ -350,8 +488,11 @@ class TestPluginDownloadFileRequestApi:
             size=123,
             download_uri="/files/tools/report.pdf?sign=1",
         )
-        monkeypatch.setattr(plugin_module.dify_config, "FILES_URL", "https://files.example.com")
-        monkeypatch.setattr(plugin_module.dify_config, "INTERNAL_FILES_URL", "http://api:5001")
+        apply_config_overrides(
+            monkeypatch,
+            FILES_URL="https://files.example.com",
+            INTERNAL_FILES_URL="http://api:5001",
+        )
         mock_payload = MagicMock()
         mock_payload.tenant_id = tenant.id
         mock_payload.user_id = "user-id"

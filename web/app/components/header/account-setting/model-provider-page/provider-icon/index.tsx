@@ -1,11 +1,8 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
-import { Openai } from '@/app/components/base/icons/src/vender/other'
-import useTheme from '@/hooks/use-theme'
-import { renderI18nObject } from '@/i18n-config'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
+import { renderI18nObject } from '@/i18n/metadata'
 import { useLanguage } from '../hooks'
 
 type ProviderIconProps = {
@@ -16,19 +13,22 @@ type ProviderIconProps = {
   className?: string
 }
 const ProviderIcon: FC<ProviderIconProps> = ({ provider, className }) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const language = useLanguage()
   const lightIconUrl = provider.icon_small ? renderI18nObject(provider.icon_small, language) : ''
   const darkIconUrl = provider.icon_small_dark
     ? renderI18nObject(provider.icon_small_dark, language)
     : ''
-  const iconUrl = theme === Theme.dark ? darkIconUrl || lightIconUrl : lightIconUrl
+  const iconUrl = theme === 'dark' ? darkIconUrl || lightIconUrl : lightIconUrl
 
   if (provider.provider === 'langgenius/anthropic/anthropic') {
     return (
       <div className={cn('py-1.75', className)}>
-        {theme === Theme.dark && <AnthropicLight className="h-2.5 w-22.5" />}
-        {theme === Theme.light && <AnthropicDark className="h-2.5 w-22.5" />}
+        <span
+          aria-hidden
+          className="i-custom-public-llm-anthropic-light h-2.5 w-22.5 not-dark:hidden"
+        />
+        <span aria-hidden className="i-custom-public-llm-anthropic-dark h-2.5 w-22.5 dark:hidden" />
       </div>
     )
   }
@@ -36,7 +36,10 @@ const ProviderIcon: FC<ProviderIconProps> = ({ provider, className }) => {
   if (provider.provider === 'langgenius/openai/openai') {
     return (
       <div className={className}>
-        <Openai className="h-6 w-auto text-text-inverted-dimmed" />
+        <span
+          aria-hidden
+          className="i-custom-vender-other-openai h-6 w-[calc(1.5rem*80/22)] text-text-inverted-dimmed"
+        />
       </div>
     )
   }

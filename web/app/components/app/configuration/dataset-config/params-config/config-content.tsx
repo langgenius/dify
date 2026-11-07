@@ -1,17 +1,17 @@
 'use client'
 
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { ModelConfig } from '@/app/components/workflow/types'
-import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { memo, useCallback, useEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import Divider from '@/app/components/base/divider'
-import { Infotip } from '@/app/components/base/infotip'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -29,8 +29,9 @@ import WeightedScore from './weighted-score'
 type Props = Readonly<{
   datasetConfigs: DatasetConfigs
   onChange: (configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void
-  selectedDatasets?: DataSet[]
+  selectedDatasets?: DatasetDetailWithPartialMembersResponse[]
   isInWorkflow?: boolean
+  preserveRetrievalMode?: boolean
   singleRetrievalModelConfig?: ModelConfig
   onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
   onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
@@ -43,17 +44,22 @@ const ConfigContent: FC<Props> = ({
   datasetConfigs,
   onChange,
   isInWorkflow,
+  preserveRetrievalMode = false,
   singleRetrievalModelConfig: singleRetrievalConfig = {} as ModelConfig,
   onSingleRetrievalModelChange = noopModelChange,
   onSingleRetrievalModelParamsChange = noopParamsChange,
   selectedDatasets = [],
 }) => {
-  const { t } = useTranslation()
+  const reasoningLabelId = useId()
+  const rerankLabelId = useId()
+  const rerankOptionLabelId = useId()
+
+  const { t } = useTranslation(['dataset', 'workflow', 'modelProvider'])
   const selectedDatasetsMode = useSelectedDatasetsMode(selectedDatasets)
   const type = datasetConfigs.retrieval_model
 
   useEffect(() => {
-    if (type === RETRIEVE_TYPE.oneWay) {
+    if (!preserveRetrievalMode && type === RETRIEVE_TYPE.oneWay) {
       onChange(
         {
           ...datasetConfigs,
@@ -62,7 +68,7 @@ const ConfigContent: FC<Props> = ({
         isInWorkflow,
       )
     }
-  }, [type, datasetConfigs, isInWorkflow, onChange])
+  }, [type, datasetConfigs, isInWorkflow, onChange, preserveRetrievalMode])
 
   const {
     modelList: rerankModelList,
@@ -152,8 +158,8 @@ const ConfigContent: FC<Props> = ({
     },
     {
       value: RerankingModeEnum.RerankingModel,
-      label: t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' }),
-      tips: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' }),
+      label: t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' }),
+      tips: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' }),
     },
   ]
 
@@ -206,10 +212,10 @@ const ConfigContent: FC<Props> = ({
       {type === RETRIEVE_TYPE.multiWay && (
         <>
           <div className="my-2 flex flex-col items-center py-1">
-            <div className="mr-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
+            <div className="me-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
               {t(($) => $.rerankSettings, { ns: 'dataset' })}
             </div>
-            <Divider bgStyle="gradient" className="m-0 h-px!" />
+            <Separator decorative variant="gradient" className="m-0" />
           </div>
           {selectedDatasetsMode.inconsistentEmbeddingModel && (
             <div className="mt-4 system-xs-medium text-text-warning">
@@ -243,13 +249,20 @@ const ConfigContent: FC<Props> = ({
                   )}
                   onClick={() => handleRerankModeChange(option.value)}
                 >
-                  <div className="truncate">{option.label}</div>
-                  <Infotip
-                    aria-label={option.tips}
-                    className="ml-0.5 size-3.5"
-                    popupClassName="w-[200px]"
-                  >
-                    {option.tips}
+                  <div id={`${rerankOptionLabelId}-${option.value}`} className="truncate">
+                    {option.label}
+                  </div>
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-labelledby={`${rerankOptionLabelId}-${option.value}`}
+                      className="ms-0.5 size-3.5"
+                    />
+                    <InfotipContent
+                      aria-labelledby={`${rerankOptionLabelId}-${option.value}`}
+                      className="w-50"
+                    >
+                      {option.tips}
+                    </InfotipContent>
                   </Infotip>
                 </div>
               ))}
@@ -265,15 +278,17 @@ const ConfigContent: FC<Props> = ({
                     onCheckedChange={handleManuallyToggleRerank}
                   />
                 )}
-                <div className="ml-1 system-sm-semibold leading-8 text-text-secondary">
-                  {t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' })}
-                </div>
-                <Infotip
-                  aria-label={t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
-                  className="ml-1"
-                  popupClassName="w-[200px]"
+                <div
+                  id={rerankLabelId}
+                  className="ms-1 system-sm-semibold leading-8 text-text-secondary"
                 >
-                  {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })}
+                </div>
+                <Infotip>
+                  <InfotipTrigger aria-labelledby={rerankLabelId} className="ms-1" />
+                  <InfotipContent aria-labelledby={rerankLabelId} className="w-50">
+                    {t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' })}
+                  </InfotipContent>
                 </Infotip>
               </div>
               {showRerankModel && (
@@ -341,13 +356,17 @@ const ConfigContent: FC<Props> = ({
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
         <div className="mt-4">
           <div className="flex items-center space-x-0.5">
-            <div className="text-[13px] leading-8 font-medium text-text-primary">
-              {t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'common' })}
-            </div>
-            <Infotip
-              aria-label={t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
+            <div
+              id={reasoningLabelId}
+              className="text-[13px] leading-8 font-medium text-text-primary"
             >
-              {t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
+              {t(($) => $['modelProvider.systemReasoningModel.key'], { ns: 'modelProvider' })}
+            </div>
+            <Infotip>
+              <InfotipTrigger aria-labelledby={reasoningLabelId} />
+              <InfotipContent aria-labelledby={reasoningLabelId}>
+                {t(($) => $['modelProvider.systemReasoningModel.tip'], { ns: 'modelProvider' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <ModelParameterModal

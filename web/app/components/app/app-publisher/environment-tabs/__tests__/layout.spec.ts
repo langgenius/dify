@@ -1,4 +1,4 @@
-import { getEnvironmentTabLayout } from '../layout'
+import { getEnvironmentTabLayout } from '../layout-calculations'
 
 const environmentTabWidths = {
   canary: 72,

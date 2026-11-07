@@ -80,14 +80,12 @@ def should_resolve_llm_model_selector(selector: object) -> bool:
 
     if selector is None:
         return False
-    if (
+    return not (
         isinstance(selector, Sequence)
         and not isinstance(selector, str | bytes)
         and len(selector) > 0
         and selector[0] != ENVIRONMENT_VARIABLE_NODE_ID
-    ):
-        return False
-    return True
+    )
 
 
 def resolve_llm_model_config(

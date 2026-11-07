@@ -1,128 +1,89 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import UndoRedo from '../undo-redo'
 
-const mockUnsubscribe = vi.fn()
-const mockHandleUndo = vi.fn()
-const mockHandleRedo = vi.fn()
+// The separate workflow-version picker does not own local undo/redo availability.
+vi.mock('@/app/components/workflow/header/view-workflow-history', () => ({ default: () => null }))
 
-let latestTemporalListener:
-  | ((state: { pastStates: unknown[]; futureStates: unknown[] }) => void)
-  | undefined
-let mockNodesReadOnly = false
-
-vi.mock('@/app/components/workflow/header/view-workflow-history', () => ({
-  default: () => <div data-testid="view-workflow-history" />,
-}))
-
-vi.mock('../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({
-      nodesReadOnly: mockNodesReadOnly,
+it('follows real history through edit, undo and redo', async () => {
+  const user = userEvent.setup()
+  const handleUndo = vi.fn()
+  const handleRedo = vi.fn()
+  const { store } = renderWorkflowComponent(
+    <UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />,
+    { historyStore: {} },
+  )
+  handleUndo.mockImplementation(() => store.temporal.getState().undo())
+  handleRedo.mockImplementation(() => store.temporal.getState().redo())
+  const undo = screen.getByRole('button', { name: 'workflow.common.undo' })
+  const redo = screen.getByRole('button', { name: 'workflow.common.redo' })
+  expect(undo).toHaveAttribute('aria-disabled', 'true')
+  expect(redo).toHaveAttribute('aria-disabled', 'true')
+  act(() =>
+    store.getState().setWorkflowHistory({
+      nodes: [createNode({ id: 'added' })],
+      edges: [],
+      workflowHistoryEvent: undefined,
     }),
-  }
+  )
+  expect(undo).not.toHaveAttribute('aria-disabled', 'true')
+  expect(redo).toHaveAttribute('aria-disabled', 'true')
+  await user.click(undo)
+  expect(store.getState().workflowHistory.nodes).toEqual([])
+  expect(undo).toHaveAttribute('aria-disabled', 'true')
+  expect(redo).not.toHaveAttribute('aria-disabled', 'true')
+  await user.click(redo)
+  expect(store.getState().workflowHistory.nodes.map((node) => node.id)).toEqual(['added'])
+  expect(handleUndo).toHaveBeenCalledOnce()
+  expect(handleRedo).toHaveBeenCalledOnce()
 })
 
-vi.mock('@/app/components/workflow/workflow-history-store', () => ({
-  useWorkflowHistoryStore: () => ({
-    store: {
-      temporal: {
-        subscribe: (
-          listener: (state: { pastStates: unknown[]; futureStates: unknown[] }) => void,
-        ) => {
-          latestTemporalListener = listener
-          return mockUnsubscribe
-        },
-      },
-    },
-    shortcutsEnabled: true,
-    setShortcutsEnabled: vi.fn(),
-  }),
-}))
-
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
-}))
-
-vi.mock('@/app/components/workflow/operator/tip-popup', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-}))
-
-describe('UndoRedo', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockNodesReadOnly = false
-    latestTemporalListener = undefined
+it('keeps unavailable actions focusable without activating them', async () => {
+  const user = userEvent.setup()
+  const handleUndo = vi.fn()
+  const handleRedo = vi.fn()
+  renderWorkflowComponent(<UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />, {
+    historyStore: {},
   })
+  await user.tab()
+  expect(screen.getByRole('button', { name: 'workflow.common.undo' })).toHaveFocus()
+  await user.keyboard('{Enter}')
+  await user.tab()
+  expect(screen.getByRole('button', { name: 'workflow.common.redo' })).toHaveFocus()
+  await user.keyboard(' ')
+  expect(handleUndo).not.toHaveBeenCalled()
+  expect(handleRedo).not.toHaveBeenCalled()
+})
 
-  it('enables undo and redo when history exists and triggers the callbacks', () => {
-    render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
-
-    act(() => {
-      latestTemporalListener?.({
-        pastStates: [{}],
-        futureStates: [{}],
-      })
+it('blocks available history actions when the canvas becomes read only', async () => {
+  const user = userEvent.setup()
+  const handleUndo = vi.fn()
+  const handleRedo = vi.fn()
+  const { store } = renderWorkflowComponent(
+    <UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />,
+    { historyStore: {} },
+  )
+  act(() => {
+    store.getState().setWorkflowHistory({
+      nodes: [createNode({ id: 'first' })],
+      edges: [],
+      workflowHistoryEvent: undefined,
     })
-
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.undo' }))
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.redo' }))
-
-    expect(mockHandleUndo).toHaveBeenCalledTimes(1)
-    expect(mockHandleRedo).toHaveBeenCalledTimes(1)
-  })
-
-  it('keeps unavailable history actions focusable without activating them', async () => {
-    const user = userEvent.setup()
-    render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
-    const undoButton = screen.getByRole('button', { name: 'workflow.common.undo' })
-    const redoButton = screen.getByRole('button', { name: 'workflow.common.redo' })
-
-    expect(undoButton).toHaveAttribute('aria-disabled', 'true')
-    expect(redoButton).toHaveAttribute('aria-disabled', 'true')
-
-    await user.tab()
-    expect(undoButton).toHaveFocus()
-    await user.keyboard('{Enter}')
-
-    await user.tab()
-    expect(redoButton).toHaveFocus()
-    await user.keyboard(' ')
-
-    expect(mockHandleUndo).not.toHaveBeenCalled()
-    expect(mockHandleRedo).not.toHaveBeenCalled()
-  })
-
-  it('does not trigger callbacks when the canvas is read only', () => {
-    mockNodesReadOnly = true
-    render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
-    const undoButton = screen.getByRole('button', { name: 'workflow.common.undo' })
-    const redoButton = screen.getByRole('button', { name: 'workflow.common.redo' })
-
-    act(() => {
-      latestTemporalListener?.({
-        pastStates: [{}],
-        futureStates: [{}],
-      })
+    store.getState().setWorkflowHistory({
+      nodes: [createNode({ id: 'second' })],
+      edges: [],
+      workflowHistoryEvent: undefined,
     })
-
-    fireEvent.click(undoButton)
-    fireEvent.click(redoButton)
-
-    expect(undoButton).toHaveAttribute('aria-disabled', 'true')
-    expect(redoButton).toHaveAttribute('aria-disabled', 'true')
-    expect(mockHandleUndo).not.toHaveBeenCalled()
-    expect(mockHandleRedo).not.toHaveBeenCalled()
+    store.temporal.getState().undo()
+    store.setState({ canvasReadOnly: true })
   })
-
-  it('unsubscribes from the temporal store on unmount', () => {
-    const { unmount } = render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
-
-    unmount()
-
-    expect(mockUnsubscribe).toHaveBeenCalledTimes(1)
-  })
+  for (const name of ['workflow.common.undo', 'workflow.common.redo']) {
+    const action = screen.getByRole('button', { name })
+    expect(action).toHaveAttribute('aria-disabled', 'true')
+    await user.click(action)
+  }
+  expect(handleUndo).not.toHaveBeenCalled()
+  expect(handleRedo).not.toHaveBeenCalled()
 })

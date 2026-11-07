@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Annotated
 
 from flask_restx import Resource
-from pydantic import Field
+from pydantic import Field, WithJsonSchema
 
 from controllers.common.fields import Parameters
 from controllers.common.schema import register_response_schema_models
@@ -10,6 +10,7 @@ from controllers.service_api.app.error import AgentNotPublishedError, AppUnavail
 from controllers.service_api.wraps import validate_app_token
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
@@ -23,8 +24,16 @@ class AppInfoResponse(ResponseModel):
     author_name: str | None
 
 
+URLString = Annotated[str, WithJsonSchema({"format": "url", "type": "string"})]
+
+
+class ToolIcon(ResponseModel):
+    background: str
+    content: str
+
+
 class AppMetaResponse(ResponseModel):
-    tool_icons: dict[str, Any] = Field(default_factory=dict)
+    tool_icons: dict[str, URLString | ToolIcon] = Field(default_factory=dict)
 
 
 register_response_schema_models(service_api_ns, Parameters, AppMetaResponse, AppInfoResponse)
@@ -34,6 +43,7 @@ register_response_schema_models(service_api_ns, Parameters, AppMetaResponse, App
 class AppParameterApi(Resource):
     """Resource for app variables."""
 
+    @error_responses(AgentNotPublishedError, AppUnavailableError)
     @service_api_ns.doc(
         summary="Get App Parameters",
         description=(
@@ -52,7 +62,6 @@ class AppParameterApi(Resource):
         responses={
             200: "Parameters retrieved successfully",
             401: "Unauthorized - invalid API token",
-            404: "Application not found",
         }
     )
     @service_api_ns.response(200, "Parameters retrieved successfully", service_api_ns.models[Parameters.__name__])
@@ -74,12 +83,14 @@ class AppParameterApi(Resource):
 
 @service_api_ns.route("/meta")
 class AppMetaApi(Resource):
+    @error_responses(AppUnavailableError)
     @service_api_ns.doc(
         summary="Get App Meta",
         description="Retrieve metadata about this application, including tool icons and other configuration details.",
         tags=["Applications"],
         responses={
             200: "Successfully retrieved application meta information.",
+            400: "`app_unavailable` : App unavailable or misconfigured.",
         },
     )
     @service_api_ns.doc("get_app_meta")
@@ -88,7 +99,6 @@ class AppMetaApi(Resource):
         responses={
             200: "Metadata retrieved successfully",
             401: "Unauthorized - invalid API token",
-            404: "Application not found",
         }
     )
     @service_api_ns.response(200, "Metadata retrieved successfully", service_api_ns.models[AppMetaResponse.__name__])
@@ -108,12 +118,14 @@ class AppMetaApi(Resource):
 
 @service_api_ns.route("/info")
 class AppInfoApi(Resource):
+    @error_responses(AppUnavailableError)
     @service_api_ns.doc(
         summary="Get App Info",
         description="Retrieve basic information about this application, including name, description, tags, and mode.",
         tags=["Applications"],
         responses={
             200: "Basic information of the application.",
+            400: "`app_unavailable` : App unavailable or misconfigured.",
         },
     )
     @service_api_ns.doc("get_app_info")
@@ -122,7 +134,6 @@ class AppInfoApi(Resource):
         responses={
             200: "Application info retrieved successfully",
             401: "Unauthorized - invalid API token",
-            404: "Application not found",
         }
     )
     @service_api_ns.response(

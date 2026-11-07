@@ -1,29 +1,32 @@
 'use client'
-import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactNode } from 'react'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
+  DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { AppModeEnum } from '@/types/app'
 
-type IShareLinkProps = {
-  isShow: boolean
-  onClose: () => void
+type CustomizeDialogProps = {
+  disabled?: boolean
+  triggerLabel?: string
   api_base_url: string
   appId: string
-  mode?: AppModeEnum
+  mode?: AppMode
   sourceCodeRepository?: 'webapp-conversation' | 'webapp-text-generator'
 }
 
-const StepNum: FC<{ children: React.ReactNode }> = ({ children }) => (
+const StepNum = ({ children }: { children: ReactNode }) => (
   <div className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-2xl bg-util-colors-blue-blue-50 text-text-accent">
     {children}
   </div>
@@ -50,42 +53,41 @@ const GithubIcon = ({ className }: { className: string }) => {
 
 const prefixCustomize = 'overview.appInfo.customize'
 
-const CustomizeModal: FC<IShareLinkProps> = ({
-  isShow,
-  onClose,
+export function CustomizeDialog({
+  disabled,
+  triggerLabel,
   appId,
   api_base_url,
   mode,
   sourceCodeRepository,
-}) => {
-  const { t } = useTranslation()
+}: CustomizeDialogProps) {
+  const { t } = useTranslation(['appOverview', 'common'])
   const docLink = useDocLink()
-  const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
+  const isChatApp = mode === 'chat' || mode === 'advanced-chat'
   const repository =
     sourceCodeRepository ?? (isChatApp ? 'webapp-conversation' : 'webapp-text-generator')
   const apiDocLink = docLink('/api-reference/guides/get-started')
 
   return (
-    <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!">
-        <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
-        </DialogTitle>
-        <DialogDescription className="mt-2 shrink-0 body-md-regular text-text-secondary">
-          {t(($) => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
-        </DialogDescription>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+    <Dialog>
+      <DialogTrigger
+        disabled={disabled}
+        render={<Button variant="secondary" className="flex items-center gap-1 px-3" />}
+      >
+        <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
+        {triggerLabel ?? t(($) => $['overview.appInfo.customize.entry'], { ns: 'appOverview' })}
+      </DialogTrigger>
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
+          </DialogTitle>
+          <DialogDescription>
+            {t(($) => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
+          </DialogDescription>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
           <div className="w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
             <span className="inline-flex shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $[`${prefixCustomize}.way`], { ns: 'appOverview' })} 1
@@ -102,22 +104,15 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                 <div className="mt-1 mb-2 text-xs text-text-tertiary">
                   {t(($) => $[`${prefixCustomize}.way1.step1Tip`], { ns: 'appOverview' })}
                 </div>
-                <Button
-                  nativeButton={false}
-                  render={
-                    <a
-                      href={`https://github.com/langgenius/${repository}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={t(($) => $[`${prefixCustomize}.way1.step1Operation`], {
-                        ns: 'appOverview',
-                      })}
-                    />
-                  }
+                <a
+                  href={`https://github.com/langgenius/${repository}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={buttonVariants()}
                 >
                   <GithubIcon className="text-text-secondary" />
                   {t(($) => $[`${prefixCustomize}.way1.step1Operation`], { ns: 'appOverview' })}
-                </Button>
+                </a>
               </div>
             </div>
             <div className="flex pt-4">
@@ -129,24 +124,17 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                 <div className="mt-1 mb-2 text-xs text-text-tertiary">
                   {t(($) => $[`${prefixCustomize}.way1.step2Tip`], { ns: 'appOverview' })}
                 </div>
-                <Button
-                  nativeButton={false}
-                  render={
-                    <a
-                      href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={t(($) => $[`${prefixCustomize}.way1.step2Operation`], {
-                        ns: 'appOverview',
-                      })}
-                    />
-                  }
+                <a
+                  href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={buttonVariants()}
                 >
                   <div className="border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
                   <span>
                     {t(($) => $[`${prefixCustomize}.way1.step2Operation`], { ns: 'appOverview' })}
                   </span>
-                </Button>
+                </a>
               </div>
             </div>
             <div className="flex py-4">
@@ -176,19 +164,11 @@ const CustomizeModal: FC<IShareLinkProps> = ({
             <p className="my-2 system-sm-medium text-text-secondary">
               {t(($) => $[`${prefixCustomize}.way2.name`], { ns: 'appOverview' })}
             </p>
-            <Button
-              nativeButton={false}
-              render={
-                <a
-                  href={apiDocLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={t(($) => $[`${prefixCustomize}.way2.operation`], {
-                    ns: 'appOverview',
-                  })}
-                />
-              }
-              className="mt-2"
+            <a
+              href={apiDocLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonVariants(), 'mt-2')}
             >
               <span className="text-sm text-text-secondary">
                 {t(($) => $[`${prefixCustomize}.way2.operation`], { ns: 'appOverview' })}
@@ -197,12 +177,10 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                 aria-hidden="true"
                 className="i-heroicons-arrow-top-right-on-square size-4 shrink-0 text-text-secondary"
               />
-            </Button>
+            </a>
           </div>
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )
 }
-
-export default CustomizeModal

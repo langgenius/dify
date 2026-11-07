@@ -10,7 +10,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.answer'
 
 const Panel: FC<NodePanelProps<AnswerNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const { readOnly, inputs, handleAnswerChange, filterVar } = useConfig(id, data)
 

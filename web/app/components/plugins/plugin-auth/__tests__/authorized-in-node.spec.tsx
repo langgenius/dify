@@ -40,20 +40,12 @@ vi.mock('@/service/use-plugins-auth', () => ({
   useGetPluginCredentialSchema: () => ({ data: undefined, isLoading: false }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useInvalidToolsByType: () => vi.fn(),
-}))
-
-const mockIsCurrentWorkspaceManager = vi.fn()
-
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
 
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({ data: { options: [] }, isLoading: false }),
-  useTriggerPluginDynamicOptionsInfo: () => ({ data: null, isLoading: false }),
-  useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
 // ==================== Test Utilities ====================
@@ -101,7 +93,6 @@ vi.mock('@/context/permission-state', async () => {
 describe('AuthorizedInNode Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager.mockReturnValue(true)
     mockIsPluginCredentialInfoLoading.mockReturnValue(false)
     mockGetPluginCredentialInfo.mockReturnValue({
       credentials: [createCredential({ is_default: true })],
@@ -113,15 +104,6 @@ describe('AuthorizedInNode Component', () => {
       is_oauth_custom_client_enabled: false,
       is_system_oauth_params_exists: false,
     })
-  })
-
-  it('should render with workspace default when no credentialId', async () => {
-    const AuthorizedInNode = (await import('../authorized-in-node')).default
-    const pluginPayload = createPluginPayload()
-    render(<AuthorizedInNode pluginPayload={pluginPayload} onAuthorizationItemClick={vi.fn()} />, {
-      wrapper: createWrapper(),
-    })
-    expect(screen.getByText('plugin.auth.workspaceDefault'))!.toBeInTheDocument()
   })
 
   it('should expose the workspace default credential id when requested', async () => {
@@ -137,6 +119,7 @@ describe('AuthorizedInNode Component', () => {
       { wrapper: createWrapper() },
     )
 
+    expect(screen.getByText('plugin.auth.workspaceDefault')).toBeInTheDocument()
     await waitFor(() => {
       expect(onDefaultCredentialChange).toHaveBeenCalledWith('test-credential-id')
     })
@@ -241,6 +224,24 @@ describe('AuthorizedInNode Component', () => {
       wrapper: createWrapper(),
     })
     const button = screen.getByRole('button')
+    expect(button.textContent).toContain('plugin.auth.unavailable')
+  })
+
+  it('should show unavailable when workspace default credential is missing', async () => {
+    const AuthorizedInNode = (await import('../authorized-in-node')).default
+    mockGetPluginCredentialInfo.mockReturnValue({
+      credentials: [],
+      supported_credential_types: [CredentialTypeEnum.API_KEY],
+      allow_custom_token: true,
+    })
+    const pluginPayload = createPluginPayload()
+
+    render(<AuthorizedInNode pluginPayload={pluginPayload} onAuthorizationItemClick={vi.fn()} />, {
+      wrapper: createWrapper(),
+    })
+
+    const button = screen.getByRole('button')
+    expect(button.textContent).toContain('plugin.auth.workspaceDefault')
     expect(button.textContent).toContain('plugin.auth.unavailable')
   })
 })

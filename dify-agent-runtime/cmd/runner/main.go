@@ -33,6 +33,12 @@ import (
 	"github.com/langgenius/dify/dify-agent-runtime/internal/landlock"
 )
 
+// startGatePollInterval is how often the parent runner checks for the
+// start-gate handshake file. It is a cheap local stat on the same path the
+// server has just written, so a fine interval keeps per-job startup latency
+// low without meaningful cost.
+const startGatePollInterval = 5 * time.Millisecond
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--exec" {
 		childMode()
@@ -67,7 +73,7 @@ func parentMode() {
 		if _, err := os.Stat(startGate); err == nil {
 			break
 		}
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(startGatePollInterval)
 	}
 
 	// Load environment overlay from JSON.
@@ -304,10 +310,7 @@ func childMode() {
 		home := os.Getenv("HOME")
 		jobDir := filepath.Dir(scriptPath)
 		cfg := landlock.ConfigFromEnv(home, cwd, jobDir)
-		if err := landlock.Restrict(cfg); err != nil {
-			// the landlock is best-effort, so we just log the error whatever it is
-			fmt.Fprintf(os.Stderr, "shellctl-runner: WARNING: %v — running without filesystem isolation\n", err)
-		}
+		cmdutil.HandleError(landlock.Restrict(cfg), 125, "apply Landlock restrictions")
 	}
 
 	// exec replaces the current process.

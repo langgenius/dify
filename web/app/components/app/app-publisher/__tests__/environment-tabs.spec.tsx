@@ -180,6 +180,6 @@ describe('PublisherEnvironmentTabs', () => {
 
     await user.hover(screen.getByRole('button', { name: longEnvironment.name }))
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(longEnvironment.name)
+    expect(await screen.findByText(longEnvironment.name, { selector: '[data-open]' })).toBeVisible()
   })
 })

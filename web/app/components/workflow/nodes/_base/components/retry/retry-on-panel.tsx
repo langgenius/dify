@@ -22,7 +22,7 @@ import { useRetryConfig } from './hooks'
 
 type RetryOnPanelProps = Pick<Node, 'id' | 'data'>
 const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleRetryConfigChange } = useRetryConfig(id)
   const { retry_config } = data
   const retryEnabledId = useId()
@@ -66,7 +66,7 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
         <div className="flex h-10 items-center justify-between px-4 py-2">
           <label
             htmlFor={retryEnabledId}
-            className="mr-0.5 system-sm-semibold-uppercase text-text-secondary"
+            className="mr-0.5 cursor-pointer system-sm-semibold-uppercase text-text-secondary"
           >
             {retryOnFailureLabel}
           </label>

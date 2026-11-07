@@ -1,12 +1,6 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useState } from 'react'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 
 type AgentLogNavMoreProps = {
@@ -14,12 +8,11 @@ type AgentLogNavMoreProps = {
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['common'])
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <IconButton
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -31,23 +24,18 @@ const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps
           </IconButton>
         }
       />
-      <DropdownMenuContent
-        placement="bottom-start"
-        sideOffset={2}
-        alignOffset={-54}
-        popupClassName="w-[136px] p-1"
-      >
+      <MenuContent align="start" sideOffset={2} alignOffset={-54} className="w-34">
         {options.map((option) => (
-          <DropdownMenuItem
+          <MenuItem
             key={option.message_id}
             className="system-md-regular"
             onClick={() => onShowAgentOrToolLog(option)}
           >
             {option.label}
-          </DropdownMenuItem>
+          </MenuItem>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 

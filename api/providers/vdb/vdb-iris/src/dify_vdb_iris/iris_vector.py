@@ -10,8 +10,10 @@ import json
 import logging
 import threading
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING, Any, override
+
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from configs.middleware.vdb.iris_config import IrisVectorConfig
@@ -102,10 +104,8 @@ class IrisConnectionPool:
             is_valid = True
         except (OSError, RuntimeError) as e:
             logger.debug("Connection validation failed: %s", e)
-            try:
+            with suppress(OSError, RuntimeError):
                 conn.close()
-            except (OSError, RuntimeError):
-                pass
 
         with self._lock:
             self._pool.append(conn if is_valid else self._create_connection())
@@ -166,10 +166,8 @@ class IrisConnectionPool:
         """Close all connections (application shutdown only)."""
         with self._lock:
             for conn in self._pool:
-                try:
+                with suppress(OSError, RuntimeError):
                     conn.close()
-                except (OSError, RuntimeError):
-                    pass
             self._pool.clear()
             self._in_use = 0
             self._schemas_initialized.clear()
@@ -491,7 +489,9 @@ class IrisVectorFactory(AbstractVectorFactory):
     """Factory for creating IrisVector instances."""
 
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> IrisVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> IrisVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix

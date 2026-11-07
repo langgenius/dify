@@ -1,13 +1,14 @@
 'use client'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
+import { billingErrorMessageKey } from '../billing-error'
 
-export const useEducationDiscount = () => {
-  const { t } = useTranslation()
+export function useEducationDiscount() {
+  const { t } = useTranslation(['billing'])
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isEducationDiscountLoading, setIsEducationDiscountLoading] = useState(false)
 
@@ -21,10 +22,13 @@ export const useEducationDiscount = () => {
 
     setIsEducationDiscountLoading(true)
     try {
-      const res = await consoleClient.billing.subscription.get({
-        query: { plan: 'professional', interval: 'year' },
-      })
-      window.location.href = res.url
+      const { url } = await consoleClient.billing.subscription.get(
+        { query: { plan: 'professional', interval: 'year' } },
+        { context: { silent: true } },
+      )
+      window.location.href = url
+    } catch (error) {
+      toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
     } finally {
       setIsEducationDiscountLoading(false)
     }

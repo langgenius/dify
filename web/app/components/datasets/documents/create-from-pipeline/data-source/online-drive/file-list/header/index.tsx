@@ -22,7 +22,7 @@ const Header = ({
   searchResultsLength,
   onSearchValueChange,
 }: HeaderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const searchLabel = t(($) => $['onlineDrive.breadcrumbs.searchPlaceholder'], {
     ns: 'datasetPipeline',
   })

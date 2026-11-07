@@ -1,15 +1,7 @@
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
-import { Brush01 } from '@/app/components/base/icons/src/vender/solid/editor'
-import { Scales02 } from '@/app/components/base/icons/src/vender/solid/FinanceAndECommerce'
-import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { TONE_LIST } from '@/config'
 
 const PRESET_TONE_LIST = TONE_LIST.slice(0, 3)
@@ -22,9 +14,24 @@ const toneI18nKeyMap = {
 } as const
 
 const TONE_ICONS: Record<number, ReactNode> = {
-  1: <Brush01 className="mr-2 h-3.5 w-3.5 text-[#6938EF]" />,
-  2: <Scales02 className="mr-2 h-3.5 w-3.5 text-indigo-600" />,
-  3: <Target04 className="mr-2 h-3.5 w-3.5 text-[#107569]" />,
+  1: (
+    <span
+      aria-hidden
+      className="me-2 i-custom-vender-solid-editor-brush-01 h-3.5 w-3.5 text-[#6938EF]"
+    />
+  ),
+  2: (
+    <span
+      aria-hidden
+      className="me-2 i-custom-vender-solid-FinanceAndECommerce-scales-02 h-3.5 w-3.5 text-indigo-600"
+    />
+  ),
+  3: (
+    <span
+      aria-hidden
+      className="me-2 i-custom-vender-solid-general-target-04 h-3.5 w-3.5 text-[#107569]"
+    />
+  ),
 }
 
 type PresetsParameterProps = {
@@ -33,7 +40,7 @@ type PresetsParameterProps = {
 }
 
 function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParameterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const supportedParameterNameSet = supportedParameterNames
     ? new Set(supportedParameterNames)
     : undefined
@@ -46,8 +53,8 @@ function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParamete
   if (!visiblePresetTones.length) return null
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <Button
             size="small"
@@ -56,18 +63,18 @@ function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParamete
           />
         }
       >
-        {t(($) => $['modelProvider.loadPresets'], { ns: 'common' })}
+        {t(($) => $['modelProvider.loadPresets'], { ns: 'modelProvider' })}
         <span className="i-ri-arrow-down-s-line size-3.5" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      </MenuTrigger>
+      <MenuContent>
         {visiblePresetTones.map((tone) => (
-          <DropdownMenuItem key={tone.id} onClick={() => onSelect(tone.id)}>
+          <MenuItem key={tone.id} onClick={() => onSelect(tone.id)}>
             {TONE_ICONS[tone.id]}
             {t(($) => $[toneI18nKeyMap[tone.name]], { ns: 'common' })}
-          </DropdownMenuItem>
+          </MenuItem>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 

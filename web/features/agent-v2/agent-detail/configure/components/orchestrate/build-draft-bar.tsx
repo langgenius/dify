@@ -28,14 +28,14 @@ export function AgentBuildDraftBar({
   onApply,
   onDiscard,
 }: AgentBuildDraftBarProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCustom } = useTranslation('custom')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCustom } = useTranslation(['custom'])
   const [open, setOpen] = useState(false)
   const [panelWidth, setPanelWidth] = useState<number>()
   const collapsedBarRef = useRef<HTMLDivElement>(null)
   const changesPanelId = useId()
   const isActionPending = isApplying || isDiscarding
-  const applyDisabled = disabled || isActionPending
+  const applyDisabled = disabled || isDiscarding
   const discardDisabled = disabled || isActionPending
   const changesLabel = t(($) => $['agentDetail.configure.buildDraft.changesToApply'], {
     count: changesCount,
