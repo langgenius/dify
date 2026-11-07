@@ -935,6 +935,36 @@ class TestFixedRecursiveCharacterTextSplitter:
         assert len(result) > 1
         assert " ".join(result) == text
 
+    def test_preserves_consecutive_spaces_in_space_fallback(self):
+        """Consecutive spaces inside a chunk must survive recursive space splitting."""
+        text = " ".join(f"token{i}" for i in range(24)).replace("token10 token11", "token10    token11")
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            chunk_size=40,
+            chunk_overlap=0,
+            keep_separator=True,
+        )
+
+        result = splitter.split_text(text)
+
+        assert len(result) > 1
+        assert "token10    token11" in "".join(result)
+
+    def test_space_fallback_without_keep_separator_does_not_reattach_spaces(self):
+        """keep_separator=False keeps the previous collapsed-space behavior."""
+        text = "token10    token11"
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            separators=[" "],
+            chunk_size=10,
+            chunk_overlap=0,
+            keep_separator=False,
+        )
+
+        result = splitter.split_text(text)
+
+        assert result == ["token10", "token11"]
+
     def test_character_level_splitting(self):
         """Test character-level splitting when no separator works."""
         text = "verylongwordwithoutspaces"
