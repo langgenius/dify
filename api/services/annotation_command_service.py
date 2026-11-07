@@ -1,10 +1,11 @@
-"""Annotation writes and settings, with index tasks dispatched after transactions close."""
+"""Annotation writes and their index tasks, with vector work outside persistence sessions."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
 from services.annotation_query import AnnotationRecord, AnnotationSettingRecord
+from services.annotation_reply_service import AnnotationIndexBinding, AnnotationIndexEntry
 
 
 class AnnotationSettingNotFoundError(Exception):
@@ -27,7 +28,26 @@ class AnnotationDeletionResult:
     collection_binding_id: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class AnnotationIndexWritePlan:
+    binding: AnnotationIndexBinding
+    question: str
+    content: str
+
+
 class AnnotationWriteStore(Protocol):
+    def prepare_index_write(
+        self, *, tenant_id: str, app_id: str, annotation_id: str, collection_binding_id: str
+    ) -> AnnotationIndexWritePlan | None:
+        """Return detached index inputs, or None if the annotation or queued setting is no longer current."""
+        ...
+
+    def prepare_index_delete(
+        self, *, tenant_id: str, app_id: str, annotation_id: str, collection_binding_id: str
+    ) -> AnnotationIndexBinding | None:
+        """Resolve the queued collection for a deleted row; None means a row still exists and must be retained."""
+        ...
+
     def create(
         self, *, tenant_id: str, app_id: str, account_id: str, question: str, answer: str
     ) -> AnnotationWriteResult:
@@ -92,19 +112,75 @@ class AnnotationIndexDeleter(Protocol):
     def __call__(self, *, annotation_id: str, app_id: str, tenant_id: str, collection_binding_id: str) -> object: ...
 
 
+class AnnotationCommandIndex(Protocol):
+    def add(
+        self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, entries: tuple[AnnotationIndexEntry, ...]
+    ) -> None: ...
+
+    def replace(
+        self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, entry: AnnotationIndexEntry
+    ) -> None: ...
+
+    def remove(self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, annotation_id: str) -> None: ...
+
+
 class AnnotationCommandService:
     def __init__(
         self,
         *,
         annotations: AnnotationWriteStore,
+        index: AnnotationCommandIndex,
         add_index: AnnotationIndexWriter,
         update_index: AnnotationIndexWriter,
         delete_index: AnnotationIndexDeleter,
     ) -> None:
         self._annotations = annotations
+        self._index = index
         self._add_index = add_index
         self._update_index = update_index
         self._delete_index = delete_index
+
+    def execute_index_add(
+        self, *, annotation_id: str, question: str, tenant_id: str, app_id: str, collection_binding_id: str
+    ) -> None:
+        # Skip tasks already stale at execution time. Changes during vector I/O
+        # still need index reconciliation; this snapshot does not serialize workers.
+        plan = self._annotations.prepare_index_write(
+            tenant_id=tenant_id, app_id=app_id, annotation_id=annotation_id, collection_binding_id=collection_binding_id
+        )
+        if plan is None or plan.question != question:
+            return
+        self._index.add(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            binding=plan.binding,
+            entries=(AnnotationIndexEntry(id=annotation_id, question=plan.question),),
+        )
+
+    def execute_index_update(
+        self, *, annotation_id: str, question: str, tenant_id: str, app_id: str, collection_binding_id: str
+    ) -> None:
+        plan = self._annotations.prepare_index_write(
+            tenant_id=tenant_id, app_id=app_id, annotation_id=annotation_id, collection_binding_id=collection_binding_id
+        )
+        # Updates retain the historical answer fallback; adds retain an empty question.
+        if plan is None or (plan.question or plan.content) != question:
+            return
+        self._index.replace(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            binding=plan.binding,
+            entry=AnnotationIndexEntry(id=annotation_id, question=plan.question or plan.content),
+        )
+
+    def execute_index_delete(
+        self, *, annotation_id: str, app_id: str, tenant_id: str, collection_binding_id: str
+    ) -> None:
+        binding = self._annotations.prepare_index_delete(
+            tenant_id=tenant_id, app_id=app_id, annotation_id=annotation_id, collection_binding_id=collection_binding_id
+        )
+        if binding is not None:
+            self._index.remove(tenant_id=tenant_id, app_id=app_id, binding=binding, annotation_id=annotation_id)
 
     def create(self, *, tenant_id: str, app_id: str, account_id: str, question: str, answer: str) -> AnnotationRecord:
         """Service API creation accepts empty text and never updates an existing annotation."""

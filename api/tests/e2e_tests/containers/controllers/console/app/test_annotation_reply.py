@@ -41,6 +41,7 @@ from repositories.annotation_reply_job_repository import (
     annotation_reply_job_owner_key,
 )
 from repositories.annotation_repository import AnnotationRepository
+from services.annotation_reply_index import AnnotationVectorIndex
 from services.annotation_reply_service import AnnotationReplyAction, AnnotationReplyService
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
@@ -128,7 +129,8 @@ def harness(flask_app_with_containers: Flask) -> Iterator[_Harness]:
         celery.task(name=disable_annotation_reply_task.name, shared=False)(disable_annotation_reply_task.run),
     )
     service = AnnotationReplyService(
-        apps=AnnotationRepository(session_factory=factory),
+        annotations=AnnotationRepository(session_factory=factory),
+        index=AnnotationVectorIndex(session_factory=factory),
         jobs=RedisAnnotationReplyJobRepository(redis=redis),
         enable_task=tasks[0].delay,
         disable_task=tasks[1].delay,
@@ -304,7 +306,7 @@ def test_concurrent_caller_can_poll_publication_failure_and_retry(
 
     def start_job() -> None:
         if action == "enable":
-            harness.service.enable(
+            harness.service.request_enable(
                 tenant_id=harness.target.tenant_id,
                 app_id=harness.target.id,
                 account_id=harness.account.id,
@@ -313,7 +315,7 @@ def test_concurrent_caller_can_poll_publication_failure_and_retry(
                 embedding_model_name="text-embedding-3-small",
             )
         else:
-            harness.service.disable(tenant_id=harness.target.tenant_id, app_id=harness.target.id)
+            harness.service.request_disable(tenant_id=harness.target.tenant_id, app_id=harness.target.id)
 
     # Pause the real publisher after reservation, then let its serializer fail.
     before_task_publish.connect(pause_publication, sender=task.name, weak=True)
@@ -369,7 +371,7 @@ def test_concurrent_requests_publish_only_one_reply_task(harness: _Harness, acti
     def request() -> str:
         barrier.wait(timeout=10)
         if action == "enable":
-            result = harness.service.enable(
+            result = harness.service.request_enable(
                 tenant_id=harness.target.tenant_id,
                 app_id=harness.target.id,
                 account_id=harness.account.id,
@@ -378,7 +380,7 @@ def test_concurrent_requests_publish_only_one_reply_task(harness: _Harness, acti
                 embedding_model_name="text-embedding-3-small",
             )
         else:
-            result = harness.service.disable(tenant_id=harness.target.tenant_id, app_id=harness.target.id)
+            result = harness.service.request_disable(tenant_id=harness.target.tenant_id, app_id=harness.target.id)
         return result.job_id
 
     with ThreadPoolExecutor(max_workers=8) as executor:
