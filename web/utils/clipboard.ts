@@ -12,6 +12,7 @@ export async function writeTextToClipboard(text: string): Promise<void> {
 }
 
 async function fallbackCopyTextToClipboard(text: string): Promise<void> {
+  const previousActiveElement = document.activeElement
   const textArea = document.createElement('textarea')
   textArea.value = text
   textArea.style.position = 'fixed' // Avoid scrolling to bottom
@@ -27,6 +28,8 @@ async function fallbackCopyTextToClipboard(text: string): Promise<void> {
     return Promise.reject(convertAnyToError(err))
   } finally {
     document.body.removeChild(textArea)
+    if (previousActiveElement instanceof HTMLElement && previousActiveElement.isConnected)
+      previousActiveElement.focus({ preventScroll: true })
   }
 }
 
