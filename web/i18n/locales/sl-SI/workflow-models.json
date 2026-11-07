@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "Zahtevano se uporablja le kot referenca za sklepanje modela in ne kot obvezno validacijo izhodnih parametrov.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "Tip",
   "nodes.parameterExtractor.advancedSetting": "Napredno nastavitev",
-  "nodes.parameterExtractor.extractParametersNotSet": "Parameterji za ekstrakcijo niso nastavljeni",
+  "nodes.parameterExtractor.extractParametersNotSet": "Ni konfiguriranih parametrov za ekstrakcijo",
   "nodes.parameterExtractor.importFromTool": "Uvoz iz orodij",
   "nodes.parameterExtractor.instruction": "Navodilo",
   "nodes.parameterExtractor.instructionTip": "Vnesite dodatna navodila, da pomagate izvleku parametrov razumeti, kako izvleči parametre.",

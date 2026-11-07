@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "مطلوب يستخدم فقط كمرجع لاستدلال النموذج، وليس للتحقق الإلزامي من إخراج المعلمة.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "النوع",
   "nodes.parameterExtractor.advancedSetting": "إعدادات متقدمة",
-  "nodes.parameterExtractor.extractParametersNotSet": "لم يتم إعداد استخراج المعلمات",
+  "nodes.parameterExtractor.extractParametersNotSet": "لم يتم تكوين أي معلمات استخراج",
   "nodes.parameterExtractor.importFromTool": "استيراد من الأدوات",
   "nodes.parameterExtractor.instruction": "تعليمات",
   "nodes.parameterExtractor.instructionTip": "أدخل تعليمات إضافية لمساعدة مستخرج المعلمات على فهم كيفية استخراج المعلمات.",

@@ -86,11 +86,9 @@ const ChangePasswordForm = () => {
   }, [password, token, valid, confirmPassword])
 
   return (
-    <div
-      className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
-    >
+    <>
       {!showSuccess && (
-        <div className="flex flex-col md:w-100">
+        <div className="flex flex-col">
           <div className="mx-auto w-full">
             <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.changePassword, { ns: 'login' })}
@@ -143,7 +141,7 @@ const ChangePasswordForm = () => {
         </div>
       )}
       {showSuccess && (
-        <div className="flex flex-col md:w-100">
+        <div className="flex flex-col">
           <div className="mx-auto w-full">
             <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
               <RiCheckboxCircleFill aria-hidden="true" className="size-6 text-text-success" />
@@ -163,7 +161,7 @@ const ChangePasswordForm = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 

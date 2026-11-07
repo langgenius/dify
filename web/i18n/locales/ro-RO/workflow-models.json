@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "Necesar este utilizat doar ca referință pentru inferența modelului și nu pentru validarea obligatorie a ieșirii parametrului.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "Tip",
   "nodes.parameterExtractor.advancedSetting": "Setare avansată",
-  "nodes.parameterExtractor.extractParametersNotSet": "Parametrii de extragere nu sunt setați",
+  "nodes.parameterExtractor.extractParametersNotSet": "Nu sunt configurați parametri de extragere",
   "nodes.parameterExtractor.importFromTool": "Importă din instrumente",
   "nodes.parameterExtractor.instruction": "Instrucțiune",
   "nodes.parameterExtractor.instructionTip": "Introduceți instrucțiuni suplimentare pentru a ajuta extractorul de parametri să înțeleagă cum să extragă parametrii.",
