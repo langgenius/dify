@@ -129,6 +129,7 @@ Mocks must preserve the public contract needed by the test. A mock must not reim
 ## Dify Test Setup
 
 - Following [Vite+ testing configuration], tests under `web/` use two explicit projects; rendered component and feature tests default to `browser`, and non-DOM logic stays in `unit`. Both projects are configured in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
+- If Vitest reports `optimized dependencies changed` and reloads a Browser test, reproduce with a fresh Vite cache and add the external package to the Browser project's `optimizeDeps.include`. Do not hide the dependency behind an owned-component mock, extend timeouts, or accept the reload as harmless.
 - Browser string locators use Vitest 5's exact, case-sensitive matching. Use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`. In Browser Mode, `toHaveTextContent` checks the entire normalized text; use `toMatchTextContent` for a substring or regular expression. Use the latter for negated partial checks too: `not.toHaveTextContent` only rejects exact whole-text equality.
 - Tests in one browser file share a page. `web/vitest.browser.setup.ts` resets the viewport and pointer before each test; set the viewport a test depends on inside that test.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
@@ -166,6 +167,8 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 
 ## Provenance
 
+- [#45758], `signin/normal-form`: importing the real Turnstile script adapter caused Vite to optimize `next/script` during the Browser suite, reload active iframes, and cascade into unrelated hook and startup failures.
+
 - [#45653], `audio-gallery/AudioPlayer` and `video-gallery/VideoPlayer`: native hit testing exposed a hidden overlay intercepting pointer input, while the real Fullscreen API exposed sibling controls left outside the fullscreen element.
 
 - [#45604], `icon-picker/image-input` and `file-uploader-in-chat-input/file-item`: use native external-file payloads for drop ownership; a media source-switch mutation survived `currentSrc` alone and failed when the requested source was also checked.
@@ -196,6 +199,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [#45553]: https://github.com/langgenius/dify/pull/45553
 [#45604]: https://github.com/langgenius/dify/pull/45604
 [#45653]: https://github.com/langgenius/dify/pull/45653
+[#45758]: https://github.com/langgenius/dify/pull/45758
 [Browser Mode Admission]: #browser-mode-admission
 [Dify UI testing contract]: ../../packages/dify-ui/docs/testing.md
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
