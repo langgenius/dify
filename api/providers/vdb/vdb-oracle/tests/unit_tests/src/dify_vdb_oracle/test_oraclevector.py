@@ -175,30 +175,49 @@ def test_create_delegates_collection_and_insert(oracle_module):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_add_texts_inserts_and_logs_on_failures(oracle_module, monkeypatch: pytest.MonkeyPatch):
+def _vector_with_cursor(oracle_module, cursor):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.table_name = "embedding_collection_1"
     vector.input_type_handler = MagicMock()
     vector.output_type_handler = MagicMock()
-
-    cursor = MagicMock()
-    cursor.execute.side_effect = [None, RuntimeError("insert failed")]
     connection = _connection_with_cursor(cursor)
     vector._get_connection = MagicMock(return_value=connection)
+    return vector, connection
 
-    monkeypatch.setattr(oracle_module.uuid, "uuid4", lambda: "generated-uuid")
-    docs = [
+
+def _add_texts_docs():
+    return [
         Document(page_content="a", metadata={"doc_id": "doc-a"}),
         Document(page_content="b", metadata={"document_id": "doc-b"}),
         SimpleNamespace(page_content="c", metadata=None),
     ]
 
-    ids = vector.add_texts(docs, [[0.1], [0.2], [0.3]])
+
+def test_add_texts_inserts_rows_and_returns_their_ids(oracle_module, monkeypatch: pytest.MonkeyPatch):
+    cursor = MagicMock()
+    vector, connection = _vector_with_cursor(oracle_module, cursor)
+    monkeypatch.setattr(oracle_module.uuid, "uuid4", lambda: "generated-uuid")
+
+    ids = vector.add_texts(_add_texts_docs(), [[0.1], [0.2], [0.3]])
 
     assert ids == ["doc-a", "generated-uuid"]
     assert cursor.execute.call_count == 2
-    assert connection.commit.call_count >= 1
+    assert connection.commit.call_count == 2
     connection.close.assert_called()
+
+
+def test_add_texts_raises_when_an_insert_fails(oracle_module, monkeypatch: pytest.MonkeyPatch):
+    cursor = MagicMock()
+    cursor.execute.side_effect = [None, RuntimeError("insert failed")]
+    vector, connection = _vector_with_cursor(oracle_module, cursor)
+    monkeypatch.setattr(oracle_module.uuid, "uuid4", lambda: "generated-uuid")
+
+    # A failed insert must not be reported back as a stored id.
+    with pytest.raises(RuntimeError, match="insert failed"):
+        vector.add_texts(_add_texts_docs(), [[0.1], [0.2], [0.3]])
+
+    assert cursor.execute.call_count == 2
+    assert connection.commit.call_count == 1
 
 
 def test_text_exists_and_get_by_ids(oracle_module):
