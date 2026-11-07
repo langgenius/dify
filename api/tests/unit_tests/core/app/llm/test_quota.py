@@ -103,7 +103,7 @@ def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None]:
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     sessions = []
 
-    def _session():
+    def _session() -> object:
         session = session_maker()
         sessions.append(session)
         return session
