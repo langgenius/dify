@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import Mock, patch
+from urllib.parse import parse_qsl
 
 import httpx
 import pytest
@@ -23,6 +24,7 @@ from core.tools.entities.tool_entities import (
     ToolInvokeMessage,
 )
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
+from core.tools.utils.parser import ApiBasedToolSchemaParser
 
 pytest_plugins = ("tests.helpers.unit.core.tools.custom_tool.api_tool_http_fixture",)
 
@@ -54,6 +56,71 @@ parameters = {
 
 
 class TestApiToolRequestAssemblyCases:
+    @staticmethod
+    @pytest.mark.parametrize(
+        "content_type", ["application/x-www-form-urlencoded", "application/x-www-form-urlencoded; charset=utf-8"]
+    )
+    @pytest.mark.parametrize("tags", [["alpha beta", "中&文"], ["single"], []])
+    def test_imported_form_array_sends_each_value(
+        monkeypatch: pytest.MonkeyPatch, content_type: str, tags: list[str]
+    ) -> None:
+        schema = {
+            "openapi": "3.0.3",
+            "info": {"title": "Form API", "version": "1.0.0"},
+            "servers": [{"url": "https://api.example.com"}],
+            "paths": {
+                "/items": {
+                    "post": {
+                        "operationId": "add_items",
+                        "requestBody": {
+                            "content": {
+                                content_type: {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "tags": {"type": "array", "items": {"type": "string"}},
+                                            "count": {"type": "integer"},
+                                            "note": {"type": "string"},
+                                            "address": {"type": "object"},
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                    }
+                }
+            },
+        }
+        bundle = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(schema)[0]
+        tool = _build_tool()
+        tool.api_bundle = bundle
+        assert bundle.parameters is not None
+        tool.entity.parameters = bundle.parameters
+        sent_fields: list[list[tuple[str, str]]] = []
+
+        def capture_request(request: httpx.Request) -> httpx.Response:
+            sent_fields.append(parse_qsl(request.content.decode(), keep_blank_values=True))
+            return httpx.Response(200, json={"ok": True})
+
+        with Session() as session, httpx.Client(transport=httpx.MockTransport(capture_request)) as client:
+            monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda ssl_verify_enabled: client)
+            list(
+                tool.invoke(
+                    session=session,
+                    user_id="user-1",
+                    tool_parameters={
+                        "tags": json.dumps(tags),
+                        "count": "2",
+                        "note": "x+y &中",
+                        "address": json.dumps({"city": "Paris"}),
+                    },
+                )
+            )
+
+        expected_fields = [("tags", tag) for tag in tags]
+        expected_fields.extend([("count", "2"), ("note", "x+y &中"), ("address", "{'city': 'Paris'}")])
+        assert sent_fields == [expected_fields]
+
     @staticmethod
     @pytest.mark.parametrize("schema", [{"type": "number"}, {"anyOf": [{"type": "number"}, {"type": "null"}]}])
     @pytest.mark.parametrize(
