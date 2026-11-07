@@ -70,6 +70,9 @@ class AppListParams(AppListBaseParams):
     status: str | None = None
     openapi_visible: bool = False
     agent_is_published: bool | None = None
+    # Whether a published version exists that a run can use; `agent_is_published` instead
+    # tracks whether the draft was edited since.
+    agent_is_runnable: bool | None = None
 
 
 class StarredAppListParams(AppListBaseParams):

@@ -15,7 +15,7 @@ EMPTY_INPUT_SCHEMA: dict[str, Any] = {
     "required": [],
 }
 
-_CHAT_FAMILY = frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT})
+_CHAT_FAMILY = frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT})
 
 
 def _file_object_shape() -> dict[str, Any]:
@@ -90,7 +90,7 @@ def _form_to_jsonschema(form: list[dict[str, Any]]) -> tuple[dict[str, Any], lis
 def build_input_schema(mode: str, user_input_form: list[dict[str, Any]]) -> dict[str, Any]:
     """Derive Draft 2020-12 JSON Schema from `user_input_form` + app mode.
 
-    chat / agent-chat / advanced-chat: top-level `query` (required, minLength=1) + `inputs` object.
+    chat / agent-chat / advanced-chat / agent: top-level `query` (required, minLength=1) + `inputs` object.
     completion / workflow: `inputs` object only.
     """
     inputs_props, inputs_required = _form_to_jsonschema(user_input_form)
