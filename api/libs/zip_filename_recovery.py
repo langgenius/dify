@@ -24,6 +24,13 @@ class _Directory:
 
 
 def _locate_directory(content: bytes) -> _Directory:
+    """Locate a bounded single-disk directory or raise ``BadZipFile``.
+
+    Preconditions: content is the complete archive, possibly with a prefix.
+    Postconditions: directory bounds and entry count fit in content. A count
+    of exactly 0xffff is valid without ZIP64; extended sizes and offsets
+    still require ZIP64 information.
+    """
     end = content.rfind(b"PK\x05\x06", max(0, len(content) - 65535 - _END_RECORD.size))
     if end < 0 or end + _END_RECORD.size > len(content):
         raise zipfile.BadZipFile("Missing ZIP end record")
@@ -55,7 +62,7 @@ def _locate_directory(content: bytes) -> _Directory:
         ):
             raise zipfile.BadZipFile("Invalid ZIP64 end record")
         end = record_position
-    elif entries == 0xFFFF or size == 0xFFFFFFFF or offset == 0xFFFFFFFF:
+    elif size == 0xFFFFFFFF or offset == 0xFFFFFFFF:
         raise zipfile.BadZipFile("Missing ZIP64 directory information")
 
     start = end - size
