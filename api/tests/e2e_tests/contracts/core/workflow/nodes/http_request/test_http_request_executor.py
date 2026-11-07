@@ -61,7 +61,7 @@ def test_executor_with_json_body_and_number_variable() -> None:
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
-        http_client=ssrf_proxy,
+        http_client=ssrf_proxy,  # pyrefly: ignore
         file_manager=file_manager,
     )
 
@@ -117,7 +117,7 @@ def test_executor_with_json_body_and_object_variable() -> None:
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
-        http_client=ssrf_proxy,
+        http_client=ssrf_proxy,  # pyrefly: ignore
         file_manager=file_manager,
     )
 
@@ -175,7 +175,7 @@ def test_executor_with_json_body_and_nested_object_variable() -> None:
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
-        http_client=ssrf_proxy,
+        http_client=ssrf_proxy,  # pyrefly: ignore
         file_manager=file_manager,
     )
 
@@ -221,7 +221,7 @@ def test_extract_selectors_from_template_with_newline() -> None:
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
-        http_client=ssrf_proxy,
+        http_client=ssrf_proxy,  # pyrefly: ignore
         file_manager=file_manager,
     )
 
@@ -268,7 +268,7 @@ def test_executor_with_form_data() -> None:
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
-        http_client=ssrf_proxy,
+        http_client=ssrf_proxy,  # pyrefly: ignore
         file_manager=file_manager,
     )
 
@@ -321,7 +321,7 @@ def test_init_headers() -> None:
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
-            http_client=ssrf_proxy,
+            http_client=ssrf_proxy,  # pyrefly: ignore
             file_manager=file_manager,
         )
 
