@@ -8,6 +8,44 @@ from graphon.variables.input_entities import VariableEntityType
 
 
 class TestBasicVariablesConfigManagerConvert:
+    @pytest.mark.parametrize(
+        ("variable_type", "default"),
+        [
+            ("text-input", "hello"),
+            ("text-input", ""),
+            ("paragraph", "multiple\nlines"),
+            ("number", 0),
+            ("number", "3.5"),
+            ("select", "a"),
+            ("checkbox", False),
+        ],
+    )
+    def test_convert_preserves_default(self, variable_type: str, default: object):
+        """Given a supported form default, conversion preserves its value and type."""
+        variables, _ = BasicVariablesConfigManager.convert(
+            {"user_input_form": [{variable_type: {"variable": "value", "label": "Value", "default": default}}]}
+        )
+
+        assert variables[0].default == default
+        assert type(variables[0].default) is type(default)
+
+    @pytest.mark.parametrize("variable_type", ["select", "checkbox"])
+    def test_convert_treats_empty_choice_default_as_unset(self, variable_type: str):
+        """Given the empty default Studio saves for an unset choice, conversion leaves the default unset."""
+        variables, _ = BasicVariablesConfigManager.convert(
+            {"user_input_form": [{variable_type: {"variable": "value", "label": "Value", "default": ""}}]}
+        )
+
+        assert variables[0].default is None
+
+    def test_convert_without_default(self):
+        """Given no form default, conversion keeps the entity default unset."""
+        variables, _ = BasicVariablesConfigManager.convert(
+            {"user_input_form": [{"text-input": {"variable": "value", "label": "Value"}}]}
+        )
+
+        assert variables[0].default is None
+
     def test_convert_empty_config(self):
         config = {}
 
