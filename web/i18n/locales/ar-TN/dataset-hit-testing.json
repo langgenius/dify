@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "لا يمكن أن يتجاوز عدد المرفقات ذات القطعة الواحدة {{limit}}",
   "imageUploader.tip": "قم بتحميل الصور أو إسقاطها (الحد الأقصى {{batchCount}}، {{size}} ميغابايت لكل صورة)",
   "imageUploader.tooltip": "رفع الصور (الحد الأقصى {{batchCount}}، {{size}} ميغابايت لكل صورة)",
-  "input.countWarning": "ما يصل إلى 200 حرف.",
+  "input.countWarning": "ما يصل إلى 16000 حرف.",
   "input.placeholder": "يرجى إدخال نص، ويوصى بجملة تعريفية قصيرة.",
   "input.testing": "اختبار",
   "input.title": "النص المصدر",

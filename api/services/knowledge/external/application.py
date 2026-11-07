@@ -90,8 +90,8 @@ class ExternalKnowledgeApplicationService:
         dataset = self._dataset_access.require_accessible(context, dataset_id)
         if not query:
             raise ValueError("Query or attachment_ids is required")
-        if len(query) > 250:
-            raise ValueError("Query cannot exceed 250 characters")
+        if len(query) > 16000:
+            raise ValueError("Query cannot exceed 16000 characters")
         try:
             return self._operations.retrieve(
                 context,
