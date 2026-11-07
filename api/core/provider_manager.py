@@ -861,16 +861,18 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
-
-        if not default_model:
-            return None
+        with session_factory.create_session() as session:
+            default_model = session.scalar(stmt)
+            if not default_model:
+                return None
+            provider_name = default_model.provider_name
+            model_name = default_model.model_name
 
         model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
-        provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
+        provider_schema = model_provider_factory.get_provider_schema(provider=provider_name)
 
         return DefaultModelEntity(
-            model=default_model.model_name,
+            model=model_name,
             model_type=model_type,
             provider=DefaultModelProviderEntity(
                 provider=provider_schema.provider,
@@ -916,24 +918,23 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
+        with session_factory.create_session() as session, session.begin():
+            default_model = session.scalar(stmt)
 
-        # create or update TenantDefaultModel record
-        if default_model:
-            # update default model
-            default_model.provider_name = provider
-            default_model.model_name = model
-            db.session.commit()
-        else:
-            # create default model
-            default_model = TenantDefaultModel(
-                tenant_id=tenant_id,
-                model_type=model_type,
-                provider_name=provider,
-                model_name=model,
-            )
-            db.session.add(default_model)
-            db.session.commit()
+            # create or update TenantDefaultModel record
+            if default_model:
+                # update default model
+                default_model.provider_name = provider
+                default_model.model_name = model
+            else:
+                # create default model
+                default_model = TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=model_type,
+                    provider_name=provider,
+                    model_name=model,
+                )
+                session.add(default_model)
 
         return default_model
 
