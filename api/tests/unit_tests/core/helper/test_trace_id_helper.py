@@ -385,3 +385,34 @@ class TestParseTraceparentHeader:
         from core.helper.trace_id_helper import parse_traceparent_header
 
         assert parse_traceparent_header("") is None
+
+    @pytest.mark.parametrize(
+        "traceparent",
+        [
+            # trace-id must not be all zeroes
+            "00-00000000000000000000000000000000-051581bf3bb55c45-01",
+            # trace-id must be lowercase hex
+            "00-5B8AA5A2D2C872E8321CF37308D69DF2-051581bf3bb55c45-01",
+            "00-zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-051581bf3bb55c45-01",
+            # version `ff` is forbidden
+            "ff-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01",
+            # parent-id must be 16 hex characters and must not be all zeroes
+            "00-5b8aa5a2d2c872e8321cf37308d69df2-0000000000000000-01",
+            "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c4-01",
+            # flags must be two hex characters
+            "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-1",
+            # version 00 does not allow additional fields
+            "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01-extra",
+        ],
+    )
+    def test_returns_none_for_traceparent_the_spec_rejects(self, traceparent: str):
+        from core.helper.trace_id_helper import parse_traceparent_header
+
+        assert parse_traceparent_header(traceparent) is None
+
+    def test_accepts_an_upper_bound_flags_byte(self):
+        from core.helper.trace_id_helper import parse_traceparent_header
+
+        traceparent = "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-ff"
+
+        assert parse_traceparent_header(traceparent) == "5b8aa5a2d2c872e8321cf37308d69df2"
