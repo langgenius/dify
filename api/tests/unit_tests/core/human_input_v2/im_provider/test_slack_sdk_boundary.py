@@ -9,7 +9,7 @@ from collections.abc import Callable, Generator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import override
+from typing import ClassVar, override
 from urllib.parse import parse_qs, urlencode
 
 import pytest
@@ -1092,7 +1092,7 @@ def test_real_socket_request_serialization_is_acked_only_after_acceptance(
     )
 
     class _SocketTransport:
-        instance: _SocketTransport | None = None
+        instance: ClassVar[_SocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             self.kwargs = kwargs
@@ -1184,7 +1184,7 @@ def test_socket_sdk_disconnect_listeners_are_observable_and_safe(
     consumer = _RecordingConsumer()
 
     class _ListenerSocketTransport:
-        instance: _ListenerSocketTransport | None = None
+        instance: ClassVar[_ListenerSocketTransport | None] = None
 
         def __init__(
             self,
@@ -1245,7 +1245,7 @@ def test_socket_start_waits_for_transport_construction(
     lifecycle_errors: list[BaseException] = []
 
     class _ConstructionBlockedSocketTransport:
-        instance: _ConstructionBlockedSocketTransport | None = None
+        instance: ClassVar[_ConstructionBlockedSocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs
@@ -1313,7 +1313,7 @@ def test_socket_start_waits_for_connection_readiness_and_accepts_sdk_callback(
     )
 
     class _SuccessfulSocketTransport:
-        instance: _SuccessfulSocketTransport | None = None
+        instance: ClassVar[_SuccessfulSocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs

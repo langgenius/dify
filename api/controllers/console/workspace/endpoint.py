@@ -307,7 +307,9 @@ class EndpointListApi(Resource):
             page_size=req_data.page_size,
         )
 
-        return EndpointListResponse(endpoints=endpoints).model_dump(mode="json")
+        return EndpointListResponse(
+            endpoints=[EndpointListItemResponse.model_validate(e.model_dump(mode="json")) for e in endpoints]
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/endpoints/list/plugin")
@@ -337,7 +339,9 @@ class EndpointListForSinglePluginApi(Resource):
             page_size=req_data.page_size,
         )
 
-        return EndpointListResponse(endpoints=endpoints).model_dump(mode="json")
+        return EndpointListResponse(
+            endpoints=[EndpointListItemResponse.model_validate(e.model_dump(mode="json")) for e in endpoints]
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/endpoints/<string:id>")

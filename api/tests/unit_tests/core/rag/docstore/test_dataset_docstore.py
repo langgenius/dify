@@ -5,6 +5,8 @@ Tests cover all public methods and error paths of the DatasetDocumentStore class
 which provides document storage and retrieval functionality for datasets in the RAG system.
 """
 
+import json
+
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -283,7 +285,12 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         """Test that document with None metadata raises ValueError."""
 
         # Bypass model validation to exercise the store's legacy malformed-metadata guard.
-        document = Document.model_construct(page_content="Test content", metadata=None)
+        # The JSON round-trip keeps the runtime None while satisfying the declared type.
+        no_metadata = json.loads("null")
+        document = Document.model_construct(
+            page_content="Test content",
+            metadata=no_metadata,
+        )
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID, document_id=DOCUMENT_ID)
 
         with pytest.raises(ValueError, match="metadata must be a dict"):

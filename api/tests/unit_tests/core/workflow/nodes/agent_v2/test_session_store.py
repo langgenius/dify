@@ -479,7 +479,9 @@ def test_load_or_create_persists_binding_on_node_execution(
         "existing": "value",
         "workflow_agent_binding_id": "workflow-binding-1",
     }
-    assert "agent_workspace_binding_id" not in persisted_execution.process_data_dict  # pyrefly: ignore[not-iterable]
+    persisted_process_data = persisted_execution.process_data_dict
+    assert persisted_process_data is not None
+    assert "agent_workspace_binding_id" not in persisted_process_data
     persisted_binding = sqlite_session.get(AgentWorkspaceBinding, stored.binding_id)
     assert persisted_binding is not None
     assert persisted_binding.base_home_snapshot_id == home_snapshot_id
@@ -571,7 +573,9 @@ def test_load_existing_pointer_reuses_matching_workflow_identity(sqlite_session:
     sqlite_session.expire(execution)
     assert stored.binding_id == "binding-1"
     assert execution.process_data_dict == original_process_data
-    assert "agent_workspace_binding_id" not in execution.process_data_dict  # pyrefly: ignore[not-iterable]
+    reloaded_process_data = execution.process_data_dict
+    assert reloaded_process_data is not None
+    assert "agent_workspace_binding_id" not in reloaded_process_data
     assert sqlite_session.scalar(select(func.count()).select_from(AgentWorkspaceBinding)) == 1
 
 

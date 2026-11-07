@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Literal
+from uuid import UUID
 
 import pytest
 from celery.app.task import Context
@@ -100,9 +101,9 @@ def test_failed_retrieval_task_runs_on_dataset_queue_and_reauthorizes_app(
     capability = _install_capability(
         monkeypatch,
         KnowledgeFSWorkflowFailedRetrievalCaptureResponse.model_construct(
-            failed_query_id="failed-query-1",
+            failed_query_id=UUID("11111111-1111-1111-1111-111111111111"),
             verdict="retrieval-miss",
-            bad_case_id="bad-case-1",
+            bad_case_id=UUID("22222222-2222-2222-2222-222222222222"),
         ),
     )
 

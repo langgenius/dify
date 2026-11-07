@@ -910,9 +910,17 @@ def workflow_agent_context(preview: bool) -> WorkflowAgentRuntimeBuildContext:
 
 def workflow_entity(extras: dict[str, object]) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity.model_construct(
+        task_id="task-1",
         app_config=WorkflowUIBasedAppConfig(
             app_id="workflow-app", tenant_id="tenant", app_mode=AppMode.WORKFLOW, workflow_id="workflow"
         ),
+        inputs={},
+        files=[],
+        user_id="user-1",
+        stream=False,
+        invoke_from=InvokeFrom.WEB_APP,
+        user_from=UserFrom.ACCOUNT,
+        workflow_execution_id="workflow-execution-1",
         extras=extras,
     )
 

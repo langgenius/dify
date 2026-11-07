@@ -18,6 +18,7 @@ from controllers.common.human_input_v2_contracts import (
     NodeDataMigrationResponse,
 )
 from controllers.common.human_input_v2_migration import preflight_legacy_human_input_node_data
+from core.workflow.human_input_adapter import BoundRecipient, EmailDeliveryMethod
 from core.workflow.nodes.human_input_v2.entities import RecipientConfig
 
 
@@ -189,8 +190,11 @@ def test_node_data_migration_transport_normalizes_real_and_compatibility_member_
     preflight = preflight_legacy_human_input_node_data(request_body.nodes[0].node_data)
     assert preflight.issues == ()
     method = preflight.node_data.delivery_methods[0]
-    assert method.type == "email"
-    assert [source.reference_id for source in method.config.recipients.items] == ["member-real", "member-compat"]
+    assert isinstance(method, EmailDeliveryMethod)
+    assert [r.reference_id for r in method.config.recipients.items if isinstance(r, BoundRecipient)] == [
+        "member-real",
+        "member-compat",
+    ]
 
 
 def test_node_data_migration_transport_reports_configured_unsupported_delivery_methods() -> None:

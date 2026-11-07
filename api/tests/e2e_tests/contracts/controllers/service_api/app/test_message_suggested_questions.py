@@ -254,7 +254,7 @@ def test_admitted_identity_and_mode_return_empty_questions_for_invalid_provider_
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.message_suggested_questions_generator" and record.exc_info is not None
+        if record.name == "services.message_suggested_questions_generator" and record.exc_info
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ValueError)

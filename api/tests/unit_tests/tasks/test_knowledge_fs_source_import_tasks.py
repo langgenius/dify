@@ -29,7 +29,7 @@ from tests.helpers.unit.tasks.knowledge_fs_task_fakes import (
 )
 
 
-def _source(*, status: str = "syncing") -> KnowledgeFSSourceResponse:
+def _source(*, status: Literal["active", "disabled", "error", "syncing"] = "syncing") -> KnowledgeFSSourceResponse:
     return source_response(
         metadata={
             "parameters": {"limit": 99},

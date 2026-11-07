@@ -1,5 +1,4 @@
 from collections.abc import Iterator
-from types import SimpleNamespace
 from unittest.mock import ANY, patch
 from uuid import uuid4
 
@@ -7,13 +6,101 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, ChatAppGenerateEntity, CreditUsageCreatedBy
+from core.app.app_config.entities import (
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
+from core.app.entities.app_invoke_entities import (
+    AgentAppGenerateEntity,
+    ChatAppGenerateEntity,
+    CreditUsageCreatedBy,
+    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+)
 from core.credit_usage import CreditUsageAppType
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
+from core.entities.provider_entities import (
+    CustomConfiguration,
+    ProviderQuotaType,
+    QuotaConfiguration,
+    QuotaUnit,
+    SystemConfiguration,
+)
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from events.event_handlers import update_provider_when_message_created
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models import AppMode, Message, TenantCreditPool
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import ProviderType
+
+
+def _system_configuration(quota_type: ProviderQuotaType, quota_unit: QuotaUnit) -> SystemConfiguration:
+    return SystemConfiguration.model_construct(
+        enabled=True,
+        current_quota_type=quota_type,
+        quota_configurations=[
+            QuotaConfiguration.model_construct(
+                quota_type=quota_type,
+                quota_unit=quota_unit,
+                quota_limit=10,
+                quota_used=0,
+                is_valid=True,
+            )
+        ],
+    )
+
+
+def _model_conf(system_configuration: SystemConfiguration) -> ModelConfigWithCredentialsEntity:
+    provider_schema = ProviderEntity(
+        provider="openai",
+        label=I18nObject(en_US="Test"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[],
+    )
+    return ModelConfigWithCredentialsEntity.model_construct(
+        provider="openai",
+        model="gpt-4o",
+        mode="chat",
+        model_schema=AIModelEntity(
+            model="gpt-4o",
+            label=I18nObject(en_US="Test"),
+            model_type=ModelType.LLM,
+            fetch_from=FetchFrom.PREDEFINED_MODEL,
+            model_properties={},
+        ),
+        provider_model_bundle=ProviderModelBundle.model_construct(
+            configuration=ProviderConfiguration.model_construct(
+                tenant_id="tenant-1",
+                provider=provider_schema,
+                preferred_provider_type=ProviderType.SYSTEM,
+                using_provider_type=ProviderType.SYSTEM,
+                system_configuration=system_configuration,
+                custom_configuration=CustomConfiguration(provider=None),
+                model_settings=[],
+            ),
+            model_type_instance=LargeLanguageModel(
+                provider_schema=provider_schema,
+                model_runtime=create_plugin_model_runtime(tenant_id="tenant-1"),
+            ),
+        ),
+    )
+
+
+def _app_config(tenant_id: str, app_mode: AppMode) -> EasyUIBasedAppConfig:
+    return EasyUIBasedAppConfig.model_construct(
+        tenant_id=tenant_id,
+        app_id="app-1",
+        app_mode=app_mode,
+        app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+        app_model_config_dict={},
+        model=ModelConfigEntity.model_construct(provider="openai", model="gpt-4o"),
+        prompt_template=PromptTemplateEntity.model_construct(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+    )
 
 
 @pytest.fixture
@@ -38,28 +125,16 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
     with credit_pool_session_factory.begin() as session:
         session.add(pool)
 
-    system_configuration = SimpleNamespace(
-        current_quota_type=ProviderQuotaType.TRIAL,
-        quota_configurations=[
-            SimpleNamespace(
-                quota_type=ProviderQuotaType.TRIAL,
-                quota_unit=QuotaUnit.TOKENS,
-                quota_limit=10,
-            )
-        ],
-    )
+    system_configuration = _system_configuration(ProviderQuotaType.TRIAL, QuotaUnit.TOKENS)
     application_generate_entity = ChatAppGenerateEntity.model_construct(
-        app_config=SimpleNamespace(tenant_id=tenant_id, app_mode=AppMode.CHAT),
-        model_conf=SimpleNamespace(
-            provider="openai",
-            model="gpt-4o",
-            provider_model_bundle=SimpleNamespace(
-                configuration=SimpleNamespace(
-                    using_provider_type=ProviderType.SYSTEM,
-                    system_configuration=system_configuration,
-                )
-            ),
-        ),
+        task_id="task-1",
+        app_config=_app_config(tenant_id, AppMode.CHAT),
+        model_conf=_model_conf(system_configuration),
+        inputs={},
+        files=[],
+        user_id="user-1",
+        stream=False,
+        invoke_from=InvokeFrom.WEB_APP,
     )
     message = Message(message_tokens=2, answer_tokens=1)
     message.id = "message-1"
@@ -80,28 +155,16 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
 
 def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
     tenant_id = str(uuid4())
-    system_configuration = SimpleNamespace(
-        current_quota_type=ProviderQuotaType.PAID,
-        quota_configurations=[
-            SimpleNamespace(
-                quota_type=ProviderQuotaType.PAID,
-                quota_unit=QuotaUnit.TOKENS,
-                quota_limit=10,
-            )
-        ],
-    )
+    system_configuration = _system_configuration(ProviderQuotaType.PAID, QuotaUnit.TOKENS)
     application_generate_entity = ChatAppGenerateEntity.model_construct(
-        app_config=SimpleNamespace(tenant_id=tenant_id, app_mode=AppMode.CHAT),
-        model_conf=SimpleNamespace(
-            provider="openai",
-            model="gpt-4o",
-            provider_model_bundle=SimpleNamespace(
-                configuration=SimpleNamespace(
-                    using_provider_type=ProviderType.SYSTEM,
-                    system_configuration=system_configuration,
-                )
-            ),
-        ),
+        task_id="task-1",
+        app_config=_app_config(tenant_id, AppMode.CHAT),
+        model_conf=_model_conf(system_configuration),
+        inputs={},
+        files=[],
+        user_id="user-1",
+        stream=False,
+        invoke_from=InvokeFrom.WEB_APP,
     )
     message = Message(message_tokens=2, answer_tokens=1)
     message.id = "message-1"
@@ -132,28 +195,18 @@ def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
 
 def test_agent_app_gateway_accounting_skips_legacy_message_charge() -> None:
     tenant_id = str(uuid4())
-    system_configuration = SimpleNamespace(
-        current_quota_type=ProviderQuotaType.TRIAL,
-        quota_configurations=[
-            SimpleNamespace(
-                quota_type=ProviderQuotaType.TRIAL,
-                quota_unit=QuotaUnit.CREDITS,
-                quota_limit=10,
-            )
-        ],
-    )
+    system_configuration = _system_configuration(ProviderQuotaType.TRIAL, QuotaUnit.CREDITS)
     application_generate_entity = AgentAppGenerateEntity.model_construct(
-        app_config=SimpleNamespace(tenant_id=tenant_id, app_mode=AppMode.AGENT),
-        model_conf=SimpleNamespace(
-            provider="openai",
-            model="gpt-4o",
-            provider_model_bundle=SimpleNamespace(
-                configuration=SimpleNamespace(
-                    using_provider_type=ProviderType.SYSTEM,
-                    system_configuration=system_configuration,
-                )
-            ),
-        ),
+        task_id="task-1",
+        app_config=_app_config(tenant_id, AppMode.AGENT),
+        model_conf=_model_conf(system_configuration),
+        inputs={},
+        files=[],
+        user_id="user-1",
+        stream=False,
+        invoke_from=InvokeFrom.WEB_APP,
+        agent_id="agent-1",
+        agent_config_snapshot_id="snapshot-1",
         agent_llm_gateway_enabled=True,
     )
 

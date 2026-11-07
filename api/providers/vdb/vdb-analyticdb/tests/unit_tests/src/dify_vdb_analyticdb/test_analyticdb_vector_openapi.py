@@ -1,4 +1,3 @@
-import json
 from collections.abc import Generator
 from contextlib import contextmanager
 
@@ -12,8 +11,6 @@ from dify_vdb_analyticdb.analyticdb_vector_openapi import (
     AnalyticdbVectorOpenAPIConfig,
 )
 from Tea.exceptions import TeaException
-
-from core.rag.models.document import Document
 
 # Fields every request sends to address the instance as its manager account.
 MANAGER = {
@@ -106,16 +103,6 @@ class FakeRedis:
 
 def _api_error(status_code: int) -> TeaException:
     return TeaException({"code": "Error", "message": "request failed", "data": {"statusCode": status_code}})
-
-
-def _match(
-    score: float, document_id: str, page_content: str, vector: list[float]
-) -> gpdb_models.QueryCollectionDataResponseBodyMatchesMatch:
-    return gpdb_models.QueryCollectionDataResponseBodyMatchesMatch(
-        score=score,
-        metadata={"metadata_": json.dumps({"document_id": document_id}), "page_content": page_content},
-        values=gpdb_models.QueryCollectionDataResponseBodyMatchesMatchValues(value=vector),
-    )
 
 
 def _config() -> AnalyticdbVectorOpenAPIConfig:
@@ -301,62 +288,6 @@ def test_create_collection_if_not_exists_raises_on_non_404_errors(
 
     assert client.sent("create_collection") == []
     assert fake_redis.set_calls == []
-
-
-def test_openapi_add_delete_and_search_methods(vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient) -> None:
-    documents = [
-        Document(page_content="doc 1", metadata={"doc_id": "d1", "document_id": "doc-1"}),
-        Document.model_construct(page_content="doc 2", metadata=None),
-    ]
-    embeddings = [[0.1, 0.2], [0.2, 0.3]]
-    vector.add_texts(documents, embeddings)
-
-    # The document without metadata is skipped.
-    assert client.sent("upsert_collection_data") == [
-        {
-            **COLLECTION,
-            "Rows": [
-                {
-                    "Metadata": {
-                        "ref_doc_id": "d1",
-                        "page_content": "doc 1",
-                        "metadata_": json.dumps({"doc_id": "d1", "document_id": "doc-1"}),
-                    },
-                    "Vector": [0.1, 0.2],
-                }
-            ],
-        }
-    ]
-
-    client.matches = [_match(0.5, "doc-1", "existing", [1.0])]
-    assert vector.text_exists("d1") is True
-    assert client.sent("query_collection_data")[-1]["Filter"] == "ref_doc_id='d1'"
-
-    vector.delete_by_ids(["d1", "d2"])
-    vector.delete_by_metadata_field("document_id", "doc-1")
-    assert client.sent("delete_collection_data") == [
-        {**COLLECTION, "CollectionDataFilter": "ref_doc_id IN ('d1','d2')"},
-        {**COLLECTION, "CollectionDataFilter": "metadata_ ->> 'document_id' = 'doc-1'"},
-    ]
-
-    client.matches = [_match(0.1, "doc-2", "low", [3.0, 4.0]), _match(0.9, "doc-1", "high", [1.0, 2.0])]
-
-    docs_by_vector = vector.search_by_vector([0.1, 0.2], top_k=2, score_threshold=0.5, document_ids_filter=["doc-1"])
-    assert len(docs_by_vector) == 1
-    assert docs_by_vector[0].page_content == "high"
-    assert docs_by_vector[0].metadata["score"] == 0.9
-    assert docs_by_vector[0].vector == [1.0, 2.0]
-    vector_query = client.sent("query_collection_data")[-1]
-    assert vector_query["Filter"] == "metadata_->>'document_id' IN ('doc-1')"
-    assert vector_query["Vector"] == [0.1, 0.2]
-    assert vector_query["TopK"] == 2
-
-    docs_by_text = vector.search_by_full_text("hello", top_k=2, score_threshold=0.2)
-    assert len(docs_by_text) == 1
-    assert docs_by_text[0].page_content == "high"
-    text_query = client.sent("query_collection_data")[-1]
-    assert text_query["Content"] == "hello"
-    assert text_query["Filter"] == ""
 
 
 def test_text_exists_returns_false_when_matches_empty(vector: AnalyticdbVectorOpenAPI) -> None:

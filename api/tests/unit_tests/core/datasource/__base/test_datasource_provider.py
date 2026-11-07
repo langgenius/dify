@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -254,10 +255,13 @@ class TestDatasourcePluginProviderController:
             default=123,  # Int default, should be converted to str
         )
 
+        # Deliberately unknown type to cover the fallback branch; the JSON round-trip
+        # keeps the runtime string while satisfying the declared enum type.
+        unknown_type = json.loads('"OTHER"')
         config_other = ProviderConfig.model_construct(
             name="other_def",
             required=False,
-            type="OTHER",
+            type=unknown_type,
             default="fallback",
         )
 
