@@ -69,7 +69,7 @@ class RemoteFileService:
     def fetch_info(self, *, url: str) -> RemoteFileInfoResult:
         response = self._request("HEAD", url=url)
         if response.status_code != httpx.codes.OK:
-            response = self._request("GET", url=url, timeout=3)
+            response = self._request("GET", url=url, timeout=3, follow_redirects=True)
         self._ensure_success(response)
 
         content_length = response.headers.get("Content-Length")
