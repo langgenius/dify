@@ -92,8 +92,8 @@ class DatasetUpdateDeleteTestDataFactory:
         app = App(
             tenant_id=tenant_id,
             name=name,
-            mode="chat",  # pyrefly: ignore
-            icon_type="emoji",  # pyrefly: ignore
+            mode="chat",  # pyrefly: ignore[bad-argument-type]
+            icon_type="emoji",  # pyrefly: ignore[bad-argument-type]
             icon="icon",
             icon_background="#FFFFFF",
             enable_site=True,
