@@ -5940,6 +5940,7 @@ Get list of datasets
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| availability | query | Filter by knowledge base availability status | No | string, <br>**Available values:** "all", "available", "unavailable", <br>**Default:** all |
 | creator_ids | query | Filter by creator account IDs | No | [ string ] |
 | ids | query | Filter by dataset IDs | No | [ string ] |
 | include_all | query | Include all datasets | No | boolean |
@@ -23655,6 +23656,7 @@ Enum class for configurate method of provider model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| availability | [DatasetAvailabilityFilter](#datasetavailabilityfilter) | Filter by knowledge base availability status | No |
 | creator_ids | [ string ] | Filter by creator account IDs | No |
 | ids | [ string ] | Filter by dataset IDs | No |
 | include_all | boolean | Include all datasets | No |
@@ -24334,6 +24336,14 @@ Dataset access denied.
 | ---- | ---- | ----------- | -------- |
 | dataset_ids | [ string ] |  | No |
 | knowledge_space_ids | [ string ] |  | No |
+
+#### DatasetAvailabilityFilter
+
+Availability status a dataset list request filters on.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetAvailabilityFilter | string | Availability status a dataset list request filters on. |  |
 
 #### DatasetCreatePayload
 

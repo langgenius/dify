@@ -7,8 +7,13 @@ from typing import Any, Protocol
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccess
+from services.knowledge.datasets.availability import is_embedding_available
 from services.knowledge.datasets.retrieval import retrieval_methods
-from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
+from services.knowledge.entities.datasets import (
+    DatasetAvailabilityFilter,
+    DatasetDetailRecord,
+    DatasetPage,
+)
 from services.knowledge.resource_scope import DatasetRef
 
 
@@ -21,6 +26,7 @@ class DatasetListFilter:
     ids: Sequence[str] = ()
     tag_ids: Sequence[str] = ()
     creator_ids: Sequence[str] = ()
+    availability: DatasetAvailabilityFilter = DatasetAvailabilityFilter.ALL
 
 
 @dataclass(frozen=True)
@@ -55,7 +61,12 @@ class DatasetOperations(Protocol):
 
     def visibility(self, context: RequestContext) -> DatasetVisibility: ...
     def list_datasets(
-        self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None
+        self,
+        context: RequestContext,
+        query: DatasetListFilter,
+        accessible_ids: list[str] | None,
+        *,
+        embedding_models: set[str],
     ) -> DatasetPage: ...
     def embedding_models(self, workspace_id: str) -> set[str]: ...
     def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord: ...
@@ -97,22 +108,23 @@ class DatasetApplicationService:
         return DatasetRef(dataset.workspace_id, dataset.id)
 
     @staticmethod
-    def _embedding_available(item: DatasetDetailRecord, models: set[str], *, listing: bool) -> None:
-        high_quality = item["indexing_technique"] == "high_quality"
-        item["embedding_available"] = (
-            not high_quality
-            or (listing and not item["embedding_model_provider"])
-            or f"{item['embedding_model']}:{item['embedding_model_provider']}" in models
+    def _embedding_available(item: DatasetDetailRecord, embedding_models: set[str], *, listing: bool) -> None:
+        item["embedding_available"] = is_embedding_available(
+            indexing_technique=item["indexing_technique"],
+            embedding_model=item["embedding_model"],
+            embedding_model_provider=item["embedding_model_provider"],
+            embedding_models=embedding_models,
+            listing=listing,
         )
 
     def list_datasets(self, context: RequestContext, query: DatasetListFilter) -> DatasetPage:
         visibility = self._operations.visibility(context)
         ids = visibility.list_scope(rbac_enabled=self._rbac_enabled)
-        result = self._operations.list_datasets(context, query, ids)
-        models = self._operations.embedding_models(context.active_workspace_id)
+        embedding_models = self._operations.embedding_models(context.active_workspace_id)
+        result = self._operations.list_datasets(context, query, ids, embedding_models=embedding_models)
         for item in result["data"]:
             item["permission_keys"] = list(visibility.overrides.get(item["id"], visibility.default_permissions))
-            self._embedding_available(item, models, listing=True)
+            self._embedding_available(item, embedding_models, listing=True)
         return result
 
     def get_dataset(self, context: RequestContext, *, dataset_id: str) -> DatasetDetailRecord:

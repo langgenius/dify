@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from sqlalchemy import func, select
@@ -33,10 +33,11 @@ from models.enums import (
 from models.model import AppMode
 from repositories.app.console_repository import ConsoleAppRepository
 from services.enterprise import rbac_service
-from services.knowledge.dataset_access import DatasetNotFoundError
+from services.knowledge.dataset_access import DatasetAccess, DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
-from services.knowledge.datasets.application import DatasetListFilter
+from services.knowledge.datasets.application import DatasetApplicationService, DatasetListFilter
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
+from services.knowledge.entities.datasets import DatasetAvailabilityFilter, DatasetPage
 from services.knowledge.entities.document_creation import DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef
@@ -125,7 +126,9 @@ def test_listing_materializes_page_and_owner_scoped_partial_members(
                 DatasetPermission(tenant_id="other", dataset_id="dataset", account_id="foreign"),
             ]
         )
-    result = operations.list_datasets(CONTEXT, DatasetListFilter(page=0, limit=1000, ids=["dataset", "foreign"]), None)
+    result = operations.list_datasets(
+        CONTEXT, DatasetListFilter(page=0, limit=1000, ids=["dataset", "foreign"]), None, embedding_models=set()
+    )
     response = DatasetListResponse.model_validate(result).model_dump(mode="json")
     assert response["total"] == 1
     assert response["page"] == 1
@@ -150,7 +153,9 @@ def test_listing_serializes_legacy_retrieval_settings_without_rewriting_rows(
         assert row is not None
         row.retrieval_model = stored
 
-    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset", "foreign"]), None)
+    result = operations.list_datasets(
+        CONTEXT, DatasetListFilter(ids=["dataset", "foreign"]), None, embedding_models=set()
+    )
     response = DatasetListResponse.model_validate(result).model_dump(mode="json")
 
     assert response["total"] == 1
@@ -188,7 +193,7 @@ def test_listing_upgrade_discovery_uses_server_availability(
         KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=community_dev_enabled,
     )
 
-    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset"]), None)
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset"]), None, embedding_models=set())
     discovery = result["data"][0]["knowledge_fs_upgrade"]
 
     assert discovery["can_upgrade"] is can_upgrade
@@ -211,7 +216,7 @@ def test_listing_filters_tags_within_workspace(
         TagBindingInput(tag_ids=(tag.id,), target_id="foreign" if foreign_tag else "dataset", type="knowledge"),
     )
 
-    result = operations.list_datasets(CONTEXT, DatasetListFilter(tag_ids=[tag.id]), None)
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(tag_ids=[tag.id]), None, embedding_models=set())
     response = DatasetListResponse.model_validate(result)
 
     assert [row.id for row in response.data] == ([] if foreign_tag else ["dataset"])
@@ -232,7 +237,7 @@ def test_list_visibility_restricts_even_requested_ids(
         row = session.get(Dataset, "dataset")
         assert row is not None
         row.maintainer = maintainer
-    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset"]), ids)
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset"]), ids, embedding_models=set())
     assert result["total"] == (1 if maintainer == "actor" else len(ids))
 
 
@@ -456,3 +461,262 @@ def test_queries_and_related_apps_materialize_after_session_close(
     assert related["total"] == 1
     assert related["data"][0]["id"] == "app"
     assert related["data"][0]["mode"] == "chat"
+
+
+ACTIVE_EMBEDDING_MODELS = {"text-embedding-3-small:langgenius/openai/openai"}
+
+
+def high_quality_dataset(
+    dataset_id: str,
+    *,
+    model: str = "text-embedding-3-small",
+    provider: str = "openai",
+    **values: object,
+) -> Dataset:
+    return dataset(
+        id=dataset_id,
+        name=dataset_id,
+        indexing_technique="high_quality",
+        embedding_model=model,
+        embedding_model_provider=provider,
+        **values,
+    )
+
+
+def list_with_availability(
+    operations: SQLAlchemyDatasetOperations,
+    availability: DatasetAvailabilityFilter,
+    *,
+    embedding_models: set[str] = ACTIVE_EMBEDDING_MODELS,
+    page: int = 1,
+    limit: int = 20,
+    keyword: str | None = None,
+    ids: list[str] | None = None,
+    tag_ids: list[str] | None = None,
+) -> DatasetPage:
+    return operations.list_datasets(
+        CONTEXT,
+        DatasetListFilter(
+            availability=availability,
+            page=page,
+            limit=limit,
+            keyword=keyword,
+            ids=tuple(ids or ()),
+            tag_ids=tuple(tag_ids or ()),
+        ),
+        None,
+        embedding_models=embedding_models,
+    )
+
+
+def test_availability_filter_is_applied_before_pagination(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        # The fixture seeds one economy dataset; these counts describe only
+        # the rows this test adds.
+        session.delete(session.get(Dataset, "dataset"))
+        session.add_all(
+            [
+                high_quality_dataset("available-1"),
+                high_quality_dataset("available-2"),
+                high_quality_dataset("available-3"),
+                high_quality_dataset("unavailable-1", model="removed-model"),
+                high_quality_dataset("unavailable-2", model="removed-model"),
+            ]
+        )
+
+    first_page = list_with_availability(operations, DatasetAvailabilityFilter.AVAILABLE, limit=2)
+    second_page = list_with_availability(operations, DatasetAvailabilityFilter.AVAILABLE, page=2, limit=2)
+
+    assert first_page["total"] == 3
+    assert first_page["has_more"] is True
+    assert len(first_page["data"]) == 2
+    assert second_page["has_more"] is False
+    assert {item["id"] for item in first_page["data"] + second_page["data"]} == {
+        "available-1",
+        "available-2",
+        "available-3",
+    }
+
+    unavailable_page = list_with_availability(operations, DatasetAvailabilityFilter.UNAVAILABLE)
+
+    assert unavailable_page["total"] == 2
+    assert {item["id"] for item in unavailable_page["data"]} == {
+        "unavailable-1",
+        "unavailable-2",
+    }
+
+    all_page = list_with_availability(operations, DatasetAvailabilityFilter.ALL)
+
+    assert all_page["total"] == 5
+
+
+def test_availability_combines_with_keyword_and_tag_filters(
+    operations: SQLAlchemyDatasetOperations,
+    application_tags: TagApplicationService,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                high_quality_dataset("available-handbook"),
+                high_quality_dataset("available-other"),
+                high_quality_dataset("unavailable-handbook", model="removed-model"),
+            ]
+        )
+    tag = application_tags.create_tag(CONTEXT, CreateTagInput(name="Selected", type="knowledge"))
+    for target_id in ("available-handbook", "unavailable-handbook"):
+        application_tags.create_bindings(
+            CONTEXT,
+            TagBindingInput(tag_ids=(tag.id,), target_id=target_id, type="knowledge"),
+        )
+
+    result = list_with_availability(
+        operations,
+        DatasetAvailabilityFilter.AVAILABLE,
+        keyword="handbook",
+        tag_ids=[tag.id],
+    )
+
+    assert result["total"] == 1
+    assert [item["id"] for item in result["data"]] == ["available-handbook"]
+
+
+def test_availability_filter_preserves_permission_scope(
+    operations: SQLAlchemyDatasetOperations,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
+    with sqlite_session_factory.begin() as session:
+        session.delete(session.get(Dataset, "dataset"))
+        session.add_all(
+            [
+                high_quality_dataset("visible"),
+                high_quality_dataset("hidden", maintainer="other"),
+            ]
+        )
+
+    result = operations.list_datasets(
+        CONTEXT,
+        DatasetListFilter(availability=DatasetAvailabilityFilter.AVAILABLE),
+        ["visible"],
+        embedding_models=ACTIVE_EMBEDDING_MODELS,
+    )
+
+    assert result["total"] == 1
+    assert [item["id"] for item in result["data"]] == ["visible"]
+
+
+def test_availability_follows_active_model_configuration(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    # A stored bare provider is normalized before the active model lookup.
+    with sqlite_session_factory.begin() as session:
+        row = session.get(Dataset, "dataset")
+        assert row is not None
+        row.indexing_technique = "high_quality"
+        row.embedding_model = "text-embedding-3-small"
+        row.embedding_model_provider = "openai"
+
+    available = list_with_availability(operations, DatasetAvailabilityFilter.AVAILABLE)
+    assert available["total"] == 1
+
+    without_models = list_with_availability(
+        operations,
+        DatasetAvailabilityFilter.AVAILABLE,
+        embedding_models=set(),
+    )
+    unavailable = list_with_availability(
+        operations,
+        DatasetAvailabilityFilter.UNAVAILABLE,
+        embedding_models=set(),
+    )
+
+    assert without_models["total"] == 0
+    assert unavailable["total"] == 1
+
+
+def test_availability_filter_applies_to_requested_ids(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                high_quality_dataset("available"),
+                high_quality_dataset("unavailable", model="removed-model"),
+            ]
+        )
+
+    result = list_with_availability(
+        operations,
+        DatasetAvailabilityFilter.UNAVAILABLE,
+        ids=["available", "unavailable"],
+    )
+
+    assert result["total"] == 1
+    assert [item["id"] for item in result["data"]] == ["unavailable"]
+
+
+def test_availability_filter_agrees_with_card_availability(
+    operations: SQLAlchemyDatasetOperations,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    def active_embedding_models(_self: SQLAlchemyDatasetOperations, _workspace_id: str) -> set[str]:
+        return ACTIVE_EMBEDDING_MODELS
+
+    monkeypatch.setattr(SQLAlchemyDatasetOperations, "embedding_models", active_embedding_models)
+    with sqlite_session_factory.begin() as session:
+        session.delete(session.get(Dataset, "dataset"))
+        session.add_all(
+            [
+                high_quality_dataset("available"),
+                high_quality_dataset("unavailable", model="removed-model"),
+                dataset(id="economy", name="economy"),
+            ]
+        )
+    service = DatasetApplicationService(
+        dataset_access=create_autospec(DatasetAccess, instance=True, spec_set=True),
+        operations=operations,
+        rbac_enabled=False,
+        service_api_url="",
+        vector_store="milvus",
+        tidb_fulltext=False,
+    )
+
+    unavailable = service.list_datasets(CONTEXT, DatasetListFilter(availability=DatasetAvailabilityFilter.UNAVAILABLE))
+    available = service.list_datasets(CONTEXT, DatasetListFilter(availability=DatasetAvailabilityFilter.AVAILABLE))
+
+    assert unavailable["total"] == 1
+    assert [item["id"] for item in unavailable["data"]] == ["unavailable"]
+    assert all(item["embedding_available"] is False for item in unavailable["data"])
+    assert available["total"] == 2
+    assert {item["id"] for item in available["data"]} == {"available", "economy"}
+    assert all(item["embedding_available"] is True for item in available["data"])
+
+
+def test_availability_normalizes_legacy_embedding_provider_ids(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.delete(session.get(Dataset, "dataset"))
+        session.add_all(
+            [
+                high_quality_dataset("bare", provider="openai"),
+                high_quality_dataset("legacy-google", provider="langgenius/google/google"),
+            ]
+        )
+
+    result = operations.list_datasets(
+        CONTEXT,
+        DatasetListFilter(availability=DatasetAvailabilityFilter.AVAILABLE),
+        None,
+        embedding_models={
+            "text-embedding-3-small:langgenius/openai/openai",
+            "text-embedding-3-small:langgenius/gemini/google",
+        },
+    )
+
+    assert {item["id"] for item in result["data"]} == {"bare", "legacy-google"}

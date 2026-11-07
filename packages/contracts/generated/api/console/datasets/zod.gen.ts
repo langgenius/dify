@@ -2024,6 +2024,7 @@ export const zKnowledgeConfig = z.object({
 })
 
 export const zGetDatasetsQuery = z.object({
+  availability: z.enum(['all', 'available', 'unavailable']).optional().default('all'),
   creator_ids: z.array(z.string().min(1).max(255)).max(100).optional(),
   ids: z.array(z.string()).optional(),
   include_all: z.boolean().optional().default(false),
