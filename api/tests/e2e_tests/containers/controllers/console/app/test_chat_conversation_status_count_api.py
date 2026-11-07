@@ -136,7 +136,7 @@ def _create_message(
 def test_chat_conversation_status_count_includes_paused(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
-):
+) -> None:
     account, tenant = _create_account_and_tenant(db_session_with_containers)
     app = _create_app(db_session_with_containers, tenant.id, account.id)
     conversation = _create_conversation(db_session_with_containers, app.id, account.id)
