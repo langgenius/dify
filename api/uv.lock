@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = "==3.13.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -41,6 +41,7 @@ members = [
     "dify-vdb-pgvector",
     "dify-vdb-qdrant",
     "dify-vdb-relyt",
+    "dify-vdb-silicium",
     "dify-vdb-tablestore",
     "dify-vdb-tencent",
     "dify-vdb-tidb-on-qdrant",
@@ -1425,7 +1426,6 @@ docs = [
 name = "dify-api"
 version = "1.19.0"
 source = { virtual = "." }
-default-groups = ["kms", "storage", "tools", "trace-all", "vdb-all"]
 dependencies = [
     { name = "alibabacloud-dingtalk" },
     { name = "aliyun-log-python-sdk" },
@@ -1632,6 +1632,7 @@ vdb-all = [
     { name = "dify-vdb-pgvector" },
     { name = "dify-vdb-qdrant" },
     { name = "dify-vdb-relyt" },
+    { name = "dify-vdb-silicium" },
     { name = "dify-vdb-tablestore" },
     { name = "dify-vdb-tencent" },
     { name = "dify-vdb-tidb-on-qdrant" },
@@ -1703,6 +1704,9 @@ vdb-qdrant = [
 ]
 vdb-relyt = [
     { name = "dify-vdb-relyt" },
+]
+vdb-silicium = [
+    { name = "dify-vdb-silicium" },
 ]
 vdb-tablestore = [
     { name = "dify-vdb-tablestore" },
@@ -1919,6 +1923,7 @@ vdb-all = [
     { name = "dify-vdb-pgvector", editable = "providers/vdb/vdb-pgvector" },
     { name = "dify-vdb-qdrant", editable = "providers/vdb/vdb-qdrant" },
     { name = "dify-vdb-relyt", editable = "providers/vdb/vdb-relyt" },
+    { name = "dify-vdb-silicium", editable = "providers/vdb/vdb-silicium" },
     { name = "dify-vdb-tablestore", editable = "providers/vdb/vdb-tablestore" },
     { name = "dify-vdb-tencent", editable = "providers/vdb/vdb-tencent" },
     { name = "dify-vdb-tidb-on-qdrant", editable = "providers/vdb/vdb-tidb-on-qdrant" },
@@ -1949,6 +1954,7 @@ vdb-pgvecto-rs = [{ name = "dify-vdb-pgvecto-rs", editable = "providers/vdb/vdb-
 vdb-pgvector = [{ name = "dify-vdb-pgvector", editable = "providers/vdb/vdb-pgvector" }]
 vdb-qdrant = [{ name = "dify-vdb-qdrant", editable = "providers/vdb/vdb-qdrant" }]
 vdb-relyt = [{ name = "dify-vdb-relyt", editable = "providers/vdb/vdb-relyt" }]
+vdb-silicium = [{ name = "dify-vdb-silicium", editable = "providers/vdb/vdb-silicium" }]
 vdb-tablestore = [{ name = "dify-vdb-tablestore", editable = "providers/vdb/vdb-tablestore" }]
 vdb-tencent = [{ name = "dify-vdb-tencent", editable = "providers/vdb/vdb-tencent" }]
 vdb-tidb-on-qdrant = [{ name = "dify-vdb-tidb-on-qdrant", editable = "providers/vdb/vdb-tidb-on-qdrant" }]
@@ -2321,6 +2327,11 @@ requires-dist = [{ name = "qdrant-client", specifier = "==1.9.0" }]
 name = "dify-vdb-relyt"
 version = "0.0.1"
 source = { editable = "providers/vdb/vdb-relyt" }
+
+[[package]]
+name = "dify-vdb-silicium"
+version = "0.0.1"
+source = { editable = "providers/vdb/vdb-silicium" }
 
 [[package]]
 name = "dify-vdb-tablestore"
@@ -3405,8 +3416,8 @@ name = "httpcore2"
 version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/ad/f4f0e57345f1870f3e8cb624e058d7eca6e5a27d33bcc3311d9b618734cd/httpcore2-2.12.0.tar.gz", hash = "sha256:9293522bba0aa7c4c8e9e3f040c16575bd8868e155a77fa30c7a9085a5eae648", size = 67548, upload-time = "2026-08-18T13:22:08.211Z" }
 wheels = [

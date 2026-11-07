@@ -102,6 +102,7 @@ dify-vdb-pgvecto-rs = { workspace = true }
 dify-vdb-pgvector = { workspace = true }
 dify-vdb-qdrant = { workspace = true }
 dify-vdb-relyt = { workspace = true }
+dify-vdb-silicium = { workspace = true }
 dify-vdb-tablestore = { workspace = true }
 dify-vdb-tencent = { workspace = true }
 dify-vdb-tidb-on-qdrant = { workspace = true }
@@ -265,6 +266,7 @@ vdb-all = [
     "dify-vdb-pgvector",
     "dify-vdb-qdrant",
     "dify-vdb-relyt",
+    "dify-vdb-silicium",
     "dify-vdb-tablestore",
     "dify-vdb-tencent",
     "dify-vdb-tidb-on-qdrant",
@@ -296,6 +298,7 @@ vdb-pgvecto-rs = ["dify-vdb-pgvecto-rs"]
 vdb-pgvector = ["dify-vdb-pgvector"]
 vdb-qdrant = ["dify-vdb-qdrant"]
 vdb-relyt = ["dify-vdb-relyt"]
+vdb-silicium = ["dify-vdb-silicium"]
 vdb-tablestore = ["dify-vdb-tablestore"]
 vdb-tencent = ["dify-vdb-tencent"]
 vdb-tidb-on-qdrant = ["dify-vdb-tidb-on-qdrant"]

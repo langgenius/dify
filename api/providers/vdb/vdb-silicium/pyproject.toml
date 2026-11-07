@@ -1,0 +1,17 @@
+[project]
+name = "dify-vdb-silicium"
+version = "0.0.1"
+description = "Silicium in-process HNSW and 64-byte aligned zero-copy vector database integration for Dify"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.entry-points."dify.vector_backends"]
+silicium = "dify_vdb_silicium.silicium_vector:SiliciumVectorFactory"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
