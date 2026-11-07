@@ -490,6 +490,43 @@ export const zKnowledgeFsSpaceTagsReplacePayload = z.object({
 })
 
 /**
+ * KnowledgeFSTidyActionPayload
+ */
+export const zKnowledgeFsTidyActionPayload = z.object({
+  action: z.enum(['disable_document', 'dismiss', 'review', 'undo']),
+  documentId: z.string().nullish(),
+  expectedRevision: z.int().gt(0),
+})
+
+/**
+ * KnowledgeFSTidyRetryResponse
+ */
+export const zKnowledgeFsTidyRetryResponse = z.object({
+  resumed: z.int(),
+})
+
+/**
+ * KnowledgeFSTidySettingsResponse
+ */
+export const zKnowledgeFsTidySettingsResponse = z.object({
+  conflicts: z.boolean(),
+  enabled: z.boolean(),
+  lastError: z.enum(['authorization_failed', 'model_unavailable', 'scan_failed']).nullable(),
+  revision: z.int(),
+  updatedAt: z.string(),
+})
+
+/**
+ * KnowledgeFSTidySettingsPayload
+ */
+export const zKnowledgeFsTidySettingsPayload = z.object({
+  acknowledgeTokenUsage: z.boolean().optional().default(false),
+  conflicts: z.boolean().nullish(),
+  enabled: z.boolean(),
+  expectedRevision: z.int().gte(0),
+})
+
+/**
  * KnowledgeFSUploadSessionCreatePayload
  */
 export const zKnowledgeFsUploadSessionCreatePayload = z.object({
@@ -2431,6 +2468,92 @@ export const zKnowledgeFsSpaceListResponse = z.object({
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
+})
+
+/**
+ * KnowledgeFSTidyEvidenceResponse
+ */
+export const zKnowledgeFsTidyEvidenceResponse = z.object({
+  chunkId: z.string(),
+  documentId: z.string(),
+  end: z.int(),
+  revision: z.int(),
+  start: z.int(),
+  text: z.string(),
+  title: z.string(),
+})
+
+/**
+ * KnowledgeFSTidyFindingResponse
+ */
+export const zKnowledgeFsTidyFindingResponse = z.object({
+  actionId: z.string().nullable(),
+  createdAt: z.string(),
+  id: z.string(),
+  kind: z.enum(['conflict', 'duplicate', 'similar']),
+  left: zKnowledgeFsTidyEvidenceResponse,
+  reason: z.string(),
+  revision: z.int(),
+  right: zKnowledgeFsTidyEvidenceResponse,
+  similarity: z.number().nullable(),
+  stale: z.boolean().optional().default(false),
+  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']),
+})
+
+/**
+ * KnowledgeFSTidyFindingListResponse
+ */
+export const zKnowledgeFsTidyFindingListResponse = z.object({
+  items: z.array(zKnowledgeFsTidyFindingResponse),
+  nextCursor: z.string().nullable(),
+})
+
+/**
+ * KnowledgeFSTidyScanResponse
+ */
+export const zKnowledgeFsTidyScanResponse = z.object({
+  documentId: z.string(),
+  error: z.string().nullable(),
+  modelCalls: z.int(),
+  state: z.enum(['complete', 'failed', 'pending', 'scanning']),
+  title: z.string(),
+  windows: z.int(),
+})
+
+/**
+ * KnowledgeFSTidyScanListResponse
+ */
+export const zKnowledgeFsTidyScanListResponse = z.object({
+  items: z.array(zKnowledgeFsTidyScanResponse),
+  nextCursor: z.string().nullable(),
+})
+
+/**
+ * KnowledgeFSTidyDocumentProgressResponse
+ */
+export const zKnowledgeFsTidyDocumentProgressResponse = z.object({
+  complete: z.int(),
+  failed: z.int(),
+  pending: z.int(),
+  scanning: z.int(),
+})
+
+/**
+ * KnowledgeFSTidyFindingCountResponse
+ */
+export const zKnowledgeFsTidyFindingCountResponse = z.object({
+  count: z.int(),
+  kind: z.enum(['conflict', 'duplicate', 'similar']),
+  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']),
+})
+
+/**
+ * KnowledgeFSTidySummaryResponse
+ */
+export const zKnowledgeFsTidySummaryResponse = z.object({
+  documents: zKnowledgeFsTidyDocumentProgressResponse,
+  findings: z.array(zKnowledgeFsTidyFindingCountResponse),
+  modelCalls: z.int(),
 })
 
 export const zKnowledgeFsTraceSource = z.enum([
@@ -5015,6 +5138,96 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdTagsPath = z.object({
  * Agent Knowledge Base tags replaced
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdTagsResponse = zKnowledgeFsSpaceTagListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsQuery = z.object({
+  cursor: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  kind: z.enum(['conflict', 'duplicate', 'similar']).optional(),
+  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']).optional(),
+})
+
+/**
+ * Tidy result
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsResponse =
+  zKnowledgeFsTidyFindingListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsBody =
+  zKnowledgeFsTidyActionPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsPath = z.object({
+  control_space_id: z.string(),
+  finding_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsResponse =
+  zKnowledgeFsTidyFindingResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryResponse = zKnowledgeFsTidyRetryResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansQuery = z.object({
+  cursor: z.string().optional(),
+  state: z.enum(['complete', 'failed', 'pending', 'scanning']).optional(),
+})
+
+/**
+ * Tidy result
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansResponse =
+  zKnowledgeFsTidyScanListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse =
+  zKnowledgeFsTidySettingsResponse
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsBody =
+  zKnowledgeFsTidySettingsPayload
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse =
+  zKnowledgeFsTidySettingsResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponse =
+  zKnowledgeFsTidySummaryResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesPath = z.object({
   control_space_id: z.string(),

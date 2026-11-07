@@ -37,6 +37,7 @@ import {
   newKnowledgeQualityPath,
   newKnowledgeRetrievalTestPath,
   newKnowledgeSettingsPath,
+  newKnowledgeTidyPath,
 } from '../routes'
 import { KnowledgeFsApiAccessDialog } from './api-access-dialog'
 import { KnowledgeSpaceProvider } from './provider'
@@ -54,6 +55,7 @@ const knowledgeSpacePageTitle = (
   if (section === 'sources') return t(($) => $.sources)
   if (section === 'documents') return t(($) => $.documents)
   if (section === 'retrieval') return t(($) => $['retrievalTest.title'])
+  if (section === 'tidy') return 'Tidy'
   if (section === 'quality') return t(($) => $.quality)
   if (section === 'settings') return tCommon(($) => $['datasetMenus.settings'])
 
@@ -171,6 +173,8 @@ export function KnowledgeSpaceShell({
   const overviewPath = newKnowledgeOverviewPath(knowledgeSpaceId)
   const documentsPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
   const retrievalTestPath = newKnowledgeRetrievalTestPath(knowledgeSpaceId)
+  const tidyPath = newKnowledgeTidyPath(knowledgeSpaceId)
+  const tidyActive = pathname === tidyPath
   const qualityPath = newKnowledgeQualityPath(knowledgeSpaceId)
   const settingsPath = newKnowledgeSettingsPath(knowledgeSpaceId)
   const overviewActive = pathname === overviewPath
@@ -384,6 +388,21 @@ export function KnowledgeSpaceShell({
             >
               {navIcon(qualityActive ? 'i-ri-shield-check-fill' : 'i-ri-shield-check-line')}
               {sidebarExpanded && t(($) => $.quality)}
+            </Link>
+            <Link
+              href={tidyPath}
+              aria-label="Tidy"
+              aria-current={tidyActive ? 'page' : undefined}
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                tidyActive
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
+              )}
+            >
+              {navIcon(tidyActive ? 'i-ri-sparkling-fill' : 'i-ri-sparkling-line')}
+              {sidebarExpanded && 'Tidy'}
             </Link>
             <Link
               href={settingsPath}

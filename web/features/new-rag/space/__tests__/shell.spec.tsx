@@ -128,6 +128,7 @@ describe('KnowledgeSpaceShell', () => {
       '/datasets/new/space-1/documents',
       '/datasets/new/space-1/retrieval',
       '/datasets/new/space-1/quality',
+      '/datasets/new/space-1/tidy',
       '/datasets/new/space-1/settings',
     ])
     expect(await screen.findByText('knowledgeSpace.apiAccessActive')).toBeInTheDocument()

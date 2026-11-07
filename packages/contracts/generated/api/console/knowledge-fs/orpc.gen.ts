@@ -176,6 +176,16 @@ import {
   zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponse,
   zGetKnowledgeFsSpacesByControlSpaceIdTagsPath,
   zGetKnowledgeFsSpacesByControlSpaceIdTagsResponse,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsPath,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsQuery,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsResponse,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidyScansPath,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidyScansQuery,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidyScansResponse,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsPath,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryPath,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponse,
   zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsPath,
   zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsQuery,
   zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponse,
@@ -220,6 +230,9 @@ import {
   zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdBody,
   zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath,
   zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse,
+  zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsBody,
+  zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsPath,
+  zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse,
   zPostKnowledgeFsQueryStreamBody,
   zPostKnowledgeFsQueryStreamResponse,
   zPostKnowledgeFsSourceProviderPreviewBody,
@@ -319,6 +332,11 @@ import {
   zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionHeaders,
   zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionPath,
   zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionResponse,
+  zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsBody,
+  zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsPath,
+  zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsResponse,
+  zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryPath,
+  zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryResponse,
   zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsBody,
   zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortBody,
   zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortPath,
@@ -3624,7 +3642,247 @@ export const tags = {
   put: put5,
 }
 
+/**
+ * Validate admitted input, forward scoped operation, and preserve upstream errors
+ */
+export const post35 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActions',
+    path: '/knowledge-fs/spaces/{control_space_id}/tidy/findings/{finding_id}/actions',
+    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsBody,
+      params: zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsPath,
+    }),
+  )
+  .output(zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
+
+export const actions = {
+  post: post35,
+}
+
+export const byFindingId = {
+  actions,
+}
+
+/**
+ * Validate admitted input, forward scoped operation, and preserve upstream errors
+ */
 export const get51 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeFsSpacesByControlSpaceIdTidyFindings',
+    path: '/knowledge-fs/spaces/{control_space_id}/tidy/findings',
+    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsPath,
+      query: zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsQuery.optional(),
+    }),
+  )
+  .output(zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
+
+export const findings = {
+  get: get51,
+  byFindingId,
+}
+
+/**
+ * Validate admitted input, forward scoped operation, and preserve upstream errors
+ */
+export const post36 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeFsSpacesByControlSpaceIdTidyRetry',
+    path: '/knowledge-fs/spaces/{control_space_id}/tidy/retry',
+    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryPath }))
+  .output(zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
+
+export const retry4 = {
+  post: post36,
+}
+
+/**
+ * Validate admitted input, forward scoped operation, and preserve upstream errors
+ */
+export const get52 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeFsSpacesByControlSpaceIdTidyScans',
+    path: '/knowledge-fs/spaces/{control_space_id}/tidy/scans',
+    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetKnowledgeFsSpacesByControlSpaceIdTidyScansPath,
+      query: zGetKnowledgeFsSpacesByControlSpaceIdTidyScansQuery.optional(),
+    }),
+  )
+  .output(zGetKnowledgeFsSpacesByControlSpaceIdTidyScansResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
+
+export const scans = {
+  get: get52,
+}
+
+/**
+ * Validate admitted input, forward scoped operation, and preserve upstream errors
+ */
+export const get53 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeFsSpacesByControlSpaceIdTidySettings',
+    path: '/knowledge-fs/spaces/{control_space_id}/tidy/settings',
+    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsPath }))
+  .output(zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
+
+/**
+ * Validate admitted input, forward scoped operation, and preserve upstream errors
+ */
+export const patch9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchKnowledgeFsSpacesByControlSpaceIdTidySettings',
+    path: '/knowledge-fs/spaces/{control_space_id}/tidy/settings',
+    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsBody,
+      params: zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsPath,
+    }),
+  )
+  .output(zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
+
+export const settings2 = {
+  get: get53,
+  patch: patch9,
+}
+
+/**
+ * Validate admitted input, forward scoped operation, and preserve upstream errors
+ */
+export const get54 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeFsSpacesByControlSpaceIdTidySummary',
+    path: '/knowledge-fs/spaces/{control_space_id}/tidy/summary',
+    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryPath }))
+  .output(zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
+
+export const summary = {
+  get: get54,
+}
+
+export const tidy = {
+  findings,
+  retry: retry4,
+  scans,
+  settings: settings2,
+  summary,
+}
+
+export const get55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3652,10 +3910,10 @@ export const get51 = oc
   })
 
 export const conflicts = {
-  get: get51,
+  get: get55,
 }
 
-export const get52 = oc
+export const get56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3683,10 +3941,10 @@ export const get52 = oc
   })
 
 export const evidence = {
-  get: get52,
+  get: get56,
 }
 
-export const get53 = oc
+export const get57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3714,10 +3972,10 @@ export const get53 = oc
   })
 
 export const missing = {
-  get: get53,
+  get: get57,
 }
 
-export const get54 = oc
+export const get58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3740,13 +3998,13 @@ export const get54 = oc
   })
 
 export const byTraceId = {
-  get: get54,
+  get: get58,
   conflicts,
   evidence,
   missing,
 }
 
-export const get55 = oc
+export const get59 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3775,11 +4033,11 @@ export const get55 = oc
   })
 
 export const traces = {
-  get: get55,
+  get: get59,
   byTraceId,
 }
 
-export const post35 = oc
+export const post37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3810,10 +4068,10 @@ export const post35 = oc
   })
 
 export const abort = {
-  post: post35,
+  post: post37,
 }
 
-export const post36 = oc
+export const post38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3844,10 +4102,10 @@ export const post36 = oc
   })
 
 export const complete = {
-  post: post36,
+  post: post38,
 }
 
-export const post37 = oc
+export const post39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3882,7 +4140,7 @@ export const post37 = oc
   })
 
 export const presign = {
-  post: post37,
+  post: post39,
 }
 
 export const byPartNumber = {
@@ -3893,7 +4151,7 @@ export const parts = {
   byPartNumber,
 }
 
-export const post38 = oc
+export const post40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3924,7 +4182,7 @@ export const post38 = oc
   })
 
 export const smallFile = {
-  post: post38,
+  post: post40,
 }
 
 export const byUploadSessionId = {
@@ -3934,7 +4192,7 @@ export const byUploadSessionId = {
   smallFile,
 }
 
-export const post39 = oc
+export const post41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3967,7 +4225,7 @@ export const post39 = oc
   })
 
 export const uploadSessions = {
-  post: post39,
+  post: post41,
   byUploadSessionId,
 }
 
@@ -3992,7 +4250,7 @@ export const delete12 = oc
     knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
   })
 
-export const get56 = oc
+export const get60 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4010,7 +4268,7 @@ export const get56 = oc
     knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
   })
 
-export const patch9 = oc
+export const patch10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -4040,8 +4298,8 @@ export const patch9 = oc
 
 export const byControlSpaceId = {
   delete: delete12,
-  get: get56,
-  patch: patch9,
+  get: get60,
+  patch: patch10,
   appBindings,
   backgroundTasks,
   bulkJobs,
@@ -4065,11 +4323,12 @@ export const byControlSpaceId = {
   sourceWorkflows,
   sources,
   tags,
+  tidy,
   traces,
   uploadSessions,
 }
 
-export const get57 = oc
+export const get61 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4088,7 +4347,7 @@ export const get57 = oc
     knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const post40 = oc
+export const post42 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4110,12 +4369,12 @@ export const post40 = oc
   })
 
 export const spaces = {
-  get: get57,
-  post: post40,
+  get: get61,
+  post: post42,
   byControlSpaceId,
 }
 
-export const post41 = oc
+export const post43 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4141,7 +4400,7 @@ export const post41 = oc
   })
 
 export const streamCapability = {
-  post: post41,
+  post: post43,
 }
 
 export const byTaskId4 = {
@@ -4174,7 +4433,7 @@ export const byUploadId = {
   delete: delete13,
 }
 
-export const post42 = oc
+export const post44 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4195,7 +4454,7 @@ export const post42 = oc
   })
 
 export const uploads = {
-  post: post42,
+  post: post44,
   byUploadId,
 }
 

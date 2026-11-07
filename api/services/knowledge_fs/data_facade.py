@@ -173,6 +173,18 @@ from services.knowledge_fs.query_images import (
 )
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from services.knowledge_fs.service_query_image_upload import validate_service_query_image_references
+from services.knowledge_fs.tidy_dto import (
+    KnowledgeFSTidyActionPayload,
+    KnowledgeFSTidyFindingListResponse,
+    KnowledgeFSTidyFindingQuery,
+    KnowledgeFSTidyFindingResponse,
+    KnowledgeFSTidyRetryResponse,
+    KnowledgeFSTidyScanListResponse,
+    KnowledgeFSTidyScanQuery,
+    KnowledgeFSTidySettingsPayload,
+    KnowledgeFSTidySettingsResponse,
+    KnowledgeFSTidySummaryResponse,
+)
 
 _BUFFERED_UPLOAD_CAPABILITY_MIN_REMAINING = timedelta(seconds=15)
 
@@ -476,6 +488,108 @@ class KnowledgeFSDataFacade:
             ),
         )
         return KnowledgeFSStatResponse.model_validate(raw)
+
+    def get_tidy_settings(
+        self, *, tenant_id: str, account_id: str, control_space_id: str
+    ) -> KnowledgeFSTidySettingsResponse:
+        """Read visible space settings through a fresh operation capability; propagate access errors."""
+        return KnowledgeFSTidySettingsResponse.model_validate(
+            self._interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id="getTidySettings",
+            )
+        )
+
+    def update_tidy_settings(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, payload: KnowledgeFSTidySettingsPayload
+    ) -> KnowledgeFSTidySettingsResponse:
+        """Forward acknowledged settings CAS; KnowledgeFS schedules only published revisions."""
+        return KnowledgeFSTidySettingsResponse.model_validate(
+            self._interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id="updateTidySettings",
+                payload=payload,
+            )
+        )
+
+    def list_tidy_findings(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, query: KnowledgeFSTidyFindingQuery
+    ) -> KnowledgeFSTidyFindingListResponse:
+        """Return only currently authorized evidence pairs using bounded keyset pagination."""
+        return KnowledgeFSTidyFindingListResponse.model_validate(
+            self._interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id="listTidyFindings",
+                query=tuple((k, str(v)) for k, v in query.model_dump(exclude_none=True).items()),
+            )
+        )
+
+    def get_tidy_summary(
+        self, *, tenant_id: str, account_id: str, control_space_id: str
+    ) -> KnowledgeFSTidySummaryResponse:
+        """Read review counts and scan progress restricted to evidence the caller may see."""
+        return KnowledgeFSTidySummaryResponse.model_validate(
+            self._interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id="getTidySummary",
+            )
+        )
+
+    def list_tidy_scans(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, query: KnowledgeFSTidyScanQuery
+    ) -> KnowledgeFSTidyScanListResponse:
+        """Read bounded scan progress; pending or failed scans are never represented as clean."""
+        return KnowledgeFSTidyScanListResponse.model_validate(
+            self._interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id="listTidyScans",
+                query=tuple((k, str(v)) for k, v in query.model_dump(exclude_none=True).items()),
+            )
+        )
+
+    def act_on_tidy_finding(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        finding_id: str,
+        payload: KnowledgeFSTidyActionPayload,
+    ) -> KnowledgeFSTidyFindingResponse:
+        """Apply one authorized, version-checked action; upstream conflicts remain explicit failures."""
+        return KnowledgeFSTidyFindingResponse.model_validate(
+            self._interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id="actOnTidyFinding",
+                payload=payload,
+                path_parameters=(("findingId", finding_id),),
+            )
+        )
+
+    def retry_tidy_scans(
+        self, *, tenant_id: str, account_id: str, control_space_id: str
+    ) -> KnowledgeFSTidyRetryResponse:
+        """Resume bounded failed scans from saved work without enqueueing Dify worker tasks."""
+        return KnowledgeFSTidyRetryResponse.model_validate(
+            self._interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id="retryTidyScans",
+            )
+        )
 
     def get_overview_stats(
         self, *, tenant_id: str, account_id: str, control_space_id: str

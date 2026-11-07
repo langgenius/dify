@@ -10809,6 +10809,164 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/findings
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| kind | query |  | No | string, <br>**Available values:** "conflict", "duplicate", "similar" |
+| status | query |  | No | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyFindingListResponse](#knowledgefstidyfindinglistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/findings/{finding_id}/actions
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| finding_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSTidyActionPayload](#knowledgefstidyactionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyFindingResponse](#knowledgefstidyfindingresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/retry
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyRetryResponse](#knowledgefstidyretryresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/scans
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| state | query |  | No | string, <br>**Available values:** "complete", "failed", "pending", "scanning" |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyScanListResponse](#knowledgefstidyscanlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/settings
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidySettingsResponse](#knowledgefstidysettingsresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/tidy/settings
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSTidySettingsPayload](#knowledgefstidysettingspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidySettingsResponse](#knowledgefstidysettingsresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/summary
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidySummaryResponse](#knowledgefstidysummaryresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces
 #### Parameters
 
@@ -30123,6 +30281,132 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | name | string |  | Yes |
 | revision | integer |  | Yes |
 | slug | string |  | Yes |
+
+#### KnowledgeFSTidyActionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string, <br>**Available values:** "disable_document", "dismiss", "review", "undo" | *Enum:* `"disable_document"`, `"dismiss"`, `"review"`, `"undo"` | Yes |
+| documentId | string |  | No |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSTidyDocumentProgressResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| complete | integer |  | Yes |
+| failed | integer |  | Yes |
+| pending | integer |  | Yes |
+| scanning | integer |  | Yes |
+
+#### KnowledgeFSTidyEvidenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chunkId | string |  | Yes |
+| documentId | string |  | Yes |
+| end | integer |  | Yes |
+| revision | integer |  | Yes |
+| start | integer |  | Yes |
+| text | string |  | Yes |
+| title | string |  | Yes |
+
+#### KnowledgeFSTidyFindingCountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | Yes |
+| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" | *Enum:* `"conflict"`, `"duplicate"`, `"similar"` | Yes |
+| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"outdated"`, `"reviewed"` | Yes |
+
+#### KnowledgeFSTidyFindingListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSTidyFindingResponse](#knowledgefstidyfindingresponse) ] |  | Yes |
+| nextCursor | string |  | Yes |
+
+#### KnowledgeFSTidyFindingQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" |  | No |
+| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" |  | No |
+
+#### KnowledgeFSTidyFindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actionId | string |  | Yes |
+| createdAt | string |  | Yes |
+| id | string |  | Yes |
+| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" | *Enum:* `"conflict"`, `"duplicate"`, `"similar"` | Yes |
+| left | [KnowledgeFSTidyEvidenceResponse](#knowledgefstidyevidenceresponse) |  | Yes |
+| reason | string |  | Yes |
+| revision | integer |  | Yes |
+| right | [KnowledgeFSTidyEvidenceResponse](#knowledgefstidyevidenceresponse) |  | Yes |
+| similarity | number |  | Yes |
+| stale | boolean |  | No |
+| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"outdated"`, `"reviewed"` | Yes |
+
+#### KnowledgeFSTidyRetryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| resumed | integer |  | Yes |
+
+#### KnowledgeFSTidyScanListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSTidyScanResponse](#knowledgefstidyscanresponse) ] |  | Yes |
+| nextCursor | string |  | Yes |
+
+#### KnowledgeFSTidyScanQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| state | string, <br>**Available values:** "complete", "failed", "pending", "scanning" |  | No |
+
+#### KnowledgeFSTidyScanResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| error | string |  | Yes |
+| modelCalls | integer |  | Yes |
+| state | string, <br>**Available values:** "complete", "failed", "pending", "scanning" | *Enum:* `"complete"`, `"failed"`, `"pending"`, `"scanning"` | Yes |
+| title | string |  | Yes |
+| windows | integer |  | Yes |
+
+#### KnowledgeFSTidySettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| acknowledgeTokenUsage | boolean |  | No |
+| conflicts | boolean |  | No |
+| enabled | boolean |  | Yes |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSTidySettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conflicts | boolean |  | Yes |
+| enabled | boolean |  | Yes |
+| lastError | string, <br>**Available values:** "authorization_failed", "model_unavailable", "scan_failed" |  | Yes |
+| revision | integer |  | Yes |
+| updatedAt | string |  | Yes |
+
+#### KnowledgeFSTidySummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | [KnowledgeFSTidyDocumentProgressResponse](#knowledgefstidydocumentprogressresponse) |  | Yes |
+| findings | [ [KnowledgeFSTidyFindingCountResponse](#knowledgefstidyfindingcountresponse) ] |  | Yes |
+| modelCalls | integer |  | Yes |
 
 #### KnowledgeFSTraceEntriesQuery
 
