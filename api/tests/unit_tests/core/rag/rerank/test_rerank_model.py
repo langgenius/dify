@@ -482,9 +482,27 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
         assert len(result) == 1
         assert result[0].metadata["score"] == 0.88
 
-    def test_fetch_multimodal_rerank_builds_docs_and_calls_text_rerank(
-        self, rerank_runner: RerankModelRunner, sqlite_session: Session
-    ):
+    @pytest.mark.parametrize(
+        ("vision", "include_image", "threshold", "top_n", "expected_ids"),
+        [
+            (True, True, None, 10, ["image", "txt-1", "external"]),
+            (True, True, 0.85, 10, ["image"]),
+            (True, True, None, 1, ["image"]),
+            (True, False, None, 10, ["txt-1", "external"]),
+            (False, True, None, 10, ["txt-1", "external"]),
+        ],
+    )
+    def test_text_query_scores_image_candidates_with_vision_model(
+        self,
+        rerank_runner: RerankModelRunner,
+        sqlite_session: Session,
+        vision: bool,
+        include_image: bool,
+        threshold: float | None,
+        top_n: int,
+        expected_ids: list[str],
+    ) -> None:
+        """A text query retains scoreable images, while text-only calls stay compatible."""
         upload_file = UploadFile(
             tenant_id="00000000-0000-0000-0000-000000000001",
             storage_type=StorageType.LOCAL,
@@ -516,27 +534,55 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
             metadata={},
             provider="external",
         )
-        rerank_result = RerankResult(model="rerank-model", docs=[])
+        schema = rerank_runner.rerank_model_instance.get_model_schema()
+        schema.features = [ModelFeature.VISION] if vision else []
+        has_images = vision and include_image
+        scored_documents = [image_doc, text_doc, external_doc] if has_images else [text_doc, external_doc]
+        rerank_result = RerankResult(
+            model="rerank-model",
+            docs=[
+                RerankDocument(index=i, text=doc.page_content, score=0.9 - i * 0.1)
+                for i, doc in enumerate(scored_documents)
+            ],
+        )
+        invoke_multimodal = Mock(return_value=rerank_result)
+        invoke_text = Mock(return_value=rerank_result)
+        documents = [text_doc, external_doc, external_doc]
+        if include_image:
+            documents = [image_doc, image_doc, *documents]
 
         with (
-            patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"image-bytes") as mock_load_once,
-            patch.object(
-                rerank_runner,
-                "fetch_text_rerank",
-                return_value=(rerank_result, [image_doc, text_doc, external_doc]),
-            ) as mock_text_rerank,
+            patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"image-bytes"),
+            patch.object(rerank_runner.rerank_model_instance, "invoke_multimodal_rerank", invoke_multimodal),
+            patch.object(rerank_runner.rerank_model_instance, "invoke_rerank", invoke_text),
         ):
-            result, unique_documents = rerank_runner.fetch_multimodal_rerank(
-                query="python",
-                documents=[image_doc, text_doc, external_doc, external_doc],
+            result = rerank_runner.run(
+                query="red square",
+                documents=documents,
+                score_threshold=threshold,
+                top_n=top_n,
                 query_type=QueryType.TEXT_QUERY,
             )
 
-        assert result == rerank_result
-        assert len(unique_documents) == 3
-        mock_load_once.assert_called_once_with("image-key")
-        text_rerank_call_args = mock_text_rerank.call_args.args
-        assert len(text_rerank_call_args[1]) == 3
+        if has_images:
+            invoke_text.assert_not_called()
+            invoke_multimodal.assert_called_once()
+            kwargs = invoke_multimodal.call_args.kwargs
+            assert kwargs["query"] == {"content": "red square", "content_type": DocType.TEXT}
+            assert [doc["content_type"] for doc in kwargs["docs"]] == [DocType.IMAGE, DocType.TEXT, DocType.TEXT]
+            assert kwargs["docs"][0]["content"] == "aW1hZ2UtYnl0ZXM="
+        else:
+            invoke_multimodal.assert_not_called()
+            invoke_text.assert_called_once()
+            kwargs = invoke_text.call_args.kwargs
+            assert kwargs["docs"] == ["text-content", "external-content"]
+        assert kwargs["score_threshold"] == threshold
+        assert kwargs["top_n"] == top_n
+        identifiers = {upload_file.id: "image", "txt-1": "txt-1"}
+        assert [identifiers.get(doc.metadata.get("doc_id"), "external") for doc in result] == expected_ids
+        assert [doc.metadata["score"] for doc in result] == sorted(
+            [doc.metadata["score"] for doc in result], reverse=True
+        )
 
     def test_fetch_multimodal_rerank_skips_missing_image_upload(self, rerank_runner):
         image_doc = Document(
