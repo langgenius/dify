@@ -20,7 +20,7 @@ class TestEmailExistingContract:
             "user@sub.example.com",
         ],
     )
-    def test_valid_emails_accepted(self, value):
+    def test_valid_emails_accepted(self, value: str) -> None:
         assert email(value) == value
 
     @pytest.mark.parametrize(
@@ -35,8 +35,8 @@ class TestEmailExistingContract:
             "a@example.c",
         ],
     )
-    def test_invalid_emails_rejected(self, value):
-        with pytest.raises(ValueError):
+    def test_invalid_emails_rejected(self, value: str) -> None:
+        with pytest.raises(ValueError, match="not a valid email"):
             email(value)
 
 
@@ -56,6 +56,6 @@ class TestEmailLocalPartDots:
             "a.@example.com",
         ],
     )
-    def test_reject_malformed_dot_placement(self, value):
-        with pytest.raises(ValueError):
+    def test_reject_malformed_dot_placement(self, value: str) -> None:
+        with pytest.raises(ValueError, match="not a valid email"):
             email(value)
