@@ -34,6 +34,7 @@ from dify_agent.layers.shell import (
     DifyShellLayerConfig,
     DifyShellSecretRefConfig,
 )
+from dify_agent.layers.user_prompt import DifyUserPromptImageConfig
 from dify_agent.protocol import CreateRunRequest
 from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from dify_agent.protocol.snapshot import SessionSnapshot
@@ -49,11 +50,12 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.app.llm.model_access import resolve_model_context_window
+from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from extensions.tracing import application_tracing_hooks
-from graphon.file import File, FileTransferMethod
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template
 from libs.workflow_template_values import resolve_template_value
@@ -281,6 +283,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
+                user_images=self._build_user_images(context, agent_soul.model.model_provider, agent_soul.model.model),
                 output=self._build_output_config(
                     node_job.declared_outputs, node_job.output_routes, context.variable_pool
                 ),
@@ -304,6 +307,46 @@ class WorkflowAgentRuntimeRequestBuilder:
             node_job=node_job,
             metadata=metadata,
         )
+
+    @staticmethod
+    def _build_user_images(
+        context: WorkflowAgentRuntimeBuildContext, provider_name: str, model_name: str
+    ) -> list[DifyUserPromptImageConfig]:
+        """Convert uploaded system images only when the selected model supports vision.
+
+        Other workflow values and the existing text references remain unchanged.
+        Unsupported image transports fail the run rather than silently losing data.
+        """
+        files = get_system_value(context.variable_pool, SystemVariableKey.FILES)
+        images = (
+            [file for file in files if isinstance(file, File) and file.type == FileType.IMAGE]
+            if isinstance(files, (list, tuple))
+            else []
+        )
+        if not images or not resolve_model_supports_vision(
+            run_context=context.dify_context, provider_name=provider_name, model_name=model_name
+        ):
+            return []
+        result: list[DifyUserPromptImageConfig] = []
+        for file in images:
+            content = file_manager.to_prompt_message_content(file, image_detail_config=None)
+            if not isinstance(content, ImagePromptMessageContent):
+                raise WorkflowAgentRuntimeRequestBuildError(
+                    "agent_user_file_unsupported",
+                    f"Workflow Agent cannot send file '{file.filename or 'image'}' as vision content.",
+                )
+            detail = content.detail.value
+            result.append(
+                DifyUserPromptImageConfig(
+                    filename=content.filename or file.filename or f"image.{content.format}",
+                    mime_type=content.mime_type,
+                    format=content.format,
+                    url=content.url or None,
+                    base64_data=content.base64_data or None,
+                    detail=detail if detail in {"low", "high"} else None,
+                )
+            )
+        return result
 
     def _build_tool_layers(
         self,

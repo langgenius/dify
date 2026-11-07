@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from types import SimpleNamespace
 from typing import cast
@@ -33,9 +34,10 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
 )
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.tracing import bind_tracing
-from graphon.file import File, FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.runtime.variable_pool import VariablePool
-from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
+from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment, StringSegment
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
@@ -1678,6 +1680,93 @@ def test_uploaded_workflow_files_are_included_without_prompt_marker():
         }
     ]
     assert "Previous node outputs:" not in user_prompt
+
+
+@pytest.mark.parametrize("supports_vision", [True, False])
+def test_workflow_mixed_uploads_keep_references_and_only_send_images_to_vision_models(
+    monkeypatch: pytest.MonkeyPatch, supports_vision: bool
+) -> None:
+    class UploadedFilesVariablePool:
+        def get(self, selector: Sequence[str]) -> Segment | None:
+            if list(selector) == ["sys", "files"]:
+                return ArrayFileSegment(
+                    value=[
+                        File(
+                            type=FileType.IMAGE,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            reference=build_file_reference(record_id="image-1"),
+                            filename="image.png",
+                            extension=".png",
+                            mime_type="image/png",
+                            size=5,
+                        ),
+                        File(
+                            type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            reference=build_file_reference(record_id="doc-1"),
+                            filename="doc.pdf",
+                            extension=".pdf",
+                            mime_type="application/pdf",
+                            size=5,
+                        ),
+                    ]
+                )
+            return FakeVariablePool().get(selector)
+
+        def get_by_prefix(self, prefix: str) -> Mapping[str, object]:
+            return FakeVariablePool().get_by_prefix(prefix)
+
+    import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
+
+    monkeypatch.setattr(
+        runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: supports_vision, raising=False
+    )
+    converted = []
+
+    def convert(file: File, **_kwargs: object) -> ImagePromptMessageContent:
+        converted.append(file.filename)
+        return ImagePromptMessageContent(format="png", base64_data="aW1hZ2U=", mime_type="image/png")
+
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", convert)
+    context = replace(_context(), variable_pool=UploadedFilesVariablePool())
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+    layers = _request_layers(result)
+    assert converted == (["image.png"] if supports_vision else [])
+    config = layers["user_prompt" if supports_vision else "workflow_user_prompt"]["config"]
+    assert isinstance(config, dict)
+    prompt = config["text" if supports_vision else "user"]
+    assert isinstance(prompt, str)
+    assert build_file_reference(record_id="image-1") in prompt
+    assert build_file_reference(record_id="doc-1") in prompt
+    if supports_vision:
+        files = config["files"]
+        assert isinstance(files, list)
+        assert len(files) == 1
+        assert isinstance(files[0], dict)
+        assert files[0]["delivery"] == "multimodal"
+        assert result.redacted_request["composition"]["layers"][2]["config"]["files"][0]["base64_data"] == "[REDACTED]"
+
+
+def test_workflow_image_conversion_rejects_non_image_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
+
+    image = File(
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="image-1"),
+        filename="image.png",
+        extension=".png",
+        mime_type="image/png",
+        size=5,
+    )
+    monkeypatch.setattr(runtime_builder, "get_system_value", lambda *_args: [image])
+    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: True)
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", lambda *_args, **_kwargs: None)
+
+    with pytest.raises(WorkflowAgentRuntimeRequestBuildError, match="cannot send file 'image.png'") as exc_info:
+        WorkflowAgentRuntimeRequestBuilder._build_user_images(_context(), "provider", "model")
+
+    assert exc_info.value.error_code == "agent_user_file_unsupported"
 
 
 def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_context():
