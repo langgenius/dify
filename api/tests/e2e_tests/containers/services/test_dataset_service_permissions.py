@@ -37,9 +37,9 @@ class DatasetPermissionIntegrationFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status="active",  # pyrefly: ignore
         )
-        tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
+        tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")  # pyrefly: ignore
         db_session_with_containers.add_all([account, tenant])
         db_session_with_containers.flush()
 
@@ -66,7 +66,7 @@ class DatasetPermissionIntegrationFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status="active",  # pyrefly: ignore
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()
