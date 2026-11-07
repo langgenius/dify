@@ -822,6 +822,7 @@ def test_planning_facts_survive_sql_cas_and_public_trace_export(
     exported = http["data"][0]["payload"]["diagnostics"]
     if provider_failure:
         assert history[0]["reason"] == exported[0]["reason"] == "service_unavailable"
+        assert stored[0]["http_status"] == history[0]["http_status"] == exported[0]["http_status"] == 502
     else:
         expected = [{"stage": "plan", "reason_code": "missing", "path": ["plan"]}]
         assert history[0]["validation_details"] == exported[0]["validation_details"] == expected
