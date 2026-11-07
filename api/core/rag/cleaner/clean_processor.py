@@ -26,23 +26,30 @@ class CleanProcessor:
                 elif pre_processing_rule["id"] == "remove_urls_emails" and pre_processing_rule["enabled"] is True:
                     # Remove URL but keep Markdown image URLs and link URLs
                     # Replace the ENTIRE markdown link/image with a single placeholder to protect
-                    # the link text (which might also be a URL) from being removed
+                    # the link text (which might also be a URL) from being removed.
+                    # The marker prefix is chosen after email removal so it cannot already
+                    # occur in the text that will be scanned.
                     markdown_link_pattern = r"\[([^\]]*)\]\((https?://[^)]+)\)"
                     markdown_image_pattern = r"!\[.*?\]\((https?://[^)]+)\)"
                     placeholders: list[tuple[str, str, str]] = []  # (type, text, url)
+                    marker_prefix = "__MARKDOWN_PLACEHOLDER_"
+                    while marker_prefix in text:
+                        marker_prefix += "x"
 
-                    def replace_markdown_with_placeholder(match, placeholders=placeholders):
+                    def replace_markdown_with_placeholder(
+                        match, placeholders=placeholders, marker_prefix=marker_prefix
+                    ):
                         link_type = "link"
                         link_text = match.group(1)
                         url = match.group(2)
-                        placeholder = f"__MARKDOWN_PLACEHOLDER_{len(placeholders)}__"
+                        placeholder = f"{marker_prefix}{len(placeholders)}__"
                         placeholders.append((link_type, link_text, url))
                         return placeholder
 
-                    def replace_image_with_placeholder(match, placeholders=placeholders):
+                    def replace_image_with_placeholder(match, placeholders=placeholders, marker_prefix=marker_prefix):
                         link_type = "image"
                         url = match.group(1)
-                        placeholder = f"__MARKDOWN_PLACEHOLDER_{len(placeholders)}__"
+                        placeholder = f"{marker_prefix}{len(placeholders)}__"
                         placeholders.append((link_type, "image", url))
                         return placeholder
 
@@ -59,13 +66,19 @@ class CleanProcessor:
                     url_pattern = r"https?://\S+"
                     text = re.sub(url_pattern, "", text)
 
-                    # Restore the Markdown links and images
-                    for i, (link_type, text_or_alt, url) in enumerate(placeholders):
-                        placeholder = f"__MARKDOWN_PLACEHOLDER_{i}__"
+                    # Restore every protected link in one pass so a marker that appears
+                    # inside an earlier link is not rewritten by a later replacement.
+                    def restore_markdown(match, placeholders=placeholders):
+                        index = int(match.group(1))
+                        if index >= len(placeholders):
+                            return match.group(0)
+                        link_type, text_or_alt, url = placeholders[index]
                         if link_type == "link":
-                            text = text.replace(placeholder, f"[{text_or_alt}]({url})")
-                        else:  # image
-                            text = text.replace(placeholder, f"![{text_or_alt}]({url})")
+                            return f"[{text_or_alt}]({url})"
+                        return f"![{text_or_alt}]({url})"
+
+                    if placeholders:
+                        text = re.sub(re.escape(marker_prefix) + r"(\d+)__", restore_markdown, text)
         return text
 
     def filter_string(self, text):
