@@ -1164,6 +1164,20 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
           },
+          annotationSetting: {
+            get: {
+              queryOptions: {
+                // A client error is the final answer, such as an Agent backing app
+                // that RBAC does not resolve; retrying would only delay the UI.
+                retry: (failureCount, error) => {
+                  const status = getHttpErrorStatus(error)
+                  if (status !== undefined && status >= 400 && status < 500) return false
+
+                  return failureCount < 3
+                },
+              },
+            },
+          },
           traceRuns: {
             bySourceKind: {
               bySourceId: {

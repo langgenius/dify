@@ -36,7 +36,11 @@ from core.app.apps.agent_app.errors import (
 )
 from core.app.apps.agent_app.generate_response_converter import AgentAppGenerateResponseConverter
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
-from core.app.apps.agent_app.session_store import AgentAppWorkspaceStore
+from core.app.apps.agent_app.session_store import (
+    AgentAppDirectReplyTurn,
+    AgentAppSessionScope,
+    AgentAppWorkspaceStore,
+)
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
@@ -252,16 +256,31 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         queue_manager=queue_manager,
                     )
                 if annotation_reply:
-                    from core.app.apps.agent_app.app_runner import publish_text_answer
+                    from core.app.apps.agent_app.app_runner import publish_message_end, publish_text_delta
                     from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 
+                    model_name = application_generate_entity.model_conf.model
                     queue_manager.publish(
                         QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
                         PublishFrom.APPLICATION_MANAGER,
                     )
-                    publish_text_answer(
+                    publish_text_delta(
                         queue_manager=queue_manager,
-                        model_name=application_generate_entity.model_conf.model,
+                        model_name=model_name,
+                        delta=annotation_reply.content,
+                        user_query=query,
+                    )
+                    # Record after the text is out, so the first token does not wait
+                    # for the history write, but before message_end: clients send the
+                    # next turn only after it, so that turn sees this one.
+                    self._record_direct_reply(
+                        application_generate_entity=application_generate_entity,
+                        conversation_id=conversation.id,
+                        turn=AgentAppDirectReplyTurn(query=query, answer=annotation_reply.content),
+                    )
+                    publish_message_end(
+                        queue_manager=queue_manager,
+                        model_name=model_name,
                         answer=annotation_reply.content,
                         user_query=query,
                     )
@@ -357,6 +376,93 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             text_delta_debounce_seconds=dify_config.AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS,
         )
 
+    def _record_direct_reply(
+        self,
+        *,
+        application_generate_entity: AgentAppGenerateEntity,
+        conversation_id: str,
+        turn: AgentAppDirectReplyTurn,
+    ) -> None:
+        """Keep a turn that never reached the Agent backend in the Agent session history.
+
+        Without this, later backend turns of the conversation would not see the
+        question or its annotation reply. The scope mirrors the one
+        ``AgentAppRunner.run`` resolves for the same entity, so the next backend
+        turn loads this exact participant. Build-draft turns never get here,
+        because annotation matching skips them (``_run_input_guards``).
+
+        Postconditions: the caller's participant history ends with ``turn``, or
+        a conversation without a participant yet is seeded when its first one is
+        allocated (``AgentAppWorkspaceStore.load_or_create``). Best effort: the
+        reply is still delivered when recording fails; the failure is logged and
+        later turns then miss this one, as they did before.
+        """
+        app_config = application_generate_entity.app_config
+        try:
+            with session_factory.create_session() as session:
+                home_snapshot_id = self._config_version_home_snapshot_id(
+                    session=session,
+                    tenant_id=app_config.tenant_id,
+                    agent_id=application_generate_entity.agent_id,
+                    config_version_id=application_generate_entity.agent_config_snapshot_id,
+                )
+            scope = AgentAppSessionScope(
+                tenant_id=app_config.tenant_id,
+                app_id=app_config.app_id,
+                conversation_id=conversation_id,
+                agent_id=application_generate_entity.agent_id,
+                agent_config_snapshot_id=(
+                    application_generate_entity.agent_session_scope_config_version_id
+                    or application_generate_entity.agent_config_snapshot_id
+                ),
+                home_snapshot_id=home_snapshot_id,
+                agent_config_version_kind=AgentConfigVersionKind(application_generate_entity.agent_config_version_kind),
+            )
+            AgentAppWorkspaceStore().append_direct_reply(scope, turn)
+        except Exception:
+            logger.warning(
+                "Failed to record an Agent App direct reply in the session history: "
+                "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s",
+                app_config.tenant_id,
+                app_config.app_id,
+                conversation_id,
+                application_generate_entity.agent_id,
+                exc_info=True,
+            )
+
+    @staticmethod
+    def _config_version_home_snapshot_id(
+        *, session: Session, tenant_id: str, agent_id: str, config_version_id: str | None
+    ) -> str | None:
+        """Return the home snapshot of the Agent config version a turn runs.
+
+        Looks the version up the way ``_resolve_agent_by_id`` does (published
+        snapshot first, then draft) but reads only this column, so recording a
+        direct reply does not load or parse the Agent Soul. Raises
+        ``AgentAppGeneratorError`` when no such version exists.
+        """
+        if not config_version_id:
+            raise AgentAppGeneratorError("Agent has no published version")
+        snapshot = session.execute(
+            select(AgentConfigSnapshot.home_snapshot_id).where(
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+                AgentConfigSnapshot.id == config_version_id,
+            )
+        ).first()
+        if snapshot is not None:
+            return snapshot.home_snapshot_id
+        draft = session.execute(
+            select(AgentConfigDraft.home_snapshot_id).where(
+                AgentConfigDraft.tenant_id == tenant_id,
+                AgentConfigDraft.agent_id == agent_id,
+                AgentConfigDraft.id == config_version_id,
+            )
+        ).first()
+        if draft is None:
+            raise AgentAppGeneratorError("Agent published version not found")
+        return draft.home_snapshot_id
+
     def _run_input_guards(
         self,
         *,
@@ -397,7 +503,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             return True, query, None
 
         # annotation reply: a matching annotation answers the turn deterministically.
-        if query:
+        # Annotations answer end users. Build chat (including Build finalization)
+        # talks about building the Agent, so it always reaches the Agent backend.
+        if query and application_generate_entity.agent_config_version_kind != AgentConfigVersionKind.BUILD_DRAFT:
             annotation_reply = AnnotationReplyFeature().query(
                 app_record=app_model,
                 message=message,

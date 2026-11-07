@@ -627,6 +627,12 @@ function AgentConfigurePageComposerContent({
       <AgentChatFeaturesPanel
         show={capabilities.canEdit && showChatFeatures}
         appFeatures={buildDraft.agentSoulConfig?.app_features}
+        annotationReplyAppId={
+          // The panel opens only for editors, so others skip the setting request.
+          capabilities.canEdit && !agentQuery.data?.hidden_app_backed
+            ? (agentQuery.data?.backing_app_id ?? undefined)
+            : undefined
+        }
         disabled={isChatFeaturesReadOnly}
         onClose={() => setShowChatFeatures(false)}
       />

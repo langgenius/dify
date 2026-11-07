@@ -1,5 +1,6 @@
 import type {
   AgentAppComposerResponse,
+  AgentAppDetailWithSite,
   AgentBuildDraftResponse,
   AgentConfigSnapshotDetailResponse,
   AgentSoulConfig,
@@ -223,12 +224,14 @@ export function createEnvironment({
   edition = 'CLOUD',
   permissions = Object.values(AgentPermission),
   conversationId = 'old-build',
+  agentOverrides = {},
 }: {
   composer?: AgentAppComposerResponse | null
   buildDraft?: AgentBuildDraftResponse
   edition?: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
   permissions?: string[]
   conversationId?: string | null
+  agentOverrides?: Partial<AgentAppDetailWithSite>
 } = {}) {
   const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition, license: { status: 'lost' } },
@@ -263,6 +266,7 @@ export function createEnvironment({
     debug_conversation_id: conversationId,
     debug_conversation_has_messages: !!conversationId,
     debug_conversation_message_count: conversationId ? 1 : 0,
+    ...agentOverrides,
   })
   api.getAgent.mockResolvedValue(agent)
   queryClient.setQueryData(consoleQuery.agent.byAgentId.get.queryKey({ input: agentInput }), agent)

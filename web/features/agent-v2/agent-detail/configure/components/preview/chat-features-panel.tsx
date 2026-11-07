@@ -5,7 +5,9 @@ import type {
   FileTransferMethod,
   FileType,
 } from '@dify/contracts/api/console/agent/types.gen'
+import type { AnnotationSettingResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { Features } from '@/app/components/base/features/types'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -15,10 +17,16 @@ import {
   useAppFeatures,
   useSetAppFeatures,
 } from '@/features/agent-v2/agent-composer/store-modules/app-features'
+import { consoleQuery } from '@/service/console'
 import { Resolution, TransferMethod } from '@/types/app'
 
 type AgentChatFeaturesPanelProps = {
   appFeatures?: AgentSoulAppFeaturesConfig
+  /**
+   * Backing app whose annotation reply setting answers matching questions before
+   * the Agent runs. The setting is not part of the Agent Soul and applies immediately.
+   */
+  annotationReplyAppId?: string
   disabled?: boolean
   show: boolean
   onClose: () => void
@@ -113,6 +121,21 @@ function toPanelFeatures(appFeatures?: AgentSoulAppFeaturesConfig): Features {
   }
 }
 
+function toAnnotationReplyFeature(setting: AnnotationSettingResponse): Features['annotationReply'] {
+  const { embedding_model: embeddingModel } = setting
+  return {
+    enabled: setting.enabled,
+    id: setting.id ?? undefined,
+    score_threshold: setting.score_threshold ?? undefined,
+    embedding_model: embeddingModel
+      ? {
+          embedding_provider_name: embeddingModel.embedding_provider_name ?? '',
+          embedding_model_name: embeddingModel.embedding_model_name ?? '',
+        }
+      : undefined,
+  }
+}
+
 function toAppFeatures(
   features: Features,
   appFeatures?: AgentSoulAppFeaturesConfig,
@@ -135,11 +158,13 @@ function toAppFeatures(
 
 function AgentChatFeaturesPanelContent({
   appFeatures,
+  annotationReplyAppId,
   disabled,
   show,
   onClose,
 }: AgentChatFeaturesPanelProps) {
   const { t } = useTranslation(['agentV2'])
+  const queryClient = useQueryClient()
   const featuresStore = useFeaturesStore()
   const setAppFeatures = useSetAppFeatures()
   const handleChange = useCallback(() => {
@@ -152,6 +177,17 @@ function AgentChatFeaturesPanelContent({
       toAppFeatures(features, currentAppFeatures ?? appFeatures),
     )
   }, [appFeatures, disabled, featuresStore, setAppFeatures])
+  // The annotation setting is already saved on the backing app, not in the Agent
+  // Soul draft; refresh its cached copy so a remounted panel shows the new state.
+  const handleAnnotationReplyChange = useCallback(() => {
+    if (!annotationReplyAppId) return
+
+    void queryClient.invalidateQueries({
+      queryKey: consoleQuery.apps.byAppId.annotationSetting.get.queryKey({
+        input: { params: { app_id: annotationReplyAppId } },
+      }),
+    })
+  }, [annotationReplyAppId, queryClient])
 
   return (
     <NewFeaturePanel
@@ -161,7 +197,9 @@ function AgentChatFeaturesPanelContent({
       inWorkflow={false}
       showThoughtsToggle
       showModeration={false}
-      showAnnotationReply={false}
+      showAnnotationReply={!!annotationReplyAppId}
+      annotationReplyAppId={annotationReplyAppId}
+      onAnnotationReplyChange={handleAnnotationReplyChange}
       drawerClassName="bg-components-panel-bg! data-[swipe-direction=right]:top-1! data-[swipe-direction=right]:right-0! data-[swipe-direction=right]:bottom-1! data-[swipe-direction=right]:rounded-r-none!"
       title={t(($) => $['agentDetail.configure.chatFeatures.title'])}
       description={t(($) => $['agentDetail.configure.chatFeatures.description'])}
@@ -173,18 +211,39 @@ function AgentChatFeaturesPanelContent({
 
 export function AgentChatFeaturesPanel({
   appFeatures: snapshotAppFeatures,
+  annotationReplyAppId,
   ...props
 }: AgentChatFeaturesPanelProps) {
   const draftAppFeatures = useAppFeatures()
   const appFeatures = props.disabled ? snapshotAppFeatures : draftAppFeatures
-  const features = useMemo(() => toPanelFeatures(appFeatures), [appFeatures])
+  // Loaded as soon as the backing app is known, not when the panel opens, so the
+  // annotation card is usually ready before the panel is first shown.
+  const { data: annotationSetting } = useQuery(
+    consoleQuery.apps.byAppId.annotationSetting.get.queryOptions({
+      input: annotationReplyAppId ? { params: { app_id: annotationReplyAppId } } : skipToken,
+      context: { silent: true },
+    }),
+  )
+  const features = useMemo(
+    () => ({
+      ...toPanelFeatures(appFeatures),
+      ...(annotationSetting && { annotationReply: toAnnotationReplyFeature(annotationSetting) }),
+    }),
+    [annotationSetting, appFeatures],
+  )
   // Keep transient feature switches while editing, including an empty opener
-  // that has been enabled but has not had its statement saved yet.
-  const featuresKey = props.disabled ? JSON.stringify(appFeatures ?? {}) : 'draft'
+  // that has been enabled but has not had its statement saved yet. The panel does
+  // not wait for the annotation setting; once it arrives, the provider restarts
+  // once from it and the annotation card appears. It stays out if loading fails.
+  const featuresKey = `${props.disabled ? JSON.stringify(appFeatures ?? {}) : 'draft'}:${annotationSetting ? 'annotation' : 'none'}`
 
   return (
     <FeaturesProvider key={featuresKey} features={features}>
-      <AgentChatFeaturesPanelContent appFeatures={appFeatures} {...props} />
+      <AgentChatFeaturesPanelContent
+        appFeatures={appFeatures}
+        annotationReplyAppId={annotationSetting ? annotationReplyAppId : undefined}
+        {...props}
+      />
     </FeaturesProvider>
   )
 }

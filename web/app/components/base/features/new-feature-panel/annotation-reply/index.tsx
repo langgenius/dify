@@ -19,15 +19,17 @@ import { usePathname } from '@/next/navigation'
 import { getErrorMessage } from '@/utils/error-message'
 
 type Props = Readonly<{
+  /** App that owns the annotation setting; defaults to the `/app/<id>` route. */
+  appId?: string
   disabled?: boolean
   onChange?: OnFeaturesChange
 }>
 
-const AnnotationReply = ({ disabled, onChange }: Props) => {
+const AnnotationReply = ({ appId: ownerAppId, disabled, onChange }: Props) => {
   const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
-  const appId = matched?.length && matched[1] ? matched[1] : ''
+  const appId = ownerAppId ?? (matched?.length && matched[1] ? matched[1] : '')
   const featuresStore = useFeaturesStore()
   const annotationReply = useFeatures((s) => s.features.annotationReply)
   const [isDisabling, setIsDisabling] = useState(false)
