@@ -1732,13 +1732,17 @@ def test_workflow_mixed_uploads_keep_references_and_only_send_images_to_vision_m
     result = WorkflowAgentRuntimeRequestBuilder().build(context)
     layers = _request_layers(result)
     assert converted == (["image.png"] if supports_vision else [])
-    config = cast(dict[str, object], layers["user_prompt" if supports_vision else "workflow_user_prompt"]["config"])
-    prompt = cast(str, config["text" if supports_vision else "user"])
+    config = layers["user_prompt" if supports_vision else "workflow_user_prompt"]["config"]
+    assert isinstance(config, dict)
+    prompt = config["text" if supports_vision else "user"]
+    assert isinstance(prompt, str)
     assert build_file_reference(record_id="image-1") in prompt
     assert build_file_reference(record_id="doc-1") in prompt
     if supports_vision:
-        files = cast(list[dict[str, object]], config["files"])
+        files = config["files"]
+        assert isinstance(files, list)
         assert len(files) == 1
+        assert isinstance(files[0], dict)
         assert files[0]["delivery"] == "multimodal"
         assert result.redacted_request["composition"]["layers"][2]["config"]["files"][0]["base64_data"] == "[REDACTED]"
 
