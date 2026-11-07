@@ -72,7 +72,7 @@ def _create_conversation(db_session: Session, app_id: str, account_id: str) -> C
         app_id=app_id,
         name="Test Conversation",
         _inputs={},
-        status="normal",  # pyrefly: ignore
+        status="normal",  # pyrefly: ignore[bad-argument-type]
         mode=AppMode.CHAT,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
@@ -88,7 +88,7 @@ def _create_workflow_run(db_session: Session, app_id: str, tenant_id: str, accou
         app_id=app_id,
         workflow_id=str(uuid.uuid4()),
         type=ModelWorkflowType("chat"),
-        triggered_from="app-run",  # pyrefly: ignore
+        triggered_from="app-run",  # pyrefly: ignore[bad-argument-type]
         version="1.0.0",
         graph=json.dumps({"nodes": [], "edges": []}),
         inputs=json.dumps({"query": "test"}),
@@ -117,12 +117,12 @@ def _create_message(
         answer="Hi there",
         message_tokens=1,
         answer_tokens=1,
-        message_unit_price=0.001,  # pyrefly: ignore
-        answer_unit_price=0.001,  # pyrefly: ignore
-        message_price_unit=0.001,  # pyrefly: ignore
-        answer_price_unit=0.001,  # pyrefly: ignore
+        message_unit_price=0.001,  # pyrefly: ignore[bad-argument-type]
+        answer_unit_price=0.001,  # pyrefly: ignore[bad-argument-type]
+        message_price_unit=0.001,  # pyrefly: ignore[bad-argument-type]
+        answer_price_unit=0.001,  # pyrefly: ignore[bad-argument-type]
         currency="USD",
-        status="normal",  # pyrefly: ignore
+        status="normal",  # pyrefly: ignore[bad-argument-type]
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
         workflow_run_id=workflow_run_id,
