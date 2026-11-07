@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.human_input import stringify_form_default_values
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -39,7 +40,6 @@ from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from core.app.entities.task_entities import HumanInputRequiredResponse, StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
-from extensions.ext_database import db
 from libs.helper import to_timestamp
 from models.enums import CreatorUserRole
 from models.model import App
@@ -93,6 +93,7 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
         op="describe.run.form",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Read a human-input form",
         examples=(
@@ -113,7 +114,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         returns=(200, HumanInputFormDefinitionResponse, "Form definition"),
     )
     def get(self, ctx: Context, app_id: str, form_token: str):
-        service = HumanInputService(db.engine)
+        service = HumanInputService(session_factory.get_session_maker())
         form = service.get_form_by_token(form_token)
         if form is None:
             raise HumanInputFormNotFound()
@@ -127,6 +128,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @endpoint(
         op="submit.run.form",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Submit a human-input form",
         examples=(
@@ -163,7 +165,7 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         returns=(200, FormSubmitResponse, "Form submitted"),
     )
     def post(self, ctx: Context, app_id: str, form_token: str, *, body: OpenApiFormSubmitPayload):
-        service = HumanInputService(db.engine)
+        service = HumanInputService(session_factory.get_session_maker())
         form = service.get_form_by_token(form_token)
         if form is None:
             raise HumanInputFormNotFound()
