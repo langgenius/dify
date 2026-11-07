@@ -1747,6 +1747,28 @@ def test_workflow_mixed_uploads_keep_references_and_only_send_images_to_vision_m
         assert result.redacted_request["composition"]["layers"][2]["config"]["files"][0]["base64_data"] == "[REDACTED]"
 
 
+def test_workflow_image_conversion_rejects_non_image_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
+
+    image = File(
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="image-1"),
+        filename="image.png",
+        extension=".png",
+        mime_type="image/png",
+        size=5,
+    )
+    monkeypatch.setattr(runtime_builder, "get_system_value", lambda *_args: [image])
+    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: True)
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", lambda *_args, **_kwargs: None)
+
+    with pytest.raises(WorkflowAgentRuntimeRequestBuildError, match="cannot send file 'image.png'") as exc_info:
+        WorkflowAgentRuntimeRequestBuilder._build_user_images(_context(), "provider", "model")
+
+    assert exc_info.value.error_code == "agent_user_file_unsupported"
+
+
 def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_context():
     remote_url = "https://example.com/" + ("a" * 2100) + ".pdf"
 
