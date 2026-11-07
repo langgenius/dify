@@ -39,6 +39,7 @@ from graphon.node_events import (
     RunRetrieverResourceEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
+    StreamReasoningEvent,
 )
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
@@ -454,7 +455,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
         stream_text: bool,
     ) -> Generator[
-        StreamChunkEvent,
+        StreamChunkEvent | StreamReasoningEvent,
         None,
         tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
@@ -471,6 +472,13 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         the variable pool, so a configured fallback ``text`` would be dropped
         after a partial stream.
 
+        Thinking parts follow the same streaming gate and preserve arrival order.
+        Nonempty thinking segments are separated by a blank line, including when
+        a segment starts empty and receives its content in a later delta.
+        A reasoning stream is closed exactly once after the reader returns, including
+        transport failures, only if a nonempty thinking chunk was emitted. Reasoning
+        is not added to output variables or metadata.
+
         Returns a 2-tuple ``(terminal_event, transport_failure)``:
         - ``terminal_event``: the first non-stream/non-started internal event,
           or ``None`` if the stream ended without one.
@@ -479,13 +487,28 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
           terminal may accompany it so the caller can persist the final session
           snapshot while preserving the original transport failure.
         """
-        result = yield from self._read_event_stream(
+        stream = self._read_event_stream(
             run_id,
             inputs=inputs,
             process_data=process_data,
             metadata=metadata,
             stream_text=stream_text,
         )
+        reasoning_started = False
+        try:
+            while True:
+                try:
+                    event = next(stream)
+                except StopIteration as stopped:
+                    result = stopped.value
+                    break
+                if isinstance(event, StreamReasoningEvent):
+                    reasoning_started = True
+                yield event
+        finally:
+            stream.close()
+        if reasoning_started:
+            yield StreamReasoningEvent(selector=[self._node_id, "reasoning_content"], chunk="", is_final=True)
         if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
         return result
@@ -499,11 +522,19 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
         stream_text: bool,
     ) -> Generator[
-        StreamChunkEvent,
+        StreamChunkEvent | StreamReasoningEvent,
         None,
         tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
+        """Read one run, preserving metadata and yielding only enabled text/reasoning.
+
+        Requires the caller's per-attempt metadata. Backend and protocol failures
+        cancel the run and return a failure result; terminal events end the reader.
+        The caller owns final stream markers.
+        """
         stream_event_count = 0
+        thinking_emitted = False
+        thinking_separator_pending = False
         last_event_id: str | None = None
         try:
             for public_event in self._agent_backend_client.stream_events(
@@ -519,6 +550,22 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
+                            data = internal_event.data
+                            if isinstance(data, dict) and data.get("event_kind") == "part_start":
+                                part = data.get("part")
+                                if isinstance(part, dict) and part.get("part_kind") == "thinking":
+                                    thinking_separator_pending = thinking_emitted
+                            thinking = self._thinking_chunk(internal_event)
+                            if stream_text and thinking:
+                                if thinking_separator_pending:
+                                    thinking = "\n\n" + thinking
+                                thinking_separator_pending = False
+                                thinking_emitted = True
+                                yield StreamReasoningEvent(
+                                    selector=[self._node_id, "reasoning_content"],
+                                    chunk=thinking,
+                                    is_final=False,
+                                )
                         continue
                     if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
                         if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
@@ -587,6 +634,30 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             after=last_event_id,
         )
         return cancellation, None
+
+    @staticmethod
+    def _thinking_chunk(event: AgentBackendStreamInternalEvent) -> str | None:
+        """Extract nonempty thinking text from a serialized Agent stream event.
+
+        Accepts any validated stream payload; unrelated, empty or malformed parts
+        return None without side effects, matching the Agent app's thinking parser.
+        """
+        data = event.data
+        if not isinstance(data, dict):
+            return None
+        if data.get("event_kind") == "part_delta":
+            part = data.get("delta")
+            content = (
+                part.get("content_delta")
+                if isinstance(part, dict) and part.get("part_delta_kind") == "thinking"
+                else None
+            )
+        elif data.get("event_kind") == "part_start":
+            part = data.get("part")
+            content = part.get("content") if isinstance(part, dict) and part.get("part_kind") == "thinking" else None
+        else:
+            return None
+        return content if isinstance(content, str) and content else None
 
     def _is_graph_aborted(self) -> bool:
         """Let Agent SSE consumption observe Engine's cooperative abort state."""
