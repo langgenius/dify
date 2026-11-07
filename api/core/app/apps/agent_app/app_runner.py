@@ -15,6 +15,8 @@ from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Literal
 
+from pydantic import JsonValue
+
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendError,
@@ -27,14 +29,6 @@ from clients.agent_backend import (
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
 )
-from extensions.tracing import application_tracing_hooks
-from models.agent import AgentConfigVersionKind
-from models.agent_config_entities import AgentSoulConfig
-from models.enums import CreatorUserRole
-from models.model import Message, MessageAgentThought
-from pydantic import JsonValue
-from services.agent.knowledge_citations import knowledge_sources_from_tool_part
-
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequest,
@@ -56,6 +50,7 @@ from core.app.entities.queue_entities import (
     QueueRetrieverResourcesEvent,
 )
 from core.db.session_factory import create_session
+from extensions.tracing import application_tracing_hooks
 from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -72,6 +67,11 @@ from graphon.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from models.agent import AgentConfigVersionKind
+from models.agent_config_entities import AgentSoulConfig
+from models.enums import CreatorUserRole
+from models.model import Message, MessageAgentThought
+from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 
 logger = logging.getLogger(__name__)
 

@@ -13,24 +13,6 @@ from typing import Any, override
 from unittest.mock import MagicMock
 
 import pytest
-from clients.agent_backend import (
-    AgentBackendError,
-    AgentBackendRunEventAdapter,
-    AgentBackendRunFailedError,
-    AgentBackendRunFailedInternalEvent,
-    AgentBackendStreamInternalEvent,
-    FakeAgentBackendRunClient,
-    FakeAgentBackendScenario,
-)
-from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
-from core.app.entities.queue_entities import (
-    QueueAgentMessageEvent,
-    QueueAgentThoughtEvent,
-    QueueLLMChunkEvent,
-    QueueMessageEndEvent,
-    QueueRetrieverResourcesEvent,
-)
-from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from dify_agent.protocol import (
     AgentRunUsage,
     CancelRunRequest,
@@ -47,9 +29,6 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
-from models.agent_config_entities import AgentSoulConfig
-from models.enums import ConversationFromSource
-from models.model import AppMode, Message, MessageAgentThought
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
@@ -62,13 +41,34 @@ from pydantic_ai.messages import (
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend import (
+    AgentBackendError,
+    AgentBackendRunEventAdapter,
+    AgentBackendRunFailedError,
+    AgentBackendRunFailedInternalEvent,
+    AgentBackendStreamInternalEvent,
+    FakeAgentBackendRunClient,
+    FakeAgentBackendScenario,
+)
 from core.app.apps.agent_app import app_runner as app_runner_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext, AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.app.entities.queue_entities import (
+    QueueAgentMessageEvent,
+    QueueAgentThoughtEvent,
+    QueueLLMChunkEvent,
+    QueueMessageEndEvent,
+    QueueRetrieverResourcesEvent,
+)
+from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
+from models.agent_config_entities import AgentSoulConfig
+from models.enums import ConversationFromSource
+from models.model import AppMode, Message, MessageAgentThought
 
 
 @pytest.fixture(autouse=True)
