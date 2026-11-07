@@ -358,7 +358,7 @@ def test_init_params() -> None:
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
-            http_client=ssrf_proxy,
+            http_client=ssrf_proxy,  # pyrefly: ignore
             file_manager=file_manager,
         )
 
@@ -410,7 +410,7 @@ def test_empty_api_key_raises_error_bearer() -> None:
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
-            http_client=ssrf_proxy,
+            http_client=ssrf_proxy,  # pyrefly: ignore
             file_manager=file_manager,
         )
 
@@ -437,7 +437,7 @@ def test_empty_api_key_raises_error_basic() -> None:
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
-            http_client=ssrf_proxy,
+            http_client=ssrf_proxy,  # pyrefly: ignore
             file_manager=file_manager,
         )
 
@@ -464,7 +464,7 @@ def test_empty_api_key_raises_error_custom() -> None:
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
-            http_client=ssrf_proxy,
+            http_client=ssrf_proxy,  # pyrefly: ignore
             file_manager=file_manager,
         )
 
@@ -491,7 +491,7 @@ def test_whitespace_only_api_key_raises_error() -> None:
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
-            http_client=ssrf_proxy,
+            http_client=ssrf_proxy,  # pyrefly: ignore
             file_manager=file_manager,
         )
 
@@ -517,7 +517,7 @@ def test_valid_api_key_works() -> None:
         timeout=timeout,
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
-        http_client=ssrf_proxy,
+        http_client=ssrf_proxy,  # pyrefly: ignore
         file_manager=file_manager,
     )
 
@@ -567,7 +567,7 @@ def test_executor_with_json_body_and_unquoted_uuid_variable() -> None:
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
-        http_client=ssrf_proxy,
+        http_client=ssrf_proxy,  # pyrefly: ignore
         file_manager=file_manager,
     )
 
@@ -614,7 +614,7 @@ def test_executor_with_json_body_and_unquoted_uuid_with_newlines() -> None:
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
-        http_client=ssrf_proxy,
+        http_client=ssrf_proxy,  # pyrefly: ignore
         file_manager=file_manager,
     )
 
@@ -655,7 +655,7 @@ def test_executor_with_json_body_preserves_numbers_and_strings() -> None:
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
-        http_client=ssrf_proxy,
+        http_client=ssrf_proxy,  # pyrefly: ignore
         file_manager=file_manager,
     )
 
