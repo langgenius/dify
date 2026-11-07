@@ -15,7 +15,7 @@ class _TestNodeData(BaseNodeData):
     pass
 
 
-def _get_all_subclasses(root: type[Node]) -> list[type[Node]]:  # pyrefly: ignore
+def _get_all_subclasses(root: type[Node]) -> list[type[Node]]:  # pyrefly: ignore[implicit-any-type-argument]
     subclasses = []
     queue = [root]
     while queue:
@@ -96,7 +96,7 @@ def test_init_subclass_raises_without_generic_or_explicit_type() -> None:
     """A subclass must either use Node[T] or explicitly set _node_data_type."""
     with pytest.raises(TypeError, match="must inherit from Node\\[T\\] with a BaseNodeData subtype"):
 
-        class _InvalidNode(Node):  # pyrefly: ignore
+        class _InvalidNode(Node):  # pyrefly: ignore[implicit-any-type-argument]
             pass
 
 
@@ -104,7 +104,7 @@ def test_init_subclass_rejects_explicit_node_data_type_without_generic() -> None
     """Setting _node_data_type explicitly cannot bypass the Node[T] requirement."""
     with pytest.raises(TypeError, match="must inherit from Node\\[T\\] with a BaseNodeData subtype"):
 
-        class _ExplicitNode(Node):  # pyrefly: ignore
+        class _ExplicitNode(Node):  # pyrefly: ignore[implicit-any-type-argument]
             _node_data_type = _TestNodeData
             node_type = BuiltinNodeTypes.CODE
 
