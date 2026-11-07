@@ -11,6 +11,9 @@ type AudioPlayerProps = Readonly<{
 }>
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const { t } = useTranslation(['common'])
+  // Track the full ordered list by value so parent re-renders do not reload unchanged audio.
+  const sourceKey = JSON.stringify(srcs)
+  const primarySrc = srcs?.[0] || src
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -99,7 +102,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     setHoverTime(0)
     setBufferedTime(0)
     setHasStartedPlaying(false)
-    setIsAudioAvailable(Boolean(srcs?.[0] || src))
+    setIsAudioAvailable(Boolean(primarySrc))
     const handleError = () => {
       setIsPlaying(false)
       setIsAudioAvailable(false)
@@ -124,7 +127,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     // Preload audio metadata
     audio.load()
     // Use the first source or src to generate waveform
-    const primarySrc = srcs?.[0] || src
     const timer = primarySrc
       ? setTimeout(() => {
           void generateWaveformData(primarySrc, () => active)
@@ -140,7 +142,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       audio.removeEventListener('error', handleError)
       clearTimeout(timer)
     }
-  }, [src, srcs])
+  }, [src, primarySrc, sourceKey])
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
     if (audio && isAudioAvailable) {
