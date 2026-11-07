@@ -27,6 +27,7 @@ const createSchema = (overrides: Partial<ToolFormSchema> = {}): ToolFormSchema =
   default: '',
   tooltip: { en_US: 'Credential used by the tool', zh_Hans: '工具使用的凭据' },
   show_on: [],
+  reset_on_change: [],
   options: [],
   placeholder: { en_US: 'Enter API key', zh_Hans: '输入 API 密钥' },
   ...overrides,
