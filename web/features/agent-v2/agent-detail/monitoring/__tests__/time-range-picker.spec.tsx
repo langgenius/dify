@@ -8,8 +8,8 @@ import { AgentMonitoringTimeRangePicker } from '../time-range-picker'
 const rangePicker = vi.hoisted(() => ({
   start: null as unknown as Dayjs,
   end: null as unknown as Dayjs,
-  onStartChange: (_date: unknown) => {},
-  onEndChange: (_date: unknown) => {},
+  onStartChange: (() => {}) as (date: Dayjs) => void,
+  onEndChange: (() => {}) as (date: Dayjs) => void,
 }))
 
 vi.mock('@/app/components/app/monitoring/date-range-picker', () => ({
