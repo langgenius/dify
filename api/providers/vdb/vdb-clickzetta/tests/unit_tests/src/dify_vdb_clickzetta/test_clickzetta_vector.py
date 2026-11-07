@@ -4,14 +4,40 @@ import sys
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from types import ModuleType, SimpleNamespace
-from typing import Any, NoReturn, Self
+from typing import Any, NoReturn, Self, override
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from models.dataset import Dataset
+
+
+class _UnusedEmbeddings(Embeddings):
+    """A real ``Embeddings`` instance for calls that ignore the argument.
+
+    ``ClickzettaVectorFactory.init_vector`` only reads config values and never
+    touches ``embeddings``. Using a real instance here keeps the test free of
+    new test doubles, as required by the repository's guard scripts.
+    """
+
+    @override
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        raise NotImplementedError
+
+    @override
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
+        raise NotImplementedError
+
+    @override
+    def embed_query(self, text: str) -> list[float]:
+        raise NotImplementedError
+
+    @override
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
+        raise NotImplementedError
 
 
 def _build_fake_clickzetta_module() -> FakeModule:
@@ -244,6 +270,49 @@ def test_factory_initializes_clickzetta_vector(clickzetta_module: ModuleType, mo
 
     assert result == "vector"
     assert vector_cls.call_args.kwargs["collection_name"] == "collection"
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [
+        (False, False),
+        (True, True),
+        (None, True),
+    ],
+)
+def test_factory_honors_inverted_index_setting(
+    clickzetta_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    configured: bool | None,
+    expected: bool,
+) -> None:
+    """A disabled inverted index must stay disabled.
+
+    ``CLICKZETTA_ENABLE_INVERTED_INDEX`` is a toggle; falling back with
+    ``or True`` made it impossible to turn off, and only ``None`` (unset)
+    should end up as the default ``True``.
+    """
+    factory = clickzetta_module.ClickzettaVectorFactory()
+    dataset = Dataset(id="dataset-1")
+
+    monkeypatch.setattr(clickzetta_module.Dataset, "gen_collection_name_by_id", lambda _id: "COLLECTION")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_USERNAME", "username")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_PASSWORD", "password")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_INSTANCE", "instance")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_SERVICE", "service")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_WORKSPACE", "workspace")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_VCLUSTER", "cluster")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_SCHEMA", "dify")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_BATCH_SIZE", 10)
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_ENABLE_INVERTED_INDEX", configured)
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_ANALYZER_TYPE", "chinese")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_ANALYZER_MODE", "smart")
+    monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_VECTOR_DISTANCE_FUNCTION", "cosine_distance")
+
+    with patch.object(clickzetta_module, "ClickzettaVector", return_value="vector") as vector_cls:
+        factory.init_vector(dataset, attributes=[], embeddings=_UnusedEmbeddings(), session=None)
+
+    assert vector_cls.call_args.kwargs["config"].enable_inverted_index is expected
 
 
 def test_connection_pool_singleton_and_config_key(
