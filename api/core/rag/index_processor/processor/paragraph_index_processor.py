@@ -3,6 +3,7 @@
 import contextlib
 import logging
 import re
+import threading
 import uuid
 from collections.abc import Callable
 from typing import Any, TypedDict, cast, override
@@ -52,6 +53,18 @@ from models.dataset import Document as DatasetDocument
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 logger = logging.getLogger(__name__)
+
+
+# Maximum number of summary generations that may run concurrently across all
+# preview requests in this process. Each preview request gets its own executor
+# with up to 10 workers, and a timed-out request cannot cancel a model call
+# that is already running, so without a shared bound repeated timeouts would
+# accumulate unbounded model calls, threads and worker DB sessions. A worker
+# that cannot acquire a slot fails fast instead of starting more work. The
+# bound matches the per-request worker ceiling, so one request can still use
+# the full pool.
+_SUMMARY_PREVIEW_MAX_CONCURRENT_GENERATIONS = 10
+_summary_preview_concurrency = threading.BoundedSemaphore(_SUMMARY_PREVIEW_MAX_CONCURRENT_GENERATIONS)
 
 
 _file_access_controller = DatabaseFileAccessController()
@@ -309,6 +322,15 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         Summaries are published to the PreviewDetail objects only after the whole
         batch succeeds, so a timed-out or failed batch leaves the caller's
         previews untouched.
+
+        Preconditions: preview_texts is a list of PreviewDetail items.
+        Postconditions: on success every item's summary is set; on any failure
+            (including timeout) a ValueError is raised and no item is mutated.
+            At most _SUMMARY_PREVIEW_MAX_CONCURRENT_GENERATIONS summary
+            generations run concurrently across all preview requests, so
+            repeated timeouts cannot accumulate unbounded running model calls,
+            threads or worker DB sessions; a worker that cannot acquire a
+            slot fails fast with a capacity error.
         """
         import concurrent.futures
 
@@ -327,10 +349,32 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             Returns the summary instead of writing it to the preview: results
             are published only after the whole batch succeeds, so a late
             worker can never mutate a failed request's preview items.
+
+            Preconditions: none beyond the enclosing call.
+            Postconditions: on success returns the generated summary; the
+                shared concurrency slot is released on every exit path. At
+                most _SUMMARY_PREVIEW_MAX_CONCURRENT_GENERATIONS
+                generations run concurrently across all preview requests.
             """
-            if flask_app:
-                # Ensure Flask app context in worker thread
-                with flask_app.app_context():
+            if not _summary_preview_concurrency.acquire(blocking=False):
+                raise RuntimeError(
+                    "Summary preview capacity exhausted: too many summary generations are already running"
+                )
+            try:
+                if flask_app:
+                    # Ensure Flask app context in worker thread
+                    with flask_app.app_context():
+                        with session_factory.create_session() as worker_session:
+                            summary, _ = self.generate_summary(
+                                tenant_id,
+                                preview.content,
+                                summary_index_setting,
+                                document_language=doc_language,
+                                session=worker_session,
+                            )
+                        return summary
+                else:
+                    # Fallback: try without app context (may fail)
                     with session_factory.create_session() as worker_session:
                         summary, _ = self.generate_summary(
                             tenant_id,
@@ -340,17 +384,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                             session=worker_session,
                         )
                     return summary
-            else:
-                # Fallback: try without app context (may fail)
-                with session_factory.create_session() as worker_session:
-                    summary, _ = self.generate_summary(
-                        tenant_id,
-                        preview.content,
-                        summary_index_setting,
-                        document_language=doc_language,
-                        session=worker_session,
-                    )
-                return summary
+            finally:
+                _summary_preview_concurrency.release()
 
         # Generate summaries concurrently using ThreadPoolExecutor
         # Set a reasonable timeout to prevent hanging (60 seconds per chunk, max 5 minutes total)
