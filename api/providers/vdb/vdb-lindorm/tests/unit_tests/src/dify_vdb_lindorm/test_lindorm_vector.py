@@ -43,7 +43,7 @@ def _build_fake_opensearch_modules():
 
     opensearch_helpers.__dict__["BulkIndexError"] = BulkIndexError
     opensearch_helpers.__dict__["bulk"] = MagicMock()
-    opensearch_exceptions.__dict__['NotFoundError'] = NotFoundError
+    opensearch_exceptions.__dict__["NotFoundError"] = NotFoundError
 
     opensearchpy.__dict__["OpenSearch"] = OpenSearch
     opensearchpy.__dict__["NotFoundError"] = NotFoundError

@@ -57,7 +57,7 @@ def _opensearch_build_fake_opensearch_modules():
     opensearchpy.__dict__["Urllib3HttpConnection"] = Urllib3HttpConnection
     opensearchpy.__dict__["NotFoundError"] = NotFoundError
     opensearchpy.__dict__["helpers"] = helpers
-    opensearchpy_helpers.__dict__['BulkIndexError'] = BulkIndexError
+    opensearchpy_helpers.__dict__["BulkIndexError"] = BulkIndexError
 
     return {
         "opensearchpy": opensearchpy,
@@ -382,7 +382,7 @@ def _opensearch_vector_build_fake_opensearch_modules():
     opensearchpy.__dict__["Urllib3HttpConnection"] = Urllib3HttpConnection
     opensearchpy.__dict__["NotFoundError"] = NotFoundError
     opensearchpy.__dict__["helpers"] = helpers
-    opensearchpy_helpers.__dict__['BulkIndexError'] = BulkIndexError
+    opensearchpy_helpers.__dict__["BulkIndexError"] = BulkIndexError
     opensearchpy_exceptions.__dict__["NotFoundError"] = NotFoundError
 
     return {
