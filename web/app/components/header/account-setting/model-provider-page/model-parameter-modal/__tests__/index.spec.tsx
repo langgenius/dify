@@ -220,16 +220,35 @@ describe('ModelParameterModal', () => {
     expect(defaultProps.onCompletionParamsChange).toHaveBeenLastCalledWith({ temperature: 0.9 })
   })
 
-  it('should call onCompletionParamsChange when preset is selected', async () => {
+  it('restores the selected preset value after disabling and re-enabling a parameter', async () => {
     const user = userEvent.setup()
-    render(<ModelParameterModal {...defaultProps} />)
+    const Harness = () => {
+      const [params, setParams] = useState<FormValue>({ temperature: 0.7 })
+      return (
+        <ModelParameterModal
+          {...defaultProps}
+          completionParams={params}
+          onCompletionParamsChange={(next) => {
+            defaultProps.onCompletionParamsChange(next)
+            setParams(next)
+          }}
+        />
+      )
+    }
+    render(<Harness />)
     await openSettings(user)
     await user.click(screen.getByRole('button', { name: /loadPresets/ }))
-    await user.click(screen.getByRole('menuitem', { name: /Creative/ }))
-    expect(defaultProps.onCompletionParamsChange).toHaveBeenCalledWith({
-      ...defaultProps.completionParams,
-      temperature: 0.8,
-    })
+    await user.click(screen.getByRole('menuitem', { name: /Precise/ }))
+    expect(defaultProps.onCompletionParamsChange).toHaveBeenLastCalledWith({ temperature: 0.2 })
+    expect(screen.getByRole('spinbutton', { name: 'Temperature' })).toHaveValue(0.2)
+
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    expect(defaultProps.onCompletionParamsChange).toHaveBeenLastCalledWith({})
+    expect(screen.getByRole('spinbutton', { name: 'Temperature' })).toHaveValue(0.2)
+
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    expect(defaultProps.onCompletionParamsChange).toHaveBeenLastCalledWith({ temperature: 0.2 })
+    expect(screen.getByRole('switch', { name: 'Temperature' })).toBeChecked()
   })
 
   it('should not render preset control when visible parameters do not support preset keys', async () => {
