@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from fields.base import ResponseModel, SessionResponseSource
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
+from libs.file_url_refresh import refresh_file_urls
 from libs.helper import to_timestamp
 
 
@@ -133,6 +134,13 @@ class WorkflowRunDetailResponse(ResponseModel):
     finished_at: int | None = None
     exceptions_count: int | None = None
 
+    @field_validator("inputs", "outputs", mode="before")
+    @classmethod
+    def _refresh_file_urls(cls, value: Any) -> Any:
+        # Persisted payloads embed signed preview URLs that expire; re-sign them
+        # so log/trace views render files from older runs.
+        return refresh_file_urls(value)
+
     @field_validator("status", mode="before")
     @classmethod
     def _normalize_status(cls, value: Any) -> str | None:
@@ -170,6 +178,13 @@ class WorkflowRunNodeExecutionResponse(ResponseModel):
     outputs_truncated: bool | None = None
     process_data_truncated: bool | None = None
     retry_index: int | None = Field(default=None, exclude_if=lambda value: value is None)
+
+    @field_validator("inputs", "process_data", "outputs", mode="before")
+    @classmethod
+    def _refresh_file_urls(cls, value: Any) -> Any:
+        # Persisted payloads embed signed preview URLs that expire; re-sign them
+        # so log/trace views render files from older runs.
+        return refresh_file_urls(value)
 
     @field_validator("status", mode="before")
     @classmethod
