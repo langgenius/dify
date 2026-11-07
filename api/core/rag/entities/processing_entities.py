@@ -1,7 +1,7 @@
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, model_validator
 
 
 class ParentMode(StrEnum):
@@ -26,8 +26,14 @@ class Segmentation(BaseModel):
         description="Custom separator for splitting text.",
         validation_alias=AliasChoices("separator", "delimiter"),
     )
-    max_tokens: int = Field(description="Maximum token count per chunk.")
+    max_tokens: int = Field(gt=0, description="Maximum token count per chunk.")
     chunk_overlap: int = Field(default=0, ge=0, description="Token overlap between chunks.")
+
+    @model_validator(mode="after")
+    def validate_overlap(self) -> Self:
+        if self.chunk_overlap >= self.max_tokens:
+            raise ValueError("chunk_overlap must be less than max_tokens.")
+        return self
 
 
 class Rule(BaseModel):
