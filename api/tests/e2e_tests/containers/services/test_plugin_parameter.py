@@ -12,8 +12,10 @@ import pytest
 from sqlalchemy import select
 
 from constants import HIDDEN_VALUE
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper.encrypter import encrypt_token
-from core.helper.provider_cache import SingletonProviderCredentialsCache
+from core.helper.provider_cache import ToolProviderCredentialsCache
+from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.utils.encryption import TriggerProviderCredentialsCache
 from extensions.ext_redis import redis_client
@@ -46,10 +48,16 @@ def credential_cache_cleanup(harness: _Harness) -> Iterator[None]:
         subscription_ids = session.scalars(
             select(TriggerSubscription.id).where(TriggerSubscription.tenant_id == harness.tenant_id)
         ).all()
+        tool_credentials = session.scalars(
+            select(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == harness.tenant_id)
+        ).all()
     keys = [
-        SingletonProviderCredentialsCache(
-            tenant_id=harness.tenant_id, provider_type="plugin", provider_identity=_PROVIDER
-        ).cache_key,
+        *[
+            ToolProviderCredentialsCache(
+                tenant_id=harness.tenant_id, provider=credential.provider, credential_id=credential.id
+            ).cache_key
+            for credential in tool_credentials
+        ],
         *[
             TriggerProviderCredentialsCache(
                 tenant_id=harness.tenant_id, provider_id=_PROVIDER, credential_id=subscription_id
@@ -57,7 +65,8 @@ def credential_cache_cleanup(harness: _Harness) -> Iterator[None]:
             for subscription_id in subscription_ids
         ],
     ]
-    redis_client.delete(*keys)
+    for key in keys:
+        redis_client.delete(key)
 
 
 def _add_tool_credentials(
@@ -94,7 +103,14 @@ def _get_url(provider_type: str, credential_id: str | None = None) -> str:
     return f"{_URL}?{urlencode(params)}"
 
 
-def _assert_dispatch(daemon: _Daemon, harness: _Harness, credentials: dict[str, object]) -> None:
+def _assert_dispatch(
+    daemon: _Daemon,
+    harness: _Harness,
+    credentials: dict[str, object],
+    *,
+    credential_type: CredentialType = CredentialType.API_KEY,
+    parameter_values: dict[str, object] | None = None,
+) -> None:
     dispatch = [request for request in daemon.requests if request.method == "POST"]
     assert len(dispatch) == 1
     assert all(not request.open_transactions for request in daemon.requests)
@@ -107,7 +123,8 @@ def _assert_dispatch(daemon: _Daemon, harness: _Harness, credentials: dict[str, 
         "data": {
             "provider": "github",
             "credentials": credentials,
-            "credential_type": CredentialType.API_KEY,
+            "credential_type": credential_type,
+            **({"parameter_values": parameter_values} if parameter_values is not None else {}),
             "provider_action": "push",
             "parameter": "branch",
         },
@@ -232,12 +249,56 @@ def test_supplied_trigger_credentials_only_replace_hidden_keys_and_never_persist
         harness.call,
         "POST",
         url=f"{_URL}-with-credentials",
-        payload={**_PAYLOAD, "credential_id": owned.id, "credentials": request_credentials},
+        payload={
+            **_PAYLOAD,
+            "credential_id": owned.id,
+            "credentials": request_credentials,
+            "parameter_values": {"repository": "dify"},
+        },
     )
 
     assert response.status_code == HTTPStatus.OK
-    _assert_dispatch(daemon, harness, {**request_credentials, "token": "stored-secret", "unknown_hidden": None})
+    _assert_dispatch(
+        daemon,
+        harness,
+        {**request_credentials, "token": "stored-secret", "unknown_hidden": None},
+        parameter_values={"repository": "dify"},
+    )
     with harness.session_factory() as session:
         saved = session.get(TriggerSubscription, owned.id)
         assert saved is not None
         assert saved.credentials == stored_credentials
+
+
+def test_tool_credential_cache_does_not_reuse_another_selected_credential(harness: _Harness, daemon: _Daemon) -> None:
+    daemon.provider = _tool_provider(credentials=True)
+    _options_response(daemon)
+    first = _add_tool_credentials(harness, token="first-secret")
+    second = _add_tool_credentials(harness, token="second-secret")
+
+    for credential in (first, second, first):
+        daemon.requests.clear()
+        response = Context().run(harness.call, "GET", url=_get_url("tool", credential.id))
+        assert response.status_code == HTTPStatus.OK
+        _assert_dispatch(daemon, harness, {"token": credential.name})
+
+
+def test_tool_oauth_credentials_use_oauth_schema_for_decryption(harness: _Harness, daemon: _Daemon) -> None:
+    daemon.provider = _tool_provider(credentials=True)
+    declaration = daemon.provider["declaration"]
+    assert isinstance(declaration, dict)
+    declaration["oauth_schema"] = OAuthSchema(
+        credentials_schema=[ProviderConfig(name="access_token", type=ProviderConfigType.SECRET_INPUT)]
+    ).model_dump(mode="json")
+    _options_response(daemon)
+    credential = _add_tool_credentials(harness, token="oauth-secret")
+    with harness.session_factory.begin() as session:
+        stored = session.get(BuiltinToolProvider, credential.id)
+        assert stored is not None
+        stored.encrypted_credentials = json.dumps({"access_token": stored.credentials["token"]})
+        stored.credential_type = CredentialType.OAUTH2
+
+    response = Context().run(harness.call, "GET", url=_get_url("tool", credential.id))
+
+    assert response.status_code == HTTPStatus.OK
+    _assert_dispatch(daemon, harness, {"access_token": "oauth-secret"}, credential_type=CredentialType.OAUTH2)

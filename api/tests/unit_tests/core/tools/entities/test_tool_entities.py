@@ -41,7 +41,11 @@ def test_tool_parameter_rejects_invalid_multiple_declarations(updates: dict[str,
 
 @pytest.mark.parametrize(
     "parameter_type",
-    [ToolParameter.ToolParameterType.SELECT, ToolParameter.ToolParameterType.DYNAMIC_SELECT],
+    [
+        ToolParameter.ToolParameterType.SELECT,
+        ToolParameter.ToolParameterType.DYNAMIC_SELECT,
+        ToolParameter.ToolParameterType.DYNAMIC_TREE_SELECT,
+    ],
 )
 def test_tool_parameter_accepts_multiple_select_declarations(parameter_type: ToolParameter.ToolParameterType):
     parameter = _make_select_parameter(type=parameter_type, multiple=True, default=["a"])

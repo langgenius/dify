@@ -28,6 +28,7 @@ const parameter = (
     label: { en_US: 'Parameter', zh_Hans: null },
     description: { en_US: 'Actual datasource description', ja_JP: null },
     required: true,
+    dynamic_select_lazy_load: false,
   }) satisfies DatasourceParameter
 
 it('projects datasource descriptions, nullable locale fallbacks, and exact default values at the form boundary', () => {

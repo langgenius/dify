@@ -878,6 +878,11 @@ def _fail_inserts(
     failure_count: int,
     duplicate: bool,
 ) -> Generator[ConflictEvents]:
+    """Record repository retries while injecting the requested insert failures.
+
+    Preconditions: engine belongs to the test and failure_count selects failed attempts.
+    Postconditions: yielded events record attempts and rollbacks; listeners are always removed.
+    """
     insert_attempts: list[str] = []
     rollbacks: list[bool] = []
 

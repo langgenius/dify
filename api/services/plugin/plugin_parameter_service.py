@@ -4,10 +4,11 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Literal, Protocol
 
 from constants import HIDDEN_VALUE
+from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.utils.encryption import create_tool_provider_encrypter
+from core.tools.utils.encryption import create_provider_encrypter
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.utils.encryption import create_trigger_provider_encrypter
 from models.provider_ids import TriggerProviderID
@@ -47,6 +48,7 @@ class PluginParameterGateway(Protocol):
         credentials: Mapping[str, Any],
         credential_type: str,
         plugin_unique_identifier: str,
+        parameter_values: Mapping[str, Any] | None = None,
     ) -> Sequence[PluginParameterOption]: ...
 
 
@@ -81,11 +83,16 @@ class PluginParameterService:
         parameter: str,
         credential_id: str | None,
         provider_type: Literal["tool", "trigger"],
+        parameter_values: Mapping[str, Any] | None = None,
     ) -> Sequence[PluginParameterOption]:
         """Use a selected credential, or the provider's existing default lookup.
 
         A trigger credential ID may also identify a builder owned by this user.
         Only a missing/expired builder falls back to a persisted subscription.
+        Preconditions: the caller is admitted for the workspace and sibling values
+        have been validated by the transport.
+        Postconditions: the exact credential type and credential-scoped cache are
+        used after repository sessions close; sibling values reach the daemon unchanged.
         """
         provider_name = provider if "/" in provider else f"{plugin_id}/{provider}"
         credentials: Mapping[str, Any] = {}
@@ -99,7 +106,16 @@ class PluginParameterService:
                 )
                 if record is None:
                     raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
-                encrypter, _ = create_tool_provider_encrypter(tenant_id=tenant_id, controller=tool)
+                encrypter, _ = create_provider_encrypter(
+                    tenant_id=tenant_id,
+                    config=[
+                        field.to_basic_provider_config()
+                        for field in tool.get_credentials_schema_by_type(CredentialType(record.credential_type))
+                    ],
+                    cache=ToolProviderCredentialsCache(
+                        tenant_id=tenant_id, provider=tool.entity.identity.name, credential_id=record.id
+                    ),
+                )
                 credentials = encrypter.decrypt(record.credentials)
                 credential_type = record.credential_type
         else:
@@ -147,6 +163,7 @@ class PluginParameterService:
             credential_type=credential_type,
             parameter=parameter,
             plugin_unique_identifier=plugin_unique_identifier,
+            parameter_values=parameter_values,
         )
 
     def get_dynamic_select_options_with_credentials(
@@ -160,8 +177,14 @@ class PluginParameterService:
         parameter: str,
         credential_id: str,
         credentials: Mapping[str, Any],
+        parameter_values: Mapping[str, Any] | None = None,
     ) -> Sequence[PluginParameterOption]:
-        """Resolve hidden values from the owned subscription without persisting edits."""
+        """Resolve hidden values from the owned subscription without persisting edits.
+
+        Preconditions: caller admission and payload validation have succeeded.
+        Postconditions: only the owned subscription supplies hidden values; sibling
+        values are forwarded without saving either credentials or form values.
+        """
         provider_name = provider if "/" in provider else f"{plugin_id}/{provider}"
         provider_id = TriggerProviderID(provider_name)
         subscription = self._require_subscription(
@@ -188,6 +211,7 @@ class PluginParameterService:
             credential_type=subscription.credential_type or CredentialType.UNAUTHORIZED.value,
             parameter=parameter,
             plugin_unique_identifier=trigger.plugin_unique_identifier,
+            parameter_values=parameter_values,
         )
 
     def _require_subscription(

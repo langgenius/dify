@@ -4,6 +4,7 @@ Credential decryption and builder lookup use Redis and are covered separately by
 container tests. These cases never require the unit suite's global Redis double.
 """
 
+import json
 from contextvars import Context
 from http import HTTPStatus
 from urllib.parse import urlencode
@@ -25,6 +26,7 @@ harness = test_trigger_oauth_client.harness
 daemon = test_trigger_subscription_builder.daemon
 
 _URL = "/console/api/workspaces/current/plugin/parameters/dynamic-options"
+_TREE_URL = _URL.replace("dynamic-options", "dynamic-tree-options")
 _PAYLOAD: dict[str, object] = {
     "plugin_id": "langgenius/github",
     "provider": "github",
@@ -58,7 +60,8 @@ def _url(method: str, *, credential_id: str | None = None) -> str:
     params = {**_PAYLOAD, "provider_type": "tool"}
     if credential_id is not None:
         params["credential_id"] = credential_id
-    return f"{_URL}?{urlencode(params)}"
+    endpoint = _TREE_URL if method == "TREE" else _URL
+    return f"{endpoint}?{urlencode(params)}"
 
 
 def _payload(method: str) -> dict[str, object] | None:
@@ -67,9 +70,9 @@ def _payload(method: str) -> dict[str, object] | None:
     return None
 
 
-@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize("method", ["GET", "POST", "TREE"])
 def test_options_require_login_before_plugin_io(harness: _Harness, daemon: _Daemon, method: str) -> None:
-    response = harness.client.open(_url(method), method=method, json=_payload(method))
+    response = harness.client.open(_url(method), method="GET" if method == "TREE" else method, json=_payload(method))
 
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.get_json()["code"] == "unauthorized"
@@ -77,7 +80,7 @@ def test_options_require_login_before_plugin_io(harness: _Harness, daemon: _Daem
     assert daemon.requests == []
 
 
-@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize("method", ["GET", "POST", "TREE"])
 @pytest.mark.parametrize(
     "role", [TenantAccountRole.EDITOR, TenantAccountRole.NORMAL, TenantAccountRole.DATASET_OPERATOR]
 )
@@ -86,29 +89,35 @@ def test_options_require_admin_or_owner_before_plugin_io(
 ) -> None:
     harness.set_role(role)
 
-    response = Context().run(harness.call, method, url=_url(method), payload=_payload(method))
+    response = Context().run(
+        harness.call, "GET" if method == "TREE" else method, url=_url(method), payload=_payload(method)
+    )
 
     assert response.status_code == HTTPStatus.FORBIDDEN
     assert response.get_json()["code"] == "forbidden"
     assert daemon.requests == []
 
 
-@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize("method", ["GET", "POST", "TREE"])
 def test_options_require_active_workspace(harness: _Harness, daemon: _Daemon, method: str) -> None:
     with harness.session_factory.begin() as session:
         session.execute(delete(TenantAccountJoin).where(TenantAccountJoin.account_id == harness.account_id))
 
-    response = Context().run(harness.call, method, url=_url(method), payload=_payload(method))
+    response = Context().run(
+        harness.call, "GET" if method == "TREE" else method, url=_url(method), payload=_payload(method)
+    )
 
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.get_json()["code"] == "unauthorized"
     assert daemon.requests == []
 
 
-@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize("method", ["GET", "POST", "TREE"])
 def test_options_validate_input_before_plugin_io(harness: _Harness, daemon: _Daemon, method: str) -> None:
-    url = _URL if method == "GET" else _url(method)
-    response = Context().run(harness.call, method, url=url, payload={} if method == "POST" else None)
+    url = _TREE_URL if method == "TREE" else _URL if method == "GET" else _url(method)
+    response = Context().run(
+        harness.call, "GET" if method == "TREE" else method, url=url, payload={} if method == "POST" else None
+    )
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert daemon.requests == []
@@ -132,6 +141,7 @@ def test_anonymous_tool_preserves_response_and_dispatch_after_repository_session
                 "value": "101",
                 "label": dict.fromkeys(("en_US", "zh_Hans", "pt_BR", "ja_JP"), "Branch 101"),
                 "icon": None,
+                "children": [],
             }
         ]
     }
@@ -220,3 +230,43 @@ def test_package_mismatch_rejects_dispatch_before_sending_credentials(harness: _
     assert response.get_json()["message"] == "Plugin unique identifier does not match X-Plugin-ID"
     assert [request.method for request in daemon.requests] == ["GET"]
     assert not daemon.requests[0].open_transactions
+
+
+@pytest.mark.parametrize("method", ["GET", "TREE"])
+def test_sibling_values_and_nested_options_survive_dispatch(harness: _Harness, daemon: _Daemon, method: str) -> None:
+    daemon.provider = _tool_provider()
+    daemon.response_data = {
+        "options": [
+            {
+                "value": "parent",
+                "label": {"en_US": "Parent"},
+                "children": [{"value": 7, "label": {"en_US": "Child"}}],
+            }
+        ]
+    }
+    values = {"repository": "dify", "enabled": False, "limit": 0, "tags": ["main"]}
+    url = f"{_url(method)}&{urlencode({'parameter_values': json.dumps(values)})}"
+
+    response = Context().run(harness.call, "GET", url=url)
+
+    assert response.status_code == HTTPStatus.OK
+    child = response.get_json()["options"][0]["children"][0]
+    assert child["value"] == "7"
+    assert child["children"] == []
+    data = daemon.requests[-1].payload["data"]
+    assert isinstance(data, dict)
+    assert data["parameter_values"] == values
+    assert all(not request.open_transactions for request in daemon.requests)
+
+
+@pytest.mark.parametrize("method", ["GET", "TREE"])
+@pytest.mark.parametrize("raw", ["{", "[]", '"value"', "null"])
+def test_invalid_sibling_values_fail_before_plugin_io(
+    harness: _Harness, daemon: _Daemon, method: str, raw: str
+) -> None:
+    url = f"{_url(method)}&{urlencode({'parameter_values': raw})}"
+    response = Context().run(harness.call, "GET", url=url)
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "invalid_param"
+    assert daemon.requests == []

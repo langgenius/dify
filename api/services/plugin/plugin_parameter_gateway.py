@@ -33,7 +33,14 @@ class DaemonPluginParameterGateway:
         credentials: Mapping[str, Any],
         credential_type: str,
         plugin_unique_identifier: str,
+        parameter_values: Mapping[str, Any] | None = None,
     ) -> Sequence[PluginParameterOption]:
+        """Dispatch validated form values to the exact resolved plugin package.
+
+        Preconditions: credentials and package identity are resolved for this tenant.
+        Postconditions: sibling values and hierarchical options retain their payload;
+        daemon errors propagate without persisting credentials.
+        """
         return (
             DynamicSelectClient()
             .fetch_dynamic_select_options(
@@ -46,6 +53,7 @@ class DaemonPluginParameterGateway:
                 credential_type=credential_type,
                 parameter=parameter,
                 plugin_unique_identifier=plugin_unique_identifier,
+                parameter_values=parameter_values,
             )
             .options
         )
