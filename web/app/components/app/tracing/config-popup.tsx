@@ -234,7 +234,7 @@ export function ConfigPopup({
             )}
           </div>
           {!readOnly && (
-            <DialogContent initialFocus={firstInputRef} className="max-h-[calc(100dvh-2rem)] w-160">
+            <DialogContent initialFocus={firstInputRef} className="w-160">
               {provider && (
                 <ProviderConfigModal
                   resource={resource}

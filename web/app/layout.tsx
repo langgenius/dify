@@ -1,10 +1,8 @@
-import type { ThemeProviderProps } from 'next-themes'
 import type { Metadata, Viewport } from '@/next'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { HydrationBoundary } from '@tanstack/react-query'
 import { dir } from 'i18next'
 import { Provider as JotaiProvider } from 'jotai/react'
-import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { IS_PROD } from '@/config'
@@ -16,6 +14,7 @@ import {
   dehydrateSystemFeatures,
   getOptionalSystemFeatures,
 } from '@/features/system-features/server'
+import { ThemeProvider } from '@/features/theme/provider'
 import { getLocaleOnServer } from '@/i18n/server'
 import { headers } from '@/next/headers'
 import { getApplicationTitle } from '@/utils/document-title'
@@ -58,13 +57,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const datasetMap = getDatasetMap()
   const requestHeaders = await headers()
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
-  const themeProviderProps: Omit<ThemeProviderProps, 'children'> = {
-    attribute: 'data-theme',
-    defaultTheme: 'system',
-    enableSystem: true,
-    disableTransitionOnChange: true,
-  }
-  if (nonce !== undefined) themeProviderProps.nonce = nonce
 
   const errorDocument = getAppAccessErrorDocument(requestHeaders)
   const [locale] = errorDocument
@@ -79,7 +71,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {!errorDocument && <CloudAnalytics />}
         <div className="isolate">
           <JotaiProvider>
-            <ThemeProvider {...themeProviderProps}>
+            <ThemeProvider nonce={nonce}>
               <NuqsAdapter>
                 {errorDocument ? (
                   children
