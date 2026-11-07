@@ -16,8 +16,8 @@ from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 from services.dify_builder.agent.resources import TenantResources
 from services.dify_builder.application.runner import Env
 from services.dify_builder.repository import SqlDifyBuilderRepository
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.unit_tests.core.dify_builder.test_runner import _new_env, _session
-from tests.unit_tests.core.model_fixtures import make_model_instance
 from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import engine as engine_fixture
 from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import repo as repo_fixture
 
@@ -822,6 +822,7 @@ def test_planning_facts_survive_sql_cas_and_public_trace_export(
     exported = http["data"][0]["payload"]["diagnostics"]
     if provider_failure:
         assert history[0]["reason"] == exported[0]["reason"] == "service_unavailable"
+        assert stored[0]["http_status"] == history[0]["http_status"] == exported[0]["http_status"] == 502
     else:
         expected = [{"stage": "plan", "reason_code": "missing", "path": ["plan"]}]
         assert history[0]["validation_details"] == exported[0]["validation_details"] == expected
