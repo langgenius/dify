@@ -28,7 +28,7 @@ class _UnusedEmbeddings(Embeddings):
         raise NotImplementedError
 
     @override
-    def embed_multimodal_documents(self, documents: list[dict[str, Any]]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         raise NotImplementedError
 
     @override
@@ -36,7 +36,7 @@ class _UnusedEmbeddings(Embeddings):
         raise NotImplementedError
 
     @override
-    def embed_multimodal_query(self, document: dict[str, Any]) -> list[float]:
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         raise NotImplementedError
 
 
