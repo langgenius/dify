@@ -56,6 +56,12 @@ class RerankModelRunner(BaseRerankRunner):
 
         rerank_documents = []
         for result in rerank_result.docs:
+            # The index comes from the provider response. A negative value would wrap to a
+            # different document in Python, so both ends are checked before indexing.
+            if not 0 <= result.index < len(unique_documents):
+                raise ValueError(
+                    f"Rerank response index {result.index} is out of range for {len(unique_documents)} documents"
+                )
             if score_threshold is None or result.score >= score_threshold:
                 # format document
                 rerank_document = Document(
