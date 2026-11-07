@@ -249,12 +249,24 @@ class ToolTransformService:
         db_provider: MCPToolProvider,
         user_name: str | None = None,
         include_sensitive: bool = True,
+        *,
+        session: Session,
     ) -> ToolProviderApiEntity:
+        """Build the API entity for ``db_provider``.
+
+        Preconditions:
+            ``session`` is a caller-owned session that can still reach ``db_provider``.
+
+        ``user_name`` is resolved through ``session`` only when the caller did not
+        supply it, so a list caller that already batched the user lookup never
+        opens a second read. The session is not closed here; its owner governs
+        the transaction.
+        """
         from core.entities.mcp_provider import MCPConfiguration
 
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
-            user = db_provider.load_user(db.session())
+            user = db_provider.load_user(session)
             user_name = user.name if user else None
 
         # Convert to entity and use its API response method
@@ -267,7 +279,9 @@ class ToolTransformService:
             mcp_tools = []
         # Add additional fields specific to the transform
         response["id"] = db_provider.id
-        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, mcp_tools, user_name=user_name)
+        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(
+            db_provider, mcp_tools, user_name=user_name, session=session
+        )
         response["server_identifier"] = db_provider.server_identifier
 
         # Convert configuration dict to MCPConfiguration object
@@ -281,11 +295,20 @@ class ToolTransformService:
 
     @staticmethod
     def mcp_tool_to_user_tool(
-        mcp_provider: MCPToolProvider, tools: list[MCPTool], user_name: str | None = None
+        mcp_provider: MCPToolProvider,
+        tools: list[MCPTool],
+        user_name: str | None = None,
+        *,
+        session: Session,
     ) -> list[ToolApiEntity]:
+        """Convert ``tools`` into API entities attributed to the provider's owner.
+
+        ``user_name`` is resolved through the caller-owned ``session`` only when it
+        is absent, which keeps a batched list caller from re-querying each provider.
+        """
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
-            user = mcp_provider.load_user(db.session())
+            user = mcp_provider.load_user(session)
             user_name = user.name if user else "Anonymous"
 
         return [

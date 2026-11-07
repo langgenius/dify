@@ -238,7 +238,7 @@ class MCPToolManageService:
         self._session.add(mcp_tool)
         self._session.flush()
 
-        mcp_providers = ToolTransformService.mcp_provider_to_user_provider(mcp_tool)
+        mcp_providers = ToolTransformService.mcp_provider_to_user_provider(mcp_tool, session=self._session)
         return mcp_providers
 
     def update_provider(
@@ -359,6 +359,7 @@ class MCPToolManageService:
                 provider,
                 user_name=user_name_map.get(provider.user_id),
                 include_sensitive=include_sensitive,
+                session=self._session,
             )
             for provider in mcp_providers
         ]
@@ -753,7 +754,9 @@ class MCPToolManageService:
         response = provider_entity.to_api_response(
             user_name=user_name,
         )
-        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, tools, user_name=user_name)
+        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(
+            db_provider, tools, user_name=user_name, session=self._session
+        )
         response["plugin_unique_identifier"] = provider_entity.server_identifier
         return ToolProviderApiEntity(**response)
 

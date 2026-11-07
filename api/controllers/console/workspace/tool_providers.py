@@ -1432,7 +1432,7 @@ class ToolProviderMCPApi(Resource):
                 db_provider.authed = reconnect.authed
                 db_provider.tools = reconnect.tools
 
-                result = ToolTransformService.mcp_provider_to_user_provider(db_provider)
+                result = ToolTransformService.mcp_provider_to_user_provider(db_provider, session=session)
         except Exception:
             # Best-effort: if initial fetch fails (e.g., auth required), return created provider as-is
             logger.warning("Failed to fetch MCP tools after creation", exc_info=True)
@@ -1599,7 +1599,8 @@ class ToolMCPDetailApi(Resource):
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             provider = service.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
-            return _dump_tool_provider_payload(ToolTransformService.mcp_provider_to_user_provider(provider).to_dict())
+            result = ToolTransformService.mcp_provider_to_user_provider(provider, session=session)
+            return _dump_tool_provider_payload(result.to_dict())
 
 
 @console_ns.route("/workspaces/current/tools/mcp")

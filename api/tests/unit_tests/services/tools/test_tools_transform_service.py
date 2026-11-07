@@ -26,6 +26,12 @@ from tests.tool_fixtures import make_runtime_tool
 class TestMcpToolsTransformCases:
     @staticmethod
     @pytest.fixture
+    def caller_session():
+        """Provides the caller-owned session the transform helpers must read through."""
+        return Session()
+
+    @staticmethod
+    @pytest.fixture
     def mock_user():
         """Provides a real mapped account returned by the provider lookup."""
         return Account(name="Test User", email="user@example.com")
@@ -121,7 +127,7 @@ class TestMcpToolsTransformCases:
     class TestMCPToolTransform:
         """Test cases for MCP tool transformation methods."""
 
-        def test_mcp_tool_to_user_tool_with_none_description(self, mock_provider):
+        def test_mcp_tool_to_user_tool_with_none_description(self, mock_provider, caller_session):
             """Test that mcp_tool_to_user_tool handles None description correctly."""
             # Create MCP tools with None description
             tools = [
@@ -141,7 +147,7 @@ class TestMcpToolsTransformCases:
             ]
 
             # Call the method
-            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools, session=caller_session)
 
             # Verify the result
             assert len(result) == 2
@@ -161,7 +167,7 @@ class TestMcpToolsTransformCases:
             assert result[1].description.en_US == ""
             assert result[1].description.zh_Hans == ""
 
-        def test_mcp_tool_to_user_tool_with_description(self, mock_provider):
+        def test_mcp_tool_to_user_tool_with_description(self, mock_provider, caller_session):
             """Test that mcp_tool_to_user_tool handles normal description correctly."""
             # Create MCP tools with description
             tools = [
@@ -173,7 +179,7 @@ class TestMcpToolsTransformCases:
             ]
 
             # Call the method
-            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools, session=caller_session)
 
             # Verify the result
             assert len(result) == 1
@@ -182,25 +188,26 @@ class TestMcpToolsTransformCases:
             assert result[0].description.en_US == "This is a test tool that does something useful"
             assert result[0].description.zh_Hans == "This is a test tool that does something useful"
 
-        def test_mcp_tool_to_user_tool_with_no_user(self, mock_provider_no_user):
+        def test_mcp_tool_to_user_tool_with_no_user(self, mock_provider_no_user, caller_session):
             """Test that mcp_tool_to_user_tool handles None user correctly."""
             # Create MCP tool
             tools = [MCPTool(name="tool1", description="Test tool", inputSchema={"type": "object", "properties": {}})]
 
             # Call the method
-            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider_no_user, tools)
+            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider_no_user, tools, session=caller_session)
 
             # Verify the result
             assert len(result) == 1
             assert result[0].author == "Anonymous"
+            mock_provider_no_user.load_user.assert_called_once_with(caller_session)
 
-        def test_mcp_tool_to_user_tool_with_complex_schema(self, mock_provider, sample_mcp_tools):
+        def test_mcp_tool_to_user_tool_with_complex_schema(self, mock_provider, sample_mcp_tools, caller_session):
             """Test that mcp_tool_to_user_tool correctly converts complex input schemas."""
             # Use complex tool from fixtures
             tools = [sample_mcp_tools["complex"]]
 
             # Call the method
-            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools, session=caller_session)
 
             # Verify the result
             assert len(result) == 1
@@ -208,6 +215,18 @@ class TestMcpToolsTransformCases:
             assert result[0].parameters is not None
             # The actual parameter conversion is handled by convert_mcp_schema_to_parameter
             # which should be tested separately
+
+        def test_mcp_tool_to_user_tool_never_falls_back_to_the_scoped_session(
+            self, mock_provider, caller_session, mocker: MockerFixture
+        ):
+            """The owner lookup must read through the caller's session, not the scoped one."""
+            scoped = mocker.patch("services.tools.tools_transform_service.db")
+            scoped.session.side_effect = AssertionError("db.session() must not be used")
+
+            ToolTransformService.mcp_tool_to_user_tool(mock_provider, [], session=caller_session)
+
+            mock_provider.load_user.assert_called_once_with(caller_session)
+            scoped.session.assert_not_called()
 
         def test_convert_mcp_schema_to_parameter_preserves_anyof_object_type(self):
             """Nullable object schemas should keep the object parameter type."""
@@ -340,7 +359,9 @@ class TestMcpToolsTransformCases:
             assert result[0].type == ToolParameter.ToolParameterType.STRING
             assert result[0].input_schema is None
 
-        def test_mcp_provider_to_user_provider_minimal_response(self, mock_provider_full, mocker: MockerFixture):
+        def test_mcp_provider_to_user_provider_minimal_response(
+            self, mock_provider_full, mocker: MockerFixture, caller_session
+        ):
             """Test mcp_provider_to_user_provider with a response that omits optional fields."""
             # Set tools data with null description
             mock_provider_full.tools = '[{"name": "tool1", "description": null, "inputSchema": {}}]'
@@ -366,7 +387,7 @@ class TestMcpToolsTransformCases:
             }
             mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
-            result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full)
+            result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, session=caller_session)
 
             # Verify the result
             assert isinstance(result, ToolProviderApiEntity)
@@ -378,7 +399,9 @@ class TestMcpToolsTransformCases:
             assert len(result.tools) == 1
             assert result.tools[0].description.en_US == ""  # Should handle None description
 
-        def test_mcp_provider_to_user_provider_full_response(self, mock_provider_full, mocker: MockerFixture):
+        def test_mcp_provider_to_user_provider_full_response(
+            self, mock_provider_full, mocker: MockerFixture, caller_session
+        ):
             """Test mcp_provider_to_user_provider with configuration and sensitive fields."""
             # Set tools data with description
             mock_provider_full.tools = '[{"name": "tool1", "description": "Tool description", "inputSchema": {}}]'
@@ -406,7 +429,7 @@ class TestMcpToolsTransformCases:
             }
             mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
-            result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full)
+            result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, session=caller_session)
 
             # Verify the result
             assert isinstance(result, ToolProviderApiEntity)
@@ -418,8 +441,9 @@ class TestMcpToolsTransformCases:
             assert result.original_headers == {"Authorization": "Bearer secret-token"}
             assert len(result.tools) == 1
             assert result.tools[0].description.en_US == "Tool description"
+            mock_provider_full.load_user.assert_called_once_with(caller_session)
 
-        def test_mcp_tool_to_user_tool_falls_back_to_name_when_title_is_null(self, mock_provider):
+        def test_mcp_tool_to_user_tool_falls_back_to_name_when_title_is_null(self, mock_provider, caller_session):
             """Tools where the server returned ``title: null`` should fall back to the tool name.
 
             Regression test for langgenius/dify#42453: Exa's MCP server returns
@@ -440,7 +464,7 @@ class TestMcpToolsTransformCases:
                 ),
             ]
 
-            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools, session=caller_session)
 
             assert len(result) == 2
             # title is explicitly null -> must fall back to ``name``
@@ -452,7 +476,7 @@ class TestMcpToolsTransformCases:
             assert result[1].label.en_US == "get_content"
             assert result[1].label.zh_Hans == "get_content"
 
-        def test_mcp_tool_to_user_tool_uses_title_when_provided(self, mock_provider):
+        def test_mcp_tool_to_user_tool_uses_title_when_provided(self, mock_provider, caller_session):
             """When the server provides a non-null title, it should be used for the label."""
             tools = [
                 MCPTool(
@@ -463,7 +487,7 @@ class TestMcpToolsTransformCases:
                 )
             ]
 
-            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools)
+            result = ToolTransformService.mcp_tool_to_user_tool(mock_provider, tools, session=caller_session)
 
             assert len(result) == 1
             assert result[0].name == "search_web"
