@@ -201,15 +201,17 @@ class TidbService:
             response.raise_for_status()
 
     @staticmethod
-    def get_tidb_serverless_cluster(api_url: str, public_key: str, private_key: str, cluster_id: str):
+    def get_tidb_serverless_cluster(
+        api_url: str, public_key: str, private_key: str, cluster_id: str
+    ) -> Mapping[str, Any]:
         """
-        Deletes a specific TiDB Serverless cluster.
+        Fetches a specific TiDB Serverless cluster.
 
         :param api_url: The URL of the TiDB Cloud API (required).
         :param public_key: The public key for the API (required).
         :param private_key: The private key for the API (required).
-        :param cluster_id: The ID of the cluster to be deleted (required).
-        :return: The response from the API.
+        :param cluster_id: The ID of the cluster to be fetched (required).
+        :return: The cluster payload from the API.
         """
 
         response = _tidb_http_client.get(
@@ -220,8 +222,10 @@ class TidbService:
 
         if response.status_code == 200:
             return response.json()
-        else:
-            response.raise_for_status()
+        response.raise_for_status()
+        # raise_for_status only raises on 4xx/5xx; any other non-200 status must not
+        # fall through and make this function implicitly return None.
+        raise RuntimeError(f"Unexpected TiDB Cloud response status {response.status_code} for cluster {cluster_id}")
 
     @staticmethod
     def change_tidb_serverless_root_password(
