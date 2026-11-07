@@ -2,7 +2,7 @@
 
 import type { AgentLogSourceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
-import type { AgentMonitoringPeriod } from './time-range-picker'
+import type { AgentMonitoringPeriod } from './time-range'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   ScrollArea,
@@ -20,6 +20,7 @@ import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentMonitoringChart } from './chart'
 import { getAgentMonitoringMetrics } from './metrics'
+import { toPeriodQuery } from './time-range'
 import { AgentMonitoringTimeRangePicker } from './time-range-picker'
 import { AgentTracingConfiguration } from './tracing-configuration'
 
@@ -32,16 +33,10 @@ type AgentMonitoringPageProps = {
   agentId: string
 }
 
-const queryDateFormat = 'YYYY-MM-DD HH:mm'
-
 const getDefaultPeriodQuery = () => {
-  const start = dayjs().startOf('day')
-  const end = dayjs().endOf('day')
+  const today = dayjs().startOf('day')
 
-  return {
-    start: start.format(queryDateFormat),
-    end: end.format(queryDateFormat),
-  }
+  return toPeriodQuery(today, today)
 }
 
 export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {

@@ -1,5 +1,6 @@
 import type { AgentStatisticSummaryEnvelopeResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentMonitoringChartRow, AgentMonitoringChartType } from './chart-utils'
+import type { AgentMonitoringPeriodQuery } from './time-range'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import { formatNumberAbbreviated } from '@/utils/format'
@@ -14,11 +15,6 @@ export type AgentMonitoringMetric = {
   valueKey: string
   unitKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
   yMaxWhenEmpty: number
-}
-
-type AgentMonitoringPeriodQuery = {
-  start: string
-  end: string
 }
 
 type ChartRowValue = number | string | undefined
@@ -51,10 +47,10 @@ const fillChartRows = <T extends { date: string }>(
     ]),
   )
   const start = dayjs(periodQuery.start).startOf('day')
-  const end = dayjs(periodQuery.end).startOf('day')
-  const days = Math.max(end.diff(start, 'day'), 0)
+  // `periodQuery.end` is exclusive, so the number of daily buckets is exactly its distance from the start.
+  const days = Math.max(dayjs(periodQuery.end).startOf('day').diff(start, 'day'), 1)
 
-  return Array.from({ length: days + 1 }, (_, index) => {
+  return Array.from({ length: days }, (_, index) => {
     const date = start.add(index, 'day').format(chartDateFormat)
     const row = rowsByDate.get(date)
 
