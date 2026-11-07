@@ -800,11 +800,19 @@ class MCPToolManageService:
     def _process_credentials(
         self, authentication: MCPAuthentication, mcp_provider: MCPToolProvider, tenant_id: str
     ) -> str:
-        """Process credentials update, handling masked values."""
+        """Process credentials update, handling masked values and keeping stored OAuth state when unchanged."""
         # Merge with existing credentials
         final_client_id, final_client_secret = self._merge_credentials_with_masked(
             authentication.client_id, authentication.client_secret, mcp_provider
         )
+
+        existing_client_info = mcp_provider.to_entity().retrieve_client_information()
+        if (
+            existing_client_info
+            and final_client_id == existing_client_info.client_id
+            and final_client_secret == existing_client_info.client_secret
+        ):
+            return mcp_provider.encrypted_credentials or EMPTY_CREDENTIALS_JSON
 
         # Build and encrypt
         return self._build_and_encrypt_credentials(final_client_id, final_client_secret, tenant_id)
@@ -851,20 +859,24 @@ class MCPToolManageService:
             Tuple of (final_client_id, final_client_secret)
         """
         mcp_provider_entity = mcp_provider.to_entity()
-        existing_decrypted = mcp_provider_entity.decrypt_credentials()
+        existing_client_info = mcp_provider_entity.retrieve_client_information()
         existing_masked = mcp_provider_entity.masked_credentials()
 
         # Check if client_id is masked and unchanged
         final_client_id = client_id
-        if existing_masked.get("client_id") and client_id == existing_masked["client_id"]:
+        if existing_client_info and existing_masked.get("client_id") and client_id == existing_masked["client_id"]:
             # Use existing decrypted value
-            final_client_id = existing_decrypted.get("client_id", client_id)
+            final_client_id = existing_client_info.client_id
 
         # Check if client_secret is masked and unchanged
         final_client_secret = client_secret
-        if existing_masked.get("client_secret") and client_secret == existing_masked["client_secret"]:
+        if (
+            existing_client_info
+            and existing_masked.get("client_secret")
+            and client_secret == existing_masked["client_secret"]
+        ):
             # Use existing decrypted value
-            final_client_secret = existing_decrypted.get("client_secret", client_secret)
+            final_client_secret = existing_client_info.client_secret
 
         return final_client_id, final_client_secret
 
