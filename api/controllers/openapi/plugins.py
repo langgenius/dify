@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator, Sequence
-from contextlib import contextmanager
+from collections.abc import Sequence
 from http import HTTPStatus
 from typing import Final
 
-import httpx
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest
 
 from configs import dify_config
 from controllers.common.rbac import RBACPermission
@@ -18,7 +15,6 @@ from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import (
     MarketplaceDisabled,
     MarketplaceUnavailable,
-    PluginInstallForbidden,
     PluginNotInstalled,
     PluginServiceUnavailable,
 )
@@ -38,6 +34,7 @@ from controllers.openapi._models import (
     PluginTaskResponse,
     PluginTaskStartResponse,
 )
+from controllers.openapi._plugin_errors import plugin_errors
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     WORKSPACE_READ_GUARDS,
@@ -49,28 +46,11 @@ from controllers.openapi.tool_providers import ToolProviderApi
 from core.helper.marketplace import MarketplaceSearchUnavailableError, search_plugins
 from core.plugin.entities.plugin import PluginEntity
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
-from core.plugin.impl.exc import PluginDaemonClientSideError, PluginDaemonInternalError
 from core.plugin.plugin_service import PluginService
-from services.errors.plugin import PluginInstallationForbiddenError
 
 _IN_FLIGHT: Final = frozenset({PluginInstallTaskStatus.Pending, PluginInstallTaskStatus.Running})
 
 _TASK_READ: Final = (*WORKSPACE_READ_GUARDS, CheckPluginInstallSetting())
-
-
-@contextmanager
-def _plugin_errors() -> Generator[None]:
-    try:
-        yield
-    except PluginInstallationForbiddenError as error:
-        raise PluginInstallForbidden(str(error)) from error
-    except PluginDaemonClientSideError as error:
-        raise BadRequest(error.description) from error
-    except PluginDaemonInternalError as error:
-        raise PluginServiceUnavailable() from error
-    except httpx.HTTPError as error:
-        # The daemon client wraps its own transport errors, so a raw httpx error comes from the marketplace.
-        raise MarketplaceUnavailable() from error
 
 
 def _require_marketplace() -> None:
@@ -87,7 +67,7 @@ def provides_of(plugin: PluginEntity) -> PluginProvides:
 
 
 def _installed_by_id(workspace_id: str) -> dict[str, PluginEntity]:
-    with _plugin_errors():
+    with plugin_errors():
         return {plugin.plugin_id: plugin for plugin in PluginService.list(workspace_id)}
 
 
@@ -201,7 +181,7 @@ class PluginsApi(Resource):
         returns=(HTTPStatus.OK, PluginListResponse, "Installed plugins"),
     )
     def get(self, ctx: Context, workspace_id: str, *, query: PluginListQuery):
-        with _plugin_errors():
+        with plugin_errors():
             plugins = [
                 plugin
                 for plugin in PluginService.list(ctx.workspace.id)
@@ -241,7 +221,7 @@ class PluginInstallApi(Resource):
     )
     def post(self, ctx: Context, workspace_id: str, *, body: PluginInstallPayload):
         _require_marketplace()
-        with _plugin_errors():
+        with plugin_errors():
             started = PluginService.install_from_marketplace_pkg(ctx.workspace.id, body.identifiers)
         plugin_ids = [_plugin_id_of(identifier) for identifier in body.identifiers]
         return _start_response(ctx.workspace.id, started.task_id, started.all_installed, plugin_ids)
@@ -258,7 +238,7 @@ class PluginTaskApi(Resource):
         returns=(HTTPStatus.OK, PluginTaskResponse, "Install task"),
     )
     def get(self, ctx: Context, workspace_id: str, task_id: str):
-        with _plugin_errors():
+        with plugin_errors():
             task = PluginService.fetch_install_task(ctx.workspace.id, task_id)
         if task.status in _IN_FLIGHT:
             hints = [_task_hint(ctx.workspace.id, task_id)]
@@ -296,7 +276,7 @@ class PluginApi(Resource):
     )
     def delete(self, ctx: Context, workspace_id: str, plugin_id: str):
         plugin = _installed(ctx.workspace.id, plugin_id)
-        with _plugin_errors():
+        with plugin_errors():
             uninstalled = PluginService.uninstall(ctx.workspace.id, plugin.installation_id)
         if not uninstalled:
             raise PluginServiceUnavailable()

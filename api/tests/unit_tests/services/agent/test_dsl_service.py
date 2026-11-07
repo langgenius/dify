@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.tools.entities.tool_entities import ToolProviderType
 from graphon.enums import BuiltinNodeTypes
 from models.account import Account
 from models.agent import (
@@ -726,6 +727,30 @@ def test_extract_package_dependencies_covers_models_features_tools_and_knowledge
         "model:provider/rerank",
         "model:provider/embedding",
     ]
+
+
+def test_extract_package_dependencies_skips_tools_that_are_not_plugins(unbound_session: Session) -> None:
+    soul = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "dify_tools": [
+                    {"provider_id": provider_id, "provider_type": provider_type, "credential_type": "unauthorized"}
+                    for provider_type, provider_id in (
+                        (ToolProviderType.PLUGIN, "acme/search/search"),
+                        (ToolProviderType.WORKFLOW, "9a8b7c6d-0e5d-4c3a-9b1e-123456789abc"),
+                        (ToolProviderType.API, "3f2a1b4c-0e5d-4c3a-9b1e-123456789abc"),
+                        (ToolProviderType.MCP, "my-mcp-server"),
+                    )
+                ]
+            }
+        }
+    )
+
+    dependencies = AgentDslService(unbound_session).extract_package_dependencies(
+        {"agent_1": make_portable_agent_package(_agent(), soul)}
+    )
+
+    assert dependencies == ["acme/search"]
 
 
 def test_extract_package_dependencies_ignores_inactive_knowledge_models(
