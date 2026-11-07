@@ -1,4 +1,7 @@
+import concurrent.futures
 import logging
+import threading
+from collections.abc import Collection
 from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
@@ -532,6 +535,62 @@ class TestParagraphIndexProcessor:
                 processor.generate_summary_preview("tenant-1", preview_items, {"enable": True}, session=self.session)
 
         future.cancel.assert_called_once()
+        # The timed-out batch must not wait for the running worker.
+        assert executor.shutdown_kwargs == {"wait": False, "cancel_futures": True}
+
+    def test_generate_summary_preview_timeout_does_not_wait_for_running_worker(
+        self, processor: ParagraphIndexProcessor
+    ) -> None:
+        preview_items = [PreviewDetail(content="chunk-1")]
+        started = threading.Event()
+        release = threading.Event()
+
+        def blocking_generate_summary(*_args: object, **_kwargs: object) -> tuple[str, LLMUsage]:
+            started.set()
+            # Self-release so a failing run cannot block the suite forever.
+            release.wait(timeout=5)
+            return "late-summary", LLMUsage.empty_usage()
+
+        real_wait = concurrent.futures.wait
+
+        def short_wait(
+            fs: Collection[concurrent.futures.Future[str]],
+            timeout: float | None = None,
+            return_when: str = concurrent.futures.ALL_COMPLETED,
+        ) -> tuple[set[concurrent.futures.Future[str]], set[concurrent.futures.Future[str]]]:
+            # Only report the running future as incomplete once it is
+            # actually running, otherwise the timeout path is vacuous.
+            started.wait(timeout=2)
+            return real_wait(fs, timeout=0.05 if timeout is None else min(timeout, 0.05), return_when=return_when)
+
+        outcome: dict[str, BaseException] = {}
+
+        def run() -> None:
+            try:
+                processor.generate_summary_preview("tenant-1", preview_items, {"enable": True}, session=self.session)
+            except BaseException as e:  # captured for assertion below
+                outcome["error"] = e
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.session_factory.create_session",
+                return_value=nullcontext(self.session_factory()),
+            ),
+            patch.object(processor, "generate_summary", side_effect=blocking_generate_summary),
+            patch("concurrent.futures.wait", side_effect=short_wait),
+        ):
+            thread = threading.Thread(target=run)
+            thread.start()
+            try:
+                thread.join(timeout=2)
+                assert not thread.is_alive(), "generate_summary_preview waited for the running worker"
+            finally:
+                release.set()
+            thread.join(timeout=5)
+        assert isinstance(outcome.get("error"), ValueError)
+        assert "timeout" in str(outcome["error"]).lower()
+        # The late result must not mutate the failed request's preview.
+        assert preview_items[0].summary is None
 
     def test_generate_summary_validates_input(self) -> None:
         with pytest.raises(ValueError, match="must be enabled"):
