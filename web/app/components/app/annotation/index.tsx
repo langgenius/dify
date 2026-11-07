@@ -1,6 +1,6 @@
 'use client'
 
-import type { Annotation, AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { QueryParam } from './filter'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -8,7 +8,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiEqualizer2Line } from '@remixicon/react'
-import { noop, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, noop, useMutation, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -34,7 +34,7 @@ type AnnotationProps = {
   appDetail: AppDetailWithSite
 }
 
-function Annotation({ appDetail }: AnnotationProps) {
+function AnnotationContent({ appDetail }: AnnotationProps) {
   const { t } = useTranslation(['appAnnotation', 'common'])
   const docLink = useDocLink()
   const [isShowEdit, setIsShowEdit] = useState(false)
@@ -60,13 +60,23 @@ function Annotation({ appDetail }: AnnotationProps) {
   const [queryParams, setQueryParams] = useState<QueryParam>({})
   const [currPage, setCurrPage] = useState(0)
   const [limit, setLimit] = useState(APP_PAGE_LIMIT)
-  const [list, setList] = useState<Annotation[]>([])
-  const [total, setTotal] = useState(0)
-  const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
-  const [isLoading, setIsLoading] = useState(false)
-  const [controlUpdateList, setControlUpdateList] = useState(() => Date.now())
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+  const { data: annotations, isPending: isLoading } = useQuery(
+    consoleQuery.apps.byAppId.annotations.get.queryOptions({
+      input: {
+        params: { app_id: appDetail.id },
+        query: { page: currPage + 1, limit, keyword: debouncedQueryParams.keyword || '' },
+      },
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const list = annotations?.data ?? []
+  const total = annotations?.total ?? 0
+  const totalPages = Math.max(Math.ceil(total / limit), 1)
+  const batchDeleteMutation = useMutation(
+    consoleQuery.apps.byAppId.annotations.delete.mutationOptions({ context: { silent: true } }),
+  )
 
   const fetchAnnotationConfig = async (silent = false) => {
     const res = await consoleClient.apps.byAppId.annotationSetting.get(
@@ -95,35 +105,13 @@ function Annotation({ appDetail }: AnnotationProps) {
     }
   }
 
-  const fetchList = async (page = 1) => {
-    setIsLoading(true)
-    try {
-      const { data, total } = await consoleClient.apps.byAppId.annotations.get({
-        params: { app_id: appDetail.id },
-        query: { page, limit, keyword: debouncedQueryParams.keyword || '' },
-      })
-      setList(data)
-      setTotal(total)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchList(currPage + 1)
-  }, [currPage, limit, debouncedQueryParams])
-
   const handleBatchDelete = async () => {
     try {
-      await consoleClient.apps.byAppId.annotations.delete(
-        {
-          params: { app_id: appDetail.id },
-          query: { annotation_id: selectedIds },
-        },
-        { context: { silent: true } },
-      )
-      fetchList()
-      setControlUpdateList(Date.now())
+      await batchDeleteMutation.mutateAsync({
+        params: { app_id: appDetail.id },
+        query: { annotation_id: selectedIds },
+      })
+      setCurrPage(0)
       setSelectedIds([])
     } catch (e: any) {
       toast.error(e.message || t(($) => $['api.actionFailed'], { ns: 'common' }))
@@ -215,27 +203,15 @@ function Annotation({ appDetail }: AnnotationProps) {
               </>
             )}
 
-            <HeaderOpts
-              appId={appDetail.id}
-              controlUpdateList={controlUpdateList}
-              onAdded={() => {
-                void fetchList().catch(noop)
-              }}
-            />
+            <HeaderOpts appId={appDetail.id} onAdded={() => setCurrPage(0)} />
           </div>
         </Filter>
         <List
           isLoading={isLoading}
           appId={appDetail.id}
           list={list}
-          onRemoved={() => {
-            void fetchList().catch(noop)
-            setControlUpdateList(Date.now())
-          }}
-          onEdited={() => {
-            void fetchList(currPage + 1).catch(noop)
-            setControlUpdateList(Date.now())
-          }}
+          onRemoved={() => setCurrPage(0)}
+          onEdited={noop}
           selectedIds={selectedIds}
           onSelectedIdsChange={setSelectedIds}
           onBatchDelete={handleBatchDelete}
@@ -312,5 +288,9 @@ function Annotation({ appDetail }: AnnotationProps) {
       </div>
     </div>
   )
+}
+// An app owns its filter, pagination, selection and edit session, including query placeholders.
+function Annotation({ appDetail }: AnnotationProps) {
+  return <AnnotationContent key={appDetail.id} appDetail={appDetail} />
 }
 export default React.memo(Annotation)
