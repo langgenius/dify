@@ -86,6 +86,8 @@ def test_policy_wrapped_provider_reason_survives_without_retry_or_secret_project
     assert raised.value.__cause__ is failure
     assert calls == ["resolve", "invoke"]
     assert records[0]["reason"] == reason
+    expected_status = failure.response.status_code if isinstance(failure, httpx.HTTPStatusError) else None
+    assert records[0]["http_status"] == expected_status
     assert records[0]["exception_type"] == "CognitionPolicyDeniedError"
     assert "private" not in json.dumps(records)
     assert "secret" not in json.dumps(records)
@@ -156,6 +158,7 @@ def test_serverless_502_real_plugin_decoder_keeps_bounded_reason_without_replay(
         llm.invoke_json(PolicyModelInstance(resolve), system="PRIVATE", user="PRIVATE")
     assert calls == ["resolve", "invoke"]
     assert records[0]["reason"] == ("service_unavailable" if typed else "unknown")
+    assert records[0]["http_status"] == (502 if typed else None)
     assert "serverless" not in json.dumps(records)
     assert "status code: 502" not in json.dumps(records)
     assert "PRIVATE" not in json.dumps(records)
@@ -177,4 +180,42 @@ def test_generic_wrapper_text_cannot_mask_explicit_typed_provider_cause(
         diagnostics.report("provider_invocation_failed", error=outer)
     assert records[0]["reason"] == reason
     assert "private" not in json.dumps(records)
+    assert "secret" not in json.dumps(records)
+
+
+@pytest.mark.parametrize("status", [True, False, -1, 0, 99, 600, "502", {"status": 502}])
+def test_provider_http_status_projection_rejects_untrusted_values(status: object) -> None:
+    safe = diagnostics.project({"code": "provider_invocation_failed", "http_status": status})
+    assert safe["http_status"] is None
+
+
+def test_provider_http_status_cause_walk_is_bounded_and_explicit() -> None:
+    typed = httpx.HTTPStatusError(
+        "PRIVATE", request=httpx.Request("POST", "https://private/?key=secret"), response=httpx.Response(502)
+    )
+    outer = RuntimeError("PRIVATE 503")
+    outer.__cause__ = typed
+    records = []
+    with diagnostics.scope(records.append, "plan"):
+        diagnostics.report("provider_invocation_failed", error=outer)
+    assert records[0]["http_status"] == 502
+    outer.__cause__ = outer
+    with diagnostics.scope(records.append, "plan"):
+        diagnostics.report("provider_invocation_failed", error=outer)
+    assert records[-1]["http_status"] is None
+    outer.__cause__ = None
+    outer.__context__ = typed
+    with diagnostics.scope(records.append, "plan"):
+        diagnostics.report("provider_invocation_failed", error=outer)
+    assert records[-1]["http_status"] is None
+    current = outer
+    for _ in range(8):
+        cause = RuntimeError("PRIVATE")
+        current.__cause__ = cause
+        current = cause
+    current.__cause__ = typed
+    with diagnostics.scope(records.append, "plan"):
+        diagnostics.report("provider_invocation_failed", error=outer)
+    assert records[-1]["http_status"] is None
+    assert "PRIVATE" not in json.dumps(records)
     assert "secret" not in json.dumps(records)

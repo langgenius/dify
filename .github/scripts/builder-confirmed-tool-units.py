@@ -3007,6 +3007,8 @@ a4_expected["tests.unit_tests.services.dify_builder.test_policy_trace_diagnostic
     "test_diagnostic_cause_walk_is_bounded_and_does_not_use_implicit_context": 1,
     "test_serverless_502_real_plugin_decoder_keeps_bounded_reason_without_replay": 2,
     "test_generic_wrapper_text_cannot_mask_explicit_typed_provider_cause": 2,
+    "test_provider_http_status_projection_rejects_untrusted_values": 8,
+    "test_provider_http_status_cause_walk_is_bounded_and_explicit": 1,
 }
 # ENG-1392/1410: exact affected-module inventories; retain all existing registrations.
 for module, functions in {
