@@ -1,10 +1,8 @@
-import type { ReactNode } from 'react'
+import type { ThemeProviderProps as NextThemesProviderProps } from 'next-themes'
 import type { ThemePreference } from './theme'
 import { ThemeProvider as NextThemesProvider } from 'next-themes'
 
-type ThemeProviderProps = {
-  children: ReactNode
-  nonce?: string | undefined
+type ThemeProviderProps = Pick<NextThemesProviderProps, 'children' | 'nonce'> & {
   defaultPreference?: ThemePreference
 }
 
@@ -19,7 +17,7 @@ export function ThemeProvider({
       defaultTheme={defaultPreference}
       enableSystem
       disableTransitionOnChange
-      {...(nonce === undefined ? {} : { nonce })}
+      nonce={nonce}
     >
       {children}
     </NextThemesProvider>
