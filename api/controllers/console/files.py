@@ -66,9 +66,49 @@ FILE_UPLOAD_PARAMS = {
     },
 }
 
+# Multipart framing around the file itself: boundary lines, part headers and the
+# other form fields. Sized generously so a file at the configured limit is never
+# refused for its envelope.
+_MULTIPART_ENVELOPE_BYTES = 1024 * 1024
+
+
+def _max_upload_bytes() -> int:
+    """Largest body any console upload may carry.
+
+    ``FileService.upload_file`` picks the real limit per extension, and the
+    dataset source additionally widens it to
+    ``KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN`` on paid cloud plans. Both
+    depend on the filename and the tenant, which are only known after the body
+    arrives, so take the widest configured limit as the envelope ceiling: too
+    coarse to reject a file the later check would accept, precise enough to
+    bound the read.
+    """
+    limits_mib = (
+        dify_config.UPLOAD_FILE_SIZE_LIMIT,
+        dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
+        dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
+        dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
+        dify_config.KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN,
+    )
+    return max(limits_mib) * 1024 * 1024
+
+
+def _cap_upload_body() -> None:
+    """Cap the request body before the handler reads the uploaded file.
+
+    ``file.stream.read()`` materializes the whole part below, and Flask defaults
+    ``max_content_length`` to None, so the configured size limits are only
+    consulted after the process has already buffered the upload: an oversized
+    request is answered with 413 once every byte has been accepted. Werkzeug
+    captures this value when ``request.files`` is first accessed, so it has to
+    be set before that.
+    """
+    request.max_content_length = _max_upload_bytes() + _MULTIPART_ENVELOPE_BYTES
+
 
 def _parse_file_upload() -> tuple[FileStorage, str, Literal["datasets"] | None]:
     """Validate multipart shape before checking source-specific permissions."""
+    _cap_upload_body()
     source_str = request.args.get("source") or request.form.get("source")
     source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
