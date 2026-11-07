@@ -10,6 +10,8 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import get_credit_usage_metadata
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.builtin_tool.providers.audio.audio import AudioToolProvider
@@ -260,10 +262,16 @@ def test_asr_valid_file_invocation(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
     model_manager = type("Mgr", (), {"get_model_instance": lambda *a, **k: model_instance})()
     monkeypatch.setattr("core.tools.builtin_tool.providers.audio.tools.asr.download", lambda file: b"audio-bytes")
     captured_manager_kwargs = {}
+    captured_credit_metadata: dict[str, object] = {}
+
+    def _for_tenant(**kwargs: object):
+        captured_manager_kwargs.update(kwargs)
+        captured_credit_metadata["value"] = get_credit_usage_metadata()
+        return model_manager
 
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers.audio.tools.asr.ModelManager.for_tenant",
-        lambda **kwargs: captured_manager_kwargs.update(kwargs) or model_manager,
+        _for_tenant,
     )
     audio_file = SimpleNamespace(type=FileType.AUDIO)
     ok = list(
@@ -271,6 +279,7 @@ def test_asr_valid_file_invocation(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
     )[0].message.text
     assert ok == "transcript"
     assert captured_manager_kwargs == {"tenant_id": "tenant-1", "user_id": "u"}
+    assert captured_credit_metadata["value"] == {"created_by": CreditUsageCreatedBy.AUDIO}
 
 
 def test_asr_available_models_and_runtime_parameters(monkeypatch: pytest.MonkeyPatch):

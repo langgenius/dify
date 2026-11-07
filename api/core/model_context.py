@@ -1,3 +1,4 @@
+import inspect
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -51,6 +52,50 @@ def with_credit_usage_created_by(
     normalized_created_by = normalize_credit_usage_created_by(created_by)
 
     def decorator(method: Callable[..., Any]) -> Callable[..., Any]:
+        if inspect.isgeneratorfunction(method):
+
+            @wraps(method)
+            def generator_wrapper(*args: object, **kwargs: object):
+                # A synchronous generator runs in the caller's context: holding
+                # the context around `yield from` would leave the metadata set
+                # while the generator is suspended at a yield. Enter it only
+                # while advancing the underlying generator so the caller's
+                # context is restored before every value is handed back.
+                generator = method(*args, **kwargs)
+
+                def advance(operation: str, argument: object = None) -> object:
+                    with use_credit_usage_metadata({"created_by": normalized_created_by}):
+                        if operation == "next":
+                            return next(generator)
+                        if operation == "send":
+                            return generator.send(argument)
+                        return generator.throw(argument)
+
+                try:
+                    value = advance("next")
+                except StopIteration as exc:
+                    return exc.value
+
+                while True:
+                    try:
+                        sent = yield value
+                    except GeneratorExit:
+                        with use_credit_usage_metadata({"created_by": normalized_created_by}):
+                            generator.close()
+                        raise
+                    except BaseException as exc:
+                        try:
+                            value = advance("throw", exc)
+                        except StopIteration as stop:
+                            return stop.value
+                    else:
+                        try:
+                            value = advance("send", sent)
+                        except StopIteration as stop:
+                            return stop.value
+
+            return generator_wrapper
+
         @wraps(method)
         def wrapper(*args: object, **kwargs: object):
             with use_credit_usage_metadata({"created_by": normalized_created_by}):
