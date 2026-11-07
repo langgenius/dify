@@ -647,6 +647,92 @@ describe('useChecklist', () => {
     ).toBe(true)
   })
 
+  it('should allow duplicate output variables on end nodes behind exclusive branches', () => {
+    const startNode = createInputNode()
+    const ifElseNode = createNode({
+      id: 'if-else',
+      data: {
+        type: BlockEnum.IfElse,
+        title: 'If/Else',
+        cases: [{ case_id: 'true', logical_operator: 'and', conditions: [] }],
+      },
+    })
+    const firstEndNode = createNode({
+      id: 'end-1',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 1',
+        outputs: [{ variable: 'workflow_id', value_selector: ['sys', 'workflow_id'] }],
+      },
+    })
+    const secondEndNode = createNode({
+      id: 'end-2',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 2',
+        outputs: [{ variable: 'workflow_id', value_selector: ['sys', 'workflow_id'] }],
+      },
+    })
+    const edges = [
+      createEdge({ source: startNode.id, target: 'if-else' }),
+      createEdge({ source: 'if-else', target: 'end-1', sourceHandle: 'true' }),
+      createEdge({ source: 'if-else', target: 'end-2', sourceHandle: 'false' }),
+    ]
+
+    const { result } = renderChecklist([startNode, ifElseNode, firstEndNode, secondEndNode], edges)
+
+    const outputMessages = result.current
+      .filter((item: ChecklistItem) => item.id === 'end-1' || item.id === 'end-2')
+      .flatMap((item: ChecklistItem) => item.errorMessages)
+    expect(outputMessages.some((message) => message.includes('duplicateOutputVariable'))).toBe(
+      false,
+    )
+  })
+
+  it('should report conflicting output types on exclusive branches', () => {
+    const startNode = createInputNode()
+    const ifElseNode = createNode({
+      id: 'if-else',
+      data: {
+        type: BlockEnum.IfElse,
+        title: 'If/Else',
+        cases: [{ case_id: 'true', logical_operator: 'and', conditions: [] }],
+      },
+    })
+    const firstEndNode = createNode({
+      id: 'end-1',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 1',
+        outputs: [{ variable: 'result', value_type: 'string', value_selector: ['sys', 'result'] }],
+      },
+    })
+    const secondEndNode = createNode({
+      id: 'end-2',
+      data: {
+        type: BlockEnum.End,
+        title: 'Output 2',
+        outputs: [{ variable: 'result', value_type: 'object', value_selector: ['sys', 'result'] }],
+      },
+    })
+    const edges = [
+      createEdge({ source: startNode.id, target: 'if-else' }),
+      createEdge({ source: 'if-else', target: 'end-1', sourceHandle: 'true' }),
+      createEdge({ source: 'if-else', target: 'end-2', sourceHandle: 'false' }),
+    ]
+
+    const { result } = renderChecklist([startNode, ifElseNode, firstEndNode, secondEndNode], edges)
+
+    for (const id of ['end-1', 'end-2']) {
+      const warning = result.current.find((item: ChecklistItem) => item.id === id)
+      expect(
+        warning?.errorMessages.some((message) =>
+          message.includes('conflictingOutputVariableTypes'),
+        ),
+      ).toBe(true)
+    }
+  })
+
   it('publishes checklist errors to a sibling store consumer', async () => {
     const { nodes } = buildConnectedGraph()
     function Operator() {

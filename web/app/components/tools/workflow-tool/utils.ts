@@ -3,7 +3,9 @@ import type {
   WorkflowToolProviderOutputParameter,
   WorkflowToolProviderOutputSchema,
 } from '../types'
-import { VarType } from '@/app/components/workflow/types'
+import type { Edge, Node } from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { getEndOutputConflicts } from '@/app/components/workflow/utils/end-output-conflicts'
 import { normalizeWorkflowOutputName } from '@/app/components/workflow/utils/variable'
 
 const validVarTypes = new Set<string>(Object.values(VarType))
@@ -51,6 +53,55 @@ export const getSourceNodeDisplayName = (
   if (sameTitleSourceCount < 2 || sourceIndex < 0) return title
 
   return `${title} (${sourceIndex + 1}/${sameTitleSourceCount})`
+}
+
+export const getNonConflictingWorkflowOutputNames = (nodes: Node[], edges: Edge[]) => {
+  const conflicts = getEndOutputConflicts(nodes, edges)
+  const occurrences = new Map<string, string[]>()
+  const scopes = new Map(nodes.map((node) => [node.id, node.parentId ?? '']))
+  nodes.forEach((node) => {
+    if (node.data.type !== BlockEnum.End) return
+    const outputs = (node.data as { outputs?: { variable?: string }[] }).outputs ?? []
+    outputs.forEach(({ variable }) => {
+      const name = normalizeWorkflowOutputName(variable)
+      if (name) occurrences.set(name, [...(occurrences.get(name) ?? []), node.id])
+    })
+  })
+
+  return [...occurrences]
+    .filter(
+      ([name, nodeIds]) =>
+        nodeIds.length > 1 &&
+        nodeIds.every(
+          (id) =>
+            scopes.get(id) === scopes.get(nodeIds[0]!) &&
+            !conflicts.get(id)?.some((conflict) => conflict.variable === name),
+        ),
+    )
+    .map(([name]) => name)
+}
+
+/**
+ * Repeated output names whose Output nodes are on mutually exclusive branches but declare clashing
+ * types, mapped to those types. The drawer shows the same "match the types" guidance as the checklist
+ * for them instead of asking for unique names.
+ */
+export const getWorkflowOutputTypeConflicts = (nodes: Node[], edges: Edge[]) => {
+  const result: Record<string, string[]> = {}
+  const allConflicts = getEndOutputConflicts(nodes, edges)
+  allConflicts.forEach((conflicts) => {
+    conflicts.forEach(({ variable, kind, types }) => {
+      if (kind !== 'conflictingTypes') return
+      result[variable] = [...new Set([...(result[variable] ?? []), ...(types ?? [])])].sort()
+    })
+  })
+  // A name that also loses a value somewhere is a plain duplicate; that message takes precedence.
+  allConflicts.forEach((conflicts) => {
+    conflicts.forEach(({ variable, kind }) => {
+      if (kind === 'duplicateName') delete result[variable]
+    })
+  })
+  return result
 }
 
 export const getDuplicateWorkflowOutputGroups = (

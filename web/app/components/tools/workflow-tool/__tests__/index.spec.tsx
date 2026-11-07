@@ -246,6 +246,76 @@ describe('WorkflowToolDrawer', () => {
     expect(duplicateDetails).toHaveTextContent('Fallback End')
   })
 
+  it('does not warn on duplicate names proven safe by the workflow graph', () => {
+    const outputParameters: WorkflowToolDrawerPayload['outputParameters'] = [
+      {
+        name: 'result',
+        description: 'True output',
+        source: { nodeId: 'end-true', nodeTitle: 'True End', outputIndex: 0 },
+      },
+      {
+        name: 'result',
+        description: 'False output',
+        source: { nodeId: 'end-false', nodeTitle: 'False End', outputIndex: 0 },
+      },
+    ]
+
+    render(
+      <WorkflowToolDrawer
+        isAdd
+        payload={createPayload({ outputParameters })}
+        nonConflictingOutputNames={['result']}
+        onHide={vi.fn()}
+        onCreate={vi.fn()}
+      />,
+    )
+
+    expect(screen.getAllByRole('row', { name: /result/ })).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'result' })).not.toBeInTheDocument()
+  })
+
+  it('shows the type guidance, not the unique-name warning, for a name that only clashes on type', async () => {
+    const user = userEvent.setup()
+    const outputParameters: WorkflowToolDrawerPayload['outputParameters'] = [
+      {
+        name: 'result',
+        description: 'True output',
+        source: { nodeId: 'end-true', nodeTitle: 'True End', outputIndex: 0 },
+      },
+      {
+        name: 'result',
+        description: 'False output',
+        source: { nodeId: 'end-false', nodeTitle: 'False End', outputIndex: 0 },
+      },
+    ]
+
+    render(
+      <WorkflowToolDrawer
+        isAdd
+        payload={createPayload({ outputParameters })}
+        outputTypeConflicts={{ result: ['object', 'string'] }}
+        onHide={vi.fn()}
+        onCreate={vi.fn()}
+      />,
+    )
+
+    const warnings = screen.getAllByRole('button', { name: 'result' })
+    expect(warnings).toHaveLength(2)
+    await user.click(warnings[0]!)
+
+    const dialogs = await screen.findAllByRole('dialog')
+    expect(
+      dialogs.some((dialog) =>
+        within(dialog).queryByText(/workflow\.errorMsg\.conflictingOutputVariableTypes/),
+      ),
+    ).toBe(true)
+    expect(
+      dialogs.some((dialog) =>
+        within(dialog).queryByText(/workflow\.errorMsg\.duplicateOutputVariable/),
+      ),
+    ).toBe(false)
+  })
+
   it('should combine reserved-name and duplicate-name issues into one warning per user output', async () => {
     const user = userEvent.setup()
     const outputParameters: WorkflowToolDrawerPayload['outputParameters'] = [

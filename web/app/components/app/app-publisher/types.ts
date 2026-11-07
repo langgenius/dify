@@ -35,6 +35,10 @@ export type AppPublisherProps = Pick<PopoverContentProps, 'alignOffset'> & {
   toolPublished?: boolean
   inputs?: InputVar[]
   outputs?: WorkflowToolOutputVariable[]
+  /** Duplicate output names proven safe by the workflow graph validator. */
+  nonConflictingOutputNames?: string[]
+  /** Output names reused on exclusive branches with clashing types, mapped to those types. */
+  outputTypeConflicts?: Record<string, string[]>
   onRefreshData?: () => void
   workflowToolAvailable?: boolean
   missingStartNode?: boolean
