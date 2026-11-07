@@ -31,6 +31,10 @@ describe('VideoPlayer', () => {
     HTMLVideoElement.prototype,
     'requestFullscreen',
   )
+  const originalHTMLElementFullscreen = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    'requestFullscreen',
+  )
   const originalExitFullscreen = Object.getOwnPropertyDescriptor(document, 'exitFullscreen')
   const originalFullscreenElement = Object.getOwnPropertyDescriptor(document, 'fullscreenElement')
 
@@ -39,6 +43,10 @@ describe('VideoPlayer', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
     vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
     Object.defineProperty(HTMLVideoElement.prototype, 'requestFullscreen', {
+      configurable: true,
+      value: vi.fn().mockResolvedValue(undefined),
+    })
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
       configurable: true,
       value: vi.fn().mockResolvedValue(undefined),
     })
@@ -54,6 +62,7 @@ describe('VideoPlayer', () => {
     vi.restoreAllMocks()
     vi.useRealTimers()
     for (const [target, key, descriptor] of [
+      [HTMLElement.prototype, 'requestFullscreen', originalHTMLElementFullscreen],
       [HTMLVideoElement.prototype, 'requestFullscreen', originalFullscreen],
       [document, 'exitFullscreen', originalExitFullscreen],
       [document, 'fullscreenElement', originalFullscreenElement],
@@ -116,7 +125,10 @@ describe('VideoPlayer', () => {
       const fullscreenBtn = getFullscreenButton()
 
       await user.click(fullscreenBtn)
-      expect(window.HTMLVideoElement.prototype.requestFullscreen).toHaveBeenCalled()
+      // The player container (video + custom controls) enters fullscreen so
+      // the controls stay visible; the video alone must not be fullscreened.
+      expect(window.HTMLElement.prototype.requestFullscreen).toHaveBeenCalled()
+      expect(window.HTMLVideoElement.prototype.requestFullscreen).not.toHaveBeenCalled()
 
       Object.defineProperty(document, 'fullscreenElement', {
         configurable: true,
