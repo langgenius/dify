@@ -19,6 +19,7 @@ from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_create_erro
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
+    DatasetIndexingInProgressError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
     KnowledgeFSUpgradeModelsUnavailableHTTPError,
@@ -54,6 +55,7 @@ from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeNotFoundError,
     upgrade_job_response,
 )
+from services.errors.dataset import DatasetIndexingInProgressError as DatasetIndexingInProgressFailure
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
@@ -104,6 +106,8 @@ def _raise_dataset_error(error: Exception) -> Never:
         raise NotFound("Dataset not found.") from error
     if isinstance(error, DatasetAccessDeniedError):
         raise Forbidden(str(error)) from error
+    if isinstance(error, DatasetIndexingInProgressFailure):
+        raise DatasetIndexingInProgressError() from error
     raise error
 
 
