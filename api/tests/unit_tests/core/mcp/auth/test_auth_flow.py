@@ -2,6 +2,7 @@
 
 import json
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
@@ -358,6 +359,92 @@ class TestAuthorizationFlow:
             )
 
         assert "does not support response type code" in str(exc_info.value)
+
+    @patch("core.mcp.auth.auth_flow._create_secure_redis_state")
+    def test_start_authorization_keeps_endpoint_query(self, mock_create_state):
+        """An endpoint that already carries a query keeps exactly one '?'."""
+        mock_create_state.return_value = "secure-state-key"
+
+        metadata = OAuthMetadata(
+            # Casdoor returns organization-scoped endpoints like this.
+            authorization_endpoint="https://auth.example.com/authorize?organization=acme",
+            token_endpoint="https://auth.example.com/token",
+            response_types_supported=["code"],
+            code_challenge_methods_supported=["S256"],
+        )
+        client_info = OAuthClientInformation(client_id="test-client-id")
+
+        auth_url, _ = start_authorization(
+            "https://api.example.com",
+            metadata,
+            client_info,
+            "https://redirect.example.com",
+            "provider-id",
+            "tenant-id",
+        )
+
+        assert auth_url.count("?") == 1, auth_url
+        query = parse_qs(urlsplit(auth_url).query)
+        # The provider's own parameter survives and ours are still parsed
+        # as separate parameters rather than swallowed by it.
+        assert query["organization"] == ["acme"]
+        assert query["response_type"] == ["code"]
+        assert query["client_id"] == ["test-client-id"]
+        assert query["code_challenge_method"] == ["S256"]
+        assert query["state"] == ["secure-state-key"]
+
+    @patch("core.mcp.auth.auth_flow._create_secure_redis_state")
+    def test_start_authorization_appends_before_fragment(self, mock_create_state):
+        """Parameters go into the query, never after the '#fragment'."""
+        mock_create_state.return_value = "secure-state-key"
+
+        metadata = OAuthMetadata(
+            authorization_endpoint="https://auth.example.com/authorize?organization=acme#frag",
+            token_endpoint="https://auth.example.com/token",
+            response_types_supported=["code"],
+            code_challenge_methods_supported=["S256"],
+        )
+        client_info = OAuthClientInformation(client_id="test-client-id")
+
+        auth_url, _ = start_authorization(
+            "https://api.example.com",
+            metadata,
+            client_info,
+            "https://redirect.example.com",
+            "provider-id",
+            "tenant-id",
+        )
+
+        parts = urlsplit(auth_url)
+        assert parts.fragment == "frag", auth_url
+        query = parse_qs(parts.query)
+        assert query["organization"] == ["acme"]
+        assert query["response_type"] == ["code"]
+
+    @patch("core.mcp.auth.auth_flow._create_secure_redis_state")
+    def test_start_authorization_overrides_stale_endpoint_parameter(self, mock_create_state):
+        """A parameter set by the request is never sent twice."""
+        mock_create_state.return_value = "secure-state-key"
+
+        metadata = OAuthMetadata(
+            authorization_endpoint="https://auth.example.com/authorize?response_type=token",
+            token_endpoint="https://auth.example.com/token",
+            response_types_supported=["code"],
+            code_challenge_methods_supported=["S256"],
+        )
+        client_info = OAuthClientInformation(client_id="test-client-id")
+
+        auth_url, _ = start_authorization(
+            "https://api.example.com",
+            metadata,
+            client_info,
+            "https://redirect.example.com",
+            "provider-id",
+            "tenant-id",
+        )
+
+        query = parse_qs(urlsplit(auth_url).query)
+        assert query["response_type"] == ["code"], auth_url
 
     @patch("core.helper.ssrf_proxy.post")
     def test_exchange_authorization_success(self, mock_post):

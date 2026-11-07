@@ -318,6 +318,38 @@ def discover_oauth_metadata(
     return asm, prm, scope_hint
 
 
+def _with_query_parameters(endpoint: str, params: dict[str, str]) -> str:
+    """Append ``params`` to ``endpoint`` without breaking an existing query.
+
+    A discovered ``authorization_endpoint`` may already carry query
+    parameters (Casdoor, for instance, returns
+    ``https://host/login/oauth/authorize?organization=acme``). Appending
+    ``?<encoded>`` unconditionally would produce a second ``?``, and per
+    RFC 3986 everything after it becomes part of the previous parameter's
+    value, so ``response_type`` would silently disappear.
+
+    Pairs already present on the endpoint are kept as-is, except for the
+    keys this request is about to set: the values computed here win, and
+    no key is ever sent twice.
+
+    Args:
+        endpoint: Authorization endpoint, optionally carrying a query
+            string and/or a fragment.
+        params: OAuth request parameters to add.
+
+    Returns:
+        The merged URL, with new parameters placed ahead of any fragment.
+    """
+    parts = urllib.parse.urlsplit(endpoint)
+    query = [
+        (key, value)
+        for key, value in urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+        if key not in params
+    ]
+    query.extend(params.items())
+    return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query)))
+
+
 def start_authorization(
     server_url: str,
     metadata: OAuthMetadata | None,
@@ -367,7 +399,7 @@ def start_authorization(
     if scope:
         params["scope"] = scope
 
-    authorization_url = f"{authorization_url}?{urllib.parse.urlencode(params)}"
+    authorization_url = _with_query_parameters(authorization_url, params)
     return authorization_url, code_verifier
 
 
