@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, override
@@ -72,8 +73,17 @@ from models.model import AppMode, Message, MessageAgentThought
 
 @pytest.fixture(autouse=True)
 def bind_agent_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    """Bind local runner dependencies without reaching external services."""
-    monkeypatch.setattr(app_runner_module.db, "session", sqlite_session)
+    """Reuse the test SQLite session for Agent App writes."""
+
+    @contextmanager
+    def reuse_session():
+        try:
+            yield sqlite_session
+        except Exception:
+            sqlite_session.rollback()
+            raise
+
+    monkeypatch.setattr(app_runner_module, "create_session", reuse_session)
     monkeypatch.setattr(
         "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
         lambda **_kwargs: None,
