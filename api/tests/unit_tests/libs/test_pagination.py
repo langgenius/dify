@@ -1,4 +1,5 @@
 import math
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -125,7 +126,7 @@ class TestPaginateQueryCount:
     """
 
     def test_count_strips_order_by_from_the_wrapped_statement(self) -> None:
-        captured: dict[str, object] = {}
+        captured: dict[str, Any] = {}
 
         session = MagicMock()  # guard-ignore: no-new-session-mock -- pagination count test needs a mock session to capture the compiled count SQL without a real DB
         session.scalar.side_effect = lambda stmt: (captured.__setitem__("count_stmt", stmt), 0)[1]
@@ -137,9 +138,29 @@ class TestPaginateQueryCount:
         count_sql = str(captured["count_stmt"].compile(dialect=postgresql.dialect()))
         assert "ORDER BY" not in count_sql.upper()
 
+    def test_count_preserves_caller_limit_and_offset(self) -> None:
+        """A pre-limited input statement must count the limited window, not the full table.
+
+        Removing ``.limit(None).offset(None)`` from the count base was flagged by
+        @GYJ99: stripping them silently widens a caller's pre-limited statement
+        to the full table in the count subquery.
+        """
+        captured: dict[str, Any] = {}
+
+        session = MagicMock()  # guard-ignore: no-new-session-mock -- pagination count test needs a mock session to capture the compiled count SQL without a real DB
+        session.scalar.side_effect = lambda stmt: (captured.__setitem__("count_stmt", stmt), 0)[1]
+        session.scalars.return_value.all.return_value = []
+
+        stmt = select(_CountTestRow).order_by(_CountTestRow.id.desc()).limit(2).offset(1)
+        paginate_query(stmt, session=session, page=1, per_page=10)
+
+        count_sql = str(captured["count_stmt"].compile(dialect=postgresql.dialect()))
+        assert "LIMIT" in count_sql.upper()
+        assert "OFFSET" in count_sql.upper()
+
     def test_page_query_retains_order_by(self) -> None:
         """The page query must keep its ORDER BY — only the count loses it."""
-        captured: dict[str, object] = {}
+        captured: dict[str, Any] = {}
 
         session = MagicMock()  # guard-ignore: no-new-session-mock -- pagination page-query test needs a mock session to capture the compiled page SQL without a real DB
         session.scalar.return_value = 0
