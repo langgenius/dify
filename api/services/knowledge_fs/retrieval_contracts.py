@@ -64,6 +64,8 @@ KnowledgeFSPublicErrorCode = Literal[
     "DOCUMENT_PARSER_UNAVAILABLE",
     "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
     "DOCUMENT_PDF_RENDER_FAILED",
+    "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
+    "DOCUMENT_SOURCE_NOT_FOUND",
     "EMBEDDING_DIMENSION_INVALID",
     "EMBEDDING_DIMENSION_UNSUPPORTED",
     "EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -180,6 +182,15 @@ class KnowledgeFSPublicFailureResponse(ResponseModel):
         "DOCUMENT_COMPILATION_PROFILE_CHANGED": (
             "The model configuration changed or is unavailable. "
             "Check the knowledge space models before retrying document processing."
+        ),
+        "DOCUMENT_SEMANTIC_GROUNDING_FAILED": (
+            "Some entities or relationships returned by the model could not be matched to the document's source text. "
+            "Retry processing the document."
+        ),
+        "DOCUMENT_SOURCE_NOT_FOUND": "The original file is no longer available. Upload the document again.",
+        "MODEL_RUNTIME_RESPONSE_INVALID": (
+            "The model service returned a result that did not meet processing requirements. "
+            "Retry processing the document."
         ),
         "DOCUMENT_COUNT_QUOTA_EXCEEDED": (
             "The workspace document limit has been reached. Delete documents or upgrade the plan before adding more."
