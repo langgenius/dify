@@ -1433,6 +1433,11 @@ export const zTraceRunStatusResponse = z.object({
 })
 
 /**
+ * AppAvailabilityStatus
+ */
+export const zAppAvailabilityStatus = z.enum(['available', 'unavailable'])
+
+/**
  * AgentAppPublishedReferenceResponse
  */
 export const zAgentAppPublishedReferenceResponse = z.object({
@@ -2066,6 +2071,29 @@ export const zAgentConfigRevisionResponse = z.object({
 })
 
 /**
+ * AppAvailabilityIssueType
+ */
+export const zAppAvailabilityIssueType = z.enum([
+  'agent',
+  'configuration',
+  'knowledge',
+  'model',
+  'tool',
+  'workflow',
+])
+
+/**
+ * AppAvailabilityIssueResponse
+ */
+export const zAppAvailabilityIssueResponse = z.object({
+  model: z.string().nullish(),
+  provider: z.string().nullish(),
+  reason: z.string(),
+  resource_id: z.string().nullish(),
+  type: zAppAvailabilityIssueType,
+})
+
+/**
  * AppAgentPromptResponse
  */
 export const zAppAgentPromptResponse = z.object({
@@ -2299,6 +2327,9 @@ export const zAgentAppPartial = z.object({
   active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
   author_name: z.string().nullish(),
+  availability: zAppAvailabilityStatus.nullish(),
+  availability_reasons: z.array(zAppAvailabilityIssueResponse).optional(),
+  availability_source: z.enum(['configuration', 'draft']).nullish(),
   backing_app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
   create_user_name: z.string().nullish(),
@@ -3786,6 +3817,9 @@ export const zAgentAppPartialWritable = z.object({
   active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
   author_name: z.string().nullish(),
+  availability: zAppAvailabilityStatus.nullish(),
+  availability_reasons: z.array(zAppAvailabilityIssueResponse).optional(),
+  availability_source: z.enum(['configuration', 'draft']).nullish(),
   backing_app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
   create_user_name: z.string().nullish(),
@@ -3900,6 +3934,7 @@ export const zAgentAppDetailWithSiteWritable = z.object({
 })
 
 export const zGetAgentQuery = z.object({
+  availability: z.enum(['all', 'available', 'unavailable']).optional().default('all'),
   creator_ids: z.array(z.string()).optional(),
   is_created_by_me: z.boolean().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),

@@ -296,6 +296,7 @@ Check if activation token is valid
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| availability | query | Filter dependency configuration availability before pagination (all, available, unavailable) | No | string, <br>**Available values:** "all", "available", "unavailable", <br>**Default:** all |
 | creator_ids | query | Filter by creator account IDs | No | [ string ] |
 | is_created_by_me | query | Filter by creator | No | boolean |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
@@ -1804,6 +1805,7 @@ Get list of applications with pagination and filtering
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| availability | query | Filter dependency configuration availability before pagination (all, available, unavailable) | No | string, <br>**Available values:** "all", "available", "unavailable", <br>**Default:** all |
 | creator_ids | query | Filter by creator account IDs | No | [ string ] |
 | is_created_by_me | query | Filter by creator | No | boolean |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
@@ -1915,6 +1917,7 @@ Get applications starred by the current account
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| availability | query | Filter dependency configuration availability before pagination (all, available, unavailable) | No | string, <br>**Available values:** "all", "available", "unavailable", <br>**Default:** all |
 | creator_ids | query | Filter by creator account IDs | No | [ string ] |
 | is_created_by_me | query | Filter by creator | No | boolean |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
@@ -19359,6 +19362,7 @@ default (the config form sends the full desired feature state on save).
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| availability | string, <br>**Available values:** "all", "available", "unavailable", <br>**Default:** all | Filter dependency configuration availability before pagination (all, available, unavailable)<br>*Enum:* `"all"`, `"available"`, `"unavailable"` | No |
 | creator_ids | [ string ] | Filter by creator account IDs | No |
 | is_created_by_me | boolean | Filter by creator | No |
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
@@ -19389,6 +19393,9 @@ default (the config form sends the full desired feature state on save).
 | active_config_is_published | boolean |  | No |
 | app_id | string |  | No |
 | author_name | string |  | No |
+| availability | [AppAvailabilityStatus](#appavailabilitystatus) | Dependency configuration availability, not a live execution probe. Null when not evaluated. | No |
+| availability_reasons | [ [AppAvailabilityIssueResponse](#appavailabilityissueresponse) ] |  | No |
+| availability_source | string, <br>**Available values:** "configuration", "draft" | Editable draft for workflow and Agent apps; current configuration for legacy apps. | No |
 | backing_app_id | string |  | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
@@ -21595,6 +21602,28 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | enable_api | boolean | Enable or disable API | Yes |
 
+#### AppAvailabilityIssueResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | No |
+| provider | string |  | No |
+| reason | string |  | Yes |
+| resource_id | string |  | No |
+| type | [AppAvailabilityIssueType](#appavailabilityissuetype) |  | Yes |
+
+#### AppAvailabilityIssueType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppAvailabilityIssueType | string |  |  |
+
+#### AppAvailabilityStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppAvailabilityStatus | string |  |  |
+
 #### AppChatPromptConfigResponse
 
 | Name | Type | Description | Required |
@@ -22184,6 +22213,7 @@ This class is used to store the schema information of an api based tool.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| availability | string, <br>**Available values:** "all", "available", "unavailable", <br>**Default:** all | Filter dependency configuration availability before pagination (all, available, unavailable)<br>*Enum:* `"all"`, `"available"`, `"unavailable"` | No |
 | creator_ids | [ string ] | Filter by creator account IDs | No |
 | is_created_by_me | boolean | Filter by creator | No |
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
@@ -22493,6 +22523,9 @@ The app preview owner is unavailable.
 | access_mode | [WebAppAccessMode](#webappaccessmode) |  | No |
 | app_id | string |  | No |
 | author_name | string |  | No |
+| availability | [AppAvailabilityStatus](#appavailabilitystatus) | Dependency configuration availability, not a live execution probe. Null when not evaluated. | No |
+| availability_reasons | [ [AppAvailabilityIssueResponse](#appavailabilityissueresponse) ] |  | No |
+| availability_source | string, <br>**Available values:** "configuration", "draft" | Editable draft for workflow and Agent apps; current configuration for legacy apps. | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
 | created_at | integer |  | No |
@@ -35375,6 +35408,7 @@ Speech to text is disabled.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| availability | string, <br>**Available values:** "all", "available", "unavailable", <br>**Default:** all | Filter dependency configuration availability before pagination (all, available, unavailable)<br>*Enum:* `"all"`, `"available"`, `"unavailable"` | No |
 | creator_ids | [ string ] | Filter by creator account IDs | No |
 | is_created_by_me | boolean | Filter by creator | No |
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |

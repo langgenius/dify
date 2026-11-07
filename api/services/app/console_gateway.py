@@ -56,7 +56,7 @@ from services.entities.app_entities import (
     AppDeletion,
     AppEvent,
     AppExportOptions,
-    AppListParams,
+    AppListBaseParams,
     AppRecord,
     CreateAppParams,
     ImportedAppPackage,
@@ -156,7 +156,7 @@ class ConsoleAppPermissions(AppPermissions):
     access_filter: AppAccessFilter
 
     @override
-    def filter_list(self, params: AppListParams) -> AppListParams:
+    def filter_list[Params: AppListBaseParams](self, params: Params) -> Params:
         params = params.model_copy(deep=True)
         self.access_filter.apply_to_params(params)
         return params
