@@ -21,6 +21,7 @@ import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refre
 import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
 import { getErrorMessage } from '@/utils/error-message'
+import { useAgentBuildModel } from './build-model-storage'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
 const BUILD_NOTE_FILE_ID = '__agent_config_build_note__'
@@ -282,6 +283,7 @@ export function useAgentConfigureBuildDraftActions({
   const queryClient = useQueryClient()
   const forceCheckoutBeforeNextBuildRunRef = useRef(false)
   const [isApplyingBuildDraftWorkflow, setIsApplyingBuildDraftWorkflow] = useState(false)
+  const [buildModel] = useAgentBuildModel(agentId)
   const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
       params: {
@@ -387,6 +389,8 @@ export function useAgentConfigureBuildDraftActions({
         params: {
           agent_id: agentId,
         },
+        // Finalization is the last Build chat turn, so it runs on the same Build model.
+        body: buildModel ? { build_model: buildModel } : {},
       })
       await applyBuildDraftRequest({
         params: {

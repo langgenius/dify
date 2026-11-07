@@ -1,9 +1,12 @@
 'use client'
 
 import type { AgentChatRuntimeEmptyStateProps, AgentChatRuntimeProps } from './chat-runtime'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useAgentBuildModel } from '../../build-model-storage'
 import { CommunityEditionTip } from '../community-edition-tip'
-import { sendBuildChatMessage } from './build-chat-request'
+import { createBuildChatMessageSender } from './build-chat-request'
+import { AgentBuildModelField } from './build-model-field'
 import { AgentChatRuntime } from './chat-runtime'
 import { AgentUnconfiguredNotice } from './unconfigured-notice'
 
@@ -69,16 +72,28 @@ function AgentBuildChatEmptyState({
 
 export function AgentBuildChat(props: AgentBuildChatProps) {
   const { t } = useTranslation(['agentV2'])
+  const [buildModel, setBuildModel] = useAgentBuildModel(props.agentId)
+  const sendBuildChatMessage = useMemo(() => createBuildChatMessageSender(buildModel), [buildModel])
 
   return (
-    <AgentChatRuntime
-      {...props}
-      draftType="debug_build"
-      inputPlaceholder={t(($) => $['agentDetail.configure.build.inputPlaceholder'])}
-      inputAutoFocus={false}
-      sendButtonLabel={t(($) => $['agentDetail.configure.build.startBuild'])}
-      sendMessage={sendBuildChatMessage}
-      renderEmptyState={(emptyStateProps) => <AgentBuildChatEmptyState {...emptyStateProps} />}
-    />
+    <div className="flex h-full min-h-0 flex-col">
+      <AgentBuildModelField
+        agentModel={props.agentSoulConfig?.model}
+        buildModel={buildModel}
+        disabled={props.disabled}
+        onBuildModelChange={setBuildModel}
+      />
+      <div className="relative min-h-0 flex-1">
+        <AgentChatRuntime
+          {...props}
+          draftType="debug_build"
+          inputPlaceholder={t(($) => $['agentDetail.configure.build.inputPlaceholder'])}
+          inputAutoFocus={false}
+          sendButtonLabel={t(($) => $['agentDetail.configure.build.startBuild'])}
+          sendMessage={sendBuildChatMessage}
+          renderEmptyState={(emptyStateProps) => <AgentBuildChatEmptyState {...emptyStateProps} />}
+        />
+      </div>
+    </div>
   )
 }

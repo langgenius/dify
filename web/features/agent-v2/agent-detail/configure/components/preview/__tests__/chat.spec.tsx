@@ -18,6 +18,7 @@ import { createModelCatalogFixture, seedModelProviderQueries } from '@/test/cons
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentBuildChat } from '../build-chat'
 import { AgentPreviewChat } from '../preview-chat'
 
@@ -172,18 +173,22 @@ function renderChat({
     model: { provider: 'openai', model: 'gpt-4' },
     ...draft,
   })
+  // The Build model selector keeps its settings dialog destination in the URL.
+  const { wrapper: UrlState } = createNuqsTestWrapper()
   const view = render(
-    <QueryProvider>
-      <Provider store={store}>
-        <ChatHarness
-          agentId="agent-1"
-          mode={mode}
-          clearChatList={false}
-          onClearChatListChange={() => {}}
-          {...props}
-        />
-      </Provider>
-    </QueryProvider>,
+    <UrlState>
+      <QueryProvider>
+        <Provider store={store}>
+          <ChatHarness
+            agentId="agent-1"
+            mode={mode}
+            clearChatList={false}
+            onClearChatListChange={() => {}}
+            {...props}
+          />
+        </Provider>
+      </QueryProvider>
+    </UrlState>,
   )
   return { ...view, queryClient }
 }

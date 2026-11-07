@@ -523,6 +523,12 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentBuildChatFinalizePayload](#agentbuildchatfinalizepayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -19471,6 +19477,12 @@ Agent backend is unreachable.
 | ---- | ---- | ----------- | -------- |
 | AgentBackendUnreachableError |  | Agent backend is unreachable. |  |
 
+#### AgentBuildChatFinalizePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| build_model | [AgentSoulModelConfig](#agentsoulmodelconfig) | Run the finalization turn on this model instead of the Agent's configured model. Not saved to the Agent. Omit to use the Agent's model. | No |
+
 #### AgentBuildDraftApplyResponse
 
 | Name | Type | Description | Required |
@@ -23270,6 +23282,7 @@ You cannot transfer ownership to yourself.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| build_model | [AgentSoulModelConfig](#agentsoulmodelconfig) | Agent build chat only (draft_type=debug_build): run this turn on this model instead of the Agent's configured model. Not saved to the Agent. Omit to use the Agent's model. | No |
 | conversation_id | string | Conversation ID | No |
 | draft_type | string, <br>**Available values:** "debug_build", "draft", <br>**Default:** draft | Agent App debug config source. Use debug_build while the Agent is in build mode.<br>*Enum:* `"debug_build"`, `"draft"` | No |
 | files | [ object ] | Uploaded files | No |
