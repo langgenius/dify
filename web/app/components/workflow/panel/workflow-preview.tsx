@@ -10,27 +10,47 @@ import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-pan
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { toast } from '@/app/notifications'
-import { ENABLE_HITL_IM } from '@/config'
+import { ENABLE_FEATURE_PREVIEW, ENABLE_HITL_IM } from '@/config'
 import { submitHumanInputForm } from '@/service/workflow'
-import { editorAppIdAtom } from '../editor-resource/state'
+import { editorAppIdAtom, editorResourceAtom } from '../editor-resource/state'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
 import ResultPanel from '../run/result-panel'
 import ResultText from '../run/result-text'
 import TracingPanel from '../run/tracing-panel'
 import { useStore } from '../store'
-import { WorkflowRunningStatus } from '../types'
+import { NodeRunningStatus, WorkflowRunningStatus } from '../types'
 import { formatWorkflowRunIdentifier } from '../utils'
+import { useWorkflowGeneratorStore } from '../workflow-generator/store'
 import HumanInputFilledFormList from './human-input-filled-form-list'
 import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
 
 const WorkflowPreview = () => {
-  const { t } = useTranslation(['common', 'runLog', 'workflow'])
+  const { t } = useTranslation(['common', 'runLog', 'workflow', 'workflowGenerator'])
   const panelId = useId()
   const appId = useAtomValue(editorAppIdAtom)
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
+  const editorResource = useAtomValue(editorResourceAtom)
+  const openGenerator = useWorkflowGeneratorStore((s) => s.openGenerator)
+  const generatorMode = editorResource.kind === 'app' ? editorResource.mode : null
+  const failedTrace =
+    workflowRunningData?.result.status === WorkflowRunningStatus.Failed
+      ? workflowRunningData.tracing?.find(
+          (trace) =>
+            trace.status === NodeRunningStatus.Failed &&
+            /\bvariable(?:\s+key)?\b.+\bnot found\b/i.test(trace.error ?? ''),
+        )
+      : undefined
+  const generatorModeLabel =
+    generatorMode === 'workflow'
+      ? t(($) => $['workflowGenerator.modes.workflow'], { ns: 'workflowGenerator' })
+      : t(($) => $['workflowGenerator.modes.chatflow'], { ns: 'workflowGenerator' })
+  const refineLabel = t(($) => $['workflowGenerator.refineTitle'], {
+    ns: 'workflowGenerator',
+    mode: generatorModeLabel,
+  })
   const isListening = useStore((s) => s.isListening)
   const showInputsPanel = useStore((s) => s.showInputsPanel)
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
@@ -136,6 +156,21 @@ const WorkflowPreview = () => {
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
         {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}
+        {ENABLE_FEATURE_PREVIEW && appId && generatorMode && failedTrace && (
+          <Button
+            onClick={() =>
+              openGenerator({
+                intent: 'refine',
+                mode: generatorMode,
+                currentAppId: appId,
+                currentAppMode: generatorMode,
+                initialInstruction: `${refineLabel}: ${failedTrace.title} (${failedTrace.node_id}): ${(failedTrace.error ?? '').slice(0, 2000)}`,
+              })
+            }
+          >
+            {refineLabel}
+          </Button>
+        )}
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
