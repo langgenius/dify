@@ -74,8 +74,13 @@ def paginate_query(
     """
     page, per_page = clamp_pagination(page, per_page, max_per_page)
 
-    # total count — wrap in a scalar subquery so arbitrary selects work
-    count_stmt = select(func.count()).select_from(stmt.subquery())
+    # total count — wrap in a scalar subquery so arbitrary selects work.
+    # Clear the statement's ORDER BY first: ordering cannot change the count,
+    # but keeping it forces PostgreSQL to sort every matching row (wide ORM
+    # projection + Sort/Gather Merge) before aggregating — minutes of wasted
+    # work on large tables. Restores the Flask-SQLAlchemy 3.1.1 behavior
+    # (order_by(None)) this helper replaced.
+    count_stmt = select(func.count()).select_from(stmt.order_by(None).subquery())
     total: int = session.scalar(count_stmt) or 0  # type: ignore[assignment]
 
     # fetch the page
