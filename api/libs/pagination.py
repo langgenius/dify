@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 from sqlalchemy import Select, func, select
@@ -25,7 +24,9 @@ class PaginatedResult[T]:
     def pages(self) -> int:
         if self.total == 0 or self.per_page == 0:
             return 0
-        return math.ceil(self.total / self.per_page)
+        # Integer arithmetic keeps `pages` exact for totals above 2**53,
+        # where float division would round the quotient.
+        return (self.total + self.per_page - 1) // self.per_page
 
     @property
     def has_next(self) -> bool:
