@@ -69,6 +69,8 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
         },
         query: {
           ...period.query,
+          // The API treats `end` as exclusive, so query up to the start of the next day.
+          end: dayjs(period.query.end).add(1, 'day').startOf('day').format(queryDateFormat),
           ...(sourceFilter !== 'all' ? { source: sourceFilter } : {}),
         },
       },
