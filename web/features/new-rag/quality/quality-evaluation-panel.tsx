@@ -34,6 +34,7 @@ import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { getErrorMessage } from '@/utils/error-message'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
+import { createRequestId } from '../request-id'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { formatQualityEvaluationCreatedAt, formatQualityReportCreatedAt } from './quality-model'
 
@@ -549,7 +550,7 @@ function RunEvaluationForm({
     const submission =
       submissionRef.current?.mode === mode
         ? submissionRef.current
-        : { idempotencyKey: crypto.randomUUID(), mode }
+        : { idempotencyKey: createRequestId(), mode }
     submissionRef.current = submission
     try {
       const run = await createMutation.mutateAsync({

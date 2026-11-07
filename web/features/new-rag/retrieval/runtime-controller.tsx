@@ -11,6 +11,7 @@ import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
+import { createRequestId } from '../request-id'
 import { useKnowledgeModelSetupGuard } from '../use-knowledge-model-setup-guard'
 import { mergeResearchProgressEvent } from './history-utils'
 import {
@@ -297,7 +298,7 @@ export function RetrievalRuntimeController() {
       queryAbortControllerRef.current?.abort()
       const controller = new AbortController()
       queryAbortControllerRef.current = controller
-      const id = crypto.randomUUID()
+      const id = createRequestId()
       const startedAt = Date.now()
       setComposerDraft({ mode: runMode, query: cleanQuery })
       setLocalRun({

@@ -117,6 +117,33 @@ describe('IpPolicyDialog', () => {
       allowed_cidrs: ['10.0.0.0/8', '203.0.113.42'],
     })
   })
+
+  it('edits the allowlist without crypto.randomUUID on a non-secure page', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    })
+    try {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      render(<DialogHarness onSubmit={onSubmit} />)
+
+      await user.type(screen.getByPlaceholderText('e.g. Internal Network'), 'Internal Network')
+      await user.type(screen.getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
+      await user.click(screen.getByRole('button', { name: 'Add' }))
+      await user.type(
+        screen.getAllByPlaceholderText('10.0.0.0/8')[1] as HTMLElement,
+        '203.0.113.42',
+      )
+      await user.click(screen.getByRole('button', { name: 'Create' }))
+
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Internal Network',
+        allowed_cidrs: ['10.0.0.0/8', '203.0.113.42'],
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })
 
 describe('trusted current IP and allowlist editing', () => {
