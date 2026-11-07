@@ -202,7 +202,15 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
   }, [hasMore, isLoading, loadMoreMessages])
 
   const isChatMode = appDetail.mode !== 'completion'
-  const isAdvanced = appDetail.mode === 'advanced-chat'
+  const isLogSupported = appDetail.mode === 'advanced-chat' || appDetail.mode === 'agent-chat'
+  const canOpenLog = useCallback(
+    (item: IChatItem) => {
+      if (appDetail.mode === 'advanced-chat') return true
+      if (appDetail.mode === 'agent-chat') return Boolean(item.agent_thoughts?.length)
+      return false
+    },
+    [appDetail.mode],
+  )
   const logKind = selectedLogItem?.workflow_run_id
     ? 'workflow'
     : selectedLogItem?.agent_thoughts?.length
@@ -293,7 +301,8 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
               onAnnotationRemoved={handleAnnotationRemoved}
               onFeedback={onFeedback}
               noChatInput
-              onOpenLog={isAdvanced ? setSelectedLogItem : undefined}
+              onOpenLog={isLogSupported ? setSelectedLogItem : undefined}
+              canOpenLog={canOpenLog}
               hideProcessDetail
               chatContainerInnerClassName="px-3"
               switchSibling={switchSibling}
@@ -336,7 +345,8 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
                 onAnnotationRemoved={handleAnnotationRemoved}
                 onFeedback={onFeedback}
                 noChatInput
-                onOpenLog={isAdvanced ? setSelectedLogItem : undefined}
+                onOpenLog={isLogSupported ? setSelectedLogItem : undefined}
+                canOpenLog={canOpenLog}
                 hideProcessDetail
                 chatContainerInnerClassName="px-3"
                 switchSibling={switchSibling}
