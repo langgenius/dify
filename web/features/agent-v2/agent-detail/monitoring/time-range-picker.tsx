@@ -94,10 +94,13 @@ export function AgentMonitoringTimeRangePicker({
 
     if (type === 'start' && date.isSame(start)) return
 
-    if (type === 'end' && date.isSame(end)) return
+    if (type === 'end' && date.isSame(end, 'day')) return
 
     const nextStart = type === 'start' ? date : start
-    const nextEnd = type === 'end' ? date : end
+    // The picker selects a day, not a time: the end of the selected day is
+    // the end of the range. Sending the picked day at 00:00 would exclude
+    // the whole end date from the statistics.
+    const nextEnd = type === 'end' ? date.endOf('day') : end
     const nextName = `${formatToLocalTime(nextStart, locale, 'MMM D')} - ${formatToLocalTime(nextEnd, locale, 'MMM D')}`
 
     setSelectedRange('custom')
