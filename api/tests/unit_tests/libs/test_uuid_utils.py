@@ -10,6 +10,28 @@ from hypothesis import strategies as st
 from libs.uuid_utils import _create_uuidv7_bytes, uuidv7, uuidv7_boundary, uuidv7_timestamp
 
 
+@pytest.mark.parametrize("timestamp_ms", [-1, 2**48, 2**48 + 1, 2**64 - 1])
+def test_uuidv7_rejects_out_of_range_timestamps(timestamp_ms: int) -> None:
+    """Invalid timestamps must fail instead of aliasing another millisecond."""
+    with pytest.raises(ValueError, match="48-bit"):
+        uuidv7(timestamp_ms)
+
+
+@pytest.mark.parametrize("timestamp_ms", [-1, 2**48, 2**48 + 1, 2**64 - 1])
+def test_uuidv7_boundary_rejects_out_of_range_timestamps(timestamp_ms: int) -> None:
+    """Partition boundaries must not wrap to a different timestamp."""
+    with pytest.raises(ValueError, match="48-bit"):
+        uuidv7_boundary(timestamp_ms)
+
+
+@pytest.mark.parametrize("timestamp_ms", [0, 2**48 - 1])
+def test_uuidv7_boundary_preserves_timestamp_limits(timestamp_ms: int) -> None:
+    """Both ends of the unsigned 48-bit range are representable."""
+    result = uuidv7_boundary(timestamp_ms)
+    assert result.version == 7
+    assert uuidv7_timestamp(result) == timestamp_ms
+
+
 # Tests for private helper function _create_uuidv7_bytes
 def test_create_uuidv7_bytes_basic_structure() -> None:
     """Test basic byte structure creation."""

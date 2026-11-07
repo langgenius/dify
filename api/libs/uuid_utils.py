@@ -42,12 +42,18 @@ def _create_uuidv7_bytes(timestamp_ms: int, random_bytes: bytes) -> bytes:
                      Last 8 bytes are used for random data B (62 bits after variant).
 
     Returns:
-        A 16-byte bytes object representing the complete UUIDv7 structure.
+        A 16-byte UUIDv7 structure preserving timestamp_ms without truncation.
+
+    Raises:
+        ValueError: If timestamp_ms is outside the unsigned 48-bit range.
 
     Note:
         This function assumes the random_bytes parameter is exactly 10 bytes.
         The caller is responsible for providing appropriate random data.
     """
+    if not 0 <= timestamp_ms < 2**48:
+        raise ValueError("timestamp_ms must fit in an unsigned 48-bit integer")
+
     # Create the 128-bit UUID structure
     uuid_bytes = bytearray(16)
 
@@ -88,10 +94,13 @@ def uuidv7(timestamp_ms: int | None = None) -> uuid.UUID:
 
     Args:
         timestamp_ms: The timestamp used when generating UUID, use the current time if unspecified.
-                  Should be an integer representing milliseconds since Unix epoch.
+                  Must be an unsigned 48-bit integer representing milliseconds since Unix epoch.
 
     Returns:
-        A UUID object representing a UUIDv7.
+        A UUIDv7 whose timestamp equals the supplied or current millisecond value.
+
+    Raises:
+        ValueError: If the timestamp is outside the unsigned 48-bit range.
 
     Example:
         >>> import time
@@ -154,6 +163,10 @@ def uuidv7_boundary(timestamp_ms: int) -> uuid.UUID:
     """Generate a non-random uuidv7 with the given timestamp (first 48 bits) and
     all random bits to 0. As the smallest possible uuidv7 for that timestamp,
     it may be used as a boundary for partitions.
+
+    The input must be an unsigned 48-bit millisecond timestamp. The returned
+    boundary preserves that timestamp exactly; out-of-range input raises
+    ValueError instead of wrapping to a different timestamp.
     """
     # Use zero bytes for all random portions
     zero_random_bytes = b"\x00" * 10
