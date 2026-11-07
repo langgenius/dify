@@ -1098,3 +1098,39 @@ def test_stream_timeout_can_reconnect_until_terminal() -> None:
 
     assert calls == 2
     assert [event.type for event in events] == ["run_succeeded"]
+
+
+def test_sync_home_snapshot_client_parses_null_snapshot_ref() -> None:
+    """A backend that cannot snapshot reports explicit null; the client must
+    preserve it instead of failing or fabricating a ref."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/home-snapshots/from-binding"
+        return httpx.Response(201, json={"snapshot_ref": None})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = Client(base_url="http://testserver", sync_http_client=http_client)
+
+    created = client.create_home_snapshot_from_binding_sync(_create_home_snapshot_from_binding_request())
+
+    assert created.snapshot_ref is None
+    http_client.close()
+
+
+def test_async_home_snapshot_client_parses_null_snapshot_ref() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/home-snapshots/from-binding"
+        return httpx.Response(201, json={"snapshot_ref": None})
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        created = await client.create_home_snapshot_from_binding(_create_home_snapshot_from_binding_request())
+
+        assert created.snapshot_ref is None
+        await http_client.aclose()
+
+    asyncio.run(scenario())

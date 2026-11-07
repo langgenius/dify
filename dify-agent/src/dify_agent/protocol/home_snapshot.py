@@ -21,7 +21,9 @@ class DeleteHomeSnapshotRequest(BaseModel):
 
 
 class HomeSnapshotResponse(BaseModel):
-    snapshot_ref: str = Field(min_length=1)
+    # Required but nullable: an explicit null means the backend does not
+    # support Home Snapshots and captured nothing; a string must be nonempty.
+    snapshot_ref: str | None = Field(min_length=1)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

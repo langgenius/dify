@@ -24,7 +24,6 @@ from dify_agent.runtime_backend.e2b import (
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 from dify_agent.runtime_backend.openshell import (
     OpenShellExecutionBindingBackend,
-    OpenShellHomeSnapshotBackend,
     OpenShellSDKControlPlane,
 )
 from dify_agent.runtime.command_runner import execute_complete_with_commands
@@ -229,16 +228,18 @@ async def test_e2b_binding_checkpoint_and_collection() -> None:
 
 
 @pytest.mark.anyio
-async def test_openshell_binding_checkpoint_and_collection() -> None:
+async def test_openshell_binding_lifecycle_and_independence() -> None:
+    """Real gateway contract: two Bindings get independent image-fresh Homes.
+
+    OpenShell cannot snapshot: the profile wires a no-op backend that reports
+    ``snapshot_ref: null``, and a second Binding must not inherit the first's
+    Home contents.
+    """
     endpoint = _required_env("DIFY_AGENT_TEST_OPENSHELL_GATEWAY_ENDPOINT", "real OpenShell gateway")
     image = _required_env("DIFY_AGENT_TEST_OPENSHELL_SANDBOX_IMAGE", "real OpenShell gateway")
-    driver_config_json = _required_env("DIFY_AGENT_TEST_OPENSHELL_DRIVER_CONFIG", "real OpenShell gateway")
-    driver_config = json.loads(driver_config_json)
+    driver_config_json = os.environ.get("DIFY_AGENT_TEST_OPENSHELL_DRIVER_CONFIG", "")
+    driver_config = json.loads(driver_config_json) if driver_config_json.strip() else {}
     assert isinstance(driver_config, dict)
-    shared_mount_path = os.environ.get(
-        "DIFY_AGENT_TEST_OPENSHELL_SHARED_MOUNT_PATH",
-        "/mnt/dify-agent-shared",
-    )
     shellctl_token = os.environ.get("DIFY_AGENT_TEST_OPENSHELL_SHELLCTL_AUTH_TOKEN", "")
     marker = uuid.uuid4().hex
     control = OpenShellSDKControlPlane(
@@ -251,19 +252,15 @@ async def test_openshell_binding_checkpoint_and_collection() -> None:
         insecure=os.environ.get("DIFY_AGENT_TEST_OPENSHELL_INSECURE", "").lower() == "true",
         image=image,
         driver_config=driver_config,
-        shared_mount_path=shared_mount_path,
     )
-    snapshots = OpenShellHomeSnapshotBackend(control_plane=control, shared_mount_path=shared_mount_path)
     bindings = OpenShellExecutionBindingBackend(
         control_plane=control,
         shellctl_auth_token=shellctl_token,
-        shared_mount_path=shared_mount_path,
     )
-    checkpoint_ref: str | None = None
     allocation = None
-    checkpoint_allocation = None
+    second_allocation = None
     lease = None
-    checkpoint_lease = None
+    second_lease = None
     try:
         allocation = await bindings.create_binding(
             ExecutionBindingCreateSpec(
@@ -277,7 +274,7 @@ async def test_openshell_binding_checkpoint_and_collection() -> None:
         )
         lease = await bindings.acquire(allocation.binding_ref)
         await _run(lease, "printf openshell > probe.txt", cwd=lease.layout.workspace_dir)
-        await _run(lease, "printf checkpoint-home > .checkpoint-probe", cwd=lease.layout.home_dir)
+        await _run(lease, "printf marker > .marker", cwd=lease.layout.home_dir)
         assert await _run(lease, "cat probe.txt", cwd=lease.layout.workspace_dir) == "openshell"
         long_wait = await execute_complete_with_commands(
             lease.commands,
@@ -290,47 +287,33 @@ async def test_openshell_binding_checkpoint_and_collection() -> None:
         assert long_wait.exit_code == 0
         assert long_wait.output_complete
         assert long_wait.output.endswith("waited")
-        checkpoint_ref = await snapshots.create_from_runtime(
-            spec=HomeSnapshotCreateSpec(
-                tenant_id="integration-tenant",
-                agent_id="integration-agent",
-                home_snapshot_id=f"checkpoint-{marker}",
-            ),
-            source=lease,
-        )
-        sandbox_id = await control.wait_ready(allocation.binding_ref)
         await bindings.release(lease)
         lease = None
-        assert await control.exec_script(sandbox_id, "true") == (0, "")
 
-        lease = await bindings.acquire(allocation.binding_ref)
-        assert await _run(lease, "cat probe.txt", cwd=lease.layout.workspace_dir) == "openshell"
-        await bindings.release(lease)
-        lease = None
+        # A stopped sandbox restarts and retains its Home/Workspace contents.
         await control.stop_sandbox(allocation.binding_ref)
-
-        # The stopped sandbox must restart and re-bootstrap shellctl on acquire.
         lease = await bindings.acquire(allocation.binding_ref)
         assert await _run(lease, "cat probe.txt", cwd=lease.layout.workspace_dir) == "openshell"
         await bindings.release(lease)
         lease = None
 
-        checkpoint_allocation = await bindings.create_binding(
+        # A second Binding is image-fresh and independent of the first's Home.
+        second_allocation = await bindings.create_binding(
             ExecutionBindingCreateSpec(
                 tenant_id="integration-tenant",
                 agent_id="integration-agent",
-                binding_id=f"checkpoint-{marker}",
-                workspace_id=f"checkpoint-{marker}",
+                binding_id=f"second-{marker}",
+                workspace_id=f"second-{marker}",
                 existing_workspace_ref=None,
-                home_snapshot_ref=checkpoint_ref,
+                home_snapshot_ref=None,
             )
         )
-        checkpoint_lease = await bindings.acquire(checkpoint_allocation.binding_ref)
-        checkpoint_path = shlex.quote(f"{checkpoint_lease.layout.home_dir}/.checkpoint-probe")
-        restored = await _run(checkpoint_lease, f"cat {checkpoint_path}", cwd=checkpoint_lease.layout.workspace_dir)
-        assert restored == "checkpoint-home"
-        await bindings.release(checkpoint_lease)
-        checkpoint_lease = None
+        second_lease = await bindings.acquire(second_allocation.binding_ref)
+        assert (
+            await _run(second_lease, "test ! -f .marker && printf clean", cwd=second_lease.layout.home_dir) == "clean"
+        )
+        await bindings.release(second_lease)
+        second_lease = None
     finally:
         primary_error = sys.exc_info()[0] is not None
         cleanup_errors: list[BaseException] = []
@@ -339,17 +322,17 @@ async def test_openshell_binding_checkpoint_and_collection() -> None:
                 await bindings.release(lease)
             except BaseException as exc:
                 cleanup_errors.append(exc)
-        if checkpoint_lease is not None:
+        if second_lease is not None:
             try:
-                await bindings.release(checkpoint_lease)
+                await bindings.release(second_lease)
             except BaseException as exc:
                 cleanup_errors.append(exc)
-        if checkpoint_allocation is not None:
+        if second_allocation is not None:
             try:
                 await bindings.destroy_binding(
                     ExecutionBindingDestroySpec(
-                        binding_ref=checkpoint_allocation.binding_ref,
-                        workspace_ref=checkpoint_allocation.workspace_ref,
+                        binding_ref=second_allocation.binding_ref,
+                        workspace_ref=second_allocation.workspace_ref,
                         destroy_workspace=True,
                     )
                 )
@@ -364,11 +347,6 @@ async def test_openshell_binding_checkpoint_and_collection() -> None:
                         destroy_workspace=True,
                     )
                 )
-            except BaseException as exc:
-                cleanup_errors.append(exc)
-        if checkpoint_ref is not None:
-            try:
-                await snapshots.delete(checkpoint_ref)
             except BaseException as exc:
                 cleanup_errors.append(exc)
         if cleanup_errors and not primary_error:

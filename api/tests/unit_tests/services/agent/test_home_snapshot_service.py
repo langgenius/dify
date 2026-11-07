@@ -172,6 +172,24 @@ def test_build_apply_forwards_default_home_generation(monkeypatch: pytest.Monkey
     assert sqlite_session.get(AgentHomeSnapshot, snapshot.id) is snapshot
 
 
+def test_build_apply_returns_none_when_backend_cannot_snapshot(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_build_binding(sqlite_session, app_id="app-1", backing_app_id=None)
+    client = _client(snapshot_ref=None)
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
+
+    snapshot = AgentHomeSnapshotService.create_for_build_apply(
+        session=sqlite_session,
+        build_draft=_build_draft(),
+    )
+    sqlite_session.flush()
+
+    assert snapshot is None
+    # No phantom ledger row: there is no snapshot to track.
+    assert sqlite_session.scalar(select(AgentHomeSnapshot).where(AgentHomeSnapshot.agent_id == "agent-1")) is None
+
+
 @pytest.mark.parametrize(
     ("base_home_snapshot_id", "agent_config_version_id", "agent_config_version_kind"),
     [

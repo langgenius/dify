@@ -77,10 +77,15 @@ snapshot ref.
 
 Build Draft Apply uses `POST /home-snapshots/from-binding`: Dify Agent acquires
 the exact source Binding, snapshots its materialized Home through the
-backend-native operation, releases the lease, and returns a new opaque snapshot
-ref. Dify API then stores a new immutable `agent_home_snapshots` row and records
-its logical id on the resulting config version. There is no replay or fallback
-when the source Binding is unavailable.
+backend-native operation, releases the lease, and returns an opaque snapshot
+ref — or explicit `snapshot_ref: null` when the selected backend cannot
+snapshot at all. A null result means no snapshot exists: Dify API applies the
+config without persisting an `agent_home_snapshots` row, records no snapshot
+id on the resulting config version, and the next Binding is materialized
+image-fresh. On a snapshot-capable backend, Dify API stores a new immutable
+`agent_home_snapshots` row and records its logical id on the resulting config
+version. There is no replay or fallback when the source Binding is
+unavailable.
 
 Before an Agent request, Dify API loads the specific product context. If it has
 no associated Binding, Dify API materializes one and saves the Binding id in the
@@ -90,8 +95,10 @@ fail fast; Dify API does not search by Agent, Workspace, candidate count, or
 recency, and it does not create a replacement implicitly.
 
 `POST /execution-bindings` accepts either an exact `home_snapshot_ref` or
-`null`. An exact ref must be materialized without fallback; `null` selects the
-backend's deployment-default Home. It returns opaque Binding and Workspace
+`null`. On snapshot-capable backends an exact ref must be materialized without
+fallback; a backend that cannot snapshot ignores the ref and materializes
+image-fresh. `null` selects the backend's deployment-default Home. It returns
+opaque Binding and Workspace
 refs. Every create request represents a new participant, even when the Agent,
 Snapshot, config generation, and Workspace match another Binding. The request
 composition contains:
@@ -208,7 +215,7 @@ Home plus the shared Workspace.
 | Local | Supported | Supported, including default empty Homes and attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
 | E2B | Supported | Supported with template-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; checkpoints use E2B snapshots. |
 | Enterprise | Not implemented | Default-Home Binding creation, acquire, and coupled destroy are supported | Binding and Workspace refs map to one Gateway sandbox. Explicit Home Snapshot materialization fails fast. |
-| OpenShell | Supported via directory copies on an operator-provided shared volume | Supported with image-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same OpenShell sandbox, addressed by its stable name; snapshots live under `home-snapshots/<tenant-digest>/` on the shared volume. Production deployments must use one workspace and one dedicated volume per tenant. |
+| OpenShell | Unsupported: `create_from_runtime` reports `snapshot_ref: null` and `delete` is a no-op; new Bindings ignore `home_snapshot_ref` | Supported with image-fresh default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same OpenShell sandbox, addressed by its stable name. OpenShell has no native snapshot capability, so every new Binding is materialized from the deployment image. |
 
 Local creates a new Home for every Binding id. Destroying one Binding without
 the Workspace leaves sibling Homes and the shared Workspace intact. Current E2B

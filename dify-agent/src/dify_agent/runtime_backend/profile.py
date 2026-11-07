@@ -18,11 +18,10 @@ from dify_agent.runtime_backend.e2b import (
 )
 from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend, EnterpriseHomeSnapshotBackend
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.noop import NoopHomeSnapshotBackend
 from dify_agent.runtime_backend.openshell import (
     DEFAULT_OPENSHELL_SANDBOX_IMAGE,
-    DEFAULT_OPENSHELL_SHARED_MOUNT_PATH,
     OpenShellExecutionBindingBackend,
-    OpenShellHomeSnapshotBackend,
     OpenShellSDKControlPlane,
 )
 from dify_agent.runtime_backend.protocols import RuntimeBackendProfile
@@ -80,7 +79,6 @@ class RuntimeBackendSettings(BaseSettings):
     openshell_insecure: bool = False
     openshell_sandbox_image: str = DEFAULT_OPENSHELL_SANDBOX_IMAGE
     openshell_driver_config: str | None = None
-    openshell_shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
     openshell_egress_allow: str = ""
     openshell_shellctl_auth_token: str = ""
     openshell_shellctl_port: int = Field(default=5004, ge=1, le=65535)
@@ -130,19 +128,10 @@ class RuntimeBackendSettings(BaseSettings):
             case "openshell":
                 if not self.openshell_gateway_endpoint or not self.openshell_gateway_endpoint.strip():
                     raise ValueError("openshell_gateway_endpoint is required for the openshell runtime backend")
-                if not self.openshell_driver_config or not self.openshell_driver_config.strip():
-                    raise ValueError(
-                        "openshell_driver_config is required for the openshell runtime backend: "
-                        "it must mount the shared Home Snapshot volume into every sandbox"
-                    )
-                _ = _parse_openshell_driver_config(self.openshell_driver_config)
+                _ = _parse_openshell_driver_config(self.openshell_driver_config or "")
                 _ = _parse_openshell_egress_allow(self.openshell_egress_allow)
                 if not self.openshell_shellctl_auth_token.strip():
                     raise ValueError("openshell_shellctl_auth_token is required for the openshell runtime backend")
-                _validate_absolute_posix_path(
-                    self.openshell_shared_mount_path,
-                    field_name="openshell_shared_mount_path",
-                )
                 if not self.openshell_sandbox_image.strip():
                     raise ValueError("openshell_sandbox_image must not be blank")
                 # Compose injects empty strings for unset variables; treat
@@ -218,21 +207,16 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
                 insecure=settings.openshell_insecure,
                 image=settings.openshell_sandbox_image,
                 driver_config=_parse_openshell_driver_config(settings.openshell_driver_config or ""),
-                shared_mount_path=settings.openshell_shared_mount_path,
                 egress_allow=_parse_openshell_egress_allow(settings.openshell_egress_allow),
                 ready_timeout_seconds=settings.openshell_ready_timeout_seconds,
                 exec_timeout_seconds=settings.openshell_exec_timeout_seconds,
             )
             return RuntimeBackendProfile(
-                home_snapshots=OpenShellHomeSnapshotBackend(
-                    control_plane=openshell_control_plane,
-                    shared_mount_path=settings.openshell_shared_mount_path,
-                ),
+                home_snapshots=NoopHomeSnapshotBackend(),
                 execution_bindings=OpenShellExecutionBindingBackend(
                     control_plane=openshell_control_plane,
                     shellctl_auth_token=settings.openshell_shellctl_auth_token,
                     shellctl_port=settings.openshell_shellctl_port,
-                    shared_mount_path=settings.openshell_shared_mount_path,
                 ),
             )
 
@@ -263,14 +247,15 @@ def _parse_openshell_egress_allow(value: str) -> tuple[tuple[str, int], ...]:
 
 
 def _parse_openshell_driver_config(value: str) -> dict[str, object]:
+    """Parse optional driver_config JSON; blank means no driver-specific config."""
+    if not value.strip():
+        return {}
     try:
         parsed: object = json.loads(value)
     except json.JSONDecodeError as exc:
         raise ValueError("openshell_driver_config must be valid JSON") from exc
-    if not isinstance(parsed, dict) or not parsed:
-        raise ValueError(
-            "openshell_driver_config must be a non-empty JSON object that must mount the shared Home Snapshot volume"
-        )
+    if not isinstance(parsed, dict):
+        raise ValueError("openshell_driver_config must be a JSON object")
     return {str(key): item for key, item in parsed.items()}
 
 

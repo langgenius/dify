@@ -1844,6 +1844,78 @@ def test_build_apply_without_model_snapshots_source_sandbox_and_updates_normal_d
     assert result == {"result": "success", "draft": {"id": "draft-1"}}
 
 
+def test_build_apply_clears_snapshot_ref_when_backend_cannot_checkpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    mocker: MockerFixture,
+) -> None:
+    session = sqlite_session
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    build_draft = AgentConfigDraft(
+        id="build-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id="account-1",
+        draft_owner_key="account-1",
+        home_snapshot_id="home-old",
+        agent_workspace_binding_id="binding-1",
+        config_snapshot=AgentSoulConfig(),
+    )
+    normal_draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        draft_owner_key="",
+        home_snapshot_id="home-old",
+        config_snapshot=AgentSoulConfig(),
+    )
+    session.add_all([agent, build_draft])
+    session.commit()
+    create_home = mocker.patch.object(
+        AgentHomeSnapshotService,
+        "create_for_build_apply",
+        return_value=None,
+    )
+    match_args: dict[str, object] = {}
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda _payload: None)
+    monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", MagicMock())
+    monkeypatch.setattr(AgentComposerService, "_save_agent_draft", lambda **_kwargs: normal_draft)
+
+    def _record_match(**kwargs: object) -> bool:
+        match_args.update(kwargs)
+        return False
+
+    monkeypatch.setattr(AgentComposerService, "_agent_soul_matches_active_config", _record_match)
+    monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock())
+    monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", MagicMock())
+    monkeypatch.setattr(AgentComposerService, "_serialize_draft", lambda draft: {"id": draft.id})
+
+    result = AgentComposerService.apply_agent_app_build_draft(
+        session=session,
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+
+    create_home.assert_called_once_with(session=session, build_draft=build_draft)
+    # No snapshot was captured, so the normal draft must not retain the
+    # previous snapshot id — the applied config is still saved.
+    assert normal_draft.home_snapshot_id is None
+    assert match_args["home_snapshot_id"] is None
+    assert result == {"result": "success", "draft": {"id": "draft-1"}}
+
+
 def test_build_apply_requires_retained_sandbox_before_creating_home(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
