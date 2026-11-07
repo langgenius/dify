@@ -214,7 +214,8 @@ class AgentNode(Node[AgentNodeData]):
                     for selector in selectors:
                         result[selector.variable] = selector.value_selector
                 case "variable":
-                    result[parameter_name] = input.value
+                    if input.value:
+                        result[parameter_name] = input.value
 
         result = {node_id + "." + key: value for key, value in result.items()}
 
