@@ -351,6 +351,53 @@ class TestAgentObservabilityServiceCases:
         assert Decimal(payload["summary"]["total_price"]) == Decimal("2.323470")
 
     @staticmethod
+    def test_statistics_summary_includes_final_minute_of_selected_end_date(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        # Regression test for #45792: the monitoring picker sends the selected
+        # end date at minute precision ("2026-11-07 23:59") and the summary
+        # treated that bound as exclusive, so messages in the final minute of
+        # the selected end date were dropped from the totals.
+        app = _agent_observability_service_app()
+        late_message = _agent_observability_service_message(created_at=datetime(2026, 11, 7, 23, 59, 30))
+        late_message.from_end_user_id = "end-user-1"
+        next_day_message = _agent_observability_service_message(
+            message_id="message-2",
+            conversation_id="conversation-2",
+            created_at=datetime(2026, 11, 8, 0, 0, 30),
+        )
+        next_day_message.from_end_user_id = "end-user-1"
+        sqlite_session.add_all(
+            [
+                app,
+                _agent_observability_service_conversation(),
+                _agent_observability_service_conversation(conversation_id="conversation-2"),
+                late_message,
+                next_day_message,
+            ]
+        )
+        sqlite_session.commit()
+
+        apply_config_overrides(monkeypatch, DB_TYPE="mysql")
+        monkeypatch.setattr(observability_service_module, "convert_datetime_to_date", lambda field: f"DATE({field})")
+        connection = sqlite_session.connection().connection.dbapi_connection
+        assert isinstance(connection, Connection)
+        connection.create_function("JSON_UNQUOTE", 1, lambda value: value)
+        service = AgentObservabilityService(sqlite_session)
+
+        payload = service.get_statistics_summary(
+            app=app,
+            agent_id="agent-1",
+            params=AgentStatisticsQueryParams(
+                start=datetime(2026, 11, 6),
+                end=datetime(2026, 11, 7, 23, 59),
+            ),
+        )
+
+        assert payload["summary"]["total_messages"] == 1
+        assert payload["charts"]["daily_messages"] == [{"date": "2026-11-07", "message_count": 1}]
+
+    @staticmethod
     def test_merge_daily_statistics_combines_webapp_and_workflow_rows() -> None:
         rows = [
             {
