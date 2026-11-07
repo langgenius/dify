@@ -405,7 +405,7 @@ def test_create_model_type_instance_builds_model_wrappers(
     )
 
     instance = create_model_type_instance(
-        runtime=runtime,  # pyrefly: ignore
+        runtime=runtime,  # pyrefly: ignore[bad-argument-type]
         provider_schema=runtime.fetch_model_providers()[0],
         model_type=model_type,
     )
@@ -426,7 +426,7 @@ def test_create_model_type_instance_rejects_unsupported_model_type() -> None:
 
     with pytest.raises(ValueError, match="Unsupported model type: unsupported"):
         create_model_type_instance(
-            runtime=runtime,  # pyrefly: ignore
+            runtime=runtime,  # pyrefly: ignore[bad-argument-type]
             provider_schema=runtime.fetch_model_providers()[0],
             model_type="unsupported",  # type: ignore[arg-type]
         )
