@@ -22,6 +22,10 @@ vi.mock('@/next/link', () => ({
   default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
 
+vi.mock('@/next/script', () => ({
+  default: () => null,
+}))
+
 type ProfileState =
   | 'pending'
   | 'signed-out'
