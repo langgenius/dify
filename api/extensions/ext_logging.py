@@ -76,6 +76,7 @@ def _apply_timezone(handlers: list[logging.Handler]):
     """Apply timezone conversion to text formatters."""
     log_tz = dify_config.LOG_TZ
     if log_tz:
+        from datetime import datetime
         from zoneinfo import ZoneInfo
 
         timezone = ZoneInfo(log_tz)
