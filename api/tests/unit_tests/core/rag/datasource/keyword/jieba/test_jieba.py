@@ -1,6 +1,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from typing import override
 
 import pytest
 from sqlalchemy import select
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.rag.datasource.keyword.jieba import jieba as jieba_module
 from core.rag.datasource.keyword.jieba.jieba import Jieba
+from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.models.document import Document
 from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
 from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table
@@ -167,6 +169,35 @@ def test_add_uses_manual_keywords_and_extracts_empty_selections(runtime: Keyword
     assert runtime.extracted == [("automatic", 2)]
     assert chunks[0].keywords == ["automatic"]
     assert chunks[1].keywords == ["manual"]
+
+
+def test_indexing_keeps_the_default_top_10_keywords_per_chunk(
+    runtime: KeywordRuntime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    requested: list[int | None] = []
+
+    class RecordingHandler(JiebaKeywordTableHandler):
+        @override
+        def extract_keywords(self, text: str, max_keywords_per_chunk: int | None = 10) -> set[str]:
+            requested.append(max_keywords_per_chunk)
+            return super().extract_keywords(text, max_keywords_per_chunk)
+
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", RecordingHandler)
+    runtime.dataset.keyword_number = None
+    content = (
+        "Rotating the Kubernetes ingress TLS certificate requires creating a replacement secret with kubectl, "
+        "updating the ingress manifest to reference that secret, waiting for the controller to reload nginx, "
+        "and verifying the served certificate chain with openssl against the public hostname before deleting "
+        "the expired secret from the namespace."
+    )
+    runtime.session.add(segment("chunk-1"))
+    Jieba(runtime.dataset).add_texts([Document(page_content=content, metadata={"doc_id": "chunk-1"})], runtime.session)
+    runtime.session.commit()
+
+    indexed = {keyword for keyword, node_ids in runtime.table().items() if "chunk-1" in node_ids}
+    assert requested == [10]
+    assert len(JiebaKeywordTableHandler()._tfidf.extract_tags(sentence=content, topK=None)) > 10
+    assert len(indexed) == 10
 
 
 def test_delete_ids_preserves_unrelated_entries(runtime: KeywordRuntime) -> None:
