@@ -249,16 +249,28 @@ class SegmentIndexingGateway:
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def update_attachments(self, segment_ref: SegmentRef, attachment_ids: Sequence[str]) -> None:
+        """Replace an existing segment's attachments using tenant-owned uploads.
+
+        Keep retained vectors and vectors referenced by another segment in this
+        dataset. Only removed, exclusively owned vectors can be deleted. External
+        index I/O completes before replacing bindings, so an index failure leaves
+        the previous bindings available for diagnosis and retry.
+        """
         snapshot = self._segments.get_indexing_snapshot(segment_ref)
         if snapshot.dataset.indexing_technique != "high_quality" or set(snapshot.attachment_ids) == set(attachment_ids):
             return
         files = self._uploads.get_files(workspace_id=snapshot.dataset.tenant_id, file_ids=attachment_ids)
         if snapshot.dataset.is_multimodal:
             vector = self._vector(snapshot)
-            if snapshot.attachment_ids:
-                vector.delete_by_ids(list(snapshot.attachment_ids))
-            if files:
-                vector.create_multimodal(self._attachment_documents(snapshot, files.values()), upload_files=files)
+            removed_ids = tuple(file_id for file_id in snapshot.attachment_ids if file_id not in files)
+            exclusive_ids = self._segments.get_exclusive_attachment_ids(segment_ref, removed_ids)
+            if exclusive_ids:
+                vector.delete_by_ids(list(exclusive_ids))
+            added_files = {file_id: file for file_id, file in files.items() if file_id not in snapshot.attachment_ids}
+            if added_files:
+                vector.create_multimodal(
+                    self._attachment_documents(snapshot, added_files.values()), upload_files=added_files
+                )
         self._segments.replace_attachments(segment_ref, tuple(files))
 
     def update_summary(self, segment_ref: SegmentRef, *, summary: str | None, content_changed: bool) -> None:
