@@ -4340,6 +4340,34 @@ export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCre
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
   PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses[keyof PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses]
 
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsData = {
+  body?: never
+  path: {
+    provider: string
+    workspace_id: string
+  }
+  query: {
+    model: string
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+  }
+  url: '/workspaces/{workspace_id}/model-providers/{provider}/models'
+}
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsError =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsErrors[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsErrors]
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponses[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponses]
+
 export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsData = {
   body: ModelCredentialCreatePayload
   path: {
@@ -4364,6 +4392,38 @@ export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentials
 
 export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse =
   PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponses]
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdData =
+  {
+    body?: never
+    path: {
+      credential_id: string
+      provider: string
+      workspace_id: string
+    }
+    query: {
+      model: string
+      model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+    }
+    url: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}'
+  }
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors =
+  {
+    422: ErrorBody
+    default: ErrorBody
+  }
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdError =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses =
+  {
+    200: SimpleResultResponse
+  }
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses]
 
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdData =
   {
