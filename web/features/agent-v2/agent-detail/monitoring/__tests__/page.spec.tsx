@@ -5,6 +5,7 @@ import type {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import dayjs from 'dayjs'
 import { AgentMonitoringPage } from '../page'
 
 vi.mock('../tracing-configuration', () => ({ AgentTracingConfiguration: () => null }))
@@ -142,6 +143,17 @@ describe('AgentMonitoringPage', () => {
       params: { agent_id: 'agent-1' },
       query: { start: expect.any(String), end: expect.any(String) },
     })
+
+    const [{ query }] = mocks.statisticsQueryFn.mock.calls[0] as [
+      { query: { start: string; end: string } },
+    ]
+    const rangeStart = dayjs(query.start)
+    const rangeEnd = dayjs(query.end)
+
+    // The API treats `end` as exclusive, so the default range has to stop at tomorrow's midnight.
+    expect(rangeStart.hour()).toBe(0)
+    expect(rangeStart.minute()).toBe(0)
+    expect(rangeEnd.subtract(1, 'day').isSame(rangeStart, 'day')).toBe(true)
   })
 
   it('should send the selected backend source id through the source query param', async () => {

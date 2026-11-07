@@ -1,6 +1,7 @@
 'use client'
 
 import type { Dayjs } from 'dayjs'
+import type { AgentMonitoringPeriod } from './time-range'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import {
   Select,
@@ -16,14 +17,9 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { MonitoringDateRangePicker } from '@/app/components/app/monitoring/date-range-picker'
 import { formatToLocalTime } from '@/utils/format'
+import { buildPeriod, getRangeSelection } from './time-range'
 
-export type AgentMonitoringPeriod = {
-  name: string
-  query: {
-    start: string
-    end: string
-  }
-}
+export type { AgentMonitoringPeriod } from './time-range'
 
 type TimeRangeKey = 'today' | 'last7days' | 'last30days'
 
@@ -38,28 +34,11 @@ type AgentMonitoringTimeRangePickerProps = {
   onChange: (period: AgentMonitoringPeriod) => void
 }
 
-const queryDateFormat = 'YYYY-MM-DD HH:mm'
-
 const timeRangeOptions: TimeRangeOption[] = [
   { value: 'today', days: 0, nameKey: 'agentDetail.monitoring.timeRanges.today' },
   { value: 'last7days', days: 7, nameKey: 'agentDetail.monitoring.timeRanges.last7days' },
   { value: 'last30days', days: 30, nameKey: 'agentDetail.monitoring.timeRanges.last30days' },
 ]
-
-const getRangePeriod = (option: TimeRangeOption): AgentMonitoringPeriod => {
-  const today = dayjs()
-  const end = today.endOf('day')
-  const start =
-    option.days === 0 ? today.startOf('day') : today.subtract(option.days, 'day').startOf('day')
-
-  return {
-    name: option.value,
-    query: {
-      start: start.format(queryDateFormat),
-      end: end.format(queryDateFormat),
-    },
-  }
-}
 
 export function AgentMonitoringTimeRangePicker({
   value,
@@ -68,8 +47,9 @@ export function AgentMonitoringTimeRangePicker({
   const { t } = useTranslation(['agentV2'])
   const locale = useLocale()
   const [selectedRange, setSelectedRange] = useState<TimeRangeKey | 'custom'>('today')
-  const [start, setStart] = useState(() => dayjs(value.query.start))
-  const [end, setEnd] = useState(() => dayjs(value.query.end))
+  const [start, setStart] = useState(() => dayjs(value.query.start).startOf('day'))
+  // `query.end` is the exclusive bound, so the selected end date is the day before it.
+  const [end, setEnd] = useState(() => dayjs(value.query.end).subtract(1, 'day').startOf('day'))
 
   const selectedOption = timeRangeOptions.find((option) => option.value === selectedRange)
 
@@ -79,14 +59,11 @@ export function AgentMonitoringTimeRangePicker({
     const option = timeRangeOptions.find((item) => item.value === nextValue)
     if (!option) return
 
-    const nextPeriod = getRangePeriod(option)
+    const { start: nextStart, end: nextEnd } = getRangeSelection(option.days)
     setSelectedRange(option.value)
-    setStart(dayjs(nextPeriod.query.start))
-    setEnd(dayjs(nextPeriod.query.end))
-    onChange({
-      ...nextPeriod,
-      name: t(($) => $[option.nameKey]),
-    })
+    setStart(nextStart)
+    setEnd(nextEnd)
+    onChange(buildPeriod(t(($) => $[option.nameKey]), nextStart, nextEnd))
   }
 
   const handleDateChange = (type: 'start' | 'end') => (date?: Dayjs) => {
@@ -103,13 +80,7 @@ export function AgentMonitoringTimeRangePicker({
     setSelectedRange('custom')
     setStart(nextStart)
     setEnd(nextEnd)
-    onChange({
-      name: nextName,
-      query: {
-        start: nextStart.format(queryDateFormat),
-        end: nextEnd.format(queryDateFormat),
-      },
-    })
+    onChange(buildPeriod(nextName, nextStart, nextEnd))
   }
 
   return (

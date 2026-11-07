@@ -78,7 +78,7 @@ describe('getAgentMonitoringMetrics', () => {
   it('should fill missing daily chart buckets within the selected period', () => {
     const metrics = getAgentMonitoringMetrics(statisticsSummary, {
       start: '2026-06-15 00:00',
-      end: '2026-06-17 23:59',
+      end: '2026-06-18 00:00',
     })
     const totalMessagesMetric = metrics[0]
     const tokenUsageMetric = metrics[5]

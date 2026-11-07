@@ -51,10 +51,10 @@ const fillChartRows = <T extends { date: string }>(
     ]),
   )
   const start = dayjs(periodQuery.start).startOf('day')
-  const end = dayjs(periodQuery.end).startOf('day')
-  const days = Math.max(end.diff(start, 'day'), 0)
+  // `periodQuery.end` is exclusive, so the number of daily buckets is exactly its distance from the start.
+  const days = Math.max(dayjs(periodQuery.end).startOf('day').diff(start, 'day'), 1)
 
-  return Array.from({ length: days + 1 }, (_, index) => {
+  return Array.from({ length: days }, (_, index) => {
     const date = start.add(index, 'day').format(chartDateFormat)
     const row = rowsByDate.get(date)
 
