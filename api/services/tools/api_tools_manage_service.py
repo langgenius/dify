@@ -4,7 +4,7 @@ from typing import Any, Literal, TypedDict, cast
 
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper import ssrf_proxy
@@ -427,6 +427,7 @@ class ApiToolManageService:
 
     @staticmethod
     def test_api_tool_preview(
+        session: Session,
         tenant_id: str,
         provider_name: str,
         tool_name: str,
@@ -438,6 +439,7 @@ class ApiToolManageService:
         """
         Test an API tool before adding the API tool provider.
 
+        :param session: The session used to look up the saved provider and its user.
         :param tenant_id: The ID of the workspace/tenant.
         :param provider_name: The name of the API tool provider.
         :param tool_name: The name of the specific tool to test.
@@ -461,17 +463,14 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        # create new session with automatic transaction management to get the provider
-        provider: ApiToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider = _session.scalar(
-                select(ApiToolProvider)
-                .where(
-                    ApiToolProvider.tenant_id == tenant_id,
-                    ApiToolProvider.name == provider_name,
-                )
-                .limit(1)
+        provider: ApiToolProvider | None = session.scalar(
+            select(ApiToolProvider)
+            .where(
+                ApiToolProvider.tenant_id == tenant_id,
+                ApiToolProvider.name == provider_name,
             )
+            .limit(1)
+        )
 
         if provider is None:
             # create a fake db provider
@@ -494,7 +493,7 @@ class ApiToolManageService:
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
         # create provider entity
-        provider_controller = ApiToolProviderController.from_db(provider, auth_type, session=db.session())
+        provider_controller = ApiToolProviderController.from_db(provider, auth_type, session=session)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
 
@@ -548,9 +547,11 @@ class ApiToolManageService:
             # convert provider controller to user provider
             provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
             labels = ToolLabelManager.get_tool_labels(provider_controller)
-            user_provider = ToolTransformService.api_provider_to_user_provider(
-                provider_controller, db_provider=provider, decrypt_credentials=True, session=db.session()
-            )
+            # the session only serves the provider's user lookup, so open it per provider and keep it short-lived
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+                user_provider = ToolTransformService.api_provider_to_user_provider(
+                    provider_controller, db_provider=provider, decrypt_credentials=True, session=_session
+                )
             user_provider.labels = labels
 
             # add icon
