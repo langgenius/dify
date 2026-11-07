@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+from core.app.apps.workflow_app_runner import WorkflowRunDriver
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from libs.helper import generate_text_hash
 from repositories.app.console_repository import ConsoleAppRepository
@@ -54,7 +55,6 @@ from services.knowledge.segments.indexing import SegmentIndexingGateway
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
-from services.workflow_run_agg import WorkflowRunAgg
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
@@ -99,6 +99,7 @@ def build_knowledge_services(
     redis: RedisSegmentClient,
     tags: TagTargetQuery,
     rbac_members: MemberService,
+    workflow_run_driver: WorkflowRunDriver,
 ) -> KnowledgeServices:
     """Build the dataset-controller knowledge use cases."""
 
@@ -154,7 +155,7 @@ def build_knowledge_services(
             metadata_schema=DocumentService.DOCUMENT_METADATA_SCHEMA,
         ),
         pipeline_generator=PipelineGenerator(
-            execution_driver=WorkflowRunAgg.run, documents=documents, datasource_providers=providers
+            execution_driver=workflow_run_driver, documents=documents, datasource_providers=providers
         ),
         upgrades=KnowledgeUpgradeApplicationService(
             session_factory=database_client,

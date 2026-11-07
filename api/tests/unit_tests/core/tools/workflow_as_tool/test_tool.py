@@ -13,6 +13,7 @@ from sqlalchemy import Engine, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import get_session_maker
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
@@ -26,6 +27,7 @@ from core.tools.errors import ToolInvokeError
 from core.tools.tool_manager import ToolManager
 from core.tools.workflow_as_tool import tool as workflow_tool_module
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -35,7 +37,6 @@ from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowRun, WorkflowType
-from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.model_factories import make_account
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -177,7 +178,7 @@ def _build_tool(*, tenant_id: str = "test_tool", workflow_app_id: str = "app-1",
     )
     runtime = ToolRuntime(tenant_id=tenant_id, invoke_from=InvokeFrom.EXPLORE)
     return WorkflowTool(
-        execution_driver=WorkflowRunAgg.run,
+        execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
         workflow_app_id=workflow_app_id,
         workflow_id="workflow-1",
         workflow_as_tool_id="wf-tool-1",
@@ -238,7 +239,7 @@ def test_legacy_workflow_tool_executes_with_the_upper_owned_driver(
             tenant_id=TENANT_ID,
             user_id=user.id,
             invoke_from=InvokeFrom.SERVICE_API,
-            execution_driver=WorkflowRunAgg.run,
+            execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
         )
         messages = list(tool.invoke(session=sqlite_session, user_id=user.id, tool_parameters={}))
 

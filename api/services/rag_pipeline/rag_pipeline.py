@@ -28,6 +28,7 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
+from core.db.session_factory import get_session_maker
 from core.helper import marketplace
 from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, DatasourceProcessingEvent
 from core.repositories.factory import DifyCoreRepositoryFactory
@@ -44,6 +45,7 @@ from core.workflow.system_variables import (
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from extensions.ext_database import db
 from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.entities import WorkflowNodeExecution
@@ -96,7 +98,6 @@ from services.workflow_node_execution_trace_service import (
 )
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
-from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -601,7 +602,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
-                execution_driver=WorkflowRunAgg.run,
+                execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs=user_inputs,
@@ -1402,7 +1403,7 @@ class RagPipelineService:
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
-                execution_driver=WorkflowRunAgg.run,
+                execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs={},
