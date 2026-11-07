@@ -69,6 +69,52 @@ describe('preprocessThinkTag', () => {
     mod = await loadModuleWithConfig(false)
   })
 
+  it('wraps reasoning before an orphan closing think tag and leaves the answer outside', () => {
+    const input = 'reasoning\n</think>\nanswer'
+
+    expect(mod.preprocessThinkTag(input)).toBe(
+      '<details data-think=true>\nreasoning\n[ENDTHINKFLAG]</details>\nanswer',
+    )
+  })
+
+  it('preserves the exact output of a paired think block followed by an answer', () => {
+    const input = '<think>reasoning</think>answer'
+
+    expect(mod.preprocessThinkTag(input)).toBe(
+      '<details data-think=true>\nreasoning\n[ENDTHINKFLAG]</details>\nanswer',
+    )
+  })
+
+  it('removes an extra closing think tag after a completed thought without closing details again', () => {
+    const input = '<think>reasoning</think>answer</think>more'
+
+    expect(mod.preprocessThinkTag(input)).toBe(
+      '<details data-think=true>\nreasoning\n[ENDTHINKFLAG]</details>\nanswermore',
+    )
+  })
+
+  it('preserves the exact output of an in-flight thought without a completion flag', () => {
+    expect(mod.preprocessThinkTag('<think>reasoning')).toBe(
+      '<details data-think=true>\nreasoning</details>',
+    )
+  })
+
+  it('keeps text before a paired think block outside the details', () => {
+    expect(mod.preprocessThinkTag('intro <think>r</think>ans')).toBe(
+      'intro <details data-think=true>\nr\n[ENDTHINKFLAG]</details>\nans',
+    )
+  })
+
+  it('wraps leading orphan reasoning even when a later paired think block exists', () => {
+    expect(mod.preprocessThinkTag('r1</think>a1\n<think>r2</think>a2')).toBe(
+      '<details data-think=true>\nr1\n[ENDTHINKFLAG]</details>\na1\n<details data-think=true>\nr2\n[ENDTHINKFLAG]</details>\na2',
+    )
+  })
+
+  it('returns content without think tags unchanged', () => {
+    expect(mod.preprocessThinkTag('hello **world**')).toBe('hello **world**')
+  })
+
   it('transforms single <think>...</think> into details with data-think and ENDTHINKFLAG', () => {
     const input = '<think>this is a thought</think>'
     const out = mod.preprocessThinkTag(input)
