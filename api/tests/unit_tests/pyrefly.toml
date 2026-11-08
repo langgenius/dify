@@ -199,7 +199,6 @@ project-excludes = [
   "../e2e_tests/contracts/core/workflow/nodes/http_request/test_http_request_executor.py",
   "../e2e_tests/contracts/core/workflow/nodes/http_request/test_http_request_node.py",
   "core/workflow/nodes/human_input/test_entities.py",
-  "core/workflow/test_human_input_adapter.py",
   "core/workflow/nodes/knowledge_index/test_knowledge_index_node.py",
   "core/workflow/nodes/knowledge_retrieval/test_knowledge_retrieval_node.py",
   "../helpers/unit/core/workflow/nodes/list_operator/node_spec.py",
