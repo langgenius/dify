@@ -1,10 +1,5 @@
 {
   "account.account": "บัญชี",
-  "account.appearanceDark": "มืด",
-  "account.appearanceFollowSystem": "Follow system",
-  "account.appearanceLabel": "รูปลักษณ์",
-  "account.appearanceLight": "สว่าง",
-  "account.appearanceSystem": "ระบบ",
   "account.changeEmail.authTip": "เมื่ออีเมลของคุณถูกเปลี่ยนแปลง บัญชี Google หรือบัญชี GitHub ที่เชื่อมโยงกับอีเมลเก่าของคุณจะไม่สามารถเข้าสู่ระบบบัญชีนี้ได้อีกต่อไป.",
   "account.changeEmail.changeTo": "เปลี่ยนเป็น {{email}}",
   "account.changeEmail.codeLabel": "รหัสยืนยันตัวตน",
