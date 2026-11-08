@@ -1227,11 +1227,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/file-uploader/pdf-preview.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/base/file-uploader/store.tsx": {
     "react/only-export-components": {
       "count": 4
@@ -1366,11 +1361,6 @@
   "web/app/components/base/list-empty/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
-    }
-  },
-  "web/app/components/base/markdown-blocks/__tests__/paragraph.spec.tsx": {
-    "jsx-a11y/anchor-is-valid": {
-      "count": 1
     }
   },
   "web/app/components/base/markdown-blocks/audio-block.tsx": {

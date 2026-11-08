@@ -197,6 +197,7 @@
   "operation.openInNewTab": "在新選項卡中打開",
   "operation.params": "引數設定",
   "operation.pause": "暫停",
+  "operation.pdfLoadFailed": "PDF 載入失敗，請重試。",
   "operation.play": "播放",
   "operation.refresh": "重新開始",
   "operation.regenerate": "再生",
