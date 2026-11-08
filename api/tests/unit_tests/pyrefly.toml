@@ -111,7 +111,6 @@ project-excludes = [
   "services/test_workflow_persistence.py",
   "core/workflow/test_node_factory.py",
   "core/app/workflow/layers/test_observability.py",
-  "core/callback_handler/test_agent_tool_callback_handler.py",
   "core/callback_handler/test_workflow_tool_callback_handler.py",
   "core/datasource/entities/test_datasource_entities.py",
   "core/extension/test_api_based_extension_requestor.py",
