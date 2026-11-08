@@ -2,9 +2,9 @@ import contextlib
 import unittest
 from datetime import UTC, datetime, timedelta
 from typing import TypedDict, override
+from zoneinfo import ZoneInfo
 
 import pytest
-import pytz
 from croniter import CroniterBadCronError
 
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
@@ -200,7 +200,7 @@ class TestTimezoneCompatibility(unittest.TestCase):
                 assert next_time is not None
 
                 # Convert back to the target timezone to verify it's noon
-                tz = pytz.timezone(timezone)
+                tz = ZoneInfo(timezone)
                 local_time = next_time.astimezone(tz)
                 assert local_time.hour == 12
                 assert local_time.minute == 0
@@ -217,7 +217,7 @@ class TestTimezoneCompatibility(unittest.TestCase):
             assert next_time is not None
 
             # During DST spring forward, 2 AM becomes 3 AM - both are acceptable
-            tz = pytz.timezone(timezone)
+            tz = ZoneInfo(timezone)
             local_time = next_time.astimezone(tz)
             assert local_time.hour in [2, 3]  # Either 2 AM or 3 AM is acceptable
         except Exception as e:
@@ -238,7 +238,7 @@ class TestTimezoneCompatibility(unittest.TestCase):
                     next_time = calculate_next_run_at(expression, timezone, self.base_time)
                     assert next_time is not None
 
-                    tz = pytz.timezone(timezone)
+                    tz = ZoneInfo(timezone)
                     local_time = next_time.astimezone(tz)
                     assert local_time.hour == expected_hour
                     assert local_time.minute == expected_minute
@@ -286,7 +286,7 @@ class TestFrontendBackendIntegration(unittest.TestCase):
         # Validate each execution time
         for exec_time in execution_times:
             # Convert to local timezone
-            tz = pytz.timezone(test_data["timezone"])
+            tz = ZoneInfo(test_data["timezone"])
             local_time = exec_time.astimezone(tz)
 
             # Should be weekdays (1-5)
@@ -601,7 +601,7 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
                 assert result is not None
 
                 # Convert to local timezone to verify it's Monday at noon
-                tz = pytz.timezone(timezone)
+                tz = ZoneInfo(timezone)
                 local_time = result.astimezone(tz)
                 assert local_time.weekday() == 0  # Monday
                 assert local_time.hour == 12
@@ -618,7 +618,7 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
                 assert result is not None
 
                 # Should be midnight in the specified timezone
-                tz = pytz.timezone(timezone)
+                tz = ZoneInfo(timezone)
                 local_time = result.astimezone(tz)
                 assert local_time.hour == 0
                 assert local_time.minute == 0
@@ -634,7 +634,7 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
         assert result is not None
 
         # Should handle DST transition gracefully
-        tz = pytz.timezone(timezone)
+        tz = ZoneInfo(timezone)
         local_time = result.astimezone(tz)
         assert local_time.weekday() == 6  # Sunday
 
@@ -645,10 +645,10 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
 class TestDstTransitionRegression(unittest.TestCase):
     """Regression tests for DST transitions crashing next-run calculation.
 
-    See https://github.com/langgenius/dify/issues/42955 - localizing the
-    candidate local time with pytz (which raises AmbiguousTimeError /
-    NonExistentTimeError around clock changes) crashed the schedule poller
-    for zones such as Europe/Dublin, Africa/Casablanca and Africa/El_Aaiun.
+    See https://github.com/langgenius/dify/issues/42955 - strict localization
+    of ambiguous or non-existent local times around clock changes crashed the
+    schedule poller for zones such as Europe/Dublin, Africa/Casablanca and
+    Africa/El_Aaiun.
     """
 
     def test_fall_back_ambiguous_times_do_not_crash(self) -> None:
@@ -676,7 +676,7 @@ class TestDstTransitionRegression(unittest.TestCase):
         result = calculate_next_run_at("30 1 * * *", "Europe/Dublin", datetime(2026, 3, 28, 23, 0, 5, tzinfo=UTC))
         assert result is not None
         assert result > datetime(2026, 3, 28, 23, 0, 5, tzinfo=UTC)
-        local_time = result.astimezone(pytz.timezone("Europe/Dublin"))
+        local_time = result.astimezone(ZoneInfo("Europe/Dublin"))
         assert (local_time.hour, local_time.minute) == (2, 0)
 
 
