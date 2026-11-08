@@ -15,8 +15,8 @@ class _TestNodeData(BaseNodeData):
     pass
 
 
-def _get_all_subclasses(root: type[Node]) -> list[type[Node]]:  # pyrefly: ignore[implicit-any-type-argument]
-    subclasses = []
+def _get_all_subclasses(root: type[Node[BaseNodeData]]) -> list[type[Node[BaseNodeData]]]:
+    subclasses: list[type[Node[BaseNodeData]]] = []
     queue = [root]
     while queue:
         cls = queue.pop()
@@ -95,22 +95,24 @@ def test_extract_node_data_type_from_generic_raises_for_non_type() -> None:
 def test_init_subclass_raises_without_generic_or_explicit_type() -> None:
     """A subclass must either use Node[T] or explicitly set _node_data_type."""
     with pytest.raises(TypeError, match="must inherit from Node\\[T\\] with a BaseNodeData subtype"):
-
-        class _InvalidNode(Node):  # pyrefly: ignore[implicit-any-type-argument]
-            pass
+        # Built dynamically: the point of this test is a subclass with no generic
+        # parameter, which a class statement cannot express without a suppression.
+        type("_InvalidNode", (Node,), {})
 
 
 def test_init_subclass_rejects_explicit_node_data_type_without_generic() -> None:
     """Setting _node_data_type explicitly cannot bypass the Node[T] requirement."""
     with pytest.raises(TypeError, match="must inherit from Node\\[T\\] with a BaseNodeData subtype"):
-
-        class _ExplicitNode(Node):  # pyrefly: ignore[implicit-any-type-argument]
-            _node_data_type = _TestNodeData
-            node_type = BuiltinNodeTypes.CODE
-
-            @staticmethod
-            def version() -> str:
-                return "1"
+        # Built dynamically for the same reason as the test above.
+        type(
+            "_ExplicitNode",
+            (Node,),
+            {
+                "_node_data_type": _TestNodeData,
+                "node_type": BuiltinNodeTypes.CODE,
+                "version": staticmethod(lambda: "1"),
+            },
+        )
 
 
 def test_init_subclass_sets_node_data_type_from_generic() -> None:
