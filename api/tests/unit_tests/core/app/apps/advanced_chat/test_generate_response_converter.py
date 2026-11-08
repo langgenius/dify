@@ -52,8 +52,10 @@ class TestAdvancedChatGenerateResponseConverter:
         )
         original_model_dump = type(data).model_dump
 
-        def _model_dump_with_future_field(self: BaseModel, *args: object, **kwargs: object) -> dict[str, object]:
-            payload = original_model_dump(self, *args, **kwargs)  # pyrefly: ignore[bad-argument-type]  # forwarding arbitrary model_dump kwargs
+        def _model_dump_with_future_field[**P](
+            self: BaseModel, *args: P.args, **kwargs: P.kwargs
+        ) -> dict[str, object]:
+            payload = original_model_dump(self, *args, **kwargs)  # pyrefly: ignore[bad-argument-type]  # ParamSpec forward to the concrete model_dump signature
             payload["future_field"] = "future-value"
             return payload
 
