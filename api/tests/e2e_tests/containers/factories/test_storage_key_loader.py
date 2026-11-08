@@ -113,7 +113,7 @@ class TestStorageKeyLoader:
     # Tests
     # ------------------------------------------------------------------
 
-    def test_load_storage_keys_local_file(self, db_session_with_containers: Session):
+    def test_load_storage_keys_local_file(self, db_session_with_containers: Session) -> None:
         """Test loading storage keys for LOCAL_FILE transfer method."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())
@@ -128,7 +128,7 @@ class TestStorageKeyLoader:
 
         assert file._storage_key == upload_file.key
 
-    def test_load_storage_keys_remote_url(self, db_session_with_containers: Session):
+    def test_load_storage_keys_remote_url(self, db_session_with_containers: Session) -> None:
         """Test loading storage keys for REMOTE_URL transfer method."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())
@@ -143,7 +143,7 @@ class TestStorageKeyLoader:
 
         assert file._storage_key == upload_file.key
 
-    def test_load_storage_keys_tool_file(self, db_session_with_containers: Session):
+    def test_load_storage_keys_tool_file(self, db_session_with_containers: Session) -> None:
         """Test loading storage keys for TOOL_FILE transfer method."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())
@@ -159,7 +159,7 @@ class TestStorageKeyLoader:
 
         assert file._storage_key == tool_file.file_key
 
-    def test_load_storage_keys_mixed_methods(self, db_session_with_containers: Session):
+    def test_load_storage_keys_mixed_methods(self, db_session_with_containers: Session) -> None:
         """Test batch loading with mixed transfer methods."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())
@@ -182,7 +182,7 @@ class TestStorageKeyLoader:
         assert file2._storage_key == upload_file2.key
         assert file3._storage_key == tool_file.file_key
 
-    def test_load_storage_keys_empty_list(self, db_session_with_containers: Session):
+    def test_load_storage_keys_empty_list(self, db_session_with_containers: Session) -> None:
         """Test with empty file list — should not raise."""
         tenant_id = str(uuid4())
         loader = StorageKeyLoader(
@@ -190,7 +190,7 @@ class TestStorageKeyLoader:
         )
         loader.load_storage_keys([])
 
-    def test_load_storage_keys_ignores_legacy_file_tenant_id(self, db_session_with_containers: Session):
+    def test_load_storage_keys_ignores_legacy_file_tenant_id(self, db_session_with_containers: Session) -> None:
         """Legacy file tenant_id should not override the loader tenant scope."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())
@@ -210,7 +210,7 @@ class TestStorageKeyLoader:
 
         assert file._storage_key == upload_file.key
 
-    def test_load_storage_keys_missing_file_id(self, db_session_with_containers: Session):
+    def test_load_storage_keys_missing_file_id(self, db_session_with_containers: Session) -> None:
         """Test with None file.related_id — should raise ValueError."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())
@@ -225,7 +225,7 @@ class TestStorageKeyLoader:
         with pytest.raises(ValueError, match="file id should not be None."):
             loader.load_storage_keys([file])
 
-    def test_load_storage_keys_nonexistent_upload_file_records(self, db_session_with_containers: Session):
+    def test_load_storage_keys_nonexistent_upload_file_records(self, db_session_with_containers: Session) -> None:
         """Test with missing UploadFile database records — should raise ValueError."""
         tenant_id = str(uuid4())
         file = self._create_file(tenant_id, related_id=str(uuid4()), transfer_method=FileTransferMethod.LOCAL_FILE)
@@ -236,7 +236,7 @@ class TestStorageKeyLoader:
         with pytest.raises(ValueError, match="Upload file not found for id:"):
             loader.load_storage_keys([file])
 
-    def test_load_storage_keys_nonexistent_tool_file_records(self, db_session_with_containers: Session):
+    def test_load_storage_keys_nonexistent_tool_file_records(self, db_session_with_containers: Session) -> None:
         """Test with missing ToolFile database records — should raise ValueError."""
         tenant_id = str(uuid4())
         file = self._create_file(tenant_id, related_id=str(uuid4()), transfer_method=FileTransferMethod.TOOL_FILE)
@@ -247,7 +247,7 @@ class TestStorageKeyLoader:
         with pytest.raises(ValueError, match="Tool file not found for id:"):
             loader.load_storage_keys([file])
 
-    def test_load_storage_keys_invalid_uuid(self, db_session_with_containers: Session):
+    def test_load_storage_keys_invalid_uuid(self, db_session_with_containers: Session) -> None:
         """Test with invalid UUID format — should raise ValueError."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())
@@ -262,7 +262,7 @@ class TestStorageKeyLoader:
         with pytest.raises(ValueError, match="badly formed hexadecimal UUID string"):
             loader.load_storage_keys([file])
 
-    def test_load_storage_keys_batch_efficiency(self, db_session_with_containers: Session):
+    def test_load_storage_keys_batch_efficiency(self, db_session_with_containers: Session) -> None:
         """Batched operations should issue exactly 2 queries for mixed file types."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())
@@ -296,7 +296,7 @@ class TestStorageKeyLoader:
         for i, file in enumerate(files[3:]):
             assert file._storage_key == tool_files[i].file_key
 
-    def test_load_storage_keys_tenant_isolation(self, db_session_with_containers: Session):
+    def test_load_storage_keys_tenant_isolation(self, db_session_with_containers: Session) -> None:
         """Loader should not surface records belonging to a different tenant."""
         tenant_id = str(uuid4())
         other_tenant_id = str(uuid4())
@@ -331,7 +331,7 @@ class TestStorageKeyLoader:
         loader.load_storage_keys([file_current])
         assert file_current._storage_key == upload_file_current.key
 
-    def test_load_storage_keys_mixed_tenant_batch(self, db_session_with_containers: Session):
+    def test_load_storage_keys_mixed_tenant_batch(self, db_session_with_containers: Session) -> None:
         """A batch containing a foreign-tenant file should fail on the mismatch."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())
@@ -353,7 +353,7 @@ class TestStorageKeyLoader:
         with pytest.raises(ValueError, match="Upload file not found for id:"):
             loader.load_storage_keys([file_current, file_other])
 
-    def test_load_storage_keys_duplicate_file_ids(self, db_session_with_containers: Session):
+    def test_load_storage_keys_duplicate_file_ids(self, db_session_with_containers: Session) -> None:
         """Duplicate file IDs in the batch should be handled gracefully."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())
@@ -370,7 +370,7 @@ class TestStorageKeyLoader:
         assert file1._storage_key == upload_file.key
         assert file2._storage_key == upload_file.key
 
-    def test_load_storage_keys_session_isolation(self, db_session_with_containers: Session):
+    def test_load_storage_keys_session_isolation(self, db_session_with_containers: Session) -> None:
         """A loader backed by an uncommitted session should not see data from another session."""
         tenant_id = str(uuid4())
         user_id = str(uuid4())

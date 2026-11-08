@@ -39,7 +39,7 @@ def _make_select_parameter(**updates: object) -> ToolParameter:
         ({"default": ["a"]}, "default must be a list"),
     ],
 )
-def test_tool_parameter_rejects_invalid_multiple_declarations(updates: dict[str, object], message: str):
+def test_tool_parameter_rejects_invalid_multiple_declarations(updates: dict[str, object], message: str) -> None:
     with pytest.raises(ValidationError, match=message):
         _make_select_parameter(**updates)
 
@@ -48,7 +48,7 @@ def test_tool_parameter_rejects_invalid_multiple_declarations(updates: dict[str,
     "parameter_type",
     [ToolParameter.ToolParameterType.SELECT, ToolParameter.ToolParameterType.DYNAMIC_SELECT],
 )
-def test_tool_parameter_accepts_multiple_select_declarations(parameter_type: ToolParameter.ToolParameterType):
+def test_tool_parameter_accepts_multiple_select_declarations(parameter_type: ToolParameter.ToolParameterType) -> None:
     parameter = _make_select_parameter(type=parameter_type, multiple=True, default=["a"])
 
     assert parameter.multiple is True
@@ -62,14 +62,14 @@ def test_tool_parameter_accepts_multiple_select_declarations(parameter_type: Too
         ([], "not found in tool config"),
     ],
 )
-def test_multiple_select_normalization_rejects_invalid_values(value: object, message: str):
+def test_multiple_select_normalization_rejects_invalid_values(value: object, message: str) -> None:
     parameter = _make_select_parameter(multiple=True, required=True)
 
     with pytest.raises(ValueError, match=message):
         parameter.init_frontend_parameter(value)
 
 
-def test_multiple_select_normalization_splits_legacy_comma_separated_string():
+def test_multiple_select_normalization_splits_legacy_comma_separated_string() -> None:
     # Historical workflows and older frontends stored a multiple-select value
     # as a comma-separated string; it must normalize to a list, not raise.
     parameter = _make_select_parameter(multiple=True, required=False)
@@ -79,7 +79,7 @@ def test_multiple_select_normalization_splits_legacy_comma_separated_string():
     assert parameter.init_frontend_parameter("") == []
 
 
-def test_multiple_select_normalization_keeps_required_and_option_checks_for_strings():
+def test_multiple_select_normalization_keeps_required_and_option_checks_for_strings() -> None:
     # The string-to-list normalization must not weaken the existing checks:
     # a required parameter stays required, and SELECT options still apply.
     parameter = _make_select_parameter(multiple=True, required=True)
@@ -91,7 +91,7 @@ def test_multiple_select_normalization_keeps_required_and_option_checks_for_stri
         parameter.init_frontend_parameter("a,invalid")
 
 
-def test_multiple_select_normalization_preserves_explicit_empty_list():
+def test_multiple_select_normalization_preserves_explicit_empty_list() -> None:
     parameter = _make_select_parameter(multiple=True, default=["a"])
 
     assert parameter.init_frontend_parameter(None) == ["a"]
@@ -99,7 +99,7 @@ def test_multiple_select_normalization_preserves_explicit_empty_list():
     assert parameter.init_frontend_parameter(["a", "b"]) == ["a", "b"]
 
 
-def test_log_message_metadata_none_defaults_to_empty_dict():
+def test_log_message_metadata_none_defaults_to_empty_dict() -> None:
     log_message = ToolInvokeMessage.LogMessage(
         id="log-1",
         label="Log entry",
@@ -111,13 +111,13 @@ def test_log_message_metadata_none_defaults_to_empty_dict():
     assert log_message.metadata == {}
 
 
-def test_tool_entity_output_schema_none_defaults_to_empty_dict():
+def test_tool_entity_output_schema_none_defaults_to_empty_dict() -> None:
     entity = ToolEntity(identity=_make_identity(), output_schema=None)
 
     assert entity.output_schema == {}
 
 
-def test_tool_entity_parameters_keep_show_on_from_yaml_dict():
+def test_tool_entity_parameters_keep_show_on_from_yaml_dict() -> None:
     """Builtin/plugin YAML may declare ``show_on``; it must survive ToolEntity validation for API responses."""
     raw = {
         "identity": {
@@ -150,6 +150,7 @@ def test_tool_entity_parameters_keep_show_on_from_yaml_dict():
     assert len(param.show_on) == 1
     assert param.show_on[0].variable == "other"
     assert param.show_on[0].value == "x"
+    assert param.options is not None
     assert len(param.options[0].show_on) == 1
     assert param.options[0].show_on[0].variable == "mode"
     dumped = param.model_dump(mode="json")
@@ -157,7 +158,7 @@ def test_tool_entity_parameters_keep_show_on_from_yaml_dict():
     assert dumped["options"][0]["show_on"] == [{"variable": "mode", "value": "b"}]
 
 
-def test_get_parameter_type():
+def test_get_parameter_type() -> None:
     assert ToolParameter.ToolParameterType.STRING.as_normal_type() == "string"
     assert ToolParameter.ToolParameterType.SELECT.as_normal_type() == "string"
     assert ToolParameter.ToolParameterType.SECRET_INPUT.as_normal_type() == "string"
@@ -167,7 +168,7 @@ def test_get_parameter_type():
     assert ToolParameter.ToolParameterType.FILES.as_normal_type() == "files"
 
 
-def test_cast_parameter_by_type():
+def test_cast_parameter_by_type() -> None:
     # string
     assert ToolParameter.ToolParameterType.STRING.cast_value("test") == "test"
     assert ToolParameter.ToolParameterType.STRING.cast_value(1) == "1"
