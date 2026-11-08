@@ -1,7 +1,7 @@
 import threading
 from typing import Any
+from zoneinfo import ZoneInfo
 
-import pytz
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -61,7 +61,7 @@ class AgentService:
         executor = executor_name or "Unknown"
         assert isinstance(current_user, Account)
         assert current_user.timezone is not None
-        timezone = pytz.timezone(current_user.timezone)
+        timezone = ZoneInfo(current_user.timezone)
 
         app_model_config = app_model.app_model_config_with_session(session=session)
         if not app_model_config:

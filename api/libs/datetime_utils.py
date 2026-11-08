@@ -4,8 +4,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Protocol
-
-import pytz  # type: ignore[import-untyped]
+from zoneinfo import ZoneInfo
 
 
 class _NowFunction(Protocol):
@@ -69,14 +68,28 @@ def to_utc_timestamp(dt: datetime.datetime) -> int:
     return int(ensure_naive_utc(dt).replace(tzinfo=datetime.UTC).timestamp())
 
 
+def localize_datetime(dt: datetime.datetime, tz: datetime.tzinfo) -> datetime.datetime:
+    """Resolve a naive wall-clock datetime in ``tz`` to a valid aware datetime.
+
+    The caller must pass a naive ``dt`` and a fold-aware timezone. An ambiguous
+    wall time resolves to its chronologically later occurrence. A non-existent
+    wall time shifts forward by the actual offset change while preserving its
+    position within the gap. Selecting the candidate with the greater timestamp
+    implements both rules; the UTC round trip normalizes a missing wall time to
+    the corresponding valid local time.
+    """
+    candidates = (dt.replace(tzinfo=tz, fold=0), dt.replace(tzinfo=tz, fold=1))
+    return max(candidates, key=datetime.datetime.timestamp).astimezone(datetime.UTC).astimezone(tz)
+
+
 def parse_time_range(
     start: str | None, end: str | None, tzname: str
 ) -> tuple[datetime.datetime | None, datetime.datetime | None]:
     """
     Parse time range strings and convert to UTC datetime objects.
-    Ambiguous times use ``is_dst=False``. Non-existent local times shift
-    forward by the actual timezone offset change, preserving their position
-    within the gap.
+    Ambiguous bounds resolve to their chronologically later occurrence.
+    Non-existent local bounds shift forward by the actual timezone offset
+    change, preserving their position within the gap.
 
     Args:
         start: Start time string (YYYY-MM-DD HH:MM)
@@ -89,10 +102,9 @@ def parse_time_range(
 
     Raises:
         ValueError: When a time format is invalid or the parsed start > end.
-        pytz.UnknownTimeZoneError: When tzname is not a recognized timezone.
+        zoneinfo.ZoneInfoNotFoundError: When tzname is not a recognized timezone.
     """
-    tz = pytz.timezone(tzname)
-    utc = pytz.utc
+    tz = ZoneInfo(tzname)
 
     def _parse(time_str: str | None, label: str) -> datetime.datetime | None:
         if not time_str:
@@ -103,14 +115,7 @@ def parse_time_range(
         except ValueError as e:
             raise ValueError(f"Invalid {label} time format: {e}") from e
 
-        try:
-            return tz.localize(dt, is_dst=None).astimezone(utc)
-        except pytz.AmbiguousTimeError:
-            return tz.localize(dt, is_dst=False).astimezone(utc)
-        except pytz.NonExistentTimeError:
-            # Use the pre-transition offset, then normalize to shift forward
-            # by the actual gap size while preserving the position within it.
-            return tz.normalize(tz.localize(dt, is_dst=False)).astimezone(utc)
+        return localize_datetime(dt, tz).astimezone(datetime.UTC)
 
     start_dt = _parse(start, "start")
     end_dt = _parse(end, "end")
