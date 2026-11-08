@@ -15,7 +15,9 @@ const DEFAULT_TIMEZONE = 'UTC'
 const isValidTimezone = (timezone: string): boolean =>
   getTimezoneOffsetMinutes(timezone, new Date()) !== undefined
 
-const resolveTimezone = (timezone?: string): string => {
+// Exported for the node panel: the time picker consumes the raw node value and
+// crashes the same way when the dropdown's "now" action reads the current time.
+export const resolveTimezone = (timezone?: string): string => {
   if (timezone && isValidTimezone(timezone)) return timezone
 
   try {

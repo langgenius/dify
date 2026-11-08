@@ -21,6 +21,7 @@ import OnMinuteSelector from './components/on-minute-selector'
 import WeekdaySelector from './components/weekday-selector'
 import useConfig from './use-config'
 import { formatClockTime, parseClockTime } from './utils/clock-time'
+import { resolveTimezone } from './utils/execution-time-calculator'
 
 const i18nPrefix = 'nodes.triggerSchedule'
 
@@ -67,7 +68,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
                       <div className="flex flex-col">
                         <TimePicker
                           readOnly={readOnly}
-                          timeZone={inputs.timezone}
+                          timeZone={resolveTimezone(inputs.timezone)}
                           value={parseClockTime(inputs.visual_config?.time || '12:00 AM')}
                           onValueChange={(time) => {
                             if (time) handleTimeChange(formatClockTime(time))
