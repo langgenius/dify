@@ -6,9 +6,10 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.account import TenantAccountRole
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin
-from models.model import App
+from models.model import App, AppMode, IconType
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from models.workflow import WorkflowType as ModelWorkflowType
@@ -36,7 +37,7 @@ class TestWorkflowDeletion:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role="owner",  # pyrefly: ignore[bad-argument-type]
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         session.add(join)
@@ -48,8 +49,8 @@ class TestWorkflowDeletion:
             tenant_id=tenant.id,
             name=f"App {uuid4()}",
             description="",
-            mode="workflow",  # pyrefly: ignore[bad-argument-type]
-            icon_type="emoji",  # pyrefly: ignore[bad-argument-type]
+            mode=AppMode.WORKFLOW,
+            icon_type=IconType.EMOJI,
             icon="bot",
             icon_background="#FFFFFF",
             enable_site=False,

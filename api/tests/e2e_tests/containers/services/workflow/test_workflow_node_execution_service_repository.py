@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
@@ -40,7 +40,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
-            triggered_from="workflow-run",  # pyrefly: ignore[bad-argument-type]
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=workflow_run_id,
             index=index,
             predecessor_node_id=None,
