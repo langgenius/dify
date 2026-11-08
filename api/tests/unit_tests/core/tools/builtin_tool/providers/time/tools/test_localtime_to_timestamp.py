@@ -124,6 +124,20 @@ def test_timezone_conversion_tool(sqlite_session: Session):
         TimezoneConversionTool.timezone_convert("bad", "UTC", "Asia/Tokyo")
 
 
+def test_timezone_conversion_dst_edges():
+    convert = TimezoneConversionTool.timezone_convert
+
+    # Ambiguous fall-back hour: the old pytz call defaulted to is_dst=False and returned
+    # the second, standard-time occurrence (06:30 UTC); keep that behavior.
+    assert convert("2026-11-01 01:30:00", "America/New_York", "UTC") == "2026-11-01 06:30:00"
+
+    # Spring-forward gap: the pre-transition offset is applied, as before.
+    assert convert("2026-03-08 02:30:00", "America/New_York", "UTC") == "2026-03-08 07:30:00"
+
+    # Ordinary timestamp with no DST edge involved.
+    assert convert("2026-07-01 12:00:00", "America/New_York", "UTC") == "2026-07-01 16:00:00"
+
+
 def test_weekday_tool(sqlite_session: Session):
     weekday_tool = _build_builtin_tool(WeekdayTool)
     valid = list(
