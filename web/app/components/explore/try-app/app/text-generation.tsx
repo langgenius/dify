@@ -39,7 +39,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
     setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
   }, [])
-  const isPC = !useMediaQuery('(width < 48rem)', {})
+  const isBelowMd = useMediaQuery('(width < 48rem)', {})
 
   const [inputs, doSetInputs] = useState<Record<string, InputValueTypes>>({})
   const inputsRef = useRef<Record<string, InputValueTypes>>(inputs)
@@ -133,8 +133,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
       key={task?.id}
       isWorkflow={!!isWorkflow}
       isCallBatchAPI={false}
-      isPC={isPC}
-      isMobile={!isPC}
+      isBelowMd={isBelowMd}
       appSourceType={AppSourceType.tryApp}
       appId={appId}
       isError={task?.status === TaskStatus.failed}
@@ -183,8 +182,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
     <div
       className={cn(
         'rounded-2xl border border-components-panel-border bg-background-section-burn',
-        isPC && 'flex',
-        !isPC && 'flex-col',
+        isBelowMd ? 'flex-col' : 'flex',
         'h-full rounded-2xl shadow-md',
         className,
       )}
@@ -193,16 +191,16 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
       <div
         className={cn(
           'relative flex h-full shrink-0 flex-col',
-          isPC && 'w-150 max-w-[50%]',
+          !isBelowMd && 'w-150 max-w-[50%]',
           'rounded-s-2xl bg-components-panel-bg',
         )}
       >
         {/* Header */}
-        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'p-8 pb-0' : 'p-4 pb-0')}>
+        <div className={cn('shrink-0 space-y-4 pb-2', isBelowMd ? 'p-4 pb-0' : 'p-8 pb-0')}>
           <div className="flex items-center gap-3">
             <AppIcon
               fallback={{ content: '🤖', background: appDefaultIconBackground }}
-              size={isPC ? 'large' : 'small'}
+              size={isBelowMd ? 'small' : 'large'}
               icon={siteInfo}
             />
             <div className="grow truncate system-md-semibold text-text-secondary">
@@ -250,8 +248,8 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
         <div
           className={cn(
             'h-0 grow overflow-y-auto',
-            isPC ? 'px-8' : 'px-4',
-            !isPC &&
+            isBelowMd ? 'px-4' : 'px-8',
+            isBelowMd &&
               resultExisted &&
               customConfig?.remove_webapp_brand &&
               'rounded-b-2xl border-b-[0.5px] border-divider-regular',
@@ -272,7 +270,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
 
       {/* Result */}
       <div className={cn('h-full w-0 grow')}>
-        {!isPC && (
+        {isBelowMd && (
           <div
             className={cn(
               isShowResultPanel

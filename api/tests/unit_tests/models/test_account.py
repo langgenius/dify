@@ -19,13 +19,13 @@ import pytest
 from sqlalchemy.orm import Session
 
 from libs.password import compare_password, hash_password, valid_password
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantCustomConfigDict
 
 
 class TestAccountModelValidation:
     """Test suite for Account model validation and basic operations."""
 
-    def test_account_creation_with_required_fields(self):
+    def test_account_creation_with_required_fields(self) -> None:
         """Test creating an account with all required fields."""
         # Arrange & Act
         account = Account(
@@ -42,7 +42,7 @@ class TestAccountModelValidation:
         assert account.password_salt == "salt_value"
         assert account.status == "active"  # Default value
 
-    def test_account_creation_with_optional_fields(self):
+    def test_account_creation_with_optional_fields(self) -> None:
         """Test creating an account with optional fields."""
         # Arrange & Act
         account = Account(
@@ -60,7 +60,7 @@ class TestAccountModelValidation:
         assert account.interface_theme == "dark"
         assert account.timezone == "America/New_York"
 
-    def test_account_creation_without_password(self):
+    def test_account_creation_without_password(self) -> None:
         """Test creating an account without password (for invite-based registration)."""
         # Arrange & Act
         account = Account(
@@ -73,7 +73,7 @@ class TestAccountModelValidation:
         assert account.password_salt is None
         assert not account.is_password_set
 
-    def test_account_is_password_set_property(self):
+    def test_account_is_password_set_property(self) -> None:
         """Test the is_password_set property."""
         # Arrange
         account_with_password = Account(
@@ -90,7 +90,7 @@ class TestAccountModelValidation:
         assert account_with_password.is_password_set
         assert not account_without_password.is_password_set
 
-    def test_account_default_status(self):
+    def test_account_default_status(self) -> None:
         """Test that account has default status of 'active'."""
         # Arrange & Act
         account = Account(
@@ -101,7 +101,7 @@ class TestAccountModelValidation:
         # Assert
         assert account.status == AccountStatus.ACTIVE
 
-    def test_account_get_status_method(self):
+    def test_account_get_status_method(self) -> None:
         """Test the get_status method returns AccountStatus enum."""
         # Arrange
         account = Account(
@@ -121,7 +121,7 @@ class TestAccountModelValidation:
 class TestPasswordHashingAndVerification:
     """Test suite for password hashing and verification functionality."""
 
-    def test_password_hashing_produces_consistent_result(self):
+    def test_password_hashing_produces_consistent_result(self) -> None:
         """Test that hashing the same password with the same salt produces the same result."""
         # Arrange
         password = "TestPassword123"
@@ -134,7 +134,7 @@ class TestPasswordHashingAndVerification:
         # Assert
         assert hash1 == hash2
 
-    def test_password_hashing_different_salts_produce_different_hashes(self):
+    def test_password_hashing_different_salts_produce_different_hashes(self) -> None:
         """Test that different salts produce different hashes for the same password."""
         # Arrange
         password = "TestPassword123"
@@ -148,7 +148,7 @@ class TestPasswordHashingAndVerification:
         # Assert
         assert hash1 != hash2
 
-    def test_password_comparison_success(self):
+    def test_password_comparison_success(self) -> None:
         """Test successful password comparison."""
         # Arrange
         password = "TestPassword123"
@@ -165,7 +165,7 @@ class TestPasswordHashingAndVerification:
         # Assert
         assert result is True
 
-    def test_password_comparison_failure(self):
+    def test_password_comparison_failure(self) -> None:
         """Test password comparison with wrong password."""
         # Arrange
         correct_password = "TestPassword123"
@@ -183,7 +183,7 @@ class TestPasswordHashingAndVerification:
         # Assert
         assert result is False
 
-    def test_valid_password_with_correct_format(self):
+    def test_valid_password_with_correct_format(self) -> None:
         """Test password validation with correct format."""
         # Arrange
         valid_passwords = [
@@ -198,7 +198,7 @@ class TestPasswordHashingAndVerification:
             result = valid_password(password)
             assert result == password
 
-    def test_valid_password_with_incorrect_format(self):
+    def test_valid_password_with_incorrect_format(self) -> None:
         """Test password validation with incorrect format."""
         # Arrange
         invalid_passwords = [
@@ -213,7 +213,7 @@ class TestPasswordHashingAndVerification:
             with pytest.raises(ValueError, match="Password must contain letters and numbers"):
                 valid_password(password)
 
-    def test_password_hashing_integration_with_account(self):
+    def test_password_hashing_integration_with_account(self) -> None:
         """Test password hashing integration with Account model."""
         # Arrange
         password = "SecurePass123"
@@ -238,7 +238,7 @@ class TestPasswordHashingAndVerification:
 class TestAccountStatusTransitions:
     """Test suite for account status transitions."""
 
-    def test_account_status_enum_values(self):
+    def test_account_status_enum_values(self) -> None:
         """Test that AccountStatus enum has all expected values."""
         # Assert
         assert AccountStatus.PENDING == "pending"
@@ -247,7 +247,7 @@ class TestAccountStatusTransitions:
         assert AccountStatus.BANNED == "banned"
         assert AccountStatus.CLOSED == "closed"
 
-    def test_account_status_transition_pending_to_active(self):
+    def test_account_status_transition_pending_to_active(self) -> None:
         """Test transitioning account status from pending to active."""
         # Arrange
         account = Account(
@@ -264,7 +264,7 @@ class TestAccountStatusTransitions:
         assert account.get_status() == AccountStatus.ACTIVE
         assert account.initialized_at is not None
 
-    def test_account_status_transition_active_to_banned(self):
+    def test_account_status_transition_active_to_banned(self) -> None:
         """Test transitioning account status from active to banned."""
         # Arrange
         account = Account(
@@ -279,7 +279,7 @@ class TestAccountStatusTransitions:
         # Assert
         assert account.get_status() == AccountStatus.BANNED
 
-    def test_account_status_transition_active_to_closed(self):
+    def test_account_status_transition_active_to_closed(self) -> None:
         """Test transitioning account status from active to closed."""
         # Arrange
         account = Account(
@@ -294,7 +294,7 @@ class TestAccountStatusTransitions:
         # Assert
         assert account.get_status() == AccountStatus.CLOSED
 
-    def test_account_status_uninitialized(self):
+    def test_account_status_uninitialized(self) -> None:
         """Test account with uninitialized status."""
         # Arrange & Act
         account = Account(
@@ -311,7 +311,7 @@ class TestAccountStatusTransitions:
 class TestTenantRelationshipIntegrity:
     """Test suite for tenant relationship integrity."""
 
-    def test_account_current_tenant_id_property(self):
+    def test_account_current_tenant_id_property(self) -> None:
         """Test the current_tenant_id property."""
         # Arrange
         account = Account(
@@ -335,7 +335,7 @@ class TestTenantRelationshipIntegrity:
         # Assert
         assert tenant_id_none is None
 
-    def test_current_tenant_is_read_only(self):
+    def test_current_tenant_is_read_only(self) -> None:
         """current_tenant has no setter, so tenant switching cannot open a hidden session."""
         account = Account(name="Test User", email="test@example.com")
         tenant = Tenant(name="Test Tenant")
@@ -344,7 +344,7 @@ class TestTenantRelationshipIntegrity:
             account.current_tenant = tenant  # type: ignore[misc]
 
     @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
-    def test_set_current_tenant_with_session_uses_caller_session(self, sqlite_session: Session):
+    def test_set_current_tenant_with_session_uses_caller_session(self, sqlite_session: Session) -> None:
         account = Account(name="Test User", email="test@example.com")
         account.id = str(uuid4())
         tenant = Tenant(name="Test Tenant")
@@ -376,7 +376,7 @@ class TestTenantRelationshipIntegrity:
         assert account.role == TenantAccountRole.OWNER
 
     @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
-    def test_set_tenant_id_with_session_uses_caller_session(self, sqlite_session: Session):
+    def test_set_tenant_id_with_session_uses_caller_session(self, sqlite_session: Session) -> None:
         account = Account(name="Test User", email="test@example.com")
         account.id = str(uuid4())
         decoy_account = Account(name="Decoy User", email="decoy@example.com")
@@ -415,7 +415,7 @@ class TestAccountRolePermissions:
 
     """Test suite for account role permissions."""
 
-    def test_is_admin_or_owner_with_admin_role(self):
+    def test_is_admin_or_owner_with_admin_role(self) -> None:
         """Test is_admin_or_owner property with admin role."""
         # Arrange
         account = Account(
@@ -426,14 +426,14 @@ class TestAccountRolePermissions:
 
         assert account.is_admin_or_owner
 
-    def test_is_admin_or_owner_with_rbac_enabled(self, config_overrides: Callable[..., None]):
+    def test_is_admin_or_owner_with_rbac_enabled(self, config_overrides: Callable[..., None]) -> None:
         account = Account(name="Test User", email="test@example.com")
         account.role = TenantAccountRole.NORMAL
 
         config_overrides(RBAC_ENABLED=True)
         assert account.is_admin_or_owner
 
-    def test_is_admin_or_owner_with_owner_role(self):
+    def test_is_admin_or_owner_with_owner_role(self) -> None:
         """Test is_admin_or_owner property with owner role."""
         # Arrange
         account = Account(
@@ -445,7 +445,7 @@ class TestAccountRolePermissions:
         # Act & Assert
         assert account.is_admin_or_owner
 
-    def test_is_admin_or_owner_with_normal_role(self):
+    def test_is_admin_or_owner_with_normal_role(self) -> None:
         """Test is_admin_or_owner property with normal role."""
         # Arrange
         account = Account(
@@ -457,7 +457,7 @@ class TestAccountRolePermissions:
         # Act & Assert
         assert not account.is_admin_or_owner
 
-    def test_is_admin_property(self):
+    def test_is_admin_property(self) -> None:
         """Test is_admin property."""
         # Arrange
         admin_account = Account(name="Admin", email="admin@example.com")
@@ -469,14 +469,14 @@ class TestAccountRolePermissions:
         assert admin_account.is_admin
         assert not owner_account.is_admin
 
-    def test_is_admin_with_rbac_enabled(self, config_overrides: Callable[..., None]):
+    def test_is_admin_with_rbac_enabled(self, config_overrides: Callable[..., None]) -> None:
         account = Account(name="Test User", email="test@example.com")
         account.role = TenantAccountRole.NORMAL
 
         config_overrides(RBAC_ENABLED=True)
         assert account.is_admin
 
-    def test_has_edit_permission_with_editing_roles(self):
+    def test_has_edit_permission_with_editing_roles(self) -> None:
         """Test has_edit_permission property with roles that have edit permission."""
         # Arrange
         roles_with_edit = [
@@ -491,14 +491,14 @@ class TestAccountRolePermissions:
 
             assert account.has_edit_permission, f"Role {role} should have edit permission"
 
-    def test_has_edit_permission_with_rbac_enabled(self, config_overrides: Callable[..., None]):
+    def test_has_edit_permission_with_rbac_enabled(self, config_overrides: Callable[..., None]) -> None:
         account = Account(name="Test User", email="test@example.com")
         account.role = TenantAccountRole.NORMAL
 
         config_overrides(RBAC_ENABLED=True)
         assert account.has_edit_permission
 
-    def test_has_edit_permission_without_editing_roles(self):
+    def test_has_edit_permission_without_editing_roles(self) -> None:
         """Test has_edit_permission property with roles that don't have edit permission."""
         # Arrange
         roles_without_edit = [
@@ -512,7 +512,7 @@ class TestAccountRolePermissions:
 
             assert not account.has_edit_permission, f"Role {role} should not have edit permission"
 
-    def test_is_dataset_editor_property(self):
+    def test_is_dataset_editor_property(self) -> None:
         """Test is_dataset_editor property."""
         # Arrange
         dataset_roles = [
@@ -533,14 +533,14 @@ class TestAccountRolePermissions:
         normal_account.role = TenantAccountRole.NORMAL
         assert not normal_account.is_dataset_editor
 
-    def test_is_dataset_editor_with_rbac_enabled(self, config_overrides: Callable[..., None]):
+    def test_is_dataset_editor_with_rbac_enabled(self, config_overrides: Callable[..., None]) -> None:
         account = Account(name="Test User", email="test@example.com")
         account.role = TenantAccountRole.NORMAL
 
         config_overrides(RBAC_ENABLED=True)
         assert account.is_dataset_editor
 
-    def test_is_dataset_operator_property(self):
+    def test_is_dataset_operator_property(self) -> None:
         """Test is_dataset_operator property."""
         # Arrange
         dataset_operator = Account(name="Dataset Operator", email="operator@example.com")
@@ -552,14 +552,14 @@ class TestAccountRolePermissions:
         assert dataset_operator.is_dataset_operator
         assert not normal_account.is_dataset_operator
 
-    def test_is_dataset_operator_with_rbac_enabled(self, config_overrides: Callable[..., None]):
+    def test_is_dataset_operator_with_rbac_enabled(self, config_overrides: Callable[..., None]) -> None:
         account = Account(name="Test User", email="test@example.com")
         account.role = TenantAccountRole.NORMAL
 
         config_overrides(RBAC_ENABLED=True)
         assert account.is_dataset_operator
 
-    def test_current_role_property(self):
+    def test_current_role_property(self) -> None:
         """Test current_role property."""
         # Arrange
         account = Account(name="Test User", email="test@example.com")
@@ -575,7 +575,7 @@ class TestAccountRolePermissions:
 class TestTenantAccountJoinModel:
     """Test suite for TenantAccountJoin model."""
 
-    def test_tenant_account_join_creation(self):
+    def test_tenant_account_join_creation(self) -> None:
         """Test creating a TenantAccountJoin record."""
         # Arrange
         tenant_id = str(uuid4())
@@ -595,7 +595,7 @@ class TestTenantAccountJoinModel:
         assert join.role == TenantAccountRole.NORMAL
         assert join.current is True
 
-    def test_tenant_account_join_default_values(self):
+    def test_tenant_account_join_default_values(self) -> None:
         """Test default values for TenantAccountJoin."""
         # Arrange
         tenant_id = str(uuid4())
@@ -612,7 +612,7 @@ class TestTenantAccountJoinModel:
         assert join.role == "normal"  # Default value
         assert join.invited_by is None  # Default value
 
-    def test_tenant_account_join_with_invited_by(self):
+    def test_tenant_account_join_with_invited_by(self) -> None:
         """Test TenantAccountJoin with invited_by field."""
         # Arrange
         tenant_id = str(uuid4())
@@ -634,7 +634,7 @@ class TestTenantAccountJoinModel:
 class TestTenantModel:
     """Test suite for Tenant model."""
 
-    def test_tenant_creation(self):
+    def test_tenant_creation(self) -> None:
         """Test creating a Tenant."""
         # Arrange & Act
         tenant = Tenant(name="Test Workspace")
@@ -644,20 +644,20 @@ class TestTenantModel:
         assert tenant.status == "normal"  # Default value
         assert tenant.plan == "basic"  # Default value
 
-    def test_tenant_custom_config_dict_property(self):
+    def test_tenant_custom_config_dict_property(self) -> None:
         """Test custom_config_dict property getter."""
         # Arrange
         tenant = Tenant(name="Test Workspace")
-        tenant.custom_config = '{"feature1": true, "feature2": "value"}'
+        tenant.custom_config = '{"remove_webapp_brand": true, "replace_webapp_logo": "value"}'
 
         # Act
         result = tenant.custom_config_dict
 
         # Assert
-        assert result["feature1"] is True
-        assert result["feature2"] == "value"
+        assert result["remove_webapp_brand"] is True
+        assert result["replace_webapp_logo"] == "value"
 
-    def test_tenant_custom_config_dict_property_empty(self):
+    def test_tenant_custom_config_dict_property_empty(self) -> None:
         """Test custom_config_dict property with empty config."""
         # Arrange
         tenant = Tenant(name="Test Workspace")
@@ -669,23 +669,23 @@ class TestTenantModel:
         # Assert
         assert result == {}
 
-    def test_tenant_custom_config_dict_setter(self):
+    def test_tenant_custom_config_dict_setter(self) -> None:
         """Test custom_config_dict property setter."""
         # Arrange
         tenant = Tenant(name="Test Workspace")
-        config = {"feature1": True, "feature2": "value"}
+        config: TenantCustomConfigDict = {"remove_webapp_brand": True, "replace_webapp_logo": "value"}
 
         # Act
         tenant.custom_config_dict = config
 
         # Assert
-        assert tenant.custom_config == '{"feature1": true, "feature2": "value"}'
+        assert tenant.custom_config == '{"remove_webapp_brand": true, "replace_webapp_logo": "value"}'
 
 
 class TestTenantStatusEnum:
     """Test suite for TenantStatus enum."""
 
-    def test_tenant_status_enum_values(self):
+    def test_tenant_status_enum_values(self) -> None:
         """Test TenantStatus enum values."""
         # Arrange & Act
         from models.account import TenantStatus
@@ -698,7 +698,7 @@ class TestTenantStatusEnum:
 class TestAccountIntegration:
     """Integration tests for Account model with related models."""
 
-    def test_account_with_multiple_tenants(self):
+    def test_account_with_multiple_tenants(self) -> None:
         """Test account associated with multiple tenants."""
         # Arrange
         account = Account(name="Multi-Tenant User", email="multi@example.com")
@@ -727,7 +727,7 @@ class TestAccountIntegration:
         assert join1.current is True
         assert join2.current is False
 
-    def test_account_last_login_tracking(self):
+    def test_account_last_login_tracking(self) -> None:
         """Test account last login tracking."""
         # Arrange
         account = Account(name="Test User", email="test@example.com")
@@ -742,7 +742,7 @@ class TestAccountIntegration:
         assert account.last_login_at == login_time
         assert account.last_login_ip == login_ip
 
-    def test_account_initialization_tracking(self):
+    def test_account_initialization_tracking(self) -> None:
         """Test account initialization tracking."""
         # Arrange
         account = Account(
