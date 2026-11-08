@@ -9,11 +9,10 @@ from pathlib import Path
 
 import pytest
 
-# Allow standalone execution via runpy.run_path as well as pytest inside api/providers/vdb/vdb-silicium
 _THIS_DIR = Path(__file__).resolve().parent
-_CANDIDATE_SRC = _THIS_DIR.parents[2] / "src"
-if _CANDIDATE_SRC.is_dir() and str(_CANDIDATE_SRC) not in sys.path:
-    sys.path.insert(0, str(_CANDIDATE_SRC))
+for _p in _THIS_DIR.parents[:4]:
+    if (_p / "src" / "dify_vdb_silicium").is_dir() and str(_p / "src") not in sys.path:
+        sys.path.insert(0, str(_p / "src"))
 
 try:
     from dify_vdb_silicium.silicium_vector import (
@@ -52,13 +51,11 @@ class _RealDatasetStub:
     """Concrete zero-mock dataset stub exposing `id`, `index_struct`, and `index_struct_dict`."""
 
     def __init__(self, dataset_id: str, index_struct: str | None = None) -> None:
-        """Initialize dataset stub with `dataset_id` and optional serialized `index_struct`."""
         self.id: str = dataset_id
         self.index_struct: str | None = index_struct
 
     @property
     def index_struct_dict(self) -> dict[str, object] | None:
-        """Parse and return `index_struct` as a dictionary when present."""
         if not self.index_struct:
             return None
         loaded = json.loads(self.index_struct)
@@ -69,33 +66,20 @@ class _RealEmbeddingsStub(Embeddings):
     """Concrete zero-mock embeddings implementation for factory initialization tests."""
 
     def embed_query(self, text: str) -> list[float]:
-        """Return a deterministic 4D float vector for `text`."""
         return [float(len(text)), 1.0, 0.0, 0.0]
 
 
 def test_silicium_config_validation_and_adversarial_bounds() -> None:
     """Verify valid `SiliciumConfig` normalization and adversarial boundary rejections (`ValueError`)."""
     cfg = SiliciumConfig(dimension=4, metric="COSINE", max_tenant_scopes=64, max_entries_per_tenant=128)
-    assert cfg.dimension == 4
-    assert cfg.metric == "cosine"
-    assert cfg.max_tenant_scopes == 64
-    assert cfg.max_entries_per_tenant == 128
-
-    with pytest.raises(ValueError, match="dimension"):
-        SiliciumConfig(dimension=0)
-
-    with pytest.raises(ValueError, match="dimension"):
-        SiliciumConfig(dimension=-16)
-
-    with pytest.raises(ValueError, match="dimension"):
-        SiliciumConfig(dimension=_MAX_VECTOR_DIM + 1)
-
+    assert (cfg.dimension, cfg.metric, cfg.max_tenant_scopes, cfg.max_entries_per_tenant) == (4, "cosine", 64, 128)
+    for bad_dim in (0, -16, _MAX_VECTOR_DIM + 1):
+        with pytest.raises(ValueError, match="dimension"):
+            SiliciumConfig(dimension=bad_dim)
     with pytest.raises(ValueError, match="metric"):
         SiliciumConfig(dimension=4, metric="hamming_invalid")
-
     with pytest.raises(ValueError, match="max_tenant_scopes"):
         SiliciumConfig(dimension=4, max_tenant_scopes=_MAX_TENANT_SCOPES + 1)
-
     with pytest.raises(ValueError, match="max_entries_per_tenant"):
         SiliciumConfig(dimension=4, max_entries_per_tenant=_MAX_ENTRIES_PER_TENANT + 1)
 
@@ -104,55 +88,36 @@ def test_silicium_vector_crud_and_three_metrics() -> None:
     """Verify CRUD lifecycle, `cosine`/`l2`/`ip` metrics, `score_threshold=0.0`, and `document_ids_filter`."""
     _COLLECTION_ARENA.clear()
     for metric in ("cosine", "l2", "ip"):
-        vec_store = SiliciumVector(
-            collection_name=f"col_{metric}",
-            config=SiliciumConfig(dimension=4, metric=metric),
-        )
+        vec_store = SiliciumVector(collection_name=f"col_{metric}", config=SiliciumConfig(dimension=4, metric=metric))
         assert vec_store.get_type() == "silicium"
         assert vec_store.engine_backend in ("silicium_c_abi_simd", "python_portable_fallback")
-
         docs = [
             Document(page_content="alpha vector node", metadata={"doc_id": "d1", "document_id": "doc-A"}),
             Document(page_content="beta orthogonal node", metadata={"doc_id": "d2", "document_id": "doc-B"}),
         ]
         vec_store.create(docs, [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]])
-
         assert vec_store.text_exists("d1") is True
         assert vec_store.text_exists("d999") is False
         assert vec_store.get_ids_by_metadata_field("document_id", "doc-A") == ["d1"]
 
-        # Explicit score_threshold=0.0 must be preserved (not coerced via truthiness)
         hits = vec_store.search_by_vector([1.0, 0.0, 0.0, 0.0], top_k=2, score_threshold=0.0)
-        assert len(hits) == 2
-        assert hits[0].page_content == "alpha vector node"
-        assert "score" in hits[0].metadata
+        assert (len(hits), hits[0].page_content, "score" in hits[0].metadata) == (2, "alpha vector node", True)
 
-        # High threshold filters out orthogonal vector
         strict_hits = vec_store.search_by_vector([1.0, 0.0, 0.0, 0.0], top_k=2, score_threshold=0.95)
-        assert len(strict_hits) == 1
-        assert strict_hits[0].metadata["doc_id"] == "d1"
+        assert (len(strict_hits), strict_hits[0].metadata["doc_id"]) == (1, "d1")
 
-        # Filter by document_ids_filter
         filtered_hits = vec_store.search_by_vector(
-            [1.0, 0.0, 0.0, 0.0],
-            top_k=2,
-            score_threshold=0.0,
-            document_ids_filter=["doc-B"],
+            [1.0, 0.0, 0.0, 0.0], top_k=2, score_threshold=0.0, document_ids_filter=["doc-B"]
         )
-        assert len(filtered_hits) == 1
-        assert filtered_hits[0].metadata["doc_id"] == "d2"
+        assert (len(filtered_hits), filtered_hits[0].metadata["doc_id"]) == (1, "d2")
 
-        # Full-text BM25/TF search
         ft_hits = vec_store.search_by_full_text("alpha vector", top_k=2)
-        assert len(ft_hits) == 1
-        assert ft_hits[0].metadata["doc_id"] == "d1"
+        assert (len(ft_hits), ft_hits[0].metadata["doc_id"]) == (1, "d1")
 
         vec_store.delete_by_metadata_field("document_id", "doc-B")
         assert vec_store.text_exists("d2") is False
-
         vec_store.delete_by_ids(["d1"])
         assert vec_store.text_exists("d1") is False
-
         vec_store.delete()
 
 

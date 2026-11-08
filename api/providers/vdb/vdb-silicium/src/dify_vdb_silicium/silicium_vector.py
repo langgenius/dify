@@ -21,7 +21,7 @@ import threading
 import uuid
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping, Sequence
-from typing import TYPE_CHECKING, Final, override
+from typing import TYPE_CHECKING, Final, Self, override
 
 from pydantic import BaseModel, model_validator
 
@@ -41,8 +41,6 @@ try:
 except ImportError:
 
     class _FallbackDifyConfig:
-        """Fallback configuration container when running outside the Dify API runtime."""
-
         SILICIUM_DIMENSION: int = 1536
         SILICIUM_METRIC: str = "cosine"
         SILICIUM_MAX_TENANT_SCOPES: int = 256
@@ -51,188 +49,126 @@ except ImportError:
     dify_config = _FallbackDifyConfig()  # type: ignore[assignment]
 
     class Field:  # type: ignore[no-redef]
-        """Fallback field constants matching `core.rag.datasource.vdb.field.Field`."""
-
         CONTENT_KEY: Final[str] = "page_content"
         METADATA_KEY: Final[str] = "metadata"
         VECTOR: Final[str] = "vector"
         PRIMARY_KEY: Final[str] = "id"
 
     class Document:  # type: ignore[no-redef]
-        """Fallback `Document` model matching `core.rag.models.document.Document`."""
-
         def __init__(
-            self,
-            page_content: str,
-            vector: list[float] | None = None,
-            metadata: dict[str, object] | None = None,
+            self, page_content: str, vector: list[float] | None = None, metadata: dict[str, object] | None = None
         ) -> None:
-            """Initialize document page content, optional vector, and metadata dictionary."""
             self.page_content: str = str(page_content)
             self.vector: list[float] | None = vector
             self.metadata: dict[str, object] = dict(metadata) if metadata is not None else {}
 
     class BaseVector:  # type: ignore[no-redef]
-        """Fallback `BaseVector` abstract base class when running outside the Dify API package."""
-
         def __init__(self, collection_name: str) -> None:
-            """Initialize the vector store with a target collection name."""
             self._collection_name: str = collection_name
 
         def get_type(self) -> str:
-            """Return the vector store backend identifier."""
             raise NotImplementedError
 
         def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: object) -> None:
-            """Create the collection and index the initial batch of documents and embeddings."""
             raise NotImplementedError
 
         def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: object) -> list[str]:
-            """Insert or update documents and their embeddings in the collection."""
             raise NotImplementedError
 
         def text_exists(self, id: str) -> bool:
-            """Return True if a document with `id` exists in the collection."""
             raise NotImplementedError
 
         def delete_by_ids(self, ids: list[str]) -> None:
-            """Delete documents matching any of the provided `doc_id` values."""
             raise NotImplementedError
 
         def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
-            """Return document IDs whose metadata `key` equals `value`."""
             raise NotImplementedError
 
         def delete_by_metadata_field(self, key: str, value: str) -> None:
-            """Delete all documents whose metadata `key` equals `value`."""
             raise NotImplementedError
 
         def search_by_vector(self, query_vector: list[float], **kwargs: object) -> list[Document]:
-            """Return the top-k documents ranked by similarity to `query_vector`."""
             raise NotImplementedError
 
         def search_by_full_text(self, query: str, **kwargs: object) -> list[Document]:
-            """Return the top-k documents matching full-text `query`."""
             raise NotImplementedError
 
         def delete(self) -> None:
-            """Delete the entire collection from the vector store."""
             raise NotImplementedError
 
         def _get_uuids(self, texts: list[Document]) -> list[str]:
-            """Extract `doc_id` strings from each document's metadata."""
-            out: list[str] = []
-            for text in texts:
-                if text.metadata and "doc_id" in text.metadata:
-                    out.append(str(text.metadata["doc_id"]))
-                else:
-                    out.append(str(uuid.uuid4()))
-            return out
+            return [
+                str(t.metadata["doc_id"]) if t.metadata and "doc_id" in t.metadata else str(uuid.uuid4()) for t in texts
+            ]
 
         @property
         def collection_name(self) -> str:
-            """Return the underlying collection name."""
             return self._collection_name
 
     class AbstractVectorFactory:  # type: ignore[no-redef]
-        """Fallback `AbstractVectorFactory` base class for standalone verification."""
-
         def init_vector(
-            self,
-            dataset: Dataset,
-            attributes: list[str],
-            embeddings: Embeddings,
-            *,
-            session: Session | None = None,
+            self, dataset: Dataset, attributes: list[str], embeddings: Embeddings, *, session: Session | None = None
         ) -> BaseVector:
-            """Instantiate a `BaseVector` processor for the given dataset."""
             raise NotImplementedError
 
         @staticmethod
         def gen_index_struct_dict(vector_type: str, collection_name: str) -> dict[str, object]:
-            """Build the canonical Dify `index_struct_dict` dictionary."""
-            return {
-                "type": vector_type,
-                "vector_store": {"class_prefix": collection_name},
-            }
+            return {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
 
     class VectorType:  # type: ignore[no-redef]
-        """Fallback `VectorType` constants."""
-
         SILICIUM: Final[str] = "silicium"
 
     class Embeddings:  # type: ignore[no-redef]
-        """Fallback `Embeddings` interface for standalone verification."""
-
         def embed_query(self, text: str) -> list[float]:
-            """Embed a single query string."""
             return [float(len(text)), 1.0, 0.0, 0.0]
 
     class Dataset:  # type: ignore[no-redef]
-        """Fallback `Dataset` model for standalone verification."""
-
         def __init__(
             self,
             id: str = "dataset-default",
             index_struct: str | None = None,
             index_struct_dict: dict[str, object] | None = None,
         ) -> None:
-            """Initialize fallback dataset attributes."""
             self.id: str = id
             self.index_struct: str | None = index_struct
             self._index_struct_dict: dict[str, object] | None = index_struct_dict
 
         @property
         def index_struct_dict(self) -> dict[str, object] | None:
-            """Return parsed `index_struct` dictionary if present."""
             if self._index_struct_dict is not None:
                 return self._index_struct_dict
             if self.index_struct:
                 loaded = json.loads(self.index_struct)
-                if isinstance(loaded, dict):
-                    return loaded
+                return loaded if isinstance(loaded, dict) else None
             return None
 
         @staticmethod
         def gen_collection_name_by_id(dataset_id: str) -> str:
-            """Generate a deterministic collection name from `dataset_id`."""
-            normalized = re.sub(r"[^a-zA-Z0-9_]", "_", dataset_id)
-            return f"Vector_index_{normalized}_Node"
+            return f"Vector_index_{re.sub(r'[^a-zA-Z0-9_]', '_', dataset_id)}_Node"
 
     class _FallbackRedisLock:
-        """No-op context manager emulating `redis_client.lock` in standalone mode."""
-
-        def __enter__(self) -> _FallbackRedisLock:
-            """Enter no-op lock context."""
+        def __enter__(self) -> Self:
             return self
 
         def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
-            """Exit no-op lock context."""
             return None
 
     class _FallbackRedisClient:
-        """In-memory fallback emulating `extensions.ext_redis.redis_client`."""
-
         def __init__(self) -> None:
-            """Initialize in-memory cache dictionary."""
             self._cache: dict[str, int] = {}
 
         def lock(self, name: str, timeout: int = 20) -> _FallbackRedisLock:
-            """Return a no-op lock context manager."""
             _ = (name, timeout)
             return _FallbackRedisLock()
 
         def get(self, key: str) -> int | None:
-            """Look up cached integer flag by key."""
             return self._cache.get(key)
 
         def set(self, key: str, val: int, ex: int = 3600) -> None:
-            """Store integer flag in cache."""
             _ = ex
             self._cache[key] = int(val)
 
         def delete(self, key: str) -> None:
-            """Remove key from cache."""
             self._cache.pop(key, None)
 
     redis_client = _FallbackRedisClient()  # type: ignore[assignment]
@@ -296,7 +232,7 @@ def _coerce_vector(raw_vec: Iterable[float]) -> list[float]:
     """Validate and convert an embedding iterable into a non-empty `list[float]`."""
     if isinstance(raw_vec, (str, bytes, bytearray, memoryview)):
         msg = "Embedding vector must be an iterable of floats, not a string or byte buffer."
-        raise ValueError(msg)
+        raise ValueError(msg)  # noqa: TRY004
     try:
         floats = [float(x) for x in raw_vec]
     except (TypeError, ValueError) as exc:
