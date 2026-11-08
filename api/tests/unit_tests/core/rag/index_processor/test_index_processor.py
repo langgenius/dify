@@ -1,6 +1,7 @@
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -74,7 +75,7 @@ def _persist_dataset_and_document(
     session: Session,
     *,
     indexing_technique: IndexTechniqueType = IndexTechniqueType.HIGH_QUALITY,
-    summary_index_setting: dict | None = None,
+    summary_index_setting: dict[str, object] | None = None,
 ) -> tuple[Dataset, Document]:
     tenant_id = str(uuid.uuid4())
     created_by = str(uuid.uuid4())
@@ -237,7 +238,9 @@ class TestIndexProcessor:
 
         assert sqlite_session.get(DocumentSegment, segment.id) is None
         assert sqlite_session.get(DocumentSegment, control_segment.id) is control_segment
-        assert sqlite_session.get(Document, document.id).indexing_status == "completed"
+        stored_document = sqlite_session.get(Document, document.id)
+        assert stored_document is not None
+        assert stored_document.indexing_status == "completed"
         index_backend.clean.assert_called_once_with(
             dataset,
             ["node-1"],
@@ -283,9 +286,9 @@ class TestIndexProcessor:
         flask_app = SimpleNamespace(app_context=lambda: nullcontext())
         processor = IndexProcessor()
 
-        def generate_summary(*_args, **kwargs):
+        def generate_summary(*_args: object, **kwargs: object) -> tuple[str, None]:
             phase_events.append("worker")
-            worker_sessions.append(kwargs["session"])
+            worker_sessions.append(cast(Session, kwargs["session"]))
             return "summary", None
 
         with (
