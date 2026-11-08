@@ -138,6 +138,17 @@ def test_timezone_conversion_dst_edges():
     assert convert("2026-07-01 12:00:00", "America/New_York", "UTC") == "2026-07-01 16:00:00"
 
 
+def test_timezone_conversion_negative_dst():
+    convert = TimezoneConversionTool.timezone_convert
+
+    # Europe/Dublin models winter as negative DST, so the first occurrence of the
+    # ambiguous hour (+01:00) is the standard-time one that pytz's is_dst=False picked.
+    assert convert("2026-10-25 01:30:00", "Europe/Dublin", "UTC") == "2026-10-25 00:30:00"
+
+    # Spring-forward gap keeps the pre-transition offset (00:00 here), as before.
+    assert convert("2026-03-29 01:30:00", "Europe/Dublin", "UTC") == "2026-03-29 01:30:00"
+
+
 def test_weekday_tool(sqlite_session: Session):
     weekday_tool = _build_builtin_tool(WeekdayTool)
     valid = list(
