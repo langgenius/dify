@@ -101,8 +101,8 @@ class TestEnumText:
 
         user_type_column = _first(c for c in columns if c["name"] == "user_type")
         sql_type = user_type_column["type"]
-        assert isinstance(user_type_column["type"], VARCHAR)
-        assert sql_type.length == 20  # pyrefly: ignore[missing-attribute]
+        assert isinstance(sql_type, VARCHAR)
+        assert sql_type.length == 20
         assert user_type_column["nullable"] is False
 
         explicit_length_column = _first(c for c in columns if c["name"] == "explicit_length")
@@ -139,13 +139,15 @@ class TestEnumText:
 
         with Session(engine_with_containers) as session:
             user = session.scalar(select(_User).where(_User.id == admin_user_id).limit(1))
-            assert user.user_type == _UserType.admin  # pyrefly: ignore[missing-attribute]
-            assert user.user_type_nullable is None  # pyrefly: ignore[missing-attribute]
+            assert user is not None
+            assert user.user_type == _UserType.admin
+            assert user.user_type_nullable is None
 
         with Session(engine_with_containers) as session:
             user = session.scalar(select(_User).where(_User.id == normal_user_id).limit(1))
-            assert user.user_type == _UserType.normal  # pyrefly: ignore[missing-attribute]
-            assert user.user_type_nullable == _UserType.normal  # pyrefly: ignore[missing-attribute]
+            assert user is not None
+            assert user.user_type == _UserType.normal
+            assert user.user_type_nullable == _UserType.normal
 
     def test_insert_invalid_values(self, engine_with_containers: Engine) -> None:
         def _session_insert_with_value(sess: Session, user_type: Any) -> None:
