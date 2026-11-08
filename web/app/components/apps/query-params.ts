@@ -48,4 +48,11 @@ export const appListQueryParsers = {
 
 export const serializeAppListQuery = createSerializer(appListQueryParsers)
 
+// The Studio list opens its creation dialogs from the URL: `create` picks the
+// dialog and `mode` the default app type for blank creation.
+export const appCreationQueryParsers = {
+  create: parseAsStringLiteral(['blank', 'template'] as const),
+  mode: parseAsStringLiteral(APP_TYPES),
+}
+
 export type AppListUrlQuery = inferParserType<typeof appListQueryParsers>

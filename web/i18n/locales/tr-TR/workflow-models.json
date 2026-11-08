@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "Gerekli sadece model çıkarımı için referans olarak kullanılır ve parametre çıktısının zorunlu doğrulaması için kullanılmaz.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "Tür",
   "nodes.parameterExtractor.advancedSetting": "Gelişmiş Ayarlar",
-  "nodes.parameterExtractor.extractParametersNotSet": "Çıkarma Parametreleri ayarlanmadı",
+  "nodes.parameterExtractor.extractParametersNotSet": "Yapılandırılmış çıkarma parametresi yok",
   "nodes.parameterExtractor.importFromTool": "Araçlardan içe aktar",
   "nodes.parameterExtractor.instruction": "Talimat",
   "nodes.parameterExtractor.instructionTip": "Parametre çıkarıcının parametreleri nasıl çıkaracağını anlamasına yardımcı olmak için ek talimatlar girin.",
