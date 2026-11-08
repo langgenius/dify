@@ -124,3 +124,16 @@ def test_parse_json_markdown_backtick_in_surrounding_prose() -> None:
 def test_parse_json_markdown_fenced_scalar_still_supported() -> None:
     """Fenced content without brackets still parses via the fence fallback."""
     assert parse_json_markdown('```json\n"hello"\n```') == "hello"
+
+
+def test_parse_and_check_json_markdown_fenced_scalar_raises_output_parser_error() -> None:
+    """A valid JSON scalar (number/null/bool) must raise OutputParserError, not TypeError."""
+    for src in ("```json\n42\n```", "```json\nnull\n```", "```json\ntrue\n```"):
+        with pytest.raises(OutputParserError):
+            parse_and_check_json_markdown(src, ["answer"])
+
+
+def test_parse_and_check_json_markdown_rejects_non_dict_object() -> None:
+    """A JSON string that merely contains an expected key as a substring must not pass."""
+    with pytest.raises(OutputParserError):
+        parse_and_check_json_markdown('```json\n"the generated prompt text"\n```', ["prompt"])

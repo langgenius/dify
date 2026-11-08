@@ -27,6 +27,7 @@ from core.rag.index_processor.constant.index_type import (
 )
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.workflow.file_reference import build_file_reference
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from models import Account as _dataset_service_dataset_Account
@@ -1917,6 +1918,76 @@ class _RetryFlagStore:
         assert timeout == 600
         assert thread_local is False
         return _RetryFlagLock(self, key)
+
+
+class TestDocumentServiceDownloads:
+    @pytest.mark.parametrize("sqlite_session", [(_dataset_service_document_Document, UploadFile)], indirect=True)
+    @pytest.mark.parametrize(
+        ("source_type", "source_info"),
+        [
+            (DataSourceType.UPLOAD_FILE, {"upload_file_id": "file-1"}),
+            (DataSourceType.LOCAL_FILE, {"real_file_id": "file-1"}),
+            (DataSourceType.LOCAL_FILE, {"related_id": "file-1"}),
+            (DataSourceType.LOCAL_FILE, {"reference": build_file_reference(record_id="file-1")}),
+        ],
+    )
+    def test_single_and_zip_download_resolve_tenant_file(
+        self,
+        sqlite_session: Session,
+        source_type: DataSourceType,
+        source_info: dict[str, str],
+    ) -> None:
+        document = make_document(data_source_type=source_type, data_source_info=json.dumps(source_info))
+        upload_file = make_upload_file(file_id="file-1")
+        sqlite_session.add_all([document, upload_file])
+        sqlite_session.flush()
+
+        with _dataset_service_document_patch(
+            "services.knowledge.dataset_service.file_helpers.get_signed_file_url", return_value="signed-url"
+        ) as get_signed_url:
+            assert (
+                _dataset_service_document_DocumentService.get_document_download_url(document, sqlite_session)
+                == "signed-url"
+            )
+        get_signed_url.assert_called_once_with(upload_file_id=upload_file.id, as_attachment=True)
+
+        files = _dataset_service_document_DocumentService._get_upload_files_by_document_id_for_zip_download(
+            dataset_id=document.dataset_id,
+            document_ids=[document.id],
+            tenant_id=document.tenant_id,
+            session=sqlite_session,
+        )
+        assert files == {document.id: upload_file}
+
+    @pytest.mark.parametrize("sqlite_session", [(_dataset_service_document_Document, UploadFile)], indirect=True)
+    @pytest.mark.parametrize(
+        ("source_type", "source_info", "file_tenant_id"),
+        [
+            (DataSourceType.LOCAL_FILE, {}, "tenant-1"),
+            (DataSourceType.LOCAL_FILE, {"real_file_id": "file-1"}, "other-tenant"),
+            (DataSourceType.NOTION_IMPORT, {"real_file_id": "file-1"}, "tenant-1"),
+        ],
+    )
+    def test_download_rejects_missing_foreign_or_non_file_source(
+        self,
+        sqlite_session: Session,
+        source_type: DataSourceType,
+        source_info: dict[str, str],
+        file_tenant_id: str,
+    ) -> None:
+        document = make_document(data_source_type=source_type, data_source_info=json.dumps(source_info))
+        sqlite_session.add_all([document, make_upload_file(file_id="file-1", tenant_id=file_tenant_id)])
+        sqlite_session.flush()
+
+        with pytest.raises(NotFound):
+            _dataset_service_document_DocumentService.get_document_download_url(document, sqlite_session)
+        with pytest.raises(NotFound):
+            _dataset_service_document_DocumentService._get_upload_files_by_document_id_for_zip_download(
+                dataset_id=document.dataset_id,
+                document_ids=[document.id],
+                tenant_id=document.tenant_id,
+                session=sqlite_session,
+            )
 
 
 class TestDatasetServiceDocumentCases:

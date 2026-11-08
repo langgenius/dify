@@ -9,6 +9,8 @@ x-shared-api-config: &shared-api-config
   env_file:
     - path: ./envs/core-services/shared.env
       required: false
+    - path: ./envs/core-services/api-worker.env
+      required: false
     - path: ./envs/security.env
       required: false
     - path: ./envs/databases/db-postgres.env
@@ -66,7 +68,9 @@ x-shared-api-config: &shared-api-config
     - path: ./envs/core-services/api.env
       required: false
     - ./.env
-    - ./envs/core-services/shared.defaults
+    - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+      required: false
+    - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/api.defaults
   networks:
     - ssrf_proxy_network
@@ -76,6 +80,8 @@ x-shared-api-config: &shared-api-config
 x-shared-worker-config: &shared-worker-config
   env_file:
     - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
       required: false
@@ -134,7 +140,9 @@ x-shared-worker-config: &shared-worker-config
     - path: ./envs/core-services/worker.env
       required: false
     - ./.env
-    - ./envs/core-services/shared.defaults
+    - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+      required: false
+    - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/worker.defaults
   networks:
     - ssrf_proxy_network
@@ -144,7 +152,7 @@ x-shared-worker-config: &shared-worker-config
 # KNOWLEDGE_FS_WORKER_IMAGE must bundle the KnowledgeFS engine at KNOWLEDGE_FS_BACKGROUND_ENGINE_PATH;
 # standard Dify API images do not, and the worker entrypoint exits without it.
 x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
-  image: ${KNOWLEDGE_FS_WORKER_IMAGE:-langgenius/dify-api:1.18.0}
+  image: ${KNOWLEDGE_FS_WORKER_IMAGE:-langgenius/dify-api:1.19.0}
   profiles:
     - knowledge-fs-celery
   restart: always
@@ -152,6 +160,8 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
   stop_grace_period: 125m
   env_file:
     - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
       required: false
@@ -168,7 +178,7 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
     - path: ./envs/core-services/worker.env
       required: false
     - ./.env
-    - ./envs/core-services/shared.defaults
+    - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/worker.defaults
   environment: &knowledge-fs-celery-environment
     MODE: worker
@@ -191,6 +201,8 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
 x-shared-worker-beat-config: &shared-worker-beat-config
   env_file:
     - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
       required: false
@@ -249,7 +261,9 @@ x-shared-worker-beat-config: &shared-worker-beat-config
     - path: ./envs/core-services/worker-beat.env
       required: false
     - ./.env
-    - ./envs/core-services/shared.defaults
+    - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+      required: false
+    - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/worker-beat.defaults
   networks:
     - ssrf_proxy_network
@@ -264,22 +278,25 @@ services:
       - sh
       - -c
       - |
-        FLAG_FILE="/app/api/storage/.init_permissions"
-        if [ -f "$${FLAG_FILE}" ]; then
-          echo "Permissions already initialized. Exiting."
-          exit 0
-        fi
-        echo "Initializing permissions for /app/api/storage"
-        chown -R 1001:1001 /app/api/storage && touch "$${FLAG_FILE}"
+        for DIR in /app/api/storage /app/plugin_daemon/storage; do
+          FLAG_FILE="$${DIR}/.init_permissions"
+          if [ -f "$${FLAG_FILE}" ]; then
+            echo "Permissions already initialized for $${DIR}."
+            continue
+          fi
+          echo "Initializing permissions for $${DIR}"
+          chown -R 1001:1001 "$${DIR}" && touch "$${FLAG_FILE}" || exit 1
+        done
         echo "Permissions initialized. Exiting."
     volumes:
       - ./volumes/app/storage:/app/api/storage
+      - ./volumes/plugin_daemon:/app/plugin_daemon/storage
     restart: "no"
 
   # API service
   api:
     <<: *shared-api-config
-    image: langgenius/dify-api:1.18.0
+    image: langgenius/dify-api:1.19.0
     environment:
       MODE: api
     depends_on:
@@ -317,7 +334,7 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-config
-    image: langgenius/dify-api:1.18.0
+    image: langgenius/dify-api:1.19.0
     profiles:
       - collaboration
     environment:
@@ -353,7 +370,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.18.0
+    image: langgenius/dify-api:1.19.0
     environment:
       MODE: worker
     depends_on:
@@ -393,7 +410,7 @@ services:
   # Keep this queue out of the generic worker so large file copies cannot starve existing jobs.
   worker_knowledge_fs_upgrade:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.18.0
+    image: langgenius/dify-api:1.19.0
     profiles:
       - knowledge-fs
     environment:
@@ -423,7 +440,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.18.0
+    image: langgenius/dify-api:1.19.0
     environment:
       MODE: beat
     depends_on:
@@ -456,7 +473,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.18.0
+    image: langgenius/dify-web:1.19.0
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -575,7 +592,7 @@ services:
   # on port 3128, which only allows agent_backend /agent-stub/ and the Dify API
   # /files/* endpoints (see ssrf_proxy/squid-agent.conf.template).
   local_sandbox:
-    image: langgenius/dify-agent-local-sandbox:1.18.0
+    image: langgenius/dify-agent-local-sandbox:1.19.0
     command: ["shellctl", "serve", "--listen", "0.0.0.0:5004", "--require-auth-token"]
     restart: always
     env_file:
@@ -601,10 +618,12 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.11-local
+    image: langgenius/dify-plugin-daemon:0.6.14-local
     restart: always
     env_file:
       - path: ./envs/core-services/shared.env
+        required: false
+      - path: ./envs/core-services/api-worker.env
         required: false
       - path: ./envs/core-services/plugin-daemon.env
         required: false
@@ -617,7 +636,7 @@ services:
       - path: ./envs/databases/redis.env
         required: false
       - ./.env
-      - ./envs/core-services/shared.defaults
+      - ./envs/core-services/api-worker.defaults
       - ./envs/core-services/plugin-daemon.defaults
     networks:
       - ssrf_proxy_network
@@ -629,6 +648,8 @@ services:
     volumes:
       - ./volumes/plugin_daemon:/app/storage
     depends_on:
+      init_permissions:
+        condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
         required: false
@@ -729,7 +750,7 @@ services:
 
   # Dify Agent backend service.
   agent_backend:
-    image: langgenius/dify-agent-backend:1.18.0
+    image: langgenius/dify-agent-backend:1.19.0
     restart: always
     env_file:
       - path: ./envs/security.env
@@ -740,6 +761,8 @@ services:
         required: false
       - ./.env
       - ./envs/core-services/dify-agent.defaults
+    environment:
+      DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
     depends_on:
       redis:
         condition: service_started
@@ -941,6 +964,10 @@ services:
     restart: always
     volumes:
       - ./volumes/qdrant:/qdrant/storage
+    ulimits:
+      nofile:
+        soft: ${QDRANT_NOFILE_SOFT:-524288}
+        hard: ${QDRANT_NOFILE_HARD:-524288}
 
   # The Couchbase vector store.
   couchbase-server:
@@ -1168,6 +1195,7 @@ services:
       - 9091:9091
     networks:
       - milvus
+      - default
 
   # Opensearch vector database
   opensearch:
@@ -1190,6 +1218,7 @@ services:
       - ./volumes/opensearch/data:/usr/share/opensearch/data
     networks:
       - opensearch-net
+      - default
 
   opensearch-dashboards:
     container_name: opensearch-dashboards

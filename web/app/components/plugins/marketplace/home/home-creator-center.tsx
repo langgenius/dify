@@ -27,7 +27,7 @@ export default function HomeCreatorCenter() {
       aria-label={label}
       className={cn(
         buttonVariants({ variant: 'ghost' }),
-        'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary [html[data-theme=dark]_&]:text-text-primary [html[data-theme=dark]_&]:hover:text-text-primary',
+        'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary dark:text-text-primary dark:hover:text-text-primary',
       )}
     >
       <span aria-hidden className="i-ri-user-star-line size-4" />

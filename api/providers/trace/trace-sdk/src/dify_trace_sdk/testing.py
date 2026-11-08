@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import grpc  # type: ignore[import-untyped]
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
+from opentelemetry.proto.common.v1.common_pb2 import AnyValue
+from opentelemetry.proto.trace.v1.trace_pb2 import Span as OtlpSpan
 
 from dify_trace_sdk.egress import EgressResponse
 from dify_trace_sdk.errors import EgressBlockedError
@@ -72,6 +75,35 @@ class RecordingEgress:
         if self._grpc_target is None:
             raise EgressBlockedError("gRPC is not available in this test")
         return grpc.insecure_channel(self._grpc_target)
+
+
+def otlp_spans(egress: RecordingEgress) -> list[OtlpSpan]:
+    """Every span ``egress`` recorded in OTLP requests, in send order."""
+    return [
+        span
+        for request in egress.requests
+        for resource_spans in ExportTraceServiceRequest.FromString(request.content or b"").resource_spans
+        for scope_spans in resource_spans.scope_spans
+        for span in scope_spans.spans
+    ]
+
+
+def _scalar(value: AnyValue) -> object:
+    match value.WhichOneof("value"):
+        case "string_value":
+            return value.string_value
+        case "int_value":
+            return value.int_value
+        case "double_value":
+            return value.double_value
+        case "bool_value":
+            return value.bool_value
+        case other:
+            raise AssertionError(f"unexpected attribute value type {other}")
+
+
+def otlp_attributes(span: OtlpSpan) -> dict[str, object]:
+    return {item.key: _scalar(item.value) for item in span.attributes}
 
 
 def response(status_code: int, body: object) -> EgressResponse:

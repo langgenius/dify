@@ -82,12 +82,19 @@ class ExternalDatasetService:
 
     @staticmethod
     def check_endpoint_and_api_key(settings: dict[str, Any]):
+        """Probe a configured endpoint and API key without changing the settings.
+
+        Require nonempty endpoint and API key values. Append ``/retrieval``
+        after removing trailing slashes, and raise ``ValueError`` for invalid
+        URLs, connection failures, or HTTP 401, 403, 404, and 502 responses.
+        Other responses, including provider argument errors, pass validation.
+        """
         if "endpoint" not in settings or not settings["endpoint"]:
             raise ValueError("endpoint is required")
         if "api_key" not in settings or not settings["api_key"]:
             raise ValueError("api_key is required")
 
-        endpoint = f"{settings['endpoint']}/retrieval"
+        endpoint = f"{settings['endpoint'].rstrip('/')}/retrieval"
         api_key = settings["api_key"]
 
         parsed_url = urlparse(endpoint)
@@ -116,7 +123,7 @@ class ExternalDatasetService:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
         if response.status_code == 404:
             raise ValueError(f"Not Found: failed to connect to the endpoint: {endpoint}")
-        if response.status_code == 403:
+        if response.status_code in {401, 403}:
             raise ValueError("Forbidden: Authorization failed with the provided api_key")
 
     @staticmethod
@@ -371,7 +378,12 @@ class ExternalDatasetService:
         *,
         session: Session,
     ) -> ExternalKnowledgeApiSetting:
-        """Resolve owned configuration into a request that outlives the read session."""
+        """Resolve tenant-owned configuration using the caller's read session.
+
+        Return a request with one slash before ``retrieval`` that outlives the
+        session, without making an HTTP call. Missing owned configuration
+        raises ``ExternalKnowledgeRetrievalError``.
+        """
         external_knowledge_binding = session.scalar(
             select(ExternalKnowledgeBindings)
             .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
@@ -408,7 +420,7 @@ class ExternalDatasetService:
         }
 
         return ExternalKnowledgeApiSetting(
-            url=f"{settings.get('endpoint')}/retrieval",
+            url=f"{settings.get('endpoint', '').rstrip('/')}/retrieval",
             request_method="post",
             headers=headers,
             params=request_params,

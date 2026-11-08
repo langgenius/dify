@@ -13,8 +13,6 @@ from controllers.console.workspace.plugin import (
     ParserAsset,
     ParserAutoUpgradeChange,
     ParserAutoUpgradeFetch,
-    ParserDynamicOptions,
-    ParserDynamicOptionsWithCredentials,
     ParserExcludePlugin,
     ParserGithubInstall,
     ParserGithubUpgrade,
@@ -39,8 +37,6 @@ from controllers.console.workspace.plugin import (
     PluginDeleteInstallTaskApi,
     PluginDeleteInstallTaskItemApi,
     PluginFetchAutoUpgradeApi,
-    PluginFetchDynamicSelectOptionsApi,
-    PluginFetchDynamicSelectOptionsWithCredentialsApi,
     PluginFetchInstallTaskApi,
     PluginFetchInstallTasksApi,
     PluginFetchManifestApi,
@@ -64,7 +60,6 @@ from controllers.console.workspace.plugin import (
     PluginUploadFromPkgApi,
     _list_hardcoded_builtin_tool_providers,
 )
-from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginCategory, PluginDeclaration, PluginEntity, PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginInstallTask
 from core.plugin.impl.exc import PluginDaemonClientSideError
@@ -338,24 +333,6 @@ def _expected_latest_plugin_cache_dump() -> dict[str, str]:
         "status": "active",
         "deprecated_reason": "",
         "alternative_plugin_id": "",
-    }
-
-
-def _dynamic_option() -> PluginParameterOption:
-    return PluginParameterOption.model_validate(
-        {
-            "value": 101,
-            "label": {"en_US": "Dataset 101"},
-            "icon": None,
-        }
-    )
-
-
-def _expected_dynamic_option_dump() -> dict[str, Any]:
-    return {
-        "value": "101",
-        "label": _expected_i18n("Dataset 101"),
-        "icon": None,
     }
 
 
@@ -757,30 +734,6 @@ class TestPluginFetchPermissionApi:
 
         assert result["install_permission"] == TenantPluginInstallPermission.ADMINS
         assert result["debug_permission"] == TenantPluginDebugPermission.EVERYONE
-
-
-class TestPluginFetchDynamicSelectOptionsApi:
-    def test_fetch_dynamic_options(self, app: Flask, user):
-        api = PluginFetchDynamicSelectOptionsApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/?plugin_id=p&provider=x&action=y&parameter=z&provider_type=tool"),
-            patch(
-                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options",
-                return_value=[_dynamic_option()],
-            ),
-        ):
-            result = method(
-                api,
-                ParserDynamicOptions.model_validate(
-                    {"plugin_id": "p", "provider": "x", "action": "y", "parameter": "z", "provider_type": "tool"}
-                ),
-                "t1",
-                user,
-            )
-
-        assert result == {"options": [_expected_dynamic_option_dump()]}
 
 
 class TestPluginReadmeApi:
@@ -1338,57 +1291,6 @@ class TestPluginUpgradeFromGithubApi:
             ),
         ):
             result = raised_error(lambda: method(api, ParserGithubUpgrade.model_validate(payload), "t1"))
-            assert result == ({"code": "plugin_error", "message": "error"}, 400)
-
-
-class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
-    def test_success(self, app: Flask, user):
-        api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "plugin_id": "p",
-            "provider": "x",
-            "action": "y",
-            "parameter": "z",
-            "credential_id": "c",
-            "credentials": {"k": "v"},
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
-                return_value=[_dynamic_option()],
-            ),
-        ):
-            result = method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
-
-        assert result == {"options": [_expected_dynamic_option_dump()]}
-
-    def test_daemon_error(self, app: Flask, user):
-        api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "plugin_id": "p",
-            "provider": "x",
-            "action": "y",
-            "parameter": "z",
-            "credential_id": "c",
-            "credentials": {"k": "v"},
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
-                side_effect=PluginDaemonClientSideError("error"),
-            ),
-        ):
-            result = raised_error(
-                lambda: method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
-            )
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 

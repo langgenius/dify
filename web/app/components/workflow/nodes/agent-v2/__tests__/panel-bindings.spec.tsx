@@ -198,7 +198,7 @@ describe('Agent panel bindings', () => {
   })
 
   it.each([
-    { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' },
     { kind: 'snippet', snippetId: 'snippet-1' },
   ] satisfies EditorResource[])(
     'copies a roster agent through the $kind endpoint and opens the new inline agent',
