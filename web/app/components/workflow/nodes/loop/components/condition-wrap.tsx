@@ -29,7 +29,7 @@ import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { VarType } from '../../../types'
+import { isNumberVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
 import { SUB_VARIABLES } from './../default'
 import ConditionAdd from './condition-add'
@@ -77,7 +77,7 @@ const ConditionWrap: FC<Props> = ({
   const getAvailableVars = useGetAvailableVars()
 
   const filterNumberVar = useCallback((varPayload: Var) => {
-    return varPayload.type === VarType.number
+    return isNumberVarType(varPayload.type)
   }, [])
 
   const subVarOptions = SUB_VARIABLES.map((item) => ({

@@ -156,6 +156,13 @@ const structTypeToVarType = (type: Type, isArray?: boolean): VarType => {
   )
 }
 
+/**
+ * Numeric editors and numeric comparisons accept both `number` and the narrower
+ * `integer` type, which tool, trigger and knowledge retrieval outputs can declare.
+ */
+export const isNumberVarType = (type: VarType) =>
+  type === VarType.number || type === VarType.integer
+
 export const varTypeToStructType = (type: VarType): Type => {
   return (
     (

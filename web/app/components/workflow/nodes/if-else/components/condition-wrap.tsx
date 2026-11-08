@@ -32,7 +32,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
-import { VarType } from '../../../types'
+import { isNumberVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { SUB_VARIABLES } from '../../constants'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
 import ConditionAdd from './condition-add'
@@ -100,7 +100,7 @@ const ConditionWrap: FC<Props> = ({
   const casesLength = cases.length
 
   const filterNumberVar = useCallback((varPayload: Var) => {
-    return varPayload.type === VarType.number
+    return isNumberVarType(varPayload.type)
   }, [])
 
   const subVarOptions = SUB_VARIABLES.map((item) => ({

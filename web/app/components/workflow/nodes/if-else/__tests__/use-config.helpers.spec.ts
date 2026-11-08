@@ -50,6 +50,7 @@ describe('if-else use-config helpers', () => {
   it('filters vars and derives file attribute flags', () => {
     expect(filterAllVars()).toBe(true)
     expect(filterNumberVars({ type: VarType.number } as never)).toBe(true)
+    expect(filterNumberVars({ type: VarType.integer } as never)).toBe(true)
     expect(filterNumberVars({ type: VarType.string } as never)).toBe(false)
     expect(
       getVarsIsVarFileAttribute(createInputs().cases, (selector) => selector[1] === 'value'),

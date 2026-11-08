@@ -144,6 +144,30 @@ describe('if-else path', () => {
       expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
     })
 
+    it('renders the numeric value editor for an integer condition', () => {
+      renderPanel(
+        createData({
+          cases: [
+            {
+              case_id: 'case-1',
+              logical_operator: LogicalOperator.and,
+              conditions: [
+                {
+                  id: 'condition-1',
+                  varType: VarType.integer,
+                  variable_selector: ['node-1', 'score'],
+                  comparison_operator: ComparisonOperator.largerThan,
+                  value: '5',
+                },
+              ],
+            },
+          ],
+        }),
+      )
+
+      expect(screen.getByRole('spinbutton')).toHaveValue(5)
+    })
+
     it('edits a constant then switches to a real numeric variable selection', async () => {
       const user = userEvent.setup()
       const onValueChange = vi.fn()
