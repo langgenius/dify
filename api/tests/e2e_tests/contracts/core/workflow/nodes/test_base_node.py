@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from typing import Never
 
 import pytest
 
@@ -23,7 +24,7 @@ class _SampleNode(Node[_SampleNodeData]):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> None:  # pyrefly: ignore[bad-override]
+    def _run(self) -> Never:
         raise NotImplementedError
 
 
@@ -118,7 +119,7 @@ def test_missing_generic_argument_raises_type_error() -> None:
             def version(cls) -> str:
                 return "1"
 
-            def _run(self) -> None:  # pyrefly: ignore[bad-override]
+            def _run(self) -> Never:
                 raise NotImplementedError
 
 

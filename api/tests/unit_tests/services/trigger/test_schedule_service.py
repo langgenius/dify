@@ -7,8 +7,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from core.workflow.nodes.trigger_schedule.entities import VisualConfig
+from core.workflow.nodes.trigger_schedule.entities import TriggerScheduleNodeData, VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
+from graphon.entities.graph_config import NodeConfigDict
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.workflow import Workflow
 from services.trigger.schedule_service import ScheduleService
@@ -520,17 +521,19 @@ def _workflow(*, graph_dict: dict[str, Any]) -> Workflow:
 
 def test_to_schedule_config_should_build_from_cron_mode() -> None:
     # Arrange
-    node_config: dict[str, Any] = {
-        "id": "node-1",
-        "data": {
-            "mode": "cron",
-            "cron_expression": "0 12 * * *",
-            "timezone": "Asia/Kolkata",
-        },
-    }
+    node_config = NodeConfigDict(
+        id="node-1",
+        data=TriggerScheduleNodeData.model_validate(
+            {
+                "mode": "cron",
+                "cron_expression": "0 12 * * *",
+                "timezone": "Asia/Kolkata",
+            }
+        ),
+    )
 
     # Act
-    result = ScheduleService.to_schedule_config(node_config=node_config)  # pyrefly: ignore[bad-argument-type]
+    result = ScheduleService.to_schedule_config(node_config=node_config)
 
     # Assert
     assert result.node_id == "node-1"
@@ -540,28 +543,33 @@ def test_to_schedule_config_should_build_from_cron_mode() -> None:
 
 def test_to_schedule_config_should_raise_for_cron_mode_without_expression() -> None:
     # Arrange
-    node_config = {"id": "node-1", "data": {"mode": "cron", "cron_expression": ""}}
+    node_config = NodeConfigDict(
+        id="node-1",
+        data=TriggerScheduleNodeData.model_validate({"mode": "cron", "cron_expression": ""}),
+    )
 
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Cron expression is required for cron mode"):
-        ScheduleService.to_schedule_config(node_config=node_config)  # pyrefly: ignore[bad-argument-type]
+        ScheduleService.to_schedule_config(node_config=node_config)
 
 
 def test_to_schedule_config_should_build_from_visual_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
-    node_config = {
-        "id": "node-1",
-        "data": {
-            "mode": "visual",
-            "frequency": "daily",
-            "visual_config": {"time": "9:30 AM"},
-            "timezone": "UTC",
-        },
-    }
+    node_config = NodeConfigDict(
+        id="node-1",
+        data=TriggerScheduleNodeData.model_validate(
+            {
+                "mode": "visual",
+                "frequency": "daily",
+                "visual_config": {"time": "9:30 AM"},
+                "timezone": "UTC",
+            }
+        ),
+    )
     monkeypatch.setattr(ScheduleService, "visual_to_cron", MagicMock(return_value="30 9 * * *"))
 
     # Act
-    result = ScheduleService.to_schedule_config(node_config=node_config)  # pyrefly: ignore[bad-argument-type]
+    result = ScheduleService.to_schedule_config(node_config=node_config)
 
     # Assert
     assert result.cron_expression == "30 9 * * *"
@@ -569,11 +577,14 @@ def test_to_schedule_config_should_build_from_visual_mode(monkeypatch: pytest.Mo
 
 def test_to_schedule_config_should_raise_for_invalid_mode() -> None:
     # Arrange
-    node_config = {"id": "node-1", "data": {"mode": "manual"}}
+    node_config = NodeConfigDict(
+        id="node-1",
+        data=TriggerScheduleNodeData.model_validate({"mode": "manual"}),
+    )
 
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Invalid schedule mode: manual"):
-        ScheduleService.to_schedule_config(node_config=node_config)  # pyrefly: ignore[bad-argument-type]
+        ScheduleService.to_schedule_config(node_config=node_config)
 
 
 def test_extract_schedule_config_should_raise_when_graph_is_empty() -> None:
