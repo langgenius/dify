@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "الزامی بودن فقط به عنوان راهنما برای استنتاج مدل استفاده می‌شود و برای اعتبارسنجی اجباری خروجی نیست.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "نوع",
   "nodes.parameterExtractor.advancedSetting": "تنظیمات پیشرفته",
-  "nodes.parameterExtractor.extractParametersNotSet": "پارامترهای استخراجی تنظیم نشده‌اند",
+  "nodes.parameterExtractor.extractParametersNotSet": "هیچ پارامتر استخراجی پیکربندی نشده است",
   "nodes.parameterExtractor.importFromTool": "وارد کردن از ابزارها",
   "nodes.parameterExtractor.instruction": "دستورالعمل",
   "nodes.parameterExtractor.instructionTip": "دستورالعمل اضافی برای کمک به مدل در استخراج دقیق‌تر پارامترها.",
