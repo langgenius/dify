@@ -405,13 +405,18 @@ class TestMetadataServiceSessionBoundaryCases:
             ("number", 2025, True),
             ("number", None, True),
             ("string", "abc", True),
+            ("number", "NaN", False),
+            ("number", "Infinity", False),
+            ("number", "1e309", False),
+            ("number", True, False),
+            ("number", False, False),
         ],
     )
     def test_number_and_time_values_must_be_numeric(
         metadata_service: MetadataService,
         sqlite_session_factory: sessionmaker[Session],
         field_type: Literal["string", "number", "time"],
-        value: str | int | None,
+        value: str | int | bool | None,
         accepted: bool,
     ) -> None:
         field = metadata_service.create_metadata(REF, MetadataArgs(type=field_type, name="year"), actor_id="actor")
@@ -419,7 +424,8 @@ class TestMetadataServiceSessionBoundaryCases:
             operation_data=[
                 DocumentMetadataOperation(
                     document_id=DOCUMENT_ID,
-                    metadata_list=[MetadataDetail(id=field.id, name="year", value=value)],
+                    # model_construct keeps booleans: MetadataDetail would coerce them to int before the repository.
+                    metadata_list=[MetadataDetail.model_construct(id=field.id, name="year", value=value)],
                     partial_update=True,
                 )
             ]

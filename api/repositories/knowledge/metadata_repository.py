@@ -1,5 +1,6 @@
 """Tenant-scoped metadata operations; each mutation owns one atomic transaction."""
 
+import math
 from collections.abc import Sequence
 
 from sqlalchemy import func, select
@@ -166,9 +167,11 @@ class SQLAlchemyMetadataRepository:
                     field = fields[value.id]
                     if field.type in ("number", "time") and value.value is not None:
                         try:
-                            float(value.value)
+                            valid = not isinstance(value.value, bool) and math.isfinite(float(value.value))
                         except (TypeError, ValueError):
-                            raise ValueError(f"Metadata '{field.name}' must be a number.") from None
+                            valid = False
+                        if not valid:
+                            raise ValueError(f"Metadata '{field.name}' must be a number.")
 
             document_ids = {operation.document_id for operation in operations}
             documents = {
