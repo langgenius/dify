@@ -59,7 +59,7 @@ def _create_app(responder: Callable[[], ResponseReturnValue] = _missing_app, *, 
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
     if use_proxy_fix:
-        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)  # type: ignore[method-assign]
     for surface, prefix in (("web", "/api"), ("console", "/console/api"), ("service", "/v1")):
         bp = Blueprint(surface, __name__, url_prefix=prefix)
         if surface == "web":

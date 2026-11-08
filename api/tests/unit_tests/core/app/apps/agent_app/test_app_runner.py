@@ -1627,3 +1627,32 @@ def test_terminal_output_to_answer_handles_plain_string_and_dict() -> None:
     assert AgentAppRunner._terminal_output_to_answer("plain text") == "plain text"
     assert AgentAppRunner._terminal_output_to_answer({"text": "hi"}) == "hi"
     assert AgentAppRunner._terminal_output_to_answer({"a": 1}) == '{"a": 1}'
+
+
+def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    contexts: list[AgentAppRuntimeBuildContext] = []
+    build = AgentAppRuntimeRequestBuilder.build
+
+    def record_build(self, context):
+        contexts.append(context)
+        return build(self, context)
+
+    monkeypatch.setattr(AgentAppRuntimeRequestBuilder, "build", record_build)
+    runner = _runner(FakeAgentBackendRunClient(), _FakeSessionStore())
+    inputs = {"name": "世界", "count": 0}
+    runner.run(
+        dify_context=_dify_ctx(),
+        agent_id="agent-1",
+        agent_config_snapshot_id="snap-1",
+        agent_soul=_soul(),
+        home_snapshot_id="home-1",
+        conversation_id="conv-1",
+        query="hello",
+        inputs=inputs,
+        message_id="msg-1",
+        model_name="gpt-4o-mini",
+        queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
+    )
+    assert len(contexts) == 1
+    assert contexts[0].inputs == inputs
+    assert contexts[0].user_query == "hello"

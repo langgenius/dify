@@ -12,9 +12,10 @@ from enums import DeploymentEdition
 from enums.account import TenantAccountRole as _workspace_member_query_service_TenantAccountRole
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.account import TenantAccountRole as _member_service_TenantAccountRole
 from models.dataset import Dataset
+from models.human_input_v2 import HumanInputContactIdentity
 from models.model import App, AppMode
 from services.account.adapters import RedisInvitationTokenStore
 from services.account_errors import AccountNotFoundError
@@ -89,28 +90,6 @@ class RecordedRoleAssignments:
 
 
 class TestMemberServiceCases:
-    @staticmethod
-    @pytest.fixture
-    def members(sqlite_session: Session) -> tuple[str, str, str]:
-        owner = Account(name="Owner", email="owner@example.com")
-        member = Account(name="Member", email="member@example.com")
-        tenant = Tenant(name="Workspace")
-        sqlite_session.add_all(
-            [
-                owner,
-                member,
-                tenant,
-                TenantAccountJoin(
-                    account_id=owner.id, tenant_id=tenant.id, role=_member_service_TenantAccountRole.OWNER, current=True
-                ),
-                TenantAccountJoin(
-                    account_id=member.id, tenant_id=tenant.id, role=_member_service_TenantAccountRole.NORMAL
-                ),
-            ]
-        )
-        sqlite_session.commit()
-        return tenant.id, owner.id, member.id
-
     @staticmethod
     @pytest.mark.parametrize("existing_member", [True, False])
     def test_join_rejects_a_second_owner_without_changing_membership(
@@ -1197,3 +1176,59 @@ class TestWorkspaceMemberQueryServiceCases:
         assert [member.id for member in result.members] == expected_ids
         assert members.workspace_ids == ["workspace-1"]
         assert roles.calls == []
+
+
+@pytest.mark.parametrize("existing_member", [True, False])
+def test_membership_write_repairs_missing_contact_identity_without_replacing_it(
+    account_domain: AccountDomain,
+    members: tuple[str, str, str],
+    sqlite_session: Session,
+    existing_member: bool,
+) -> None:
+    workspace_id, _, member_id = members
+    if not existing_member:
+        membership = sqlite_session.scalars(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == workspace_id,
+                TenantAccountJoin.account_id == member_id,
+            )
+        ).one()
+        sqlite_session.delete(membership)
+        sqlite_session.commit()
+
+    assert sqlite_session.scalar(select(HumanInputContactIdentity.id)) is None
+    account_domain.workspaces.upsert_member(
+        workspace_id=workspace_id, account_id=member_id, role=TenantAccountRole.NORMAL
+    )
+    contact_id = sqlite_session.scalars(
+        select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == member_id)
+    ).one()
+    account_domain.workspaces.upsert_member(
+        workspace_id=workspace_id, account_id=member_id, role=TenantAccountRole.EDITOR
+    )
+    assert (
+        sqlite_session.scalars(
+            select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == member_id)
+        ).one()
+        == contact_id
+    )
+
+
+@pytest.fixture
+def members(sqlite_session: Session) -> tuple[str, str, str]:
+    owner = Account(name="Owner", email="owner@example.com")
+    member = Account(name="Member", email="member@example.com")
+    tenant = Tenant(name="Workspace")
+    sqlite_session.add_all(
+        [
+            owner,
+            member,
+            tenant,
+            TenantAccountJoin(
+                account_id=owner.id, tenant_id=tenant.id, role=_member_service_TenantAccountRole.OWNER, current=True
+            ),
+            TenantAccountJoin(account_id=member.id, tenant_id=tenant.id, role=_member_service_TenantAccountRole.NORMAL),
+        ]
+    )
+    sqlite_session.commit()
+    return tenant.id, owner.id, member.id

@@ -58,19 +58,19 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
 
   return (
     <Dialog open>
-      <DialogContent className="h-[min(640px,calc(100dvh-2rem))] w-230 overflow-hidden">
+      <DialogContent className="h-160 w-230 overflow-hidden">
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          className="absolute inset-e-4 top-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onHide}
         >
           <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
         </button>
         <div className="flex size-full">
           {/* LEFT */}
-          <div className="flex h-full w-56 shrink-0 flex-col border-r border-divider-burn bg-background-sidenav-bg">
-            <div className="shrink-0 pt-5 pr-4 pb-3 pl-5 system-xl-semibold text-text-primary">
+          <div className="flex h-full w-56 shrink-0 flex-col border-e border-divider-burn bg-background-sidenav-bg">
+            <div className="shrink-0 ps-5 pe-4 pt-5 pb-3 system-xl-semibold text-text-primary">
               {t(($) => $['chatVariable.panelTitle'], { ns: 'workflow' })}
             </div>
             <div className="grow overflow-y-auto px-3 py-2">
@@ -79,7 +79,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                   key={chatVar.id}
                   type="button"
                   className={cn(
-                    'group mb-0.5 flex w-full cursor-pointer items-center rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                    'group mb-0.5 flex w-full cursor-pointer items-center rounded-lg border-none bg-transparent p-2 text-start hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
                     currentVar.id === chatVar.id && 'bg-state-base-hover',
                   )}
                   onClick={() => {
@@ -93,7 +93,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                     className={cn(
                       'i-custom-vender-line-others-bubble-x h-4 w-4',
                       cn(
-                        'mr-1 size-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700',
+                        'me-1 size-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700',
                         currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700',
                       ),
                     )}
@@ -146,7 +146,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                 {currentVar.value_type !== ChatVarType.Number &&
                   currentVar.value_type !== ChatVarType.String && (
                     <div className="flex h-full flex-col rounded-lg bg-components-input-bg-normal px-2 pb-2">
-                      <div className="flex h-7 shrink-0 items-center justify-between pt-1 pr-2 pl-3">
+                      <div className="flex h-7 shrink-0 items-center justify-between ps-3 pe-2 pt-1">
                         <div className="system-xs-semibold text-text-secondary">JSON</div>
                         <div className="flex items-center p-1">
                           <IconButton
@@ -169,7 +169,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                           </IconButton>
                         </div>
                       </div>
-                      <div className="grow pl-4">
+                      <div className="grow ps-4">
                         <CodeEditor
                           readOnly
                           noWrapper

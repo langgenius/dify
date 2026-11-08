@@ -30,7 +30,7 @@ import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
     case FormTypeEnum.secretInput:
-      return { type: 'password', autoComplete: 'new-password' }
+      return { type: 'password', autoComplete: 'off' }
     default:
       return { type: 'text' }
   }

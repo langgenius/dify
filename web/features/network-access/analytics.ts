@@ -2,6 +2,12 @@ import type {
   AppMode,
   AppNetworkAccessGroupResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  NetworkAccessGroupNameConflictError,
+  NetworkAccessNotEntitledError,
+  PaidPlanRequiredError,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import { isDefinedError, ORPCError } from '@orpc/client'
 import { trackEvent } from '@/app/components/base/amplitude'
 
 type NetworkAccessPoint = AppNetworkAccessGroupResponse['available_access_points'][number]
@@ -69,7 +75,7 @@ type IpPolicySaveProperties = IpPolicyFormContext & {
 }
 
 type AccessControlFailReason = 'network' | 'permission' | 'plan' | 'other'
-type IpPolicyFailReason = 'limit_exceeded' | 'network' | 'permission' | 'other'
+type IpPolicyFailReason = 'name_conflict' | 'network' | 'permission' | 'other'
 type SaveResult<Reason> = { result: 'success' } | { result: 'failed'; fail_reason: Reason }
 type NetworkAccessEvents = {
   access_control_entry_click: AccessControlAnalyticsContext & {
@@ -147,32 +153,15 @@ export function getProtectedAccessPoints(points: readonly NetworkAccessPoint[]) 
   return points.map((point) => ACCESS_POINTS[point])
 }
 
-async function readFailure(
-  error: unknown,
-): Promise<{ status?: number; message?: string; code?: string }> {
-  if (typeof error !== 'object' || error === null) return {}
-  const response =
-    error instanceof Response
-      ? error
-      : 'response' in error && error.response instanceof Response
-        ? error.response
-        : undefined
-  if (response) {
-    try {
-      const data: unknown = await response.clone().json()
-      return { ...(await readFailure(data)), status: response.status }
-    } catch {
-      return { status: response.status }
-    }
-  }
-  return {
-    status: 'status' in error && typeof error.status === 'number' ? error.status : undefined,
-    message: 'message' in error && typeof error.message === 'string' ? error.message : undefined,
-    code: 'code' in error && typeof error.code === 'string' ? error.code : undefined,
-  }
+function readStatus(error: unknown) {
+  if (typeof error !== 'object' || error === null) return undefined
+  if (error instanceof Response) return error.status
+  if ('response' in error && error.response instanceof Response) return error.response.status
+  return 'status' in error && typeof error.status === 'number' ? error.status : undefined
 }
 
-function isNetworkFailure(error: unknown, status?: number) {
+function isNetworkFailure(error: unknown) {
+  const status = readStatus(error)
   return (
     (status !== undefined && [408, 502, 503, 504].includes(status)) ||
     (status === undefined &&
@@ -181,26 +170,31 @@ function isNetworkFailure(error: unknown, status?: number) {
   )
 }
 
-export async function getAccessControlFailReason(error: unknown): Promise<AccessControlFailReason> {
-  const { status, message } = await readFailure(error)
-  if (
-    status === 403 &&
-    (message === 'This feature requires a paid plan.' ||
-      message === 'Network access groups are not available for this workspace.')
+type DefinedFailureCode = (
+  | NetworkAccessGroupNameConflictError
+  | NetworkAccessNotEntitledError
+  | PaidPlanRequiredError
+)['code']
+
+function hasDefinedCode(error: unknown, ...codes: DefinedFailureCode[]) {
+  return (
+    error instanceof ORPCError && isDefinedError(error) && codes.some((code) => code === error.code)
   )
-    return 'plan'
-  if (status === 401 || status === 403) return 'permission'
-  return isNetworkFailure(error, status) ? 'network' : 'other'
 }
 
-export async function getIpPolicyFailReason(error: unknown): Promise<IpPolicyFailReason> {
-  const { status, message, code } = await readFailure(error)
-  if (
-    status === 409 &&
-    (code === 'NETWORK_ACCESS_GROUP_LIMIT' ||
-      message === 'This workspace has reached the network access group limit.')
-  )
-    return 'limit_exceeded'
-  if (status === 401 || status === 403) return 'permission'
-  return isNetworkFailure(error, status) ? 'network' : 'other'
+function isPermissionFailure(error: unknown) {
+  const status = readStatus(error)
+  return status === 401 || status === 403
+}
+
+export function getAccessControlFailReason(error: unknown): AccessControlFailReason {
+  if (hasDefinedCode(error, 'paid_plan_required', 'network_access_not_entitled')) return 'plan'
+  if (isPermissionFailure(error)) return 'permission'
+  return isNetworkFailure(error) ? 'network' : 'other'
+}
+
+export function getIpPolicyFailReason(error: unknown): IpPolicyFailReason {
+  if (hasDefinedCode(error, 'network_access_group_name_conflict')) return 'name_conflict'
+  if (isPermissionFailure(error)) return 'permission'
+  return isNetworkFailure(error) ? 'network' : 'other'
 }

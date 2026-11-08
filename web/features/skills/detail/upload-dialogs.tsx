@@ -172,7 +172,7 @@ export function SkillUploadReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-150 max-w-[calc(100vw-32px)]">
+      <DialogContent className="w-150">
         <DialogHeader>
           <DialogTitle>{t(($) => $['skillManagement.detail.uploadReviewTitle'])}</DialogTitle>
           <DialogDescription>{summary}</DialogDescription>
@@ -238,7 +238,7 @@ export function SkillUploadFailuresDialog({
   const retryableItems = failedItems.filter((item) => item.failureKind !== 'conflict')
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onDismiss()}>
-      <DialogContent className="w-150 max-w-[calc(100vw-32px)]">
+      <DialogContent className="w-150">
         <DialogHeader>
           <DialogTitle>{t(($) => $['skillManagement.detail.uploadFailureTitle'])}</DialogTitle>
           <DialogDescription>

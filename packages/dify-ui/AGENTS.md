@@ -27,7 +27,7 @@ This file owns the package boundary. Read the matching contract guide below dire
 - Form structure, labels, and value ownership: [Forms]
 - Picker choice and typed values: [Selection]
 - Portals, presence, layering, and floating-surface semantics: [Overlays]
-- State styling, callbacks, composition, Tailwind integration, and border radius: [Styling]
+- State styling, callbacks, composition, Tailwind integration, theme, and border radius: [Styling]
 - Package test ownership and setup: [Testing and development]
 
 A component needs a local README only when it owns a substantial Dify-specific contract that its

@@ -10,13 +10,18 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { EditorResourceScope } from '../provider'
 import { getEditorResourceId } from '../resource'
-import { editorResourceAtom, isChatflowAtom } from '../state'
+import { editorCollaborationEnabledAtom, editorResourceAtom, isChatflowAtom } from '../state'
 import { renderEditorHook } from './render'
 
 function ResourceSummary({ label }: { label: string }) {
   const id = getEditorResourceId(useAtomValue(editorResourceAtom))
   const isChatflow = useAtomValue(isChatflowAtom)
-  return <output aria-label={label}>{`${id}:${isChatflow ? 'chatflow' : 'other'}`}</output>
+  const collaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
+  return (
+    <output
+      aria-label={label}
+    >{`${id}:${isChatflow ? 'chatflow' : 'other'}:${collaborationEnabled ? 'collaboration' : 'ordinary'}`}</output>
+  )
 }
 
 function EditorSession() {
@@ -50,7 +55,9 @@ describe('workflow editor resource scope', () => {
     seedAppDetail(queryClient, app)
     const { unmount } = render(
       <QueryClientTestProvider queryClient={queryClient}>
-        <EditorResourceScope resource={{ kind: 'app', appId: app.id, mode: 'workflow' }}>
+        <EditorResourceScope
+          resource={{ kind: 'app', appId: app.id, mode: 'workflow', collaborationEnabled: false }}
+        >
           <ResourceSummary label="Editor" />
         </EditorResourceScope>
       </QueryClientTestProvider>,
@@ -78,10 +85,19 @@ describe('workflow editor resource scope', () => {
     )
     render(
       <QueryClientTestProvider queryClient={queryClient}>
-        <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'advanced-chat' }}>
+        <EditorResourceScope
+          resource={{
+            kind: 'app',
+            appId: 'app-1',
+            mode: 'advanced-chat',
+            collaborationEnabled: true,
+          }}
+        >
           <ResourceSummary label="App" />
         </EditorResourceScope>
-        <EditorResourceScope resource={{ kind: 'app', appId: 'app-2', mode: 'workflow' }}>
+        <EditorResourceScope
+          resource={{ kind: 'app', appId: 'app-2', mode: 'workflow', collaborationEnabled: false }}
+        >
           <ResourceSummary label="Second App" />
         </EditorResourceScope>
         <EditorResourceScope resource={{ kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' }}>
@@ -92,17 +108,22 @@ describe('workflow editor resource scope', () => {
         </EditorResourceScope>
       </QueryClientTestProvider>,
     )
-    expect(screen.getByLabelText('App')).toHaveTextContent('app-1:chatflow')
-    expect(screen.getByLabelText('Second App')).toHaveTextContent('app-2:other')
-    expect(screen.getByLabelText('Pipeline')).toHaveTextContent('pipeline-1:other')
-    expect(screen.getByLabelText('Snippet')).toHaveTextContent('snippet-1:other')
+    expect(screen.getByLabelText('App')).toHaveTextContent('app-1:chatflow:collaboration')
+    expect(screen.getByLabelText('Second App')).toHaveTextContent('app-2:other:ordinary')
+    expect(screen.getByLabelText('Pipeline')).toHaveTextContent('pipeline-1:other:ordinary')
+    expect(screen.getByLabelText('Snippet')).toHaveTextContent('snippet-1:other:ordinary')
   })
 
   it('keeps the supplied resource mode independent of cached App details', () => {
     const queryClient = createConsoleQueryClient()
     const app = createAppDetailFixture({ id: 'app-1', mode: 'workflow' })
     seedAppDetail(queryClient, app)
-    const resource = { kind: 'app', appId: app.id, mode: 'advanced-chat' } as const
+    const resource = {
+      kind: 'app',
+      appId: app.id,
+      mode: 'advanced-chat',
+      collaborationEnabled: false,
+    } as const
     const { result } = renderEditorHook(() => useAtomValue(editorResourceAtom), {
       queryClient,
       resource,
@@ -126,10 +147,15 @@ describe('workflow editor resource scope', () => {
       queryClient,
       createAppDetailFixture({ id: 'app-2', mode: 'advanced-chat', name: 'Second' }),
     )
-    const view = (appId: string) => (
+    const view = (appId: string, collaborationEnabled: boolean) => (
       <QueryClientTestProvider queryClient={queryClient}>
         <EditorResourceScope
-          resource={{ kind: 'app', appId, mode: appId === 'app-1' ? 'workflow' : 'advanced-chat' }}
+          resource={{
+            kind: 'app',
+            appId,
+            mode: appId === 'app-1' ? 'workflow' : 'advanced-chat',
+            collaborationEnabled,
+          }}
         >
           <WorkflowContextProvider>
             <EditorSession />
@@ -137,7 +163,7 @@ describe('workflow editor resource scope', () => {
         </EditorResourceScope>
       </QueryClientTestProvider>
     )
-    const { rerender } = render(view('app-1'))
+    const { rerender } = render(view('app-1', false))
 
     await user.type(screen.getByRole('textbox', { name: 'Unsaved draft' }), 'Unpublished changes')
     await user.click(screen.getByRole('button', { name: 'Open preview' }))
@@ -149,14 +175,15 @@ describe('workflow editor resource scope', () => {
       )
     })
     await waitFor(() => expect(screen.getByLabelText('Editor')).toHaveTextContent('app-1:other'))
-    rerender(view('app-1'))
+    rerender(view('app-1', true))
     expect(screen.getByRole('textbox', { name: 'Unsaved draft' })).toHaveValue(
       'Unpublished changes',
     )
     expect(screen.getByRole('region', { name: 'Preview' })).toBeVisible()
+    expect(screen.getByLabelText('Editor')).toHaveTextContent('app-1:other:ordinary')
 
-    rerender(view('app-2'))
-    expect(screen.getByLabelText('Editor')).toHaveTextContent('app-2:chatflow')
+    rerender(view('app-2', true))
+    expect(screen.getByLabelText('Editor')).toHaveTextContent('app-2:chatflow:collaboration')
     expect(screen.getByRole('textbox', { name: 'Unsaved draft' })).toHaveValue('')
     expect(screen.queryByRole('region', { name: 'Preview' })).not.toBeInTheDocument()
   })

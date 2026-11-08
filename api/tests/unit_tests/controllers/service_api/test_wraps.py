@@ -873,8 +873,12 @@ class TestValidateDatasetToken:
         sqlite_session.commit()
 
         @validate_dataset_token
-        def protected_view(tenant_id):
-            return {"success": True, "tenant_id": tenant_id}
+        def protected_view(tenant_id, dataset_grant=None):
+            return {
+                "success": True,
+                "tenant_id": tenant_id,
+                "dataset_grant": dataset_grant,
+            }
 
         # Act
         with (
@@ -886,6 +890,8 @@ class TestValidateDatasetToken:
         # Assert
         assert result["success"] is True
         assert result["tenant_id"] == tenant.id
+        assert result["dataset_grant"].tenant_id == tenant.id
+        assert result["dataset_grant"].dataset_ids is None
         assert account.current_tenant_id == tenant.id
 
     @patch("controllers.service_api.wraps.user_logged_in")
@@ -936,8 +942,13 @@ class TestValidateDatasetToken:
         sqlite_session.commit()
 
         @validate_dataset_token
-        def protected_view(tenant_id, dataset_id=None):
-            return {"success": True, "tenant_id": tenant_id, "dataset_id": dataset_id}
+        def protected_view(tenant_id, dataset_id=None, dataset_grant=None):
+            return {
+                "success": True,
+                "tenant_id": tenant_id,
+                "dataset_id": dataset_id,
+                "dataset_grant": dataset_grant,
+            }
 
         with (
             app.test_request_context("/", method="GET", headers={"Authorization": f"Bearer {access_token.token}"}),
@@ -947,6 +958,7 @@ class TestValidateDatasetToken:
 
         assert result["tenant_id"] == tenant.id
         assert result["dataset_id"] == dataset.id
+        assert result["dataset_grant"].dataset_ids == frozenset({dataset.id})
         sqlite_session.expire_all()
         assert sqlite_session.get(ResourceAccessToken, access_token.id).last_used_at is not None
 

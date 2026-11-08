@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from sqlalchemy import Engine as _webhook_service_relationships_Engine
-from sqlalchemy import Table, select
+from sqlalchemy import select
 from sqlalchemy.engine import Engine as _webhook_service_Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
@@ -21,7 +21,6 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from graphon.variables.types import SegmentType
-from models.base import TypeBase
 from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
 from models.model import App, AppMode, EndUser
 from models.tools import ToolFile
@@ -677,6 +676,12 @@ class TestWebhookServiceCases:
             with pytest.raises(ValueError, match="Expected number, got str"):
                 WebhookService._validate_json_value("count", "42", "number")
 
+            # JSON true/false are bools, which Python treats as ints: still not a number
+            with pytest.raises(ValueError, match="Expected number, got bool"):
+                WebhookService._validate_json_value("count", True, "number")
+            with pytest.raises(ValueError, match="Expected number, got bool"):
+                WebhookService._validate_json_value("count", False, "number")
+
         def test_validate_json_value_bool(self):
             """Test JSON value validation for boolean type."""
             # Valid boolean
@@ -723,6 +728,10 @@ class TestWebhookServiceCases:
             # Invalid - array with non-numbers
             with pytest.raises(ValueError, match="Expected array of numbers, got list"):
                 WebhookService._validate_json_value("scores", [1, "2", 3], "array[number]")
+
+            # Invalid - array with a boolean
+            with pytest.raises(ValueError, match="Expected array of numbers, got list"):
+                WebhookService._validate_json_value("scores", [1, True, 3], "array[number]")
 
         def test_validate_json_value_array_bool(self):
             """Test JSON value validation for array[boolean] type."""
@@ -931,6 +940,25 @@ class TestWebhookServiceCases:
                 }
 
                 with pytest.raises(ValueError, match="Required body parameter missing: message"):
+                    WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+        def test_extract_and_validate_webhook_request_rejects_boolean_for_number_body_param(self) -> None:
+            app = Flask(__name__)
+            with app.test_request_context(
+                "/webhook",
+                method="POST",
+                headers={"Content-Type": "application/json"},
+                json={"amount": True},
+            ):
+                node_config = {
+                    "data": {
+                        "method": "post",
+                        "content_type": "application/json",
+                        "body": [{"name": "amount", "type": "number", "required": True}],
+                    }
+                }
+
+                with pytest.raises(ValueError, match="Parameter 'amount' validation failed: Expected number, got bool"):
                     WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
 
         def test_extract_and_validate_webhook_request_missing_required_file(self) -> None:
@@ -1273,8 +1301,6 @@ class TestWebhookServiceRelationshipsCases:
     def test_draft_sync_preserves_webhook_id_when_deleted_node_is_restored(
         monkeypatch: pytest.MonkeyPatch, sqlite_engine: _webhook_service_relationships_Engine
     ) -> None:
-        webhook_trigger_table = cast(Table, WorkflowWebhookTrigger.__table__)
-        TypeBase.metadata.create_all(sqlite_engine, tables=[webhook_trigger_table])
         session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         app = cast(
             App,
@@ -1320,8 +1346,6 @@ class TestWebhookServiceRelationshipsCases:
     def test_published_sync_removes_stale_webhook_relationships(
         monkeypatch: pytest.MonkeyPatch, sqlite_engine: _webhook_service_relationships_Engine
     ) -> None:
-        webhook_trigger_table = cast(Table, WorkflowWebhookTrigger.__table__)
-        TypeBase.metadata.create_all(sqlite_engine, tables=[webhook_trigger_table])
         session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         app = cast(
             App,

@@ -1,26 +1,15 @@
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import pytest
-from dify_trace_arize_phoenix import arize_phoenix_trace
-from dify_trace_arize_phoenix.arize_phoenix_trace import ArizePhoenixDataTrace
-from dify_trace_arize_phoenix.config import ArizeConfig
-from openinference.semconv.trace import SpanAttributes
-from opentelemetry.sdk.trace import Tracer, TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from pydantic import TypeAdapter
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
-from core.ops.entities.trace_entity import MessageTraceInfo
-from core.ops.ops_trace_manager import OpsTraceManager, TaskData
 from core.workflow.file_reference import build_file_reference
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
-from models import model as model_module
 from models.account import Account, Tenant
 from models.base import Base, TypeBase
 from models.dataset import DatasetCollectionBinding
@@ -28,10 +17,12 @@ from models.enums import (
     ApiTokenType,
     CollectionBindingType,
     ConversationFromSource,
+    ConversationStatus,
     CustomizeTokenStrategy,
     EndUserType,
     FeedbackFromSource,
     FeedbackRating,
+    MessageStatus,
 )
 from models.model import (
     AccountTrialAppRecord,
@@ -50,16 +41,12 @@ from models.model import (
     InstalledApp,
     Message,
     MessageAnnotation,
-    MessageDict,
     MessageFeedback,
     RecommendedApp,
     Site,
     load_annotation_reply_config,
 )
 from models.workflow import Workflow, WorkflowType
-from tasks import ops_trace_task
-from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_message
 
 """Regression coverage for the ``@property``→session-parameter refactor on
 ``AppAnnotationHitHistory`` accessors.
@@ -260,7 +247,7 @@ class TestAppModelsCases:
     class TestAppModelValidation:
         """Test suite for App model validation and basic operations."""
 
-        def test_app_creation_with_required_fields(self):
+        def test_app_creation_with_required_fields(self) -> None:
             """Test creating an app with all required fields."""
             # Arrange
             tenant_id = str(uuid4())
@@ -284,7 +271,7 @@ class TestAppModelsCases:
             assert app.enable_api is False
             assert app.created_by == created_by
 
-        def test_app_creation_with_optional_fields(self):
+        def test_app_creation_with_optional_fields(self) -> None:
             """Test creating an app with optional fields."""
             # Arrange & Act
             app = App(
@@ -314,7 +301,7 @@ class TestAppModelsCases:
             assert app.api_rpm == 100
             assert app.api_rph == 1000
 
-        def test_app_mode_validation(self):
+        def test_app_mode_validation(self) -> None:
             """Test app mode enum values."""
             # Assert
             expected_modes = {
@@ -329,7 +316,7 @@ class TestAppModelsCases:
             }
             assert {mode.value for mode in AppMode} == expected_modes
 
-        def test_app_mode_value_of(self):
+        def test_app_mode_value_of(self) -> None:
             """Test AppMode.value_of method."""
             # Act & Assert
             assert AppMode.value_of("chat") == AppMode.CHAT
@@ -339,13 +326,13 @@ class TestAppModelsCases:
             with pytest.raises(ValueError, match="invalid mode value"):
                 AppMode.value_of("invalid_mode")
 
-        def test_icon_type_validation(self):
+        def test_icon_type_validation(self) -> None:
             """Test icon type enum values."""
             # Assert
             assert {t.value for t in IconType} == {"image", "emoji", "link"}
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_app_desc_or_prompt_with_description(self, sqlite_session: Session):
+        def test_app_desc_or_prompt_with_description(self, sqlite_session: Session) -> None:
             """Test desc_or_prompt_with_session when description exists."""
             # Arrange
             app = App(
@@ -365,7 +352,7 @@ class TestAppModelsCases:
             assert result == "App description"
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_app_desc_or_prompt_without_description(self, sqlite_session: Session):
+        def test_app_desc_or_prompt_without_description(self, sqlite_session: Session) -> None:
             """Test desc_or_prompt property when description is empty."""
             # Arrange
             app = App(
@@ -388,7 +375,7 @@ class TestAppModelsCases:
             assert result == ""
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_app_is_agent_false_when_not_configured_as_agent(self, sqlite_session: Session):
+        def test_app_is_agent_false_when_not_configured_as_agent(self, sqlite_session: Session) -> None:
             """`is_agent_with_session` returns False when the config has no agent mode."""
             # Arrange
             app = App(
@@ -410,7 +397,7 @@ class TestAppModelsCases:
             assert result is False
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_app_is_agent_with_session_persists_mode_across_sessions(self, sqlite_session: Session):
+        def test_app_is_agent_with_session_persists_mode_across_sessions(self, sqlite_session: Session) -> None:
             app = App(
                 tenant_id=str(uuid4()),
                 name="Test App",
@@ -434,10 +421,12 @@ class TestAppModelsCases:
                 assert app.is_agent_with_session(session=migration_session) is True
 
             sqlite_session.expire_all()
-            assert sqlite_session.get(App, app.id).mode == AppMode.AGENT_CHAT
+            persisted_app = sqlite_session.get(App, app.id)
+            assert persisted_app is not None
+            assert persisted_app.mode == AppMode.AGENT_CHAT
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_app_mode_compatible_with_agent(self, sqlite_session: Session):
+        def test_app_mode_compatible_with_agent(self, sqlite_session: Session) -> None:
             """Test mode_compatible_with_agent property."""
             # Arrange
             app = App(
@@ -462,7 +451,7 @@ class TestAppModelsCases:
             assert result == AppMode.CHAT
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_app_mode_compatible_with_agent_reports_agent_chat(self, sqlite_session: Session):
+        def test_app_mode_compatible_with_agent_reports_agent_chat(self, sqlite_session: Session) -> None:
             """A CHAT app whose own config enables agent mode reports AGENT_CHAT."""
             # Arrange
             app = App(
@@ -480,7 +469,9 @@ class TestAppModelsCases:
                 app_id=app.id,
                 agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
             )
-            config.id = app.app_model_config_id
+            app_model_config_id = app.app_model_config_id
+            assert app_model_config_id is not None
+            config.id = app_model_config_id
             sqlite_session.add(config)
             sqlite_session.flush()
 
@@ -491,7 +482,7 @@ class TestAppModelsCases:
             assert result == AppMode.AGENT_CHAT
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_app_model_config_with_session_reads_through_the_caller_session(self, sqlite_session: Session):
+        def test_app_model_config_with_session_reads_through_the_caller_session(self, sqlite_session: Session) -> None:
             """`app_model_config_with_session` resolves the linked config through the caller's session."""
             # Arrange
             app = App(
@@ -520,7 +511,7 @@ class TestAppModelsCases:
                 assert result in caller_session
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_app_model_config_with_session_returns_none_when_unlinked(self, sqlite_session: Session):
+        def test_app_model_config_with_session_returns_none_when_unlinked(self, sqlite_session: Session) -> None:
             """An app without `app_model_config_id` resolves to None without querying."""
             # Arrange
             app = App(
@@ -539,7 +530,7 @@ class TestAppModelsCases:
                 assert app.app_model_config_with_session(session=unbound_session) is None
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_workflow_with_session_reads_through_the_caller_session(self, sqlite_session: Session):
+        def test_workflow_with_session_reads_through_the_caller_session(self, sqlite_session: Session) -> None:
             """`workflow_with_session` resolves the published workflow through the caller's session."""
             # Arrange
             app = App(
@@ -552,13 +543,15 @@ class TestAppModelsCases:
             )
             sqlite_session.add(app)
             sqlite_session.flush()
+            created_by = app.created_by
+            assert created_by is not None
             workflow = Workflow(
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 type=WorkflowType.WORKFLOW,
                 version="1",
                 graph=json.dumps({"nodes": [], "edges": []}),
-                created_by=app.created_by,
+                created_by=created_by,
             )
             workflow._features = "{}"
             sqlite_session.add(workflow)
@@ -576,7 +569,7 @@ class TestAppModelsCases:
                 assert result in caller_session
 
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-        def test_workflow_with_session_returns_none_when_unpublished(self, sqlite_session: Session):
+        def test_workflow_with_session_returns_none_when_unpublished(self, sqlite_session: Session) -> None:
             """An app without `workflow_id` resolves to None without querying."""
             # Arrange
             app = App(
@@ -597,7 +590,7 @@ class TestAppModelsCases:
         @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
         def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(
             self, sqlite_session: Session
-        ):
+        ) -> None:
             """Plugin-backed built-in tools are checked through core PluginService."""
             # Arrange
             app = App(
@@ -649,7 +642,7 @@ class TestAppModelsCases:
     class TestAppModelConfig:
         """Test suite for AppModelConfig model."""
 
-        def test_legacy_dataset_configs_default_retrieval_model_without_dropping_settings(self):
+        def test_legacy_dataset_configs_default_retrieval_model_without_dropping_settings(self) -> None:
             config = AppModelConfig(
                 app_id=str(uuid4()),
                 dataset_configs=json.dumps({"reranking_enable": True, "top_k": 8}),
@@ -661,7 +654,7 @@ class TestAppModelsCases:
                 "top_k": 8,
             }
 
-        def test_app_model_config_creation(self):
+        def test_app_model_config_creation(self) -> None:
             """Test creating an AppModelConfig."""
             # Arrange
             app_id = str(uuid4())
@@ -681,7 +674,7 @@ class TestAppModelsCases:
             assert config.model_id == "gpt-4"
             assert config.created_by == created_by
 
-        def test_app_model_config_with_configs_json(self):
+        def test_app_model_config_with_configs_json(self) -> None:
             """Test AppModelConfig with JSON configs."""
             # Arrange
             configs = {"temperature": 0.7, "max_tokens": 1000}
@@ -698,7 +691,7 @@ class TestAppModelsCases:
             # Assert
             assert config.configs == configs
 
-        def test_app_model_config_model_dict_property(self):
+        def test_app_model_config_model_dict_property(self) -> None:
             """Test model_dict property."""
             # Arrange
             model_data = {"provider": "openai", "name": "gpt-4"}
@@ -716,7 +709,7 @@ class TestAppModelsCases:
             # Assert
             assert result == model_data
 
-        def test_app_model_config_model_dict_empty(self):
+        def test_app_model_config_model_dict_empty(self) -> None:
             """Test model_dict property when model is None."""
             # Arrange
             config = AppModelConfig(
@@ -733,7 +726,7 @@ class TestAppModelsCases:
             # Assert
             assert result == {}
 
-        def test_app_model_config_suggested_questions_list(self):
+        def test_app_model_config_suggested_questions_list(self) -> None:
             """Test suggested_questions_list property."""
             # Arrange
             questions = ["What can you do?", "How does this work?"]
@@ -751,7 +744,7 @@ class TestAppModelsCases:
             # Assert
             assert result == questions
 
-        def test_to_dict_uses_injected_annotation_reply(self):
+        def test_to_dict_uses_injected_annotation_reply(self) -> None:
             config = AppModelConfig(app_id=str(uuid4()))
             annotation_reply: AnnotationReplyConfig = {"enabled": False}
 
@@ -761,7 +754,9 @@ class TestAppModelsCases:
 
     class TestAnnotationReplyConfigLoader:
         @pytest.mark.parametrize("sqlite_session", [(AppAnnotationSetting, DatasetCollectionBinding)], indirect=True)
-        def test_load_annotation_reply_config_returns_disabled_when_setting_missing(self, sqlite_session: Session):
+        def test_load_annotation_reply_config_returns_disabled_when_setting_missing(
+            self, sqlite_session: Session
+        ) -> None:
             binding = DatasetCollectionBinding(
                 provider_name="decoy-provider",
                 model_name="decoy-model",
@@ -786,7 +781,7 @@ class TestAppModelsCases:
             assert result == {"enabled": False}
 
         @pytest.mark.parametrize("sqlite_session", [(AppAnnotationSetting, DatasetCollectionBinding)], indirect=True)
-        def test_load_annotation_reply_config_returns_embedding_model(self, sqlite_session: Session):
+        def test_load_annotation_reply_config_returns_embedding_model(self, sqlite_session: Session) -> None:
             collection_binding = DatasetCollectionBinding(
                 provider_name="provider",
                 model_name="embedding",
@@ -818,7 +813,7 @@ class TestAppModelsCases:
             }
 
         @pytest.mark.parametrize("sqlite_session", [(AppAnnotationSetting, DatasetCollectionBinding)], indirect=True)
-        def test_load_annotation_reply_config_raises_when_binding_missing(self, sqlite_session: Session):
+        def test_load_annotation_reply_config_raises_when_binding_missing(self, sqlite_session: Session) -> None:
             sqlite_session.add(
                 AppAnnotationSetting(
                     app_id="app-1",
@@ -859,7 +854,7 @@ class TestAppModelsCases:
 
             assert conversation.app(session=sqlite_session) is None
 
-        def test_conversation_creation_with_required_fields(self):
+        def test_conversation_creation_with_required_fields(self) -> None:
             """Test creating a conversation with required fields."""
             # Arrange
             app_id = str(uuid4())
@@ -870,7 +865,7 @@ class TestAppModelsCases:
                 app_id=app_id,
                 mode=AppMode.CHAT,
                 name="Test Conversation",
-                status="normal",
+                status=ConversationStatus.NORMAL,
                 from_source=ConversationFromSource.API,
                 from_end_user_id=from_end_user_id,
             )
@@ -883,7 +878,7 @@ class TestAppModelsCases:
             assert conversation.from_source == "api"
             assert conversation.from_end_user_id == from_end_user_id
 
-        def test_conversation_with_inputs(self, sqlite_session: Session):
+        def test_conversation_with_inputs(self, sqlite_session: Session) -> None:
             """Test conversation inputs round-trip through the session-aware accessor."""
             # Arrange
             inputs = {"query": "Hello", "context": "test"}
@@ -891,7 +886,7 @@ class TestAppModelsCases:
                 app_id=str(uuid4()),
                 mode=AppMode.CHAT,
                 name="Test Conversation",
-                status="normal",
+                status=ConversationStatus.NORMAL,
                 from_source=ConversationFromSource.API,
                 from_end_user_id=str(uuid4()),
             )
@@ -903,21 +898,21 @@ class TestAppModelsCases:
             # Assert
             assert result == inputs
 
-        def test_conversation_inputs_is_write_only(self):
+        def test_conversation_inputs_is_write_only(self) -> None:
             """Reading conversation.inputs must fail loudly; reads go through inputs_with_session."""
             conversation = Conversation(app_id=str(uuid4()), _inputs={})
 
             with pytest.raises(AttributeError, match="no getter"):
                 _ = conversation.inputs
 
-        def test_conversation_inputs_setter(self):
+        def test_conversation_inputs_setter(self) -> None:
             """Test conversation inputs setter."""
             # Arrange
             conversation = Conversation(
                 app_id=str(uuid4()),
                 mode=AppMode.CHAT,
                 name="Test Conversation",
-                status="normal",
+                status=ConversationStatus.NORMAL,
                 from_source=ConversationFromSource.API,
                 from_end_user_id=str(uuid4()),
             )
@@ -930,14 +925,14 @@ class TestAppModelsCases:
             assert conversation._inputs == inputs
 
         @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
-        def test_conversation_summary_or_query_with_summary(self, sqlite_session: Session):
+        def test_conversation_summary_or_query_with_summary(self, sqlite_session: Session) -> None:
             """Test summary_or_query_with_session when summary exists."""
             # Arrange
             conversation = Conversation(
                 app_id=str(uuid4()),
                 mode=AppMode.CHAT,
                 name="Test Conversation",
-                status="normal",
+                status=ConversationStatus.NORMAL,
                 from_source=ConversationFromSource.API,
                 from_end_user_id=str(uuid4()),
                 summary="Test summary",
@@ -950,14 +945,14 @@ class TestAppModelsCases:
             assert result == "Test summary"
 
         @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
-        def test_conversation_summary_or_query_without_summary(self, sqlite_session: Session):
+        def test_conversation_summary_or_query_without_summary(self, sqlite_session: Session) -> None:
             """Test summary_or_query_with_session when summary is empty."""
             # Arrange
             conversation = Conversation(
                 app_id=str(uuid4()),
                 mode=AppMode.CHAT,
                 name="Test Conversation",
-                status="normal",
+                status=ConversationStatus.NORMAL,
                 from_source=ConversationFromSource.API,
                 from_end_user_id=str(uuid4()),
                 summary=None,
@@ -1003,7 +998,7 @@ class TestAppModelsCases:
         @pytest.mark.parametrize(
             "sqlite_session", [(Conversation, AppModelConfig, AppAnnotationSetting)], indirect=True
         )
-        def test_model_config_uses_caller_session_for_annotation_reply(self, sqlite_session: Session):
+        def test_model_config_uses_caller_session_for_annotation_reply(self, sqlite_session: Session) -> None:
             app_id = str(uuid4())
             app_model_config = AppModelConfig(app_id=app_id, pre_prompt="Persisted prompt")
             sqlite_session.add(app_model_config)
@@ -1013,7 +1008,7 @@ class TestAppModelsCases:
                 app_model_config_id=app_model_config.id,
                 mode=AppMode.CHAT,
                 name="Test Conversation",
-                status="normal",
+                status=ConversationStatus.NORMAL,
                 from_source=ConversationFromSource.API,
                 from_end_user_id=str(uuid4()),
                 model_id="model-1",
@@ -1031,13 +1026,13 @@ class TestAppModelsCases:
             assert result["provider"] == "provider-1"
 
         @pytest.mark.parametrize("sqlite_session", [(Conversation, AppAnnotationSetting)], indirect=True)
-        def test_override_model_config_uses_caller_session_for_annotation_reply(self, sqlite_session: Session):
+        def test_override_model_config_uses_caller_session_for_annotation_reply(self, sqlite_session: Session) -> None:
             app_id = str(uuid4())
             conversation = Conversation(
                 app_id=app_id,
                 mode=AppMode.CHAT,
                 name="Test Conversation",
-                status="normal",
+                status=ConversationStatus.NORMAL,
                 from_source=ConversationFromSource.API,
                 from_end_user_id=str(uuid4()),
                 override_model_configs=json.dumps({"model": {"provider": "openai", "name": "gpt-4"}}),
@@ -1055,14 +1050,14 @@ class TestAppModelsCases:
             assert result["model_id"] == "model-1"
             assert result["provider"] == "provider-1"
 
-        def test_conversation_in_debug_mode(self):
+        def test_conversation_in_debug_mode(self) -> None:
             """Test in_debug_mode property."""
             # Arrange
             conversation = Conversation(
                 app_id=str(uuid4()),
                 mode=AppMode.CHAT,
                 name="Test Conversation",
-                status="normal",
+                status=ConversationStatus.NORMAL,
                 from_source=ConversationFromSource.API,
                 from_end_user_id=str(uuid4()),
                 override_model_configs='{"model": "gpt-4"}',
@@ -1075,7 +1070,7 @@ class TestAppModelsCases:
             assert result is True
 
         @pytest.mark.parametrize("sqlite_session", [(Conversation,)], indirect=True)
-        def test_conversation_to_dict_serialization(self, sqlite_session: Session):
+        def test_conversation_to_dict_serialization(self, sqlite_session: Session) -> None:
             """Test conversation to_dict method."""
             # Arrange
             app_id = str(uuid4())
@@ -1084,7 +1079,7 @@ class TestAppModelsCases:
                 app_id=app_id,
                 mode=AppMode.CHAT,
                 name="Test Conversation",
-                status="normal",
+                status=ConversationStatus.NORMAL,
                 from_source=ConversationFromSource.API,
                 from_end_user_id=from_end_user_id,
                 dialogue_count=5,
@@ -1109,7 +1104,7 @@ class TestAppModelsCases:
     class TestMessageModel:
         """Test suite for Message model and App-Message relationships."""
 
-        def test_message_creation_with_required_fields(self):
+        def test_message_creation_with_required_fields(self) -> None:
             """Test creating a message with required fields."""
             # Arrange
             app_id = str(uuid4())
@@ -1136,7 +1131,7 @@ class TestAppModelsCases:
             assert message.currency == "USD"
             assert message.from_source == "api"
 
-        def test_message_with_inputs(self, sqlite_session: Session):
+        def test_message_with_inputs(self, sqlite_session: Session) -> None:
             """Test message inputs round-trip through the session-aware accessor."""
             # Arrange
             inputs = {"query": "Hello", "context": "test"}
@@ -1159,14 +1154,14 @@ class TestAppModelsCases:
             # Assert
             assert result == inputs
 
-        def test_message_inputs_is_write_only(self):
+        def test_message_inputs_is_write_only(self) -> None:
             """Reading message.inputs must fail loudly; reads go through inputs_with_session."""
             message = Message(app_id=str(uuid4()), _inputs={})
 
             with pytest.raises(AttributeError, match="no getter"):
                 _ = message.inputs
 
-        def test_message_inputs_setter(self):
+        def test_message_inputs_setter(self) -> None:
             """Test message inputs setter."""
             # Arrange
             message = Message(
@@ -1188,7 +1183,7 @@ class TestAppModelsCases:
             # Assert
             assert message._inputs == inputs
 
-        def test_message_in_debug_mode(self):
+        def test_message_in_debug_mode(self) -> None:
             """Test message in_debug_mode property."""
             # Arrange
             message = Message(
@@ -1210,7 +1205,7 @@ class TestAppModelsCases:
             # Assert
             assert result is True
 
-        def test_message_metadata_dict_property(self):
+        def test_message_metadata_dict_property(self) -> None:
             """Test message_metadata_dict property."""
             # Arrange
             metadata = {"retriever_resources": ["doc1", "doc2"], "usage": {"tokens": 100}}
@@ -1233,7 +1228,7 @@ class TestAppModelsCases:
             # Assert
             assert result == metadata
 
-        def test_message_metadata_dict_empty(self):
+        def test_message_metadata_dict_empty(self) -> None:
             """Test message_metadata_dict when metadata is None."""
             # Arrange
             message = Message(
@@ -1255,7 +1250,7 @@ class TestAppModelsCases:
             # Assert
             assert result == {}
 
-        def test_retriever_resources_missing_key_returns_empty_list(self):
+        def test_retriever_resources_missing_key_returns_empty_list(self) -> None:
             """message_metadata present without retriever_resources must yield [].
 
             Regression for #41688: web GET /messages failed Pydantic list validation
@@ -1276,7 +1271,7 @@ class TestAppModelsCases:
 
             assert message.retriever_resources == []
 
-        def test_retriever_resources_none_metadata_returns_empty_list(self):
+        def test_retriever_resources_none_metadata_returns_empty_list(self) -> None:
             """No message_metadata should still expose retriever_resources as []."""
             message = Message(
                 app_id=str(uuid4()),
@@ -1293,7 +1288,7 @@ class TestAppModelsCases:
 
             assert message.retriever_resources == []
 
-        def test_retriever_resources_present_passthrough(self):
+        def test_retriever_resources_present_passthrough(self) -> None:
             """Existing retriever_resources list should be returned unchanged."""
             resources = [{"dataset_id": "ds-1", "document_id": "doc-1"}]
             message = Message(
@@ -1311,7 +1306,7 @@ class TestAppModelsCases:
 
             assert message.retriever_resources == resources
 
-        def test_retriever_resources_explicit_null_returns_empty_list(self):
+        def test_retriever_resources_explicit_null_returns_empty_list(self) -> None:
             """Explicit retriever_resources: null must yield [], not None.
 
             WebMessageListItem.retriever_resources is list[RetrieverResource].
@@ -1333,7 +1328,7 @@ class TestAppModelsCases:
             assert message.retriever_resources == []
 
         @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
-        def test_message_to_dict_serialization(self, sqlite_session: Session):
+        def test_message_to_dict_serialization(self, sqlite_session: Session) -> None:
             """Test message to_dict method."""
             # Arrange
             app_id = str(uuid4())
@@ -1351,7 +1346,7 @@ class TestAppModelsCases:
                 total_price=Decimal("0.0003"),
                 currency="USD",
                 from_source=ConversationFromSource.API,
-                status="normal",
+                status=MessageStatus.NORMAL,
                 id=str(uuid4()),
                 _inputs={"query": "test"},
             )
@@ -1373,7 +1368,7 @@ class TestAppModelsCases:
             assert "created_at" in result
             assert "updated_at" in result
 
-        def test_message_from_dict_deserialization(self):
+        def test_message_from_dict_deserialization(self) -> None:
             """Test message from_dict method."""
             # Arrange
             message_id = str(uuid4())
@@ -1414,7 +1409,7 @@ class TestAppModelsCases:
     class TestMessageAnnotation:
         """Test suite for MessageAnnotation and annotation relationships."""
 
-        def test_message_annotation_creation(self):
+        def test_message_annotation_creation(self) -> None:
             """Test creating a message annotation."""
             # Arrange
             app_id = str(uuid4())
@@ -1440,7 +1435,7 @@ class TestAppModelsCases:
             assert annotation.content == "AI stands for Artificial Intelligence."
             assert annotation.account_id == account_id
 
-        def test_message_annotation_without_message_id(self):
+        def test_message_annotation_without_message_id(self) -> None:
             """Test creating annotation without message_id."""
             # Arrange
             app_id = str(uuid4())
@@ -1463,7 +1458,7 @@ class TestAppModelsCases:
             assert annotation.question == "What is AI?"
             assert annotation.content == "AI stands for Artificial Intelligence."
 
-        def test_message_annotation_hit_count_default(self):
+        def test_message_annotation_hit_count_default(self) -> None:
             """Test annotation hit_count default value."""
             # Arrange
             annotation = MessageAnnotation(
@@ -1482,7 +1477,7 @@ class TestAppModelsCases:
     class TestAppAnnotationSetting:
         """Test suite for AppAnnotationSetting model."""
 
-        def test_app_annotation_setting_creation(self):
+        def test_app_annotation_setting_creation(self) -> None:
             """Test creating an app annotation setting."""
             # Arrange
             app_id = str(uuid4())
@@ -1506,7 +1501,7 @@ class TestAppModelsCases:
             assert setting.created_user_id == created_user_id
             assert setting.updated_user_id == updated_user_id
 
-        def test_app_annotation_setting_score_threshold_validation(self):
+        def test_app_annotation_setting_score_threshold_validation(self) -> None:
             """Test score threshold values."""
             # Arrange & Act
             setting_high = AppAnnotationSetting(
@@ -1531,7 +1526,7 @@ class TestAppModelsCases:
     class TestAppAnnotationHitHistory:
         """Test suite for AppAnnotationHitHistory model."""
 
-        def test_app_annotation_hit_history_creation(self):
+        def test_app_annotation_hit_history_creation(self) -> None:
             """Test creating an annotation hit history."""
             # Arrange
             app_id = str(uuid4())
@@ -1563,7 +1558,7 @@ class TestAppModelsCases:
             assert history.annotation_question == "What is AI?"
             assert history.annotation_content == "AI stands for Artificial Intelligence."
 
-        def test_app_annotation_hit_history_score_values(self):
+        def test_app_annotation_hit_history_score_values(self) -> None:
             """Test annotation hit history with different score values."""
             # Arrange & Act
             history_high = AppAnnotationHitHistory(
@@ -1596,29 +1591,29 @@ class TestAppModelsCases:
     class TestSiteModel:
         """Test suite for Site model."""
 
-        def test_site_core_bulk_insert_generates_ids(self, sqlite_session: Session):
-            """Core bulk inserts generate an ID for every site row."""
+        def test_site_core_bulk_insert_generates_ids(self, sqlite_session: Session) -> None:
+            """Bulk inserts generate an ID for every site row."""
             app_ids = [str(uuid4()), str(uuid4())]
 
-            sqlite_session.execute(
-                Site.__table__.insert(),
+            sqlite_session.add_all(
                 [
-                    {
-                        "app_id": app_id,
-                        "title": f"Site {index}",
-                        "default_language": "en-US",
-                        "customize_token_strategy": CustomizeTokenStrategy.UUID,
-                    }
+                    Site(
+                        app_id=app_id,
+                        title=f"Site {index}",
+                        default_language="en-US",
+                        customize_token_strategy=CustomizeTokenStrategy.UUID,
+                    )
                     for index, app_id in enumerate(app_ids)
-                ],
+                ]
             )
+            sqlite_session.commit()
 
             site_ids = sqlite_session.scalars(select(Site.id).where(Site.app_id.in_(app_ids))).all()
             assert len(site_ids) == len(app_ids)
             assert len(set(site_ids)) == len(app_ids)
             assert all(UUID(site_id).version == 4 for site_id in site_ids)
 
-        def test_site_creation_with_required_fields(self):
+        def test_site_creation_with_required_fields(self) -> None:
             """Test creating a site with required fields."""
             # Arrange
             app_id = str(uuid4())
@@ -1637,7 +1632,7 @@ class TestAppModelsCases:
             assert site.default_language == "en-US"
             assert site.customize_token_strategy == CustomizeTokenStrategy.UUID
 
-        def test_site_creation_with_optional_fields(self):
+        def test_site_creation_with_optional_fields(self) -> None:
             """Test creating a site with optional fields."""
             # Arrange & Act
             site = Site(
@@ -1661,7 +1656,7 @@ class TestAppModelsCases:
             assert site.copyright == "© 2024 Test"
             assert site.privacy_policy == "https://example.com/privacy"
 
-        def test_site_custom_disclaimer_setter(self):
+        def test_site_custom_disclaimer_setter(self) -> None:
             """Test site custom_disclaimer setter."""
             # Arrange
             site = Site(
@@ -1677,7 +1672,7 @@ class TestAppModelsCases:
             # Assert
             assert site.custom_disclaimer == "This is a test disclaimer"
 
-        def test_site_custom_disclaimer_exceeds_limit(self):
+        def test_site_custom_disclaimer_exceeds_limit(self) -> None:
             """Test site custom_disclaimer with excessive length."""
             # Arrange
             site = Site(
@@ -1695,7 +1690,7 @@ class TestAppModelsCases:
     class TestModelIntegration:
         """Test suite for model integration scenarios."""
 
-        def test_complete_app_conversation_message_hierarchy(self):
+        def test_complete_app_conversation_message_hierarchy(self) -> None:
             """Test complete hierarchy from app to message."""
             # Arrange
             tenant_id = str(uuid4())
@@ -1720,7 +1715,7 @@ class TestAppModelsCases:
                 app_id=app_id,
                 mode=AppMode.CHAT,
                 name="Test Conversation",
-                status="normal",
+                status=ConversationStatus.NORMAL,
                 from_source=ConversationFromSource.API,
                 from_end_user_id=str(uuid4()),
             )
@@ -1748,7 +1743,7 @@ class TestAppModelsCases:
             assert app.mode == AppMode.CHAT
             assert conversation.mode == AppMode.CHAT
 
-        def test_app_with_annotation_setting(self):
+        def test_app_with_annotation_setting(self) -> None:
             """Test app with annotation setting."""
             # Arrange
             app_id = str(uuid4())
@@ -1779,7 +1774,7 @@ class TestAppModelsCases:
             assert setting.app_id == app.id
             assert setting.score_threshold == 0.85
 
-        def test_message_with_annotation(self):
+        def test_message_with_annotation(self) -> None:
             """Test message with annotation."""
             # Arrange
             app_id = str(uuid4())
@@ -1816,7 +1811,7 @@ class TestAppModelsCases:
             assert annotation.conversation_id == message.conversation_id
             assert annotation.message_id == message.id
 
-        def test_annotation_hit_history_tracking(self):
+        def test_annotation_hit_history_tracking(self) -> None:
             """Test annotation hit history tracking."""
             # Arrange
             app_id = str(uuid4())
@@ -1853,7 +1848,7 @@ class TestAppModelsCases:
             assert history.annotation_id == annotation.id
             assert history.score == 0.92
 
-        def test_app_with_site(self):
+        def test_app_with_site(self) -> None:
             """Test app with site."""
             # Arrange
             app_id = str(uuid4())
@@ -2086,148 +2081,6 @@ class TestMessageAnnotationSessionAccessorsCases:
             assert annotation.annotation_create_account_with_session(session=sqlite_session) is None
 
 
-"""Keep the persisted provider through private trace JSON and the real consumer."""
-
-
-_MESSAGE = TypeAdapter(MessageDict)
-
-
-class TestMessageTraceSerializationCases:
-    @staticmethod
-    @pytest.fixture
-    def persisted_message(sqlite_session: Session) -> Message:
-        now = datetime(2026, 10, 20, tzinfo=UTC)
-        message = make_message(
-            message_id=str(uuid4()),
-            app_id=str(uuid4()),
-            conversation_id=str(uuid4()),
-            inputs={},
-            query="Synthetic input",
-            message={},
-            answer="Synthetic output",
-            message_unit_price=Decimal(0),
-            answer_unit_price=Decimal(0),
-            total_price=Decimal(0),
-            currency="USD",
-            from_source=ConversationFromSource.CONSOLE,
-            created_at=now,
-            updated_at=now + timedelta(seconds=1),
-        )
-        message.model_provider = "langgenius/openai/openai"
-        message.model_id = "gpt-4o-mini"
-        sqlite_session.add(message)
-        sqlite_session.commit()
-        sqlite_session.expire_all()
-        restored = sqlite_session.get(Message, message.id)
-        assert restored is not None
-        return restored
-
-    @staticmethod
-    @pytest.mark.parametrize("provider", ["langgenius/openai/openai", "Custom/Provider:Exact", None])
-    def test_message_provider_survives_real_json_round_trip(
-        sqlite_session: Session,
-        persisted_message: Message,
-        provider: str | None,
-    ) -> None:
-        persisted_message.model_provider = provider
-        sqlite_session.commit()
-        sqlite_session.refresh(persisted_message)
-        wire = json.dumps(persisted_message.to_dict(session=sqlite_session), default=str)
-        payload = _MESSAGE.validate_json(wire)
-        restored = Message.from_dict(payload)
-        assert "model_provider" in payload
-        assert restored.model_provider == provider
-        assert restored.model_id == persisted_message.model_id
-        assert restored.id == persisted_message.id
-
-    @staticmethod
-    @pytest.mark.parametrize("shape", ["current", "legacy_missing", "explicit_null"])
-    def test_private_trace_task_preserves_provider_into_real_arize_span(
-        sqlite_session: Session,
-        persisted_message: Message,
-        monkeypatch: pytest.MonkeyPatch,
-        shape: str,
-    ) -> None:
-        message_data = persisted_message.to_dict(session=sqlite_session)
-        if shape == "legacy_missing":
-            message_data.pop("model_provider", None)
-        elif shape == "explicit_null":
-            message_data["model_provider"] = None
-        start = datetime(2026, 10, 20, tzinfo=UTC)
-        info = MessageTraceInfo(
-            message_id=persisted_message.id,
-            message_data=message_data,
-            conversation_model="chat",
-            conversation_mode="chat",
-            inputs={"query": "Synthetic input"},
-            outputs="Synthetic output",
-            start_time=start,
-            end_time=start + timedelta(seconds=1),
-            metadata={},
-            message_tokens=1,
-            answer_tokens=1,
-            total_tokens=2,
-        )
-        encoded = (
-            TaskData(app_id=persisted_message.app_id, trace_info_type="MessageTraceInfo", trace_info=info.model_dump())
-            .model_dump_json()
-            .encode()
-        )
-        exporter = InMemorySpanExporter()
-        provider = TracerProvider()
-        processor = SimpleSpanProcessor(exporter)
-        provider.add_span_processor(processor)
-
-        def setup(_config: ArizeConfig) -> tuple[Tracer, SimpleSpanProcessor]:
-            tracer = provider.get_tracer("message-provider-serialization")
-            assert isinstance(tracer, Tracer)
-            return tracer, processor
-
-        monkeypatch.setattr(arize_phoenix_trace, "setup_tracer", setup)
-        instance = ArizePhoenixDataTrace(ArizeConfig(api_key="unused-synthetic-key", space_id="synthetic-space"))
-        paths: list[str] = []
-        deleted: list[str] = []
-
-        def load(path: str) -> bytes:
-            paths.append(path)
-            return encoded
-
-        def delete(path: str) -> None:
-            deleted.append(path)
-
-        def lookup(app_id: str) -> ArizePhoenixDataTrace:
-            assert app_id == persisted_message.app_id
-            return instance
-
-        def failed(_key: str) -> None:
-            pytest.fail("The real trace consumer must not hide a failed dispatch")
-
-        apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
-        monkeypatch.setattr(ops_trace_task.storage, "load", load)
-        monkeypatch.setattr(ops_trace_task.storage, "delete", delete)
-        monkeypatch.setattr(ops_trace_task.redis_client, "incr", failed)
-        monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lookup)
-        monkeypatch.setattr("extensions.ext_enterprise_telemetry.is_enabled", lambda: False)
-        try:
-            ops_trace_task.process_trace_tasks.apply(
-                args=({"app_id": persisted_message.app_id, "file_id": "owned-synthetic"},), throw=True
-            ).get()
-            spans = exporter.get_finished_spans()
-            llm = [span for span in spans if span.name == "llm"]
-            assert len(llm) == 1
-            attributes = llm[0].attributes
-            assert attributes is not None
-            assert attributes[SpanAttributes.LLM_MODEL_NAME] == persisted_message.model_id
-            if shape == "current":
-                assert attributes[SpanAttributes.LLM_PROVIDER] == persisted_message.model_provider
-            else:
-                assert SpanAttributes.LLM_PROVIDER not in attributes
-            assert paths == [f"ops_trace/{persisted_message.app_id}/owned-synthetic.json"]
-            assert deleted == paths
-        finally:
-            provider.shutdown()
-
-
 def _wrap_md(url: str) -> str:
     """
     Wrap a raw URL into the markdown that re_sign_file_url_answer expects:
@@ -2260,8 +2113,7 @@ class TestModelCases:
         Patch file_helpers.get_signed_file_url to a deterministic stub.
         """
         monkeypatch.setattr(
-            model_module.file_helpers,
-            "get_signed_file_url",
+            "graphon.file.helpers.get_signed_file_url",
             lambda file_id: f"https://signed.example/{file_id}",
         )
 

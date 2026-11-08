@@ -157,6 +157,7 @@ async def test_native_plugin_tool_converts_file_inputs(value, download):
         if request.url.path.endswith("/download/file/request"):
             assert download
             assert payload["file"] == {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}
+            assert payload["for_external"] is False
             return httpx.Response(
                 200,
                 json={
@@ -205,3 +206,81 @@ async def test_model_assembly_reads_config_reference_and_borrows_shared_client()
         assert model.model_name == "demo"
         assert model.provider.client.http_client is client
         assert model.provider.name == "DifyAPI/langgenius/openai"
+
+
+def _single_tool_config() -> tools_layer.Config:
+    return tools_layer.Config(
+        tools=[
+            {
+                "plugin_id": "langgenius/swagger",
+                "provider": "swagger",
+                "tool_name": "get_item",
+                "name": "get_item",
+                "credential_type": "unauthorized",
+            }
+        ]
+    )
+
+
+def _daemon_stream(*frames: dict) -> str:
+    return "".join("data: " + json.dumps(frame) + "\n" for frame in frames)
+
+
+def _text_frame(text: str) -> dict:
+    return {"code": 0, "message": "ok", "data": {"type": "text", "message": {"text": text}}}
+
+
+def _json_frame(json_object: dict | list) -> dict:
+    return {"code": 0, "message": "ok", "data": {"type": "json", "message": {"json_object": json_object}}}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("text", "json_object"),
+    [
+        ('{"a":1,"b":2}', {"a": 1, "b": 2}),
+        (' \n{ "a": 1, "b": 2 }\t', {"a": 1, "b": 2}),
+        ('{"b": 2, "a": 1}', {"a": 1, "b": 2}),
+        ('{"items":[{"b":2,"a":1}]}', {"items": [{"a": 1, "b": 2}]}),
+        (r'{"\u540d\u79f0":"\u4e2d\u6587"}', {"名称": "中文"}),
+        ('[{"b":2,"a":1},null]', [{"a": 1, "b": 2}, None]),
+    ],
+)
+async def test_native_plugin_tool_deduplicates_json_output_that_arrived_as_equivalent_text(text, json_object):
+    def handler(request):
+        return httpx.Response(200, text=_daemon_stream(_text_frame(text), _json_frame(json_object)))
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        deps = Deps(
+            layers={
+                "tools": {"config": _single_tool_config().model_dump(mode="json"), "state": {}},
+                "execution_context": {"config": identity().model_dump(mode="json"), "state": {}},
+            },
+            services=Services(client, client, plugin_daemon_api_key="daemon-secret"),
+            run_id="test",
+        )
+        result = await invoke_native_tool(deps, tools_layer.Toolset("tools"), "get_item", {})
+
+    assert result.output == text
+
+
+@pytest.mark.anyio
+async def test_native_plugin_tool_keeps_json_output_that_differs_from_the_text():
+    def handler(request):
+        return httpx.Response(
+            200,
+            text=_daemon_stream(_text_frame("summary"), _json_frame({"a": 1})),
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        deps = Deps(
+            layers={
+                "tools": {"config": _single_tool_config().model_dump(mode="json"), "state": {}},
+                "execution_context": {"config": identity().model_dump(mode="json"), "state": {}},
+            },
+            services=Services(client, client, plugin_daemon_api_key="daemon-secret"),
+            run_id="test",
+        )
+        result = await invoke_native_tool(deps, tools_layer.Toolset("tools"), "get_item", {})
+
+    assert result.output == 'summary{"a": 1}'

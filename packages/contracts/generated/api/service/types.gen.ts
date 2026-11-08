@@ -1342,6 +1342,7 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
+  form_version?: '1' | '2'
   inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
@@ -3481,6 +3482,9 @@ export type Parameters = {
     enabled?: boolean
   }
   sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  show_thoughts?: {
     enabled?: boolean
   }
   speech_to_text: {
