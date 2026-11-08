@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import inspect
 from decimal import Decimal
 from types import SimpleNamespace
@@ -10,6 +11,7 @@ from unittest.mock import MagicMock
 import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+from flask import Flask
 from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
@@ -419,10 +421,12 @@ class TestAppGeneratorCases:
             run_side_effect=None,
             handled=False,
             guard_query="query",
+            real_guards=False,
         ):
             generator._get_conversation = mocker.MagicMock(return_value=_conversation())
             generator._get_message = mocker.MagicMock(return_value=_message())
-            generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query, None))
+            if not real_guards:
+                generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query, None))
             resolved_agent = _agent(agent_id="a")
             resolved_config = _app_generator_snapshot(snapshot_id="s", agent_id="a")
             resolver_sessions: list[Session] = []
@@ -487,6 +491,30 @@ class TestAppGeneratorCases:
             assert runner.run.call_args.kwargs["home_snapshot_id"] == "home-1"
             assert "home_snapshot_ref" not in runner.run.call_args.kwargs
             queue_manager.publish_error.assert_not_called()
+
+        @pytest.mark.parametrize("overridden", [False, True])
+        def test_worker_passes_moderated_inputs_to_runner(self, generator, mocker, monkeypatch, overridden):
+            runner, _ = self._wire(generator, mocker, real_guards=True)
+            entity = _make_entity("query")
+            entity.app_config.app_id = "app1"
+            entity.inputs = {"name": "original"}
+            expected = {"name": "[redacted]"} if overridden else {"name": "original"}
+            calls = _patch_moderation(monkeypatch, returns=(overridden, expected, "query"))
+            _patch_annotation(monkeypatch)
+
+            generator._generate_worker(
+                flask_app=Flask(__name__),
+                context=contextvars.copy_context(),
+                application_generate_entity=entity,
+                queue_manager=_FakeQueueManager(),
+                conversation_id="conv",
+                message_id="msg",
+                user_from=UserFrom.END_USER,
+            )
+
+            assert calls[0]["inputs"] == {"name": "original"}
+            runner.run.assert_called_once()
+            assert runner.run.call_args.kwargs["inputs"] == expected
 
         def test_worker_passes_session_scope_config_version_to_runner(self, generator, mocker: MockerFixture):
             runner, _ = self._wire(generator, mocker)
