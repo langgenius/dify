@@ -58,6 +58,8 @@ def resolve_workflow_agent_workspace_owner_scope(
             owner_id=conversation_id,
             owner_scope_key=owner_scope_key,
         )
+    if node_execution_id is not None and workflow_tool_invocation_id is None:
+        owner_scope_key = f"{owner_scope_key}:{node_execution_id}"
     return WorkspaceOwnerScope(
         tenant_id=tenant_id,
         app_id=app_id,
