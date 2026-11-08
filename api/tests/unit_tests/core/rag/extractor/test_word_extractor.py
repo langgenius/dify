@@ -445,19 +445,26 @@ def test_close_preserves_local_file(tmp_path: Path):
 
 
 def test_close_logs_cleanup_failure(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture):
-    extractor = object.__new__(WordExtractor)
-    extractor._closed = False
-    extractor.temp_file_path = "downloaded.docx"
+    """Cleanup failures for an owned download are logged without escaping close."""
+    response = Response(200, content=b"document")
+    monkeypatch.setattr(we.remote_fetcher, "make_request", lambda *args, **kwargs: response)
+    extractor = WordExtractor("https://example.com/test.docx", "tenant", "user")
+    path = Path(extractor.file_path)
 
     def fail_unlink(path: str):
         raise PermissionError("cannot remove file")
 
-    monkeypatch.setattr(we.os, "unlink", fail_unlink)
+    try:
+        with (
+            monkeypatch.context() as cleanup_patch,
+            caplog.at_level(logging.DEBUG, logger="core.rag.extractor.word_extractor"),
+        ):
+            cleanup_patch.setattr(we.os, "unlink", fail_unlink)
+            extractor.close()
 
-    with caplog.at_level(logging.DEBUG, logger="core.rag.extractor.word_extractor"):
-        extractor.close()
-
-    assert "Failed to cleanup downloaded word temp file" in caplog.text
+        assert "Failed to cleanup downloaded word temp file" in caplog.text
+    finally:
+        path.unlink(missing_ok=True)
 
 
 def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
