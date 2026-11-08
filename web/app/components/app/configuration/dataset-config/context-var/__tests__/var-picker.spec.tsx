@@ -9,11 +9,6 @@ const options: Props['options'] = [
 ]
 
 describe('VarPicker', () => {
-  it('shows the selected variable', () => {
-    render(<VarPicker value="var1" options={options} onChange={vi.fn()} />)
-    expect(screen.getByRole('button')).toHaveTextContent('var1')
-  })
-
   it('shows the configured empty-selection message', () => {
     render(
       <VarPicker
@@ -31,6 +26,7 @@ describe('VarPicker', () => {
     const onChange = vi.fn()
     render(<VarPicker value="var1" options={options} onChange={onChange} />)
 
+    expect(screen.getByRole('button')).toHaveTextContent('var1')
     await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('var2'))
 

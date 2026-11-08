@@ -1,5 +1,5 @@
+import type { ReactNode } from 'react'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import Placeholder from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder'
@@ -11,6 +11,11 @@ type MailBodyInputProps = {
   availableNodes?: Node[]
   value?: string
   onChange?: (text: string) => void
+  children?: ReactNode
+  requestURLSelectable?: boolean
+  'aria-labelledby'?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
 }
 
 const MailBodyInput = ({
@@ -19,22 +24,26 @@ const MailBodyInput = ({
   availableNodes = [],
   value = '',
   onChange,
+  children,
+  requestURLSelectable = true,
+  'aria-labelledby': ariaLabelledby,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: MailBodyInputProps) => {
   const { t } = useTranslation(['workflow'])
 
   return (
     <PromptEditor
-      wrapperClassName={cn(
-        'w-full rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1',
-        'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-        'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
-      )}
+      wrapperClassName="w-full rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1 focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs hover:border-components-input-border-hover hover:bg-components-input-bg-hover"
       className="min-h-32"
       editable={!readOnly}
+      aria-labelledby={ariaLabelledby}
+      aria-describedby={ariaDescribedBy}
+      aria-invalid={ariaInvalid}
       value={value}
       requestURLBlock={{
         show: true,
-        selectable: true,
+        selectable: requestURLSelectable,
       }}
       workflowVariableBlock={{
         show: true,
@@ -58,7 +67,9 @@ const MailBodyInput = ({
       }}
       placeholder={<Placeholder hideBadge />}
       onChange={onChange}
-    />
+    >
+      {children}
+    </PromptEditor>
   )
 }
 

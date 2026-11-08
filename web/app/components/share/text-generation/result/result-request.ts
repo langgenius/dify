@@ -158,7 +158,7 @@ export const buildResultRequestData = ({
     }
 
     if (variable.type === 'file-list' && Array.isArray(value) && value.length > 0)
-      processedInputs[variable.key] = getProcessedFiles(value as FileEntity[])
+      processedInputs[variable.key] = getProcessedFiles(value)
   })
 
   return {

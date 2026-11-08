@@ -1,4 +1,4 @@
-import type { IndexingStatusResponse } from '@/models/datasets'
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { useEffect, useRef, useState } from 'react'
 import { fetchIndexingStatusBatch } from '@/service/datasets'
 
@@ -12,7 +12,7 @@ type IndexingStatusPollingParams = {
 }
 
 type IndexingStatusPollingResult = {
-  statusList: IndexingStatusResponse[]
+  statusList: DocumentStatusResponse[]
   isEmbedding: boolean
   isEmbeddingCompleted: boolean
 }
@@ -20,7 +20,7 @@ type IndexingStatusPollingResult = {
 const isStatusCompleted = (status: string): boolean =>
   COMPLETED_STATUSES.includes(status as (typeof COMPLETED_STATUSES)[number])
 
-const isAllCompleted = (statusList: IndexingStatusResponse[]): boolean =>
+const isAllCompleted = (statusList: DocumentStatusResponse[]): boolean =>
   statusList.every((item) => isStatusCompleted(item.indexing_status))
 
 /**
@@ -31,7 +31,7 @@ export const useIndexingStatusPolling = ({
   datasetId,
   batchId,
 }: IndexingStatusPollingParams): IndexingStatusPollingResult => {
-  const [statusList, setStatusList] = useState<IndexingStatusResponse[]>([])
+  const [statusList, setStatusList] = useState<DocumentStatusResponse[]>([])
   const isStopPollingRef = useRef(false)
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export const useIndexingStatusPolling = ({
     isStopPollingRef.current = false
     let timeoutId: ReturnType<typeof setTimeout> | null = null
 
-    const fetchStatus = async (): Promise<IndexingStatusResponse[]> => {
+    const fetchStatus = async (): Promise<DocumentStatusResponse[]> => {
       const response = await fetchIndexingStatusBatch({ datasetId, batchId })
       setStatusList(response.data)
       return response.data

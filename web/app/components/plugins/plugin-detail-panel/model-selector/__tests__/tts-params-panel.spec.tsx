@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TTSParamsPanel from '../tts-params-panel'
 
@@ -20,9 +20,11 @@ const model = {
 }
 
 describe('TTSParamsPanel', () => {
-  it('renders the selected language and voice', () => {
+  it('only exposes supported languages and preserves the selected voice', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
     render(
-      <TTSParamsPanel currentModel={model} language="en-US" voice="alloy" onChange={vi.fn()} />,
+      <TTSParamsPanel currentModel={model} language="en-US" voice="alloy" onChange={onChange} />,
     )
 
     expect(
@@ -31,14 +33,6 @@ describe('TTSParamsPanel', () => {
     expect(
       screen.getByRole('combobox', { name: 'appDebug.voice.voiceSettings.voice' }),
     ).toHaveTextContent('alloy')
-  })
-
-  it('only exposes supported languages and preserves the selected voice', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    render(
-      <TTSParamsPanel currentModel={model} language="en-US" voice="alloy" onChange={onChange} />,
-    )
 
     await user.click(
       screen.getByRole('combobox', { name: 'appDebug.voice.voiceSettings.language' }),
@@ -64,9 +58,10 @@ describe('TTSParamsPanel', () => {
   })
 
   it('renders an empty voice list without a model', async () => {
+    const user = userEvent.setup()
     render(<TTSParamsPanel currentModel={null} language="en-US" voice="" onChange={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'appDebug.voice.voiceSettings.voice' }))
+    await user.click(screen.getByRole('combobox', { name: 'appDebug.voice.voiceSettings.voice' }))
 
     expect(await screen.findByRole('listbox')).toBeEmptyDOMElement()
   })

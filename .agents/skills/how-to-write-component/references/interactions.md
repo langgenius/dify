@@ -11,15 +11,17 @@ Read this document when a change involves application hotkeys, focus, dialogs, m
 ## Keyboard Commands
 
 - Keep widget navigation, dialog dismissal, and editor commands in their local primitive or owner.
-- For Web application commands, follow [Keyboard commands] for TanStack registration, typed bindings, targets, event consumption, display, and verification. Do not recreate that policy in a wrapper or a second command framework.
+- For Web application commands, follow [Keyboard commands]. Keep registration and business behavior with the feature owner; do not introduce a second command framework.
 
 ## Secondary Surfaces
 
 - Follow the [overlay contract] for primitive choice and shared mechanics. The nearest consumer `AGENTS.md` owns application-specific composite reuse policy.
-- Separate behavior ownership from placement ownership: the action may own trigger, open state, and menu content while the caller owns slots, offsets, and alignment.
+- Compose Root, Trigger, and content at the entry that owns the business behavior, so the whole anatomy is visible there. A shared layer exports content and state parts; it does not take a trigger prop or wrap the Root and hide the content it renders. The caller owns slots, offsets, and alignment.
 - Keep menu and dialog surfaces as siblings when a menu command opens a dialog. Mount the dialog outside popup content.
 - Use the [overlay contract] to determine content lifetime and preserve the Root's closing lifecycle. Follow [state ownership] for draft placement and semantic identity; portal placement alone does not locate the state owner.
 - Place query subscriptions and mutation observers at the owner whose lifetime matches when they should run. Mounted-session work may belong inside content; work that must start or stop exactly with `open` needs an explicit open-state condition.
+- Data inside a surface follows its owner's mount, not the `open` flag. A query declared in popup content under a Suspense boundary takes the content lifetime; a result the surface displays stays with its owner until that owner unmounts.
+- Anything read while a surface closes, such as the return-focus target, must come from an owner that outlives the close. The element that opened the surface may unmount with its data, and a per-call mutation callback is dropped when its component unmounts.
 - Prefer primitive-owned open state unless another owner must observe or coordinate it. Analytics callbacks and local cleanup alone do not require a controlled root.
 
 [overlay contract]: ../../../../packages/dify-ui/docs/overlays.md

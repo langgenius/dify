@@ -1,16 +1,19 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { fetchWebhookUrl } from '@/service/apps'
+import { consoleQuery } from '@/service/console'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 
 export const useAutoGenerateWebhookUrl = () => {
+  const appId = useAtomValue(editorAppIdAtom)
+  const queryClient = useQueryClient()
   const collaborativeWorkflow = useCollaborativeWorkflow()
 
   return useCallback(
     async (nodeId: string) => {
-      const appId = useAppStore.getState().appDetail?.id
       if (!appId) return
 
       const { nodes } = collaborativeWorkflow.getState()
@@ -20,7 +23,13 @@ export const useAutoGenerateWebhookUrl = () => {
       if (node.data.webhook_url && node.data.webhook_url.length > 0) return
 
       try {
-        const response = await fetchWebhookUrl({ appId, nodeId })
+        const response = await queryClient.query(
+          consoleQuery.apps.byAppId.workflows.triggers.webhook.get.queryOptions({
+            input: { params: { app_id: appId }, query: { node_id: nodeId } },
+            staleTime: 0,
+            retry: false,
+          }),
+        )
         const { nodes: latestNodes, setNodes } = collaborativeWorkflow.getState()
         let hasUpdated = false
         const updatedNodes = produce(latestNodes, (draft) => {
@@ -40,6 +49,6 @@ export const useAutoGenerateWebhookUrl = () => {
         console.error('Failed to auto-generate webhook URL:', error)
       }
     },
-    [collaborativeWorkflow],
+    [appId, collaborativeWorkflow, queryClient],
   )
 }

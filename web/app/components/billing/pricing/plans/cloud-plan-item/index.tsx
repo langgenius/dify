@@ -4,12 +4,13 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +18,7 @@ import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'
+import { billingErrorMessageKey } from '../../../billing-error'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import Professional from '../../assets/professional'
@@ -36,7 +38,9 @@ type CloudPlanItemProps = {
   billing:
     | {
         currentPlan: CloudPlan
+        currentBillingInterval: string
         isEducationDiscountEligible: boolean | undefined
+        isEducationDiscountActivated: boolean
       }
     | undefined
 }
@@ -54,11 +58,12 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
   const planInfo = ALL_PLANS[plan]
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
+  const isCurrentSubscription =
+    isCurrentPaidPlan && billingInterval === billing?.currentBillingInterval
   const isPlanDisabled =
     !billing ||
-    (!isCurrentPaidPlan &&
-      (billing.isEducationDiscountEligible === undefined ||
-        planInfo.level <= ALL_PLANS[billing.currentPlan].level))
+    (!isCurrentSubscription && billing.isEducationDiscountEligible === undefined) ||
+    (!isCurrentPaidPlan && planInfo.level <= ALL_PLANS[billing.currentPlan].level)
   const isEducationDiscountSupportedPlan = plan === 'professional' && isYearly
   const educationDiscountWarningText =
     canManageBilling &&
@@ -92,7 +97,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
 
     setIsPlanActionPending(true)
     try {
-      if (isCurrentPaidPlan) {
+      if (isCurrentSubscription) {
         if (!canManageBilling) {
           toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
           return
@@ -100,13 +105,15 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
 
         await openAsyncWindow(
           async () => {
-            const { url } = await consoleClient.billing.invoices.get()
+            const { url } = await consoleClient.billing.invoices.get(undefined, {
+              context: { silent: true },
+            })
             if (url) return url
             throw new Error('Failed to open billing page')
           },
           {
-            onError: (err) => {
-              toast.error(err.message || String(err))
+            onError: (error) => {
+              toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
             },
           },
         )
@@ -125,17 +132,20 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
         return
       }
 
-      const { url } = await consoleClient.billing.subscription.get({
-        query: { plan, interval: billingInterval },
-      })
+      const { url } = await consoleClient.billing.subscription.get(
+        { query: { plan, interval: billingInterval } },
+        { context: { silent: true } },
+      )
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = url
+    } catch (error) {
+      toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
     } finally {
       setIsPlanActionPending(false)
     }
   }
   const handlePlanButtonClick = async () => {
-    if (educationDiscountWarningText && !isPlanDisabled) {
+    if (educationDiscountWarningText && !billing?.isEducationDiscountActivated && !isPlanDisabled) {
       setShowEducationPricingConfirm(true)
       return
     }
@@ -210,7 +220,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             variant="tertiary"
             size={null}
             disabled={isPlanDisabled}
-            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:not-data-disabled:bg-saas-dify-blue-static data-[plan=professional]:not-data-disabled:text-text-primary-on-surface data-[plan=professional]:not-data-disabled:hover:bg-saas-dify-blue-static-hover data-[plan=team]:not-data-disabled:bg-saas-background-inverted data-[plan=team]:not-data-disabled:text-background-default data-[plan=team]:not-data-disabled:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap"
+            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 ps-5 pe-4 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:not-data-disabled:bg-saas-dify-blue-static data-[plan=professional]:not-data-disabled:text-text-primary-on-surface data-[plan=professional]:not-data-disabled:hover:bg-saas-dify-blue-static-hover data-[plan=team]:not-data-disabled:bg-saas-background-inverted data-[plan=team]:not-data-disabled:text-background-default data-[plan=team]:not-data-disabled:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap"
             onClick={handlePlanButtonClick}
           >
             <span className="min-w-0 grow text-start">{buttonLabel}</span>
@@ -219,7 +229,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             )}
           </Button>
           {educationDiscountWarningText && (
-            <div className="absolute inset-x-0 top-full mt-1.5 text-left system-2xs-medium text-text-tertiary">
+            <div className="absolute inset-x-0 top-full mt-1.5 text-start system-2xs-medium text-text-tertiary">
               {educationDiscountWarningText}
             </div>
           )}
@@ -228,26 +238,18 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
       <CloudPlanFeatures plan={plan} />
       <Dialog open={showEducationPricingConfirm} onOpenChange={setShowEducationPricingConfirm}>
         <DialogContent backdropProps={{ forceRender: true }} className="w-130">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute top-6 right-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="flex flex-col gap-2 pr-10">
-            <DialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+          <DialogHeader>
+            <DialogTitle>
               {t(($) => $['educationPricingConfirm.title'], { ns: 'education' })}
             </DialogTitle>
-            <DialogDescription className="w-full system-md-regular text-text-tertiary">
+            <DialogDescription>
               {t(($) => $['educationPricingConfirm.description'], { ns: 'education' })}
             </DialogDescription>
-          </div>
-          <div className="mt-10 flex items-start justify-end gap-3">
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
+          </DialogHeader>
+          <DialogFooter>
             <Button
               size="large"
               onClick={handleContinueWithoutEducationDiscount}
@@ -266,7 +268,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             >
               {t(($) => $['educationPricingConfirm.continue'], { ns: 'education' })}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

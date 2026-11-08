@@ -5,9 +5,9 @@ import type {
   NodePanelPresenceMap,
   OnlineUser,
 } from '../types/collaboration'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 
@@ -29,15 +29,16 @@ const initialState: CollaborationViewState = {
   isLeader: false,
 }
 
-export function useCollaboration(appId: string, canEdit: boolean, reactFlowStore?: ReactFlowStore) {
+export function useCollaboration(
+  appId: string | undefined,
+  canEdit: boolean,
+  reactFlowStore?: ReactFlowStore,
+) {
   const [state, setState] = useState<CollaborationViewState>(initialState)
 
   const cursorServiceRef = useRef<CursorService | null>(null)
   const lastDisconnectReasonRef = useRef<string | null>(null)
-  const { data: isCollaborationEnabled } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_collaboration_mode,
-  })
+  const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled || !canEdit) {

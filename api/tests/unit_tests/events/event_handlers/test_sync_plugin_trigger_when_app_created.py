@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
 
+from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from events.event_handlers.sync_plugin_trigger_when_app_created import handle
 from models.model import AppMode
 from models.workflow import Workflow
@@ -19,13 +20,8 @@ def test_syncs_plugin_trigger_relationships_from_published_workflow() -> None:
     sync_relationships.assert_called_once_with(app, published_workflow)
 
 
-def test_keeps_draft_workflow_relationship_sync() -> None:
-    app = SimpleNamespace(mode=AppMode.WORKFLOW.value)
-    draft_workflow = cast(Workflow, object())
+def test_draft_workflow_sync_does_not_register_plugin_trigger_handler() -> None:
+    sender = object()
 
-    with patch(
-        "events.event_handlers.sync_plugin_trigger_when_app_created.TriggerService.sync_plugin_trigger_relationships"
-    ) as sync_relationships:
-        handle(app, synced_draft_workflow=draft_workflow)
-
-    sync_relationships.assert_called_once_with(app, draft_workflow)
+    assert handle not in app_draft_workflow_was_synced.receivers_for(sender)
+    assert handle in app_published_workflow_was_updated.receivers_for(sender)

@@ -1,15 +1,9 @@
 'use client'
 
-import { useFilterPluginTags } from '../atoms'
-import TagsFilter from '../search-box/tags-filter'
+import { PluginTagsFilter } from '../../plugin-tags-filter'
+import { useMarketplaceTagsFilter } from '../use-marketplace-tags-filter'
 
 export default function CatalogTagsFilter() {
-  const [tags, setTags] = useFilterPluginTags()
-  return (
-    <TagsFilter
-      tags={tags}
-      onTagsChange={(next) => setTags(next.length ? next : null)}
-      usedInMarketplace
-    />
-  )
+  const { tags, onTagsChange } = useMarketplaceTagsFilter()
+  return <PluginTagsFilter value={tags} onValueChange={onTagsChange} variant="labeled" />
 }

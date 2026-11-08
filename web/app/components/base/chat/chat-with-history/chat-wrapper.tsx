@@ -1,7 +1,8 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { SpeechToTextTarget } from '../../voice-input/types'
+import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -13,6 +14,7 @@ import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchChatList,
@@ -23,7 +25,7 @@ import {
 } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
-import { formatBooleanInputs } from '@/utils/model-config'
+import { getAvatarInitial } from '@/utils/avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
@@ -41,7 +43,7 @@ const ChatWrapper = () => {
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationCompleted,
-    isMobile,
+    isBelowSm,
     isInstalledApp,
     appId,
     appMeta,
@@ -119,7 +121,14 @@ const ChatWrapper = () => {
 
         if (fileIsUploading) return
 
-        if (!inputsFormValue?.[variable]) hasEmptyInput = label as string
+        const inputValue = inputsFormValue?.[variable]
+        if (
+          inputValue === undefined ||
+          inputValue === null ||
+          inputValue === '' ||
+          (Array.isArray(inputValue) && inputValue.length === 0)
+        )
+          hasEmptyInput = label as string
 
         if (
           (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -152,7 +161,7 @@ const ChatWrapper = () => {
 
   useEffect(() => {
     if (currentChatInstanceRef.current) currentChatInstanceRef.current.handleStop = handleStop
-  }, [])
+  }, [currentChatInstanceRef, handleStop])
 
   useEffect(() => {
     setIsResponding(respondingState)
@@ -166,9 +175,6 @@ const ChatWrapper = () => {
     let lastPausedNode: ChatItemInTree | undefined
     const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
       nodes.forEach((node) => {
-        // DFS: recurse to children first
-        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
-
         // Track the last node with humanInputFormDataList
         if (
           node.isAnswer &&
@@ -177,6 +183,9 @@ const ChatWrapper = () => {
           node.humanInputFormDataList.length > 0
         )
           lastPausedNode = node
+
+        // A paused descendant supersedes its ancestor.
+        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
       })
     }
 
@@ -206,10 +215,7 @@ const ChatWrapper = () => {
       const data: any = {
         query: message,
         files,
-        inputs: formatBooleanInputs(
-          inputsForms,
-          currentConversationId ? currentConversationInputs : newConversationInputs,
-        ),
+        inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
         conversation_id: currentConversationId,
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
@@ -228,7 +234,6 @@ const ChatWrapper = () => {
         trackWebAppEvent('webapp_run', { app_mode: appMode })
     },
     [
-      inputsForms,
       currentConversationId,
       currentConversationInputs,
       newConversationInputs,
@@ -284,11 +289,11 @@ const ChatWrapper = () => {
   }, [chatList, currentConversationId])
 
   const handleSubmitHumanInputForm = useCallback(
-    async (formToken: string, formData: any) => {
-      if (!(await prepareHumanInputSubmission())) return
-
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+    async (formToken: string, formData: HumanInputFormSubmitData) => {
+      const { form_version: formVersion, ...submission } = formData
+      await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
+      else await submitHumanInputForm(formToken, submission, formVersion)
     },
     [isInstalledApp, prepareHumanInputSubmission],
   )
@@ -305,9 +310,9 @@ const ChatWrapper = () => {
   const descriptionNode = useMemo(() => {
     if (!description || currentConversationId || hasSent) return null
     return (
-      <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
+      <div className={cn('flex flex-col items-center px-4 pt-6', isBelowSm && 'pt-4')}>
         <div className="w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
-          <div className={cn('p-6', isMobile && 'p-4')}>
+          <div className={cn('p-6', isBelowSm && 'p-4')}>
             <div
               ref={handleDescRef}
               className={cn(
@@ -344,18 +349,18 @@ const ChatWrapper = () => {
         </div>
       </div>
     )
-  }, [description, isMobile, currentConversationId, hasSent, descExpanded, showDescToggle, t])
+  }, [description, isBelowSm, currentConversationId, hasSent, descExpanded, showDescToggle, t])
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length) return null
-    if (isMobile) {
+    if (isBelowSm) {
       if (!currentConversationId)
         return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
       return null
     } else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
+  }, [inputsForms.length, isBelowSm, currentConversationId, collapsed, allInputsHidden])
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find((item) => item.isOpeningStatement)
@@ -367,13 +372,7 @@ const ChatWrapper = () => {
       return (
         <div className="flex min-h-[50vh] items-center justify-center px-4 py-12">
           <div className="flex max-w-180 grow gap-4">
-            <AppIcon
-              size="xl"
-              iconType={appData?.site.icon_type}
-              icon={appData?.site.icon}
-              background={appData?.site.icon_background}
-              imageUrl={appData?.site.icon_url}
-            />
+            <AppIcon size="xl" icon={appData?.site} />
             <div className="w-0 grow">
               <div className="grow rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary">
                 <Markdown content={welcomeMessage.content} />
@@ -386,13 +385,7 @@ const ChatWrapper = () => {
     }
     return (
       <div className={cn('flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
-        <AppIcon
-          size="xl"
-          iconType={appData?.site.icon_type}
-          icon={appData?.site.icon}
-          background={appData?.site.icon_background}
-          imageUrl={appData?.site.icon_url}
-        />
+        <AppIcon size="xl" icon={appData?.site} />
         <div className="max-w-3xl px-4">
           <Markdown
             className="body-2xl-regular! text-text-tertiary!"
@@ -438,9 +431,9 @@ const ChatWrapper = () => {
         speechToTextTarget={speechToTextTarget}
         chatList={messageList}
         isResponding={respondingState}
-        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isMobile && 'px-4'}`}
+        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isBelowSm && 'px-4'}`}
         chatFooterClassName="pb-4"
-        chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
+        chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isBelowSm ? 'px-2' : 'px-4'}`}
         onSend={doSend}
         inputs={currentConversationId ? (currentConversationInputs as any) : newConversationInputs}
         inputsForm={inputsForms}
@@ -466,11 +459,10 @@ const ChatWrapper = () => {
         renderAgentContent={renderAgentContent}
         questionIcon={
           initUserVariables?.avatar_url ? (
-            <Avatar
-              avatar={initUserVariables.avatar_url}
-              name={initUserVariables.name || 'user'}
-              size="xl"
-            />
+            <Avatar size="xl" role="img" aria-label={initUserVariables.name || 'user'}>
+              <AvatarFallback>{getAvatarInitial(initUserVariables.name || 'user')}</AvatarFallback>
+              <AvatarImage src={initUserVariables.avatar_url} alt="" />
+            </Avatar>
           ) : undefined
         }
       />

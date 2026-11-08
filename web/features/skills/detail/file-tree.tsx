@@ -22,11 +22,12 @@ import type {
 import type { SkillUploadDecision, SkillUploadReviewItem } from './upload-workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -43,12 +44,8 @@ import {
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Menu, MenuContent, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   ScrollArea,
@@ -58,6 +55,7 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { ORPCError } from '@orpc/client'
 import { formatForDisplay, matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
@@ -65,7 +63,7 @@ import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyboard'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
@@ -79,8 +77,6 @@ import {
   createUploadItemId,
   findFileByPath,
   flattenFileTree,
-  getAsyncSkillErrorMessage,
-  getAsyncSkillErrorPayload,
   getCopyTargetPath,
   getCreatedSkillFileMimeType,
   getDraggedSkillPaths,
@@ -570,12 +566,15 @@ export function FileTree({
       } catch (error) {
         activeUploadXhrRef.current = undefined
         failedCount += 1
-        const errorPayload = await getAsyncSkillErrorPayload(error)
-        const errorCode = getErrorCode(errorPayload ?? error)
+
+        const errorCode = getErrorCode(error)
         let failureKind: SkillUploadQueueItem['failureKind'] = 'network'
-        let errorMessage =
-          (await getAsyncSkillErrorMessage(error)) ??
-          t(($) => $['skillManagement.detail.uploadNetworkFailure'])
+        // Transport failures and cancellation carry browser text, not a user-facing message.
+        let errorMessage = cancelUploadRef.current
+          ? tCommon(($) => $['operation.cancel'])
+          : error instanceof ORPCError
+            ? error.message
+            : t(($) => $['skillManagement.detail.uploadNetworkFailure'])
         let suggestedPath: string | undefined
         if (errorCode === 'skill_conflict') {
           failureKind = 'conflict'
@@ -908,9 +907,7 @@ export function FileTree({
             copiedTargetPaths.push(targetPath)
             break
           } catch (error) {
-            const errorPayload = await getAsyncSkillErrorPayload(error)
-            if (hasRetriedConflict || getErrorCode(errorPayload ?? error) !== 'skill_conflict')
-              throw error
+            if (hasRetriedConflict || getErrorCode(error) !== 'skill_conflict') throw error
 
             latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId)
             fileMutationCoordinator.latestDetail = latestDetail
@@ -1142,7 +1139,7 @@ export function FileTree({
                 </button>
               }
             />
-            <TooltipContent placement="right">
+            <TooltipContent side="right">
               {t(($) => $['skillManagement.detail.expandSidebar'])}
             </TooltipContent>
           </Tooltip>
@@ -1180,7 +1177,7 @@ export function FileTree({
           className={cn(
             'group/sidebar relative flex min-h-0 flex-col rounded-lg bg-components-panel-bg',
             collapsed && sidebarFloating
-              ? 'absolute top-1 bottom-1 left-1 z-40 w-60 overflow-hidden border border-divider-subtle shadow-lg'
+              ? 'absolute inset-s-1 top-1 bottom-1 z-40 w-60 overflow-hidden border border-divider-subtle shadow-lg'
               : 'flex-1 overflow-visible',
           )}
           style={{ width: collapsed ? skillSidebarMinWidth : sidebarWidth }}
@@ -1196,14 +1193,14 @@ export function FileTree({
               aria-valuetext={t(($) => $['resize.width'], { ns: 'common', width: sidebarWidth })}
               aria-controls={sidebarPanelId}
               tabIndex={0}
-              className="group/resize absolute top-0 -right-2 z-40 flex h-full w-4 cursor-col-resize touch-none items-center justify-center outline-hidden"
+              className="group/resize absolute -inset-e-2 top-0 z-40 flex h-full w-4 cursor-col-resize touch-none items-center justify-center outline-hidden"
               onKeyDown={handleSidebarResizeKeyDown}
               onPointerDown={handleSidebarResizePointerDown}
             >
               <span
                 aria-hidden
                 className={cn(
-                  'absolute right-1.25 h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
+                  'absolute inset-e-1.25 h-10 w-0.5 rounded-full bg-state-base-handle opacity-0 transition-[height,background-color,opacity] group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
                   sidebarResizing && 'h-full bg-state-accent-solid opacity-100',
                 )}
               />
@@ -1211,7 +1208,7 @@ export function FileTree({
           )}
           <div
             data-testid="skill-detail-sidebar-header"
-            className="flex h-12 shrink-0 items-center py-2 pr-2 pl-1"
+            className="flex h-12 shrink-0 items-center py-2 ps-1 pe-2"
           >
             <Breadcrumb
               aria-label={tCommon(($) => $['mainNav.skills'], { ns: 'navigation' })}
@@ -1221,7 +1218,7 @@ export function FileTree({
                 <BreadcrumbItem className="shrink-0">
                   <BreadcrumbLink
                     render={<Link href="/skills" />}
-                    className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+                    className="gap-0 rounded-lg py-2 ps-0.5 pe-1.5 hover:bg-background-default-hover"
                     aria-label={t(($) => $['skillManagement.detail.back'])}
                   >
                     <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
@@ -1248,7 +1245,7 @@ export function FileTree({
                       <button
                         type="button"
                         aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
-                        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                       >
                         <span
                           aria-hidden
@@ -1259,7 +1256,7 @@ export function FileTree({
                   />
                 }
               />
-              <TooltipContent placement="bottom" className="flex items-center gap-1">
+              <TooltipContent side="bottom" className="flex items-center gap-1">
                 <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
                 <KbdGroup>
                   {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
@@ -1291,7 +1288,7 @@ export function FileTree({
                   </button>
                 }
               />
-              <TooltipContent placement="bottom">
+              <TooltipContent side="bottom">
                 {t(($) => $['skillManagement.detail.collapseSidebar'])}
               </TooltipContent>
             </Tooltip>
@@ -1352,22 +1349,22 @@ export function FileTree({
               {t(($) => $['skillManagement.detail.fileCount'], { count: fileCount })}
             </h2>
             {!readonly && (
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger
+              <Menu modal={false}>
+                <MenuTrigger
                   aria-label={tCommon(($) => $['operation.add'])}
-                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
                   disabled={!detail || isMutating}
                 >
                   <span aria-hidden className="i-ri-add-line size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
+                </MenuTrigger>
+                <MenuContent
+                  align="end"
                   data-skill-file-menu
                   onKeyDown={handleRootMenuKeyDown}
-                  placement="bottom-end"
                   className={skillFileMenuPopupClassName}
                 >
                   <RootFileActionMenuItems
-                    kind="dropdown"
+                    kind="menu"
                     onCreateFile={() =>
                       setInlineAction({
                         kind: 'create',
@@ -1382,8 +1379,8 @@ export function FileTree({
                     }
                     onUploadFiles={() => uploadInputRef.current?.click()}
                   />
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </MenuContent>
+              </Menu>
             )}
             <input
               ref={uploadInputRef}
@@ -1567,25 +1564,21 @@ export function FileTree({
             open={!!deleteNode}
             onOpenChange={(open) => !open && setDeleteNode(undefined)}
           >
-            <AlertDialogContent className="p-6">
-              <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-                {t(($) => $['skillManagement.detail.deleteFileConfirm'])}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-                {deleteNode?.path}
-              </AlertDialogDescription>
-              <AlertDialogActions className="p-0 pt-6">
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t(($) => $['skillManagement.detail.deleteFileConfirm'])}
+                </AlertDialogTitle>
+                <AlertDialogDescription>{deleteNode?.path}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton disabled={fileMutation.isPending}>
                   {tCommon(($) => $['operation.cancel'])}
                 </AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  tone="destructive"
-                  loading={fileMutation.isPending}
-                  onClick={handleDelete}
-                >
+                <AlertDialogConfirmButton loading={fileMutation.isPending} onClick={handleDelete}>
                   {tCommon(($) => $['operation.delete'])}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           <div className="mx-3 border-t border-divider-subtle pt-2 pb-3">
@@ -1595,7 +1588,7 @@ export function FileTree({
                   render={
                     <button
                       type="button"
-                      className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+                      className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-start system-xs-regular text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
                     >
                       <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">{referenceCountLabel}</span>
@@ -1607,7 +1600,8 @@ export function FileTree({
                   }
                 />
                 <PopoverContent
-                  placement="top-start"
+                  side="top"
+                  align="start"
                   sideOffset={4}
                   className="w-(--anchor-width) max-w-(--available-width) bg-components-panel-bg-blur p-1 shadow-shadow-shadow-5 backdrop-blur-[5px]"
                   aria-label={referenceCountLabel}

@@ -4,7 +4,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { Progress as BaseProgress } from '@base-ui/react/progress'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const progressCircleRootVariants = cva('inline-flex shrink-0 items-center justify-center', {
   variants: {

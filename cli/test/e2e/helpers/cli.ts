@@ -8,7 +8,6 @@
  * withTempConfig) to prevent session state leaking between tests.
  */
 
-import type { TokenDoc } from '@/store/token-store'
 import { Buffer } from 'node:buffer'
 import { execSync, spawn } from 'node:child_process'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
@@ -203,6 +202,11 @@ function splitHost(host: string): { bare: string; scheme: string } {
   return { bare, scheme }
 }
 
+type TokenDoc = {
+  version: number
+  tokens: Record<string, Record<string, string>>
+}
+
 async function writeFileToken(
   configDir: string,
   host: string,
@@ -291,8 +295,7 @@ export async function injectAuth(configDir: string, opts: AuthInjectionOptions):
     const account = `tokens.${bare}.${email}`
     new Entry('difyctl', account).setPassword(JSON.stringify(opts.bearer))
   } else {
-    // Fall back to tokens.yml — FileTokenStore uses getTyped<TokenDoc>()
-    // which expects flat tokens[host][email] with version: 1.
+    // Fall back to tokens.yml, which FileTokenStore reads as tokens[host][email].
     await writeFileToken(configDir, bare, email, opts.bearer)
   }
 }

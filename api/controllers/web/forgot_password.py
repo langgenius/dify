@@ -17,6 +17,7 @@ from controllers.web import web_ns
 from controllers.web.flask_admission import web_anonymous_admission
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from machinery.context import RequestContext
 from services.entities.auth_entities import (
     ForgotPasswordCheckPayload,
@@ -47,6 +48,7 @@ register_response_schema_models(
 
 @web_ns.route("/forgot-password")
 class ForgotPasswordSendEmailApi(Resource):
+    @error_responses(AuthenticationFailedError, EmailSendIpLimitError, PasswordResetRateLimitExceededError)
     @web_ns.expect(web_ns.models[ForgotPasswordSendPayload.__name__])
     @web_anonymous_admission(editions=_ENTERPRISE_ONLY, require_email_password_login=True)
     @web_ns.doc("send_forgot_password_email")
@@ -80,6 +82,7 @@ class ForgotPasswordSendEmailApi(Resource):
 
 @web_ns.route("/forgot-password/validity")
 class ForgotPasswordCheckApi(Resource):
+    @error_responses(EmailCodeError, EmailPasswordResetLimitError, InvalidEmailError, InvalidTokenError)
     @web_ns.expect(web_ns.models[ForgotPasswordCheckPayload.__name__])
     @web_anonymous_admission(editions=_ENTERPRISE_ONLY, require_email_password_login=True)
     @web_ns.doc("check_forgot_password_token")
@@ -114,6 +117,7 @@ class ForgotPasswordCheckApi(Resource):
 
 @web_ns.route("/forgot-password/resets")
 class ForgotPasswordResetApi(Resource):
+    @error_responses(AuthenticationFailedError, InvalidTokenError, PasswordMismatchError)
     @web_ns.expect(web_ns.models[ForgotPasswordResetPayload.__name__])
     @web_anonymous_admission(editions=_ENTERPRISE_ONLY, require_email_password_login=True)
     @web_ns.doc("reset_password")

@@ -20,7 +20,7 @@ class TimestampToLocaltimeTool(BuiltinTool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         Convert timestamp to localtime
         """
@@ -52,4 +52,4 @@ class TimestampToLocaltimeTool(BuiltinTool):
             local_time = datetime.fromtimestamp(timestamp, local_tz)
             return local_time
         except Exception as e:
-            raise ToolInvokeError(str(e))
+            raise ToolInvokeError(str(e)) from e

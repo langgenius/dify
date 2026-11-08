@@ -10,9 +10,13 @@ from services.enterprise.rbac_service import RBACService
 
 from .locators import ResourceLocator, Workspace
 
-__all__ = ["RBAC_CHECKS_ATTR", "RBACCheck", "enforce_rbac_checks"]
+__all__ = ["RBAC_CHECKS_ATTR", "InvalidRBACCheckError", "RBACCheck", "enforce_rbac_checks"]
 
 RBAC_CHECKS_ATTR = "rbac_checks"
+
+
+class InvalidRBACCheckError(RuntimeError):
+    """A route declares a permission scene with an incompatible resource locator."""
 
 
 @dataclass(frozen=True)
@@ -24,7 +28,7 @@ class RBACCheck:
         if isinstance(self.locator, Workspace) or self.scene.scope is RBACResourceScope.WORKSPACE:
             return
         if self.locator.scope is not self.scene.scope:
-            raise ValueError(
+            raise InvalidRBACCheckError(
                 f"{self.scene} is a {self.scene.scope} scene but {self.locator!r} locates {self.locator.scope}"
             )
 

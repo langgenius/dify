@@ -66,7 +66,7 @@ function SegmentedControlExample({
           </SegmentedControlItem>
           {index === 1 && (
             <span
-              className="pointer-events-none absolute top-0 -right-px flex h-full items-center"
+              className="pointer-events-none absolute -inset-e-px top-0 flex h-full items-center"
               aria-hidden="true"
             >
               <SegmentedControlDivider />

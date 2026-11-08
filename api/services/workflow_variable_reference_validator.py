@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
+import logging
 import re
 from collections import defaultdict, deque
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.nodes.human_input.constants import TIMEOUT_HANDLE
@@ -19,18 +21,64 @@ _REFERENCE_EXEMPT_NODE_TYPES: frozenset[str] = frozenset(
     }
 )
 
-_BRANCH_NODE_TYPES: frozenset[str] = frozenset(
-    {
-        BuiltinNodeTypes.IF_ELSE,
-        BuiltinNodeTypes.QUESTION_CLASSIFIER,
-        BuiltinNodeTypes.HUMAN_INPUT,
-    }
-)
+SOURCE_HANDLE: Final = "source"
+_ELSE_HANDLE: Final = "false"
+_LEGACY_IF_HANDLE: Final = "true"
+_FAIL_BRANCH_HANDLE: Final = ErrorStrategy.FAIL_BRANCH.value
 
 _TEMPLATE_REFERENCE_PATTERN = re.compile(
     r"\{\{#([a-zA-Z0-9_]{1,50})\.[a-zA-Z_][a-zA-Z0-9_]{0,29}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){0,9}#\}\}"
 )
 _MAX_REPORTED_ISSUES = 10
+
+logger = logging.getLogger(__name__)
+
+
+def _ids(items: object, key: str) -> frozenset[str]:
+    if not isinstance(items, list):
+        return frozenset()
+    return frozenset(str(item[key]) for item in items if isinstance(item, Mapping) and item.get(key) is not None)
+
+
+def _if_else_handles(data: Mapping[str, Any]) -> frozenset[str]:
+    cases = data.get("cases")
+    return (_ids(cases, "case_id") if isinstance(cases, list) else frozenset({_LEGACY_IF_HANDLE})) | {_ELSE_HANDLE}
+
+
+def _question_classifier_handles(data: Mapping[str, Any]) -> frozenset[str]:
+    return _ids(data.get("classes"), "id")
+
+
+def _human_input_handles(data: Mapping[str, Any]) -> frozenset[str]:
+    return _ids(data.get("user_actions"), "id") | {TIMEOUT_HANDLE}
+
+
+def _agent_route_handles(data: Mapping[str, Any]) -> frozenset[str] | None:
+    routes = data.get("agent_output_routes")
+    if not isinstance(routes, Mapping) or routes.get("enabled") is not True:
+        return None
+    return _ids(routes.get("routes"), "id")
+
+
+_BRANCH_HANDLES: Final[Mapping[str, Callable[[Mapping[str, Any]], frozenset[str] | None]]] = {
+    BuiltinNodeTypes.IF_ELSE: _if_else_handles,
+    BuiltinNodeTypes.QUESTION_CLASSIFIER: _question_classifier_handles,
+    BuiltinNodeTypes.HUMAN_INPUT: _human_input_handles,
+    BuiltinNodeTypes.AGENT: _agent_route_handles,
+}
+
+
+def branch_handles(data: Mapping[str, Any]) -> frozenset[str] | None:
+    """The source handles a node chooses one of at run time; None for a node that follows every outgoing edge.
+
+    A fail-branch node can also leave by ``fail-branch``: a branch node beside its own handles, any other node
+    beside ``source``.
+    """
+    read = _BRANCH_HANDLES.get(str(data.get("type")))
+    handles = read(data) if read else None
+    if data.get("error_strategy") != ErrorStrategy.FAIL_BRANCH:
+        return handles
+    return (handles if handles is not None else frozenset({SOURCE_HANDLE})) | {_FAIL_BRANCH_HANDLE}
 
 
 @dataclass(frozen=True)
@@ -47,7 +95,7 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
     """Flag references where the consumer can run without the producer.
 
     Uses engine execution semantics: nodes fire on any active inbound edge; branch
-    nodes (if-else / question-classifier / human-input / fail-branch) take one handle
+    nodes (see ``branch_handles``) take one handle
     (possibly unwired); other nodes fan out all outbound edges. Returns [] when clean.
     """
     nodes = graph.get("nodes") or []
@@ -96,26 +144,10 @@ def validate_variable_references(graph: Mapping[str, Any]) -> list[VariableRefer
         if node_parent[nid] is None and node_type[nid] in (BuiltinNodeTypes.START, *TRIGGER_NODE_TYPES)
     ]
     reachable = _reachable_from(entries, successors)
-    exclusive = {
-        nid
-        for nid in node_ids
-        if node_type[nid] in _BRANCH_NODE_TYPES or node_data[nid].get("error_strategy") == ErrorStrategy.FAIL_BRANCH
-    }
+    handles_by_branch = {nid: handles for nid in node_ids if (handles := branch_handles(node_data[nid])) is not None}
+    exclusive = set(handles_by_branch)
     # A selectable handle can be unwired. It still lets the branch skip a producer.
-    for nid in exclusive:
-        data = node_data[nid]
-        handles: list[str] = []
-        if node_type[nid] == BuiltinNodeTypes.IF_ELSE:
-            cases = data.get("cases")
-            handles = [case["case_id"] for case in cases] if isinstance(cases, list) else ["true"]
-            handles.append("false")
-        elif node_type[nid] == BuiltinNodeTypes.QUESTION_CLASSIFIER:
-            handles = [item["id"] for item in data.get("classes", [])]
-        elif node_type[nid] == BuiltinNodeTypes.HUMAN_INPUT:
-            handles = [action["id"] for action in data.get("user_actions", [])]
-            handles.append(TIMEOUT_HANDLE)
-        if data.get("error_strategy") == ErrorStrategy.FAIL_BRANCH:
-            handles.extend(["source", "fail-branch"])
+    for nid, handles in handles_by_branch.items():
         for handle in handles:
             out_targets_by_handle[nid].setdefault(handle, [])
 
@@ -167,6 +199,21 @@ def format_variable_reference_errors(issues: Sequence[VariableReferenceIssue]) -
         f"{count} variable reference{'s' if count != 1 else ''} may read a skipped branch "
         f"output. Use a Variable Aggregator or a default value — {pairs}."
     )
+
+
+def advisory_variable_reference_warning(graph_text: str | None) -> str | None:
+    """Return a non-blocking publish warning. A checker failure must not fail publish."""
+    if not graph_text:
+        return None
+    try:
+        graph = json.loads(graph_text)
+        if not isinstance(graph, dict):
+            return None
+        issues = validate_variable_references(graph)
+        return format_variable_reference_errors(issues) if issues else None
+    except Exception:
+        logger.warning("Skipped advisory variable reference check", exc_info=True)
+        return None
 
 
 def _reachable_from(starts: Sequence[str], successors: Mapping[str, list[str]]) -> set[str]:

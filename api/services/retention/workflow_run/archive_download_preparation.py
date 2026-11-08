@@ -13,7 +13,10 @@ import logging
 import re
 import zipfile
 from collections.abc import Callable, Sequence
+from functools import partial
 
+import gevent
+import gevent.monkey
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.csv as pa_csv
@@ -37,6 +40,7 @@ from services.retention.workflow_run.archive_log_service import (
     WorkflowRunArchiveBundleRecord,
     WorkflowRunArchiveDownloadTaskStore,
 )
+from services.retention.workflow_run.archive_month_lock import WorkflowRunArchiveMonthLock
 from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_FORMAT,
     ARCHIVE_BUNDLE_MANIFEST_NAME,
@@ -71,11 +75,13 @@ class WorkflowRunArchiveDownloadPreparer:
         download_storage_provider: Callable[[], ArchiveStorage],
         bundles: WorkflowRunArchiveBundleQuery,
         cache: WorkflowRunArchiveDownloadTaskStore,
+        month_lock: WorkflowRunArchiveMonthLock,
     ) -> None:
         self._archive_storage_provider = archive_storage_provider
         self._download_storage_provider = download_storage_provider
         self._bundles = bundles
         self.cache = cache
+        self._month_lock = month_lock
 
     def prepare(self, *, tenant_id: str, download_id: str) -> WorkflowRunArchiveDownloadTask | None:
         """Prepare a ZIP for an existing Redis task and persist terminal task state."""
@@ -89,13 +95,24 @@ class WorkflowRunArchiveDownloadPreparer:
                 return task
             processing_task = self._mark_processing(task)
         try:
-            archive_storage = self._archive_storage_provider()
-            download_storage = self._download_storage_provider()
-            bundles = self._get_task_bundles(processing_task)
-            payload = self._build_zip_payload(archive_storage, processing_task, bundles)
-            storage_key = build_archive_download_storage_key(processing_task)
-            download_storage.put_object(storage_key, payload)
-            return self._mark_ready(processing_task, storage_key=storage_key, file_size_bytes=len(payload))
+            with self._month_lock(tenant_id=tenant_id, year=processing_task.year, month=processing_task.month) as lease:
+                lease.assert_owned()
+                bundles = self._get_task_bundles(processing_task)
+                archive_storage = self._archive_storage_provider()
+                download_storage = self._download_storage_provider()
+                payload = self._build_zip_payload(archive_storage, processing_task, bundles)
+                storage_key = build_archive_download_storage_key(processing_task)
+                lease.assert_owned()
+                download_storage.put_object(storage_key, payload)
+                try:
+                    # A deletion request may be committed during ZIP preparation. The deleter waits on this month
+                    # lease and cleans the ZIP even if compensation fails or this worker crashes after uploading.
+                    self._get_task_bundles(processing_task)
+                    lease.assert_owned()
+                except Exception:
+                    download_storage.delete_object(storage_key)
+                    raise
+                return self._mark_ready(processing_task, storage_key=storage_key, file_size_bytes=len(payload))
         except Exception as exc:
             logger.exception("Failed to prepare workflow run archive download %s", download_id)
             return self._mark_failed(processing_task, error=str(exc))
@@ -126,20 +143,19 @@ class WorkflowRunArchiveDownloadPreparer:
                 object_key = entry["object_key"]
                 table_payload = storage.get_object(object_key)
                 _validate_table_payload(object_key=object_key, entry=entry, payload=table_payload)
-                csv_payload = _parquet_payload_to_csv(
-                    table_payload,
-                    include_header=table_name not in csv_headers_written,
+                csv_payload = _run_archive_cpu_work(
+                    partial(
+                        _parquet_payload_to_csv,
+                        table_payload,
+                        include_header=table_name not in csv_headers_written,
+                    )
                 )
                 if not csv_payload:
                     continue
                 csv_buffers.setdefault(table_name, io.BytesIO()).write(csv_payload)
                 csv_headers_written.add(table_name)
 
-        buffer = io.BytesIO()
-        with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
-            for table_name, csv_buffer in sorted(csv_buffers.items()):
-                archive.writestr(f"{zip_root}/{table_name}.csv", csv_buffer.getvalue())
-        return buffer.getvalue()
+        return _run_archive_cpu_work(lambda: _zip_csv_buffers(csv_buffers, zip_root=zip_root))
 
     def _mark_processing(self, task: WorkflowRunArchiveDownloadTask) -> WorkflowRunArchiveDownloadTask:
         now = datetime.datetime.now(datetime.UTC)
@@ -214,9 +230,14 @@ def build_archive_download_file_name(task: WorkflowRunArchiveDownloadTask) -> st
 
 def build_archive_download_storage_key(task: WorkflowRunArchiveDownloadTask) -> str:
     """Return the deterministic object-store key for a prepared download ZIP."""
+    prefix = build_archive_download_month_prefix(tenant_id=task.tenant_id, year=task.year, month=task.month)
+    return f"{prefix}{task.download_id}.zip"
+
+
+def build_archive_download_month_prefix(*, tenant_id: str, year: int, month: int) -> str:
     return (
-        f"{ARCHIVE_DOWNLOAD_ROOT_PREFIX}tenant_prefix={task.tenant_id[0].lower()}/tenant_id={task.tenant_id}/"
-        f"year={task.year:04d}/month={task.month:02d}/{task.download_id}.zip"
+        f"{ARCHIVE_DOWNLOAD_ROOT_PREFIX}tenant_prefix={tenant_id[0].lower()}/tenant_id={tenant_id}/"
+        f"year={year:04d}/month={month:02d}/"
     )
 
 
@@ -224,6 +245,8 @@ def _select_task_bundles(
     indexed_bundles: Sequence[WorkflowRunArchiveBundleRecord],
     task: WorkflowRunArchiveDownloadTask,
 ) -> list[WorkflowRunArchiveBundleRecord]:
+    if any(bundle.deletion_status is not None for bundle in indexed_bundles):
+        raise ValueError("This workflow run archive is being permanently deleted.")
     if task.bundle_refs:
         requested_refs = [(ref.shard, ref.bundle_id) for ref in task.bundle_refs]
     else:
@@ -346,3 +369,18 @@ def _parquet_payload_to_csv(payload: bytes, *, include_header: bool) -> bytes:
         write_options=pa_csv.WriteOptions(include_header=include_header),
     )
     return buffer.getvalue()
+
+
+def _zip_csv_buffers(csv_buffers: dict[str, io.BytesIO], *, zip_root: str) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for table_name, csv_buffer in sorted(csv_buffers.items()):
+            archive.writestr(f"{zip_root}/{table_name}.csv", csv_buffer.getvalue())
+    return buffer.getvalue()
+
+
+def _run_archive_cpu_work[T](work: Callable[[], T]) -> T:
+    """Keep lease renewal responsive in gevent workers; storage I/O stays on the calling greenlet."""
+    if gevent.monkey.is_module_patched("threading"):
+        return gevent.get_hub().threadpool.apply(work)
+    return work()

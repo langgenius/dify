@@ -24,12 +24,13 @@
   "scripts": {
     "check:dimensions": "node ./scripts/check-icon-dimensions.ts",
     "generate": "node ./scripts/generate-collections.ts",
-    "type-check": "tsc"
+    "type-check": "tsrs --noEmit"
   },
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
-    "iconify-import-svg": "catalog:"
+    "iconify-import-svg": "catalog:",
+    "tsrs": "catalog:"
   }
 }

@@ -17,6 +17,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.agent.errors import AgentNotFoundError
@@ -45,6 +46,7 @@ register_response_schema_models(console_ns, AgentReferencingWorkflowsResponse)
 
 @console_ns.route("/agent/<uuid:agent_id>/referencing-workflows")
 class AgentAppReferencingWorkflowsResource(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("list_agent_app_referencing_workflows")
     @console_ns.doc(description="List workflow apps that reference this Agent App's bound Agent (read-only)")
     @console_ns.doc(params={"agent_id": "Agent ID"})

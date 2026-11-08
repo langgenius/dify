@@ -3,7 +3,8 @@ import type { ModerationConfig } from '@/models/debug'
 import type { ConsoleClient } from '@/service/console'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import ModerationSettingModal from '../moderation-setting-modal'
 
 const { getExtensions, createExtension } = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const { getExtensions, createExtension } = vi.hoisted(() => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   const { createConsoleQuery } = await import('@/service/console/query-policies')
   const consoleClient = new Proxy(actual.consoleClient, {
     get(target, property, receiver) {
@@ -26,18 +28,15 @@ vi.mock('@/service/console', async (importOriginal) => {
       return Reflect.get(target, property, receiver)
     },
   })
-  return { ...actual, consoleClient, consoleQuery: createConsoleQuery(consoleClient) }
+  return {
+    ...actual,
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
+      'codeBasedExtension.get': () => ({ data: [] }),
+      'workspaces.current.modelProviders.get': () => ({ data: [] }),
+    }),
+  }
 })
-
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({ data: { data: [] } }),
-  useModelProviderDetails: () => ({ data: { data: [] }, isPending: false }),
-}))
-
-vi.mock('nuqs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('nuqs')>()),
-  useQueryState: () => [null, vi.fn()],
-}))
 
 const existingExtension: ApiBasedExtensionResponse = {
   id: 'existing-extension',
@@ -62,6 +61,12 @@ const moderation: ModerationConfig = {
 }
 const childDialogName = 'common.apiBasedExtension.modal.title'
 const outputLabel = 'appDebug.feature.moderation.modal.content.output'
+
+const onUrlUpdate = vi.fn()
+const renderWithConsoleQuery = createNuqsTestRenderer(
+  renderWithConsoleQueryWithoutUrlState,
+  () => ({ onUrlUpdate }),
+)
 
 const renderModal = async () => {
   const onSave = vi.fn()

@@ -3,3 +3,4 @@
 ;(globalThis as unknown as Record<string, string>).__DIFYCTL_BUILD_DATE__ =
   '1970-01-01T00:00:00.000Z'
 ;(globalThis as unknown as Record<string, string>).__DIFYCTL_CHANNEL__ = 'dev'
+;(globalThis as unknown as Record<string, boolean>).__DIFYCTL_COMPILED__ = false

@@ -1,180 +1,79 @@
-import type { ComponentProps } from 'react'
-import type { Var } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import type { VarGroupItem as Payload } from '../../types'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { VarType } from '@/app/components/workflow/types'
+import { useState } from 'react'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { renderAssigner as renderWorkflowFlowComponent } from '../../__tests__/test-helpers'
 import VarGroupItem from '../var-group-item'
 
-const mockPickerRender = vi.hoisted(() => vi.fn())
-const mockVarListRender = vi.hoisted(() => vi.fn())
-
-vi.mock('../../../_base/components/variable/var-reference-picker', () => ({
-  __esModule: true,
-  default: (props: {
-    onChange: (value: string[], varKindType: string, varInfo?: Var) => void
-    filterVar: (payload: Var) => boolean
-  }) => {
-    mockPickerRender(props)
-    return (
-      <div>
-        <button
-          type="button"
-          onClick={() =>
-            props.onChange(['node-a', 'answer'], 'variable', {
-              variable: 'answer',
-              type: VarType.string,
-            })
-          }
-        >
-          add-string-var
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            props.onChange(['node-a', 'answer'], 'variable', {
-              variable: 'answer',
-              type: VarType.string,
-            })
-          }
-        >
-          add-duplicate-var
-        </button>
-      </div>
-    )
+const source = createNode({
+  id: 'source',
+  data: {
+    type: BlockEnum.Code,
+    title: 'Source',
+    outputs: {
+      answer: { type: VarType.string },
+      alternate: { type: VarType.string },
+      flag: { type: VarType.boolean },
+    },
   },
-}))
-
-vi.mock('../var-list', () => ({
-  __esModule: true,
-  default: (props: { onChange: (list: string[][], changedItem?: string[]) => void }) => {
-    mockVarListRender(props)
-    return (
-      <div>
-        <button
-          type="button"
-          onClick={() =>
-            props.onChange(
-              [
-                ['node-a', 'flag'],
-                ['node-a', 'flag'],
-              ],
-              ['node-a', 'flag'],
-            )
-          }
-        >
-          replace-with-duplicate
-        </button>
-        <button type="button" onClick={() => props.onChange([], undefined)}>
-          clear-vars
-        </button>
-      </div>
-    )
-  },
-}))
-
-const createPayload = (
-  overrides: Partial<ComponentProps<typeof VarGroupItem>['payload']> = {},
-): ComponentProps<typeof VarGroupItem>['payload'] => ({
-  group_name: 'Group_A',
-  output_type: VarType.any,
-  variables: [],
-  ...overrides,
 })
-
-const renderGroupItem = (props: Partial<ComponentProps<typeof VarGroupItem>> = {}) => {
+const availableVars = [
+  {
+    nodeId: 'source',
+    title: 'Source',
+    vars: [
+      { variable: 'answer', type: VarType.string },
+      { variable: 'alternate', type: VarType.string },
+      { variable: 'flag', type: VarType.boolean },
+    ],
+  },
+]
+const renderGroup = () => {
   const onChange = vi.fn()
-
-  render(
-    <VarGroupItem
-      readOnly={false}
-      nodeId="node-1"
-      payload={createPayload()}
-      onChange={onChange}
-      groupEnabled
-      availableVars={[]}
-      {...props}
-    />,
-  )
-
-  return { onChange }
+  function Harness() {
+    const [payload, setPayload] = useState<Payload>({ output_type: VarType.any, variables: [] })
+    return (
+      <VarGroupItem
+        readOnly={false}
+        nodeId="group"
+        payload={payload}
+        groupEnabled={false}
+        availableVars={availableVars}
+        onChange={(next) => {
+          setPayload(next)
+          onChange(next)
+        }}
+      />
+    )
+  }
+  const result = renderWorkflowFlowComponent(<Harness />, {
+    nodes: [source, createNode({ id: 'group', data: { type: BlockEnum.VariableAssigner } })],
+    edges: [createEdge({ source: 'source', target: 'group' })],
+  })
+  return { ...result, onChange }
 }
 
-describe('variable-assigner/var-group-item branches', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('fixes the group type after adding a variable, rejects duplicates, and resets it after removing the last value', async () => {
+  const user = userEvent.setup()
+  const { onChange } = renderGroup()
+  await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+  expect(await screen.findByText('flag')).toBeVisible()
+  await user.click(screen.getByText('answer'))
+  expect(onChange).toHaveBeenLastCalledWith({
+    output_type: VarType.string,
+    variables: [['source', 'answer']],
   })
-
-  it('adds a new typed variable and exposes permissive filtering when output type is any', async () => {
-    const user = userEvent.setup()
-    const { onChange } = renderGroupItem()
-
-    const filterVar = mockPickerRender.mock.lastCall?.[0].filterVar as (payload: Var) => boolean
-
-    expect(filterVar({ variable: 'answer', type: VarType.string })).toBe(true)
-    expect(filterVar({ variable: 'flag', type: VarType.boolean })).toBe(true)
-
-    await user.click(screen.getByRole('button', { name: 'add-string-var' }))
-
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        variables: [['node-a', 'answer']],
-        output_type: VarType.string,
-      }),
-    )
-  })
-
-  it('ignores duplicate additions and only accepts matching types when the output type is fixed', async () => {
-    const user = userEvent.setup()
-    const { onChange } = renderGroupItem({
-      payload: createPayload({
-        output_type: VarType.string,
-        variables: [['node-a', 'answer']],
-      }),
-    })
-
-    const filterVar = mockPickerRender.mock.lastCall?.[0].filterVar as (payload: Var) => boolean
-
-    expect(filterVar({ variable: 'answer', type: VarType.string })).toBe(true)
-    expect(filterVar({ variable: 'flag', type: VarType.boolean })).toBe(false)
-
-    await user.click(screen.getByRole('button', { name: 'add-duplicate-var' }))
-
-    expect(onChange).not.toHaveBeenCalled()
-  })
-
-  it('ignores duplicate replacements from the nested variable list', async () => {
-    const user = userEvent.setup()
-    const { onChange } = renderGroupItem({
-      payload: createPayload({
-        output_type: VarType.string,
-        variables: [
-          ['node-a', 'answer'],
-          ['node-a', 'flag'],
-        ],
-      }),
-    })
-
-    await user.click(screen.getByRole('button', { name: 'replace-with-duplicate' }))
-
-    expect(onChange).not.toHaveBeenCalled()
-  })
-
-  it('resets the output type to any when the nested variable list becomes empty', async () => {
-    const user = userEvent.setup()
-    const { onChange } = renderGroupItem({
-      payload: createPayload({
-        output_type: VarType.string,
-        variables: [['node-a', 'answer']],
-      }),
-    })
-
-    await user.click(screen.getByRole('button', { name: 'clear-vars' }))
-
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        variables: [],
-        output_type: VarType.any,
-      }),
-    )
-  })
+  await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+  const search = screen.getByRole('searchbox')
+  await user.type(search, 'answer')
+  await user.click(screen.getAllByText('answer').at(-1)!)
+  expect(onChange).toHaveBeenCalledTimes(1)
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+  expect(onChange).toHaveBeenLastCalledWith({ output_type: VarType.any, variables: [] })
+  expect(screen.getByText('workflowLogic.nodes.variableAssigner.noVarTip')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+  expect(await screen.findByText('flag')).toBeVisible()
 })

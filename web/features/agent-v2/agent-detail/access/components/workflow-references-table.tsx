@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  AgentIconType,
-  AgentReferencingWorkflowResponse,
-} from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
@@ -49,20 +46,20 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
           <col className="w-36" />
         </colgroup>
         <thead>
-          <tr className="h-7 rounded-lg bg-background-section-burn text-left system-xs-semibold-uppercase text-text-tertiary">
-            <th scope="col" className="rounded-l-lg px-3 font-semibold">
+          <tr className="h-7 rounded-lg bg-background-section-burn text-start system-xs-semibold-uppercase text-text-tertiary">
+            <th scope="col" className="rounded-s-lg px-3 text-start font-semibold">
               {t(($) => $['agentDetail.access.workflow.table.name'])}
             </th>
-            <th scope="col" className="px-3 font-semibold">
+            <th scope="col" className="px-3 text-start font-semibold">
               {t(($) => $['agentDetail.access.workflow.table.version'])}
             </th>
-            <th scope="col" className="px-3 font-semibold">
+            <th scope="col" className="px-3 text-start font-semibold">
               {t(($) => $['agentDetail.access.workflow.table.nodes'])}
             </th>
-            <th scope="col" className="px-3 font-semibold">
+            <th scope="col" className="px-3 text-start font-semibold">
               {t(($) => $['agentDetail.access.workflow.table.lastUpdated'])}
             </th>
-            <th scope="col" className="rounded-r-lg px-3 font-semibold">
+            <th scope="col" className="rounded-e-lg px-3 text-start font-semibold">
               {t(($) => $['agentDetail.access.workflow.table.actions'])}
             </th>
           </tr>
@@ -111,14 +108,6 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
 function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowResponse }) {
   const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
-  const imageUrl =
-    reference.app_icon_type === 'image' || reference.app_icon_type === 'link'
-      ? reference.app_icon
-      : undefined
-  const iconType = (imageUrl ? 'image' : reference.app_icon_type) as
-    | AgentIconType
-    | null
-    | undefined
   const updatedAt =
     reference.app_updated_at != null
       ? formatTime(
@@ -135,11 +124,13 @@ function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowR
           <span aria-hidden className="shrink-0">
             <AppIcon
               size="small"
-              rounded
-              iconType={iconType}
-              icon={reference.app_icon ?? undefined}
-              background={reference.app_icon_background}
-              imageUrl={imageUrl}
+              shape="circle"
+              icon={{
+                icon_type: reference.app_icon_type,
+                icon: reference.app_icon,
+                icon_url: reference.app_icon,
+                icon_background: reference.app_icon_background,
+              }}
             />
           </span>
           <span className="truncate">{reference.app_name}</span>

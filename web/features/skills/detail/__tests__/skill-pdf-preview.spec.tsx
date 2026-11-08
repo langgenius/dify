@@ -21,6 +21,10 @@ vi.mock('@/app/components/base/file-uploader/pdf-highlighter-adapter', () => ({
 }))
 
 describe('SkillPdfPreview', () => {
+  afterEach(() => {
+    vi.doUnmock('@/utils/var')
+  })
+
   it('should load the pdf worker from the configured base path', async () => {
     vi.resetModules()
     vi.doMock('@/utils/var', async (importOriginal) => {

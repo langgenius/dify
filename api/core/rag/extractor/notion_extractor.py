@@ -1,10 +1,12 @@
 import json
 import logging
 import operator
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from types import MappingProxyType
 from typing import Any, cast, override
 
 import httpx
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import update
 
 from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionInput
@@ -32,6 +34,16 @@ HEADING_SPLITTER = {
     "heading_2": "## ",
     "heading_3": "### ",
 }
+
+
+class _NotionTablePage(BaseModel):
+    """A successful table page has rows and an explicit pagination cursor."""
+
+    model_config = ConfigDict(strict=True, hide_input_in_errors=True)
+
+    results: list[dict[str, Any]]
+    next_cursor: str | None
+    """The next page's cursor, or ``None`` for the final page."""
 
 
 class NotionExtractor(BaseExtractor):
@@ -79,8 +91,10 @@ class NotionExtractor(BaseExtractor):
 
         return docs
 
-    def _get_notion_database_data(self, database_id: str, query_dict: dict[str, Any] = {}) -> list[Document]:
-        """Get all the pages from a Notion database."""
+    def _get_notion_database_data(
+        self, database_id: str, query_dict: Mapping[str, Any] = MappingProxyType({})
+    ) -> list[Document]:
+        """Get all database pages, failing on HTTP errors instead of returning partial content."""
         assert self._notion_access_token is not None, "Notion access token is required"
 
         database_content = []
@@ -88,7 +102,7 @@ class NotionExtractor(BaseExtractor):
         has_more = True
 
         while has_more:
-            current_query = query_dict.copy()
+            current_query = dict(query_dict)
             if next_cursor:
                 current_query["start_cursor"] = next_cursor
 
@@ -103,6 +117,7 @@ class NotionExtractor(BaseExtractor):
                 timeout=_REQUEST_TIMEOUT,
             )
 
+            res.raise_for_status()
             response_data = res.json()
 
             if "results" not in response_data or response_data["results"] is None:
@@ -124,10 +139,7 @@ class NotionExtractor(BaseExtractor):
                         # join them all so no part of the value is dropped.
                         value = "".join(segment.get("plain_text", "") for segment in property_value[type])
                     elif type in {"select", "status"}:
-                        if property_value[type]:
-                            value = property_value[type]["name"]
-                        else:
-                            value = ""
+                        value = property_value[type]["name"] if property_value[type] else ""
                     else:
                         value = property_value[type]
                     data[property_name] = value
@@ -158,7 +170,7 @@ class NotionExtractor(BaseExtractor):
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=page_id)
         while True:
-            query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
+            query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
             try:
                 res = httpx.request(
                     "GET",
@@ -220,7 +232,7 @@ class NotionExtractor(BaseExtractor):
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
         while True:
-            query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
+            query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
 
             res = httpx.request(
                 "GET",
@@ -280,14 +292,19 @@ class NotionExtractor(BaseExtractor):
         return "".join(segment.get("plain_text") or segment.get("text", {}).get("content", "") for segment in cell)
 
     def _read_table_rows(self, block_id: str) -> str:
-        """Read table rows."""
+        """Fetch all rows for a table block using the configured access token.
+
+        Return Markdown only after every page succeeds, skipping empty pages
+        while following their cursors. HTTP, network, JSON, and response
+        validation errors propagate instead of returning empty or partial data.
+        """
         assert self._notion_access_token is not None, "Notion access token is required"
-        done = False
+        has_more = True
         result_lines_arr = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
-        while not done:
-            query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
+        while has_more:
+            query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
 
             res = httpx.request(
                 "GET",
@@ -300,31 +317,30 @@ class NotionExtractor(BaseExtractor):
                 params=query_dict,
                 timeout=_REQUEST_TIMEOUT,
             )
-            data = res.json()
-            # get table headers text
-            table_header_cell_texts = []
-            table_header_cells = data["results"][0]["table_row"]["cells"]
-            for table_header_cell in table_header_cells:
-                table_header_cell_texts.append(self._get_cell_text(table_header_cell))
-            # Initialize Markdown table with headers
-            markdown_table = "| " + " | ".join(table_header_cell_texts) + " |\n"
-            markdown_table += "| " + " | ".join(["---"] * len(table_header_cell_texts)) + " |\n"
+            res.raise_for_status()
+            data = _NotionTablePage.model_validate(res.json())
+            results = data.results
+            if results:
+                # get table headers text
+                table_header_cell_texts = []
+                table_header_cells = results[0]["table_row"]["cells"]
+                for table_header_cell in table_header_cells:
+                    table_header_cell_texts.append(self._get_cell_text(table_header_cell))
+                # Initialize Markdown table with headers
+                markdown_table = "| " + " | ".join(table_header_cell_texts) + " |\n"
+                markdown_table += "| " + " | ".join(["---"] * len(table_header_cell_texts)) + " |\n"
 
-            # Process data to format each row in Markdown table format
-            results = data["results"]
-            for i in range(len(results) - 1):
-                column_texts = []
-                table_column_cells = data["results"][i + 1]["table_row"]["cells"]
-                for table_column_cell in table_column_cells:
-                    column_texts.append(self._get_cell_text(table_column_cell))
-                # Add row to Markdown table
-                markdown_table += "| " + " | ".join(column_texts) + " |\n"
-            result_lines_arr.append(markdown_table)
-            if data["next_cursor"] is None:
-                done = True
-                break
-            else:
-                start_cursor = data["next_cursor"]
+                # Process data to format each row in Markdown table format
+                for result in results[1:]:
+                    column_texts = []
+                    table_column_cells = result["table_row"]["cells"]
+                    for table_column_cell in table_column_cells:
+                        column_texts.append(self._get_cell_text(table_column_cell))
+                    # Add row to Markdown table
+                    markdown_table += "| " + " | ".join(column_texts) + " |\n"
+                result_lines_arr.append(markdown_table)
+            start_cursor = data.next_cursor
+            has_more = start_cursor is not None
 
         result_lines = "\n".join(result_lines_arr)
         return result_lines
@@ -358,8 +374,6 @@ class NotionExtractor(BaseExtractor):
         else:
             retrieve_page_url = RETRIEVE_PAGE_URL_TMPL.format(page_id=obj_id)
 
-        query_dict: dict[str, Any] = {}
-
         res = httpx.request(
             "GET",
             retrieve_page_url,
@@ -368,7 +382,6 @@ class NotionExtractor(BaseExtractor):
                 "Content-Type": "application/json",
                 "Notion-Version": "2022-06-28",
             },
-            json=query_dict,
             timeout=_REQUEST_TIMEOUT,
         )
 

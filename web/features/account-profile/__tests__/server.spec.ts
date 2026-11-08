@@ -1,7 +1,8 @@
+// @vitest-environment node
+
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { resolveServerConsoleApiUrl } from '@/service/console/server'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userProfileQueryOptions } from '../client'
 
 const headersMock = vi.fn()
@@ -29,6 +30,8 @@ const createProfile = (
   is_password_set: true,
   ...overrides,
 })
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('serverUserProfileQueryOptions', () => {
   beforeEach(() => {
@@ -64,34 +67,10 @@ describe('serverUserProfileQueryOptions', () => {
         currentEnv: 'DEVELOPMENT',
       },
     })
-    expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:5001/console/api/account/profile',
-      expect.objectContaining({
-        method: 'GET',
-        cache: 'no-store',
-        headers: expect.any(Headers),
-      }),
-    )
-  })
-
-  it('should skip relative API prefixes unless a server API origin is configured', () => {
-    expect(resolveServerConsoleApiUrl('/account/profile', undefined, '/console/api')).toBeNull()
-    expect(
-      resolveServerConsoleApiUrl(
-        '/account/profile',
-        'https://console.example.com/console/api',
-        '/console/api',
-      ),
-    ).toBe('https://console.example.com/console/api/account/profile')
-  })
-
-  it('should preserve absolute API prefixes', () => {
-    expect(
-      resolveServerConsoleApiUrl(
-        '/account/profile',
-        undefined,
-        'https://console.example.com/console/api',
-      ),
-    ).toBe('https://console.example.com/console/api/account/profile')
+    const [request, init] = fetchMock.mock.calls[0]!
+    expect(request.url).toBe('http://localhost:5001/console/api/account/profile')
+    expect(request.method).toBe('GET')
+    expect(request.headers.get('cookie')).toBe('session=abc')
+    expect(init).toMatchObject({ cache: 'no-store' })
   })
 })

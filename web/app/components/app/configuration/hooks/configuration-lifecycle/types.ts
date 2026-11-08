@@ -1,5 +1,8 @@
+import type { AppType } from '@/app/components/apps/app-type'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DatasetConfigs, ModelConfig, PromptMode } from '@/models/debug'
+
+export type ConfigurationAppMode = Extract<AppType, 'chat' | 'agent-chat' | 'completion'>
 
 export type ConfigurationPublishConfig = {
   modelConfig: ModelConfig

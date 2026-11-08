@@ -43,19 +43,23 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
       <div className="space-y-4 px-4 pt-2 pb-3">
         <WorkflowField
           title={t(($) => $[`${i18nPrefix}.title`], { ns: 'workflowIntegrations' })}
-          operations={<ModeToggle mode={inputs.mode} onChange={handleModeChange} />}
+          operations={
+            <ModeToggle disabled={readOnly} mode={inputs.mode} onChange={handleModeChange} />
+          }
         >
           <div className="space-y-3">
             {inputs.mode === 'visual' && (
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-3">
                   <FrequencySelector
+                    disabled={readOnly}
                     frequency={inputs.frequency || 'daily'}
                     onChange={handleFrequencyChange}
                   />
                   <div className="col-span-2">
                     {inputs.frequency === 'hourly' ? (
                       <OnMinuteSelector
+                        disabled={readOnly}
                         value={inputs.visual_config?.on_minute}
                         onChange={handleOnMinuteChange}
                       />
@@ -91,6 +95,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
 
                 {inputs.frequency === 'weekly' && (
                   <WeekdaySelector
+                    disabled={readOnly}
                     selectedDays={inputs.visual_config?.weekdays || []}
                     onChange={handleWeekdaysChange}
                   />
@@ -98,6 +103,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
 
                 {inputs.frequency === 'monthly' && (
                   <MonthlyDaysSelector
+                    disabled={readOnly}
                     selectedDays={inputs.visual_config?.monthly_days || [1]}
                     onChange={(days) => {
                       const newInputs = {
@@ -120,6 +126,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
                   {t(($) => $['nodes.triggerSchedule.cronExpression'], { ns: 'workflow' })}
                 </FieldLabel>
                 <Input
+                  readOnly={readOnly}
                   value={inputs.cron_expression || ''}
                   onValueChange={(value) => handleCronExpressionChange(value)}
                   placeholder="0 0 * * *"

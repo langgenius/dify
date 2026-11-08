@@ -16,7 +16,7 @@ from services.web_app_runtime_query_service import (
     WebAppRuntimeRecord,
     WebAppRuntimeUnavailableError,
 )
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 _FILES_URL = "https://files.example.com"
 

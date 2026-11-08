@@ -1,11 +1,15 @@
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -34,13 +38,13 @@ import ChunkContent from './chunk-content'
 
 type ISegmentCardProps = {
   loading: boolean
-  detail?: SegmentDetailModel & { document?: { name: string }; status?: string }
+  detail?: SegmentResponse & { document?: { name: string }; status?: string }
   onClick?: () => void
   onChangeSwitch?: (enabled: boolean, segId?: string) => Promise<void>
   onDelete?: (segId: string) => Promise<void>
   onDeleteChildChunk?: (segId: string, childChunkId: string) => Promise<void>
   handleAddNewChildChunk?: (parentChunkId: string) => void
-  onClickSlice?: (childChunk: ChildChunkDetail) => void
+  onClickSlice?: (childChunk: ChildChunkResponse) => void
   onClickEdit?: () => void
   className?: string
   archived?: boolean
@@ -131,7 +135,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   const images = useMemo(() => {
     return attachments.map((attachment) => ({
       name: attachment.name,
-      mimeType: attachment.mime_type,
+      // An unknown MIME type is empty, as in File.type.
+      mimeType: attachment.mime_type ?? '',
       sourceUrl: attachment.source_url,
       size: attachment.size,
       extension: attachment.extension,
@@ -276,7 +281,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       </div>
       <ChunkContent
         detail={{
-          answer,
+          answer: answer ?? undefined,
           content,
           sign_content,
         }}
@@ -314,12 +319,12 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       )}
       <AlertDialog open={showModal} onOpenChange={(open) => !open && setShowModal(false)}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['segment.delete'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -331,7 +336,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             >
               {t(($) => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

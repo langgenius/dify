@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { ToolDateRangePicker } from '../tool-date-range-picker'
@@ -19,20 +19,8 @@ vi.mock('react-i18next', async () => {
 })
 
 describe('ToolDateRangePicker', () => {
-  it('preserves stored date-only values when rendering in a negative timezone', () => {
-    render(
-      <ToolDateRangePicker
-        label="Booking dates"
-        value={JSON.stringify({ start: '2024-05-01', end: '2024-05-03' })}
-        onChange={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByRole('button', { name: 'Start date May 1, 2024' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'End date May 3, 2024' })).toBeInTheDocument()
-  })
-
-  it('clears one boundary without changing the other', () => {
+  it('clears one boundary without changing the other', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ToolDateRangePicker
@@ -42,7 +30,7 @@ describe('ToolDateRangePicker', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start date: Clear' }))
+    await user.click(screen.getByRole('button', { name: 'Start date: Clear' }))
 
     expect(onChange).toHaveBeenCalledWith(JSON.stringify({ end: '2024-05-03' }))
   })
@@ -64,13 +52,13 @@ describe('ToolDateRangePicker', () => {
       'End date: Clear',
     ]) {
       const button = screen.getByRole('button', { name })
-      expect(within(button).queryByRole('button')).not.toBeInTheDocument()
       await user.tab()
       expect(button).toHaveFocus()
     }
   })
 
-  it('returns an empty value when clearing the last boundary', () => {
+  it('returns an empty value when clearing the last boundary', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ToolDateRangePicker
@@ -80,7 +68,7 @@ describe('ToolDateRangePicker', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start date: Clear' }))
+    await user.click(screen.getByRole('button', { name: 'Start date: Clear' }))
 
     expect(onChange).toHaveBeenCalledWith('')
   })

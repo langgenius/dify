@@ -15,6 +15,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, validate_request
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
@@ -77,6 +78,7 @@ register_schema_models(console_ns, MCPServerCreatePayload, MCPServerUpdatePayloa
 
 @console_ns.route("/apps/<uuid:app_id>/server")
 class AppMCPServerController(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.doc("get_app_mcp_server")
     @console_ns.doc(description="Get MCP server configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -93,6 +95,7 @@ class AppMCPServerController(Resource):
             return {}
         return dump_response(AppMCPServerResponse, server)
 
+    @error_responses(AppNotFoundError)
     @console_ns.doc("create_app_mcp_server")
     @console_ns.doc(description="Create MCP server configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -115,6 +118,7 @@ class AppMCPServerController(Resource):
             raise Conflict(str(error)) from error
         return dump_response(AppMCPServerResponse, server), 201
 
+    @error_responses(AppNotFoundError)
     @console_ns.doc("update_app_mcp_server")
     @console_ns.doc(description="Update MCP server configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -145,6 +149,7 @@ class AppMCPServerController(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/server/refresh")
 class AppMCPServerRefreshController(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.doc("refresh_app_mcp_server")
     @console_ns.doc(description="Refresh MCP server configuration and regenerate server code")
     @console_ns.doc(params={"app_id": "App ID"})
