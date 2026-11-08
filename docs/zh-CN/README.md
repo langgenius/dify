@@ -120,15 +120,28 @@ Dify 是一个开源的 LLM 应用开发平台。其直观的界面结合了 AI 
 
 ### 快速启动
 
-启动 Dify 服务器的最简单方法是运行我们的 [docker-compose.yml](../../docker/docker-compose.yaml) 文件。在运行安装命令之前，请确保您的机器上安装了 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)：
+启动 Dify 服务器的最简单方法是使用 [Docker Compose](../../docker/docker-compose.yaml)。请先安装 [Docker](https://docs.docker.com/get-docker/) 并启动其守护进程，以及安装 [Docker Compose](https://docs.docker.com/compose/install/) v2.35.0 或更高版本和 OpenSSL。
+
+对于全新部署，在仓库根目录下运行以下命令。如果是升级现有部署，请保留已有的 `.env` 文件并参阅[升级配置指南](../../docker/README.md#review-configuration-after-an-upgrade)。
 
 ```bash
 cd docker
 cp .env.example .env
-docker compose up -d
+openssl rand -hex 32
 ```
 
-运行后，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 Dify 控制台并开始初始化安装操作。
+打开 `.env`，将生成的值设置给 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`。使用内置服务时，请保留默认的 `COMPOSE_PROFILES` 值；服务默认配置会自动加载，无需额外配置文件。
+
+在同一个 `docker` 目录下启动并检查服务：
+
+```bash
+docker compose up -d
+docker compose ps --all
+```
+
+服务启动后，可以在浏览器中访问 [http://localhost/install](http://localhost/install) 完成初始化安装。一次性的 `init_permissions` 服务以状态码 `0` 退出属于正常情况。
+
+有关可选设置及服务覆盖配置，请参阅 [Docker 部署指南](../../docker/README.md#configure-dify)。
 
 #### 获取帮助
 
