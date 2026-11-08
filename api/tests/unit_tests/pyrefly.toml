@@ -118,7 +118,6 @@ project-excludes = [
   "core/helper/test_ssrf_proxy.py",
   "core/llm_generator/output_parser/test_structured_output.py",
   "core/llm_generator/test_llm_generator.py",
-  "core/logging/test_filters.py",
   "core/mcp/auth/test_auth_flow.py",
   "core/mcp/client/test_sse_client.py",
   "core/mcp/client/test_streamable_client.py",
