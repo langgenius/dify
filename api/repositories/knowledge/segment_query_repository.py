@@ -6,12 +6,13 @@ from collections.abc import Sequence
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope
+from core.app.file_access import DatabaseFileAccessController
 from core.rag.entities import ParentMode, Rule
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
 from models.tools import ToolFile
 from repositories.knowledge.document_query_repository import get_document_process_rule
+from services.entities.file_access import FileAccessScopeView
 
 _FILE_ID = r"[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}"
 SEGMENT_FILE_LINK = re.compile(
@@ -57,10 +58,14 @@ def get_content_file_ids(
     *,
     upload_ids: set[str],
     tool_ids: set[str],
-    scope: FileAccessScope | None,
+    scope: FileAccessScopeView | None,
     session: Session,
 ) -> tuple[set[str], set[str]]:
-    """Resolve persisted file references under an explicitly supplied access scope."""
+    """Resolve persisted file references under an explicitly supplied access scope.
+
+    Preconditions: the session is open and scope facts come from trusted caller context.
+    Postconditions: return only existing files allowed by both the tenant and scope, without changing grants.
+    """
 
     access = DatabaseFileAccessController(scope_getter=lambda: scope)
     uploads = (

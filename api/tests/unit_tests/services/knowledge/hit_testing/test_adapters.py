@@ -29,6 +29,7 @@ from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepositor
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_query_repository import SEGMENT_FILE_LINK
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
+from services.entities.file_access import FileAccessScopeView
 from services.knowledge.entities.external import ExternalRetrievalCandidate, ExternalRetrievalConfig
 from services.knowledge.entities.metadata import MetadataFilteringCondition
 from services.knowledge.entities.resource_scope import DatasetRef
@@ -299,7 +300,7 @@ def test_content_access_and_signing_run_only_for_the_final_top_k_selection(
     sign_content = adapters.sign_segment_text
 
     def capture_access(
-        ref: DatasetRef, *, segment_ids: Sequence[str], scope: FileAccessScope | None
+        ref: DatasetRef, *, segment_ids: Sequence[str], scope: FileAccessScopeView | None
     ) -> Mapping[str, SegmentFileAccess]:
         queried_segment_ids.append(tuple(segment_ids))
         return load_access(ref, segment_ids=segment_ids, scope=scope)

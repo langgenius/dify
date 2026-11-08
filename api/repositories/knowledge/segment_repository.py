@@ -14,7 +14,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.app.file_access import FileAccessScope
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -46,6 +45,7 @@ from repositories.knowledge.segment_query_repository import (
     retrieved_segment_statement,
     segment_content_file_ids,
 )
+from services.entities.file_access import FileAccessScopeView
 from services.errors.file import UploadFileReferenceNotFoundError
 from services.file_reference_parser import extract_upload_file_ids_from_markdown, trusted_upload_file_ids
 from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef, SegmentRef
@@ -212,7 +212,7 @@ class SQLAlchemySegmentRepository:
         ref: DatasetRef,
         *,
         segment_ids: Sequence[str],
-        scope: FileAccessScope | None,
+        scope: FileAccessScopeView | None,
     ) -> Mapping[str, SegmentFileAccess]:
         """Authorize embedded file references for the final hit-testing selection.
 
@@ -1270,7 +1270,7 @@ def _get_child_chunk(session: Session, segment_ref: SegmentRef, child_chunk_id: 
 
 
 def _content_file_access(
-    segments: Sequence[DocumentSegment], session: Session, *, scope: FileAccessScope | None
+    segments: Sequence[DocumentSegment], session: Session, *, scope: FileAccessScopeView | None
 ) -> dict[str, SegmentFileAccess]:
     """Materialize file access for already scoped rows within their original read transaction.
 

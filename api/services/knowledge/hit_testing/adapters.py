@@ -9,7 +9,6 @@ from typing import Any, Protocol, TypedDict
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.file_access import (
-    FileAccessScope,
     get_current_file_access_scope,
     grant_retriever_segment_access,
     grant_upload_file_access,
@@ -31,6 +30,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from machinery.context import RequestContext
 from repositories.knowledge.retrieval_source_repository import expand_attachment_document_filter
 from repositories.knowledge.segment_query_repository import segment_content_file_ids
+from services.entities.file_access import FileAccessScopeView
 from services.knowledge.entities.metadata import MetadataFilteringCondition
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.entities.retrieval_settings import (
@@ -167,7 +167,7 @@ class HitTestingSegmentReader(Protocol):
         ref: DatasetRef,
         *,
         segment_ids: Sequence[str],
-        scope: FileAccessScope | None,
+        scope: FileAccessScopeView | None,
     ) -> Mapping[str, SegmentFileAccess]:
         """Resolve persisted file access for the selected segments without publishing grants.
 

@@ -6,8 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
 from models import ToolFile, UploadFile
-
-from .scope import FileAccessScope
+from services.entities.file_access import FileAccessScopeView
 
 
 class FileAccessControllerProtocol(Protocol):
@@ -18,7 +17,7 @@ class FileAccessControllerProtocol(Protocol):
     ownership and tenancy rules for workflow-layer file access.
     """
 
-    def current_scope(self) -> FileAccessScope | None:
+    def current_scope(self) -> FileAccessScopeView | None:
         """Return the scope active for the current execution, if one exists.
 
         Callers use this to decide whether embedded file metadata may be trusted
@@ -30,7 +29,7 @@ class FileAccessControllerProtocol(Protocol):
         self,
         stmt: Select[tuple[UploadFile]],
         *,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScopeView | None = None,
     ) -> Select[tuple[UploadFile]]:
         """Return an upload-file query constrained by the supplied access scope.
 
@@ -43,7 +42,7 @@ class FileAccessControllerProtocol(Protocol):
         self,
         stmt: Select[tuple[ToolFile]],
         *,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScopeView | None = None,
     ) -> Select[tuple[ToolFile]]:
         """Return a tool-file query constrained by the supplied access scope.
 
@@ -57,7 +56,7 @@ class FileAccessControllerProtocol(Protocol):
         *,
         session: Session,
         file_id: str,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScopeView | None = None,
     ) -> UploadFile | None:
         """Load one authorized upload-file record for the given identifier.
 
@@ -71,7 +70,7 @@ class FileAccessControllerProtocol(Protocol):
         *,
         session: Session,
         file_id: str,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScopeView | None = None,
     ) -> ToolFile | None:
         """Load one authorized tool-file record for the given identifier.
 
