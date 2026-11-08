@@ -1,19 +1,21 @@
 'use client'
+
 import type { FC } from 'react'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -21,12 +23,12 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { useContext } from 'use-context-selector'
-import { Infotip } from '@/app/components/base/infotip'
+import { toast } from '@/app/components/app/configuration/toast'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import { InputVarType } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
-import { AppModeEnum } from '@/types/app'
 import { getNewVar, hasDuplicateStr } from '@/utils/var'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
@@ -77,7 +79,7 @@ const getDuplicateError = (list: PromptVariable[]) => {
       typeName: 'variableConfig.varName',
     } as const
   }
-  if (hasDuplicateStr(list.map((item) => item.name as string))) {
+  if (hasDuplicateStr(list.map((item) => item.name))) {
     return {
       errorMsgKey: 'varKeyError.keyAlreadyExists',
       typeName: 'variableConfig.labelName',
@@ -93,7 +95,9 @@ export type IConfigVarProps = {
 }
 
 const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVariablesChange }) => {
-  const { t } = useTranslation()
+  const titleId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
   const { mode, dataSets } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -241,7 +245,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     (index: number) => {
       const removeVar = promptVariables[index]
 
-      if (mode === AppModeEnum.COMPLETION && dataSets.length > 0 && removeVar!.is_context_var) {
+      if (mode === 'completion' && dataSets.length > 0 && removeVar!.is_context_var) {
         showDeleteContextVarModal()
         setRemoveIndex(index)
         return
@@ -270,15 +274,39 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     [handleOpenExternalDataToolModal, promptVariables, showEditModal],
   )
 
+  const {
+    items: variables,
+    getHandleProps,
+    getItemKey,
+    isSorting,
+    announcement,
+  } = useKeyboardSortable({
+    items: promptVariables,
+    onChange: (items) => onPromptVariablesChange?.(items),
+    disabled: readonly,
+    getItemLabel: (item) => item.name || item.key,
+  })
+
   const promptVariablesWithIds = useMemo(
     () =>
-      promptVariables.map((item) => {
+      variables.map((item) => {
         return {
           id: item.key,
           variable: { ...item },
         }
       }),
-    [promptVariables],
+    [variables],
+  )
+  const handlePromptVariablesReorder = useCallback(
+    (list: typeof promptVariablesWithIds) => {
+      const hasOrderChanged =
+        list.length !== promptVariables.length ||
+        list.some((item, index) => item.id !== promptVariables[index]?.key)
+      if (isSorting || !hasOrderChanged) return
+
+      onPromptVariablesChange?.(list.map((item) => item.variable))
+    },
+    [isSorting, onPromptVariablesChange, promptVariables],
   )
 
   const canDrag = !readonly && promptVariables.length > 1
@@ -288,13 +316,15 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       className="mt-2"
       title={
         <div className="flex items-center">
-          <div className="mr-1">{t(($) => $.variableTitle, { ns: 'appDebug' })}</div>
+          <h2 id={titleId} className="mr-1">
+            {t(($) => $.variableTitle, { ns: 'appDebug' })}
+          </h2>
           {!readonly && (
-            <Infotip
-              aria-label={t(($) => $.variableTip, { ns: 'appDebug' })}
-              popupClassName="w-[180px]"
-            >
-              {t(($) => $.variableTip, { ns: 'appDebug' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={titleId} />
+              <InfotipContent aria-labelledby={titleId} className="w-45">
+                {t(($) => $.variableTip, { ns: 'appDebug' })}
+              </InfotipContent>
             </Infotip>
           )}
         </div>
@@ -302,21 +332,21 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       headerRight={!readonly ? <SelectVarType onChange={handleAddVar} /> : null}
       noBodySpacing
     >
+      {announcement}
       {!hasVar && (
         <div className="mt-1 px-3 pb-3">
           <div className="pt-2 pb-1 text-xs text-text-tertiary">
-            {t(($) => $.notSetVar, { ns: 'appDebug' })}
+            {t(($) => $.notSetVar, { ns: 'appDebug', input: '{{input}}' })}
           </div>
         </div>
       )}
       {hasVar && (
         <div className={cn('mt-1 grid px-3 pb-3')}>
           <ReactSortable
-            className={cn('grid-col-1 grid space-y-1', readonly && 'grid-cols-2 gap-1 space-y-0')}
+            className={cn('grid space-y-1', readonly && 'grid-cols-2 gap-1 space-y-0')}
             list={promptVariablesWithIds}
-            setList={(list) => {
-              onPromptVariablesChange?.(list.map((item) => item.variable))
-            }}
+            setList={handlePromptVariablesReorder}
+            disabled={readonly || isSorting}
             handle=".handle"
             ghostClass="opacity-50"
             animation={150}
@@ -325,17 +355,25 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
               const { key, name, type, required, config, icon, icon_background } = item.variable
               return (
                 <VarItem
-                  className={cn(canDrag && 'handle')}
                   key={key}
+                  dragHandleProps={getHandleProps(index)}
                   readonly={readonly}
                   name={key}
                   label={name}
                   required={!!required}
                   type={type}
                   onEdit={() =>
-                    handleConfig({ type, key, index, name, config, icon, icon_background })
+                    handleConfig({
+                      type,
+                      key,
+                      index: getItemKey(index),
+                      name,
+                      config,
+                      icon,
+                      icon_background,
+                    })
                   }
-                  onRemove={() => handleRemoveVar(index)}
+                  onRemove={() => handleRemoveVar(getItemKey(index))}
                   canDrag={canDrag}
                 />
               )
@@ -363,18 +401,18 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         onOpenChange={(open) => !open && hideDeleteContextVarModal()}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTitle'], {
                 ns: 'appDebug',
-                varName: promptVariables[removeIndex as number]?.name,
+                varName: promptVariables[removeIndex as number]?.name ?? '',
               })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTip'], { ns: 'appDebug' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -386,7 +424,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </Panel>

@@ -1,11 +1,13 @@
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+  Menu,
+  MenuContent,
+  MenuGroupLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
+import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -15,60 +17,53 @@ type VersionSelectorProps = {
   onChange: (index: number) => void
 }
 
-const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, onChange }) => {
-  const { t } = useTranslation()
+function VersionSelector({ versionLen, value, onChange }: VersionSelectorProps) {
+  const { t } = useTranslation(['appGeneration'])
   const moreThanOneVersion = versionLen > 1
   const versions = Array.from({ length: versionLen }, (_, index) => ({
-    label: `${t(($) => $['generate.version'], { ns: 'appDebug' })} ${index + 1}${index === versionLen - 1 ? ` · ${t(($) => $['generate.latest'], { ns: 'appDebug' })}` : ''}`,
+    label: `${t(($) => $['generate.version'], { ns: 'appGeneration' })} ${index + 1}${index === versionLen - 1 ? ` · ${t(($) => $['generate.latest'], { ns: 'appGeneration' })}` : ''}`,
     value: index,
   }))
 
   const isLatest = value === versionLen - 1
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         disabled={!moreThanOneVersion}
         className="flex cursor-pointer items-center border-none bg-transparent p-0 system-xs-medium text-text-tertiary data-disabled:cursor-default data-popup-open:text-text-secondary"
       >
         <div>
-          {t(($) => $['generate.version'], { ns: 'appDebug' })} {value + 1}
-          {isLatest && ` · ${t(($) => $['generate.latest'], { ns: 'appDebug' })}`}
+          {t(($) => $['generate.version'], { ns: 'appGeneration' })} {value + 1}
+          {isLatest && ` · ${t(($) => $['generate.latest'], { ns: 'appGeneration' })}`}
         </div>
         {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-start"
-        sideOffset={4}
-        alignOffset={-12}
-        popupClassName="w-[208px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
-      >
-        <div className="flex h-5.5 items-center px-3 pl-3 system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['generate.versions'], { ns: 'appDebug' })}
-        </div>
-        <DropdownMenuRadioGroup
+      </MenuTrigger>
+      <MenuContent align="start" alignOffset={-12} className="w-52">
+        <MenuRadioGroup
           value={value}
           onValueChange={(nextValue) => {
             onChange(nextValue)
           }}
         >
+          <MenuGroupLabel className="flex h-5.5 items-center py-0">
+            {t(($) => $['generate.versions'], { ns: 'appGeneration' })}
+          </MenuGroupLabel>
           {versions.map((option) => (
-            <DropdownMenuRadioItem
+            <MenuRadioItem
               key={option.value}
               value={option.value}
               closeOnClick
-              className="h-7 rounded-lg px-2 system-sm-medium text-text-secondary"
+              className="h-7 system-sm-medium text-text-secondary"
               title={option.label}
             >
-              <div className="mr-1 grow truncate px-1 pl-1">{option.label}</div>
-              {value === option.value && (
-                <RiCheckLine className="size-4 shrink-0 text-text-accent" />
-              )}
-            </DropdownMenuRadioItem>
+              <div className="mr-1 grow truncate px-1">{option.label}</div>
+              <MenuRadioItemIndicator />
+            </MenuRadioItem>
           ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

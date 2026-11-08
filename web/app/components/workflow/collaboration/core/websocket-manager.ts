@@ -5,7 +5,10 @@ import { SOCKET_URL } from '@/config'
 
 type AckArgs = unknown[]
 
-const isUnauthorizedAck = (...ackArgs: AckArgs): boolean => {
+export const isDefaultSocketUrl = (socketUrl = SOCKET_URL) =>
+  socketUrl === 'ws://localhost' || socketUrl === 'ws://localhost:5001'
+
+export const isUnauthorizedAck = (...ackArgs: AckArgs): boolean => {
   const [first, second] = ackArgs
 
   if (second === 401 || first === 401) return true
@@ -130,7 +133,6 @@ export class WebSocketClient {
   private setupBaseEventListeners(socket: Socket, appId: string): void {
     socket.on('connect', () => {
       this.connecting.delete(appId)
-      emitWithAuthGuard(socket, 'user_connect', { workflow_id: appId })
     })
 
     socket.on('disconnect', () => {

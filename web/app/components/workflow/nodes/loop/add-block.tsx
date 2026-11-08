@@ -15,7 +15,7 @@ type AddBlockProps = {
   loopNodeData: LoopNodeType
 }
 const AddBlock = ({ loopNodeData }: AddBlockProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeAdd } = useNodesInteractions()
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, true)
@@ -42,7 +42,7 @@ const AddBlock = ({ loopNodeData }: AddBlockProps) => {
       size="medium"
       className="relative data-popup-open:bg-components-button-secondary-bg-hover"
     >
-      <RiAddLine aria-hidden className="mr-1 size-4" />
+      <RiAddLine aria-hidden className="size-4" />
       {t(($) => $['common.addBlock'], { ns: 'workflow' })}
     </Button>
   )

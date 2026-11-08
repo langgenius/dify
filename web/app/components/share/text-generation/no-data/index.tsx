@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 type INoDataProps = {}
 const NoData: FC<INoDataProps> = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   return (
     <div className="flex size-full flex-col items-center justify-center">
       <RiSparklingFill className="size-12 text-text-empty-state-icon" />

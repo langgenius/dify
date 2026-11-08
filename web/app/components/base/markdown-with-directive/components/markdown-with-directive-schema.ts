@@ -13,7 +13,7 @@ const withIconCardItemPropsSchema = z
     icon: z
       .string()
       .trim()
-      .url()
+      .pipe(z.url())
       .refine((value) => HTTP_URL_REGEX.test(value), 'icon must be a http/https URL'),
   })
   .strict()

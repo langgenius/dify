@@ -110,7 +110,7 @@ class SnippetWorkflowListQuery(BaseModel):
     limit: int = Field(default=10, ge=1, le=100)
 
 
-class WorkflowRunQuery(BaseModel):
+class SnippetWorkflowRunQuery(BaseModel):
     """Query parameters for workflow runs."""
 
     last_id: str | None = None
@@ -144,7 +144,7 @@ class SnippetLoopNodeRunPayload(BaseModel):
     inputs: dict[str, Any] | None = Field(default=None)
 
 
-class PublishWorkflowPayload(BaseModel):
+class SnippetPublishWorkflowPayload(BaseModel):
     """Payload for publishing snippet workflow."""
 
     knowledge_base_setting: dict[str, Any] | None = Field(default=None)
@@ -167,3 +167,9 @@ class IncludeSecretQuery(BaseModel):
     """Query parameter for including secret variables in export."""
 
     include_secret: str = Field(default="false", description="Whether to include secret variables")
+
+
+class SnippetExportQuery(IncludeSecretQuery):
+    """Query parameters for exporting a snippet workflow as DSL."""
+
+    workflow_id: str | None = Field(default=None, description="Specific published workflow version to export")

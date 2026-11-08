@@ -23,7 +23,7 @@ const FileFromLinkOrLocal = ({
   trigger,
   fileConfig,
 }: FileFromLinkOrLocalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const files = useStore((s) => s.files)
   const [url, setUrl] = useState('')
   const [showError, setShowError] = useState(false)
@@ -50,11 +50,7 @@ const FileFromLinkOrLocal = ({
   return (
     <Popover>
       <PopoverTrigger render={trigger} />
-      <PopoverContent
-        placement="top"
-        sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
-      >
+      <PopoverContent side="top" sideOffset={4} className="border-none bg-transparent shadow-none">
         <div className="w-70 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg">
           {showFromLink && (
             <>
@@ -100,7 +96,7 @@ const FileFromLinkOrLocal = ({
           )}
           {showFromLocal && (
             <Button className="relative w-full" variant="secondary-accent" disabled={disabled}>
-              <RiUploadCloud2Line className="mr-1 size-4" />
+              <RiUploadCloud2Line className="size-4" />
               {t(($) => $['fileUploader.uploadFromComputer'], { ns: 'common' })}
               <FileInput fileConfig={fileConfig} />
             </Button>

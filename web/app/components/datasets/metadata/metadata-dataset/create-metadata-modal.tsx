@@ -29,10 +29,11 @@ export function CreateMetadataModal({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={triggerElement} />
       <PopoverContent
-        placement="left-start"
+        side="left"
+        align="start"
         sideOffset={popupLeft}
         alignOffset={-38}
-        popupClassName="w-[320px]"
+        className="w-[320px]"
       >
         <CreateContent
           {...createContentProps}

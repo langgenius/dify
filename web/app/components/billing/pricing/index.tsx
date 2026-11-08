@@ -1,93 +1,29 @@
 'use client'
-import type { FC } from 'react'
-import type { Category } from './types'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaCorner,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
-import { useAtomValue } from 'jotai'
-import * as React from 'react'
-import { useState } from 'react'
-import { useGetPricingPageLanguage } from '@/context/i18n'
-import { useProviderContext } from '@/context/provider-context'
-import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
-import { NoiseBottom, NoiseTop } from './assets'
-import Footer from './footer'
-import Header from './header'
-import PlanSwitcher from './plan-switcher'
-import { PlanRange } from './plan-switcher/plan-range-switcher'
-import Plans from './plans'
-import { CategoryEnum } from './types'
 
-type PricingProps = {
-  onCancel: () => void
-}
+import { Dialog, DialogPortal } from '@langgenius/dify-ui/dialog'
+import { useQueryState } from 'nuqs'
+import { lazy, Suspense } from 'react'
+import { pricingQueryParamName, pricingQueryParser } from './query-params'
 
-const Pricing: FC<PricingProps> = ({ onCancel }) => {
-  const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
-  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const shouldDefaultToYearly =
-    isCurrentWorkspaceManager && enableEducationPlan && isEducationAccount
-  const [selectedPlanRange, setSelectedPlanRange] = React.useState<PlanRange>()
-  const planRange =
-    selectedPlanRange ?? (shouldDefaultToYearly ? PlanRange.yearly : PlanRange.monthly)
-  const [currentCategory, setCurrentCategory] = useState<Category>(CategoryEnum.CLOUD)
+const PricingDialogContent = lazy(() =>
+  import('./dialog-content').then((module) => ({ default: module.PricingDialogContent })),
+)
 
-  const pricingPageLanguage = useGetPricingPageLanguage()
-  const pricingPageURL = pricingPageLanguage
-    ? `https://dify.ai/${pricingPageLanguage}/pricing#plans-and-features`
-    : 'https://dify.ai/pricing#plans-and-features'
+export function Pricing() {
+  const [pricing, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onCancel()
-      }}
-    >
-      <DialogContent className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none">
-        <ScrollArea className="relative h-full w-full overflow-hidden">
-          <ScrollAreaViewport className="overscroll-contain">
-            <ScrollAreaContent className="min-h-full min-w-300">
-              <div className="relative grid min-h-full grid-rows-[1fr_auto_auto_1fr] overflow-hidden">
-                <div className="absolute inset-x-0 -top-12 -z-10">
-                  <NoiseTop />
-                </div>
-                <Header onClose={onCancel} />
-                <PlanSwitcher
-                  currentCategory={currentCategory}
-                  onChangeCategory={setCurrentCategory}
-                  currentPlanRange={planRange}
-                  onChangePlanRange={setSelectedPlanRange}
-                />
-                <Plans
-                  plan={plan}
-                  currentPlan={currentCategory}
-                  planRange={planRange}
-                  canPay={isCurrentWorkspaceManager}
-                />
-                <Footer pricingPageURL={pricingPageURL} currentCategory={currentCategory} />
-                <div className="absolute inset-x-0 -bottom-12 -z-10">
-                  <NoiseBottom />
-                </div>
-              </div>
-            </ScrollAreaContent>
-          </ScrollAreaViewport>
-          <ScrollAreaScrollbar>
-            <ScrollAreaThumb className="rounded-full" />
-          </ScrollAreaScrollbar>
-          <ScrollAreaScrollbar orientation="horizontal">
-            <ScrollAreaThumb className="rounded-full" />
-          </ScrollAreaScrollbar>
-          <ScrollAreaCorner className="bg-saas-background" />
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+    <Suspense fallback={null}>
+      <Dialog
+        open={pricing === 'open'}
+        onOpenChange={(open) => {
+          setPricing(open ? 'open' : null)
+        }}
+      >
+        <DialogPortal>
+          <PricingDialogContent />
+        </DialogPortal>
+      </Dialog>
+    </Suspense>
   )
 }
-export default React.memo(Pricing)

@@ -1,13 +1,13 @@
-import type { StateCreator } from 'zustand'
 import type {
-  UserProfile,
+  WorkflowCommentBasic,
   WorkflowCommentDetail,
-  WorkflowCommentList,
-} from '@/app/components/workflow/comment/types'
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { StateCreator } from 'zustand'
+import type { UserProfile } from '@/app/components/workflow/comment/types'
 
 export type CommentSliceShape = {
-  comments: WorkflowCommentList[]
-  setComments: (comments: WorkflowCommentList[]) => void
+  comments: WorkflowCommentBasic[]
+  setComments: (comments: WorkflowCommentBasic[]) => void
   commentsLoading: boolean
   setCommentsLoading: (loading: boolean) => void
   showResolvedComments: boolean

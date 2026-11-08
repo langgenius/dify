@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * RecommendedAppDetailResponse
  */
 export const zRecommendedAppDetailResponse = z.object({
@@ -13,29 +29,21 @@ export const zRecommendedAppDetailResponse = z.object({
   id: z.string(),
   mode: z.string(),
   name: z.string(),
+  package_url: z.string().nullish(),
+  version_id: z.string().nullish(),
 })
 
 /**
- * RecommendedAppDetailNullableResponse
+ * RecommendedAppNotFoundError
+ *
+ * Recommended app not found.
  */
-export const zRecommendedAppDetailNullableResponse = zRecommendedAppDetailResponse.nullable()
-
-/**
- * BannerResponse
- */
-export const zBannerResponse = z.object({
-  content: z.unknown(),
-  created_at: z.string().nullish(),
-  id: z.string(),
-  link: z.string().nullish(),
-  sort: z.int(),
-  status: z.string(),
-})
-
-/**
- * BannerListResponse
- */
-export const zBannerListResponse = z.array(zBannerResponse)
+export const zRecommendedAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('recommended_app_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * RecommendedAppInfoResponse
@@ -82,6 +90,40 @@ export const zLearnDifyAppListResponse = z.object({
 })
 
 /**
+ * BannerContentResponse
+ */
+export const zBannerContentResponse = z.object({
+  category: z.string(),
+  description: z.string(),
+  'img-src': z.string().min(1),
+  title: z.string().min(1),
+})
+
+/**
+ * BannerStatus
+ *
+ * ExporleBanner status
+ */
+export const zBannerStatus = z.enum(['disabled', 'enabled'])
+
+/**
+ * BannerResponse
+ */
+export const zBannerResponse = z.object({
+  content: zBannerContentResponse,
+  created_at: z.string(),
+  id: z.string(),
+  link: z.string(),
+  sort: z.int(),
+  status: zBannerStatus,
+})
+
+/**
+ * BannerListResponse
+ */
+export const zBannerListResponse = z.array(zBannerResponse)
+
+/**
  * RecommendedAppInfoResponse
  */
 export const zRecommendedAppInfoResponseWritable = z.object({
@@ -125,7 +167,7 @@ export const zLearnDifyAppListResponseWritable = z.object({
 })
 
 export const zGetExploreAppsQuery = z.object({
-  language: z.string().optional(),
+  language: z.string().optional().default('en-US'),
 })
 
 /**
@@ -134,7 +176,7 @@ export const zGetExploreAppsQuery = z.object({
 export const zGetExploreAppsResponse = zRecommendedAppListResponse
 
 export const zGetExploreAppsLearnDifyQuery = z.object({
-  language: z.string().optional(),
+  language: z.string().optional().default('en-US'),
 })
 
 /**
@@ -149,7 +191,7 @@ export const zGetExploreAppsByAppIdPath = z.object({
 /**
  * Success
  */
-export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailNullableResponse
+export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailResponse
 
 export const zGetExploreBannersQuery = z.object({
   language: z.string().optional().default('en-US'),

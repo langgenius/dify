@@ -16,7 +16,8 @@ from flask import render_template
 from pydantic import BaseModel, Field
 
 from extensions.ext_mail import mail
-from services.feature_service import BrandingModel, FeatureService
+from services.entities.feature_entities import BrandingModel
+from services.system_feature_service import SystemFeatureService
 
 
 class EmailType(StrEnum):
@@ -135,7 +136,7 @@ class FeatureBrandingService:
 
     def get_branding_config(self) -> BrandingModel:
         """Get branding configuration from feature service."""
-        return FeatureService.get_system_features().branding
+        return SystemFeatureService.get_branding()
 
 
 class EmailSender(Protocol):

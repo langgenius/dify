@@ -7,7 +7,3 @@
 .actionName {
   @apply text-sm text-text-secondary;
 }
-
-.deleteActionItem:hover .deleteActionItemChild {
-  @apply text-red-500;
-}

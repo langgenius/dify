@@ -1,17 +1,39 @@
-"""Unit tests for MCP client."""
-
-from contextlib import ExitStack
-from types import TracebackType
+from collections.abc import Generator, Mapping
+from contextlib import ExitStack, contextmanager
+from datetime import timedelta
+from queue import Queue
+from threading import Thread
+from types import SimpleNamespace, TracebackType
 from unittest.mock import MagicMock, Mock, patch
 
+import httpx
 import pytest
+from sqlalchemy import event, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
-from core.mcp.types import CallToolResult, ListToolsResult, OAuthTokens, TextContent, Tool, ToolAnnotations
+from core.mcp.session.client_session import ClientSession
+from core.mcp.types import (
+    CallToolResult,
+    ErrorData,
+    JSONRPCError,
+    JSONRPCMessage,
+    JSONRPCRequest,
+    JSONRPCResponse,
+    ListToolsRequest,
+    ListToolsResult,
+    SessionMessage,
+    TextContent,
+    Tool,
+    ToolAnnotations,
+)
+from tests.helpers.unit.core.mcp.fixtures import make_provider
+
+"""Unit tests for MCP client."""
 
 
 class TestMCPClient:
@@ -211,6 +233,93 @@ class TestMCPClient:
         # Verify session was created with MCP
         assert client._session == mock_session
 
+    @patch("core.mcp.mcp_client.sse_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_closes_partial_sse_connection(
+        self, mock_client_session, mock_streamable_client, mock_sse_client
+    ):
+        """A failed SSE handshake is closed before streamable HTTP fallback starts."""
+        events: list[str] = []
+
+        sse_context = MagicMock()
+        sse_context.__enter__.return_value = (Mock(), Mock())
+        sse_context.__exit__.side_effect = lambda *_args: events.append("sse_closed")
+        mock_sse_client.return_value = sse_context
+
+        mcp_context = MagicMock()
+        mcp_context.__enter__.side_effect = lambda *_args: events.append("mcp_opened") or (Mock(), Mock(), Mock())
+        mock_streamable_client.return_value = mcp_context
+
+        failed_session_context = MagicMock()
+        failed_session = Mock()
+        failed_session.initialize.side_effect = MCPConnectionError("SSE handshake failed")
+        failed_session_context.__enter__.return_value = failed_session
+        failed_session_context.__exit__.side_effect = lambda *_args: events.append("session_closed")
+
+        live_session_context = MagicMock()
+        live_session = Mock()
+        live_session_context.__enter__.return_value = live_session
+        mock_client_session.side_effect = [failed_session_context, live_session_context]
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        assert events[:3] == ["session_closed", "sse_closed", "mcp_opened"]
+        failed_session_context.__exit__.assert_called_once()
+        sse_context.__exit__.assert_called_once()
+        assert client._session is live_session
+
+    @patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect")
+    @patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client")
+    @patch("core.mcp.mcp_client.streamablehttp_client")
+    @patch("core.mcp.mcp_client.ClientSession")
+    def test_initialize_fallback_from_sse_transport_error_to_mcp(
+        self, mock_client_session, mock_streamable_client, mock_http_client, mock_sse_connect
+    ):
+        """A transport failure on the SSE probe must still fall back to streamable HTTP.
+
+        Uses the real sse_client so the exception translation between the two
+        layers is exercised: an httpx error leaking out of sse_client skips the
+        fallback entirely and reaches the console API as an opaque 500.
+        """
+        mock_sse_connect.side_effect = httpx.ConnectError("[Errno 111] Connection refused")
+
+        mock_read_stream = Mock()
+        mock_write_stream = Mock()
+        mock_client_context = Mock()
+        mock_streamable_client.return_value.__enter__.return_value = (
+            mock_read_stream,
+            mock_write_stream,
+            mock_client_context,
+        )
+
+        mock_session = Mock()
+        mock_client_session.return_value.__enter__.return_value = mock_session
+
+        client = MCPClient(server_url="http://test.example.com/unknown")
+        client._initialize()
+
+        mock_streamable_client.assert_called_once()
+        assert client._session == mock_session
+
+    @patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect")
+    @patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client")
+    def test_initialize_sse_transport_error_raises_mcp_error(self, mock_http_client, mock_sse_connect):
+        """When both transports fail the caller gets an MCPError, never a raw httpx error.
+
+        The console MCP endpoints only translate MCPError/ValueError into a 4xx;
+        anything else becomes `{"code": "unknown", "status": 500}`.
+        """
+        mock_sse_connect.side_effect = httpx.ConnectError("[Errno 111] Connection refused")
+
+        client = MCPClient(server_url="http://test.example.com/sse")
+
+        with pytest.raises(MCPConnectionError) as exc_info:
+            client._initialize()
+
+        assert "Connection refused" in str(exc_info.value)
+
     @patch("core.mcp.mcp_client.streamablehttp_client")
     @patch("core.mcp.mcp_client.ClientSession")
     def test_connect_server_mcp(self, mock_client_session, mock_streamable_client):
@@ -281,7 +390,7 @@ class TestMCPClient:
         """Test list_tools when session not initialized."""
         client = MCPClient(server_url="http://test.example.com")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Session not initialized\\.") as exc_info:
             client.list_tools()
 
         assert "Session not initialized" in str(exc_info.value)
@@ -312,7 +421,7 @@ class TestMCPClient:
         """Test invoke_tool when session not initialized."""
         client = MCPClient(server_url="http://test.example.com")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Session not initialized\\.") as exc_info:
             client.invoke_tool("test-tool", {"arg": "value"})
 
         assert "Session not initialized" in str(exc_info.value)
@@ -338,27 +447,29 @@ class TestMCPClient:
     def test_cleanup(self):
         """Test cleanup method."""
         client = MCPClient(server_url="http://test.example.com")
-        mock_exit_stack = Mock(spec=ExitStack)
-        client._exit_stack = mock_exit_stack
+        cleaned = []
+        client._exit_stack.callback(cleaned.append, "closed")
         client._session = Mock()
         client._initialized = True
 
         client.cleanup()
 
-        mock_exit_stack.close.assert_called_once()
+        assert cleaned == ["closed"]
         assert client._session is None
         assert client._initialized is False
 
     def test_cleanup_with_error(self):
         """Test cleanup method with error."""
         client = MCPClient(server_url="http://test.example.com")
-        mock_exit_stack = Mock(spec=ExitStack)
-        mock_exit_stack.close.side_effect = Exception("Cleanup error")
-        client._exit_stack = mock_exit_stack
+
+        def fail_cleanup():
+            raise RuntimeError("Cleanup error")
+
+        client._exit_stack.callback(fail_cleanup)
         client._session = Mock()
         client._initialized = True
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Error during cleanup: Cleanup error") as exc_info:
             client.cleanup()
 
         assert "Error during cleanup: Cleanup error" in str(exc_info.value)
@@ -440,66 +551,65 @@ class TestMCPClientWithAuthRetry:
     """Test suite for MCPClientWithAuthRetry."""
 
     @pytest.fixture
-    def mock_provider(self):
-        provider = MagicMock(spec=MCPProviderEntity)
-        provider.id = "test-provider-id"
-        provider.tenant_id = "test-tenant-id"
-        provider.retrieve_tokens.return_value = OAuthTokens(
-            access_token="new-token",
-            token_type="Bearer",
-            expires_in=3600,
-            refresh_token="refresh-token",
+    def provider(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(MCPProviderEntity, "_decrypt_dict", lambda _self, data: data.copy())
+        return make_provider(
+            credentials={
+                "access_token": "new-token",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+                "refresh_token": "refresh-token",
+            }
         )
-        return provider
 
     @pytest.fixture
-    def auth_client(self, mock_provider):
+    def auth_client(self, provider):
         client = MCPClientWithAuthRetry(
             server_url="http://test.example.com",
             headers={"Authorization": "Bearer old-token"},
-            provider_entity=mock_provider,
+            provider_entity=provider,
             authorization_code="test-code",
-            by_server_id=True,
         )
         return client
 
-    def test_init(self, mock_provider):
+    def test_init(self, provider):
         """Test initialization."""
         client = MCPClientWithAuthRetry(
             server_url="http://test.example.com",
             headers={"Authorization": "Bearer test"},
             timeout=30.0,
-            provider_entity=mock_provider,
+            provider_entity=provider,
             authorization_code="initial-code",
-            by_server_id=True,
         )
 
         assert client.server_url == "http://test.example.com"
         assert client.headers == {"Authorization": "Bearer test"}
         assert client.timeout == 30.0
-        assert client.provider_entity == mock_provider
+        assert client.provider_entity == provider
         assert client.authorization_code == "initial-code"
-        assert client.by_server_id is True
         assert client._has_retried is False
 
-    @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_success(
-        self, mock_service_class, mock_session_class, mock_db, auth_client, mock_provider
+        self,
+        mock_service_class,
+        auth_client,
+        provider,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
     ):
-        mock_session = MagicMock(spec=Session)
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
 
         mock_service = mock_service_class.return_value
-        new_provider = MagicMock(spec=MCPProviderEntity)
-        new_provider.retrieve_tokens.return_value = OAuthTokens(
-            access_token="new-access-token",
-            token_type="Bearer",
-            expires_in=3600,
-            refresh_token="new-refresh-token",
+        new_provider = make_provider(
+            credentials={
+                "access_token": "new-access-token",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+                "refresh_token": "new-refresh-token",
+            }
         )
-        mock_service.get_provider_entity.return_value = new_provider
+        mock_service.get_provider_entity_by_server_identifier.return_value = new_provider
 
         # MCPAuthError parses resource_metadata and scope from www_authenticate_header
         www_auth = 'Bearer resource_metadata="http://meta", scope="read"'
@@ -507,15 +617,19 @@ class TestMCPClientWithAuthRetry:
 
         auth_client._handle_auth_error(error)
 
+        service_session = mock_service_class.call_args.kwargs["session"]
+        assert isinstance(service_session, Session)
+        assert service_session.in_transaction() is False
+
         # Verify service calls - error.resource_metadata_url and error.scope_hint are parsed from header
         mock_service.auth_with_actions.assert_called_once_with(
-            mock_provider,
+            provider,
             "test-code",
             resource_metadata_url="http://meta",
             scope_hint="read",
         )
-        mock_service.get_provider_entity.assert_called_once_with(
-            mock_provider.id, mock_provider.tenant_id, by_server_id=True
+        mock_service.get_provider_entity_by_server_identifier.assert_called_once_with(
+            server_identifier=provider.server_identifier, tenant_id=provider.tenant_id
         )
 
         # Verify client updates
@@ -544,19 +658,21 @@ class TestMCPClientWithAuthRetry:
 
         assert exc_info.value == error
 
-    @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_no_token(
-        self, mock_service_class, mock_session_class, mock_db, auth_client, mock_provider
+        self,
+        mock_service_class,
+        auth_client,
+        provider,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
     ):
         """Test auth error handling when no token is received."""
-        mock_session_class.return_value.__enter__.return_value = MagicMock()
+        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
         mock_service = mock_service_class.return_value
 
-        new_provider = MagicMock(spec=MCPProviderEntity)
-        new_provider.retrieve_tokens.return_value = None
-        mock_service.get_provider_entity.return_value = new_provider
+        new_provider = make_provider(credentials={})
+        mock_service.get_provider_entity_by_server_identifier.return_value = new_provider
 
         error = MCPAuthError("Auth failed")
 
@@ -565,28 +681,48 @@ class TestMCPClientWithAuthRetry:
 
         assert "Authentication failed - no token received" in str(exc_info.value)
 
-    @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
-    def test_handle_auth_error_generic_exception(self, mock_service_class, mock_session_class, mock_db, auth_client):
+    def test_handle_auth_error_generic_exception(
+        self,
+        mock_service_class,
+        auth_client,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+    ):
         """Test auth error handling when a generic exception occurs."""
-        mock_session_class.side_effect = Exception("DB error")
+        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
+        service = mock_service_class.return_value
+
+        def fail_statement(*_args, **_kwargs):
+            raise RuntimeError("DB error")
+
+        def execute_statement(*_args, **_kwargs):
+            service_session = mock_service_class.call_args.kwargs["session"]
+            service_session.execute(text("SELECT 1"))
+
+        service.auth_with_actions.side_effect = execute_statement
+        event.listen(sqlite_engine, "before_cursor_execute", fail_statement)
 
         error = MCPAuthError("Auth failed")
 
-        with pytest.raises(MCPAuthError) as exc_info:
-            auth_client._handle_auth_error(error)
+        try:
+            with pytest.raises(MCPAuthError) as exc_info:
+                auth_client._handle_auth_error(error)
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", fail_statement)
 
         assert "Authentication retry failed: DB error" in str(exc_info.value)
 
-    @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_mcp_auth_error_propagation(
-        self, mock_service_class, mock_session_class, mock_db, auth_client
+        self,
+        mock_service_class,
+        auth_client,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
     ):
         """Test that MCPAuthError during refresh is propagated as is."""
-        mock_session_class.return_value.__enter__.return_value = MagicMock()
+        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
         mock_service = mock_service_class.return_value
         mock_service.auth_with_actions.side_effect = MCPAuthError("Refresh failed")
 
@@ -687,3 +823,261 @@ class TestMCPClientWithAuthRetry:
         assert mock_execute_retry.call_args[0][0].__name__ == "invoke_tool"
         assert mock_execute_retry.call_args[0][1] == "test-tool"
         assert mock_execute_retry.call_args[0][2] == {"arg": "val"}
+
+
+"""Offline pagination regressions using the real client and in-memory JSON-RPC."""
+
+
+def tool(name: str) -> Tool:
+    return Tool(name=name, description=name, inputSchema={"type": "object", "properties": {}})
+
+
+@contextmanager
+def client_for_pages(
+    pages: Mapping[str | None, ListToolsResult | ErrorData], client: MCPClient | None = None
+) -> Generator[tuple[MCPClient, list[ListToolsRequest]]]:
+    incoming: Queue[SessionMessage | Exception | None] = Queue()
+    outgoing: Queue[SessionMessage | None] = Queue()
+    requests: list[ListToolsRequest] = []
+    errors: list[Exception] = []
+
+    def serve_pages() -> None:
+        while (message := outgoing.get()) is not None:
+            request = message.message.root
+            assert isinstance(request, JSONRPCRequest)
+            try:
+                payload = ListToolsRequest.model_validate({"method": request.method, "params": request.params})
+                requests.append(payload)
+                cursor = payload.params.cursor if payload.params is not None else None
+                page = pages[cursor]
+                response: JSONRPCResponse | JSONRPCError
+                if isinstance(page, ErrorData):
+                    response = JSONRPCError(jsonrpc="2.0", id=request.id, error=page)
+                else:
+                    response = JSONRPCResponse(
+                        jsonrpc="2.0",
+                        id=request.id,
+                        result=page.model_dump(mode="json", by_alias=True, exclude_none=True),
+                    )
+            except Exception as error:
+                errors.append(error)
+                response = JSONRPCError(
+                    jsonrpc="2.0", id=request.id, error=ErrorData(code=500, message="Unexpected pagination request")
+                )
+            incoming.put(SessionMessage(message=JSONRPCMessage(response)))
+
+    thread = Thread(target=serve_pages, daemon=True)
+    thread.start()
+    client = client if client is not None else MCPClient("http://127.0.0.1:1/mcp")
+    try:
+        with client._exit_stack:
+            client._session = client._exit_stack.enter_context(
+                ClientSession(incoming, outgoing, read_timeout_seconds=timedelta(seconds=2))
+            )
+            yield client, requests
+    finally:
+        outgoing.put(None)
+        thread.join(timeout=2)
+        assert not thread.is_alive()
+        assert not errors, errors
+
+
+def test_single_page_control() -> None:
+    with client_for_pages({None: ListToolsResult(tools=[tool("alpha")])}) as (client, requests):
+        assert [x.name for x in client.list_tools()] == ["alpha"]
+        assert len(requests) == 1
+
+
+@pytest.mark.parametrize("first_page", [[tool("alpha")], []], ids=["populated-first-page", "empty-first-page"])
+def test_all_pages_are_available(first_page: list[Tool]) -> None:
+    cursor = "opaque:+/=?page2"
+    with client_for_pages(
+        {
+            None: ListToolsResult(tools=first_page, nextCursor=cursor),
+            cursor: ListToolsResult(tools=[tool("beta")]),
+        }
+    ) as (client, requests):
+        expected = [t.name for t in first_page] + ["beta"]
+        assert [x.name for x in client.list_tools()] == expected
+        assert requests[1].params is not None
+        assert requests[1].params.cursor == cursor
+
+
+def test_no_session_control() -> None:
+    with pytest.raises(ValueError, match="Session not initialized"):
+        MCPClient("http://127.0.0.1:1/mcp").list_tools()
+
+
+@pytest.mark.parametrize("cursors", [("opaque-A", "opaque-A"), ("opaque-A", "opaque-B", "opaque-A")])
+def test_repeated_cursor_is_a_bounded_error(cursors: tuple[str, ...]) -> None:
+    pages = {
+        None if index == 0 else cursors[index - 1]: ListToolsResult(tools=[tool(f"page-{index}")], nextCursor=cursor)
+        for index, cursor in enumerate(cursors)
+    }
+    with client_for_pages(pages) as (client, requests):
+        with pytest.raises(MCPConnectionError, match="repeated pagination cursor"):
+            client.list_tools()
+        assert len(requests) == len(cursors)
+
+
+def test_later_page_auth_error_restarts_clean_inventory(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = MCPClientWithAuthRetry("http://127.0.0.1:1/mcp")
+    old_pages = {
+        None: ListToolsResult(tools=[tool("stale-alpha")], nextCursor="opaque-old"),
+        "opaque-old": ErrorData(code=401, message="controlled later-page authentication failure"),
+    }
+    new_pages = {
+        None: ListToolsResult(tools=[tool("fresh-alpha")], nextCursor="opaque-new"),
+        "opaque-new": ListToolsResult(tools=[tool("beta")]),
+    }
+    auth_errors: list[MCPAuthError] = []
+    cleanup: list[str] = []
+    reconnects: list[str] = []
+    with (
+        client_for_pages(old_pages, client) as (_, old_requests),
+        client_for_pages(new_pages) as (
+            reconnected_client,
+            new_requests,
+        ),
+    ):
+        old_session = client._session
+        assert old_session is not None
+        client._initialized = True
+        client._exit_stack.callback(lambda: cleanup.append("closed"))
+
+        def reconnect() -> None:
+            reconnects.append("reconnected")
+            client._session = reconnected_client._session
+
+        # Patch only the OAuth exchange and transport reconnect, not session requests.
+        monkeypatch.setattr(client, "_handle_auth_error", auth_errors.append)
+        monkeypatch.setattr(client, "_initialize", reconnect)
+        assert [t.name for t in client.list_tools()] == ["fresh-alpha", "beta"]
+        assert [p.params.cursor if p.params is not None else None for p in old_requests] == [None, "opaque-old"]
+        assert [p.params.cursor if p.params is not None else None for p in new_requests] == [None, "opaque-new"]
+        assert len(auth_errors) == 1
+        assert str(auth_errors[0]) == "controlled later-page authentication failure"
+        assert cleanup == ["closed"]
+        assert reconnects == ["reconnected"]
+        assert old_session._receiver_future is not None
+        assert old_session._receiver_future.done()
+        assert client._has_retried is False
+
+
+@pytest.mark.parametrize("page_sizes", [(10_000,), (9_999, 1)], ids=["single-page", "two-pages"])
+def test_exact_tool_limit_on_terminal_page(page_sizes: tuple[int, ...]) -> None:
+    pages: dict[str | None, ListToolsResult] = {}
+    expected: list[str] = []
+    for index, size in enumerate(page_sizes):
+        names = [f"page-{index}-tool-{number}" for number in range(size)]
+        expected.extend(names)
+        cursor = None if index == 0 else f"page-{index}"
+        next_cursor = f"page-{index + 1}" if index + 1 < len(page_sizes) else None
+        pages[cursor] = ListToolsResult(tools=[tool(name) for name in names], nextCursor=next_cursor)
+    with client_for_pages(pages) as (client, requests):
+        assert [result.name for result in client.list_tools()] == expected
+        assert len(requests) == len(page_sizes)
+
+
+@pytest.mark.parametrize("next_cursor", [None, "more"])
+@pytest.mark.parametrize("page_sizes", [(10_001,), (9_999, 2)], ids=["oversized-page", "accumulated-overflow"])
+def test_tool_limit_overflow_never_returns_partial_inventory(
+    page_sizes: tuple[int, ...], next_cursor: str | None
+) -> None:
+    pages: dict[str | None, ListToolsResult] = {}
+    for index, size in enumerate(page_sizes):
+        cursor = None if index == 0 else f"page-{index}"
+        continuation = f"page-{index + 1}" if index + 1 < len(page_sizes) else next_cursor
+        pages[cursor] = ListToolsResult(
+            tools=[tool(f"page-{index}-tool-{number}") for number in range(size)], nextCursor=continuation
+        )
+    with client_for_pages(pages) as (client, requests):
+        with pytest.raises(MCPConnectionError, match="10,000-tool discovery limit"):
+            client.list_tools()
+        assert len(requests) == len(page_sizes)
+
+
+@pytest.mark.parametrize("next_cursor", ["more", ""])
+@pytest.mark.parametrize("first_page_size", [10_000, 9_999], ids=["single-page", "two-pages"])
+def test_exact_tool_limit_with_continuation_fails_without_fetching_again(
+    first_page_size: int, next_cursor: str
+) -> None:
+    pages: dict[str | None, ListToolsResult] = {
+        None: ListToolsResult(
+            tools=[tool(f"tool-{number}") for number in range(first_page_size)],
+            nextCursor=next_cursor if first_page_size == 10_000 else "last-tool",
+        )
+    }
+    if first_page_size < 10_000:
+        pages["last-tool"] = ListToolsResult(tools=[tool("tool-9999")], nextCursor=next_cursor)
+    with client_for_pages(pages) as (client, requests):
+        with pytest.raises(MCPConnectionError, match="10,000-tool discovery limit"):
+            client.list_tools()
+        assert len(requests) == (1 if first_page_size == 10_000 else 2)
+
+
+@pytest.mark.parametrize("auth_retry", [False, True], ids=["base-client", "auth-retry-client"])
+def test_empty_pages_exhaust_request_budget_without_extra_request_or_auth_retry(auth_retry: bool) -> None:
+    client = MCPClientWithAuthRetry("http://127.0.0.1:1/mcp") if auth_retry else MCPClient("http://127.0.0.1:1/mcp")
+    pages = {
+        None if index == 0 else f"fresh-cursor-{index - 1}": ListToolsResult(
+            tools=[], nextCursor=f"fresh-cursor-{index}"
+        )
+        for index in range(100)
+    }
+    with client_for_pages(pages, client) as (_, requests):
+        with pytest.raises(MCPConnectionError, match="100-request discovery limit") as exc_info:
+            client.list_tools()
+        assert not isinstance(exc_info.value, MCPAuthError)
+        assert len(requests) == 100
+
+
+@pytest.mark.parametrize(
+    "last_page_tools", [[], [tool("last-page-tool")]], ids=["empty-terminal", "populated-terminal"]
+)
+def test_terminal_page_on_last_allowed_request_succeeds(last_page_tools: list[Tool]) -> None:
+    pages = {
+        None if index == 0 else f"fresh-cursor-{index - 1}": ListToolsResult(
+            tools=[], nextCursor=f"fresh-cursor-{index}"
+        )
+        for index in range(99)
+    }
+    pages["fresh-cursor-98"] = ListToolsResult(tools=last_page_tools)
+    with client_for_pages(pages) as (client, requests):
+        assert client.list_tools() == last_page_tools
+        assert len(requests) == 100
+
+
+@pytest.mark.parametrize("error_on_first_page", [True, False], ids=["first-page", "later-page"])
+def test_session_error_propagates_unchanged(error_on_first_page: bool, monkeypatch: pytest.MonkeyPatch) -> None:
+    error = RuntimeError("controlled session error")
+    calls: list[str | None] = []
+    with client_for_pages({None: ListToolsResult(tools=[tool("alpha")], nextCursor="more")}) as (client, _):
+        session = client._session
+        assert session is not None
+        list_tools = session.list_tools
+
+        def fail_on_page(cursor: str | None = None) -> ListToolsResult:
+            calls.append(cursor)
+            if error_on_first_page or cursor is not None:
+                raise error
+            return list_tools(cursor=cursor)
+
+        monkeypatch.setattr(session, "list_tools", fail_on_page)
+        with pytest.raises(RuntimeError) as exc_info:
+            client.list_tools()
+        assert exc_info.value is error
+        assert calls == ([None] if error_on_first_page else [None, "more"])
+
+
+def test_empty_string_is_an_opaque_continuation_cursor() -> None:
+    with client_for_pages(
+        {
+            None: ListToolsResult(tools=[tool("alpha")], nextCursor=""),
+            "": ListToolsResult(tools=[tool("beta")]),
+        }
+    ) as (client, requests):
+        assert [result.name for result in client.list_tools()] == ["alpha", "beta"]
+        assert len(requests) == 2
+        assert requests[1].params is not None
+        assert requests[1].params.cursor == ""

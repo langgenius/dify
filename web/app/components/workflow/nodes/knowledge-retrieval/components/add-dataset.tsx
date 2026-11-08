@@ -1,6 +1,6 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,15 +9,15 @@ import SelectDataset from '@/app/components/app/configuration/dataset-config/sel
 type Props = Readonly<{
   selectedIds: string[]
   modal?: boolean
-  onChange: (dataSets: DataSet[]) => void
+  onChange: (dataSets: DatasetDetailWithPartialMembersResponse[]) => void
 }>
 
 const AddDataset: FC<Props> = ({ selectedIds, modal, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const [isShowModal, setIsShowModal] = useState(false)
 
   const handleSelect = useCallback(
-    (datasets: DataSet[]) => {
+    (datasets: DatasetDetailWithPartialMembersResponse[]) => {
       onChange(datasets)
       setIsShowModal(false)
     },

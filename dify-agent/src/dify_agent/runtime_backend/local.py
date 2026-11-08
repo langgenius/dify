@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 class LocalHomeSnapshotBackend:
     endpoint: str
     auth_token: str
-    snapshot_root: str = "/home/dify/.dify-agent-home-snapshots"
+    snapshot_root: str = "/home/dify/.snapshots"
     client_factory: ShellctlClientFactory | None = None
 
     async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
@@ -111,9 +111,9 @@ class LocalHomeSnapshotBackend:
 class LocalExecutionBindingBackend:
     endpoint: str
     auth_token: str
-    materialized_home_root: str = "/home/dify/.dify-agent-materialized-homes"
-    workspace_root: str = "/home/dify/.dify-agent-workspaces"
-    snapshot_root: str = "/home/dify/.dify-agent-home-snapshots"
+    materialized_home_root: str = "/home/dify"
+    workspace_root: str = "/workspace"
+    snapshot_root: str = "/home/dify/.snapshots"
     client_factory: ShellctlClientFactory | None = None
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
@@ -238,9 +238,17 @@ class LocalExecutionBindingBackend:
 
     def _control_lease(self, handle: str) -> ShellctlRuntimeLease:
         control_root = _control_root((self.materialized_home_root, self.workspace_root, self.snapshot_root))
+        layout = RuntimeLayout(home_dir=control_root, workspace_dir=control_root)
+        if control_root == "/":
+            # Keep the canonical root-level Workspace separate instead of
+            # broadening the control job's writable layout to the whole filesystem.
+            layout = RuntimeLayout(
+                home_dir=posixpath.commonpath((self.materialized_home_root, self.snapshot_root)),
+                workspace_dir=self.workspace_root,
+            )
         return create_shellctl_lease(
             handle=handle,
-            layout=RuntimeLayout(home_dir=control_root, workspace_dir=control_root),
+            layout=layout,
             entrypoint=self.endpoint,
             token=self.auth_token,
             client_factory=self.client_factory,

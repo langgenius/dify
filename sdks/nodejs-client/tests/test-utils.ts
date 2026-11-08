@@ -1,5 +1,5 @@
 import type { DifyClientConfig } from '../src/types/common'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { HttpClient } from '../src/http/client'
 
 type FetchMock = ReturnType<typeof vi.fn>

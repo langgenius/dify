@@ -1,5 +1,6 @@
 # base image
-FROM node:22.22.1-alpine AS base
+ARG NODE_VERSION=24.22.1
+FROM node:${NODE_VERSION}-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
 # if you located in China, you can use aliyun mirror to speed up
@@ -31,7 +32,7 @@ COPY packages /app/packages
 RUN corepack install
 
 # Install workspace dependencies for the Docker build environment.
-RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # build resources
 FROM base AS builder
@@ -55,6 +56,9 @@ ENV APP_API_URL=http://127.0.0.1:5001
 ENV MARKETPLACE_API_URL=https://marketplace.dify.ai
 ENV MARKETPLACE_URL=https://marketplace.dify.ai
 ENV PORT=3000
+# Next.js standalone binds to HOSTNAME. Docker defaults it to the container ID, and
+# net.Server.listen() takes an ID like 30889528e495 as a numeric backlog, not a host.
+ENV HOSTNAME=0.0.0.0
 ENV EXPERIMENTAL_ENABLE_VINEXT=false
 ENV NEXT_TELEMETRY_DISABLED=1
 

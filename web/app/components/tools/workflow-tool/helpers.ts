@@ -36,7 +36,7 @@ export const isWorkflowToolNameValid = (name: string) => {
   return /^\w+$/.test(name)
 }
 
-export const getReservedWorkflowOutputParameters = (t: TFunction) => {
+export const getReservedWorkflowOutputParameters = (t: TFunction<['workflow']>) => {
   return RESERVED_WORKFLOW_OUTPUTS.map((output) => ({
     ...output,
     description:
@@ -56,7 +56,7 @@ export const hasReservedWorkflowOutputConflict = (
 }
 
 export const getWorkflowOutputParameters = (
-  rawOutputParameters: WorkflowToolProviderOutputParameter[],
+  rawOutputParameters: WorkflowToolProviderOutputParameter[] | undefined,
   outputSchema?: WorkflowToolProviderOutputSchema,
 ) => {
   return buildWorkflowOutputParameters(rawOutputParameters, outputSchema)

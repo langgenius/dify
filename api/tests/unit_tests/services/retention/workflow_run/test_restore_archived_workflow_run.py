@@ -19,7 +19,7 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import Column, Engine, Integer, MetaData, String, Table, delete, event, func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, registry, sessionmaker
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models.enums import CreatorUserRole
@@ -119,7 +119,9 @@ class WorkflowRunRestoreTestDataFactory:
             "exceptions_count": 0,
         }
         attrs.update(kwargs)
+        run_created_at = attrs.pop("created_at")
         run = WorkflowRun(**attrs)
+        run.created_at = run_created_at
         return run
 
     @staticmethod
@@ -535,10 +537,13 @@ class TestGetModelColumnInfo:
             Column("defaulted_field", String(255), nullable=False, default="x"),
         )
 
-        class MockModel:
+        mapper_registry = registry()
+
+        @mapper_registry.mapped
+        class _AutoincrementModel:
             __table__ = test_table
 
-        _, required_columns, non_nullable_with_default = restore._get_model_column_info(MockModel)
+        _, required_columns, non_nullable_with_default = restore._get_model_column_info(_AutoincrementModel)
 
         assert required_columns == {"required_field"}
         assert "id" in non_nullable_with_default
@@ -633,7 +638,7 @@ class TestRestoreFromRun:
 
         run = WorkflowRunRestoreTestDataFactory.create_workflow_run()
 
-        with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+        with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
             result = restore._restore_from_run(run, session_maker=database.session_maker)
 
         assert result.success is False
@@ -650,7 +655,7 @@ class TestRestoreFromRun:
 
         run = WorkflowRunRestoreTestDataFactory.create_workflow_run()
 
-        with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+        with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
             result = restore._restore_from_run(run, session_maker=database.session_maker)
 
         assert result.success is False
@@ -699,7 +704,7 @@ class TestRestoreFromRun:
             )
             mock_get_repo.return_value = mock_repo
 
-            with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+            with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
                 result = restore._restore_from_run(run, session_maker=database.session_maker)
 
         assert result.success is True
@@ -747,7 +752,7 @@ class TestRestoreFromRun:
 
         run = WorkflowRunRestoreTestDataFactory.create_workflow_run()
 
-        with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+        with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
             result = restore._restore_from_run(run, session_maker=database.session_maker)
 
         assert result.success is False
@@ -822,7 +827,7 @@ class TestRestoreBatch:
 
         with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
             with patch.object(restore, "_restore_from_run", side_effect=[result1, result2]):
-                with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+                with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
                     results = restore.restore_batch(
                         tenant_ids=["tenant-1"],
                         start_date=datetime(2024, 1, 1),
@@ -855,7 +860,7 @@ class TestRestoreBatch:
 
         with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
             with patch.object(restore, "_restore_from_run", return_value=result):
-                with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+                with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
                     results = restore.restore_batch(
                         tenant_ids=["tenant-1"],
                         start_date=datetime(2024, 1, 1),
@@ -882,7 +887,7 @@ class TestRestoreByRunId:
         mock_repo.get_archived_log_by_run_id.return_value = None
 
         with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
-            with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+            with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
                 result = restore.restore_by_run_id("nonexistent-run")
 
         assert result.success is False
@@ -903,7 +908,7 @@ class TestRestoreByRunId:
 
         with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
             with patch.object(restore, "_restore_from_run", return_value=result):
-                with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+                with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
                     actual_result = restore.restore_by_run_id("run-1")
 
         assert actual_result.success is True
@@ -923,7 +928,7 @@ class TestRestoreByRunId:
 
         with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
             with patch.object(restore, "_restore_from_run", return_value=result):
-                with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+                with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
                     actual_result = restore.restore_by_run_id("run-1")
 
         assert actual_result.success is True

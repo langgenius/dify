@@ -1,11 +1,10 @@
 import type { TFunction } from 'i18next'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { VarType } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildWorkflowToolRequestPayload,
   getReservedWorkflowOutputParameters,
-  getWorkflowOutputParameters,
   hasReservedWorkflowOutputConflict,
   isWorkflowToolNameValid,
   RESERVED_WORKFLOW_OUTPUTS,
@@ -22,19 +21,25 @@ describe('workflow-tool helpers', () => {
   it('builds translated reserved workflow outputs', () => {
     const t = withSelectorKey(
       (key: string, options?: { ns?: string }) => `${options?.ns}:${key}`,
-    ) as TFunction
+    ) as TFunction<['workflow']>
 
     expect(getReservedWorkflowOutputParameters(t)).toEqual([
       {
-        ...RESERVED_WORKFLOW_OUTPUTS[0],
+        name: 'text',
+        type: VarType.string,
+        reserved: true,
         description: 'workflow:nodes.tool.outputVars.text',
       },
       {
-        ...RESERVED_WORKFLOW_OUTPUTS[1],
+        name: 'files',
+        type: VarType.arrayFile,
+        reserved: true,
         description: 'workflow:nodes.tool.outputVars.files.title',
       },
       {
-        ...RESERVED_WORKFLOW_OUTPUTS[2],
+        name: 'json',
+        type: VarType.arrayObject,
+        reserved: true,
         description: 'workflow:nodes.tool.outputVars.json',
       },
     ])
@@ -43,26 +48,6 @@ describe('workflow-tool helpers', () => {
   it('detects reserved output conflicts', () => {
     expect(hasReservedWorkflowOutputConflict(RESERVED_WORKFLOW_OUTPUTS, 'text')).toBe(true)
     expect(hasReservedWorkflowOutputConflict(RESERVED_WORKFLOW_OUTPUTS, 'custom')).toBe(false)
-  })
-
-  it('derives workflow output parameters from schema through helper wrapper', () => {
-    expect(
-      getWorkflowOutputParameters([], {
-        type: 'object',
-        properties: {
-          text: {
-            type: VarType.string,
-            description: 'Result text',
-          },
-        },
-      }),
-    ).toEqual([
-      {
-        name: 'text',
-        description: 'Result text',
-        type: VarType.string,
-      },
-    ])
   })
 
   it('builds workflow tool request payload', () => {

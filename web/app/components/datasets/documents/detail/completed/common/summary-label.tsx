@@ -7,7 +7,7 @@ type SummaryLabelProps = {
   className?: string
 }
 const SummaryLabel = ({ summary, className }: SummaryLabelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   return (
     <div className={cn('space-y-1', className)}>

@@ -22,7 +22,7 @@ const TabSliderNewDemo = ({ initialValue = 'visual' }: { initialValue?: string }
   return (
     <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
       <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Pill tabs</div>
-      <TabSliderNew value={value} options={OPTIONS} onChange={setValue} />
+      <TabSliderNew ariaLabel="Builder mode" value={value} options={OPTIONS} onChange={setValue} />
     </div>
   )
 }

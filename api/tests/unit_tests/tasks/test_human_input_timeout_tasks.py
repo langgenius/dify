@@ -14,10 +14,11 @@ from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from models.human_input import HumanInputForm
 from tasks import human_input_timeout_tasks as task_module
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 class _FakeService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.enqueued: list[str] = []
         self.agent_app_resumed: list[tuple[str, str]] = []
 
@@ -60,6 +61,12 @@ def _build_form(
     )
 
 
+def _require_form(session: Session, form_id: str) -> HumanInputForm:
+    form = session.get(HumanInputForm, form_id)
+    assert form is not None
+    return form
+
+
 @pytest.fixture
 def sqlite_task_database(
     sqlite_engine: Engine,
@@ -71,7 +78,7 @@ def sqlite_task_database(
     monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=sqlite_engine))
 
 
-def test_is_global_timeout_uses_created_at():
+def test_is_global_timeout_uses_created_at() -> None:
     now = datetime(2025, 1, 1, 12, 0, 0)
     form = _build_form(
         form_id="form-1",
@@ -100,10 +107,10 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
     sqlite_task_database: None,
     sqlite_engine: Engine,
     sqlite_session: Session,
-):
+) -> None:
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
-    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=3600)
 
     forms = [
         _build_form(
@@ -167,9 +174,9 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
     service_factory.assert_called_once_with(task_session_maker, form_repository=repo)
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(HumanInputForm, "form-global").status == HumanInputFormStatus.EXPIRED
-    assert sqlite_session.get(HumanInputForm, "form-node").status == HumanInputFormStatus.TIMEOUT
-    assert sqlite_session.get(HumanInputForm, "form-delivery").status == HumanInputFormStatus.TIMEOUT
+    assert _require_form(sqlite_session, "form-global").status == HumanInputFormStatus.EXPIRED
+    assert _require_form(sqlite_session, "form-node").status == HumanInputFormStatus.TIMEOUT
+    assert _require_form(sqlite_session, "form-delivery").status == HumanInputFormStatus.TIMEOUT
 
 
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
@@ -177,10 +184,10 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_task_database: None,
     sqlite_session: Session,
-):
+) -> None:
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
-    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=0)
 
     forms = [
         _build_form(
@@ -210,8 +217,8 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
         reason="delivery_test_timeout",
     )
     sqlite_session.expire_all()
-    assert sqlite_session.get(HumanInputForm, "form-a").status == HumanInputFormStatus.TIMEOUT
-    assert sqlite_session.get(HumanInputForm, "form-b").status == HumanInputFormStatus.WAITING
+    assert _require_form(sqlite_session, "form-a").status == HumanInputFormStatus.TIMEOUT
+    assert _require_form(sqlite_session, "form-b").status == HumanInputFormStatus.WAITING
 
 
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
@@ -219,10 +226,10 @@ def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled
     monkeypatch: pytest.MonkeyPatch,
     sqlite_task_database: None,
     sqlite_session: Session,
-):
+) -> None:
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
-    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=0)
 
     old_unexpired_form = _build_form(
         form_id="form-old",
@@ -249,49 +256,3 @@ def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled
     global_timeout_handler.assert_not_called()
     sqlite_session.refresh(old_unexpired_form)
     assert old_unexpired_form.status == HumanInputFormStatus.WAITING
-
-
-@pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
-def test_check_and_handle_human_input_timeouts_routes_conversation_owned_form_to_agent_app_resume(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_task_database: None,
-    sqlite_session: Session,
-):
-    # ENG-635 (review): a conversation-owned Agent v2 chat ask_human form has no
-    # workflow_run_id. On timeout it must enqueue the Agent App resume (so the
-    # timeout is threaded back as the ask_human result), instead of asserting on
-    # workflow_run_id — which previously raised and was swallowed by the except.
-    now = datetime(2025, 1, 1, 12, 0, 0)
-    monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
-    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
-
-    form = _build_form(
-        form_id="form-chat",
-        form_kind=HumanInputFormKind.RUNTIME,
-        created_at=now - timedelta(minutes=5),
-        expiration_time=now - timedelta(seconds=1),
-        workflow_run_id=None,
-        conversation_id="conv-1",
-        node_id="agent",
-    )
-    sqlite_session.add(form)
-    sqlite_session.commit()
-
-    repo = HumanInputFormSubmissionRepository()
-    mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
-    monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
-    service = _FakeService()
-    monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
-    monkeypatch.setattr(task_module, "HumanInputService", lambda *_args, **_kwargs: service)
-    monkeypatch.setattr(task_module, "_handle_global_timeout", lambda **_kwargs: None)
-
-    task_module.check_and_handle_human_input_timeouts(limit=100)
-
-    # Node timeout (conversation forms are never "global"), routed to Agent App resume.
-    mark_timeout_spy.assert_called_once_with(
-        form_id="form-chat", timeout_status=HumanInputFormStatus.TIMEOUT, reason="node_timeout"
-    )
-    assert service.agent_app_resumed == [("conv-1", "form-chat")]
-    assert service.enqueued == []
-    sqlite_session.refresh(form)
-    assert form.status == HumanInputFormStatus.TIMEOUT

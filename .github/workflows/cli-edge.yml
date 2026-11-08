@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'cli/**'
+      - 'skills/**'
       - 'packages/contracts/generated/api/openapi/**'
   workflow_dispatch:
 
@@ -36,7 +37,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: cli/.bun-version
 
@@ -56,7 +57,7 @@ jobs:
         run: CLI_VERSION="${{ steps.ver.outputs.version }}" scripts/release-write-checksums.sh
 
       - name: Smoke the runner-arch binary
-        run: ./dist/bin/difyctl-v${{ steps.ver.outputs.version }}-linux-x64 version
+        run: scripts/release-smoke.sh "./dist/bin/difyctl-v${{ steps.ver.outputs.version }}-linux-x64"
 
       - name: Publish to R2
         env:

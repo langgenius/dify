@@ -10,7 +10,7 @@ type RequestURLBlockComponentProps = {
 }
 
 const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({ nodeKey }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_REQUEST_URL_BLOCK_COMMAND)
 
   return (

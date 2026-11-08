@@ -1,106 +1,77 @@
 'use client'
 
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
-import { cn } from '@langgenius/dify-ui/cn'
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-  useSuspenseQuery,
-} from '@tanstack/react-query'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
+import type { AppListCreationDialog } from './app-list-creation-modals'
+import type { AppListUrlQuery } from './query-params'
 import { useDebounce } from 'ahooks'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useNeedRefreshAppList } from '@/app/components/apps/storage'
-import {
-  activeStepByStepTourGuideGroupAtom,
-  activeStepByStepTourGuideIndexAtom,
-  activeStepByStepTourTaskIdAtom,
-  resolveStepByStepTourGuideGroupAtom,
-} from '@/app/components/step-by-step-tour/state'
-import {
-  getStepByStepTourGuides,
-  STEP_BY_STEP_TOUR_TARGETS,
-} from '@/app/components/step-by-step-tour/target-registry'
+import { useAtomValue } from 'jotai'
+import { throttle, useQueryStates } from 'nuqs'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { CheckModal } from '@/hooks/use-pay'
-import { consoleQuery } from '@/service/client'
-import { normalizeAppPagination } from '@/service/use-apps'
-import { AppModeEnum } from '@/types/app'
+import { CheckResultToast } from '@/hooks/use-pay'
 import { hasPermission } from '@/utils/permission'
-import { AppCard } from './app-card'
-import { AppCardSkeleton } from './app-card-skeleton'
+import { AppListCatalog } from './app-list-catalog'
 import { AppListCreationModals } from './app-list-creation-modals'
-import { AppListHeaderFilters } from './app-list-header-filters'
+import { AppListHeader } from './app-list-header'
 import { AppListTagManagementModal } from './app-list-tag-management-modal'
-import { APP_LIST_GRID_CLASS_NAME, APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
-import Empty from './empty'
-import FirstEmptyState from './first-empty-state'
-import { useAppsQueryState } from './hooks/use-apps-query-state'
+import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
-import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
-import { StarredAppList } from './starred-app-list'
-import { StudioListHeader } from './studio-list-header'
+import { StudioListNavigation } from './list-navigation'
+import { appCreationQueryParsers, appListQueryParsers, serializeAppListQuery } from './query-params'
 
-const STARRED_APP_LIMIT = 100
-const STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT = 4
+// Marks a creation history entry that the list pushed over its own entry, so closing can
+// go back to it. It lives in history.state because Back and Forward restore it with the entry.
+const PUSHED_CREATION_ENTRY = 'difyPushedAppCreation'
+const isPushedCreationEntry = () => window.history.state?.[PUSHED_CREATION_ENTRY] === true
+const markPushedCreationEntry = () =>
+  window.history.replaceState({ ...window.history.state, [PUSHED_CREATION_ENTRY]: true }, '')
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
+type AppListCategory = AppListUrlQuery['category']
 
 type Props = Readonly<{
-  controlRefreshList?: number
-  onCreateLearnDify?: (app: App) => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
 }>
 
-function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Props) {
-  const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { onPlanInfoChanged } = useProviderContext()
 
-  // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
-  const {
-    query: { category, keywords, creatorIDs },
-    setCategory,
-    setKeywords,
-    setCreatorIDs,
-  } = useAppsQueryState()
-  const [tagIDs, setTagIDs] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<AppListSortBy>('last_modified')
+  const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
+  const { category, keywords, creatorIDs, tagIDs, sort_by: sortBy } = urlQuery
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
-  const containerRef = useRef<HTMLDivElement>(null)
+  const dropZoneRef = useRef<HTMLDivElement>(null)
+  const scrollViewportRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
-  const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
-  const [showNewAppModal, setShowNewAppModal] = useState(false)
-  const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
-  const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
-  const [needsRefreshAppList, setNeedsRefreshAppList] = useNeedRefreshAppList()
-  const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
-  const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
-  const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
-  const resolveStepByStepTourGuideGroup = useSetAtom(resolveStepByStepTourGuideGroupAtom)
+  const [creationQuery, setCreationQuery] = useQueryStates(appCreationQueryParsers)
+  // DSL import has no URL; it holds the file dropped on the list, if any.
+  const [dslImport, setDSLImport] = useState<{ droppedFile?: File } | null>(null)
+  const creationDialog: AppListCreationDialog = dslImport
+    ? { type: 'dsl', ...dslImport }
+    : creationQuery.create && { type: creationQuery.create }
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+  const hasActiveFilters =
+    category !== 'all' ||
+    tagIDs.length > 0 ||
+    keywords.trim().length > 0 ||
+    debouncedKeywords.trim().length > 0 ||
+    creatorIDs.length > 0
 
   const handleDSLFileDropped = useCallback(
     (file: File) => {
       if (!canCreateApp) return
 
-      setDroppedDSLFile(file)
-      setShowCreateFromDSLModal(true)
+      setDSLImport({ droppedFile: file })
     },
     [canCreateApp],
   )
 
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
-    containerRef,
+    dropZoneRef,
     enabled: canCreateApp,
   })
 
@@ -117,355 +88,136 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
     [category, creatorIDs, debouncedKeywords, sortBy, tagIDs],
   )
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    isFetchingNextPage,
-    fetchNextPage,
-    hasNextPage,
-    error,
-    refetch,
-  } = useInfiniteQuery({
-    ...consoleQuery.apps.get.infiniteOptions({
-      input: (pageParam) => ({
-        query: {
-          ...appListQuery,
-          page: Number(pageParam),
-        },
-      }),
-      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
-    }),
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map(normalizeAppPagination),
-    }),
-    refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
-  })
+  const resetCatalogScroll = () => {
+    scrollViewportRef.current?.scrollTo({ top: 0 })
+  }
+  const changeCategory = (nextCategory: AppListCategory) => {
+    resetCatalogScroll()
+    void setUrlQuery({ category: nextCategory })
+  }
+  const changeTagIDs = (nextTagIDs: string[]) => {
+    resetCatalogScroll()
+    void setUrlQuery({ tagIDs: nextTagIDs })
+  }
+  const changeKeywords = (nextKeywords: string) => {
+    resetCatalogScroll()
+    void setUrlQuery({ keywords: nextKeywords })
+  }
+  const changeCreatorIDs = (nextCreatorIDs: string[]) => {
+    resetCatalogScroll()
+    void setUrlQuery({ creatorIDs: nextCreatorIDs })
+  }
+  const changeSortBy = (nextSortBy: AppListSortBy) => {
+    resetCatalogScroll()
+    void setUrlQuery({ sort_by: nextSortBy })
+  }
 
-  const starredAppListQuery = useMemo<AppListQuery>(
-    () => ({
-      ...appListQuery,
-      page: 1,
-      limit: STARRED_APP_LIMIT,
-    }),
-    [appListQuery],
+  // Opening pushes a history entry and switching between blank and template replaces it,
+  // so closing (or Back) returns to the list in one step. Blank creation defaults to the
+  // selected category; `mode` is only for links from elsewhere.
+  const openCreationDialog = useCallback(
+    async (create: 'blank' | 'template') => {
+      if (!canCreateApp) return
+      const switching = creationQuery.create !== null
+      // Replacing the entry drops its state, so carry the mark over when switching.
+      const pushed = !switching || isPushedCreationEntry()
+      await setCreationQuery({ create, mode: null }, { history: switching ? 'replace' : 'push' })
+      if (pushed) markPushedCreationEntry()
+    },
+    [canCreateApp, creationQuery.create, setCreationQuery],
   )
-
-  const { data: starredAppList, refetch: refetchStarredAppList } = useQuery({
-    ...consoleQuery.apps.starred.get.queryOptions({
-      input: {
-        query: starredAppListQuery,
-      },
-      select: normalizeAppPagination,
-    }),
-  })
-
-  const refreshAppLists = useCallback(() => {
-    void refetch()
-    void refetchStarredAppList()
-  }, [refetch, refetchStarredAppList])
-
-  useEffect(() => {
-    if (controlRefreshList > 0) refetch()
-  }, [controlRefreshList, refetch])
-
-  const anchorRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (needsRefreshAppList === '1') {
-      setNeedsRefreshAppList(null)
-      refetch()
+  const openCreateBlankModal = useCallback(
+    () => void openCreationDialog('blank'),
+    [openCreationDialog],
+  )
+  const openCreateTemplateDialog = useCallback(
+    () => void openCreationDialog('template'),
+    [openCreationDialog],
+  )
+  const closeCreationDialog = useCallback(() => {
+    if (dslImport) {
+      setDSLImport(null)
+    } else if (isPushedCreationEntry()) {
+      window.history.back()
+    } else {
+      // Opened from a link or a reload: clear the query without leaving the page.
+      void setCreationQuery(null, { history: 'replace' })
     }
-  }, [needsRefreshAppList, refetch, setNeedsRefreshAppList])
-
-  useEffect(() => {
-    const hasMore = hasNextPage ?? true
-    let observer: IntersectionObserver | undefined
-
-    if (error) {
-      if (observer) observer.disconnect()
-      return
-    }
-
-    if (anchorRef.current && containerRef.current) {
-      const containerHeight = containerRef.current.clientHeight
-      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200))
-
-      observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
-            fetchNextPage()
-        },
-        {
-          root: containerRef.current,
-          rootMargin: `${dynamicMargin}px`,
-          threshold: 0.1,
-        },
-      )
-      observer.observe(anchorRef.current)
-    }
-    return () => observer?.disconnect()
-  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage])
-
-  const pages = useMemo(() => data?.pages ?? [], [data?.pages])
-  const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
-  const starredApps = useMemo(() => starredAppList?.data ?? [], [starredAppList?.data])
-
-  const workflowOnlineUserAppIds = useMemo(() => {
-    const appIds = new Set<string>()
-    apps.forEach((app) => {
-      if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
-        appIds.add(app.id)
-    })
-    return Array.from(appIds)
-  }, [apps])
-
-  const { onlineUsersMap: workflowOnlineUsersMap } = useWorkflowOnlineUsers({
-    appIds: workflowOnlineUserAppIds,
-    enabled: systemFeatures.enable_collaboration_mode,
-  })
-
-  const hasResolvedFirstPage = pages.length > 0
-  const hasAnyApp = (pages[0]?.total ?? 0) > 0
-  const hasActiveFilters =
-    category !== 'all' ||
-    tagIDs.length > 0 ||
-    keywords.trim().length > 0 ||
-    debouncedKeywords.trim().length > 0 ||
-    creatorIDs.length > 0
-  const showSkeleton = isLoading || (isFetching && pages.length === 0)
-  const showFirstEmptyState =
-    !showSkeleton && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
-  const showNoCreateEmptyState =
-    !showSkeleton && !hasAnyApp && !canCreateApp && hasResolvedFirstPage && !hasActiveFilters
-  const activeStudioGuideGroup = canCreateApp
-    ? showFirstEmptyState
-      ? 'studioEmpty'
-      : hasAnyApp
-        ? 'studioWithApps'
-        : undefined
-    : hasAnyApp
-      ? 'studioNoCreateWithApps'
-      : showNoCreateEmptyState
-        ? 'studioNoCreateEmpty'
-        : undefined
-  const effectiveActiveStudioGuideGroup = activeStepByStepTourGuideGroup ?? activeStudioGuideGroup
-  const activeStudioGuides =
-    activeStepByStepTourTaskId === 'studio' && effectiveActiveStudioGuideGroup
-      ? getStepByStepTourGuides('studio', effectiveActiveStudioGuideGroup)
-      : []
-  const activeStudioGuide = activeStudioGuides[activeStepByStepTourGuideIndex ?? 0]
-  const shouldOpenStepByStepTourCreateMenu =
-    activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate
-  const shouldOpenStepByStepTourAppCardActionMenu =
-    activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
-  const shouldHighlightStepByStepTourNoCreateAppRow =
-    activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
-  const shouldHighlightStepByStepTourStarredAppRow =
-    shouldHighlightStepByStepTourNoCreateAppRow && starredApps.length > 0
-  const shouldHighlightStepByStepTourAllAppsRow =
-    shouldHighlightStepByStepTourNoCreateAppRow && !shouldHighlightStepByStepTourStarredAppRow
-  const openCreateBlankModal = useCallback(() => {
-    if (canCreateApp) setShowNewAppModal(true)
-  }, [canCreateApp])
-  const openCreateTemplateDialog = useCallback(() => {
-    if (canCreateApp) setShowNewAppTemplateDialog(true)
-  }, [canCreateApp])
+  }, [dslImport, setCreationQuery])
   const openCreateFromDSLModal = useCallback(() => {
-    if (canCreateApp) setShowCreateFromDSLModal(true)
+    if (canCreateApp) setDSLImport({})
   }, [canCreateApp])
-
-  useEffect(() => {
-    if (activeStepByStepTourTaskId !== 'studio') return
-    if (!hasResolvedFirstPage || showSkeleton || !activeStudioGuideGroup) return
-    if (activeStepByStepTourGuideGroup === activeStudioGuideGroup) return
-
-    resolveStepByStepTourGuideGroup({
-      taskId: 'studio',
-      guideGroup: activeStudioGuideGroup,
-    })
-  }, [
-    activeStepByStepTourGuideGroup,
-    activeStepByStepTourTaskId,
-    activeStudioGuideGroup,
-    hasResolvedFirstPage,
-    resolveStepByStepTourGuideGroup,
-    showSkeleton,
-  ])
+  const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
   return (
-    <>
+    <StudioListNavigation
+      path="/apps"
+      href={serializeAppListQuery('/apps', urlQuery)}
+      flush={() => setUrlQuery(urlQuery, { history: 'replace', limitUrlUpdates: throttle(0) })}
+    >
       <div
-        ref={containerRef}
-        className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body"
+        ref={dropZoneRef}
+        className="relative flex h-0 min-h-0 shrink-0 grow flex-col bg-background-body"
       >
         {dragging && (
           <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2"></div>
         )}
 
-        <StudioListHeader
-          title={
-            <div className="flex items-center">
-              <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">
-                {t(($) => $['menus.apps'], { ns: 'common' })}
-              </h1>
-            </div>
-          }
+        <div
+          ref={scrollViewportRef}
+          role="region"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          className="flex min-h-0 grow flex-col overflow-x-hidden overflow-y-auto overscroll-contain outline-hidden"
         >
-          <AppListHeaderFilters
+          <AppListHeader
+            titleId={titleId}
             category={category}
             tagIDs={tagIDs}
             keywords={keywords}
             creatorIDs={creatorIDs}
             sortBy={sortBy}
-            onCategoryChange={setCategory}
-            onTagIDsChange={setTagIDs}
-            onKeywordsChange={setKeywords}
-            onCreatorIDsChange={setCreatorIDs}
-            onSortByChange={setSortBy}
+            onCategoryChange={changeCategory}
+            onTagIDsChange={changeTagIDs}
+            onKeywordsChange={changeKeywords}
+            onCreatorIDsChange={changeCreatorIDs}
+            onSortByChange={changeSortBy}
             onCreateBlank={openCreateBlankModal}
             onCreateTemplate={openCreateTemplateDialog}
             onImportDSL={openCreateFromDSLModal}
-            onOpenTagManagement={() => setShowTagManagementModal(true)}
+            onOpenTagManagement={openTagManagement}
             showCreateButton={canCreateApp}
-            stepByStepTourCreateMenuOpen={
-              activeStudioGuide ? shouldOpenStepByStepTourCreateMenu : undefined
-            }
-            stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate}
-            stepByStepTourCreateMenuHighlightPart={
-              STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu
-            }
           />
-        </StudioListHeader>
-        {showFirstEmptyState ? (
-          <FirstEmptyState
+          <AppListCatalog
+            appListQuery={appListQuery}
+            canCreateApp={canCreateApp}
+            dragging={dragging}
+            hasActiveFilters={hasActiveFilters}
             onCreateBlank={openCreateBlankModal}
             onCreateLearnDify={onCreateLearnDify}
             onCreateTemplate={openCreateTemplateDialog}
             onImportDSL={openCreateFromDSLModal}
+            onOpenTagManagement={openTagManagement}
             onTryLearnDify={onTryLearnDify}
-            showLearnDify={systemFeatures.enable_learn_app}
+            scrollViewportRef={scrollViewportRef}
           />
-        ) : (
-          <>
-            {starredApps.length > 0 && (
-              <StarredAppList
-                apps={starredApps}
-                onRefresh={refreshAppLists}
-                stepByStepTourCardTarget={
-                  shouldHighlightStepByStepTourStarredAppRow
-                    ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
-                    : undefined
-                }
-                stepByStepTourCardHighlightPart={
-                  shouldHighlightStepByStepTourStarredAppRow
-                    ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
-                    : undefined
-                }
-                stepByStepTourHighlightedCardCount={
-                  shouldHighlightStepByStepTourStarredAppRow
-                    ? STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT
-                    : 0
-                }
-              />
-            )}
-            <div
-              className={cn(
-                `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
-                !hasAnyApp && 'overflow-hidden',
-              )}
-            >
-              {showSkeleton ? (
-                <AppCardSkeleton count={6} />
-              ) : hasAnyApp ? (
-                apps.map((app, index) => (
-                  <AppCard
-                    key={app.id}
-                    app={app}
-                    onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
-                    onRefresh={refreshAppLists}
-                    onOpenTagManagement={() => setShowTagManagementModal(true)}
-                    stepByStepTourActionMenuOpen={
-                      index === 0 ? shouldOpenStepByStepTourAppCardActionMenu : undefined
-                    }
-                    stepByStepTourCardTarget={
-                      index === 0
-                        ? shouldHighlightStepByStepTourAllAppsRow
-                          ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
-                          : canCreateApp
-                            ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
-                            : undefined
-                        : undefined
-                    }
-                    stepByStepTourCardHighlightPart={
-                      index < STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT &&
-                      shouldHighlightStepByStepTourAllAppsRow
-                        ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
-                        : undefined
-                    }
-                    stepByStepTourActionMenuHighlightPart={
-                      index === 0 && shouldOpenStepByStepTourAppCardActionMenu
-                        ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
-                        : undefined
-                    }
-                  />
-                ))
-              ) : (
-                <Empty
-                  stepByStepTourTarget={
-                    showNoCreateEmptyState
-                      ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty
-                      : undefined
-                  }
-                />
-              )}
-              {isFetchingNextPage && <AppCardSkeleton count={3} />}
-            </div>
-          </>
-        )}
-
-        {canCreateApp && !showFirstEmptyState && (
-          <div
-            className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
-            role="region"
-            aria-label={t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
-          >
-            <span className="i-ri-drag-drop-line size-4" />
-            <span className="system-xs-regular">
-              {t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
-            </span>
-          </div>
-        )}
-        <CheckModal />
-        <div ref={anchorRef} className="h-0">
-          {' '}
         </div>
+
+        <CheckResultToast />
         <AppListTagManagementModal
           show={showTagManagementModal}
           onClose={() => setShowTagManagementModal(false)}
-          onTagsChange={refreshAppLists}
         />
       </div>
 
       <AppListCreationModals
         canCreateApp={canCreateApp}
-        category={category}
-        droppedDSLFile={droppedDSLFile}
-        showCreateFromDSLModal={showCreateFromDSLModal}
-        showNewAppModal={showNewAppModal}
-        showNewAppTemplateDialog={showNewAppTemplateDialog}
-        onPlanInfoChanged={onPlanInfoChanged}
-        onRefetch={refreshAppLists}
-        onSetDroppedDSLFile={setDroppedDSLFile}
-        onSetShowCreateFromDSLModal={setShowCreateFromDSLModal}
-        onSetShowNewAppModal={setShowNewAppModal}
-        onSetShowNewAppTemplateDialog={setShowNewAppTemplateDialog}
+        defaultMode={creationQuery.mode ?? category}
+        dialog={creationDialog}
+        onClose={closeCreationDialog}
+        onOpenBlank={openCreateBlankModal}
+        onOpenTemplate={openCreateTemplateDialog}
       />
-    </>
+    </StudioListNavigation>
   )
 }
-
-export default List

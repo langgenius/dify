@@ -26,7 +26,6 @@ def find_doc_examples() -> Iterable[ParameterSet]:
     for example in find_examples(
         root_dir / "docs",
         root_dir / "src",
-        root_dir / "examples" / "agenton",
         root_dir / "examples" / "dify_agent",
     ):
         path = example.path.relative_to(root_dir)
@@ -47,7 +46,7 @@ def test_documentation_examples(example: CodeExample, eval_example: EvalExample)
         isort=True,
         upgrade=True,
         quotes="double",
-        known_first_party=["agenton", "agenton_collections", "dify_agent"],
+        known_first_party=["dify_agent"],
     )
 
     if not opt_lint.startswith("skip"):

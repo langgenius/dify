@@ -1,103 +1,60 @@
-import type { IConfigStringProps } from '../index'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import ConfigString from '../index'
 
-const renderConfigString = (props?: Partial<IConfigStringProps>) => {
-  const onChange = vi.fn()
-  const defaultProps: IConfigStringProps = {
-    value: 5,
-    maxLength: 10,
-    modelId: 'model-id',
-    onChange,
-  }
-
-  render(<ConfigString {...defaultProps} {...props} />)
-
-  return { onChange }
+function LengthField({ maxLength = 10, initialValue = 5, onChange = vi.fn() }) {
+  const [value, setValue] = useState<number | undefined>(initialValue)
+  return (
+    <>
+      <label htmlFor="max-length">Maximum length</label>
+      <ConfigString
+        id="max-length"
+        value={value}
+        maxLength={maxLength}
+        modelId="model-id"
+        onChange={(nextValue) => {
+          setValue(nextValue)
+          onChange(nextValue)
+        }}
+      />
+    </>
+  )
 }
 
 describe('ConfigString', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it.each([
+    ['12', '10', 10],
+    ['0', '1', 1],
+    ['7.8', '8', 8],
+  ])('commits %s as a bounded integer', async (entered, displayed, expected) => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<LengthField onChange={onChange} />)
+    const input = screen.getByRole('textbox', { name: 'Maximum length' })
+    await user.clear(input)
+    await user.type(input, entered)
+    await user.tab()
+    expect(input).toHaveValue(displayed)
+    expect(onChange).toHaveBeenLastCalledWith(expected)
   })
 
-  describe('Rendering', () => {
-    it('should render numeric input with bounds', () => {
-      renderConfigString({ value: 3, maxLength: 8 })
-
-      const input = screen.getByRole('spinbutton')
-
-      expect(input)!.toHaveValue(3)
-      expect(input)!.toHaveAttribute('min', '1')
-      expect(input)!.toHaveAttribute('max', '8')
-    })
-
-    it('should render empty input when value is undefined', () => {
-      const { onChange } = renderConfigString({ value: undefined })
-
-      expect(screen.getByRole('spinbutton'))!.toHaveValue(null)
-      expect(onChange).not.toHaveBeenCalled()
-    })
+  it('clears to an unset value instead of NaN', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<LengthField onChange={onChange} />)
+    const input = screen.getByRole('textbox', { name: 'Maximum length' })
+    await user.clear(input)
+    await user.tab()
+    expect(input).toHaveValue('')
+    expect(onChange).toHaveBeenLastCalledWith(undefined)
   })
 
-  describe('Effect behavior', () => {
-    it('should clamp initial value to maxLength when it exceeds limit', async () => {
-      const onChange = vi.fn()
-      render(<ConfigString value={15} maxLength={10} modelId="model-id" onChange={onChange} />)
-
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(10)
-      })
-      expect(onChange).toHaveBeenCalledTimes(1)
-    })
-
-    it('should clamp when updated prop value exceeds maxLength', async () => {
-      const onChange = vi.fn()
-      const { rerender } = render(
-        <ConfigString value={4} maxLength={6} modelId="model-id" onChange={onChange} />,
-      )
-
-      rerender(<ConfigString value={9} maxLength={6} modelId="model-id" onChange={onChange} />)
-
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(6)
-      })
-      expect(onChange).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('User interactions', () => {
-    it('should clamp entered value above maxLength', () => {
-      const { onChange } = renderConfigString({ maxLength: 7 })
-
-      fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '12' } })
-
-      expect(onChange).toHaveBeenCalledWith(7)
-    })
-
-    it('should raise value below minimum to one', () => {
-      const { onChange } = renderConfigString()
-
-      fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '0' } })
-
-      expect(onChange).toHaveBeenCalledWith(1)
-    })
-
-    it('should forward parsed value when within bounds', () => {
-      const { onChange } = renderConfigString({ maxLength: 9 })
-
-      fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '7' } })
-
-      expect(onChange).toHaveBeenCalledWith(7)
-    })
-
-    it('should pass through NaN when input is cleared', () => {
-      const { onChange } = renderConfigString()
-
-      fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '' } })
-
-      expect(onChange).toHaveBeenCalledTimes(1)
-      expect(onChange.mock.calls[0]![0]).toBeNaN()
-    })
+  it('updates the draft when the allowed maximum becomes smaller', async () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<LengthField initialValue={9} onChange={onChange} />)
+    rerender(<LengthField initialValue={9} maxLength={6} onChange={onChange} />)
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(6))
+    expect(screen.getByRole('textbox', { name: 'Maximum length' })).toHaveValue('6')
   })
 })

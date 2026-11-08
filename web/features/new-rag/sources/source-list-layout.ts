@@ -1,0 +1,2 @@
+export const sourceTableGridClass =
+  'grid grid-cols-2 gap-x-4 gap-y-3 @min-[768px]/knowledge-content:grid-cols-[16px_minmax(0,1fr)_120px_120px_40px] @min-[768px]/knowledge-content:gap-x-3 @min-[768px]/knowledge-content:gap-y-0 @min-[960px]/knowledge-content:grid-cols-[16px_minmax(200px,1fr)_160px_120px_120px_120px_40px] @min-[1280px]/knowledge-content:grid-cols-[16px_minmax(0,1fr)_180px_140px_120px_160px_80px]'

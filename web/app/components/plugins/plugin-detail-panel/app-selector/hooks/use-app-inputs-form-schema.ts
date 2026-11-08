@@ -1,15 +1,19 @@
 'use client'
+
+import type {
+  AppDetailWithSite,
+  AppPartial,
+  WorkflowResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FileUpload } from '@/app/components/base/features/types'
-import type { FileUploadConfigResponse } from '@/models/common'
-import type { App } from '@/types/app'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useAppDetail } from '@/service/use-apps'
-import { useFileUploadConfig } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { useAppWorkflow } from '@/service/use-workflow'
-import { AppModeEnum, Resolution } from '@/types/app'
+import { Resolution } from '@/types/app'
 
 const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
   paragraph: 'paragraph',
@@ -23,23 +27,33 @@ const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
 
 const FILE_INPUT_TYPES = new Set(['file-list', 'file'])
 
-const WORKFLOW_FILE_VAR_TYPES = new Set([InputVarType.multiFiles, InputVarType.singleFile])
+const WORKFLOW_FILE_VAR_TYPES = new Set<InputVarType>([
+  InputVarType.multiFiles,
+  InputVarType.singleFile,
+])
 
 type InputSchemaItem = {
   label?: string
   variable?: string
   type: string
   required: boolean
-  fileUploadConfig?: FileUploadConfigResponse
+  fileUploadConfig?: UploadConfig
   [key: string]: unknown
 }
 
+type WorkflowNodeWithVariables = {
+  data: {
+    type: BlockEnum
+    variables?: Array<Record<string, unknown>>
+  }
+}
+
 function isBasicAppMode(mode: string): boolean {
-  return mode !== AppModeEnum.ADVANCED_CHAT && mode !== AppModeEnum.WORKFLOW
+  return mode !== 'advanced-chat' && mode !== 'workflow'
 }
 
 function supportsImageUpload(mode: string): boolean {
-  return mode === AppModeEnum.COMPLETION || mode === AppModeEnum.WORKFLOW
+  return mode === 'completion' || mode === 'workflow'
 }
 
 function buildFileConfig(fileConfig: FileUpload | undefined) {
@@ -63,7 +77,7 @@ function buildFileConfig(fileConfig: FileUpload | undefined) {
 
 function mapBasicAppInputItem(
   item: Record<string, unknown>,
-  fileUploadConfig?: FileUploadConfigResponse,
+  fileUploadConfig?: UploadConfig,
 ): InputSchemaItem | null {
   for (const [key, type] of Object.entries(BASIC_INPUT_TYPE_MAP)) {
     if (!item[key]) continue
@@ -91,7 +105,7 @@ function mapBasicAppInputItem(
 
 function mapWorkflowVariable(
   variable: Record<string, unknown>,
-  fileUploadConfig?: FileUploadConfigResponse,
+  fileUploadConfig?: UploadConfig,
 ): InputSchemaItem {
   const needsFileConfig = WORKFLOW_FILE_VAR_TYPES.has(variable.type as InputVarType)
 
@@ -105,7 +119,7 @@ function mapWorkflowVariable(
 
 function createImageUploadSchema(
   basicFileConfig: ReturnType<typeof buildFileConfig>,
-  fileUploadConfig?: FileUploadConfigResponse,
+  fileUploadConfig?: UploadConfig,
 ): InputSchemaItem {
   return {
     label: 'Image Upload',
@@ -118,8 +132,8 @@ function createImageUploadSchema(
 }
 
 function buildBasicAppSchema(
-  currentApp: App,
-  fileUploadConfig?: FileUploadConfigResponse,
+  currentApp: AppDetailWithSite,
+  fileUploadConfig?: UploadConfig,
 ): InputSchemaItem[] {
   const userInputForm = currentApp.model_config?.user_input_form as
     | Array<Record<string, unknown>>
@@ -133,12 +147,15 @@ function buildBasicAppSchema(
 }
 
 function buildWorkflowSchema(
-  workflow: FetchWorkflowDraftResponse,
-  fileUploadConfig?: FileUploadConfigResponse,
+  workflow: Pick<WorkflowResponse, 'graph'>,
+  fileUploadConfig?: UploadConfig,
 ): InputSchemaItem[] {
-  const startNode = workflow.graph?.nodes.find((node) => node.data.type === BlockEnum.Start) as
-    | { data: { variables: Array<Record<string, unknown>> } }
-    | undefined
+  const nodes = workflow.graph.nodes
+  if (!Array.isArray(nodes)) return []
+
+  const startNode = (nodes as WorkflowNodeWithVariables[]).find(
+    (node) => node.data.type === BlockEnum.Start,
+  )
 
   if (!startNode?.data.variables) return []
 
@@ -146,13 +163,15 @@ function buildWorkflowSchema(
 }
 
 type UseAppInputsFormSchemaParams = {
-  appDetail: App
+  appDetail: Pick<AppPartial, 'id' | 'mode'>
 }
 
 type UseAppInputsFormSchemaResult = {
   inputFormSchema: InputSchemaItem[]
+  isError: boolean
   isLoading: boolean
-  fileUploadConfig?: FileUploadConfigResponse
+  retry: () => void
+  fileUploadConfig?: UploadConfig
 }
 
 export function useAppInputsFormSchema({
@@ -160,13 +179,19 @@ export function useAppInputsFormSchema({
 }: UseAppInputsFormSchemaParams): UseAppInputsFormSchemaResult {
   const isBasicApp = isBasicAppMode(appDetail.mode)
 
-  const { data: fileUploadConfig } = useFileUploadConfig()
-  const { data: currentApp, isFetching: isAppLoading } = useAppDetail(appDetail.id)
-  const { data: currentWorkflow, isFetching: isWorkflowLoading } = useAppWorkflow(
-    isBasicApp ? '' : appDetail.id,
+  const fileUploadConfigQuery = useQuery(consoleQuery.files.upload.get.queryOptions())
+  const { data: fileUploadConfig } = fileUploadConfigQuery
+  const appQuery = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appDetail.id } },
+    }),
   )
+  const { data: currentApp } = appQuery
+  const workflowQuery = useAppWorkflow(isBasicApp ? '' : appDetail.id)
+  const { data: currentWorkflow } = workflowQuery
 
-  const isLoading = isAppLoading || isWorkflowLoading
+  const isLoading = appQuery.isFetching || workflowQuery.isFetching
+  const isError = appQuery.isError || workflowQuery.isError
 
   const inputFormSchema = useMemo(() => {
     if (!currentApp) return []
@@ -192,9 +217,19 @@ export function useAppInputsFormSchema({
     return [...baseSchema, createImageUploadSchema(basicFileConfig, fileUploadConfig)]
   }, [currentApp, currentWorkflow, fileUploadConfig, isBasicApp])
 
+  const retry = () => {
+    void Promise.all([
+      fileUploadConfigQuery.refetch(),
+      appQuery.refetch(),
+      ...(!isBasicApp ? [workflowQuery.refetch()] : []),
+    ])
+  }
+
   return {
     inputFormSchema,
+    isError,
     isLoading,
+    retry,
     fileUploadConfig,
   }
 }

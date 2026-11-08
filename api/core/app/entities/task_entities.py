@@ -132,6 +132,7 @@ class MessageAudioStreamResponse(StreamResponse):
 
     event: StreamEvent = StreamEvent.TTS_MESSAGE
     audio: str
+    audio_type: str | None = None
 
 
 class MessageAudioEndStreamResponse(StreamResponse):
@@ -284,6 +285,7 @@ class HumanInputRequiredResponse(StreamResponse):
         Data entity
         """
 
+        form_version: Literal["1", "2"] = "1"
         form_id: str
         node_id: str
         node_title: str
@@ -308,6 +310,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     """
 
     TYPE: Literal[DifyHITLEventType.HUMAN_INPUT_REQUIRED] = DifyHITLEventType.HUMAN_INPUT_REQUIRED
+    form_version: Literal["1", "2"] = "1"
     form_id: str
     node_id: str
     node_title: str
@@ -323,6 +326,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     @classmethod
     def from_response_data(cls, data: HumanInputRequiredResponse.Data) -> "HumanInputRequiredPauseReasonPayload":
         return cls(
+            form_version=data.form_version,
             form_id=data.form_id,
             node_id=data.node_id,
             node_title=data.node_title,
@@ -343,6 +347,7 @@ class HumanInputFormFilledResponse(StreamResponse):
         Data entity
         """
 
+        form_id: str
         node_id: str
         node_title: str
         rendered_content: str
@@ -362,6 +367,7 @@ class HumanInputFormTimeoutResponse(StreamResponse):
         Data entity
         """
 
+        form_id: str
         node_id: str
         node_title: str
         expiration_time: int

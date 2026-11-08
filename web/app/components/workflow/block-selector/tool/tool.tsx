@@ -11,8 +11,8 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
+import { getProviderReference, matchesProviderReference } from '@/utils/provider-reference'
 import { basePath } from '@/utils/var'
 import { CollectionType } from '../../../tools/types'
 import BlockIcon from '../../block-icon'
@@ -57,7 +57,7 @@ function Tool({
   onSelectMultiple,
   selectedTools,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools', 'workflow'])
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
@@ -68,7 +68,7 @@ function Tool({
   const [previousHasSearchText, setPreviousHasSearchText] = React.useState(hasSearchText)
   const isMCPTool = payload.type === CollectionType.mcp
   const isShowCanNotChooseMCPTip = !isMCPToolAllowed && isMCPTool
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const normalizedIcon = useMemo<ToolWithProvider['icon']>(() => {
     return normalizeProviderIcon(payload.icon) ?? payload.icon
   }, [payload.icon])
@@ -77,7 +77,7 @@ function Tool({
     return normalizeProviderIcon(payload.icon_dark) ?? payload.icon_dark
   }, [payload.icon_dark])
   const providerIcon = useMemo<ToolWithProvider['icon']>(() => {
-    if (theme === Theme.dark && normalizedIconDark) return normalizedIconDark
+    if (theme === 'dark' && normalizedIconDark) return normalizedIconDark
     return normalizedIcon
   }, [theme, normalizedIcon, normalizedIconDark])
   const getIsDisabled = useCallback(
@@ -86,11 +86,11 @@ function Tool({
       return selectedTools.some(
         (selectedTool) =>
           (selectedTool.provider_name === payload.name ||
-            selectedTool.provider_name === payload.id) &&
+            matchesProviderReference(payload, selectedTool.provider_name)) &&
           selectedTool.tool_name === tool.name,
       )
     },
-    [payload.id, payload.name, selectedTools],
+    [payload, selectedTools],
   )
 
   const totalToolsNum = actions.length
@@ -119,17 +119,17 @@ function Tool({
       className={cn('flex h-8 min-w-0 grow items-center', isShowCanNotChooseMCPTip && 'opacity-30')}
     >
       <BlockIcon className="shrink-0" type={BlockEnum.Tool} toolIcon={providerIcon} />
-      <div className="ml-2 flex w-0 grow items-center text-sm text-text-primary">
+      <div className="ms-2 flex w-0 grow items-center text-sm text-text-primary">
         <span className="max-w-62.5 truncate">
           {notShowProvider ? actions[0]?.label[language] : payload.label[language]}
         </span>
         {isFlatView && groupName && (
-          <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">{groupName}</span>
+          <span className="ms-2 shrink-0 system-xs-regular text-text-quaternary">{groupName}</span>
         )}
         {isMCPTool && (
           <span
             aria-hidden
-            className="ml-2 i-custom-vender-other-mcp size-3.5 shrink-0 text-text-quaternary"
+            className="ms-2 i-custom-vender-other-mcp size-3.5 shrink-0 text-text-quaternary"
           />
         )}
       </div>
@@ -153,7 +153,7 @@ function Tool({
             params[item.name] = ''
           })
           return {
-            provider_id: payload.id,
+            provider_id: getProviderReference(payload),
             provider_type: payload.type,
             provider_name: payload.name,
             provider_show_name: payload.label[language],
@@ -180,7 +180,7 @@ function Tool({
       params[item.name] = ''
     })
     onSelect(BlockEnum.Tool, {
-      provider_id: payload.id,
+      provider_id: getProviderReference(payload),
       provider_type: payload.type,
       provider_name: payload.name,
       provider_show_name: payload.label[language],
@@ -203,12 +203,12 @@ function Tool({
       <div className={cn('mb-1 last-of-type:mb-0', className)}>
         <button
           type="button"
-          className="flex h-8 w-full cursor-pointer items-center rounded-lg border-0 bg-transparent pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+          className="flex h-8 w-full cursor-pointer items-center rounded-lg border-0 bg-transparent ps-3 pe-2 text-start hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
           onClick={handleWorkflowToolSelect}
         >
           {providerDetails}
           {!canNotSelectMultiple && selectedStatus && (
-            <span className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
+            <span className="ms-2 shrink-0 system-xs-regular text-text-tertiary">
               {t(($) => $['addToolModal.added'], { ns: 'tools' })}
             </span>
           )}
@@ -226,13 +226,13 @@ function Tool({
       <div className="group/item relative flex w-full items-center rounded-lg">
         <CollapsibleTrigger
           aria-controls={panelId}
-          className="h-8 min-h-8 w-full min-w-0 justify-start gap-0 rounded-lg bg-transparent py-0 pr-2 pl-3 group-hover/item:bg-state-base-hover hover:not-data-disabled:bg-state-base-hover focus-visible:ring-inset"
+          className="group/collapsible flex h-8 min-h-8 w-full min-w-0 touch-manipulation items-center justify-start gap-0 rounded-lg bg-transparent ps-3 pe-2 text-start system-sm-medium text-text-secondary select-none group-hover/item:bg-state-base-hover hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-inset data-panel-open:text-text-primary"
         >
           {providerDetails}
           {!isShowCanNotChooseMCPTip && !canNotSelectMultiple && selectedStatus && (
             <span
               className={cn(
-                'ml-2 shrink-0 system-xs-regular text-text-tertiary',
+                'ms-2 shrink-0 system-xs-regular text-text-tertiary',
                 !isAllSelected &&
                   'group-focus-within/item:hidden group-hover/item:hidden [@media(hover:none)]:hidden',
               )}
@@ -243,13 +243,13 @@ function Tool({
           <span
             aria-hidden
             className={cn(
-              'ml-2 i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none',
+              'ms-2 i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary transition-transform group-data-panel-open/collapsible:rotate-90 motion-reduce:transition-none',
               !isShowCanNotChooseMCPTip &&
                 !canNotSelectMultiple &&
                 !isAllSelected &&
                 onSelectMultiple &&
                 'group-focus-within/item:hidden group-hover/item:hidden [@media(hover:none)]:hidden',
-              isShowCanNotChooseMCPTip && 'mr-7',
+              isShowCanNotChooseMCPTip && 'me-7',
             )}
           />
         </CollapsibleTrigger>
@@ -261,7 +261,7 @@ function Tool({
             <Button
               variant="ghost"
               size="small"
-              className="pointer-events-none absolute top-1/2 right-1 -translate-y-1/2 text-components-button-secondary-accent-text opacity-0 group-focus-within/item:pointer-events-auto group-focus-within/item:opacity-100 group-hover/item:pointer-events-auto group-hover/item:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
+              className="pointer-events-none absolute inset-e-1 top-1/2 -translate-y-1/2 text-components-button-secondary-accent-text opacity-0 group-focus-within/item:pointer-events-auto group-focus-within/item:opacity-100 group-hover/item:pointer-events-auto group-hover/item:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
               onClick={(event) => {
                 event.stopPropagation()
                 handleSelectAll()
@@ -271,7 +271,7 @@ function Tool({
             </Button>
           )}
         {isShowCanNotChooseMCPTip && (
-          <div className="absolute top-1/2 right-3 flex -translate-y-1/2">
+          <div className="absolute inset-e-3 top-1/2 flex -translate-y-1/2">
             <McpToolNotSupportTooltip />
           </div>
         )}

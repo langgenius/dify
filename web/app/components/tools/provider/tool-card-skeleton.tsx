@@ -19,7 +19,7 @@ const ToolCardSkeleton = () => (
     <div className="p-4 pb-3">
       <div className="flex">
         <SkeletonRectangle className="my-0 size-10 shrink-0 animate-pulse rounded-md" />
-        <div className="ml-3 w-0 grow">
+        <div className="ms-3 w-0 grow">
           <div className="flex h-5 items-center">
             <SkeletonRectangle className="h-4 w-2/3 animate-pulse" />
           </div>
@@ -90,8 +90,8 @@ const MCPCardSkeleton = () => (
         <SkeletonRectangle className="h-3 w-3/5 animate-pulse" />
       </div>
     </div>
-    <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
-      <div className="flex w-0 grow items-center gap-2">
+    <div className="flex items-center gap-1 rounded-b-xl ps-4 pe-2.5 pt-1.5 pb-2.5">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <SkeletonRectangle className="h-3 w-16 animate-pulse" />
         <SkeletonPoint />
         <SkeletonRectangle className="h-3 w-24 animate-pulse" />

@@ -2,22 +2,21 @@ import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/d
 import type { CreateExternalAPIReq } from '../declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useModalContext } from '@/context/modal-context'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   checkUsageExternalAPI,
   deleteExternalAPI,
@@ -28,14 +27,17 @@ import {
 type ExternalKnowledgeAPICardProps = {
   api: ExternalKnowledgeApiResponse
   canManageExternalKnowledgeApi: boolean
+  position: number
 }
 
 const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   api,
   canManageExternalKnowledgeApi,
+  position,
 }) => {
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
   const [showConfirm, setShowConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [usageCount, setUsageCount] = useState(0)
   const queryClient = useQueryClient()
@@ -45,7 +47,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   const endpoint =
     api.settings && typeof api.settings.endpoint === 'string' ? api.settings.endpoint : ''
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
 
   const handleEditClick = async () => {
     if (!canManageExternalKnowledgeApi) return
@@ -55,8 +57,8 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
       const formValue: CreateExternalAPIReq = {
         name: response.name,
         settings: {
-          endpoint: response.settings.endpoint,
-          api_key: response.settings.api_key,
+          endpoint: response.settings?.endpoint ?? '',
+          api_key: response.settings?.api_key ?? '',
         },
       }
 
@@ -68,15 +70,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
           try {
             await updateExternalAPI({
               apiTemplateId: api.id,
-              body: {
-                ...response,
-                name: updatedData.name,
-                settings: {
-                  ...response.settings,
-                  endpoint: updatedData.settings.endpoint,
-                  api_key: updatedData.settings.api_key,
-                },
-              },
+              body: { name: updatedData.name, settings: updatedData.settings },
             })
             await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
           } catch (error) {
@@ -103,71 +97,86 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   }
 
   const handleConfirmDelete = async () => {
-    if (!canManageExternalKnowledgeApi) return
+    if (!canManageExternalKnowledgeApi || isDeleting) return
 
+    setIsDeleting(true)
     try {
-      const response = await deleteExternalAPI({ apiTemplateId: api.id })
-      if (response && response.result === 'success') {
-        setShowConfirm(false)
-        await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
-      } else {
-        console.error('Failed to delete external API')
-      }
+      await deleteExternalAPI({ apiTemplateId: api.id })
+      setShowConfirm(false)
+      await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
     } catch (error) {
       console.error('Error deleting external knowledge API:', error)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
   return (
     <>
       <div
-        className={`shadows-shadow-xs flex items-start self-stretch rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2 pl-3 ${isHovered ? 'border-state-destructive-border bg-state-destructive-hover' : ''}`}
+        className={`flex items-start self-stretch rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2 ps-3 ${isHovered ? 'border-state-destructive-border bg-state-destructive-hover' : ''}`}
       >
         <div className="flex grow flex-col items-start justify-center gap-1.5 py-1">
           <div className="flex items-center gap-1 self-stretch text-text-secondary">
-            <ApiConnectionMod className="size-4" />
+            <span
+              aria-hidden
+              className="i-custom-vender-solid-development-api-connection-mod size-4"
+            />
             <div className="system-sm-medium">{api.name}</div>
           </div>
           <div className="self-stretch system-xs-regular text-text-tertiary">{endpoint}</div>
         </div>
         {canManageExternalKnowledgeApi && (
           <div className="flex items-start gap-1">
-            <ActionButton onClick={handleEditClick}>
-              <RiEditLine className="size-4 text-text-tertiary hover:text-text-secondary" />
-            </ActionButton>
-            <ActionButton
-              className="hover:bg-state-destructive-hover"
+            <IconButton
+              aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${api.name} ${endpoint} ${position}`}
+              onClick={handleEditClick}
+            >
+              <span
+                aria-hidden
+                className="i-ri-edit-line size-4 text-text-tertiary hover:text-text-secondary"
+              />
+            </IconButton>
+            <IconButton
+              aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${api.name} ${endpoint} ${position}`}
+              tone="destructive"
               onClick={handleDeleteClick}
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
             >
-              <RiDeleteBinLine className="size-4 text-text-tertiary hover:text-text-destructive" />
-            </ActionButton>
+              <span aria-hidden className="i-ri-delete-bin-line size-4" />
+            </IconButton>
           </div>
         )}
       </div>
-      <AlertDialog open={showConfirm} onOpenChange={(open) => !open && setShowConfirm(false)}>
+      <AlertDialog
+        open={showConfirm}
+        onOpenChange={(open, details) => {
+          if (!open && isDeleting) details.cancel()
+          else setShowConfirm(open)
+        }}
+      >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {`${t(($) => $['deleteExternalAPIConfirmWarningContent.title.front'], { ns: 'dataset' })} ${api.name}${t(($) => $['deleteExternalAPIConfirmWarningContent.title.end'], { ns: 'dataset' })}`}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {usageCount > 0
                 ? `${t(($) => $['deleteExternalAPIConfirmWarningContent.content.front'], { ns: 'dataset' })} ${usageCount} ${t(($) => $['deleteExternalAPIConfirmWarningContent.content.end'], { ns: 'dataset' })}`
                 : t(($) => $['deleteExternalAPIConfirmWarningContent.noConnectionContent'], {
                     ns: 'dataset',
                   })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={handleConfirmDelete}>
+            <AlertDialogConfirmButton loading={isDeleting} onClick={handleConfirmDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

@@ -3,20 +3,24 @@
 Dify API persists only opaque Home Snapshot, Binding, and Workspace backend
 refs. This adapter maps those refs to E2B resources internally. API keys,
 traffic tokens, SDK objects, shellctl clients, and ``RuntimeLease`` objects stay
-operation-local and are never serialized into Agenton state.
+operation-local and are never serialized into module JSON state.
 """
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
+import logging
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 import httpx2 as httpx
+from shellctl.client import ShellctlClientError
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
 from dify_agent.runtime_backend.errors import (
     BindingAcquireError,
+    BindingCapacityExhaustedError,
     BindingCreateError,
     BindingDestroyError,
     BindingLostError,
@@ -28,7 +32,6 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
-    FileSystem,
     HomeSnapshotCreateSpec,
     RuntimeLayout,
     RuntimeLease,
@@ -38,17 +41,31 @@ from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease, create_own
 if TYPE_CHECKING:
     from e2b.connection_config import ApiParams
 
+# One RuntimeLease spans the complete Agent run, not one Shell tool call.
 E2B_MAX_ACTIVE_TIMEOUT_SECONDS = 60 * 60
+_SHELLCTL_READY_MAX_ATTEMPTS = 3
+_SHELLCTL_READY_RETRY_INTERVAL_SECONDS = 0.5
+logger = logging.getLogger(__name__)
 
 
 class _E2BControlPlaneNotFoundError(RuntimeError):
     """Typed boundary error for SDK resources that no longer exist."""
 
 
+class _E2BControlPlaneCapacityExhaustedError(RuntimeError):
+    """Typed boundary error for provider-side Sandbox capacity exhaustion."""
+
+
+class _E2BFileEntry(Protocol):
+    path: str
+
+
 class _E2BFileSystem(Protocol):
     async def make_dir(self, path: str) -> bool: ...
 
     async def exists(self, path: str) -> bool: ...
+
+    async def list(self, path: str) -> list[_E2BFileEntry]: ...
 
     async def remove(self, path: str) -> None: ...
 
@@ -65,11 +82,11 @@ class _E2BSandbox(Protocol):
 
     def get_host(self, port: int) -> str: ...
 
-    async def pause(self, keep_memory: bool = True) -> bool: ...
+    async def pause(self, *, mode: Literal["full"]) -> bool: ...
 
     async def kill(self) -> bool: ...
 
-    async def create_snapshot(self, name: str | None = None) -> _E2BSnapshotInfo: ...
+    async def create_snapshot(self, name: str | None = None, *, mode: Literal["full"]) -> _E2BSnapshotInfo: ...
 
 
 class E2BControlPlane(Protocol):
@@ -96,12 +113,17 @@ class E2BSDKControlPlane:
     SDK Sandbox objects are returned only to operation-local backend adapters.
     Native not-found exceptions are normalized so adapters can distinguish
     confirmed resource loss from transient acquisition and cleanup failures.
+
+    The SDK owns control-plane retries and replay safety. Backend adapters call
+    each SDK operation once so an exhausted retry or timeout cannot start a new
+    request budget. A 502 is replayed only for safe operations; Retry-After does
+    not override replay safety. See https://github.com/e2b-dev/E2B/pull/1924.
     """
 
     api_key: str
 
     def _options(self) -> ApiParams:
-        return {"api_key": self.api_key}
+        return {"api_key": self.api_key, "retries": 3}
 
     async def create(
         self,
@@ -111,33 +133,34 @@ class E2BSDKControlPlane:
         metadata: dict[str, str],
         on_timeout: Literal["kill", "pause"],
     ) -> _E2BSandbox:
-        from e2b import AsyncSandbox, NotFoundException, SandboxNotFoundException
+        from e2b import AsyncSandbox, NotFoundException, RateLimitException, SandboxNotFoundException
 
         try:
-            return cast(
-                _E2BSandbox,
-                cast(
-                    object,
-                    await AsyncSandbox.create(
-                        template,
-                        timeout=timeout,
-                        metadata=metadata,
-                        lifecycle={"on_timeout": on_timeout, "auto_resume": False},
-                        **self._options(),
-                    ),
-                ),
+            sandbox: object = await AsyncSandbox.create(
+                template,
+                timeout=timeout,
+                metadata=metadata,
+                network={"allow_public_traffic": False},
+                lifecycle={
+                    "on_timeout": {"action": "pause", "mode": "full"} if on_timeout == "pause" else "kill",
+                    "auto_resume": False,
+                },
+                **self._options(),
             )
+            return cast(_E2BSandbox, sandbox)
         except (SandboxNotFoundException, NotFoundException) as exc:
             raise _E2BControlPlaneNotFoundError(str(exc)) from exc
+        except RateLimitException as exc:
+            raise _E2BControlPlaneCapacityExhaustedError(str(exc)) from exc
 
     async def connect(self, handle: str, *, timeout: int) -> _E2BSandbox:
         from e2b import AsyncSandbox, NotFoundException, SandboxNotFoundException
 
         try:
-            return cast(
-                _E2BSandbox,
-                cast(object, await AsyncSandbox.connect(handle, timeout=timeout, **self._options())),
+            sandbox: object = await AsyncSandbox.connect(
+                handle, timeout=timeout, on_resume="restore", **self._options()
             )
+            return cast(_E2BSandbox, sandbox)
         except (SandboxNotFoundException, NotFoundException) as exc:
             raise _E2BControlPlaneNotFoundError(str(exc)) from exc
 
@@ -175,7 +198,7 @@ class E2BHomeSnapshotBackend:
         if not isinstance(source, E2BRuntimeLease):
             raise HomeSnapshotCreateError("E2B Home Snapshot requires an E2B RuntimeLease")
         try:
-            snapshot = await source.sandbox.create_snapshot()
+            snapshot = await source.sandbox.create_snapshot(mode="full")
             return snapshot.snapshot_id
         except BaseException as exc:
             if isinstance(exc, Exception):
@@ -205,10 +228,9 @@ class E2BExecutionBindingBackend:
     control_plane: E2BControlPlane
     template: str
     active_timeout_seconds: int
-    shellctl_auth_token: str = ""
     shellctl_port: int = 5004
     layout: RuntimeLayout = field(
-        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace")
+        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace")
     )
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
@@ -229,18 +251,27 @@ class E2BExecutionBindingBackend:
                 },
                 on_timeout="pause",
             )
-            if await sandbox.files.exists(self.layout.workspace_dir):
-                await sandbox.files.remove(self.layout.workspace_dir)
             _ = await sandbox.files.make_dir(self.layout.workspace_dir)
+            for entry in await sandbox.files.list(self.layout.workspace_dir):
+                await sandbox.files.remove(entry.path)
             sandbox_id = sandbox.sandbox_id
-            _ = await sandbox.pause(keep_memory=True)
+            _ = await sandbox.pause(mode="full")
             return ExecutionBindingAllocation(binding_ref=sandbox_id, workspace_ref=sandbox_id)
+        except _E2BControlPlaneCapacityExhaustedError as exc:
+            raise BindingCapacityExhaustedError(str(exc)) from exc
         except BaseException as exc:
             if sandbox is not None:
                 try:
                     _ = await sandbox.kill()
-                except BaseException:
-                    pass
+                except Exception as cleanup_exc:
+                    _log_e2b_cleanup_warning(
+                        "failed to remove partial E2B Binding",
+                        operation="kill",
+                        sandbox_id=sandbox.sandbox_id,
+                        attempt=1,
+                        cleanup_stage="binding_create_compensation",
+                        exception=cleanup_exc,
+                    )
             if isinstance(exc, Exception):
                 if isinstance(exc, BindingCreateError):
                     raise
@@ -250,37 +281,66 @@ class E2BExecutionBindingBackend:
     async def acquire(self, binding_ref: str) -> RuntimeLease:
         """Acquire operation-scoped shellctl access for an opaque Binding ref."""
         sandbox: _E2BSandbox | None = None
+        lease: E2BRuntimeLease | None = None
         try:
             sandbox = await self.control_plane.connect(binding_ref, timeout=self.active_timeout_seconds)
-            if not await sandbox.files.exists(self.layout.workspace_dir):
-                raise BindingLostError(f"E2B Binding {binding_ref!r} no longer contains its Workspace")
-            return await self._lease(sandbox)
+            if not await sandbox.files.exists(self.layout.home_dir) or not await sandbox.files.exists(
+                self.layout.workspace_dir
+            ):
+                raise BindingLostError(f"E2B Binding {binding_ref!r} no longer contains its Home or Workspace")
+            lease = await self._lease(sandbox)
+            await _wait_for_shellctl_ready(lease.data_plane.client)
+            return lease
         except _E2BControlPlaneNotFoundError as exc:
             raise BindingLostError(f"E2B Binding {binding_ref!r} no longer exists") from exc
         except BindingLostError:
             await _best_effort_pause(sandbox)
             raise
         except BaseException as exc:
+            await _best_effort_close_data_plane(lease)
             await _best_effort_pause(sandbox)
             if isinstance(exc, Exception):
                 raise BindingAcquireError(str(exc)) from exc
             raise
 
     async def release(self, lease: RuntimeLease) -> None:
-        """Close operation-local transports and pause the physical E2B resource."""
+        """Close operation-local transports and best-effort pause the E2B resource."""
         if not isinstance(lease, E2BRuntimeLease):
             raise TypeError("E2BExecutionBindingBackend can only release its own RuntimeLease")
-        close_error: Exception | None = None
+        close_base_error: BaseException | None = None
         try:
             await lease.data_plane.close()
         except Exception as exc:
-            close_error = exc
+            _log_e2b_cleanup_warning(
+                "failed to close E2B RuntimeLease data plane",
+                operation="close_data_plane",
+                sandbox_id=lease.sandbox.sandbox_id,
+                attempt=1,
+                cleanup_stage="binding_release",
+                exception=exc,
+            )
+        except BaseException as exc:
+            close_base_error = exc
+        pause_base_error: BaseException | None = None
         try:
-            _ = await lease.sandbox.pause(keep_memory=True)
+            _ = await lease.sandbox.pause(mode="full")
         except Exception as exc:
-            raise BindingAcquireError(str(exc)) from exc
-        if close_error is not None:
-            raise BindingAcquireError(str(close_error)) from close_error
+            _log_e2b_cleanup_warning(
+                "failed to pause E2B RuntimeLease",
+                operation="pause",
+                sandbox_id=lease.sandbox.sandbox_id,
+                attempt=1,
+                cleanup_stage="binding_release",
+                exception=exc,
+            )
+        except BaseException as exc:
+            pause_base_error = exc
+        if close_base_error is not None:
+            if pause_base_error is not None:
+                raise close_base_error from pause_base_error
+            raise close_base_error
+        if pause_base_error is not None:
+            raise pause_base_error
 
     async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
         """Destroy the coupled physical Binding and Workspace idempotently."""
@@ -300,14 +360,17 @@ class E2BExecutionBindingBackend:
     async def _lease(self, sandbox: _E2BSandbox) -> "E2BRuntimeLease":
         entrypoint = f"https://{sandbox.get_host(self.shellctl_port)}"
         traffic_token = sandbox.traffic_access_token
-        headers = {"X-Access-Token": traffic_token} if isinstance(traffic_token, str) and traffic_token else {}
+        if not isinstance(traffic_token, str) or not traffic_token:
+            raise BindingAcquireError("E2B sandbox did not provide a traffic access token")
         http_client = httpx.AsyncClient(
             base_url=entrypoint,
-            headers=headers,
+            headers={"e2b-traffic-access-token": traffic_token},
             follow_redirects=True,
             timeout=httpx.Timeout(60.0),
         )
 
+        # Explicit token="" prevents process-level SHELLCTL_AUTH_TOKEN fallback;
+        # E2B port access is authenticated only by e2b-traffic-access-token above.
         def client_factory() -> ShellctlClientProtocol:
             from shellctl.client import ShellctlClient
 
@@ -315,7 +378,7 @@ class E2BExecutionBindingBackend:
                 ShellctlClientProtocol,
                 cast(
                     object,
-                    ShellctlClient(entrypoint, token=self.shellctl_auth_token, client=http_client),
+                    ShellctlClient(entrypoint, token="", client=http_client),
                 ),
             )
 
@@ -323,7 +386,7 @@ class E2BExecutionBindingBackend:
             handle=sandbox.sandbox_id,
             layout=self.layout,
             entrypoint=entrypoint,
-            token=self.shellctl_auth_token,
+            token="",
             client_factory=client_factory,
             owned_transport=http_client,
         )
@@ -349,18 +412,95 @@ class E2BRuntimeLease:
     def commands(self) -> ShellCommandProtocol:
         return self.data_plane.commands
 
-    @property
-    def files(self) -> FileSystem:
-        return self.data_plane.files
+
+async def _wait_for_shellctl_ready(client: ShellctlClientProtocol) -> None:
+    for attempt in range(_SHELLCTL_READY_MAX_ATTEMPTS):
+        try:
+            _ = await client.health()
+            return
+        except (httpx.TimeoutException, httpx.RequestError):
+            if attempt == _SHELLCTL_READY_MAX_ATTEMPTS - 1:
+                raise
+        except ShellctlClientError as exc:
+            if not 500 <= exc.status_code < 600 or attempt == _SHELLCTL_READY_MAX_ATTEMPTS - 1:
+                raise
+        await asyncio.sleep(_SHELLCTL_READY_RETRY_INTERVAL_SECONDS)
+
+
+def _e2b_log_extra(
+    *,
+    operation: str,
+    sandbox_id: str,
+    attempt: int,
+    cleanup_stage: str,
+    exception: BaseException,
+    outcome: str,
+) -> dict[str, object]:
+    return {
+        "e2b_operation": operation,
+        "sandbox_id": sandbox_id,
+        "attempt": attempt,
+        "cleanup_stage": cleanup_stage,
+        "exception_type": type(exception).__name__,
+        "outcome": outcome,
+    }
+
+
+def _log_e2b_cleanup_warning(
+    message: str,
+    *,
+    operation: str,
+    sandbox_id: str,
+    attempt: int,
+    cleanup_stage: str,
+    exception: BaseException,
+) -> None:
+    # attempt counts adapter calls; the SDK's internal HTTP retries are opaque.
+    logger.warning(
+        message,
+        exc_info=True,
+        stacklevel=2,
+        extra=_e2b_log_extra(
+            operation=operation,
+            sandbox_id=sandbox_id,
+            attempt=attempt,
+            cleanup_stage=cleanup_stage,
+            exception=exception,
+            outcome="ignored_cleanup_failure",
+        ),
+    )
+
+
+async def _best_effort_close_data_plane(lease: E2BRuntimeLease | None) -> None:
+    if lease is None:
+        return
+    try:
+        await lease.data_plane.close()
+    except BaseException as exc:
+        _log_e2b_cleanup_warning(
+            "failed to close E2B RuntimeLease data plane after acquire failure",
+            operation="close_data_plane",
+            sandbox_id=lease.sandbox.sandbox_id,
+            attempt=1,
+            cleanup_stage="binding_acquire_compensation",
+            exception=exc,
+        )
 
 
 async def _best_effort_pause(sandbox: _E2BSandbox | None) -> None:
     if sandbox is None:
         return
     try:
-        _ = await sandbox.pause(keep_memory=True)
-    except BaseException:
-        pass
+        _ = await sandbox.pause(mode="full")
+    except BaseException as exc:
+        _log_e2b_cleanup_warning(
+            "failed to pause E2B Binding after acquire failure",
+            operation="pause",
+            sandbox_id=sandbox.sandbox_id,
+            attempt=1,
+            cleanup_stage="binding_acquire_compensation",
+            exception=exc,
+        )
 
 
 __all__ = [

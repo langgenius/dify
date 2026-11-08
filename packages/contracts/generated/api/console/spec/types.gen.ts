@@ -6,6 +6,16 @@ export type ClientOptions = {
 
 export type SchemaDefinitionsResponse = Array<SchemaDefinitionItemResponse>
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type SchemaDefinitionItemResponse = {
   label: string
   name: string
@@ -20,6 +30,13 @@ export type GetSpecSchemaDefinitionsData = {
   query?: never
   url: '/spec/schema-definitions'
 }
+
+export type GetSpecSchemaDefinitionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetSpecSchemaDefinitionsError =
+  GetSpecSchemaDefinitionsErrors[keyof GetSpecSchemaDefinitionsErrors]
 
 export type GetSpecSchemaDefinitionsResponses = {
   200: SchemaDefinitionsResponse

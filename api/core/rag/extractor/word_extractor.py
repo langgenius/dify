@@ -9,10 +9,12 @@ import os
 import re
 import tempfile
 import uuid
+from contextlib import closing
 from typing import override
 from urllib.parse import urlparse
 
 from docx import Document as DocxDocument
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
@@ -45,7 +47,12 @@ class WordExtractor(BaseExtractor):
     _session: Session | None
 
     def __init__(self, file_path: str, tenant_id: str, user_id: str, *, session: Session | None = None):
-        """Initialize with file path."""
+        """Initialize from a local file or a downloadable URL.
+
+        Downloaded files are closed before extraction can reopen them. If setup
+        fails, close the response and remove any owned temporary file before
+        propagating the error.
+        """
         self._closed = False
         self.file_path = file_path
         self.tenant_id = tenant_id
@@ -64,21 +71,23 @@ class WordExtractor(BaseExtractor):
                 raise ValueError(f"Check the url of your file; returned status code {response.status_code}")
 
             self.web_path = self.file_path
-            # TODO: use a better way to handle the file
-            temp_file = tempfile.NamedTemporaryFile(delete=False)  # noqa SIM115
             try:
-                temp_file.write(response.content)
-                temp_file.flush()
-            finally:
-                temp_file.close()
-                response.close()
-            self.temp_file_path = temp_file.name
+                with closing(response), tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    self.temp_file_path = temp_file.name
+                    temp_file.write(response.content)
+            except Exception:
+                self.close()
+                raise
             self.file_path = self.temp_file_path
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
     def close(self) -> None:
-        """Best-effort cleanup for downloaded temporary files."""
+        """Remove an owned temporary path once, tolerating missing files.
+
+        Local input files are never removed. Other cleanup errors are logged
+        and suppressed so cleanup preserves any original extraction failure.
+        """
         if getattr(self, "_closed", False):
             return
 
@@ -122,7 +131,7 @@ class WordExtractor(BaseExtractor):
         base_url = dify_config.FILES_URL
 
         for r_id, rel in doc.part.rels.items():
-            if "image" in rel.target_ref:
+            if rel.reltype == RT.IMAGE:
                 image_count += 1
                 if rel.is_external:
                     url = rel.target_ref
@@ -130,8 +139,8 @@ class WordExtractor(BaseExtractor):
                         continue
                     try:
                         response = remote_fetcher.make_request("GET", url)
-                    except Exception as e:
-                        logger.warning("Failed to download image from URL: %s: %s", url, str(e))
+                    except Exception:
+                        logger.warning("Failed to download image from URL: %s", url, exc_info=True)
                         continue
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers.get("Content-Type", ""))
@@ -200,8 +209,7 @@ class WordExtractor(BaseExtractor):
 
         header_row = table.rows[0]
         headers = self._parse_row(header_row, image_map, total_cols)
-        markdown.append("| " + " | ".join(headers) + " |")
-        markdown.append("| " + " | ".join(["---"] * total_cols) + " |")
+        markdown.extend(("| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * total_cols) + " |"))
 
         for row in table.rows[1:]:
             row_cells = self._parse_row(row, image_map, total_cols)

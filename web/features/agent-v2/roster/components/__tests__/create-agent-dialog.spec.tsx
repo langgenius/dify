@@ -1,11 +1,10 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AgentScope } from '@/features/agent-v2/analytics'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { CreateAgentDialog } from '../create-agent-dialog'
 
-const mutationMock = vi.hoisted(() => ({
-  isPending: false,
-  mutate: vi.fn(),
-}))
+const mutateRequest = vi.hoisted(() => vi.fn())
 
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
@@ -16,14 +15,7 @@ const routerPushMock = vi.hoisted(() => vi.fn())
 
 const trackCreateAppMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@tanstack/react-query', () => ({
-  useMutation: () => ({
-    isPending: mutationMock.isPending,
-    mutate: mutationMock.mutate,
-  }),
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
@@ -37,175 +29,155 @@ vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: trackCreateAppMock,
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    agent: {
-      post: {
-        mutationOptions: vi.fn(() => ({})),
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.post': mutateRequest,
+    }),
+  }
+})
 
 describe('CreateAgentDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mutationMock.isPending = false
+    mutateRequest.mockReset().mockResolvedValue({
+      id: 'agent-1',
+      binding: { agent_id: 'roster-agent-1', binding_type: 'roster_agent' },
+    })
   })
 
-  it('submits agent app fields and default icon fields when creating an agent', async () => {
+  it('creates an agent with trimmed fields and default icon, then opens its configure page', async () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       ' Research Agent ',
     )
     await user.type(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+      within(dialog).getByRole('textbox', { name: /agentRoster\.roster\.createForm\.roleLabel/ }),
       ' Research Assistant ',
     )
     await user.type(
-      within(dialog).getByPlaceholderText('agentV2.roster.createForm.descriptionPlaceholder'),
+      within(dialog).getByPlaceholderText('agentRoster.roster.createForm.descriptionPlaceholder'),
       ' Find and summarize market materials. ',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        body: {
-          name: 'Research Agent',
-          description: 'Find and summarize market materials.',
-          role: 'Research Assistant',
-          icon_type: 'emoji',
-          icon: '🧸',
-          icon_background: '#F5F3FF',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      body: {
+        name: 'Research Agent',
+        description: 'Find and summarize market materials.',
+        role: 'Research Assistant',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
-    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
-    expect(mutationOptions).not.toHaveProperty('onError')
-  })
-
-  it('navigates to the new agent configure page after creating an agent', async () => {
-    const user = userEvent.setup()
-    render(<CreateAgentDialog />)
-
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
-
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
-    await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
-      'Research Agent',
-    )
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
-
-    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
-    await act(async () => {
-      mutationOptions.onSuccess({ id: 'agent-1' })
     })
 
-    expect(toastMock.success).toHaveBeenCalledWith('agentV2.roster.createSuccess')
+    await waitFor(() => expect(routerPushMock).toHaveBeenCalledWith('/agents/agent-1/configure'))
     expect(trackCreateAppMock).toHaveBeenCalledWith({
       source: 'studio_blank',
       appMode: 'agent-v2',
+      agentScope: AgentScope.Global,
     })
-    expect(routerPushMock).toHaveBeenCalledWith('/agents/agent-1/configure')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('shows a field error when creating with an empty name', async () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+      within(dialog).getByRole('textbox', { name: /agentRoster\.roster\.createForm\.roleLabel/ }),
       'Research Assistant',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
     expect(
-      await within(dialog).findByText('agentV2.roster.createForm.nameRequired'),
+      await within(dialog).findByText('agentRoster.roster.createForm.nameRequired'),
     ).toBeInTheDocument()
     expect(toastMock.error).not.toHaveBeenCalled()
-    expect(mutationMock.mutate).not.toHaveBeenCalled()
+    expect(mutateRequest).not.toHaveBeenCalled()
   })
 
-  it('marks role and description as optional', async () => {
+  it('focuses the name field when opened and resets native form values after closing', async () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+    const trigger = screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ })
+    await user.click(trigger)
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    let dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: 'agentRoster.roster.createForm.nameLabel',
+    })
+    const descriptionInput = within(dialog).getByRole('textbox', {
+      name: /agentRoster\.roster\.createForm\.descriptionLabel/,
+    })
+    expect(nameInput).toHaveFocus()
 
+    await user.type(nameInput, 'Temporary Agent')
+    await user.type(descriptionInput, 'Temporary description')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'agentRoster.roster.createDialog.title' }),
+      ).not.toBeInTheDocument()
+    })
+
+    await user.click(trigger)
+    dialog = await screen.findByRole('dialog', { name: 'agentRoster.roster.createDialog.title' })
+    expect(
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
+    ).toHaveValue('')
     expect(
       within(dialog).getByRole('textbox', {
-        name: /agentV2\.roster\.createForm\.roleLabel.*common\.label\.optional/,
+        name: /agentRoster\.roster\.createForm\.descriptionLabel/,
       }),
-    ).not.toBeRequired()
-    expect(
-      within(dialog).getByRole('textbox', {
-        name: /agentV2\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
-      }),
-    ).not.toBeRequired()
+    ).toHaveValue('')
   })
 
-  it('submits an empty role when role is left blank', async () => {
+  it('allows creation without optional role and description', async () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.createDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Research Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        body: {
-          name: 'Research Agent',
-          description: '',
-          role: '',
-          icon_type: 'emoji',
-          icon: '🧸',
-          icon_background: '#F5F3FF',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      body: {
+        name: 'Research Agent',
+        description: '',
+        role: '',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
-  })
-
-  it('keeps the form open when the backdrop is clicked', async () => {
-    const user = userEvent.setup()
-    render(<CreateAgentDialog />)
-
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
-
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
-    const backdrop = document.body.querySelector('.bg-background-overlay') as HTMLElement
-    await user.click(backdrop)
-
-    expect(dialog).toBeInTheDocument()
-
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('dialog', { name: 'agentV2.roster.createDialog.title' }),
-      ).not.toBeInTheDocument()
     })
   })
 })

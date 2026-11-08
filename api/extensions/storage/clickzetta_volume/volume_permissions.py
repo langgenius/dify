@@ -557,10 +557,7 @@ class VolumePermissionManager:
             return True
 
         # Check Windows drive path
-        if len(file_path) >= 2 and file_path[1] == ":":
-            return True
-
-        return False
+        return bool(len(file_path) >= 2 and file_path[1] == ":")
 
     def _is_sensitive_path(self, file_path: str) -> bool:
         """Check if path is sensitive path"""

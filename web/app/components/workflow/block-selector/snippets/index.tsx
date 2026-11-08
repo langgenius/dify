@@ -1,7 +1,7 @@
 import type { OnNodeAdd } from '../../types'
 import type { SnippetListItem as SnippetListItemData } from '@/types/snippet'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -17,7 +17,7 @@ import {
 import { useInfiniteScroll } from 'ahooks'
 import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import { BlockSelectorPreviewCardContent } from '../preview-card'
 import SnippetDetailCard from './snippet-detail-card'
@@ -34,7 +34,7 @@ type SnippetsProps = {
 }
 
 const LoadingSkeleton = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div
@@ -63,7 +63,7 @@ const LoadingSkeleton = () => {
 }
 
 const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }: SnippetsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleInsertSnippet } = useInsertSnippet()
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -131,15 +131,15 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
             onChange={(event) => onSearchTextChange?.(event.target.value)}
           />
           {!!searchText && (
-            <Button
+            <IconButton
               variant="ghost"
-              size="small"
+              size="md"
               aria-label={t(($) => $['tabs.clearSnippetSearch'], { ns: 'workflow' })}
-              className="size-6 min-h-0 shrink-0 p-0 focus-visible:ring-inset"
+              className="shrink-0 focus-visible:ring-inset"
               onClick={() => onSearchTextChange?.('')}
             >
               <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-            </Button>
+            </IconButton>
           )}
         </div>
         <div className="mx-0 mr-0.5 h-3.5 w-px bg-divider-regular" />
@@ -154,7 +154,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
     ) : !snippets.length ? (
       <SnippetEmptyState />
     ) : (
-      <ScrollArea className="relative max-h-120 max-w-125 overflow-hidden">
+      <ScrollArea className="max-h-120 max-w-125 overflow-hidden">
         <ScrollAreaViewport ref={viewportRef}>
           <ScrollAreaContent className="p-1">
             {snippets.map((item) => {
@@ -175,7 +175,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
             })}
             {isFetchingNextPage && (
               <div className="flex justify-center px-3 py-2">
-                <Loading />
+                <LoadingPlaceholder />
               </div>
             )}
           </ScrollAreaContent>
