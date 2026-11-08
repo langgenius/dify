@@ -4277,9 +4277,37 @@ class TestWorkflowAgentPreviewIdentityCases:
                 "edges": [],
             },
         )
+        agent = Agent(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            name="Preview Agent",
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            workflow_node_id=node_id,
+        )
+        snapshot = AgentConfigSnapshot(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+        )
+        binding = WorkflowAgentNodeBinding(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            workflow_version=workflow.version,
+            node_id=node_id,
+            binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+            agent_id=agent.id,
+            current_snapshot_id=snapshot.id,
+            node_job_config={},
+        )
         sessions = sessionmaker(sqlite_engine, expire_on_commit=False)
         with sessions.begin() as session:
-            session.add_all([app, account, workflow])
+            session.add_all([app, account, workflow, agent, snapshot, binding])
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
             sessions, tenant_id, account, app_id, WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
         )

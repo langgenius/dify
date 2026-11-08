@@ -34,7 +34,7 @@ export const CommonCreateModal = ({ open = true, onClose, createType, builder }:
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'max-h-[80%] min-h-90',
+          'max-h-[80dvh] min-h-[min(22.5rem,calc(100dvh-2rem))]',
           createType === SupportedCreationMethods.MANUAL && 'w-160',
         )}
       >

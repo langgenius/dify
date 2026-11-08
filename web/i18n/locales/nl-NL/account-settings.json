@@ -1,10 +1,5 @@
 {
   "account.account": "Account",
-  "account.appearanceDark": "Donker",
-  "account.appearanceFollowSystem": "Follow system",
-  "account.appearanceLabel": "Weergave",
-  "account.appearanceLight": "Licht",
-  "account.appearanceSystem": "Systeem",
   "account.changeEmail.authTip": "Once your email is changed, Google or GitHub accounts linked to your old email will no longer be able to log in to this account.",
   "account.changeEmail.changeTo": "Change to {{email}}",
   "account.changeEmail.codeLabel": "Verification code",

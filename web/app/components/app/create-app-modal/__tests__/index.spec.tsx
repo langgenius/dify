@@ -143,7 +143,6 @@ describe('CreateAppModal', () => {
       source: 'studio_blank',
       appMode: 'advanced-chat' as const,
     })
-    expect(onClose).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
         currentUserId: 'user-1',
@@ -152,6 +151,10 @@ describe('CreateAppModal', () => {
         isRbacEnabled: false,
       }),
     )
+    // The dialog stays until the new app replaces the page, and cannot submit twice.
+    expect(onClose).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+    expect(mockCreateApp).toHaveBeenCalledOnce()
   })
 
   it('waits for create_app tracking before redirecting after blank app creation', async () => {
@@ -307,7 +310,7 @@ describe('CreateAppModal', () => {
       fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
       await waitFor(() => expect(mockCreateApp).toHaveBeenCalledOnce())
       expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({ name: 'Reopened App' }))
-      expect(onClose).toHaveBeenCalledOnce()
+      await waitFor(() => expect(mockGetRedirection).toHaveBeenCalledOnce())
     },
   )
 

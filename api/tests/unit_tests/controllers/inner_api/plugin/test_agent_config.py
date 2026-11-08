@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import inspect
 from collections.abc import Callable
+from inspect import unwrap as _raw
 from unittest.mock import patch
 
 import pytest
@@ -23,10 +23,6 @@ from services.agent_config_service import AgentConfigServiceError
 
 MODULE = "controllers.inner_api.plugin.agent_config"
 app = Flask(__name__)
-
-
-def _raw(method):
-    return inspect.unwrap(method)
 
 
 def test_manifest_happy_path_calls_service() -> None:
@@ -162,7 +158,7 @@ def test_skill_inspect_happy_path_returns_service_payload() -> None:
 
 def test_push_happy_path_validates_body_and_preserves_execution_user() -> None:
     raw = _raw(AgentConfigPushApi.post)
-    payload = {
+    payload: dict[str, object] = {
         "tenant_id": "tenant-1",
         "user_id": "account-user-1",
         "config_version_id": "cfg-1",
@@ -175,7 +171,7 @@ def test_push_happy_path_validates_body_and_preserves_execution_user() -> None:
 
     with app.test_request_context("/", method="POST", json=payload):
         with patch(f"{MODULE}.AgentConfigService") as service:
-            service.return_value.push.return_value = {
+            push_result: dict[str, object] = {
                 "agent_id": "agent-1",
                 "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": True},
                 "skills": {"items": []},
@@ -183,6 +179,7 @@ def test_push_happy_path_validates_body_and_preserves_execution_user() -> None:
                 "env_keys": ["KEY"],
                 "note": "hello",
             }
+            service.return_value.push.return_value = push_result
             body = raw(AgentConfigPushApi(), "agent-1")
 
     assert body == {
@@ -329,6 +326,7 @@ def test_manifest_invalid_query_returns_400() -> None:
         body, status = raw(AgentConfigManifestApi(), "agent-1")
 
     assert status == 400
+    assert isinstance(body, dict)
     assert body["code"] == "invalid_request"
 
 
@@ -345,6 +343,7 @@ def test_download_request_rejects_invalid_config_name() -> None:
         body, status = raw(AgentConfigDownloadRequestApi(), "agent-1")
 
     assert status == 400
+    assert isinstance(body, dict)
     assert body["code"] == "invalid_request"
 
 
@@ -355,6 +354,7 @@ def test_push_invalid_body_returns_400() -> None:
         body, status = raw(AgentConfigPushApi(), "agent-1")
 
     assert status == 400
+    assert isinstance(body, dict)
     assert body["code"] == "invalid_request"
 
 
@@ -376,7 +376,7 @@ def test_manifest_maps_service_errors() -> None:
 
 def test_push_maps_service_errors() -> None:
     raw = _raw(AgentConfigPushApi.post)
-    payload = {
+    payload: dict[str, object] = {
         "tenant_id": "tenant-1",
         "user_id": "account-user-1",
         "config_version_id": "cfg-1",
