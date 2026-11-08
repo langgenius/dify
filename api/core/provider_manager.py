@@ -38,7 +38,6 @@ from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from enums import CloudPlan, DeploymentEdition
 from extensions import ext_hosting_provider
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -1182,9 +1181,16 @@ class ProviderManager:
         """
         Initialize trial provider records if not exists.
 
+        Each missing trial or paid record is inserted in its own short-lived session and transaction.
+        When a concurrent insert wins the unique constraint, the existing record is loaded with its
+        credential and marked valid in a second short-lived session. No caller session is touched, so
+        pending work in the caller's session is neither committed nor rolled back.
+
         :param tenant_id: workspace id
-        :param provider_name_to_provider_records_dict: provider name to provider records dict
-        :return:
+        :param provider_name_to_provider_records_dict: valid provider records keyed by prefixed
+            provider name, as returned by ``_get_all_providers``; missing keys must default to a list
+        :return: the same dict with created or revived records appended; appended records are detached
+            and have their credential relationship loaded (or no credential id)
         """
         # Get hosting configuration
         hosting_configuration = ext_hosting_provider.hosting_configuration
@@ -1221,28 +1227,27 @@ class ProviderManager:
                                 quota_used=0,
                                 is_valid=True,
                             )
-                            db.session.add(new_provider_record)
-                            db.session.commit()
+                            # A conflicting insert rolls back only this session, never the caller's.
+                            with session_factory.create_session() as session, session.begin():
+                                session.add(new_provider_record)
                             provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
                         except IntegrityError:
-                            db.session.rollback()
-                            stmt = select(Provider).where(
-                                Provider.tenant_id == tenant_id,
-                                Provider.provider_name == ModelProviderID(provider_name).provider_name,
-                                Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == quota.quota_type,
+                            stmt = (
+                                select(Provider)
+                                .where(
+                                    Provider.tenant_id == tenant_id,
+                                    Provider.provider_name == ModelProviderID(provider_name).provider_name,
+                                    Provider.provider_type == ProviderType.SYSTEM.value,
+                                    Provider.quota_type == quota.quota_type,
+                                )
+                                .options(selectinload(Provider.credential))
                             )
-                            existed_provider_record = db.session.scalar(stmt)
-                            if not existed_provider_record:
-                                continue
-
-                            if not existed_provider_record.is_valid:
-                                existed_provider_record.is_valid = True
-                                db.session.commit()
-
-                            # Load the credential after the commit above, which expires loaded attributes.
-                            db.session.refresh(existed_provider_record, ["credential"])
-                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
+                            with session_factory.create_session() as session, session.begin():
+                                existed_provider_record = session.scalar(stmt)
+                                if existed_provider_record and not existed_provider_record.is_valid:
+                                    existed_provider_record.is_valid = True
+                            if existed_provider_record:
+                                provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 
         return provider_name_to_provider_records_dict
 
