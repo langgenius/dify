@@ -567,7 +567,7 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
-                include_vector=True,
+                include_vector=False,
                 filters=where,
             )
         except WeaviateQueryError:
@@ -577,7 +577,7 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
-                include_vector=True,
+                include_vector=False,
                 filters=where,
             )
 
