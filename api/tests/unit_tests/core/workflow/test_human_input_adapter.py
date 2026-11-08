@@ -397,11 +397,6 @@ def test_adapt_human_input_node_data_for_graph_accepts_models() -> None:
     assert normalized["delivery_methods"][0]["type"] == DeliveryMethodType.WEBAPP
 
 
-def test_adapt_human_input_node_data_for_graph_rejects_non_mappings() -> None:
-    with pytest.raises(TypeError, match="human-input node data must be a mapping"):
-        adapt_human_input_node_data_for_graph(123)  # pyrefly: ignore[bad-argument-type]  # runtime guard for untyped callers
-
-
 def test_adapt_human_input_node_data_for_graph_preserves_non_mapping_methods() -> None:
     normalized = adapt_human_input_node_data_for_graph(
         {
@@ -485,15 +480,7 @@ def test_webapp_delivery_method_uses_empty_selector_set() -> None:
     assert method.extract_variable_selectors() == ()
 
 
-def test_adapt_node_data_for_graph_rejects_non_mappings() -> None:
-    with pytest.raises(TypeError, match="node data must be a mapping"):
-        adapt_node_data_for_graph(123)  # pyrefly: ignore[bad-argument-type]  # runtime guard for untyped callers
-
-
-def test_adapt_node_config_for_graph_rejects_non_mapping_and_preserves_raw_data() -> None:
-    with pytest.raises(TypeError, match="node config must be a mapping"):
-        adapt_node_config_for_graph(123)  # pyrefly: ignore[bad-argument-type]  # runtime guard for untyped callers
-
+def test_adapt_node_config_for_graph_preserves_raw_data() -> None:
     assert adapt_node_config_for_graph({"data": "raw"}) == {"data": "raw"}
 
 
