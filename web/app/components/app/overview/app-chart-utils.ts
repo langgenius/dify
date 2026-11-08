@@ -171,7 +171,15 @@ export const buildChartOptions = ({
       dimensions: ['date', yField],
       source: statistics,
     },
-    grid: { top: 16, right: 0, bottom: 10, left: 0, containLabel: true },
+    // Legacy containLabel ignores the first and last x-axis labels' overflow past the chart edges.
+    grid: {
+      top: 16,
+      right: 0,
+      bottom: 10,
+      left: 0,
+      outerBoundsContain: 'axisLabel',
+      outerBoundsMode: 'same',
+    },
     tooltip: {
       trigger: 'item',
       position: 'top',

@@ -1368,11 +1368,6 @@
       "count": 4
     }
   },
-  "web/app/components/base/markdown-blocks/__tests__/paragraph.spec.tsx": {
-    "jsx-a11y/anchor-is-valid": {
-      "count": 1
-    }
-  },
   "web/app/components/base/markdown-blocks/audio-block.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
