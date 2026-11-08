@@ -11,7 +11,6 @@ project-excludes = [
   "dev/test_generate_swagger_specs.py",
   "controllers/console/app/test_agent_config_inspector.py",
   "controllers/console/app/test_app.py",
-  "controllers/console/app/test_app_import.py",
   "controllers/console/app/test_audio.py",
   "controllers/console/app/test_generator.py",
   "controllers/console/app/test_mcp_server.py",
