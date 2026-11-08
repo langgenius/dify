@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, override
 from zoneinfo import ZoneInfo
 
@@ -24,9 +24,17 @@ def _attach_tz(wall: datetime, tz: ZoneInfo) -> datetime:
     offset_second = second.utcoffset()
     if offset_first is None or offset_second is None or offset_first == offset_second:
         return first
-    # Ambiguous: keep the standard-time occurrence, matching is_dst=False.
-    # Nonexistent (gap): fold=0 already applies the pre-transition offset.
-    return second if offset_first > offset_second else first
+    if offset_first < offset_second:
+        # Spring-forward gap: fold=0 applies the pre-transition offset, as before.
+        return first
+    # Ambiguous fall-back hour: is_dst=False means the standard-time occurrence.
+    # Comparing offsets alone is not enough, because zones with negative DST
+    # (e.g. Europe/Dublin) make the first occurrence the standard-time one.
+    if first.dst() == timedelta(0):
+        return first
+    if second.dst() == timedelta(0):
+        return second
+    return second
 
 
 class TimezoneConversionTool(BuiltinTool):
