@@ -45,4 +45,8 @@ describe('template-transform/use-config', () => {
       expect(result.current.config.filterVar({ variable: 'value', type })).toBe(true)
     expect(result.current.config.filterVar({ variable: 'file', type: VarType.file })).toBe(false)
   })
+  it('offers integer variables, such as integer tool outputs, for interpolation', () => {
+    const { result } = renderNodeConfig(useConfig, createData())
+    expect(result.current.config.filterVar({ variable: 'count', type: VarType.integer })).toBe(true)
+  })
 })
