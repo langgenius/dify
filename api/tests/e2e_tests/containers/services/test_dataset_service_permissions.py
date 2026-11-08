@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from enums import DeploymentEdition
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import (
     AppDatasetJoin,
     Dataset,
@@ -37,9 +37,9 @@ class DatasetPermissionIntegrationFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",  # pyrefly: ignore[bad-argument-type]
+            status=AccountStatus.ACTIVE,
         )
-        tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")  # pyrefly: ignore[bad-argument-type]
+        tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
         db_session_with_containers.add_all([account, tenant])
         db_session_with_containers.flush()
 
@@ -66,7 +66,7 @@ class DatasetPermissionIntegrationFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",  # pyrefly: ignore[bad-argument-type]
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()

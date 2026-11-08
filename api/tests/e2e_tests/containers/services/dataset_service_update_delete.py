@@ -16,7 +16,7 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermissionEnum
 from models.enums import DataSourceType
-from models.model import App
+from models.model import App, AppMode, IconType
 from services.errors.base import NoPermissionError
 from services.knowledge.dataset_service import DatasetService
 from services.knowledge.resource_scope import DatasetRef
@@ -92,8 +92,8 @@ class DatasetUpdateDeleteTestDataFactory:
         app = App(
             tenant_id=tenant_id,
             name=name,
-            mode="chat",  # pyrefly: ignore[bad-argument-type]
-            icon_type="emoji",  # pyrefly: ignore[bad-argument-type]
+            mode=AppMode.CHAT,
+            icon_type=IconType.EMOJI,
             icon="icon",
             icon_background="#FFFFFF",
             enable_site=True,
