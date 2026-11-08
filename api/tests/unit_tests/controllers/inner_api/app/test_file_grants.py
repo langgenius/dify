@@ -6,7 +6,6 @@ import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import patch
 
 import jwt
