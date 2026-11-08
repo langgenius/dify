@@ -2,12 +2,14 @@
 
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from operator import itemgetter
 from typing import Any, Protocol, TypedDict
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.file_access import (
+    FileAccessScope,
     get_current_file_access_scope,
     grant_retriever_segment_access,
     grant_upload_file_access,
@@ -28,6 +30,7 @@ from core.tools.signature import sign_upload_file_preview_url
 from graphon.model_runtime.errors.invoke import InvokeError
 from machinery.context import RequestContext
 from repositories.knowledge.retrieval_source_repository import expand_attachment_document_filter
+from repositories.knowledge.segment_query_repository import segment_content_file_ids
 from services.knowledge.entities.metadata import MetadataFilteringCondition
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.entities.retrieval_settings import (
@@ -35,6 +38,7 @@ from services.knowledge.entities.retrieval_settings import (
     WeightedScoreConfig,
     WeightsDict,
 )
+from services.knowledge.entities.segments import SegmentFileAccess
 from services.knowledge.hit_testing.application import ExternalHitTestingGateway
 from services.knowledge.hit_testing.entities import (
     ExternalHitTestingRecord,
@@ -43,6 +47,7 @@ from services.knowledge.hit_testing.entities import (
     HitTestingResult,
     RetrievalAttachmentRecord,
     RetrievalDocumentRecord,
+    RetrievalSegmentRecord,
     RetrievalSnapshot,
     external_hit_testing_response,
 )
@@ -52,6 +57,7 @@ from services.knowledge.hit_testing.errors import (
     HitTestingUnsupportedInputError,
 )
 from services.knowledge.retrieval.attachments import expand_retrieval_attachment_candidates
+from services.knowledge.segments.adapters import sign_segment_text
 
 _MISSING_PROVIDER_MESSAGE = (
     "No Embedding Model or Reranking Model available. Please configure a valid provider "
@@ -155,6 +161,20 @@ class HitTestingSegmentReader(Protocol):
         summary_pairs: Sequence[tuple[str, str, str]],
         attachment_pairs: Sequence[tuple[str, str]],
     ) -> RetrievalSnapshot: ...
+
+    def get_retrieval_content_file_access(
+        self,
+        ref: DatasetRef,
+        *,
+        segment_ids: Sequence[str],
+        scope: FileAccessScope | None,
+    ) -> Mapping[str, SegmentFileAccess]:
+        """Resolve persisted file access for the selected segments without publishing grants.
+
+        Preconditions: ``scope`` contains existing grants plus the final selected attachments.
+        Postconditions: missing or ineligible segments have no access entry; file access respects tenant and scope.
+        """
+        ...
 
 
 def _score(value: object) -> float | None:
@@ -291,7 +311,8 @@ class DatasetHitTestingGateway:
 
         Preconditions: candidates belong to the requested retrieval execution but remain untrusted until current
         ownership is loaded. Postconditions: return at most ``top_k`` eligible records and grant access only to files
-        and segments present in those final records.
+        and segments present in those final records. Embedded links are signed only after persisted file access
+        is checked for that selection; failures publish no new execution grants.
         """
         scope = get_current_file_access_scope()
         if scope is not None and scope.tenant_id != ref.tenant_id:
@@ -366,7 +387,9 @@ class DatasetHitTestingGateway:
                 continue
             attachment_pairs.add(pair)
             files[attachment.segment_id].append(attachment)
-        eligible_records: list[tuple[float, dict[str, object], str, list[RetrievalAttachmentRecord]]] = []
+        eligible_records: list[
+            tuple[float, dict[str, object], RetrievalSegmentRecord, list[RetrievalAttachmentRecord]]
+        ] = []
         for segment in snapshot.segments:
             document = documents.get(segment.document_id)
             if document is None:
@@ -395,28 +418,48 @@ class DatasetHitTestingGateway:
                 (
                     score,
                     {
-                        "segment": {
-                            **segment.values,
-                            "sign_content": None,
-                            "keywords": [] if segment.values["keywords"] is None else segment.values["keywords"],
-                            "document": document.values,
-                        },
                         "score": score,
                         "child_chunks": sorted(child_records, key=itemgetter("score"), reverse=True),
                         "tsne_position": None,
                         "files": [],
                         "summary": valid_summary_content.get(pair),
                     },
-                    segment.id,
+                    segment,
                     attachments,
                 )
             )
         eligible_records.sort(key=itemgetter(0), reverse=True)
         selected_records = eligible_records[:top_k] if top_k else eligible_records
-        included_segment_ids = [segment_id for _, _, segment_id, _ in selected_records]
+        included_segment_ids = [segment.id for _, _, segment, _ in selected_records]
         included_file_ids = [attachment.id for _, _, _, attachments in selected_records for attachment in attachments]
+        staged_scope = (
+            replace(
+                scope,
+                granted_retriever_segment_ids=scope.granted_retriever_segment_ids | frozenset(included_segment_ids),
+                granted_upload_file_ids=scope.granted_upload_file_ids | frozenset(included_file_ids),
+            )
+            if scope is not None
+            else None
+        )
+        content_segment_ids = [
+            segment.id
+            for _, _, segment, _ in selected_records
+            if any(segment_content_file_ids(str(segment.values["content"])))
+        ]
+        file_access = self._segments.get_retrieval_content_file_access(
+            ref, segment_ids=content_segment_ids, scope=staged_scope
+        )
         records: list[dict[str, Any] | ExternalHitTestingRecord] = []
-        for _, record, _, attachments in selected_records:
+        for _, record, segment, attachments in selected_records:
+            access = file_access.get(segment.id, SegmentFileAccess(frozenset(), frozenset()))
+            record["segment"] = {
+                **segment.values,
+                "sign_content": sign_segment_text(
+                    str(segment.values["content"]), allowed_uploads=access.uploads, allowed_tools=access.tools
+                ),
+                "keywords": [] if segment.values["keywords"] is None else segment.values["keywords"],
+                "document": documents[segment.document_id].values,
+            }
             record["files"] = self._file_values(attachments)
             records.append(record)
         grant_upload_file_access(included_file_ids)

@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.file_access import FileAccessScope
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -205,6 +206,29 @@ class SQLAlchemySegmentRepository:
                     if summary.summary_content and summary.summary_index_node_id
                 },
             )
+
+    def get_retrieval_content_file_access(
+        self,
+        ref: DatasetRef,
+        *,
+        segment_ids: Sequence[str],
+        scope: FileAccessScope | None,
+    ) -> Mapping[str, SegmentFileAccess]:
+        """Authorize embedded file references for the final hit-testing selection.
+
+        Preconditions: IDs identify selected candidates, and ``scope`` contains only existing grants plus the
+        selected attachments. Postconditions: return persisted file access only for currently eligible segments
+        under the complete dataset owner chain; no execution grants are published.
+        """
+        if not segment_ids:
+            return {}
+        with self._session_factory() as session:
+            segments = session.scalars(
+                retrieved_segment_statement(tenant_id=ref.tenant_id, dataset_ids=[ref.dataset_id]).where(
+                    DocumentSegment.id.in_(segment_ids)
+                )
+            ).all()
+            return _content_file_access(segments, session, scope=scope)
 
     def save_for_indexing(
         self, document: IndexingDocument, chunks: list[IndexDocument], token_counts: list[int]
@@ -476,7 +500,7 @@ class SQLAlchemySegmentRepository:
             limit = min(query.limit, 100)
             segments = paginate_query(statement, session=session, page=query.page, per_page=limit, max_per_page=100)
             items = list(segments.items)
-            file_access = _content_file_access(items, session)
+            file_access = _content_file_access(items, session, scope=None)
             summaries = (
                 {
                     summary.chunk_id: summary
@@ -1164,7 +1188,7 @@ def _detail(session: Session, segment: DocumentSegment, document: Document) -> S
             segment,
             summary.summary_content if summary else None,
             session,
-            _content_file_access((segment,), session)[segment.id],
+            _content_file_access((segment,), session, scope=None)[segment.id],
         ),
         doc_form=str(document.doc_form),
     )
@@ -1245,8 +1269,14 @@ def _get_child_chunk(session: Session, segment_ref: SegmentRef, child_chunk_id: 
     )
 
 
-def _content_file_access(segments: Sequence[DocumentSegment], session: Session) -> dict[str, SegmentFileAccess]:
-    """Materialize file access for already scoped rows within their original read transaction."""
+def _content_file_access(
+    segments: Sequence[DocumentSegment], session: Session, *, scope: FileAccessScope | None
+) -> dict[str, SegmentFileAccess]:
+    """Materialize file access for already scoped rows within their original read transaction.
+
+    Preconditions: rows share one tenant and passed their owner-chain checks; ``scope`` is explicit.
+    Postconditions: return only persisted content references allowed by that tenant and access scope.
+    """
     if not segments:
         return {}
     references = {segment.id: segment_content_file_ids(segment.content) for segment in segments}
@@ -1256,7 +1286,7 @@ def _content_file_access(segments: Sequence[DocumentSegment], session: Session) 
         segments[0].tenant_id,
         upload_ids=upload_ids,
         tool_ids=tool_ids,
-        scope=None,
+        scope=scope,
         session=session,
     )
     return {
