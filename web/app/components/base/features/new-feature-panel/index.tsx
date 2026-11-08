@@ -37,6 +37,13 @@ type Props = Readonly<{
   showThoughtsToggle?: boolean
   showModeration?: boolean
   showAnnotationReply?: boolean
+  /**
+   * App that owns the annotation reply setting when it is not the `/app/<id>` route.
+   * The setting is saved through that app's annotation API, so its changes call
+   * `onAnnotationReplyChange` instead of `onChange`.
+   */
+  annotationReplyAppId?: string
+  onAnnotationReplyChange?: OnFeaturesChange
   promptVariables?: PromptVariable[]
   workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
@@ -56,6 +63,8 @@ const NewFeaturePanel = ({
   showThoughtsToggle = false,
   showModeration = true,
   showAnnotationReply = true,
+  annotationReplyAppId,
+  onAnnotationReplyChange,
   promptVariables,
   workflowVariables,
   onAutoAddPromptVariable,
@@ -124,7 +133,11 @@ const NewFeaturePanel = ({
             <Moderation disabled={disabled} onChange={onChange} />
           )}
           {showAnnotationReply && !inWorkflow && isChatMode && (
-            <AnnotationReply disabled={disabled} onChange={onChange} />
+            <AnnotationReply
+              appId={annotationReplyAppId}
+              disabled={disabled}
+              onChange={annotationReplyAppId ? onAnnotationReplyChange : onChange}
+            />
           )}
         </div>
       </div>

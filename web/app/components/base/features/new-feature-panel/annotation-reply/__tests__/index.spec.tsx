@@ -48,12 +48,14 @@ const defaultFeatures: Features = {
   annotationReply: { enabled: false, score_threshold: 0.8, embedding_model: embeddingModel },
 }
 function renderFeature({
+  appId,
   enabled = false,
   score = 0.8,
   disabled = false,
   onChange,
   full = false,
 }: {
+  appId?: string
   enabled?: boolean
   score?: number
   disabled?: boolean
@@ -88,7 +90,7 @@ function renderFeature({
           annotationReply: { enabled, score_threshold: score, embedding_model: embeddingModel },
         }}
       >
-        <AnnotationReply disabled={disabled} onChange={onChange} />
+        <AnnotationReply appId={appId} disabled={disabled} onChange={onChange} />
       </FeaturesProvider>
     </NuqsTestingAdapter>,
     {
@@ -133,6 +135,24 @@ describe('AnnotationReply', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.getByRole('switch')).toBeChecked()
     expect(onChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('manages the annotation setting of the owner app it is given instead of the current route', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    renderFeature({ appId: 'backing-app-id', enabled: true })
+
+    await user.hover(screen.getByText(/feature.annotation.title/))
+    expect(
+      screen.getByRole('link', { name: /feature.annotation.cacheManagement/ }),
+    ).toHaveAttribute('href', '/app/backing-app-id/annotations')
+    await user.click(screen.getByRole('switch'))
+    await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
+    expect(updateStatus).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ params: { app_id: 'backing-app-id', action: 'disable' } }),
+    )
+    expect(getStatus).toHaveBeenCalledWith({
+      params: { app_id: 'backing-app-id', action: 'disable', job_id: 'job-1' },
+    })
   })
 
   it('disables annotation and updates the feature without requiring an onChange callback', async () => {
