@@ -52,7 +52,12 @@ export function useNodeKeyboardInteractions(onSelect: (id: string, cancel?: bool
       return
 
     if (isSelectionKey) {
-      if (focusedNode) onSelect(focusedNode.id, event.key === 'Escape')
+      if (focusedNode) {
+        workflowStore
+          .getState()
+          .setPendingNodePanelFocusId(event.key === 'Escape' ? undefined : focusedNode.id)
+        onSelect(focusedNode.id, event.key === 'Escape')
+      }
       return
     }
     if (getNodesReadOnly() || !movement) return

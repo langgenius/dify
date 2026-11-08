@@ -97,7 +97,10 @@ describe('Plugin agent strategies', () => {
     })
     render(<AgentStrategyList detail={plugin} />)
 
-    await user.click(await screen.findByText('Strategy Label'))
+    const strategyButton = await screen.findByRole('button', { name: 'Strategy Label' })
+    expect(strategyButton).toHaveAccessibleDescription('Strategy description')
+    strategyButton.focus()
+    await user.keyboard('{Enter}')
     const drawer = await screen.findByRole('dialog', { name: 'Strategy Label' })
     expect(within(drawer).getByText('Test Provider')).toBeInTheDocument()
     expect(within(drawer).getByText('Query')).toBeInTheDocument()
@@ -108,9 +111,15 @@ describe('Plugin agent strategies', () => {
 
     await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    await user.click(screen.getByText('Strategy Label'))
-    await user.click(screen.getByText('BACK'))
+    expect(strategyButton).toHaveFocus()
+    await user.click(strategyButton)
+    const backButton = within(
+      await screen.findByRole('dialog', { name: 'Strategy Label' }),
+    ).getByRole('button', { name: 'plugin.detailPanel.operation.back' })
+    backButton.focus()
+    await user.keyboard(' ')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(strategyButton).toHaveFocus()
   })
 
   it('allows an empty provider declaration without fabricating strategies', async () => {

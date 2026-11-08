@@ -1,44 +1,22 @@
-import type { CommonNodeType } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import type { CommonNodeType, Edge } from '@/app/components/workflow/types'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { ReactFlowProvider } from 'reactflow'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { useEdges } from 'reactflow'
+import { CanvasNodesCatalogProbe } from '@/app/components/workflow/__tests__/canvas-nodes-catalog-probe'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useAvailableBlocks } from '../../../../../hooks/use-available-blocks'
-import { useNodesInteractions } from '../../../../../hooks/use-nodes-interactions'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import Operator from '../operator'
-
-vi.mock('../../../../../hooks/use-available-blocks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../hooks/use-available-blocks')>()
-
-  return {
-    ...actual,
-    useAvailableBlocks: vi.fn(),
-  }
-})
-
-vi.mock('../../../../../hooks/use-nodes-interactions', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../../../../../hooks/use-nodes-interactions')>()
-
-  return {
-    ...actual,
-    useNodesInteractions: vi.fn(),
-  }
-})
-
-const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
-const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
-
-const mockHandleNodeChange = vi.fn()
-const mockHandleNodeDelete = vi.fn()
-const mockHandleNodeDisconnect = vi.fn()
 
 const defaultNodeData = {
   type: BlockEnum.Code,
   title: 'Code Node',
-} as CommonNodeType
+  desc: '',
+} satisfies CommonNodeType
 
 const TestHarness = () => {
   const [open, setOpen] = useState(false)
@@ -53,74 +31,86 @@ const TestHarness = () => {
   )
 }
 
+function CanvasEdgesProbe() {
+  const edges = useEdges<Edge['data']>()
+  return <output aria-label="Canvas edges">{edges.map((edge) => edge.id).join(',')}</output>
+}
+
+function renderOperator() {
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '1.0.0' })
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  return renderWorkflowFlowComponent(
+    <>
+      <TestHarness />
+      <CanvasNodesCatalogProbe />
+      <CanvasEdgesProbe />
+    </>,
+    {
+      nodes: [
+        createNode({ id: 'previous', width: 240, height: 80 }),
+        createNode({
+          id: 'node-1',
+          position: { x: 320, y: 0 },
+          width: 240,
+          height: 80,
+          data: defaultNodeData,
+        }),
+        createNode({ id: 'next', position: { x: 640, y: 0 }, width: 240, height: 80 }),
+      ],
+      edges: [
+        createEdge({ id: 'incoming', source: 'previous', target: 'node-1' }),
+        createEdge({ id: 'outgoing', source: 'node-1', target: 'next' }),
+        createEdge({ id: 'unrelated', source: 'previous', target: 'next' }),
+      ],
+      queryClient,
+      hooksStoreProps: { doSyncWorkflowDraft: async () => undefined },
+      reactFlowProps: { fitView: false },
+    },
+  )
+}
+
+const canvasNodeIds = () =>
+  (screen.getByLabelText('Canvas nodes').textContent ?? '')
+    .split(',')
+    .filter(Boolean)
+    .map((id) => id.replace(/\*$/, ''))
+
 describe('NextStep operator', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseAvailableBlocks.mockReturnValue({
-      availablePrevBlocks: [BlockEnum.HttpRequest],
-      availableNextBlocks: [BlockEnum.HttpRequest],
-      getAvailableBlocks: vi.fn(),
-    } as ReturnType<typeof useAvailableBlocks>)
-    mockUseNodesInteractions.mockReturnValue({
-      handleNodeChange: mockHandleNodeChange,
-      handleNodeDelete: mockHandleNodeDelete,
-      handleNodeDisconnect: mockHandleNodeDisconnect,
-    } as unknown as ReturnType<typeof useNodesInteractions>)
-  })
-
-  it('opens the menu and keeps the change action available', async () => {
+  it('disconnects incident edges, then deletes the next step and closes the menu', async () => {
     const user = userEvent.setup()
-    render(<TestHarness />)
+    renderOperator()
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'workflow.common.disconnect' }))
 
-    expect(screen.getByText('workflow.panel.change')).toBeInTheDocument()
-    expect(screen.getByText('workflow.common.disconnect')).toBeInTheDocument()
-    expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-  })
-
-  it('disconnects and deletes the next step from the menu', async () => {
-    const user = userEvent.setup()
-    render(<TestHarness />)
-
-    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
-    await user.click(screen.getByText('workflow.common.disconnect'))
-    expect(mockHandleNodeDisconnect).toHaveBeenCalledWith('node-1')
-    expect(screen.queryByText('workflow.common.disconnect')).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByLabelText('Canvas edges')).toHaveTextContent('unrelated'),
+    )
+    expect(screen.getByLabelText('Canvas edges')).not.toHaveTextContent('incoming')
+    expect(screen.getByLabelText('Canvas edges')).not.toHaveTextContent('outgoing')
+    expect(canvasNodeIds()).toEqual(['previous', 'node-1', 'next'])
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
-    await user.click(screen.getByText('common.operation.delete'))
-    expect(mockHandleNodeDelete).toHaveBeenCalledWith('node-1')
-  })
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
 
-  it.each([
-    ['workflow.common.disconnect', '{ArrowDown}', mockHandleNodeDisconnect],
-    ['common.operation.delete', '{End}', mockHandleNodeDelete],
-  ])('activates %s with the keyboard', async (name, navigation, handler) => {
-    const user = userEvent.setup()
-    render(<TestHarness />)
-
-    await user.tab()
-    await user.keyboard('{ArrowDown}')
-    expect(await screen.findByRole('menuitem', { name: 'workflow.panel.change' })).toHaveFocus()
-    await user.keyboard(navigation)
-    expect(screen.getByRole('menuitem', { name })).toHaveFocus()
-    await user.keyboard('{Enter}')
-
-    expect(handler).toHaveBeenCalledWith('node-1')
+    await waitFor(() => expect(canvasNodeIds()).toEqual(['previous', 'next']))
+    expect(screen.getByLabelText('Canvas edges')).toHaveTextContent('unrelated')
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('opens the node selector from the change menu item with the keyboard', async () => {
+  it('opens the node selector from the change menu item', async () => {
     const user = userEvent.setup()
-    renderWorkflowComponent(
-      <ReactFlowProvider>
-        <TestHarness />
-      </ReactFlowProvider>,
-    )
+    renderOperator()
 
-    await user.tab()
-    await user.keyboard('{ArrowDown}{Enter}')
+    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'workflow.panel.change' }))
 
     expect(
       await screen.findByRole('dialog', { name: 'workflow.common.addBlock' }),

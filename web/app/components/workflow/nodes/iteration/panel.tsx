@@ -41,23 +41,25 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.iteration'
 
 const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['common', 'workflow'])
-  const maxParallelismLabel = t(($) => $[`${i18nPrefix}.MaxParallelismTitle`], { ns: 'workflow' })
+  const { t } = useTranslation(['common', 'workflow', 'workflowLogic'])
+  const maxParallelismLabel = t(($) => $[`${i18nPrefix}.MaxParallelismTitle`], {
+    ns: 'workflowLogic',
+  })
   const errorResponseMethodLabel = t(($) => $[`${i18nPrefix}.errorResponseMethod`], {
-    ns: 'workflow',
+    ns: 'workflowLogic',
   })
   const responseMethod = [
     {
       value: ErrorHandleMode.Terminated,
-      name: t(($) => $[`${i18nPrefix}.ErrorMethod.operationTerminated`], { ns: 'workflow' }),
+      name: t(($) => $[`${i18nPrefix}.ErrorMethod.operationTerminated`], { ns: 'workflowLogic' }),
     },
     {
       value: ErrorHandleMode.ContinueOnError,
-      name: t(($) => $[`${i18nPrefix}.ErrorMethod.continueOnError`], { ns: 'workflow' }),
+      name: t(($) => $[`${i18nPrefix}.ErrorMethod.continueOnError`], { ns: 'workflowLogic' }),
     },
     {
       value: ErrorHandleMode.RemoveAbnormalOutput,
-      name: t(($) => $[`${i18nPrefix}.ErrorMethod.removeAbnormalOutput`], { ns: 'workflow' }),
+      name: t(($) => $[`${i18nPrefix}.ErrorMethod.removeAbnormalOutput`], { ns: 'workflowLogic' }),
     },
   ]
   const {
@@ -123,10 +125,10 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
       </div>
       <div className="px-4 pb-2">
         <Field
-          title={t(($) => $[`${i18nPrefix}.parallelMode`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.parallelMode`], { ns: 'workflowLogic' })}
           tooltip={
             <div className="w-57.5">
-              {t(($) => $[`${i18nPrefix}.parallelPanelDesc`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.parallelPanelDesc`], { ns: 'workflowLogic' })}
             </div>
           }
           inline
@@ -141,7 +143,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
             isSubTitle
             tooltip={
               <div className="w-57.5">
-                {t(($) => $[`${i18nPrefix}.MaxParallelismDesc`], { ns: 'workflow' })}
+                {t(($) => $[`${i18nPrefix}.MaxParallelismDesc`], { ns: 'workflowLogic' })}
               </div>
             }
           >
@@ -218,10 +220,10 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
 
       <div className="px-4 py-2">
         <Field
-          title={t(($) => $[`${i18nPrefix}.flattenOutput`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.flattenOutput`], { ns: 'workflowLogic' })}
           tooltip={
             <div className="w-57.5">
-              {t(($) => $[`${i18nPrefix}.flattenOutputDesc`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.flattenOutputDesc`], { ns: 'workflowLogic' })}
             </div>
           }
           inline

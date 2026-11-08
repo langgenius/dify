@@ -1,83 +1,51 @@
 import type { CommandSearchResult } from '../types'
-import type { SlashCommandHandler } from './types'
-import { getI18n } from 'react-i18next'
-import { registerCommands, unregisterCommands } from './command-bus'
+import type { CommandContext, SlashCommand } from './types'
+import type { ThemePreference } from '@/features/theme/theme'
+import { isThemePreference, themeOptions } from '@/features/theme/theme'
 
-// Theme dependency types
-type ThemeDeps = {
-  setTheme?: (value: 'light' | 'dark' | 'system') => void
-}
+const themeCommandDescriptionKeys = {
+  light: 'gotoAnything.actions.themeLightDesc',
+  dark: 'gotoAnything.actions.themeDarkDesc',
+  system: 'gotoAnything.actions.themeSystemDesc',
+} as const satisfies Record<ThemePreference, string>
 
-const THEME_ITEMS = [
-  {
-    id: 'system',
-    titleKey: 'gotoAnything.actions.themeSystem',
-    descKey: 'gotoAnything.actions.themeSystemDesc',
-    iconClassName: 'i-ri-computer-line',
-  },
-  {
-    id: 'light',
-    titleKey: 'gotoAnything.actions.themeLight',
-    descKey: 'gotoAnything.actions.themeLightDesc',
-    iconClassName: 'i-ri-sun-line',
-  },
-  {
-    id: 'dark',
-    titleKey: 'gotoAnything.actions.themeDark',
-    descKey: 'gotoAnything.actions.themeDarkDesc',
-    iconClassName: 'i-ri-moon-line',
-  },
-] as const
-
-const buildThemeCommands = (query: string, locale?: string): CommandSearchResult[] => {
-  const i18n = getI18n()
+const buildThemeCommands = (query: string, context: CommandContext): CommandSearchResult[] => {
   const q = query.toLowerCase()
-  const list = THEME_ITEMS.filter(
-    (item) =>
-      !q ||
-      i18n
-        .t(($) => $[item.titleKey], { ns: 'app', lng: locale })
-        .toLowerCase()
-        .includes(q) ||
-      item.id.includes(q),
-  )
-  return list.map((item) => ({
-    id: item.id,
-    title: i18n.t(($) => $[item.titleKey], { ns: 'app', lng: locale }),
-    description: i18n.t(($) => $[item.descKey], { ns: 'app', lng: locale }),
-    type: 'command' as const,
-    icon: (
-      <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-        <span aria-hidden className={`${item.iconClassName} size-4 text-text-tertiary`} />
-      </div>
-    ),
-    data: { command: 'theme.set', args: { value: item.id } },
-  }))
+  return themeOptions
+    .map((option) => ({
+      ...option,
+      title: context.t(($) => $[option.labelKey], { ns: 'common', lng: context.locale }),
+    }))
+    .filter((option) => !q || option.title.toLowerCase().includes(q) || option.value.includes(q))
+    .map((option) => ({
+      id: option.value,
+      title: option.title,
+      description: context.t(($) => $[themeCommandDescriptionKeys[option.value]], {
+        ns: 'app',
+        lng: context.locale,
+      }),
+      type: 'command' as const,
+      icon: (
+        <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
+          <span aria-hidden className={`${option.iconClassName} size-4 text-text-tertiary`} />
+        </div>
+      ),
+      data: { command: 'theme', args: { value: option.value } },
+    }))
 }
 
 /**
  * Theme command handler
- * Integrates UI building, search, and registration logic
  */
-export const themeCommand: SlashCommandHandler<ThemeDeps> = {
+export const themeCommand: SlashCommand = {
   name: 'theme',
-  description: 'Switch between light and dark themes',
-  mode: 'submenu', // Explicitly set submenu mode
-
-  search(args: string, locale: string = 'en') {
-    // Return theme options directly, regardless of parameters
-    return buildThemeCommands(args, locale)
+  description: 'Change appearance',
+  mode: 'submenu',
+  execute(args, context) {
+    if (isThemePreference(args.value)) context.setThemePreference(args.value)
   },
 
-  register(deps: ThemeDeps) {
-    registerCommands({
-      'theme.set': async (args) => {
-        deps.setTheme?.(args?.value)
-      },
-    })
-  },
-
-  unregister() {
-    unregisterCommands(['theme.set'])
+  search(args: string, context) {
+    return buildThemeCommands(args, context)
   },
 }

@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../../../../store'
 import Bucket from './bucket'
 import Drive from './drive'
-import Dropdown from './dropdown'
 import BreadcrumbItem from './item'
+import ActionsMenu from './menu'
 
 type BreadcrumbsProps = {
   breadcrumbs: string[]
@@ -101,7 +101,7 @@ const Breadcrumbs = ({
           {t(($) => $['onlineDrive.breadcrumbs.searchResult'], {
             ns: 'datasetPipeline',
             searchResultsLength,
-            folderName: breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : bucket,
+            folderName: breadcrumbs.at(-1) ?? bucket ?? '',
           })}
         </div>
       )}
@@ -153,7 +153,7 @@ const Breadcrumbs = ({
                     />
                   )
                 })}
-                <Dropdown
+                <ActionsMenu
                   startIndex={breadcrumbsConfig.prefixBreadcrumbs.length}
                   breadcrumbs={breadcrumbsConfig.collapsedBreadcrumbs}
                   onBreadcrumbClick={handleClickBreadcrumb}

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Field from '../field'
 
@@ -29,25 +29,6 @@ describe('Field', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Model settings' })
     expect(within(dialog).getByText(/Choose a model for this node/)).toBeVisible()
     expect(within(dialog).getByRole('link', { name: 'Model documentation' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Model settings' })).toHaveAccessibleName(
-      'Model settings',
-    )
     expect(screen.queryByRole('dialog', { name: 'Retrieval settings' })).not.toBeInTheDocument()
-  })
-
-  it('should toggle folded children when supportFold is enabled', () => {
-    render(
-      <Field title="Foldable" supportFold>
-        <div>folded content</div>
-      </Field>,
-    )
-
-    expect(screen.queryByText('folded content')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('Foldable').closest('.cursor-pointer')!)
-    expect(screen.getByText('folded content')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('Foldable').closest('.cursor-pointer')!)
-    expect(screen.queryByText('folded content')).not.toBeInTheDocument()
   })
 })

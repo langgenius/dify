@@ -26,7 +26,7 @@ export const SegmentIndexTag: FC<ISegmentIndexTagProps> = ({
     return `${labelPrefix}-${positionIdStr.padStart(2, '0')}`
   }, [positionId, labelPrefix])
   return (
-    <div className={cn('flex items-center', className)}>
+    <span className={cn('flex items-center', className)}>
       <span
         aria-hidden
         className={cn(
@@ -34,10 +34,10 @@ export const SegmentIndexTag: FC<ISegmentIndexTagProps> = ({
           iconClassName,
         )}
       />
-      <div className={cn('system-xs-medium text-text-tertiary', labelClassName)}>
+      <span className={cn('system-xs-medium text-text-tertiary', labelClassName)}>
         {label || localPositionId}
-      </div>
-    </div>
+      </span>
+    </span>
   )
 }
 

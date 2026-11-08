@@ -205,7 +205,7 @@ describe('knowledge-base validation issue', () => {
 describe('knowledge-base validation messaging', () => {
   const t = withSelectorKey(
     (key: string, _options?: Record<string, unknown>) => key,
-  ) as unknown as TFunction<['common', 'workflow']>
+  ) as unknown as TFunction<['common', 'workflow', 'modelProvider']>
 
   it.each([
     [

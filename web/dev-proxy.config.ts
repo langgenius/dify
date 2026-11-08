@@ -55,4 +55,9 @@ export default {
       cookieRewrite: difyCookieRewrite,
     },
   ],
+  sessionImport: {
+    refreshPath: '/console/api/refresh-token',
+    cookieName: 'refresh_token',
+    redirectTo: 'http://localhost:3000',
+  },
 } satisfies DevProxyConfig

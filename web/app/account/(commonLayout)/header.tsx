@@ -9,7 +9,7 @@ import Link from '@/next/link'
 import Avatar from './avatar'
 
 const Header = () => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['accountSettings', 'navigation'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const logoLabel =
     systemFeatures.branding.enabled && systemFeatures.branding.application_title
@@ -36,13 +36,13 @@ const Header = () => {
         </Link>
         <div className="h-4 w-px origin-center rotate-[11.31deg] bg-divider-regular" />
         <p className="relative -mt-0.5 title-3xl-semi-bold text-text-primary">
-          {t(($) => $['account.account'], { ns: 'common' })}
+          {t(($) => $['account.account'], { ns: 'accountSettings' })}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <Link href="/" className={cn(buttonVariants(), 'px-3 py-2 system-sm-medium')}>
           <span aria-hidden className="i-custom-vender-main-nav-home size-4" />
-          <p>{t(($) => $['mainNav.home'], { ns: 'common' })}</p>
+          <p>{t(($) => $['mainNav.home'], { ns: 'navigation' })}</p>
           <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
         </Link>
         <div className="h-4 w-px bg-divider-regular" />

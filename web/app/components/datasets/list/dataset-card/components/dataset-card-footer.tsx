@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -16,7 +16,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 const EXTERNAL_PROVIDER = 'external'
 
 type DatasetCardFooterProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
 }
 
 const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
@@ -51,16 +51,19 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
     >
       <Popover>
         <PopoverTrigger
-          onClick={(event) => event.stopPropagation()}
           render={
-            <Button variant="ghost" size="small" className="min-w-6 px-1 text-text-tertiary" />
+            <Button
+              variant="ghost"
+              size="small"
+              className="relative min-w-6 px-1 text-text-tertiary"
+            />
           }
         >
           <span aria-hidden="true" className="i-ri-file-text-fill size-3 text-text-quaternary" />
           <span className="system-xs-medium">{documentCount}</span>
           <span className="sr-only">{t(($) => $['datasetMenus.documents'], { ns: 'common' })}</span>
         </PopoverTrigger>
-        <PopoverContent className="p-3" onClick={(event) => event.stopPropagation()}>
+        <PopoverContent className="p-3">
           <PopoverTitle className="system-xs-medium text-text-primary">
             {t(($) => $['datasetMenus.documents'], { ns: 'common' })}
           </PopoverTitle>
@@ -72,16 +75,19 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
       {!isExternalProvider && (
         <Popover>
           <PopoverTrigger
-            onClick={(event) => event.stopPropagation()}
             render={
-              <Button variant="ghost" size="small" className="min-w-6 px-1 text-text-tertiary" />
+              <Button
+                variant="ghost"
+                size="small"
+                className="relative min-w-6 px-1 text-text-tertiary"
+              />
             }
           >
             <span aria-hidden="true" className="i-ri-robot-2-fill size-3 text-text-quaternary" />
             <span className="system-xs-medium">{dataset.app_count}</span>
             <span className="sr-only">{t(($) => $.appCount, { ns: 'dataset' })}</span>
           </PopoverTrigger>
-          <PopoverContent className="p-3" onClick={(event) => event.stopPropagation()}>
+          <PopoverContent className="p-3">
             <PopoverTitle className="system-xs-regular text-text-secondary">
               {`${dataset.app_count} ${t(($) => $.appCount, { ns: 'dataset' })}`}
             </PopoverTitle>

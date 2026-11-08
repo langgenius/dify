@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "当 Embedding 模型支持多模态时，请选择多模态 Rerank 模型以获得更好的检索效果。",
   "form.retrievalSetting.title": "检索设置",
   "form.save": "保存",
-  "form.searchModel": "搜索模型",
   "form.summaryAutoGen": "摘要自动生成",
   "form.summaryAutoGenEnableTip": "启用后，将自动为新添加的文档生成摘要。已有的文档仍可以手动摘要。",
   "form.summaryAutoGenTip": "将自动为新添加的文档生成摘要。已有的文档仍可以手动摘要。",

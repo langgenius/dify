@@ -10,6 +10,8 @@ In terms of licensing, please take a minute to read our short [License and Contr
 
 ## Before you jump in
 
+Before starting backend development, read the [architecture](docs/BACKEND_ARCHITECTURE.md), [repositories](docs/BACKEND_REPOSITORIES.md), [SQLAlchemy](docs/BACKEND_SQLALCHEMY.md), and [database schema](docs/BACKEND_DATABASE_SCHEMA.md) guides.
+
 Looking for something to tackle? Browse our [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) and pick one to get started!
 
 Got a cool new model runtime or tool to add? Open a PR in our [plugin repo](https://github.com/langgenius/dify-plugins) and show us what you've built.
@@ -81,24 +83,13 @@ AI tools are welcome, but you are responsible for understanding and verifying ev
 
 #### Frontend
 
-For setting up the frontend service, please refer to our comprehensive [guide](https://github.com/langgenius/dify/blob/main/web/README.md) in the `web/README.md` file. This document provides detailed instructions to help you set up the frontend environment properly.
+For setting up the frontend service, please refer to our comprehensive [guide](web/README.md) in the `web/README.md` file. This document provides detailed instructions to help you set up the frontend environment properly.
 
-**Testing**: Add focused tests when a change affects observable behavior or carries meaningful regression risk. See [web/docs/test.md](https://github.com/langgenius/dify/blob/main/web/docs/test.md) for the canonical frontend testing guidelines.
+**Testing**: Add focused tests when a change affects observable behavior or carries meaningful regression risk. See [web/docs/test.md](web/docs/test.md) for the canonical frontend testing guidelines.
 
 #### Backend
 
-For setting up the backend service, kindly refer to our detailed [instructions](https://github.com/langgenius/dify/blob/main/api/README.md) in the `api/README.md` file. This document contains step-by-step guidance to help you get the backend up and running smoothly.
-
-#### Other things to note
-
-We recommend reviewing this document carefully before proceeding with the setup, as it contains essential information about:
-
-- Prerequisites and dependencies
-- Installation steps
-- Configuration details
-- Common troubleshooting tips
-
-Feel free to reach out if you encounter any issues during the setup process.
+For setting up the backend service, kindly refer to our detailed [instructions](api/README.md) in the `api/README.md` file. This document contains step-by-step guidance to help you get the backend up and running smoothly.
 
 ## Getting Help
 

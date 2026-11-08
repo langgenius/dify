@@ -52,7 +52,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   ragVariables,
   readonly,
 }) => {
-  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowHumanInput'])
   const resolvedFormInput = formInput || createDefaultParagraphFormInput(varName)
   const paragraphDefault = isParagraphFormInput(resolvedFormInput)
     ? resolvedFormInput.default
@@ -123,7 +123,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
     if (isSelectFormInput(resolvedFormInput)) {
       if (resolvedFormInput.option_source.type === 'variable')
-        return t(($) => $[`${i18nPrefix}.variable`], { ns: 'workflow' })
+        return t(($) => $[`${i18nPrefix}.variable`], { ns: 'workflowHumanInput' })
       return resolvedFormInput.option_source.value.join(', ') || inputTypeLabel
     }
 
@@ -189,7 +189,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             if (!open) hideEditModal()
           }}
         >
-          <DialogContent className="w-full max-w-93 overflow-hidden! border-none p-0! text-left align-middle">
+          <DialogContent className="w-93">
             <InputField
               nodeId={nodeId}
               isEdit

@@ -1,5 +1,4 @@
-import type { FC } from 'react'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
@@ -50,8 +49,9 @@ const fetchImageAsPng = async (url: string): Promise<Blob> => {
   }
 }
 
-const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onNext }) => {
-  const { t } = useTranslation(['common'])
+function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePreviewProps) {
+  const previewRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['common', 'workflow'])
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -63,10 +63,15 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
     // Open in a new window, considering the case when the page is inside an iframe
     if (url.startsWith('http') || url.startsWith('/')) {
       window.open(url, '_blank')
-    } else if (url.startsWith('data:image')) {
+    } else if (url.startsWith('data:image') || isBase64(url)) {
       // Base64 image
       const win = window.open()
-      win?.document.write(`<img src="${url}" alt="${title}" />`)
+      if (win) {
+        const image = win.document.createElement('img')
+        image.src = isBase64(url) ? `data:image/png;base64,${url}` : url
+        image.alt = title
+        win.document.body.appendChild(image)
+      }
     } else {
       toast.error(`Unable to open image: ${url}`)
     }
@@ -160,8 +165,9 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
         const containerRect = imgRef.current?.parentElement?.getBoundingClientRect()
 
         if (imgRect && containerRect) {
-          const maxX = (imgRect.width * scale - containerRect.width) / 2
-          const maxY = (imgRect.height * scale - containerRect.height) / 2
+          // The image rectangle already includes its scale; position uses viewport pixels.
+          const maxX = Math.max(0, (imgRect.width - containerRect.width) / 2)
+          const maxY = Math.max(0, (imgRect.height - containerRect.height) / 2)
 
           setPosition({
             x: Math.max(-maxX, Math.min(maxX, deltaX)),
@@ -184,10 +190,18 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
     }
   }, [handleMouseUp])
 
-  useHotkey('ArrowUp', zoomIn)
-  useHotkey('ArrowDown', zoomOut)
-  useHotkey('ArrowLeft', onPrev || noop)
-  useHotkey('ArrowRight', onNext || noop)
+  useHotkey('ArrowUp', zoomIn, { target: previewRef })
+  useHotkey('ArrowDown', zoomOut, { target: previewRef })
+  useHotkey('ArrowLeft', () => onPrev?.(), {
+    target: previewRef,
+    enabled: !!onPrev,
+    requireReset: true,
+  })
+  useHotkey('ArrowRight', () => onNext?.(), {
+    target: previewRef,
+    enabled: !!onNext,
+    requireReset: true,
+  })
 
   const copyImageLabel = t(($) => $['operation.copyImage'], { ns: 'common' })
   const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })
@@ -197,16 +211,12 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
   const cancelLabel = t(($) => $['operation.cancel'], { ns: 'common' })
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onCancel()
-      }}
-      disablePointerDismissal
-    >
-      <DialogContent
-        className="image-preview-container inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
-        backdropProps={{ className: 'bg-transparent!' }}
+    <>
+      <DialogBackdrop className="bg-transparent!" />
+      <DialogPopup
+        ref={previewRef}
+        aria-label={title.trim() || t(($) => $['common.preview'], { ns: 'workflow' })}
+        className="image-preview-container fixed inset-0 flex h-dvh w-screen items-center justify-center overflow-hidden bg-black/80 p-8"
       >
         <div
           data-testid="image-preview-container"
@@ -220,11 +230,12 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
         >
           <img
             ref={imgRef}
+            draggable={false}
             alt={title}
             src={isBase64(url) ? `data:image/png;base64,${url}` : url}
             className="max-h-full max-w-full"
             style={{
-              transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
               transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
             }}
             data-testid="image-preview-image"
@@ -327,7 +338,23 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
           />
           <TooltipContent>{cancelLabel}</TooltipContent>
         </Tooltip>
-      </DialogContent>
+      </DialogPopup>
+    </>
+  )
+}
+
+function ImagePreview(props: ImagePreviewProps) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onCancel()
+      }}
+      disablePointerDismissal
+    >
+      <DialogPortal>
+        <ImagePreviewContent {...props} />
+      </DialogPortal>
     </Dialog>
   )
 }

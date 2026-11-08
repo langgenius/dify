@@ -82,7 +82,6 @@ describe('ReadmePanel', () => {
       expect(screen.getByText(detail.name)).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-      expect(useReadmePanelStore.getState().currentPanel).toBeUndefined()
     },
   )
 

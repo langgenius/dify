@@ -5,12 +5,44 @@ class AccountApplicationError(Exception):
     """Base class for failures owned by account application services."""
 
 
+class AccountRegisterError(AccountApplicationError):
+    """Account registration was rejected by a lifecycle policy."""
+
+    def __init__(self, description: str = "") -> None:
+        super().__init__(description)
+        self.description = description
+
+
+class AccountLoginError(AccountApplicationError):
+    """The account cannot sign in."""
+
+
+class AccountPasswordError(AccountApplicationError):
+    """The supplied sign-in password is incorrect."""
+
+
+class SeatsLimitExceededError(AccountApplicationError):
+    """The deployment has no capacity for another account."""
+
+
 class AccountNotFoundError(AccountApplicationError):
-    """The admitted account no longer exists."""
+    """The requested account does not exist."""
 
 
 class AccountSessionNotFoundError(AccountApplicationError):
     """The requested access session is not owned by the admitted account."""
+
+
+class InvalidInvitationError(AccountApplicationError):
+    """The invitation is invalid, stale, or missing required activation data."""
+
+
+class InvitationAccountMismatchError(AccountApplicationError):
+    """An authenticated account attempted to consume another account's invitation."""
+
+
+class FrozenAccountError(AccountApplicationError):
+    """The invited account is temporarily ineligible for activation."""
 
 
 class CurrentAccountPasswordIncorrectError(AccountApplicationError):
@@ -109,15 +141,18 @@ class InvalidChangeEmailCodeError(AccountApplicationError):
     """The verification code does not match the current token."""
 
 
-class AccountEmailFrozenError(AccountApplicationError):
+class AccountEmailFrozenError(AccountRegisterError):
     """The target email is temporarily frozen by account policy."""
 
 
 class AccountEmailDomainSuspendedError(AccountEmailFrozenError):
     """The target email belongs to a suspended domain."""
 
+    def __init__(self, description: str = "This email domain has been suspended.") -> None:
+        super().__init__(description)
 
-class AccountEmailAlreadyInUseError(AccountApplicationError):
+
+class AccountEmailAlreadyInUseError(AccountRegisterError):
     """The target email already belongs to an account."""
 
 
@@ -223,6 +258,18 @@ class OAuthRegistrationError(AccountApplicationError):
 
 class EducationRateLimitExceededError(AccountApplicationError):
     """Too many education verification or activation requests were made."""
+
+
+class EducationVerificationFailedError(AccountApplicationError):
+    """The billing service could not verify the account's education identity."""
+
+
+class EducationActivationFailedError(AccountApplicationError):
+    """The billing service could not create the account's education identity."""
+
+
+class EducationRequestInProgressError(AccountApplicationError):
+    """An earlier education request for the account is still being processed."""
 
 
 class LoginRateLimitError(AccountApplicationError):

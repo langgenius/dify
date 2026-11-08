@@ -257,6 +257,7 @@
   "segment.searchResults_one": "RISULTATO",
   "segment.searchResults_other": "RISULTATI",
   "segment.searchResults_zero": "RISULTATO",
+  "segment.statusFilterLabel": "Filtra i segmenti per stato",
   "segment.summary": "RIEPILOGO",
   "segment.summaryPlaceholder": "Scrivi un breve riepilogo per un migliore recupero…"
 }

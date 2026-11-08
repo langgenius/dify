@@ -3,6 +3,23 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountBannedError,
+  zAccountInFreezeError,
+  zAccountNotFoundError,
+  zEmailCodeError,
+  zEmailCodeLoginRateLimitExceededError,
+  zEmailCodeLoginServiceUnavailableError,
+  zEmailDomainSuspendedError,
+  zEmailSendIpLimitError,
+  zInvalidEmailError,
+  zInvalidOrExpiredTokenError,
+  zLimitExceededError,
+  zNormalizedEmailAlreadyInUseError,
+  zNotAllowedCreateWorkspaceError,
+  zTurnstileServiceUnavailableError,
+  zTurnstileVerificationFailedError,
+} from './zod.gen.ts'
+import {
   zPostEmailCodeLoginBody,
   zPostEmailCodeLoginResponse,
   zPostEmailCodeLoginValidityBody,
@@ -19,6 +36,24 @@ export const post = oc
   })
   .input(z.object({ body: zPostEmailCodeLoginValidityBody }))
   .output(zPostEmailCodeLoginValidityResponse)
+  .errors({
+    account_banned: { status: 400, data: zAccountBannedError },
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_code_login_service_unavailable: {
+      status: 503,
+      data: zEmailCodeLoginServiceUnavailableError,
+    },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    limit_exceeded: { status: 400, data: zLimitExceededError },
+    normalized_email_already_in_use: { status: 400, data: zNormalizedEmailAlreadyInUseError },
+    not_allowed_create_workspace: { status: 400, data: zNotAllowedCreateWorkspaceError },
+    turnstile_service_unavailable: { status: 503, data: zTurnstileServiceUnavailableError },
+    turnstile_verification_failed: { status: 400, data: zTurnstileVerificationFailedError },
+  })
 
 export const validity = {
   post,
@@ -34,6 +69,22 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostEmailCodeLoginBody }))
   .output(zPostEmailCodeLoginResponse)
+  .errors({
+    account_banned: { status: 400, data: zAccountBannedError },
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    email_code_login_rate_limit_exceeded: {
+      status: 429,
+      data: zEmailCodeLoginRateLimitExceededError,
+    },
+    email_code_login_service_unavailable: {
+      status: 503,
+      data: zEmailCodeLoginServiceUnavailableError,
+    },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    turnstile_service_unavailable: { status: 503, data: zTurnstileServiceUnavailableError },
+    turnstile_verification_failed: { status: 400, data: zTurnstileVerificationFailedError },
+  })
 
 export const emailCodeLogin = {
   post: post2,

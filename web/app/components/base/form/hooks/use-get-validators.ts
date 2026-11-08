@@ -22,23 +22,26 @@ export const useGetValidators = () => {
       const memorizedLabel = getLabel(label)
       if (required && !validators) {
         mergedValidators = {
-          onMount: ({ value }: any) => {
+          onMount: ({ value }: { value: unknown }) => {
             if (!value && value !== 0)
               return t(($) => $['errorMsg.fieldRequired'], {
                 ns: 'common',
                 field: memorizedLabel || name,
               })
           },
-          onChange: ({ value }: any) => {
+          onChange: ({ value }: { value: unknown }) => {
             if (!value && value !== 0)
               return t(($) => $['errorMsg.fieldRequired'], {
                 ns: 'common',
                 field: memorizedLabel || name,
               })
           },
-          onBlur: ({ value }: any) => {
+          onBlur: ({ value }: { value: unknown }) => {
             if (!value && value !== 0)
-              return t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: memorizedLabel })
+              return t(($) => $['errorMsg.fieldRequired'], {
+                ns: 'common',
+                field: memorizedLabel || name,
+              })
           },
         }
       }

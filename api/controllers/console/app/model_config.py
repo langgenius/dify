@@ -1,9 +1,6 @@
 import json
-from typing import Any, cast
 
-from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse
@@ -11,6 +8,7 @@ from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
+from controllers.console.app.model_config_payload import AppModelConfigPayload
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
@@ -30,47 +28,7 @@ from libs.login import login_required
 from models.model import App, AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
-
-class ModelConfigRequest(BaseModel):
-    provider: str | None = Field(default=None, description="Model provider")
-    model: str | None = Field(default=None, description="Model name")
-    configs: dict[str, Any] | None = Field(
-        default=None,
-        description="Model configuration parameters",
-    )
-    opening_statement: str | None = Field(default=None, description="Opening statement")
-    suggested_questions: list[str] | None = Field(default=None, description="Suggested questions")
-    more_like_this: dict[str, Any] | None = Field(
-        default=None,
-        description="More like this configuration",
-    )
-    speech_to_text: dict[str, Any] | None = Field(
-        default=None,
-        description="Speech to text configuration",
-    )
-    text_to_speech: dict[str, Any] | None = Field(
-        default=None,
-        description="Text to speech configuration",
-    )
-    retrieval_model: dict[str, Any] | None = Field(
-        default=None,
-        description="Retrieval model configuration",
-    )
-    tools: list[dict[str, Any]] | None = Field(
-        default=None,
-        description="Available tools",
-    )
-    dataset_configs: dict[str, Any] | None = Field(
-        default=None,
-        description="Dataset configurations",
-    )
-    agent_mode: dict[str, Any] | None = Field(
-        default=None,
-        description="Agent mode configuration",
-    )
-
-
-register_schema_models(console_ns, ModelConfigRequest)
+register_schema_models(console_ns, AppModelConfigPayload)
 register_response_schema_models(console_ns, SimpleResultResponse)
 
 
@@ -79,7 +37,7 @@ class ModelConfigResource(Resource):
     @console_ns.doc("update_app_model_config")
     @console_ns.doc(description="Update application model configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ModelConfigRequest.__name__])
+    @console_ns.expect(console_ns.models[AppModelConfigPayload.__name__])
     @console_ns.response(
         200,
         "Model configuration updated successfully",
@@ -98,10 +56,11 @@ class ModelConfigResource(Resource):
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     def post(self, session: Session, current_tenant_id: str, current_user_id: str, app_model: App):
         """Modify the app model config and dataset joins in one request transaction."""
-        # validate config
+        payload = AppModelConfigPayload.model_validate(console_ns.payload or {})
         model_configuration = AppModelConfigService.validate_configuration(
             tenant_id=current_tenant_id,
-            config=cast(dict, request.json),
+            # Preserve omission so feature validators retain their existing defaults.
+            config=payload.model_dump(exclude_unset=True),
             app_mode=AppMode.value_of(app_model.mode),
             session=session,
         )

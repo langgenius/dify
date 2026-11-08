@@ -92,7 +92,7 @@ class TestAdvancedChatGenerateResponseConverter:
             ),
         )
 
-        def stream() -> Generator[ChatbotAppStreamResponse, None, None]:
+        def stream() -> Generator[ChatbotAppStreamResponse]:
             yield ChatbotAppStreamResponse(
                 conversation_id="c1",
                 message_id="m1",

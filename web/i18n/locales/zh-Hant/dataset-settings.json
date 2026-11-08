@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "當嵌入模型支援多模態時，請選擇多模態重排序模型以獲得更好的表現。",
   "form.retrievalSetting.title": "檢索設定",
   "form.save": "儲存",
-  "form.searchModel": "搜索模型",
   "form.summaryAutoGen": "摘要自動產生",
   "form.summaryAutoGenEnableTip": "啟用後，將自動為新添加的文件產生摘要。現有文件仍可手動摘要。",
   "form.summaryAutoGenTip": "將自動為新添加的文件產生摘要。現有文件仍可手動摘要。",

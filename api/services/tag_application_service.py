@@ -30,7 +30,13 @@ class TagBindingInput(NamedTuple):
     type: TagKind
 
 
-class TagStore(Protocol):
+class TagTargetQuery(Protocol):
+    def find_target_ids(
+        self, *, tenant_id: str, tag_type: str, tag_ids: list[str], match_all: bool = False
+    ) -> list[str]: ...
+
+
+class TagStore(TagTargetQuery, Protocol):
     def list_tags(self, workspace_id: str, tag_type: str, keyword: str | None) -> Sequence[TagSummary]: ...
 
     def get_tag_type(self, workspace_id: str, tag_id: str) -> str | None: ...
@@ -74,6 +80,11 @@ class InvalidTagBindingTypeError(TagApplicationError):
 class TagApplicationService:
     def __init__(self, *, tags: TagStore) -> None:
         self._tags = tags
+
+    def find_target_ids(
+        self, *, tenant_id: str, tag_type: str, tag_ids: list[str], match_all: bool = False
+    ) -> list[str]:
+        return self._tags.find_target_ids(tenant_id=tenant_id, tag_type=tag_type, tag_ids=tag_ids, match_all=match_all)
 
     def list_tags(self, context: RequestContext, tag_type: str, keyword: str | None = None) -> tuple[TagSummary, ...]:
         return tuple(self._tags.list_tags(context.active_workspace_id, tag_type, keyword))

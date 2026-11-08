@@ -11,7 +11,7 @@ type Props = Readonly<{
 }>
 
 const NoData: FC<Props> = ({ canSingleRun, onSingleRun }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowDebug'])
   return (
     <div className="flex h-0 grow flex-col items-center justify-center">
       <span
@@ -19,12 +19,12 @@ const NoData: FC<Props> = ({ canSingleRun, onSingleRun }) => {
         className="i-custom-vender-line-time-clock-play size-8 text-text-quaternary"
       />
       <div className="my-2 system-xs-regular text-text-tertiary">
-        {t(($) => $['debug.noData.description'], { ns: 'workflow' })}
+        {t(($) => $['debug.noData.description'], { ns: 'workflowDebug' })}
       </div>
       {canSingleRun && (
         <Button className="flex" size="small" onClick={onSingleRun}>
           <RiPlayLine className="size-3.5" />
-          <div>{t(($) => $['debug.noData.runThisNode'], { ns: 'workflow' })}</div>
+          <div>{t(($) => $['debug.noData.runThisNode'], { ns: 'workflowDebug' })}</div>
         </Button>
       )}
     </div>

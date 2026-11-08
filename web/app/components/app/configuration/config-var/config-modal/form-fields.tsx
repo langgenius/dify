@@ -1,11 +1,12 @@
 'use client'
+import type { TFunction } from 'i18next'
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
 import type { ConfigModalValidationError } from './utils'
-import type { SelectorTranslate } from '@/app/components/app/configuration/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
@@ -23,20 +24,21 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { Trans } from 'react-i18next'
-import { getStringSelectorTranslate } from '@/app/components/app/configuration/utils'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
+import { consoleQuery } from '@/service/console'
 import { TransferMethod } from '@/types/app'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
 import { jsonConfigPlaceHolder } from './config'
-import Field from './field'
+import ConfigField from './field'
 import TypeSelector from './type-select'
 import { CHECKBOX_DEFAULT_FALSE_VALUE, CHECKBOX_DEFAULT_TRUE_VALUE, TEXT_MAX_LENGTH } from './utils'
 
@@ -59,7 +61,7 @@ type ConfigModalFormFieldsProps = {
   showHiddenField?: boolean
   tempPayload: InputVar
   validationError?: ConfigModalValidationError
-  t: SelectorTranslate<'appDebug'>
+  t: TFunction<['appDebug']>
 }
 
 const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
@@ -79,13 +81,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   showHiddenField = true,
   tempPayload,
   validationError,
-  t: rawTranslate,
+  t,
 }) => {
   const hiddenLabelId = React.useId()
 
   const fileInputTypes: readonly InputVarType[] = [InputVarType.singleFile, InputVarType.multiFiles]
 
-  const t = getStringSelectorTranslate(rawTranslate)
   const { type, label, variable } = tempPayload
   const numberDefault =
     typeof tempPayload.default === 'number' ||
@@ -93,6 +94,9 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       ? Number(tempPayload.default)
       : Number.NaN
   const isFileInput = fileInputTypes.includes(type)
+  const { data: fileUploadConfig } = useQuery(
+    consoleQuery.files.upload.get.queryOptions({ enabled: isFileInput }),
+  )
   const docLink = useDocLink()
   const fieldId = React.useId()
   const errorId = `${fieldId}-error`
@@ -114,40 +118,40 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         />
       </div>
 
-      <Field
-        htmlFor={`${fieldId}-variable`}
-        title={t(($) => $['variableConfig.varName'], { ns: 'appDebug' })}
-        errorMessage={getError('variable')}
-        errorId={errorId}
-      >
+      <Field name="variable" invalid={!!getError('variable')}>
+        <label
+          htmlFor={`${fieldId}-variable`}
+          className="block system-sm-semibold leading-8! text-text-secondary"
+        >
+          {t(($) => $['variableConfig.varName'], { ns: 'appDebug' })}
+        </label>
         <Input
           id={`${fieldId}-variable`}
-          name="variable"
-          {...getErrorProps('variable')}
           value={variable}
           onChange={onVarNameChange}
           onBlur={onVarKeyBlur}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
+        <FieldError match={!!getError('variable')}>{getError('variable')}</FieldError>
       </Field>
-      <Field
-        htmlFor={`${fieldId}-label`}
-        title={t(($) => $['variableConfig.labelName'], { ns: 'appDebug' })}
-        errorMessage={getError('label')}
-        errorId={errorId}
-      >
+      <Field name="label" invalid={!!getError('label')}>
+        <label
+          htmlFor={`${fieldId}-label`}
+          className="block system-sm-semibold leading-8! text-text-secondary"
+        >
+          {t(($) => $['variableConfig.labelName'], { ns: 'appDebug' })}
+        </label>
         <Input
           id={`${fieldId}-label`}
-          name="label"
-          {...getErrorProps('label')}
           value={label as string}
           onValueChange={(value) => onPayloadChange('label')(value)}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
+        <FieldError match={!!getError('label')}>{getError('label')}</FieldError>
       </Field>
 
       {isStringInput && (
-        <Field
+        <ConfigField
           htmlFor={`${fieldId}-max-length`}
           title={t(($) => $['variableConfig.maxLength'], { ns: 'appDebug' })}
         >
@@ -158,11 +162,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             value={maxLength}
             onChange={onPayloadChange('max_length')}
           />
-        </Field>
+        </ConfigField>
       )}
 
       {type === InputVarType.textInput && (
-        <Field
+        <ConfigField
           htmlFor={`${fieldId}-default`}
           title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
         >
@@ -173,11 +177,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             onValueChange={(value) => onPayloadChange('default')(value || undefined)}
             placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
           />
-        </Field>
+        </ConfigField>
       )}
 
       {type === InputVarType.paragraph && (
-        <Field
+        <ConfigField
           htmlFor={`${fieldId}-default`}
           title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
         >
@@ -187,11 +191,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             onValueChange={(value) => onPayloadChange('default')(value || undefined)}
             placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
           />
-        </Field>
+        </ConfigField>
       )}
 
       {type === InputVarType.number && (
-        <Field
+        <ConfigField
           htmlFor={`${fieldId}-default`}
           title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
         >
@@ -209,7 +213,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               />
             </NumberFieldGroup>
           </NumberField>
-        </Field>
+        </ConfigField>
       )}
 
       {type === InputVarType.checkbox && (
@@ -254,7 +258,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
 
       {type === InputVarType.select && (
         <>
-          <Field
+          <ConfigField
             title={t(($) => $['variableConfig.options'], { ns: 'appDebug' })}
             errorMessage={getError('options')}
             errorId={errorId}
@@ -265,7 +269,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               errorMessage={getError('options')}
               errorId={errorId}
             />
-          </Field>
+          </ConfigField>
           {options && options.length > 0 && (
             <div>
               <Select<string>
@@ -330,7 +334,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                 : undefined
             }
           />
-          <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
+          <ConfigField title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
             <FileUploaderInAttachmentWrapper
               value={
                 (type === InputVarType.singleFile
@@ -352,15 +356,16 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                 allowed_file_upload_methods: tempPayload.allowed_file_upload_methods || [
                   TransferMethod.remote_url,
                 ],
+                fileUploadConfig,
                 number_limits: type === InputVarType.singleFile ? 1 : tempPayload.max_length || 5,
               }}
             />
-          </Field>
+          </ConfigField>
         </>
       )}
 
       {type === InputVarType.jsonObject && (
-        <Field
+        <ConfigField
           title={t(($) => $['variableConfig.jsonSchema'], { ns: 'appDebug' })}
           titleId={`${fieldId}-json-schema`}
           isOptional
@@ -383,10 +388,10 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               placeholder={<div className="whitespace-pre">{jsonConfigPlaceHolder}</div>}
             />
           </div>
-        </Field>
+        </ConfigField>
       )}
 
-      <label className="mt-5! flex h-6 items-center space-x-2">
+      <label className="mt-5! flex h-6 cursor-pointer items-center space-x-2 has-data-disabled:cursor-not-allowed">
         <Checkbox
           checked={tempPayload.required}
           disabled={!isFileInput && tempPayload.hide}
@@ -399,7 +404,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
 
       {showHiddenField && !isFileInput && (
         <div className="mt-5! flex h-6 items-center gap-2">
-          <label className="flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-2 has-data-disabled:cursor-not-allowed">
             <Checkbox
               checked={tempPayload.hide}
               disabled={tempPayload.required}

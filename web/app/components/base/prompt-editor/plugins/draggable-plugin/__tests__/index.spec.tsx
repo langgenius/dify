@@ -1,252 +1,74 @@
-import type { LexicalEditor } from 'lexical'
-import type { JSX, RefObject } from 'react'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { act, render, screen } from '@testing-library/react'
+import type { DraggableBlockPlugin_EXPERIMENTAL } from '@lexical/react/LexicalDraggableBlockPlugin'
+import type { ComponentProps } from 'react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import DraggableBlockPlugin from '..'
+import { renderLexicalEditor, waitForEditorReady } from '../../__tests__/test-helpers'
 
-type DraggableExperimentalProps = {
-  anchorElem: HTMLElement
-  menuRef: RefObject<HTMLDivElement>
-  targetLineRef: RefObject<HTMLDivElement>
-  menuComponent: JSX.Element | null
-  targetLineComponent: JSX.Element
-  isOnMenu: (element: HTMLElement) => boolean
-  onElementChanged: (element: HTMLElement | null) => void
-}
-
-type MouseMoveHandler = (event: MouseEvent) => void
-
-const { draggableMockState } = vi.hoisted(() => ({
-  draggableMockState: {
-    latestProps: null as DraggableExperimentalProps | null,
-  },
-}))
-
-vi.mock('@lexical/react/LexicalComposerContext')
+type DragProps = ComponentProps<typeof DraggableBlockPlugin_EXPERIMENTAL>
+const state = vi.hoisted(() => ({ props: null as DragProps | null }))
 vi.mock('@lexical/react/LexicalDraggableBlockPlugin', () => ({
-  DraggableBlockPlugin_EXPERIMENTAL: (props: DraggableExperimentalProps) => {
-    draggableMockState.latestProps = props
+  DraggableBlockPlugin_EXPERIMENTAL: (props: DragProps) => {
+    state.props = props
     return (
-      <div data-testid="draggable-plugin-experimental-mock">
+      <>
         {props.menuComponent}
         {props.targetLineComponent}
-      </div>
+      </>
     )
   },
 }))
 
-function createRootElementMock() {
-  let mouseMoveHandler: MouseMoveHandler | null = null
-  const addEventListener = vi.fn(
-    (eventName: string, handler: EventListenerOrEventListenerObject) => {
-      if (eventName === 'mousemove' && typeof handler === 'function')
-        mouseMoveHandler = handler as MouseMoveHandler
-    },
-  )
-  const removeEventListener = vi.fn()
-
-  return {
-    rootElement: {
-      addEventListener,
-      removeEventListener,
-    } as unknown as HTMLElement,
-    addEventListener,
-    removeEventListener,
-    getMouseMoveHandler: () => mouseMoveHandler,
-  }
+const setup = async () => {
+  const view = renderLexicalEditor({ namespace: 'drag-test', children: <DraggableBlockPlugin /> })
+  const editor = await waitForEditorReady(view.getEditor)
+  const root = document.createElement('div')
+  view.container.append(root)
+  act(() => editor.setRootElement(root))
+  return { ...view, editor, root }
 }
 
-function getRegisteredMouseMoveHandler(
-  rootMock: ReturnType<typeof createRootElementMock>,
-): MouseMoveHandler {
-  const handler = rootMock.getMouseMoveHandler()
-  if (!handler) throw new Error('Expected mousemove handler to be registered')
-  return handler
-}
+it.each(['self', 'ancestor', 'descendant'] as const)(
+  'shows drag controls for a supported %s and hides them for plain content',
+  async (kind) => {
+    const { root } = await setup()
+    const parent = document.createElement('div')
+    const child = document.createElement('span')
+    parent.append(child)
+    root.append(parent)
+    if (kind === 'descendant') child.className = 'support-drag'
+    else parent.className = 'support-drag'
+    fireEvent.mouseMove(kind === 'ancestor' ? child : parent)
+    expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
+    expect(state.props?.isOnMenu(screen.getByTestId('draggable-menu-icon'))).toBe(true)
+    expect(state.props?.isOnMenu(parent)).toBe(false)
+    fireEvent.mouseMove(root)
+    // A separate plain block has neither supported ancestors nor descendants.
+    const plain = document.createElement('div')
+    root.append(plain)
+    fireEvent.mouseMove(plain)
+    expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
+  },
+)
 
-function setupEditorRoot(rootElement: HTMLElement | null) {
-  const editor = {
-    getRootElement: vi.fn(() => rootElement),
-  } as unknown as LexicalEditor
-
-  vi.mocked(useLexicalComposerContext).mockReturnValue([editor, {}] as unknown as ReturnType<
-    typeof useLexicalComposerContext
-  >)
-
-  return editor
-}
-
-describe('DraggableBlockPlugin', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    draggableMockState.latestProps = null
-  })
-
-  describe('Rendering', () => {
-    it('should use body as default anchor and render target line', () => {
-      const rootMock = createRootElementMock()
-      setupEditorRoot(rootMock.rootElement)
-
-      render(<DraggableBlockPlugin />)
-
-      expect(draggableMockState.latestProps?.anchorElem).toBe(document.body)
-      expect(screen.getByTestId('draggable-target-line')).toBeInTheDocument()
-      expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
-    })
-
-    it('should render with custom anchor when provided', () => {
-      const rootMock = createRootElementMock()
-      setupEditorRoot(rootMock.rootElement)
-      const anchorElem = document.createElement('div')
-
-      render(<DraggableBlockPlugin anchorElem={anchorElem} />)
-
-      expect(draggableMockState.latestProps?.anchorElem).toBe(anchorElem)
-      expect(screen.getByTestId('draggable-target-line')).toBeInTheDocument()
-    })
-
-    it('should return early when editor root element is null', () => {
-      const editor = setupEditorRoot(null)
-
-      render(<DraggableBlockPlugin />)
-
-      expect(editor.getRootElement).toHaveBeenCalledTimes(1)
-      expect(screen.getByTestId('draggable-target-line')).toBeInTheDocument()
-      expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Drag support detection', () => {
-    it('should show menu when target has support-drag class', () => {
-      const rootMock = createRootElementMock()
-      setupEditorRoot(rootMock.rootElement)
-      render(<DraggableBlockPlugin />)
-
-      const onMove = getRegisteredMouseMoveHandler(rootMock)
-      const target = document.createElement('div')
-      target.className = 'support-drag'
-
-      act(() => {
-        onMove({ target } as unknown as MouseEvent)
-      })
-
-      expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
-    })
-
-    it('should show menu when target contains a support-drag descendant', () => {
-      const rootMock = createRootElementMock()
-      setupEditorRoot(rootMock.rootElement)
-      render(<DraggableBlockPlugin />)
-
-      const onMove = getRegisteredMouseMoveHandler(rootMock)
-      const target = document.createElement('div')
-      target.appendChild(
-        Object.assign(document.createElement('span'), { className: 'support-drag' }),
-      )
-
-      act(() => {
-        onMove({ target } as unknown as MouseEvent)
-      })
-
-      expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
-    })
-
-    it('should show menu when target is inside a support-drag ancestor', () => {
-      const rootMock = createRootElementMock()
-      setupEditorRoot(rootMock.rootElement)
-      render(<DraggableBlockPlugin />)
-
-      const onMove = getRegisteredMouseMoveHandler(rootMock)
-      const ancestor = document.createElement('div')
-      ancestor.className = 'support-drag'
-      const child = document.createElement('span')
-      ancestor.appendChild(child)
-
-      act(() => {
-        onMove({ target: child } as unknown as MouseEvent)
-      })
-
-      expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
-    })
-
-    it('should hide menu when target does not support drag', () => {
-      const rootMock = createRootElementMock()
-      setupEditorRoot(rootMock.rootElement)
-      render(<DraggableBlockPlugin />)
-
-      const onMove = getRegisteredMouseMoveHandler(rootMock)
-      const supportDragTarget = document.createElement('div')
-      supportDragTarget.className = 'support-drag'
-
-      act(() => {
-        onMove({ target: supportDragTarget } as unknown as MouseEvent)
-      })
-      expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
-
-      const plainTarget = document.createElement('div')
-      act(() => {
-        onMove({ target: plainTarget } as unknown as MouseEvent)
-      })
-
-      expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
-    })
-
-    it('should keep menu hidden when event target becomes null', () => {
-      const rootMock = createRootElementMock()
-      setupEditorRoot(rootMock.rootElement)
-      render(<DraggableBlockPlugin />)
-
-      const onMove = getRegisteredMouseMoveHandler(rootMock)
-      const supportDragTarget = document.createElement('div')
-      supportDragTarget.className = 'support-drag'
-      act(() => {
-        onMove({ target: supportDragTarget } as unknown as MouseEvent)
-      })
-      expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
-      act(() => {
-        onMove({ target: null } as unknown as MouseEvent)
-      })
-
-      expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Forwarded callbacks', () => {
-    it('should forward isOnMenu and detect menu membership correctly', () => {
-      const rootMock = createRootElementMock()
-      setupEditorRoot(rootMock.rootElement)
-      render(<DraggableBlockPlugin />)
-
-      const onMove = getRegisteredMouseMoveHandler(rootMock)
-      const supportDragTarget = document.createElement('div')
-      supportDragTarget.className = 'support-drag'
-      act(() => {
-        onMove({ target: supportDragTarget } as unknown as MouseEvent)
-      })
-
-      const renderedMenu = screen.getByTestId('draggable-menu')
-      const isOnMenu = draggableMockState.latestProps?.isOnMenu
-      if (!isOnMenu) throw new Error('Expected isOnMenu callback')
-
-      const menuIcon = screen.getByTestId('draggable-menu-icon')
-      const outsideElement = document.createElement('div')
-
-      expect(isOnMenu(menuIcon)).toBe(true)
-      expect(isOnMenu(renderedMenu)).toBe(true)
-      expect(isOnMenu(outsideElement)).toBe(false)
-    })
-
-    it('should register and cleanup mousemove listener on mount and unmount', () => {
-      const rootMock = createRootElementMock()
-      setupEditorRoot(rootMock.rootElement)
-      const { unmount } = render(<DraggableBlockPlugin />)
-
-      const onMove = getRegisteredMouseMoveHandler(rootMock)
-      expect(rootMock.addEventListener).toHaveBeenCalledWith('mousemove', expect.any(Function))
-
-      unmount()
-
-      expect(rootMock.removeEventListener).toHaveBeenCalledWith('mousemove', onMove)
-    })
-  })
+it('follows root replacement and detaches listeners when the plugin unmounts', async () => {
+  const { root, editor, container, unmount } = await setup()
+  const oldBlock = document.createElement('div')
+  oldBlock.className = 'support-drag'
+  root.append(oldBlock)
+  fireEvent.mouseMove(oldBlock)
+  expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
+  const nextRoot = document.createElement('div')
+  container.append(nextRoot)
+  act(() => editor.setRootElement(nextRoot))
+  expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
+  fireEvent.mouseMove(oldBlock)
+  expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
+  const nextBlock = document.createElement('div')
+  nextBlock.className = 'support-drag'
+  nextRoot.append(nextBlock)
+  fireEvent.mouseMove(nextBlock)
+  expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
+  const removeListener = vi.spyOn(nextRoot, 'removeEventListener')
+  unmount()
+  expect(removeListener).toHaveBeenCalledWith('mousemove', expect.any(Function))
 })

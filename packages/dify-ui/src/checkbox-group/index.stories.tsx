@@ -43,7 +43,7 @@ function DocumentSelectionDemo() {
         <Checkbox parent />
         Current page documents
       </label>
-      <div className="flex flex-col gap-2 pl-6">
+      <div className="flex flex-col gap-2 ps-6">
         {[
           { id: 'doc-1', name: 'onboarding-guide.pdf' },
           { id: 'doc-2', name: 'pricing-faq.md' },

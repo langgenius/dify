@@ -54,12 +54,15 @@ export function AppDeployStateBoundary({
   appId: string
   children: ReactNode
 }) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHistory'])
 
   useHydrateAtoms(
     [
       [appDeployAppIdAtom, appId],
-      [defaultWorkflowVersionNameAtom, t(($) => $['versionHistory.defaultName'])],
+      [
+        defaultWorkflowVersionNameAtom,
+        t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
+      ],
     ] as const,
     {
       dangerouslyForceHydrate: true,

@@ -23,7 +23,7 @@ type AddEventParams = {
 
 export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   const { schema: jsonSchema, onChange: doOnChange } = props
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const onChange = doOnChange || noop
   const backupSchema = useVisualEditorStore((state) => state.backupSchema)
   const setBackupSchema = useVisualEditorStore((state) => state.setBackupSchema)
@@ -65,7 +65,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         const properties = schema.properties || {}
         if (properties[newName]) {
           toast.error(
-            t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }),
+            t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflowModels' }),
           )
           emit('restorePropertyName')
           return
@@ -93,7 +93,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         const properties = schema.items.properties || {}
         if (properties[newName]) {
           toast.error(
-            t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }),
+            t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflowModels' }),
           )
           emit('restorePropertyName')
           return
@@ -270,7 +270,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
           const properties = parentSchema.properties
           if (properties[newName]) {
             toast.error(
-              t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }),
+              t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflowModels' }),
             )
             samePropertyNameError = true
           }
@@ -367,7 +367,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
           const properties = parentSchema.items.properties || {}
           if (properties[newName]) {
             toast.error(
-              t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }),
+              t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflowModels' }),
             )
             samePropertyNameError = true
           }

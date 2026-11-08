@@ -37,7 +37,6 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import { useDocLink } from '@/context/i18n'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
 import { useWorkflowStore } from '../../../store'
 import { AgentStrategySelector } from './agent-strategy-selector'
 import Field from './field'
@@ -89,7 +88,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
     availableNodes,
     nodeId,
   } = props
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowAgent'])
   const docLink = useDocLink()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const renderI18nObject = useRenderI18nObject()
@@ -172,7 +171,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               modelConfig={
                 defaultModel.data
                   ? {
-                      mode: AppModeEnum.CHAT,
+                      mode: 'chat' as const,
                       name: defaultModel.data.model,
                       provider: defaultModel.data.provider.provider,
                       completion_params: {},
@@ -278,17 +277,17 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               className="i-custom-vender-workflow-agent size-5 shrink-0 text-text-accent"
             />
           }
-          title={t(($) => $['nodes.agent.strategy.configureTip'], { ns: 'workflow' })}
+          title={t(($) => $['nodes.agent.strategy.configureTip'], { ns: 'workflowAgent' })}
           description={
             <div className="text-xs text-text-tertiary">
-              {t(($) => $['nodes.agent.strategy.configureTipDesc'], { ns: 'workflow' })} <br />
+              {t(($) => $['nodes.agent.strategy.configureTipDesc'], { ns: 'workflowAgent' })} <br />
               <Link
                 href={docLink('/use-dify/nodes/agent')}
                 className="text-text-accent-secondary"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {t(($) => $['nodes.agent.learnMore'], { ns: 'workflow' })}
+                {t(($) => $['nodes.agent.learnMore'], { ns: 'workflowAgent' })}
               </Link>
             </div>
           }

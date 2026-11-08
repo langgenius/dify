@@ -16,13 +16,13 @@ type ConditionValueProps = {
   condition: Condition
 }
 const ConditionValue = ({ condition }: ConditionValueProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const { variable_selector, comparison_operator: operator, sub_variable_condition } = condition
 
   const variableSelector = variable_selector as ValueSelector
 
   const operatorName = isComparisonOperatorNeedTranslate(operator)
-    ? t(($) => $[`nodes.ifElse.comparisonOperator.${operator}`], { ns: 'workflow' })
+    ? t(($) => $[`nodes.ifElse.comparisonOperator.${operator}`], { ns: 'workflowLogic' })
     : operator
   const formatValue = useCallback((c: Condition) => {
     const notHasValue = comparisonOperatorNotRequireValue(c.comparison_operator)
@@ -54,7 +54,7 @@ const ConditionValue = ({ condition }: ConditionValueProps) => {
           (item) => item.value === (Array.isArray(c.value) ? c.value[0] : c.value),
         )[0]
         return name
-          ? t(($) => $[`nodes.ifElse.optionName.${name.i18nKey}`], { ns: 'workflow' }).replace(
+          ? t(($) => $[`nodes.ifElse.optionName.${name.i18nKey}`], { ns: 'workflowLogic' }).replace(
               /\{\{#([^#]*)#\}\}/g,
               (a, b) => {
                 const arr: string[] = b.split('.')
@@ -84,7 +84,7 @@ const ConditionValue = ({ condition }: ConditionValueProps) => {
           const comparisonOperatorName =
             comparisonOperator && isComparisonOperatorNeedTranslate(comparisonOperator)
               ? t(($) => $[`nodes.ifElse.comparisonOperator.${comparisonOperator}`], {
-                  ns: 'workflow',
+                  ns: 'workflowLogic',
                 })
               : comparisonOperator
           return (
@@ -99,7 +99,7 @@ const ConditionValue = ({ condition }: ConditionValueProps) => {
               {index !== sub_variable_condition.conditions.length - 1 && (
                 <div className="absolute right-1 -bottom-2.5 z-10 text-2xs leading-4 font-medium text-text-accent uppercase">
                   {t(($) => $[`nodes.ifElse.${sub_variable_condition.logical_operator}`], {
-                    ns: 'workflow',
+                    ns: 'workflowLogic',
                   })}
                 </div>
               )}

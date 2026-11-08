@@ -1,224 +1,242 @@
-import type { ReactNode } from 'react'
 import type { AgentV2NodeType } from '../../types'
-import { render, screen } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
+import { useNodes, useStoreApi } from 'reactflow'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
+import {
+  createEdge,
+  createNode,
+  createStartNode,
+} from '@/app/components/workflow/__tests__/fixtures'
+import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { renderWorkflowEditor } from '@/test/workflow-editor'
 import { ErrorHandleTypeEnum } from '../../../_base/components/error-handle/types'
-import { getAgentV2DeclaredOutputs } from '../../output-variables'
 import { AgentOutputRoutes } from '../agent-output-routes'
 
-const { removeEdges, removeVariable, saveHistory, update } = vi.hoisted(() => ({
-  removeEdges: vi.fn(),
-  removeVariable: vi.fn(),
-  saveHistory: vi.fn(),
-  update: vi.fn(),
-}))
-vi.mock('@/app/components/workflow/hooks/use-node-data-update', () => ({
-  useNodeDataUpdate: () => ({ handleNodeDataUpdate: update }),
-}))
-vi.mock('@/app/components/workflow/hooks/use-edges-interactions', () => ({
-  useEdgesInteractions: () => ({ removeBranchEdges: removeEdges }),
-}))
-vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: vi.fn() }),
-}))
-vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false, getNodesReadOnly: () => false }),
-  useWorkflow: () => ({ removeUsedVarInNodes: removeVariable }),
-}))
-vi.mock('@/app/components/workflow/hooks/use-workflow-history', () => ({
-  useWorkflowHistory: () => ({ saveStateToHistory: saveHistory }),
-  WorkflowHistoryEvent: { NodeChange: 'NodeChange' },
-}))
-vi.mock('../../../_base/hooks/use-available-var-list', () => ({
-  default: () => ({ availableVars: [], availableNodesWithParent: [] }),
-}))
-vi.mock('react-sortablejs', () => ({
-  ReactSortable: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
-// The rich text editor's own tests cover variable tokens; this boundary exercises
-// the route editor's persisted condition, label, and list mutations.
-vi.mock('../../../_base/components/prompt/editor', () => ({
-  default: ({
-    title,
-    value,
-    onChange,
-    onRemove,
-    showRemove,
-  }: {
-    title: ReactNode
-    value: string
-    onChange: (value: string) => void
-    onRemove: () => void
-    showRemove?: boolean
-  }) => (
-    <div>
-      {title}
-      <textarea
-        aria-label="Condition"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      {showRemove && (
-        <button type="button" onClick={onRemove}>
-          Remove route
+const accepted = { id: 'accepted', name: 'Accept', label: 'Accepted' }
+const rejected = { id: 'rejected', name: 'Reject', label: 'Rejected' }
+const deferred = { id: 'deferred', name: 'Defer', label: 'Deferred' }
+const title = 'workflow.nodes.agent.outputRoutes.title'
+const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType => ({
+  type: BlockEnum.AgentV2,
+  title: 'Agent',
+  desc: '',
+  version: '2',
+  agent_node_kind: 'dify_agent',
+  agent_output_routes: { enabled: true, routes: [accepted, rejected] },
+  ...overrides,
+})
+
+function setup({ data = createData(), connected = false, readonly = false } = {}) {
+  let flow: ReturnType<typeof useStoreApi>
+  function RoutesEditor() {
+    flow = useStoreApi()
+    const agent = useNodes<AgentV2NodeType>().find((node) => node.id === 'agent')
+    const { handleHistoryBack } = useNodesInteractions()
+    return agent ? (
+      <>
+        <AgentOutputRoutes id={agent.id} data={agent.data} />
+        <button type="button" onClick={handleHistoryBack}>
+          Undo
         </button>
-      )}
-    </div>
-  ),
-}))
-
-function Harness({
-  initial,
-  errorStrategy,
-}: {
-  initial?: AgentV2NodeType['agent_output_routes']
-  errorStrategy?: ErrorHandleTypeEnum
-}) {
-  const [data, setData] = useState<AgentV2NodeType>({
-    type: BlockEnum.AgentV2,
-    title: 'Agent',
-    desc: '',
-    version: '2',
-    agent_node_kind: 'dify_agent',
-    agent_output_routes: initial,
-    error_strategy: errorStrategy,
-    default_value:
-      errorStrategy === ErrorHandleTypeEnum.defaultValue
-        ? [{ key: 'text', type: VarType.string, value: 'fallback' }]
-        : undefined,
-  })
-  update.mockImplementation(({ data: changed }: { data: Partial<AgentV2NodeType> }) =>
-    setData((data) => ({ ...data, ...changed })),
-  )
-  return (
-    <>
-      <AgentOutputRoutes id="agent" data={data} />
-      <output aria-label="Available outputs">
-        {getAgentV2DeclaredOutputs(data)
-          .map((output) => output.name)
-          .join(',')}
-      </output>
-    </>
-  )
-}
-
-beforeEach(() => {
-  vi.clearAllMocks()
-})
-
-it('enables two routes, preserves edited conditions through toggles, and changes success handles', async () => {
-  const user = userEvent.setup()
-  render(<Harness initial={{ enabled: false, routes: [] }} />)
-  const toggle = screen.getByRole('switch', { name: 'workflow.nodes.agent.outputRoutes.title' })
-  await user.click(toggle)
-  expect(screen.getAllByRole('textbox', { name: 'Condition' })).toHaveLength(2)
-  expect(screen.getByLabelText('Available outputs')).toHaveTextContent('text,switch')
-  expect(removeEdges).toHaveBeenCalledWith('agent', ['source'])
-  await user.type(screen.getAllByRole('textbox', { name: 'Condition' })[0]!, 'Request approved')
-  const saved = update.mock.lastCall![0].data.agent_output_routes
-  await user.click(toggle)
-  expect(removeEdges).toHaveBeenCalledWith(
-    'agent',
-    saved.routes.map((route: { id: string }) => route.id),
-  )
-  expect(removeVariable).toHaveBeenCalledWith(['agent', 'switch'])
-  expect(screen.getByLabelText('Available outputs').textContent).toBe('text')
-  await user.click(toggle)
-  expect(screen.getAllByRole('textbox', { name: 'Condition' })[0]).toHaveValue('Request approved')
-  expect(update.mock.lastCall![0].data.agent_output_routes.routes).toEqual(saved.routes)
-  expect(saveHistory).toHaveBeenCalledWith('NodeChange')
-})
-
-it('removes a route by stable ID and keeps at least two routes with switch available', async () => {
-  const user = userEvent.setup()
-  render(
-    <Harness
-      initial={{
-        enabled: true,
-        routes: [
-          { id: 'accepted', name: 'Accept' },
-          { id: 'rejected', name: 'Reject' },
-          { id: 'deferred', name: 'Defer' },
+      </>
+    ) : null
+  }
+  const sourceHandle = data.agent_output_routes?.enabled ? 'accepted' : 'source'
+  const nodes = [
+    createStartNode({ id: 'start', data: { variables: [] } }),
+    createNode({
+      id: 'agent',
+      data: {
+        ...data,
+        _targetBranches: data.agent_output_routes?.enabled
+          ? data.agent_output_routes.routes?.map((item) => ({ id: item.id, name: item.name ?? '' }))
+          : [],
+        _connectedSourceHandleIds: connected ? [sourceHandle] : [],
+      },
+    }),
+    createNode({
+      id: 'end',
+      data: {
+        type: BlockEnum.End,
+        title: 'End',
+        outputs: [
+          { variable: 'result', value_selector: ['agent', 'text'] },
+          ...(data.agent_output_routes?.enabled
+            ? [{ variable: 'route', value_selector: ['agent', 'switch'] }]
+            : []),
         ],
-      }}
-    />,
+        _connectedTargetHandleIds: connected ? ['target'] : [],
+      },
+    }),
+  ]
+  const edges = [
+    createEdge({ id: 'start-agent', source: 'start', target: 'agent' }),
+    ...(connected
+      ? [
+          createEdge({
+            id: 'agent-end',
+            source: 'agent',
+            sourceHandle,
+            target: 'end',
+            targetHandle: 'target',
+            data: { sourceType: BlockEnum.AgentV2, targetType: BlockEnum.End },
+          }),
+        ]
+      : []),
+  ]
+  const sync = vi.fn(async () => null)
+  const result = renderWorkflowEditor(
+    <EventEmitterContextProvider>
+      <RoutesEditor />
+    </EventEmitterContextProvider>,
+    {
+      nodes,
+      edges,
+      historyStore: { nodes, edges },
+      initialStoreState: { canvasReadOnly: readonly },
+      hooksStoreProps: { doSyncWorkflowDraft: sync },
+    },
   )
-  await user.click(screen.getAllByRole('button', { name: 'Remove route' })[0]!)
-  expect(removeEdges).toHaveBeenCalledWith('agent', ['accepted'])
-  expect(removeVariable).not.toHaveBeenCalled()
-  expect(update.mock.lastCall![0].data._targetBranches).toEqual([
+  return {
+    ...result,
+    sync,
+    user: userEvent.setup(),
+    nodeData: () =>
+      flow
+        .getState()
+        .getNodes()
+        .find((node) => node.id === 'agent')!.data as AgentV2NodeType,
+    endData: () =>
+      flow
+        .getState()
+        .getNodes()
+        .find((node) => node.id === 'end')!.data,
+    edges: () => flow.getState().edges.map((edge) => edge.id),
+  }
+}
+const route = (name: string) => within(screen.getByRole('group', { name }))
+const toggle = () => screen.getByRole('switch', { name: title })
+
+it('keeps a saved route and its edited condition through enabling, disabling, and re-enabling', async () => {
+  const { user, nodeData, edges, store, sync } = setup({
+    connected: true,
+    data: createData({ agent_output_routes: { enabled: false, routes: [accepted] } }),
+  })
+  await user.click(toggle())
+  expect(nodeData().agent_output_routes?.routes).toEqual([
+    accepted,
+    expect.objectContaining({ id: expect.any(String), name: '' }),
+  ])
+  expect(nodeData().agent_output_routes?.routes?.[1]?.id).not.toBe(accepted.id)
+  expect(edges()).toEqual(['start-agent'])
+  expect(screen.queryByRole('button', { name: 'common.operation.remove' })).not.toBeInTheDocument()
+  await replacePromptEditorText(route('Accepted').getByRole('textbox'), 'Request approved')
+  await waitFor(() =>
+    expect(nodeData().agent_output_routes?.routes?.[0]?.name).toBe('Request approved'),
+  )
+  const savedRoutes = nodeData().agent_output_routes?.routes
+  await user.click(toggle())
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  expect(nodeData()._targetBranches).toEqual([])
+  await user.click(toggle())
+  expect(route('Accepted').getByRole('textbox')).toHaveTextContent('Request approved')
+  expect(nodeData().agent_output_routes?.routes).toEqual(savedRoutes)
+  expect(nodeData()._targetBranches?.map((branch) => branch.id)).toEqual(
+    savedRoutes?.map((item) => item.id),
+  )
+  act(() => store.getState().flushPendingSync())
+  expect(sync).toHaveBeenCalled()
+})
+
+it('removes the chosen route and connection, keeps switch references, and restores both with one undo', async () => {
+  const { user, nodeData, endData, edges, store } = setup({
+    connected: true,
+    data: createData({
+      agent_output_routes: { enabled: true, routes: [accepted, rejected, deferred] },
+    }),
+  })
+  await user.click(route('Accepted').getByRole('button', { name: 'common.operation.remove' }))
+  expect(screen.queryByRole('group', { name: 'Accepted' })).not.toBeInTheDocument()
+  expect(nodeData().agent_output_routes?.routes).toEqual([rejected, deferred])
+  expect(nodeData()._targetBranches).toEqual([
     { id: 'rejected', name: 'Reject' },
     { id: 'deferred', name: 'Defer' },
   ])
-  expect(screen.getByLabelText('Available outputs').textContent).toBe('text,switch')
-  expect(screen.getAllByRole('textbox', { name: 'Condition' })).toHaveLength(2)
-  expect(screen.queryByRole('button', { name: 'Remove route' })).not.toBeInTheDocument()
+  expect(edges()).toEqual(['start-agent'])
+  expect(endData().outputs).toContainEqual({
+    variable: 'route',
+    value_selector: ['agent', 'switch'],
+  })
+  expect(screen.queryByRole('button', { name: 'common.operation.remove' })).not.toBeInTheDocument()
+  await waitFor(() => expect(store.temporal.getState().pastStates).toHaveLength(1))
+  await user.click(screen.getByRole('button', { name: 'Undo' }))
+  expect(route('Accepted').getByRole('textbox')).toHaveTextContent('Accept')
+  expect(nodeData().agent_output_routes?.routes).toEqual([accepted, rejected, deferred])
+  expect(edges()).toEqual(['start-agent', 'agent-end'])
 })
 
-it('collapses routes independently of their enabled state and keeps one title', async () => {
-  const user = userEvent.setup()
-  render(
-    <Harness
-      initial={{
-        enabled: true,
-        routes: [
-          { id: 'accepted', name: 'Accept' },
-          { id: 'rejected', name: 'Reject' },
-        ],
-      }}
-    />,
-  )
-  const title = 'workflow.nodes.agent.outputRoutes.title'
+it.each([false, true])(
+  'disables routes and restores them with one undo, with an outgoing connection: %s',
+  async (connected) => {
+    const { user, nodeData, endData, edges, store } = setup({ connected })
+    await user.click(toggle())
+    expect(toggle()).not.toBeChecked()
+    expect(edges()).toEqual(['start-agent'])
+    if (connected)
+      expect(endData().outputs).not.toContainEqual({
+        variable: 'route',
+        value_selector: ['agent', 'switch'],
+      })
+    await waitFor(() => expect(store.temporal.getState().pastStates).toHaveLength(1))
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(toggle()).toBeChecked()
+    expect(nodeData().agent_output_routes?.routes).toEqual([accepted, rejected])
+    expect(route('Accepted').getByRole('textbox')).toHaveTextContent('Accept')
+    if (connected) {
+      expect(edges()).toEqual(['start-agent', 'agent-end'])
+      expect(endData().outputs).toContainEqual({
+        variable: 'route',
+        value_selector: ['agent', 'switch'],
+      })
+    }
+  },
+)
+
+it('collapses the route editor without disabling routes or losing the condition', async () => {
+  const { user, nodeData } = setup()
   const disclosure = screen.getByRole('button', { name: new RegExp(title) })
-  const toggle = screen.getByRole('switch', { name: title })
-  expect(screen.getAllByText(title, { exact: true })).toHaveLength(1)
-  expect(disclosure).toHaveAttribute('aria-expanded', 'true')
-
   await user.click(disclosure)
-  expect(disclosure).toHaveAttribute('aria-expanded', 'false')
-  expect(screen.queryByRole('textbox', { name: 'Condition' })).not.toBeInTheDocument()
-  expect(toggle).toBeChecked()
-  expect(update).not.toHaveBeenCalled()
-  expect(removeEdges).not.toHaveBeenCalled()
-
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  expect(toggle()).toBeChecked()
+  expect(nodeData().agent_output_routes?.enabled).toBe(true)
   await user.click(disclosure)
-  expect(screen.getAllByRole('textbox', { name: 'Condition' })[0]).toHaveValue('Accept')
-  await user.click(toggle)
-  expect(disclosure).toHaveAttribute('aria-disabled', 'true')
-  await user.click(disclosure)
-  expect(screen.queryByRole('textbox', { name: 'Condition' })).not.toBeInTheDocument()
-  expect(screen.queryByText('workflow.nodes.agent.outputRoutes.add')).not.toBeInTheDocument()
-  await user.click(toggle)
-  expect(disclosure).not.toHaveAttribute('aria-disabled', 'true')
-  expect(disclosure).toHaveAttribute('aria-expanded', 'true')
-  expect(screen.getAllByRole('textbox', { name: 'Condition' })).toHaveLength(2)
+  expect(route('Accepted').getByRole('textbox')).toHaveTextContent('Accept')
 })
 
-it('keeps a saved disabled route and adds only the missing route when enabling', async () => {
-  const user = userEvent.setup()
-  const saved = { id: 'accepted', name: 'Accept', label: 'Accepted' }
-  render(<Harness initial={{ enabled: false, routes: [saved] }} />)
-
-  await user.click(screen.getByRole('switch', { name: 'workflow.nodes.agent.outputRoutes.title' }))
-
-  const routes = update.mock.lastCall![0].data.agent_output_routes.routes
-  expect(routes).toHaveLength(2)
-  expect(routes[0]).toEqual(saved)
-  expect(routes[1]).toMatchObject({ id: expect.any(String), name: '' })
-  expect(routes[1].id).not.toBe(saved.id)
-  expect(screen.getAllByRole('textbox', { name: 'Condition' })[0]).toHaveValue('Accept')
-  expect(screen.queryByRole('button', { name: 'Remove route' })).not.toBeInTheDocument()
-})
-
-it('clears node-level default values when enabling routes', async () => {
-  const user = userEvent.setup()
-  render(<Harness errorStrategy={ErrorHandleTypeEnum.defaultValue} />)
-  await user.click(screen.getByRole('switch', { name: 'workflow.nodes.agent.outputRoutes.title' }))
-  expect(update.mock.lastCall![0].data).toMatchObject({
+it('clears incompatible default values when enabling output routes', async () => {
+  const { user, nodeData } = setup({
+    data: createData({
+      agent_output_routes: undefined,
+      error_strategy: ErrorHandleTypeEnum.defaultValue,
+      default_value: [{ key: 'text', type: VarType.string, value: 'fallback' }],
+    }),
+  })
+  await user.click(toggle())
+  expect(nodeData()).toMatchObject({
     agent_output_routes: { enabled: true },
     error_strategy: undefined,
     default_value: undefined,
   })
+})
+
+it('keeps routes and connections unchanged on a readonly canvas', async () => {
+  const { user, nodeData, edges } = setup({ readonly: true, connected: true })
+  const before = nodeData()
+  expect(toggle()).toHaveAttribute('aria-disabled', 'true')
+  await user.click(toggle())
+  expect(nodeData()).toEqual(before)
+  expect(edges()).toEqual(['start-agent', 'agent-end'])
 })

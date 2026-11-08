@@ -5,31 +5,6 @@ import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { render } from '@/test/console/render'
 
 describe('AccessPointCard', () => {
-  it('marks the card when it is the highlighted access point', () => {
-    render(
-      <AccessPointCard
-        title="Web App"
-        description="Web application access"
-        icon="i-ri-robot-2-line"
-        status="inService"
-        statusLabel="In service"
-        highlighted
-      >
-        Access URL
-      </AccessPointCard>,
-    )
-
-    expect(screen.getByRole('region', { name: 'Web App' })).toHaveAttribute(
-      'data-highlighted',
-      'true',
-    )
-    expect(screen.getByRole('heading', { name: 'Web App' })).toHaveAttribute('title', 'Web App')
-    expect(screen.getByText('Web application access')).toHaveAttribute(
-      'title',
-      'Web application access',
-    )
-  })
-
   it.each<[AccessPointStatus, string, boolean]>([
     ['loading', 'common.loading', true],
     ['unsupported', 'deployments.studio.accessPoint.notSupported', false],

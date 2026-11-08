@@ -257,6 +257,7 @@
   "segment.searchResults_one": "نتیجه",
   "segment.searchResults_other": "نتیجه",
   "segment.searchResults_zero": "نتیجه",
+  "segment.statusFilterLabel": "فیلتر بخش‌ها بر اساس وضعیت",
   "segment.summary": "خلاصه",
   "segment.summaryPlaceholder": "خلاصه‌ای کوتاه برای بازیابی بهتر بنویسید…"
 }

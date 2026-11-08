@@ -15,7 +15,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.variableAssigner'
 const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
 
   const {
     readOnly,
@@ -76,19 +76,21 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({ id, data }) => {
                 </div>
               ))}
             </div>
-            <AddButton
-              className="mt-2"
-              text={t(($) => $[`${i18nPrefix}.addGroup`], { ns: 'workflow' })}
-              onClick={handleAddGroup}
-            />
+            {!readOnly && (
+              <AddButton
+                className="mt-2"
+                text={t(($) => $[`${i18nPrefix}.addGroup`], { ns: 'workflowLogic' })}
+                onClick={handleAddGroup}
+              />
+            )}
           </div>
         )}
       </div>
       <Split />
       <div className={cn('px-4 pt-4', isEnableGroup ? 'pb-4' : 'pb-2')}>
         <Field
-          title={t(($) => $[`${i18nPrefix}.aggregationGroup`], { ns: 'workflow' })}
-          tooltip={t(($) => $[`${i18nPrefix}.aggregationGroupTip`], { ns: 'workflow' })!}
+          title={t(($) => $[`${i18nPrefix}.aggregationGroup`], { ns: 'workflowLogic' })}
+          tooltip={t(($) => $[`${i18nPrefix}.aggregationGroupTip`], { ns: 'workflowLogic' })!}
           operations={
             <Switch
               checked={isEnableGroup}
@@ -110,7 +112,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({ id, data }) => {
                   name={`${item.group_name}.output`}
                   type={item.output_type}
                   description={t(($) => $[`${i18nPrefix}.outputVars.varDescribe`], {
-                    ns: 'workflow',
+                    ns: 'workflowLogic',
                     groupName: item.group_name,
                   })}
                 />

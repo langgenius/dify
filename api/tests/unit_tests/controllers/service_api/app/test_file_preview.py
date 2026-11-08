@@ -52,7 +52,7 @@ def _get(
         api,
         args=args,
         app_model=app_model,
-        end_user=Mock(spec=EndUser),
+        end_user=EndUser(id=str(uuid4()), app_id=app_model.id, tenant_id=app_model.tenant_id),
         file_id=file_id,
     )
 

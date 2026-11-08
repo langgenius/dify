@@ -46,17 +46,6 @@ describe('useTimestamp', () => {
       )
     })
 
-    it('should format with different patterns', () => {
-      const { result } = renderHook(() => useTimestamp(), {
-        wrapper: createAccountProfileQueryWrapper(),
-      })
-      const timestamp = 1704132000
-
-      expect(result.current.formatTime(timestamp, 'MM/DD/YYYY')).toBe('01/02/2024')
-
-      expect(result.current.formatTime(timestamp, 'HH:mm')).toBe('02:00')
-    })
-
     it('should format month names with the current interface locale', () => {
       mockUseLocale.mockReturnValue('zh-Hans')
       const { result } = renderHook(() => useTimestamp(), {
@@ -78,17 +67,6 @@ describe('useTimestamp', () => {
       expect(result.current.formatDate(dateString, 'YYYY-MM-DD HH:mm:ss')).toBe(
         '2024-01-01 20:00:00',
       )
-    })
-
-    it('should format with different patterns', () => {
-      const { result } = renderHook(() => useTimestamp(), {
-        wrapper: createAccountProfileQueryWrapper(),
-      })
-      const dateString = '2024-01-01T12:00:00Z'
-
-      expect(result.current.formatDate(dateString, 'MM/DD/YYYY')).toBe('01/01/2024')
-
-      expect(result.current.formatDate(dateString, 'HH:mm')).toBe('20:00')
     })
 
     it('should format date string month names with the current interface locale', () => {

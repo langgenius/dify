@@ -6,7 +6,7 @@ type AgentLogTriggerProps = {
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 export function AgentLogTrigger({ nodeInfo, onShowAgentOrToolLog }: AgentLogTriggerProps) {
-  const { t } = useTranslation(['runLog', 'workflow'])
+  const { t } = useTranslation(['runLog', 'workflowAgent'])
   const { agentLog, execution_metadata } = nodeInfo
   const agentStrategy = execution_metadata?.tool_info?.agent_strategy
 
@@ -22,7 +22,7 @@ export function AgentLogTrigger({ nodeInfo, onShowAgentOrToolLog }: AgentLogTrig
       }}
     >
       <div className="flex items-center px-3 pt-2 system-2xs-medium-uppercase text-text-tertiary">
-        {t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
+        {t(($) => $['nodes.agent.strategy.label'], { ns: 'workflowAgent' })}
       </div>
       <div className="flex items-center pt-1 pr-2 pb-1.5 pl-3">
         {agentStrategy ? (

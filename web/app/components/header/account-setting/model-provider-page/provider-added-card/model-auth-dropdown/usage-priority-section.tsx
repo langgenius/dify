@@ -23,10 +23,12 @@ export default function UsagePrioritySection({
 }: UsagePrioritySectionProps) {
   const priorityLabelId = useId()
 
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
   const selectedKey =
     value === 'credits' ? PreferredProviderTypeEnum.system : PreferredProviderTypeEnum.custom
-  const usagePriorityTip = t(($) => $['modelProvider.card.usagePriorityTip'], { ns: 'common' })
+  const usagePriorityTip = t(($) => $['modelProvider.card.usagePriorityTip'], {
+    ns: 'modelProvider',
+  })
 
   return (
     <div className="p-1">
@@ -39,7 +41,7 @@ export default function UsagePrioritySection({
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-0.5 py-0.5">
           <span id={priorityLabelId} className="truncate system-sm-medium text-text-secondary">
-            {t(($) => $['modelProvider.card.usagePriority'], { ns: 'common' })}
+            {t(($) => $['modelProvider.card.usagePriority'], { ns: 'modelProvider' })}
           </span>
           <Infotip>
             <InfotipTrigger aria-labelledby={priorityLabelId} />
@@ -64,7 +66,7 @@ export default function UsagePrioritySection({
                 disabled={disabled}
                 onClick={() => onSelect(option.key)}
               >
-                {t(($) => $[option.labelKey], { ns: 'common' })}
+                {t(($) => $[option.labelKey], { ns: 'modelProvider' })}
               </button>
             )
           })}

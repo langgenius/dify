@@ -1,4 +1,5 @@
-import type { defaultNS, Namespace, Resources } from '../i18n/resources'
+import type { defaultNS, Namespace } from '../i18n/resources'
+import type Resources from '../i18n/resources.generated'
 import 'i18next'
 
 declare module 'i18next' {

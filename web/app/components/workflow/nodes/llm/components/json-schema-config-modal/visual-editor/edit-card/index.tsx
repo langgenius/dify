@@ -58,7 +58,7 @@ const MAXIMUM_DEPTH_TYPE_OPTIONS = [
 ]
 
 const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const [currentFields, setCurrentFields] = useState(fields)
   const [backupFields, setBackupFields] = useState<EditData | null>(null)
   const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
@@ -67,6 +67,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
   const setAdvancedEditing = useVisualEditorStore((state) => state.setAdvancedEditing)
   const { emit, useSubscribe } = useMittContext()
   const blurWithActions = useRef(false)
+  const editorRef = useRef<HTMLDivElement>(null)
 
   const maximumDepthReached = depth === JSON_SCHEMA_MAX_DEPTH
   const disableAddBtn =
@@ -227,13 +228,16 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
   })
 
   return (
-    <div className="flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4">
+    <div
+      ref={editorRef}
+      className="flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4"
+    >
       <div className="flex h-6 items-center pr-0.5 pl-1">
         <div className="flex grow items-center gap-x-1">
           <AutoWidthInput
             value={currentFields.name}
             placeholder={t(($) => $['nodes.llm.jsonSchema.fieldNamePlaceholder'], {
-              ns: 'workflow',
+              ns: 'workflowModels',
             })}
             minWidth={80}
             maxWidth={300}
@@ -247,7 +251,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
           />
           {currentFields.required && (
             <div className="px-1 py-0.5 system-2xs-medium-uppercase text-text-warning">
-              {t(($) => $['nodes.llm.jsonSchema.required'], { ns: 'workflow' })}
+              {t(($) => $['nodes.llm.jsonSchema.required'], { ns: 'workflowModels' })}
             </div>
           )}
         </div>
@@ -255,6 +259,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
         <Separator decorative orientation="vertical" className="mx-2 h-3" />
         {isAdvancedEditing ? (
           <AdvancedActions
+            target={editorRef}
             isConfirmDisabled={currentFields.name === ''}
             onCancel={handleCancel}
             onConfirm={handleConfirm}
@@ -275,7 +280,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
             value={currentFields.description}
             className="h-4 w-full p-0 system-xs-regular text-text-tertiary caret-[#295EFF] outline-hidden placeholder:system-xs-regular placeholder:text-text-placeholder"
             placeholder={t(($) => $['nodes.llm.jsonSchema.descriptionPlaceholder'], {
-              ns: 'workflow',
+              ns: 'workflowModels',
             })}
             onChange={handleDescriptionChange}
             onBlur={handleDescriptionBlur}

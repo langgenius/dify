@@ -42,6 +42,7 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableResponse,
 )
 from graphon.variables.types import SegmentType
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -95,6 +96,7 @@ def _api_prerequisite[T, **P, R](
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables")
 class RagPipelineVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc(params=query_params_from_model(PaginationQuery))
     @console_ns.response(
         200,
@@ -375,6 +377,7 @@ class RagPipelineSystemVariableCollectionApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/environment-variables")
 class RagPipelineEnvironmentVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.response(
         200,
         "Environment variables retrieved successfully",

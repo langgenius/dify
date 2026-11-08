@@ -1,40 +1,42 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin } from './types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
-import { useTheme } from 'next-themes'
 import * as React from 'react'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import usePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useMarketplaceDetailNavigation } from '@/app/components/plugins/marketplace/use-detail-navigation'
-import { getPluginLinkInMarketplace } from '@/app/components/plugins/marketplace/utils'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import Badge from '../base/badge'
 import Icon from './card/base/card-icon'
 import Description from './card/base/description'
 import DownloadCount from './card/base/download-count'
-import Title from './card/base/title'
 
 type Props = Readonly<{
   className?: string
+  marketplace: MarketplaceLinks
   payload: Plugin
 }>
 
-const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
+const ProviderCardComponent: FC<Props> = ({ className, marketplace, payload }) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation(['plugin'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const [
     isShowInstallFromMarketplace,
     { setTrue: showInstallFromMarketplace, setFalse: hideInstallFromMarketplace },
   ] = useBoolean(false)
   const { canInstallPlugin } = usePluginInstallPermission()
   const { org, label } = payload
+  const pluginLabel = getValueFromI18nObject(label)
+  const titleId = useId()
   const locale = useLocale()
   const navigation = useMarketplaceDetailNavigation()
 
@@ -42,7 +44,8 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
   const marketplaceLinkParams = useMemo(() => ({ language: locale, theme }), [locale, theme])
 
   return (
-    <div
+    <article
+      aria-labelledby={titleId}
       className={cn(
         'group relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg',
         className,
@@ -51,9 +54,15 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
       {/* Header */}
       <div className="flex">
         <Icon src={payload.icon} />
-        <div className="ml-3 w-0 grow">
+        <div className="ms-3 w-0 grow">
           <div className="flex h-5 items-center">
-            <Title title={getValueFromI18nObject(label)} />
+            <h2
+              id={titleId}
+              className="truncate system-md-semibold text-text-secondary"
+              title={pluginLabel}
+            >
+              {pluginLabel}
+            </h2>
             {/* <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" /> */}
           </div>
           <div className="mb-1 flex h-4 items-center justify-between">
@@ -75,16 +84,21 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
           <Badge key={tag.name} text={tag.name} />
         ))}
       </div>
-      <div className="absolute inset-x-0 bottom-0 hidden items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 group-hover:flex">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100">
         {canInstallPlugin && (
-          <Button className="grow" variant="primary" onClick={showInstallFromMarketplace}>
+          <Button
+            aria-label={`${t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })} ${pluginLabel}`}
+            className="grow"
+            variant="primary"
+            onClick={showInstallFromMarketplace}
+          >
             {t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
           </Button>
         )}
         <a
+          aria-label={`${t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })} ${pluginLabel}`}
           href={
-            navigation.pluginHref(payload) ??
-            getPluginLinkInMarketplace(payload, marketplaceLinkParams)
+            navigation.pluginHref(payload) ?? marketplace.plugin(payload, marketplaceLinkParams)
           }
           target="_blank"
           rel="noopener noreferrer"
@@ -102,7 +116,7 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
           onSuccess={hideInstallFromMarketplace}
         />
       )}
-    </div>
+    </article>
   )
 }
 

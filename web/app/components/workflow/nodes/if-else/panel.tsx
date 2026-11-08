@@ -12,7 +12,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.ifElse'
 
 const Panel: FC<NodePanelProps<IfElseNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
   const {
     readOnly,
     inputs,
@@ -69,9 +69,12 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({ id, data }) => {
         </Button>
       </div>
       <div className="mx-3 my-2 h-px bg-divider-subtle"></div>
-      <Field title={t(($) => $[`${i18nPrefix}.else`], { ns: 'workflow' })} className="px-4 py-2">
+      <Field
+        title={t(($) => $[`${i18nPrefix}.else`], { ns: 'workflowLogic' })}
+        className="px-4 py-2"
+      >
         <div className="text-xs leading-4.5 font-normal text-text-tertiary">
-          {t(($) => $[`${i18nPrefix}.elseDescription`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.elseDescription`], { ns: 'workflowLogic' })}
         </div>
       </Field>
     </div>

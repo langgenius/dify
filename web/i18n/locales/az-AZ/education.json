@@ -1,4 +1,5 @@
 {
+  "activateFailed": "Təhsil endirimini aktivləşdirə bilmədik. Cari təhsil statusu təsdiqiniz hələ də aktiv ola bilər və ya bu e-poçt artıq uyğun deyil.",
   "applied.activeSubscription.description": "Aktiv abunəliyiniz var. Abunəliyinizin vaxtı bitdikdən sonra təhsil endirimindən istifadə edə bilərsiniz. Abunəliyinizi <stripeLink>Stripe</stripeLink> üzərindən təsdiqləyin.",
   "applied.noPaymentPermission.description": "Bu iş sahəsində ödəniş icazəniz yoxdur. Təhsil endirimindən istifadə etmək üçün ödənişləri idarə edə bildiyiniz iş sahəsinə keçin.",
   "applied.noPaymentPermission.returnHome": "Dify-a qayıt",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "xüsusi 100% endirim kuponu",
   "toVerifiedTip.end": "(Dify peşəkar planı üçün).",
   "toVerifiedTip.front": "Artıq təsdiqlənmiş təhsil statusu almaq hüququnuz var. Prosesi tamamlamaq üçün təhsil məlumatlarınızı aşağıya daxil edin. Əldə edəcəyiniz üstünlük:",
-  "useEducationDiscount": "Təhsil endirimindən istifadə et"
+  "tooManyAttempts": "Həddindən çox cəhd. Zəhmət olmasa, sonra yenidən cəhd edin.",
+  "useEducationDiscount": "Təhsil endirimindən istifadə et",
+  "verifyFailed": "Təhsil statusunuzu təsdiqləyə bilmədik. Bu yaxınlarda təsdiqləmisinizsə, cari təhsil statusu təsdiqiniz hələ də aktiv ola bilər. Əks halda, zəhmət olmasa, sonra yenidən cəhd edin."
 }

@@ -7,7 +7,7 @@ import { useStore } from '../store'
 import { WorkflowVersion } from '../types'
 
 const RestoringTitle = () => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowHistory'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { formatTime } = useTimestamp()
   const currentVersion = useStore((state) => state.currentVersion)
@@ -17,10 +17,10 @@ const RestoringTitle = () => {
     : t(($) => $['common.published'], { ns: 'workflow' })
 
   const versionName = isDraft
-    ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflow' })
+    ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflowHistory' })
     : getWorkflowVersionName(
         currentVersion,
-        t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+        t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
       )
 
   return (

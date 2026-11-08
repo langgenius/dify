@@ -1,4 +1,8 @@
 {
+  "callback.error": "Autorisierung fehlgeschlagen",
+  "callback.errorHint": "Bitte kehren Sie zur vorherigen Seite zurück und versuchen Sie es erneut.",
+  "callback.success": "Autorisierung abgeschlossen",
+  "callback.successHint": "Sie können diesen Tab jetzt schließen und zur vorherigen Seite zurückkehren.",
   "connect": "Verbinden mit",
   "continue": "Fortsetzen",
   "error.authAppInfoFetchFailed": "Fehler beim Abrufen der App-Informationen für die Autorisierung",

@@ -16,7 +16,7 @@ type ConditionValueProps = {
   value: string | string[] | boolean
 }
 const ConditionValue = ({ variableSelector, labelName, operator, value }: ConditionValueProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const nodes = useNodes()
   const variableName =
     labelName ||
@@ -24,7 +24,7 @@ const ConditionValue = ({ variableSelector, labelName, operator, value }: Condit
       ? variableSelector.slice(0).join('.')
       : variableSelector.slice(1).join('.'))
   const operatorName = isComparisonOperatorNeedTranslate(operator)
-    ? t(($) => $[`nodes.ifElse.comparisonOperator.${operator}`], { ns: 'workflow' })
+    ? t(($) => $[`nodes.ifElse.comparisonOperator.${operator}`], { ns: 'workflowLogic' })
     : operator
   const notHasValue = comparisonOperatorNotRequireValue(operator)
   const node: Node<CommonNodeType> | undefined = nodes.find(
@@ -55,7 +55,7 @@ const ConditionValue = ({ variableSelector, labelName, operator, value }: Condit
         (item) => item.value === (Array.isArray(value) ? value[0] : value),
       )[0]
       return name
-        ? t(($) => $[`nodes.ifElse.optionName.${name.i18nKey}`], { ns: 'workflow' }).replace(
+        ? t(($) => $[`nodes.ifElse.optionName.${name.i18nKey}`], { ns: 'workflowLogic' }).replace(
             /\{\{#([^#]*)#\}\}/g,
             (a, b) => {
               const arr: string[] = b.split('.')

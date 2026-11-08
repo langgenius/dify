@@ -9,6 +9,7 @@ import { consoleQuery } from '@/service/console'
 
 export type AgentConfigApiContext = {
   agentId: string
+  trialAppId?: string
   draftType?: 'draft' | 'debug_build'
   versionId?: string
   workflow?: {

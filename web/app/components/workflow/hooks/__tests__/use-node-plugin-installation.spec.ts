@@ -1,12 +1,11 @@
 import type { CommonNodeType } from '../../types'
-import type { CollectionProviderType } from '@/app/components/tools/types'
-import { QueryClient } from '@tanstack/react-query'
-import { act } from '@testing-library/react'
+import { zTriggerProviderApiEntity } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { act, waitFor } from '@testing-library/react'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
-import { consoleQuery } from '@/service/console'
-import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { renderWorkflowHook as renderHookBase } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useNodePluginInstallation } from '../use-node-plugin-installation'
 
@@ -14,31 +13,16 @@ const mockBuiltInTools = vi.fn()
 const mockCustomTools = vi.fn()
 const mockWorkflowTools = vi.fn()
 const mockMcpTools = vi.fn()
-const mockInvalidToolsByType = vi.fn()
 const mockTriggerPlugins = vi.fn()
-const mockInvalidateTriggers = vi.fn()
 let mockWorkspacePermissionKeys = ['plugin.install']
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
+const renderWorkflowHook: typeof renderHookBase = (callback, options) => {
+  const { queryClient } = createConsoleQueryWrapper({
+    queryClient: options?.queryClient,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: (enabled: boolean) => mockBuiltInTools(enabled),
-  useAllCustomTools: (enabled: boolean) => mockCustomTools(enabled),
-  useAllWorkflowTools: (enabled: boolean) => mockWorkflowTools(enabled),
-  useAllMCPTools: (enabled: boolean) => mockMcpTools(enabled),
-  useInvalidToolsByType: (providerType?: CollectionProviderType) =>
-    mockInvalidToolsByType(providerType),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: (enabled: boolean) => mockTriggerPlugins(enabled),
-  useInvalidateAllTriggerPlugins: () => mockInvalidateTriggers,
-}))
+  })
+  return renderHookBase(callback, { ...options, queryClient })
+}
 
 const makeToolNode = (overrides: Partial<CommonNodeType> = {}) =>
   ({
@@ -76,18 +60,31 @@ const makeDataSourceNode = (overrides: Partial<CommonNodeType> = {}) =>
     ...overrides,
   }) as CommonNodeType
 
-const matchedTool = {
+const matchedTool = createToolProviderFixture({
   plugin_id: 'plugin-search',
-  provider: 'search',
+  id: 'search',
   name: 'search',
   plugin_unique_identifier: 'plugin-search@1.0.0',
-}
+})
 
-const matchedTriggerProvider = {
-  id: 'trigger-provider',
+const matchedTriggerProvider = zTriggerProviderApiEntity.parse({
   name: 'trigger-provider',
+  author: 'Dify',
+  label: { en_US: 'Mail events' },
+  description: { en_US: 'Receive new messages' },
   plugin_id: 'trigger-plugin',
-}
+  plugin_unique_identifier: 'trigger-plugin@1.0.0',
+  supported_creation_methods: ['MANUAL'],
+  events: [
+    {
+      name: 'received',
+      identity: { author: 'Dify', name: 'received', label: { en_US: 'Message received' } },
+      description: { en_US: 'A new message has arrived' },
+      parameters: [],
+      output_schema: { type: 'object', properties: { message: { type: 'string' } } },
+    },
+  ],
+})
 
 const matchedDataSource = createDatasourceProvider({
   provider: 'knowledge-provider',
@@ -97,15 +94,12 @@ const matchedDataSource = createDatasourceProvider({
 
 describe('useNodePluginInstallation', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockWorkspacePermissionKeys = ['plugin.install']
-    mockBuiltInTools.mockReturnValue({ data: undefined, isLoading: false })
-    mockCustomTools.mockReturnValue({ data: undefined, isLoading: false })
-    mockWorkflowTools.mockReturnValue({ data: undefined, isLoading: false })
-    mockMcpTools.mockReturnValue({ data: undefined, isLoading: false })
-    mockInvalidToolsByType.mockReturnValue(undefined)
-    mockTriggerPlugins.mockReturnValue({ data: undefined, isLoading: false })
-    mockInvalidateTriggers.mockReset()
+    mockBuiltInTools.mockReturnValue(new Promise(() => {}))
+    mockCustomTools.mockReturnValue(new Promise(() => {}))
+    mockWorkflowTools.mockReturnValue(new Promise(() => {}))
+    mockMcpTools.mockReturnValue(new Promise(() => {}))
+    mockTriggerPlugins.mockReset().mockResolvedValue([])
   })
 
   it('should return the noop installation state for non plugin-dependent nodes', () => {
@@ -117,52 +111,55 @@ describe('useNodePluginInstallation', () => {
       } as CommonNodeType),
     )
 
-    expect(result.current).toEqual({
+    expect(result.current).toMatchObject({
       isChecking: false,
       isMissing: false,
       uniqueIdentifier: undefined,
       canInstall: false,
-      onInstallSuccess: expect.any(Function),
       shouldDim: false,
     })
   })
 
-  it('should report loading and invalidate built-in tools while the collection is resolving', () => {
-    const invalidateTools = vi.fn()
-    mockBuiltInTools.mockReturnValue({ data: undefined, isLoading: true })
-    mockInvalidToolsByType.mockReturnValue(invalidateTools)
-
+  it('should report loading and refresh built-in tools after installation', async () => {
+    let resolve!: (providers: (typeof matchedTool)[]) => void
+    const promise = new Promise<(typeof matchedTool)[]>((finish) => {
+      resolve = finish
+    })
+    mockBuiltInTools.mockReturnValueOnce(promise).mockResolvedValue([matchedTool])
     const { result } = renderWorkflowHook(() => useNodePluginInstallation(makeToolNode()))
 
-    expect(mockBuiltInTools).toHaveBeenCalledWith(true)
     expect(result.current.isChecking).toBe(true)
     expect(result.current.isMissing).toBe(false)
-    expect(result.current.uniqueIdentifier).toBe('plugin-search@1.0.0')
     expect(result.current.canInstall).toBe(true)
     expect(result.current.shouldDim).toBe(true)
+    await act(async () => resolve([]))
+    await waitFor(() => expect(result.current.isMissing).toBe(true))
 
-    act(() => {
-      result.current.onInstallSuccess()
-    })
+    act(() => result.current.onInstallSuccess())
 
-    expect(invalidateTools).toHaveBeenCalled()
+    await waitFor(() => expect(result.current.shouldDim).toBe(false))
+    expect(result.current.isMissing).toBe(false)
+    expect(result.current.isChecking).toBe(false)
   })
 
   it.each([
     [CollectionType.custom, mockCustomTools],
     [CollectionType.workflow, mockWorkflowTools],
     [CollectionType.mcp, mockMcpTools],
-  ])('should resolve matched %s tool collections without dimming', (providerType, hookMock) => {
-    hookMock.mockReturnValue({ data: [matchedTool], isLoading: false })
+  ])(
+    'should resolve matched %s tool collections without dimming',
+    async (providerType, hookMock) => {
+      hookMock.mockResolvedValue([matchedTool])
 
-    const { result } = renderWorkflowHook(() =>
-      useNodePluginInstallation(makeToolNode({ provider_type: providerType })),
-    )
+      const { result } = renderWorkflowHook(() =>
+        useNodePluginInstallation(makeToolNode({ provider_type: providerType })),
+      )
 
-    expect(result.current.isChecking).toBe(false)
-    expect(result.current.isMissing).toBe(false)
-    expect(result.current.shouldDim).toBe(false)
-  })
+      await waitFor(() => expect(result.current.isChecking).toBe(false))
+      expect(result.current.isMissing).toBe(false)
+      expect(result.current.shouldDim).toBe(false)
+    },
+  )
 
   it('should keep plugin tool collections installable without collection state', () => {
     const { result } = renderWorkflowHook(() =>
@@ -183,45 +180,47 @@ describe('useNodePluginInstallation', () => {
     expect(result.current.shouldDim).toBe(false)
   })
 
-  it('should not allow installing missing tool plugins without plugin install permission', () => {
+  it('should not allow installing missing tool plugins without plugin install permission', async () => {
     mockWorkspacePermissionKeys = []
-    mockBuiltInTools.mockReturnValue({ data: [], isLoading: false })
+    mockBuiltInTools.mockResolvedValue([])
 
     const { result } = renderWorkflowHook(() => useNodePluginInstallation(makeToolNode()))
 
-    expect(result.current.isMissing).toBe(true)
+    await waitFor(() => expect(result.current.isMissing).toBe(true))
     expect(result.current.uniqueIdentifier).toBe('plugin-search@1.0.0')
     expect(result.current.canInstall).toBe(false)
   })
 
-  it('should flag missing trigger plugins and invalidate trigger data after installation', () => {
-    mockTriggerPlugins.mockReturnValue({ data: [matchedTriggerProvider], isLoading: false })
+  it('should clear missing trigger and dimming state when installation refreshes the provider', async () => {
+    const unrelatedProvider = {
+      ...matchedTriggerProvider,
+      name: 'calendar-provider',
+      plugin_id: 'calendar-plugin',
+      plugin_unique_identifier: 'calendar-plugin@1.0.0',
+    }
+    mockTriggerPlugins
+      .mockResolvedValueOnce([unrelatedProvider])
+      .mockResolvedValue([unrelatedProvider, matchedTriggerProvider])
+    const { result } = renderWorkflowHook(() => useNodePluginInstallation(makeTriggerNode()))
 
-    const { result } = renderWorkflowHook(() =>
-      useNodePluginInstallation(
-        makeTriggerNode({
-          provider_id: 'missing-trigger',
-          provider_name: 'missing-trigger',
-          plugin_id: 'missing-trigger',
-        }),
-      ),
-    )
-
-    expect(mockTriggerPlugins).toHaveBeenCalledWith(true)
+    await waitFor(() => expect(result.current.isMissing).toBe(true))
     expect(result.current.isChecking).toBe(false)
-    expect(result.current.isMissing).toBe(true)
     expect(result.current.shouldDim).toBe(true)
+    expect(result.current.canInstall).toBe(true)
 
-    act(() => {
-      result.current.onInstallSuccess()
-    })
+    act(() => result.current.onInstallSuccess())
 
-    expect(mockInvalidateTriggers).toHaveBeenCalled()
+    await waitFor(() => expect(result.current.shouldDim).toBe(false))
+    expect(result.current.isMissing).toBe(false)
+    expect(result.current.isChecking).toBe(false)
   })
 
-  it('should treat the trigger plugin list as still loading when it has not resolved yet', () => {
-    mockTriggerPlugins.mockReturnValue({ data: undefined, isLoading: true })
-
+  it('should treat the trigger plugin list as still loading when it has not resolved yet', async () => {
+    let resolve!: (providers: (typeof matchedTriggerProvider)[]) => void
+    const promise = new Promise<(typeof matchedTriggerProvider)[]>((finish) => {
+      resolve = finish
+    })
+    mockTriggerPlugins.mockReturnValueOnce(promise)
     const { result } = renderWorkflowHook(() =>
       useNodePluginInstallation(
         makeTriggerNode({ plugin_unique_identifier: undefined, plugin_id: 'trigger-plugin' }),
@@ -230,9 +229,12 @@ describe('useNodePluginInstallation', () => {
 
     expect(result.current.isChecking).toBe(true)
     expect(result.current.isMissing).toBe(false)
-    expect(result.current.uniqueIdentifier).toBe('trigger-plugin')
     expect(result.current.canInstall).toBe(false)
     expect(result.current.shouldDim).toBe(true)
+    await act(async () => resolve([matchedTriggerProvider]))
+    await waitFor(() => expect(result.current.isChecking).toBe(false))
+    expect(result.current.isMissing).toBe(false)
+    expect(result.current.shouldDim).toBe(false)
   })
 
   it('should track missing and matched data source providers based on workflow store state', () => {
@@ -256,16 +258,9 @@ describe('useNodePluginInstallation', () => {
     expect(missingRender.result.current.isMissing).toBe(true)
     expect(missingRender.result.current.shouldDim).toBe(true)
 
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { staleTime: Infinity, retry: false } },
-    })
-    seedAccountProfileQuery(queryClient)
-    const catalogKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
-    queryClient.setQueryData(catalogKey, [matchedDataSource])
     const matchedRender = renderWorkflowHook(
       () => useNodePluginInstallation(makeDataSourceNode()),
       {
-        queryClient,
         initialStoreState: {
           dataSourceList: [matchedDataSource],
         },
@@ -274,13 +269,6 @@ describe('useNodePluginInstallation', () => {
 
     expect(matchedRender.result.current.isMissing).toBe(false)
     expect(matchedRender.result.current.shouldDim).toBe(false)
-
-    act(() => {
-      matchedRender.result.current.onInstallSuccess()
-    })
-
-    expect(queryClient.getQueryState(catalogKey)?.isInvalidated).toBe(true)
-    queryClient.clear()
   })
 
   it('should keep data sources in checking state before the list is loaded', () => {
@@ -290,4 +278,22 @@ describe('useNodePluginInstallation', () => {
     expect(result.current.isMissing).toBe(false)
     expect(result.current.shouldDim).toBe(true)
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.triggers.get': (input) => mockTriggerPlugins(input),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': (input) => mockBuiltInTools(input),
+      'workspaces.current.tools.api.get': (input) => mockCustomTools(input),
+      'workspaces.current.tools.workflow.get': (input) => mockWorkflowTools(input),
+      'workspaces.current.tools.mcp.get': (input) => mockMcpTools(input),
+    }),
+  }
 })

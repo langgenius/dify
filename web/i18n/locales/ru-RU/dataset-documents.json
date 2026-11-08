@@ -257,6 +257,7 @@
   "segment.searchResults_one": "РЕЗУЛЬТАТ",
   "segment.searchResults_other": "РЕЗУЛЬТАТЫ",
   "segment.searchResults_zero": "РЕЗУЛЬТАТ",
+  "segment.statusFilterLabel": "Фильтровать сегменты по статусу",
   "segment.summary": "РЕЗЮМЕ",
   "segment.summaryPlaceholder": "Напишите краткое резюме для лучшего поиска…"
 }

@@ -1,15 +1,17 @@
 'use client'
+
 import type { FC } from 'react'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -27,7 +29,6 @@ import { InputVarType } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
-import { AppModeEnum } from '@/types/app'
 import { getNewVar, hasDuplicateStr } from '@/utils/var'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
@@ -78,7 +79,7 @@ const getDuplicateError = (list: PromptVariable[]) => {
       typeName: 'variableConfig.varName',
     } as const
   }
-  if (hasDuplicateStr(list.map((item) => item.name as string))) {
+  if (hasDuplicateStr(list.map((item) => item.name))) {
     return {
       errorMsgKey: 'varKeyError.keyAlreadyExists',
       typeName: 'variableConfig.labelName',
@@ -244,7 +245,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     (index: number) => {
       const removeVar = promptVariables[index]
 
-      if (mode === AppModeEnum.COMPLETION && dataSets.length > 0 && removeVar!.is_context_var) {
+      if (mode === 'completion' && dataSets.length > 0 && removeVar!.is_context_var) {
         showDeleteContextVarModal()
         setRemoveIndex(index)
         return
@@ -335,7 +336,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       {!hasVar && (
         <div className="mt-1 px-3 pb-3">
           <div className="pt-2 pb-1 text-xs text-text-tertiary">
-            {t(($) => $.notSetVar, { ns: 'appDebug' })}
+            {t(($) => $.notSetVar, { ns: 'appDebug', input: '{{input}}' })}
           </div>
         </div>
       )}
@@ -400,18 +401,18 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         onOpenChange={(open) => !open && hideDeleteContextVarModal()}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTitle'], {
                 ns: 'appDebug',
-                varName: promptVariables[removeIndex as number]?.name,
+                varName: promptVariables[removeIndex as number]?.name ?? '',
               })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTip'], { ns: 'appDebug' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -423,7 +424,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </Panel>

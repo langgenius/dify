@@ -5,19 +5,22 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
+from functools import partial
 from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import Session
 
 import tasks.document_indexing_update_task as task_module
-from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DocumentRef
 from tasks.document_indexing_update_task import document_indexing_update_task
 
 
@@ -35,7 +38,7 @@ def task_harness(
     )
     runner = MagicMock()
     processor = MagicMock()
-    monkeypatch.setattr(task_module, "IndexingRunner", MagicMock(return_value=runner))
+    monkeypatch.setattr(task_module, "build_document_indexing_service", MagicMock(return_value=runner))
     monkeypatch.setattr(
         task_module,
         "IndexProcessorFactory",
@@ -48,7 +51,7 @@ def _persist_rows(
     session: Session,
     *,
     indexing_technique: IndexTechniqueType = IndexTechniqueType.HIGH_QUALITY,
-    summary_index_setting: dict | None = None,
+    summary_index_setting: dict[str, object] | None = None,
     doc_form: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
     need_summary: bool = True,
     with_segment: bool = False,
@@ -100,9 +103,12 @@ def _persist_rows(
     return dataset, document
 
 
-def _complete_indexing(documents: list[Document], _session: Session) -> None:
-    for document in documents:
-        document.indexing_status = IndexingStatus.COMPLETED
+def _complete_indexing(refs: list[DocumentRef], *, bind: Engine | Connection) -> None:
+    with Session(bind) as writer, writer.begin():
+        for ref in refs:
+            document = writer.get(Document, ref.document_id)
+            assert document is not None
+            document.indexing_status = IndexingStatus.COMPLETED
 
 
 def _persist_attachment(
@@ -145,7 +151,7 @@ def test_queues_summary_when_all_persisted_conditions_match(
 ) -> None:
     runner, _processor = task_harness
     dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
-    runner.run.side_effect = _complete_indexing
+    runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
     delay = MagicMock()
     monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 
@@ -173,8 +179,8 @@ def test_skips_summary_when_persisted_eligibility_does_not_match(
     sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
     monkeypatch: pytest.MonkeyPatch,
-    dataset_changes: dict,
-    document_changes: dict,
+    dataset_changes: dict[str, object],
+    document_changes: dict[str, object],
 ) -> None:
     runner, _processor = task_harness
     dataset, document = _persist_rows(
@@ -186,7 +192,7 @@ def test_skips_summary_when_persisted_eligibility_does_not_match(
     for key, value in document_changes.items():
         setattr(document, key, value)
     sqlite_session.commit()
-    runner.run.side_effect = _complete_indexing
+    runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
     delay = MagicMock()
     monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 
@@ -238,8 +244,8 @@ def test_skips_summary_when_dataset_is_removed_after_indexing(
     runner, _processor = task_harness
     dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
 
-    def complete_and_remove(documents: list[Document], session: Session) -> None:
-        _complete_indexing(documents, session)
+    def complete_and_remove(documents: list[DocumentRef], session: Session) -> None:
+        _complete_indexing(documents, bind=session.get_bind())
         persisted_dataset = session.get(Dataset, dataset.id)
         assert persisted_dataset is not None
         session.delete(persisted_dataset)
@@ -276,7 +282,7 @@ def test_queue_failure_is_swallowed_after_successful_indexing(
 ) -> None:
     runner, _processor = task_harness
     dataset, document = _persist_rows(sqlite_session, summary_index_setting={"enable": True})
-    runner.run.side_effect = _complete_indexing
+    runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
     monkeypatch.setattr(
         task_module.generate_summary_index_task,
         "delay",
@@ -300,7 +306,7 @@ def test_cleans_and_deletes_persisted_segments_with_real_session(
         summary_index_setting={"enable": True},
         with_segment=True,
     )
-    runner.run.side_effect = _complete_indexing
+    runner.run.side_effect = partial(_complete_indexing, bind=sqlite_session.get_bind())
     delay = MagicMock()
     monkeypatch.setattr(task_module.generate_summary_index_task, "delay", delay)
 

@@ -26,7 +26,7 @@ type ModalPropsType = {
 const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
   const secretLabelId = React.useId()
 
-  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'modelProvider'])
   const workflowStore = useWorkflowStore()
   const [type, setType] = React.useState<EnvironmentVariable['value_type']>('string')
   const [name, setName] = React.useState('')
@@ -233,7 +233,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
             {t(($) => $['env.modal.name'], { ns: 'workflow' })}
           </FieldLabel>
           <Input
-            placeholder={t(($) => $['env.modal.namePlaceholder'], { ns: 'workflow' }) || ''}
+            placeholder={t(($) => $['env.modal.namePlaceholder'], { ns: 'workflow' })}
             value={name}
             onChange={handleVarNameChange}
             onBlur={(e) => checkVariableName(e.target.value)}
@@ -244,7 +244,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
         <Field name="value" className="mb-4">
           {type === 'llm' ? (
             <div className="py-1 system-sm-semibold text-text-secondary">
-              {t(($) => $['modelProvider.model'], { ns: 'common' })}
+              {t(($) => $['modelProvider.model'], { ns: 'modelProvider' })}
             </div>
           ) : (
             <FieldLabel className="system-sm-semibold">
@@ -262,7 +262,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
             <Textarea
               className="h-20 p-2"
               value={typeof value === 'string' || typeof value === 'number' ? value : ''}
-              placeholder={t(($) => $['env.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
+              placeholder={t(($) => $['env.modal.valuePlaceholder'], { ns: 'workflow' })}
               onValueChange={(value) => setValue(value)}
             />
           ) : (
@@ -287,7 +287,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
           <Textarea
             className="h-20 p-2"
             value={description}
-            placeholder={t(($) => $['env.modal.descriptionPlaceholder'], { ns: 'workflow' }) || ''}
+            placeholder={t(($) => $['env.modal.descriptionPlaceholder'], { ns: 'workflow' })}
             onValueChange={(value) => setDescription(value)}
           />
         </Field>

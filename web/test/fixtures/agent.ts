@@ -1,9 +1,11 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { zAgentAppDetailWithSite } from '@dify/contracts/api/console/agent/zod.gen'
 import { AgentPermission } from '@/features/agent-v2/acl'
+import { createAppDetailFixture } from './app'
 
 export function createAgentFixture(overrides: Partial<AgentAppDetailWithSite> = {}) {
   return zAgentAppDetailWithSite.parse({
+    ...createAppDetailFixture(),
     id: 'agent-1',
     app_id: 'app-1',
     name: 'Agent',

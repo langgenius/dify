@@ -10,7 +10,7 @@ type FeatureIconProps = {
   showFeaturesLabel?: boolean
 }
 function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
 
   if (feature === ModelFeatureEnum.vision) {
     if (showFeaturesLabel) {
@@ -35,7 +35,7 @@ function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps
         />
         <TooltipContent>
           {t(($) => $['modelProvider.featureSupported'], {
-            ns: 'common',
+            ns: 'modelProvider',
             feature: ModelFeatureTextEnum.vision,
           })}
         </TooltipContent>
@@ -66,7 +66,7 @@ function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps
         />
         <TooltipContent>
           {t(($) => $['modelProvider.featureSupported'], {
-            ns: 'common',
+            ns: 'modelProvider',
             feature: ModelFeatureTextEnum.document,
           })}
         </TooltipContent>
@@ -97,7 +97,7 @@ function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps
         />
         <TooltipContent>
           {t(($) => $['modelProvider.featureSupported'], {
-            ns: 'common',
+            ns: 'modelProvider',
             feature: ModelFeatureTextEnum.audio,
           })}
         </TooltipContent>
@@ -128,7 +128,7 @@ function FeatureIcon({ className, feature, showFeaturesLabel }: FeatureIconProps
         />
         <TooltipContent>
           {t(($) => $['modelProvider.featureSupported'], {
-            ns: 'common',
+            ns: 'modelProvider',
             feature: ModelFeatureTextEnum.video,
           })}
         </TooltipContent>
