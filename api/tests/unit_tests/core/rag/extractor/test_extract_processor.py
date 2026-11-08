@@ -187,6 +187,21 @@ class TestExtractProcessorLoaders:
         assert text == "extracted-by-PdfExtractor"
         assert factory.calls[-1][0] == "PdfExtractor"
 
+    def test_load_from_url_detects_extension_from_url_path_when_query_string_present(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        # A signed/download URL keeps its extension in the path but appends a query
+        # string; the suffix must come from the path, not from the raw string.
+        response = httpx.Response(200, headers={"Content-Type": "application/pdf"}, content=b"%PDF-1.1 body")
+        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
+        factory = _patch_all_extractors(monkeypatch)
+        apply_config_overrides(monkeypatch, ETL_TYPE="dify")
+
+        text = ExtractProcessor.load_from_url("https://example.com/report.pdf?token=abc&expires=1", return_text=True)
+
+        assert text == "extracted-by-PdfExtractor"
+        assert factory.calls[-1][0] == "PdfExtractor"
+
 
 class TestExtractProcessorFileRouting:
     @pytest.fixture(autouse=True)
