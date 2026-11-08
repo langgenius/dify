@@ -8,9 +8,7 @@ min-severity = "warn"
 
 # Existing strict-mode debt. Remove a file when bringing it under strict checking.
 project-excludes = [
-  "commands/test_retention.py",
   "dev/test_generate_swagger_specs.py",
-  "commands/test_system.py",
   "controllers/console/app/test_agent_config_inspector.py",
   "controllers/console/app/test_app.py",
   "controllers/console/app/test_app_import.py",
