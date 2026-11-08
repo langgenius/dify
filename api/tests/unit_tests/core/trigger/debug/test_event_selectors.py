@@ -38,7 +38,7 @@ class _DummyRedis:
     def __init__(self):
         self.store: dict[str, str] = {}
 
-    def get(self, key: str) -> object:
+    def get(self, key: str) -> str | None:
         return self.store.get(key)
 
     def setex(self, name: str, time: int, value: str) -> None:
