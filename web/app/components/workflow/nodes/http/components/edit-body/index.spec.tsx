@@ -8,6 +8,10 @@ describe('HTTP body variable support', () => {
     expect(isSupportedHttpBodyVariable(VarType.arrayObject)).toBe(true)
   })
 
+  it('should accept integer variables as numeric body values', () => {
+    expect(isSupportedHttpBodyVariable(VarType.integer)).toBe(true)
+  })
+
   it('should keep unsupported file variables excluded', () => {
     expect(isSupportedHttpBodyVariable(VarType.file)).toBe(false)
     expect(isSupportedHttpBodyVariable(VarType.arrayFile)).toBe(false)

@@ -92,7 +92,12 @@ const PrePopulate: FC<Props> = ({
     onChange: onValueSelectorChange!,
     readonly: false,
     filterVar: (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+      const textVariableTypes: readonly VarType[] = [
+        VarType.string,
+        VarType.number,
+        VarType.integer,
+        VarType.secret,
+      ]
       return textVariableTypes.includes(varPayload.type)
     },
   }

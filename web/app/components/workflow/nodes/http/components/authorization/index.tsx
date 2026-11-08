@@ -69,7 +69,12 @@ function AuthorizationForm({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+      const textVariableTypes: readonly VarType[] = [
+        VarType.string,
+        VarType.number,
+        VarType.integer,
+        VarType.secret,
+      ]
 
       return textVariableTypes.includes(varPayload.type)
     },

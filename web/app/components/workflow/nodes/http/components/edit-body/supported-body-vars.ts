@@ -3,6 +3,7 @@ import { VarType } from '@/app/components/workflow/types'
 const HTTP_BODY_VARIABLE_TYPES: VarType[] = [
   VarType.string,
   VarType.number,
+  VarType.integer,
   VarType.secret,
   VarType.object,
   VarType.arrayNumber,

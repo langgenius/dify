@@ -166,7 +166,12 @@ export const getFilterVar = (state: FormInputState) => {
     }
   if (state.isString || state.isDate)
     return (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+      const textVariableTypes: readonly VarType[] = [
+        VarType.string,
+        VarType.number,
+        VarType.integer,
+        VarType.secret,
+      ]
       return textVariableTypes.includes(varPayload.type)
     }
   if (state.isFile)

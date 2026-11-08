@@ -131,7 +131,12 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   )
 
   const filterVar = useCallback((varPayload: Var) => {
-    const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+    const textVariableTypes: readonly VarType[] = [
+      VarType.string,
+      VarType.number,
+      VarType.integer,
+      VarType.secret,
+    ]
 
     return textVariableTypes.includes(varPayload.type)
   }, [])
