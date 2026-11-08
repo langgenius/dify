@@ -5,9 +5,9 @@ import json
 from datetime import UTC, datetime
 from typing import cast
 from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
-import pytz
 from typing_extensions import TypedDict
 
 from core.plugin.entities.request import TriggerInvokeEventResponse
@@ -108,7 +108,7 @@ class TestTriggerDebugEventSelectorsCases:
         redis_client = _DummyRedis()
         poller = _make_poller(monkeypatch, redis_client)
 
-        localized_time = pytz.timezone("Asia/Shanghai").localize(datetime(2025, 1, 1, 20, 0, 0))
+        localized_time = datetime(2025, 1, 1, 20, 0, 0, tzinfo=ZoneInfo("Asia/Shanghai"))
 
         cron_hash = hashlib.sha256(dummy_schedule_config.cron_expression.encode()).hexdigest()
         cache_key = poller.schedule_debug_runtime_key(cron_hash)
