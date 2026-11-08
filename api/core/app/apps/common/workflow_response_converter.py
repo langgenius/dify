@@ -91,6 +91,9 @@ from services.variable_truncator import BaseTruncator, DummyVariableTruncator, V
 _INVOKE_FROM_TO_HITL_SURFACE: Mapping[InvokeFrom, HumanInputSurface] = {
     InvokeFrom.SERVICE_API: HumanInputSurface.SERVICE_API,
     InvokeFrom.OPENAPI: HumanInputSurface.OPENAPI,
+    # Web App runs submit through the public /form endpoints, which only accept
+    # STANDALONE_WEB_APP / EMAIL_* tokens; reuse the surface with that allowlist.
+    InvokeFrom.WEB_APP: HumanInputSurface.OPENAPI,
 }
 
 NodeExecutionId = NewType("NodeExecutionId", str)
