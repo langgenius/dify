@@ -637,7 +637,7 @@ class TestDatasetServiceUpdateAndDeleteDataset:
         # Assert
         assert result is True
         assert db_session_with_containers.get(Dataset, dataset.id) is None
-        dataset_deleted_signal.send.assert_called_once_with(dataset)
+        dataset_deleted_signal.send.assert_called_once_with(dataset, session=db_session_with_containers)
 
     def test_delete_empty_dataset_success(self, db_session_with_containers: Session):
         """Delete a dataset that has no documents and no indexing technique."""
@@ -658,7 +658,7 @@ class TestDatasetServiceUpdateAndDeleteDataset:
         # Assert
         assert result is True
         assert db_session_with_containers.get(Dataset, dataset.id) is None
-        dataset_deleted_signal.send.assert_called_once_with(dataset)
+        dataset_deleted_signal.send.assert_called_once_with(dataset, session=db_session_with_containers)
 
     def test_delete_dataset_with_partial_none_values(self, db_session_with_containers: Session):
         """Delete dataset when indexing_technique is None but doc_form path still exists."""
@@ -679,7 +679,7 @@ class TestDatasetServiceUpdateAndDeleteDataset:
         # Assert
         assert result is True
         assert db_session_with_containers.get(Dataset, dataset.id) is None
-        dataset_deleted_signal.send.assert_called_once_with(dataset)
+        dataset_deleted_signal.send.assert_called_once_with(dataset, session=db_session_with_containers)
 
 
 class TestDatasetServiceRetrievalConfiguration:
