@@ -168,7 +168,7 @@ class SQLAlchemyMetadataRepository:
                     if field.type in ("number", "time") and value.value is not None:
                         try:
                             valid = not isinstance(value.value, bool) and math.isfinite(float(value.value))
-                        except (TypeError, ValueError):
+                        except (TypeError, ValueError, OverflowError):
                             valid = False
                         if not valid:
                             raise ValueError(f"Metadata '{field.name}' must be a number.")

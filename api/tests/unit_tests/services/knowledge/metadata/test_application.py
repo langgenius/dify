@@ -410,6 +410,8 @@ class TestMetadataServiceSessionBoundaryCases:
             ("number", "1e309", False),
             ("number", True, False),
             ("number", False, False),
+            pytest.param("number", 10**400, False, id="number-int-overflow"),
+            ("time", 1767225600, True),
         ],
     )
     def test_number_and_time_values_must_be_numeric(
