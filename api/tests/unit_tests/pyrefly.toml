@@ -246,7 +246,6 @@ project-excludes = [
   "services/rag_pipeline/test_rag_pipeline.py",
   "services/rag_pipeline/test_rag_pipeline_task_proxy.py",
   "services/rag_pipeline/test_rag_pipeline_transform_service.py",
-  "services/retention/workflow_run/test_archive_download_preparation.py",
   "services/retention/workflow_run/test_clear_free_plan_expired_workflow_run_logs.py",
   "services/retention/workflow_run/test_restore_archived_workflow_run.py",
   "services/test_agent_config_service.py",
@@ -260,7 +259,6 @@ project-excludes = [
   "services/data_source/test_provider_service.py",
   "services/knowledge/external/test_service.py",
   "services/test_file_service.py",
-  "services/test_human_input_delivery_test_service.py",
   "services/test_knowledge_retrieval_inner_service.py",
   "services/trigger/test_schedule_service.py",
   "services/test_snippet_dsl_service.py",
@@ -274,7 +272,6 @@ project-excludes = [
   "services/tools/test_tools_transform_service.py",
   "services/test_workflow_draft_variable_service.py",
   "services/workflow/test_workflow_converter.py",
-  "services/test_workflow_event_snapshot_service.py",
   "tasks/app_generate/test_workflow_execute_task.py",
   "../e2e_tests/contracts/test_pytest_dify.py",
 ]
