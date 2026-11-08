@@ -56,7 +56,7 @@ def _published_workflow(*, app: App, dataset_ids: list[str]) -> Workflow:
                 },
             }
         ],
-        "edges": [],
+        "edges": list[dict[str, object]](),
     }
     return Workflow.new(
         tenant_id=app.tenant_id,
