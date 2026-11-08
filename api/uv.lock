@@ -1480,6 +1480,7 @@ dependencies = [
     { name = "sentry-sdk" },
     { name = "slack-sdk" },
     { name = "sseclient-py" },
+    { name = "tzdata" },
     { name = "wechatpy" },
     { name = "werkzeug" },
     { name = "yarl" },
@@ -1540,7 +1541,6 @@ dev = [
     { name = "types-pyopenssl" },
     { name = "types-python-dateutil" },
     { name = "types-python-http-client" },
-    { name = "types-pytz" },
     { name = "types-pywin32" },
     { name = "types-pyyaml" },
     { name = "types-redis" },
@@ -1787,6 +1787,7 @@ requires-dist = [
     { name = "sentry-sdk", specifier = ">=2.57.0,<3.0.0" },
     { name = "slack-sdk", specifier = ">=3.43.0,<4.0.0" },
     { name = "sseclient-py", specifier = ">=1.8.0,<2.0.0" },
+    { name = "tzdata", specifier = ">=2025.2" },
     { name = "wechatpy", specifier = ">=1.8.18,<2.0.0" },
     { name = "werkzeug", specifier = ">=3.1.7,<4.0.0" },
     { name = "yarl", specifier = ">=1.25.1,<2.0.0" },
@@ -1847,7 +1848,6 @@ dev = [
     { name = "types-pyopenssl", specifier = ">=24.1.0" },
     { name = "types-python-dateutil", specifier = ">=2.9.0.20261029" },
     { name = "types-python-http-client", specifier = ">=3.3.7.20260518" },
-    { name = "types-pytz", specifier = ">=2026.5.0.20261006" },
     { name = "types-pywin32", specifier = ">=312.0.0.20261024" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20260906" },
     { name = "types-redis", specifier = ">=4.6.0.20241004" },
@@ -7062,15 +7062,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/1e/53/ae1fab16eaeb9a3a4c552a8ceb722ea79b2afb0c958a68dc4445d61a2a3c/types_python_http_client-3.3.7.20260518.tar.gz", hash = "sha256:a8f58f5957fec443f4349cf7e16d8975f32a798094412f1059c3246393e29740", size = 7737, upload-time = "2026-05-18T06:04:51.813Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/90/0d/4e07fdf22c2dd014df29fcf20ad4860717e37c344e41b3a6d81315f456cc/types_python_http_client-3.3.7.20260518-py3-none-any.whl", hash = "sha256:40d8df1b30bd1b8facd34635b570d4ca45281e3d2d10461dddf48df797fb357a", size = 8852, upload-time = "2026-05-18T06:04:51.046Z" },
-]
-
-[[package]]
-name = "types-pytz"
-version = "2026.5.0.20261006"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ba/47/b493f47f2dd0971db06459439ebdeb114cf95029188268099b331bbc4727/types_pytz-2026.5.0.20261006.tar.gz", hash = "sha256:1a522c2ec03aad8d4baaf97105958019ad51704b1e471c882d1c6ccea3e5e64b", size = 11073, upload-time = "2026-10-06T08:15:12.87Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/38/e375026fb4ff74fed6bdb84d7d336571d0603b6b9675751579cec84cfc9b/types_pytz-2026.5.0.20261006-py3-none-any.whl", hash = "sha256:9e4a893b362a8eed4e10a348c80603ade65bdb3819419e589364afafe2ea08b1", size = 10168, upload-time = "2026-10-06T08:15:11.985Z" },
 ]
 
 [[package]]
