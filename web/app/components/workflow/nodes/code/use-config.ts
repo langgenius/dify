@@ -196,6 +196,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     const supportedVariableTypes: readonly VarType[] = [
       VarType.string,
       VarType.number,
+      VarType.integer,
       VarType.boolean,
       VarType.secret,
       VarType.object,

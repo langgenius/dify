@@ -11,6 +11,7 @@ from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool as RetrievalTool
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from models.model import AppMode
@@ -130,6 +131,7 @@ def _build_dataset_tool() -> tuple[DatasetRetrieverTool, RetrievalTool]:
         inputs={},
     )
     retrieval_tool = tools[0].retrieval_tool
+    assert isinstance(retrieval_tool, RetrievalTool)
     assert retrieval_tool.knowledge_retrieval is knowledge_retrieval
     return tools[0], retrieval_tool
 
@@ -156,7 +158,9 @@ def test_empty_query_behavior(sqlite_session: Session) -> None:
 
     # Assert
     assert len(empty_query) == 1
-    assert empty_query[0].message.text == "please input query"
+    empty_message = empty_query[0].message
+    assert isinstance(empty_message, ToolInvokeMessage.TextMessage)
+    assert empty_message.text == "please input query"
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -170,7 +174,9 @@ def test_query_invocation_result(sqlite_session: Session) -> None:
 
     # Assert
     assert len(result) == 1
-    assert result[0].message.text == "result:hello"
+    result_message = result[0].message
+    assert isinstance(result_message, ToolInvokeMessage.TextMessage)
+    assert result_message.text == "result:hello"
     retrieve.assert_called_once_with("hello")
 
 

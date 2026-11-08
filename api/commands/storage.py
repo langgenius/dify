@@ -372,6 +372,7 @@ def file_usage(
     ]
     ids_tables = [
         {"type": "uuid", "table": "message_files", "column": "upload_file_id", "pk_column": "id"},
+        {"type": "uuid", "table": "segment_attachment_bindings", "column": "attachment_id", "pk_column": "id"},
         {"type": "text", "table": "documents", "column": "data_source_info", "pk_column": "id"},
         {"type": "text", "table": "document_segments", "column": "content", "pk_column": "id"},
         {"type": "text", "table": "messages", "column": "answer", "pk_column": "id"},
