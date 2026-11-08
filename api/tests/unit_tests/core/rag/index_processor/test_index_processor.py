@@ -1,7 +1,6 @@
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -288,7 +287,9 @@ class TestIndexProcessor:
 
         def generate_summary(*_args: object, **kwargs: object) -> tuple[str, None]:
             phase_events.append("worker")
-            worker_sessions.append(cast(Session, kwargs["session"]))
+            session_value = kwargs["session"]
+            assert isinstance(session_value, Session)
+            worker_sessions.append(session_value)
             return "summary", None
 
         with (
