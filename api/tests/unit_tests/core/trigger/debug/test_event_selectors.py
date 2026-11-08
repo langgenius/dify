@@ -25,7 +25,7 @@ from core.trigger.debug.event_selectors import (
     select_trigger_debug_events,
 )
 from core.trigger.debug.events import PluginTriggerDebugEvent, WebhookDebugEvent
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
+from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, TriggerScheduleNodeData
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowType
 from models.model import App, AppMode
@@ -60,7 +60,7 @@ def _make_poller(
         tenant_id="tenant-1",
         user_id="user-1",
         app_id="app-1",
-        node_config={"id": "node-1", "data": {"mode": "cron"}},  # pyrefly: ignore[bad-assignment]
+        node_config=NodeConfigDict(id="node-1", data=TriggerScheduleNodeData.model_validate({"mode": "cron"})),
         node_id="node-1",
     )
 
