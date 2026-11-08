@@ -172,6 +172,11 @@ class WeightRerankRunner(BaseRerankRunner):
             # calculate cosine similarity
             if document.metadata and "score" in document.metadata:
                 query_vector_scores.append(document.metadata["score"])
+            elif document.vector is None:
+                # BM25-only hits from vector stores that skip `include_vector` carry no
+                # embedding. Their keyword score still contributes to the weighted sum,
+                # so treat the vector side as zero instead of passing None to NumPy.
+                query_vector_scores.append(0.0)
             else:
                 if query_vector is None:
                     query_vector = CacheEmbedding.get_cached_query_embedding(
