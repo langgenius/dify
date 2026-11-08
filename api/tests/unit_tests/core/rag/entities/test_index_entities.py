@@ -1,30 +1,29 @@
 import pytest
 from pydantic import ValidationError
 
-from api.core.rag.entities.index_entities import (
+from core.rag.entities.index_entities import (
     EconomySetting,
     EmbeddingSetting,
     IndexMethod,
 )
 
-
 # --- EmbeddingSetting -------------------------------------------------------
 
 
-def test_embedding_setting_requires_both_fields():
+def test_embedding_setting_requires_both_fields() -> None:
     with pytest.raises(ValidationError):
         EmbeddingSetting(embedding_provider_name="openai")
     with pytest.raises(ValidationError):
         EmbeddingSetting(embedding_model_name="text-embedding-3")
 
 
-def test_embedding_setting_full():
+def test_embedding_setting_full() -> None:
     s = EmbeddingSetting(embedding_provider_name="openai", embedding_model_name="text-embedding-3")
     assert s.embedding_provider_name == "openai"
     assert s.embedding_model_name == "text-embedding-3"
 
 
-def test_embedding_setting_rejects_wrong_types():
+def test_embedding_setting_rejects_wrong_types() -> None:
     with pytest.raises(ValidationError):
         EmbeddingSetting(embedding_provider_name=1, embedding_model_name="m")
     with pytest.raises(ValidationError):
@@ -34,14 +33,14 @@ def test_embedding_setting_rejects_wrong_types():
 # --- EconomySetting ---------------------------------------------------------
 
 
-def test_economy_setting_requires_int():
+def test_economy_setting_requires_int() -> None:
     with pytest.raises(ValidationError):
         EconomySetting()
     with pytest.raises(ValidationError):
         EconomySetting(keyword_number="five")
 
 
-def test_economy_setting_accepts_int():
+def test_economy_setting_accepts_int() -> None:
     s = EconomySetting(keyword_number=10)
     assert s.keyword_number == 10
 
@@ -49,12 +48,12 @@ def test_economy_setting_accepts_int():
 # --- IndexMethod ------------------------------------------------------------
 
 
-def test_index_method_requires_all_fields():
+def test_index_method_requires_all_fields() -> None:
     with pytest.raises(ValidationError):
         IndexMethod(indexing_technique="high_quality")
 
 
-def test_index_method_rejects_invalid_technique():
+def test_index_method_rejects_invalid_technique() -> None:
     with pytest.raises(ValidationError):
         IndexMethod(
             indexing_technique="vector",
@@ -63,18 +62,18 @@ def test_index_method_rejects_invalid_technique():
         )
 
 
-def test_index_method_accepts_both_literal_values():
-    base = dict(
-        embedding_setting=EmbeddingSetting(embedding_provider_name="p", embedding_model_name="m"),
-        economy_setting=EconomySetting(keyword_number=5),
-    )
+def test_index_method_accepts_both_literal_values() -> None:
+    base = {
+        "embedding_setting": EmbeddingSetting(embedding_provider_name="p", embedding_model_name="m"),
+        "economy_setting": EconomySetting(keyword_number=5),
+    }
     hq = IndexMethod(indexing_technique="high_quality", **base)
     eco = IndexMethod(indexing_technique="economy", **base)
     assert hq.indexing_technique == "high_quality"
     assert eco.indexing_technique == "economy"
 
 
-def test_index_method_coerces_nested_dicts():
+def test_index_method_coerces_nested_dicts() -> None:
     m = IndexMethod(
         indexing_technique="high_quality",
         embedding_setting={"embedding_provider_name": "p", "embedding_model_name": "m"},
@@ -86,7 +85,7 @@ def test_index_method_coerces_nested_dicts():
     assert m.economy_setting.keyword_number == 7
 
 
-def test_index_method_rejects_bad_nested():
+def test_index_method_rejects_bad_nested() -> None:
     with pytest.raises(ValidationError):
         IndexMethod(
             indexing_technique="high_quality",
@@ -95,7 +94,7 @@ def test_index_method_rejects_bad_nested():
         )
 
 
-def test_index_method_dump_round_trip():
+def test_index_method_dump_round_trip() -> None:
     m = IndexMethod(
         indexing_technique="economy",
         embedding_setting=EmbeddingSetting(embedding_provider_name="p", embedding_model_name="m"),
