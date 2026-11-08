@@ -268,8 +268,6 @@ def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow
     assert "status = 'active'" in where_clause
 
 
-
-
 def test_current_snapshot_stores_agent_soul_snapshot_as_long_text_json() -> None:
     config_snapshot = AgentSoulConfig.model_validate(
         {
