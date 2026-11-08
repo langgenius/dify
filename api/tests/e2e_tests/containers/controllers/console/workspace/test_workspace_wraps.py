@@ -55,7 +55,7 @@ class TestPluginPermissionRequired:
         ):
 
             @plugin_permission_required()
-            def handler() -> object:
+            def handler() -> str:
                 return "ok"
 
             assert handler() == "ok"
@@ -70,7 +70,7 @@ class TestPluginPermissionRequired:
         ):
 
             @plugin_permission_required(install_required=True)
-            def handler() -> object:
+            def handler() -> str:
                 return "ok"
 
             with pytest.raises(Forbidden):
@@ -86,7 +86,7 @@ class TestPluginPermissionRequired:
         ):
 
             @plugin_permission_required(install_required=True)
-            def handler() -> object:
+            def handler() -> str:
                 return "ok"
 
             assert handler() == "ok"
@@ -101,7 +101,7 @@ class TestPluginPermissionRequired:
         ):
 
             @plugin_permission_required(debug_required=True)
-            def handler() -> object:
+            def handler() -> str:
                 return "ok"
 
             assert handler() == "ok"
@@ -122,7 +122,7 @@ class TestPluginPermissionRequired:
         ):
 
             @plugin_permission_required(install_required=True)
-            def handler() -> object:
+            def handler() -> str:
                 return "ok"
 
             with pytest.raises(Forbidden):
@@ -144,7 +144,7 @@ class TestPluginPermissionRequired:
         ):
 
             @plugin_permission_required(install_required=True)
-            def handler() -> object:
+            def handler() -> str:
                 return "ok"
 
             with pytest.raises(Forbidden):
@@ -166,7 +166,7 @@ class TestPluginPermissionRequired:
         ):
 
             @plugin_permission_required(install_required=True)
-            def handler() -> object:
+            def handler() -> str:
                 return "ok"
 
             assert handler() == "ok"
@@ -187,7 +187,7 @@ class TestPluginPermissionRequired:
         ):
 
             @plugin_permission_required(debug_required=True)
-            def handler() -> object:
+            def handler() -> str:
                 return "ok"
 
             with pytest.raises(Forbidden):
@@ -209,7 +209,7 @@ class TestPluginPermissionRequired:
         ):
 
             @plugin_permission_required(debug_required=True)
-            def handler() -> object:
+            def handler() -> str:
                 return "ok"
 
             with pytest.raises(Forbidden):
@@ -231,7 +231,7 @@ class TestPluginPermissionRequired:
         ):
 
             @plugin_permission_required(debug_required=True)
-            def handler() -> object:
+            def handler() -> str:
                 return "ok"
 
             assert handler() == "ok"
