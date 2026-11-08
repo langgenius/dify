@@ -183,7 +183,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
 
         handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
-        handler._resolve_recipients = MagicMock(return_value=[])
+        monkeypatch.setattr(handler, "_resolve_recipients", MagicMock(return_value=[]))
 
         context = DeliveryTestContext(
             tenant_id="t1", app_id="a1", node_id="n1", node_title="title", rendered_content="content"
@@ -205,7 +205,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(service_module, "render_email_template", lambda t, s: f"RENDERED_{t}")
 
         handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
-        handler._resolve_recipients = MagicMock(return_value=["test@example.com"])
+        monkeypatch.setattr(handler, "_resolve_recipients", MagicMock(return_value=["test@example.com"]))
 
         variable_pool = VariablePool()
         context = DeliveryTestContext(
@@ -245,7 +245,7 @@ class TestEmailDeliveryTestHandler:
         )
 
         handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
-        handler._resolve_recipients = MagicMock(return_value=["test@example.com"])
+        monkeypatch.setattr(handler, "_resolve_recipients", MagicMock(return_value=["test@example.com"]))
 
         context = DeliveryTestContext(
             tenant_id="t1",

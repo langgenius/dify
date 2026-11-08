@@ -208,7 +208,7 @@ def _parquet_bytes(records: list[dict[str, object]]) -> bytes:
 
 @pytest.mark.parametrize("after_upload", ["pending", "failed", "missing"])
 def test_preparation_does_not_revive_archives_deleted_during_upload(
-    after_upload: str, month_lease: WorkflowRunArchiveMonthLease
+    after_upload: str, month_lease: WorkflowRunArchiveMonthLease, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     task = _task()
     payloads = {"workflow_runs": _parquet_bytes([{"id": "run-a"}])}
@@ -231,7 +231,7 @@ def test_preparation_does_not_revive_archives_deleted_during_upload(
         )
         return checksum
 
-    storage.put_object = upload
+    monkeypatch.setattr(storage, "put_object", upload)
     preparer = WorkflowRunArchiveDownloadPreparer(
         archive_storage_provider=lambda: cast(ArchiveStorage, storage),
         download_storage_provider=lambda: cast(ArchiveStorage, storage),
@@ -416,6 +416,7 @@ def test_prepare_workflow_run_archive_download_marks_failed_when_storage_is_unav
 
 def test_prepare_workflow_run_archive_download_skips_duplicate_worker(
     month_lease: WorkflowRunArchiveMonthLease,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     task = _task().model_copy(update={"celery_task_id": "celery-task-1"})
     storage = FakeArchiveStorage({})
@@ -427,13 +428,14 @@ def test_prepare_workflow_run_archive_download_skips_duplicate_worker(
         bundles=[],
     )
     nested_results: list[WorkflowRunArchiveDownloadTask | None] = []
-    preparer._get_task_bundles = MagicMock(return_value=[])
+    monkeypatch.setattr(preparer, "_get_task_bundles", MagicMock(return_value=[]))
 
     def build_payload(*_args: object) -> bytes:
         nested_results.append(preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id))
         return b"zip"
 
-    preparer._build_zip_payload = MagicMock(side_effect=build_payload)
+    build_zip_payload = MagicMock(side_effect=build_payload)
+    monkeypatch.setattr(preparer, "_build_zip_payload", build_zip_payload)
 
     result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
 
@@ -441,7 +443,7 @@ def test_prepare_workflow_run_archive_download_skips_duplicate_worker(
     assert result.status == WorkflowRunArchiveDownloadStatus.READY
     assert nested_results[0] is not None
     assert nested_results[0].status == WorkflowRunArchiveDownloadStatus.PROCESSING
-    preparer._build_zip_payload.assert_called_once()
+    build_zip_payload.assert_called_once()
 
 
 def test_failed_worker_cannot_overwrite_ready_task(month_lease: WorkflowRunArchiveMonthLease) -> None:
