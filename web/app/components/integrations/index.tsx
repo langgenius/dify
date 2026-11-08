@@ -1,6 +1,5 @@
 'use client'
 
-import type { DrawerActions } from '@langgenius/dify-ui/drawer'
 import type { CSSProperties, ReactNode } from 'react'
 import type { IntegrationSection } from './routes'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
@@ -20,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
-import { Suspense, useId, useRef, useState } from 'react'
+import { Suspense, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UpdateSettingDialog } from '@/app/components/header/account-setting/update-setting-dialog'
 import {
@@ -82,7 +81,7 @@ const DescriptionWithLearnMore = ({ children, href, label }: DescriptionWithLear
 
   return (
     <span className="inline-flex max-w-full min-w-0 items-center gap-0.5">
-      <span className="min-w-0 break-words whitespace-normal sm:truncate" title={title}>
+      <span className="min-w-0 wrap-break-word whitespace-normal sm:truncate" title={title}>
         {children}
       </span>
       <Link
@@ -133,7 +132,7 @@ export default function IntegrationsPage({
 }: IntegrationsPageProps) {
   const { t } = useTranslation(['navigation', 'modelProvider', 'common'])
   const navigationTitleId = useId()
-  const isCompact = useMediaQuery('(width < 48rem)', {})
+  const isAtLeastMd = useMediaQuery('(width >= 48rem)', {})
   const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
@@ -150,7 +149,11 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
-  const navigationDrawerActionsRef = useRef<DrawerActions>(null)
+  const [navigationOpenedOn, setNavigationOpenedOn] = useState<{
+    section: IntegrationSection
+  } | null>(null)
+  if (isAtLeastMd && navigationOpenedOn) setNavigationOpenedOn(null)
+  const navigationOpen = navigationOpenedOn?.section === section
   const showInstallAction = canInstallPlugin
   const reserveInstallActionSlot = showInstallAction || isReferenceSettingLoading
   const showUtilityActions = canDebugger || showPermissionQuickPanel
@@ -224,8 +227,8 @@ export default function IntegrationsPage({
     )
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
+    setNavigationOpenedOn(null)
     if (onSectionChange) {
-      navigationDrawerActionsRef.current?.close()
       onSectionChange(nextSection)
       return
     }
@@ -253,103 +256,105 @@ export default function IntegrationsPage({
     </>
   )
 
-  const sidebar = (
-    <div
-      className={cn(
-        'flex shrink-0 flex-col bg-components-panel-bg px-2 py-2 transition-[width]',
-        isCompact
-          ? 'h-full w-full items-stretch overflow-y-auto'
-          : 'w-50 items-end border-e border-divider-burn',
-      )}
-      data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integration}
-    >
+  const renderSidebar = (placement: 'inline' | 'drawer') => {
+    const inDrawer = placement === 'drawer'
+    const titleId = `${navigationTitleId}-${placement}`
+
+    return (
       <div
-        className={cn('flex min-h-0 flex-1 flex-col gap-0.5 pb-4', isCompact ? 'w-full' : 'w-46')}
+        className={cn(
+          'flex shrink-0 flex-col bg-components-panel-bg px-2 py-2 transition-[width]',
+          inDrawer
+            ? 'h-full w-full items-stretch overflow-y-auto'
+            : 'w-50 items-end border-e border-divider-burn max-md:hidden',
+        )}
+        data-step-by-step-tour-target={inDrawer ? undefined : STEP_BY_STEP_TOUR_TARGETS.integration}
       >
         <div
-          className={cn(
-            'flex shrink-0 items-start ps-2.5 pe-0',
-            reserveInstallActionSlot ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
-          )}
+          className={cn('flex min-h-0 flex-1 flex-col gap-0.5 pb-4', inDrawer ? 'w-full' : 'w-46')}
         >
-          <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
-            <div
-              id={navigationTitleId}
-              className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary"
-            >
-              {t(($) => $['settings.integrations'], { ns: 'navigation' })}
+          <div
+            className={cn(
+              'flex shrink-0 items-start ps-2.5 pe-0',
+              reserveInstallActionSlot ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
+            )}
+          >
+            <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
+              <div id={titleId} className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+                {t(($) => $['settings.integrations'], { ns: 'navigation' })}
+              </div>
             </div>
           </div>
-        </div>
-        {showInstallAction && (
-          <IntegrationSidebarActions
-            canManagement={canInstallPlugin}
-            installContextCategory={getPluginCategoryBySection(section)}
-            onSwitchToMarketplace={handleSwitchToMarketplace}
-          />
-        )}
-        {!showInstallAction && reserveInstallActionSlot && (
-          <div aria-hidden="true" className="h-8 w-full shrink-0" />
-        )}
-        <nav
-          aria-labelledby={navigationTitleId}
-          className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}
-        >
-          <IntegrationSidebarNavItem
-            item={providerItem}
-            onSelect={onSectionChange ? handleSelectSection : undefined}
-            section={section}
-          />
-          <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
-            <CollapsibleTrigger
-              className={cn(
-                toolsNavItemClassName,
-                'min-h-8 touch-manipulation justify-between border-none bg-transparent select-none data-panel-open:text-components-menu-item-text',
-              )}
-            >
-              {toolsNavItemContent}
-            </CollapsibleTrigger>
-            <CollapsiblePanel className="relative space-y-px before:absolute before:inset-s-[17.5px] before:-top-px before:bottom-0 before:w-px before:bg-divider-regular">
-              {toolItems.map((item) => (
-                <IntegrationSidebarNavItem
-                  key={item.label}
-                  item={item}
-                  onSelect={onSectionChange ? handleSelectSection : undefined}
-                  section={section}
-                />
-              ))}
-            </CollapsiblePanel>
-          </Collapsible>
-          <IntegrationSidebarNavItem
-            item={dataSourceItem}
-            onSelect={onSectionChange ? handleSelectSection : undefined}
-            section={section}
-          />
-          {secondaryItems.map((item) => (
+          {showInstallAction && (
+            <IntegrationSidebarActions
+              canManagement={canInstallPlugin}
+              installContextCategory={getPluginCategoryBySection(section)}
+              onSwitchToMarketplace={handleSwitchToMarketplace}
+            />
+          )}
+          {!showInstallAction && reserveInstallActionSlot && (
+            <div aria-hidden="true" className="h-8 w-full shrink-0" />
+          )}
+          <nav
+            aria-labelledby={titleId}
+            className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}
+          >
             <IntegrationSidebarNavItem
-              key={item.label}
-              item={item}
+              item={providerItem}
               onSelect={onSectionChange ? handleSelectSection : undefined}
               section={section}
             />
-          ))}
-          <IntegrationSidebarNavItem
-            item={customEndpointItem}
-            onSelect={onSectionChange ? handleSelectSection : undefined}
-            section={section}
+            <Collapsible open={isToolsExpanded} onOpenChange={handleToolsOpenChange}>
+              <CollapsibleTrigger
+                className={cn(
+                  toolsNavItemClassName,
+                  'min-h-8 touch-manipulation justify-between border-none bg-transparent select-none data-panel-open:text-components-menu-item-text',
+                )}
+              >
+                {toolsNavItemContent}
+              </CollapsibleTrigger>
+              <CollapsiblePanel className="relative space-y-px before:absolute before:inset-s-[17.5px] before:-top-px before:bottom-0 before:w-px before:bg-divider-regular">
+                {toolItems.map((item) => (
+                  <IntegrationSidebarNavItem
+                    key={item.label}
+                    item={item}
+                    onSelect={onSectionChange ? handleSelectSection : undefined}
+                    section={section}
+                  />
+                ))}
+              </CollapsiblePanel>
+            </Collapsible>
+            <IntegrationSidebarNavItem
+              item={dataSourceItem}
+              onSelect={onSectionChange ? handleSelectSection : undefined}
+              section={section}
+            />
+            {secondaryItems.map((item) => (
+              <IntegrationSidebarNavItem
+                key={item.label}
+                item={item}
+                onSelect={onSectionChange ? handleSelectSection : undefined}
+                section={section}
+              />
+            ))}
+            <IntegrationSidebarNavItem
+              item={customEndpointItem}
+              onSelect={onSectionChange ? handleSelectSection : undefined}
+              section={section}
+            />
+          </nav>
+        </div>
+        {showUtilityActions && (
+          <IntegrationSidebarUtilityActions
+            canDebugger={canDebugger}
+            permission={permission}
+            showPermissionQuickPanel={showPermissionQuickPanel}
+            onPermissionChange={handlePermissionChange}
           />
-        </nav>
+        )}
       </div>
-      {showUtilityActions && (
-        <IntegrationSidebarUtilityActions
-          canDebugger={canDebugger}
-          permission={permission}
-          showPermissionQuickPanel={showPermissionQuickPanel}
-          onPermissionChange={handlePermissionChange}
-        />
-      )}
-    </div>
-  )
+    )
+  }
 
   return (
     <div
@@ -359,41 +364,42 @@ export default function IntegrationsPage({
       {syncDocumentTitle && (
         <IntegrationsDocumentTitle title={`${sectionTitle} · ${integrationsTitle}`} />
       )}
-      {isCompact ? (
-        <div className="shrink-0 border-b border-divider-burn px-2 pb-2">
-          <Drawer swipeDirection="left" actionsRef={navigationDrawerActionsRef}>
-            <DrawerTrigger render={<Button variant="secondary" className="max-w-full" />}>
-              <span aria-hidden="true" className="i-ri-menu-line size-4 shrink-0" />
-              <span className="truncate">
-                {integrationsTitle}: {sectionTitle}
-              </span>
-            </DrawerTrigger>
-            <DrawerPortal>
-              <DrawerBackdrop className="fixed" />
-              <DrawerViewport>
-                <DrawerPopup className="data-[swipe-direction=left]:w-80 data-[swipe-direction=left]:max-w-full">
-                  <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2">
-                    <DrawerTitle className="system-md-semibold">{integrationsTitle}</DrawerTitle>
-                    <DrawerClose
-                      render={
-                        <IconButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          size="lg"
-                        >
-                          <span aria-hidden="true" className="i-ri-close-line size-4" />
-                        </IconButton>
-                      }
-                    />
-                  </div>
-                  <DrawerContent className="min-h-0 flex-1 p-0 pb-0">{sidebar}</DrawerContent>
-                </DrawerPopup>
-              </DrawerViewport>
-            </DrawerPortal>
-          </Drawer>
-        </div>
-      ) : (
-        sidebar
-      )}
+      <div className="shrink-0 border-b border-divider-burn px-2 pb-2 md:hidden">
+        <Drawer
+          swipeDirection="left"
+          open={navigationOpen}
+          onOpenChange={(open) => setNavigationOpenedOn(open ? { section } : null)}
+        >
+          <DrawerTrigger render={<Button variant="secondary" className="max-w-full" />}>
+            <span aria-hidden="true" className="i-ri-menu-line size-4 shrink-0" />
+            <span className="truncate">
+              {integrationsTitle}: {sectionTitle}
+            </span>
+          </DrawerTrigger>
+          <DrawerPortal>
+            <DrawerBackdrop className="fixed" />
+            <DrawerViewport>
+              <DrawerPopup className="data-[swipe-direction=left]:w-80 data-[swipe-direction=left]:max-w-full">
+                <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2">
+                  <DrawerTitle className="system-md-semibold">{integrationsTitle}</DrawerTitle>
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="lg"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
+                  />
+                </div>
+                <DrawerContent>{renderSidebar('drawer')}</DrawerContent>
+              </DrawerPopup>
+            </DrawerViewport>
+          </DrawerPortal>
+        </Drawer>
+      </div>
+      {renderSidebar('inline')}
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden max-md:overflow-visible">
         {useFillLayout ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden max-md:overflow-visible">

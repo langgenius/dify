@@ -4,9 +4,10 @@ import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Countdown from '@/app/components/signin/countdown'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
@@ -45,7 +46,6 @@ export default function CheckCode() {
   const [countdownGeneration, setCountdownGeneration] = useState(0)
   const locale = useLocale()
   const setCountdownLeftTime = useSetCountdownLeftTime()
-  const codeInputRef = useRef<HTMLInputElement>(null)
   const turnstileSiteKey = TURNSTILE_SITE_KEY.trim()
   const isTurnstileRequired = systemFeatures.deployment_edition === 'CLOUD'
   const shouldRenderTurnstile = isTurnstileRequired && Boolean(turnstileSiteKey)
@@ -97,10 +97,6 @@ export default function CheckCode() {
       }
     }
   }
-
-  useEffect(() => {
-    codeInputRef.current?.focus()
-  }, [])
 
   const resendCode = async (turnstileToken?: string) => {
     setIsResending(true)
@@ -162,7 +158,7 @@ export default function CheckCode() {
         <Field name="code">
           <FieldLabel>{t(($) => $['checkCode.verificationCode'], { ns: 'login' })}</FieldLabel>
           <Input
-            ref={codeInputRef}
+            ref={focusOnArrival}
             inputMode="numeric"
             autoComplete="one-time-code"
             spellCheck={false}

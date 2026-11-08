@@ -27,6 +27,7 @@ from services.trigger.oauth_service import (
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _PROVIDER, _Harness
 
+application_redis = test_trigger_oauth_client.application_redis
 harness = test_trigger_oauth_client.harness
 
 _AUTHORIZE = f"/console/api/workspaces/current/trigger-provider/{_PROVIDER}/subscriptions/oauth/authorize"

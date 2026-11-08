@@ -106,11 +106,11 @@ class EmailProviderType(StrEnum):
 # Organization candidate identifiers round-trip as stable Contact IDs.
 OrganizationCandidateId = ContactId
 
-# Identifiers for synced IM identiies. This is not the same as user_id or account_id
-# on the IM provier side. It is the identifier for the synced IM user record in Dify.
+# Identifiers for synced IM identities. This is not the same as user_id or account_id
+# on the IM provider side. It is the identifier for the synced IM user record in Dify.
 IMIdentityId = NewType("IMIdentityId", str)
 
-# Identifiers for a full IM user synchorization.
+# Identifiers for a full IM user synchronization.
 IMSyncRunId = NewType("IMSyncRunId", str)
 
 # Identifier for an IM binding, an association between an IM identity and a Dify contact.

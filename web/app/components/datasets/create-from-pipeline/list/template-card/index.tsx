@@ -180,7 +180,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
         />
         <DialogContent
           // oxlint-disable-next-line shadcn/no-restyle -- Full-page template preview keeps its larger radius.
-          className="h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] w-[1680px] overflow-hidden rounded-3xl"
+          className="h-dvh max-h-[calc(100dvh-4rem)] w-420 overflow-hidden rounded-3xl"
         >
           <Details
             id={pipeline.id}

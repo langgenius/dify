@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import SimpleNamespace
 
 import pytest
@@ -18,6 +18,7 @@ from dify_agent.layers.user_prompt import layer as user_prompt_layer
 from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_trace_sdk.events import TraceEvent
 from flask import Flask
+from pydantic import ValidationError
 from pydantic_ai.messages import BinaryContent, ImageUrl
 
 from clients.agent_backend import (
@@ -41,7 +42,7 @@ from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelFeature
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, AppVariableConfig
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
@@ -835,6 +836,63 @@ class TestAgentAppRuntimeRequestBuilder:
             "dify_tool_names": [],
             "cli_tool_count": 1,
         }
+
+    @pytest.mark.parametrize(
+        ("inputs", "expected_block"),
+        [
+            (
+                {"second": "中文\nnext", "first": 0, "flag": False, "empty": "", "null": None, "secret": "hidden"},
+                '- first: 0\n- second: "中文\\nnext"\n- flag: false',
+            ),
+            ({"second": ["a", 2], "first": {"key": "值"}}, '- first: {"key": "值"}\n- second: ["a", 2]'),
+            ({"empty": "", "null": None, "secret": "hidden"}, None),
+            ({}, None),
+            ({"first": "  "}, '- first: "  "'),
+        ],
+        ids=["mixed", "nested", "all-skipped", "empty", "whitespace"],
+    )
+    def test_build_injects_only_declared_nonempty_inputs_in_declaration_order(self, inputs, expected_block):
+        soul = _soul_with_model()
+        soul.app_variables = [
+            AppVariableConfig(name=name, type="text-input") for name in ("first", "second", "flag", "empty", "null")
+        ]
+        query = "  original\n用户消息  "
+        context = replace(_ctx(soul, query=query), inputs=inputs)
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(context)
+
+        layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_app_user_prompt")
+        expected = (
+            query
+            if expected_block is None
+            else (
+                "App inputs for this run:\n"
+                + expected_block
+                + "\nThe above app inputs are run-specific. Do not treat them as Agent Soul or persistent memory.\n\n"
+                + query
+            )
+        )
+        assert DifyUserPromptLayerConfig.model_validate(layer.config).text == expected
+
+    @pytest.mark.parametrize("query", ["", "  \n\t"])
+    def test_build_rejects_blank_query_with_inputs(self, query):
+        soul = _soul_with_model()
+        soul.app_variables = [AppVariableConfig(name="name", type="text-input")]
+        context = replace(_ctx(soul, query=query), inputs={"name": "value"})
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        with pytest.raises(ValidationError, match="prompt must not be blank"):
+            builder.build(context)
+
+    def test_build_rejects_non_json_input(self):
+        soul = _soul_with_model()
+        soul.app_variables = [AppVariableConfig(name="name", type="text-input")]
+        context = replace(_ctx(soul), inputs={"name": object()})
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        with pytest.raises(TypeError, match="not JSON serializable"):
+            builder.build(context)
 
 
 # ── Agent config layer declaration on the Agent App surface ──────────────────

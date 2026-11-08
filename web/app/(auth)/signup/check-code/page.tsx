@@ -7,6 +7,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -96,6 +97,7 @@ export default function CheckCode() {
         <Field name="code">
           <FieldLabel>{t(($) => $['checkCode.verificationCode'], { ns: 'login' })}</FieldLabel>
           <Input
+            ref={focusOnArrival}
             maxLength={6}
             inputMode="numeric"
             autoComplete="one-time-code"

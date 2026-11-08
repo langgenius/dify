@@ -597,13 +597,10 @@ function WorkflowGeneratorModal() {
         }
       }}
     >
-      <DialogContent
-        initialFocus={instructionRef}
-        className="h-[min(680px,calc(100dvh-2rem))] w-285 min-w-0 overflow-hidden"
-      >
+      <DialogContent initialFocus={instructionRef} className="h-170 w-285 overflow-hidden">
         <div className="flex h-full min-h-0 flex-col md:flex-row">
           {/* Left pane: instructions + ideal output + model selector */}
-          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-r md:border-b-0 lg:w-142.5">
+          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-e md:border-b-0 lg:w-142.5">
             <div className="mb-5">
               <DialogTitle>
                 {isRefine

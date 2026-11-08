@@ -1,9 +1,10 @@
+from collections.abc import Sequence
 from unittest import mock
 
 import pytest
 from pytest_mock import MockerFixture
 
-from core.model_manager import ModelInstance
+from core.workflow.node_runtime import DifyPreparedLLM
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import (
     ImagePromptMessageContent,
@@ -12,6 +13,8 @@ from graphon.model_runtime.entities import (
 )
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
     SystemPromptMessage,
     UserPromptMessage,
 )
@@ -56,15 +59,14 @@ def _build_model_schema(
     )
 
 
-def _build_model_instance(mocker: MockerFixture, *, model_schema: AIModelEntity | None = None) -> ModelInstance:
+def _build_model_instance(mocker: MockerFixture, *, model_schema: AIModelEntity | None = None) -> DifyPreparedLLM:
     model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
     model_instance.model_name = "gpt-3.5-turbo"
     model_instance.parameters = {}
-    mocker.patch.object(
-        model_instance, "get_model_schema", return_value=model_schema or _build_model_schema(features=[])
-    )
-    mocker.patch.object(model_instance, "get_llm_num_tokens", return_value=0)
-    return model_instance
+    prepared_llm = DifyPreparedLLM(model_instance)
+    mocker.patch.object(prepared_llm, "get_model_schema", return_value=model_schema or _build_model_schema(features=[]))
+    mocker.patch.object(prepared_llm, "get_llm_num_tokens", return_value=0)
+    return prepared_llm
 
 
 def _build_image_file(
@@ -97,9 +99,11 @@ def variable_pool() -> VariablePool:
     return pool
 
 
-def _fetch_prompt_messages_with_mocked_content(content):
+def _fetch_prompt_messages_with_mocked_content(
+    content: list[PromptMessageContentUnionTypes],
+) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
     variable_pool = VariablePool.empty()
-    model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
+    model_instance = DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-3.5-turbo"))
     model_schema = _build_model_schema(features=[])
     prompt_template = [
         LLMNodeChatModelMessage(
@@ -126,7 +130,7 @@ def _fetch_prompt_messages_with_mocked_content(content):
         return llm_utils.fetch_prompt_messages(
             sys_query=None,
             sys_files=[],
-            context=None,
+            context="",
             memory=None,
             model_instance=model_instance,
             prompt_template=prompt_template,
@@ -143,37 +147,37 @@ def _fetch_prompt_messages_with_mocked_content(content):
 class TestTypeCoercionViaResolve:
     """Type coercion is tested through the public resolve_completion_params_variables API."""
 
-    def test_numeric_string_coerced_to_float(self):
+    def test_numeric_string_coerced_to_float(self) -> None:
         pool = VariablePool.empty()
         pool.add(["n", "v"], "0.7")
         result = llm_utils.resolve_completion_params_variables({"p": "{{#n.v#}}"}, pool)
         assert result["p"] == 0.7
 
-    def test_integer_string_coerced_to_int(self):
+    def test_integer_string_coerced_to_int(self) -> None:
         pool = VariablePool.empty()
         pool.add(["n", "v"], "1024")
         result = llm_utils.resolve_completion_params_variables({"p": "{{#n.v#}}"}, pool)
         assert result["p"] == 1024
 
-    def test_boolean_string_coerced_to_bool(self):
+    def test_boolean_string_coerced_to_bool(self) -> None:
         pool = VariablePool.empty()
         pool.add(["n", "v"], "true")
         result = llm_utils.resolve_completion_params_variables({"p": "{{#n.v#}}"}, pool)
         assert result["p"] is True
 
-    def test_plain_string_stays_string(self):
+    def test_plain_string_stays_string(self) -> None:
         pool = VariablePool.empty()
         pool.add(["n", "v"], "json_object")
         result = llm_utils.resolve_completion_params_variables({"p": "{{#n.v#}}"}, pool)
         assert result["p"] == "json_object"
 
-    def test_json_object_string_stays_string(self):
+    def test_json_object_string_stays_string(self) -> None:
         pool = VariablePool.empty()
         pool.add(["n", "v"], '{"key": "val"}')
         result = llm_utils.resolve_completion_params_variables({"p": "{{#n.v#}}"}, pool)
         assert result["p"] == '{"key": "val"}'
 
-    def test_mixed_text_and_variable_stays_string(self):
+    def test_mixed_text_and_variable_stays_string(self) -> None:
         pool = VariablePool.empty()
         pool.add(["n", "v"], "0.7")
         result = llm_utils.resolve_completion_params_variables({"p": "val={{#n.v#}}"}, pool)
@@ -181,42 +185,42 @@ class TestTypeCoercionViaResolve:
 
 
 class TestResolveCompletionParamsVariables:
-    def test_plain_string_values_unchanged(self, variable_pool: VariablePool):
+    def test_plain_string_values_unchanged(self, variable_pool: VariablePool) -> None:
         params = {"response_format": "json", "custom_param": "static_value"}
 
         result = llm_utils.resolve_completion_params_variables(params, variable_pool)
 
         assert result == {"response_format": "json", "custom_param": "static_value"}
 
-    def test_numeric_values_unchanged(self, variable_pool: VariablePool):
+    def test_numeric_values_unchanged(self, variable_pool: VariablePool) -> None:
         params = {"temperature": 0.7, "top_p": 0.9, "max_tokens": 1024}
 
         result = llm_utils.resolve_completion_params_variables(params, variable_pool)
 
         assert result == {"temperature": 0.7, "top_p": 0.9, "max_tokens": 1024}
 
-    def test_boolean_values_unchanged(self, variable_pool: VariablePool):
+    def test_boolean_values_unchanged(self, variable_pool: VariablePool) -> None:
         params = {"stream": True, "echo": False}
 
         result = llm_utils.resolve_completion_params_variables(params, variable_pool)
 
         assert result == {"stream": True, "echo": False}
 
-    def test_list_values_unchanged(self, variable_pool: VariablePool):
+    def test_list_values_unchanged(self, variable_pool: VariablePool) -> None:
         params = {"stop": ["Human:", "Assistant:"]}
 
         result = llm_utils.resolve_completion_params_variables(params, variable_pool)
 
         assert result == {"stop": ["Human:", "Assistant:"]}
 
-    def test_single_variable_reference_resolved(self, variable_pool: VariablePool):
+    def test_single_variable_reference_resolved(self, variable_pool: VariablePool) -> None:
         params = {"response_format": "{{#node1.output#}}"}
 
         result = llm_utils.resolve_completion_params_variables(params, variable_pool)
 
         assert result == {"response_format": "resolved_value"}
 
-    def test_multiple_variable_references_resolved(self, variable_pool: VariablePool):
+    def test_multiple_variable_references_resolved(self, variable_pool: VariablePool) -> None:
         params = {
             "param_a": "{{#node1.output#}}",
             "param_b": "{{#node2.text#}}",
@@ -226,14 +230,14 @@ class TestResolveCompletionParamsVariables:
 
         assert result == {"param_a": "resolved_value", "param_b": "hello world"}
 
-    def test_mixed_text_and_variable_resolved(self, variable_pool: VariablePool):
+    def test_mixed_text_and_variable_resolved(self, variable_pool: VariablePool) -> None:
         params = {"prompt_prefix": "prefix_{{#node1.output#}}_suffix"}
 
         result = llm_utils.resolve_completion_params_variables(params, variable_pool)
 
         assert result == {"prompt_prefix": "prefix_resolved_value_suffix"}
 
-    def test_mixed_params_types(self, variable_pool: VariablePool):
+    def test_mixed_params_types(self, variable_pool: VariablePool) -> None:
         """Non-string params pass through; string params with variables get resolved."""
         params = {
             "temperature": 0.7,
@@ -253,12 +257,12 @@ class TestResolveCompletionParamsVariables:
             "stop": ["\n"],
         }
 
-    def test_empty_params(self, variable_pool: VariablePool):
+    def test_empty_params(self, variable_pool: VariablePool) -> None:
         result = llm_utils.resolve_completion_params_variables({}, variable_pool)
 
         assert result == {}
 
-    def test_unresolvable_variable_keeps_selector_text(self):
+    def test_unresolvable_variable_keeps_selector_text(self) -> None:
         """When a referenced variable doesn't exist in the pool, convert_template
         falls back to the raw selector path (e.g. 'nonexistent.var')."""
         pool = VariablePool.empty()
@@ -268,14 +272,14 @@ class TestResolveCompletionParamsVariables:
 
         assert result["format"] == "nonexistent.var"
 
-    def test_multiple_variables_in_single_value(self, variable_pool: VariablePool):
+    def test_multiple_variables_in_single_value(self, variable_pool: VariablePool) -> None:
         params = {"combined": "{{#node1.output#}} and {{#node2.text#}}"}
 
         result = llm_utils.resolve_completion_params_variables(params, variable_pool)
 
         assert result == {"combined": "resolved_value and hello world"}
 
-    def test_original_params_not_mutated(self, variable_pool: VariablePool):
+    def test_original_params_not_mutated(self, variable_pool: VariablePool) -> None:
         original = {"response_format": "{{#node1.output#}}", "temperature": 0.5}
         original_copy = dict(original)
 
@@ -283,7 +287,7 @@ class TestResolveCompletionParamsVariables:
 
         assert original == original_copy
 
-    def test_long_value_truncated(self):
+    def test_long_value_truncated(self) -> None:
         pool = VariablePool.empty()
         pool.add(["node1", "big"], "x" * 2000)
         params = {"param": "{{#node1.big#}}"}
@@ -293,7 +297,7 @@ class TestResolveCompletionParamsVariables:
         assert len(result["param"]) == llm_utils.MAX_RESOLVED_VALUE_LENGTH
 
 
-def test_fetch_prompt_messages_skips_messages_when_all_contents_are_filtered_out():
+def test_fetch_prompt_messages_skips_messages_when_all_contents_are_filtered_out() -> None:
     with pytest.raises(NoPromptFoundError):
         _fetch_prompt_messages_with_mocked_content(
             [
@@ -306,7 +310,7 @@ def test_fetch_prompt_messages_skips_messages_when_all_contents_are_filtered_out
         )
 
 
-def test_fetch_prompt_messages_flattens_single_text_content_after_filtering_unsupported_multimodal_items():
+def test_fetch_prompt_messages_flattens_single_text_content_after_filtering_unsupported_multimodal_items() -> None:
     prompt_messages, stop = _fetch_prompt_messages_with_mocked_content(
         [
             TextPromptMessageContent(data="You are a classifier."),
@@ -322,7 +326,7 @@ def test_fetch_prompt_messages_flattens_single_text_content_after_filtering_unsu
     assert prompt_messages == [SystemPromptMessage(content="You are a classifier.")]
 
 
-def test_fetch_prompt_messages_keeps_list_content_when_multiple_supported_items_remain():
+def test_fetch_prompt_messages_keeps_list_content_when_multiple_supported_items_remain() -> None:
     prompt_messages, stop = _fetch_prompt_messages_with_mocked_content(
         [
             TextPromptMessageContent(data="You are"),
@@ -346,7 +350,7 @@ def test_fetch_prompt_messages_keeps_list_content_when_multiple_supported_items_
     ]
 
 
-def test_fetch_model_schema_raises_when_model_schema_is_missing(mocker: MockerFixture):
+def test_fetch_model_schema_raises_when_model_schema_is_missing(mocker: MockerFixture) -> None:
     model_instance = _build_model_instance(mocker)
     mocker.patch.object(model_instance, "get_model_schema", return_value=None)
 
@@ -354,7 +358,7 @@ def test_fetch_model_schema_raises_when_model_schema_is_missing(mocker: MockerFi
         llm_utils.fetch_model_schema(model_instance=model_instance)
 
 
-def test_fetch_files_supports_known_segments_and_rejects_invalid_types():
+def test_fetch_files_supports_known_segments_and_rejects_invalid_types() -> None:
     file = _build_image_file(file_id="image", related_id="image-related", remote_url="https://example.com/image.png")
     variable_pool = VariablePool.empty()
     variable_pool.add(["input", "file"], file)
@@ -372,11 +376,11 @@ def test_fetch_files_supports_known_segments_and_rejects_invalid_types():
         llm_utils.fetch_files(variable_pool, ["input", "invalid"])
 
 
-def test_fetch_files_returns_empty_for_missing_variable():
+def test_fetch_files_returns_empty_for_missing_variable() -> None:
     assert llm_utils.fetch_files(VariablePool.empty(), ["input", "missing"]) == []
 
 
-def test_convert_history_messages_to_text_skips_system_messages_and_formats_images():
+def test_convert_history_messages_to_text_skips_system_messages_and_formats_images() -> None:
     history_text = llm_utils.convert_history_messages_to_text(
         history_messages=[
             SystemPromptMessage(content="skip"),
@@ -399,7 +403,7 @@ def test_convert_history_messages_to_text_skips_system_messages_and_formats_imag
     assert history_text == "Human: Question\n[image]\nAssistant: Answer"
 
 
-def test_fetch_memory_text_uses_prompt_memory_interface():
+def test_fetch_memory_text_uses_prompt_memory_interface() -> None:
     memory = mock.MagicMock()
     memory.get_history_prompt_messages.return_value = [UserPromptMessage(content="Question")]
 
@@ -415,7 +419,7 @@ def test_fetch_memory_text_uses_prompt_memory_interface():
     memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=321, message_limit=2)
 
 
-def test_handle_list_messages_renders_jinja2_messages():
+def test_handle_list_messages_renders_jinja2_messages() -> None:
     variable_pool = VariablePool.empty()
     variable_pool.add(["input", "name"], "Dify")
     renderer = mock.MagicMock()
@@ -441,7 +445,7 @@ def test_handle_list_messages_renders_jinja2_messages():
     renderer.render_template.assert_called_once_with("Hello {{ name }}", {"name": "Dify"})
 
 
-def test_handle_list_messages_splits_text_and_file_content():
+def test_handle_list_messages_splits_text_and_file_content() -> None:
     variable_pool = VariablePool.empty()
     image_file = _build_image_file(
         file_id="image-file",
@@ -489,7 +493,7 @@ def test_handle_list_messages_splits_text_and_file_content():
     mock_to_prompt.assert_called_once()
 
 
-def test_handle_list_messages_skips_custom_file_types():
+def test_handle_list_messages_skips_custom_file_types() -> None:
     """LLM prompt assembly omits FileType.CUSTOM, which is why Other File Types
     must be rewritten to the detected MIME type before reaching this path (#41236).
     """
@@ -528,7 +532,7 @@ def test_handle_list_messages_skips_custom_file_types():
     assert prompt_messages == [UserPromptMessage(content=[TextPromptMessageContent(data="Read ")])]
 
 
-def test_handle_list_messages_supports_array_file_segments():
+def test_handle_list_messages_supports_array_file_segments() -> None:
     variable_pool = VariablePool.empty()
     first_file = _build_image_file(file_id="first", related_id="first-related", remote_url="https://example.com/1.png")
     second_file = _build_image_file(
@@ -572,7 +576,7 @@ def test_handle_list_messages_supports_array_file_segments():
     assert prompt_messages == [UserPromptMessage(content=[first_prompt, second_prompt])]
 
 
-def test_render_jinja2_message_handles_empty_template_success_and_missing_renderer():
+def test_render_jinja2_message_handles_empty_template_success_and_missing_renderer() -> None:
     variable_pool = VariablePool.empty()
     variable_pool.add(["input", "name"], "Dify")
     variables = [VariableSelector(variable="name", value_selector=["input", "name"])]
@@ -608,7 +612,7 @@ def test_render_jinja2_message_handles_empty_template_success_and_missing_render
     )
 
 
-def test_handle_completion_template_supports_basic_and_jinja2_templates():
+def test_handle_completion_template_supports_basic_and_jinja2_templates() -> None:
     variable_pool = VariablePool.empty()
     variable_pool.add(["input", "name"], "Dify")
     renderer = mock.MagicMock()
@@ -643,8 +647,8 @@ def test_handle_completion_template_supports_basic_and_jinja2_templates():
     ]
 
 
-def test_combine_message_content_with_role_handles_all_supported_roles():
-    contents = [TextPromptMessageContent(data="hello")]
+def test_combine_message_content_with_role_handles_all_supported_roles() -> None:
+    contents: list[PromptMessageContentUnionTypes] = [TextPromptMessageContent(data="hello")]
 
     assert llm_utils.combine_message_content_with_role(contents=contents, role=PromptMessageRole.USER) == (
         UserPromptMessage(content=contents)
@@ -660,7 +664,7 @@ def test_combine_message_content_with_role_handles_all_supported_roles():
         llm_utils.combine_message_content_with_role(contents=contents, role="custom")  # type: ignore[arg-type]
 
 
-def test_calculate_rest_token_uses_context_size_and_template_alias(mocker: MockerFixture):
+def test_calculate_rest_token_uses_context_size_and_template_alias(mocker: MockerFixture) -> None:
     model_instance = _build_model_instance(
         mocker,
         model_schema=_build_model_schema(
@@ -687,7 +691,9 @@ def test_calculate_rest_token_uses_context_size_and_template_alias(mocker: Mocke
     )
 
 
-def test_handle_memory_chat_mode_returns_empty_without_memory_and_uses_window_when_present(mocker: MockerFixture):
+def test_handle_memory_chat_mode_returns_empty_without_memory_and_uses_window_when_present(
+    mocker: MockerFixture,
+) -> None:
     model_instance = _build_model_instance(mocker)
     memory = mock.MagicMock()
     memory.get_history_prompt_messages.return_value = [UserPromptMessage(content="Question")]
@@ -713,7 +719,7 @@ def test_handle_memory_chat_mode_returns_empty_without_memory_and_uses_window_wh
     memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=123, message_limit=2)
 
 
-def test_handle_memory_completion_mode_validates_role_prefix_and_formats_history(mocker: MockerFixture):
+def test_handle_memory_completion_mode_validates_role_prefix_and_formats_history(mocker: MockerFixture) -> None:
     model_instance = _build_model_instance(mocker)
     memory = mock.MagicMock()
     memory.get_history_prompt_messages.return_value = [
@@ -754,7 +760,7 @@ def test_handle_memory_completion_mode_validates_role_prefix_and_formats_history
     memory.get_history_prompt_messages.assert_called_with(max_token_limit=456, message_limit=None)
 
 
-def test_append_file_prompts_merges_with_existing_user_content_or_appends_new_message():
+def test_append_file_prompts_merges_with_existing_user_content_or_appends_new_message() -> None:
     file = _build_image_file(file_id="image", related_id="image-related", remote_url="https://example.com/image.png")
     file_prompt = ImagePromptMessageContent(
         format="png",
@@ -762,7 +768,7 @@ def test_append_file_prompts_merges_with_existing_user_content_or_appends_new_me
         mime_type="image/png",
         detail=ImagePromptMessageContent.DETAIL.HIGH,
     )
-    prompt_messages = [UserPromptMessage(content=[TextPromptMessageContent(data="Question")])]
+    prompt_messages: list[PromptMessage] = [UserPromptMessage(content=[TextPromptMessageContent(data="Question")])]
 
     with mock.patch(
         "graphon.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
@@ -794,7 +800,7 @@ def test_append_file_prompts_merges_with_existing_user_content_or_appends_new_me
     assert prompt_messages[-1] == UserPromptMessage(content=[file_prompt])
 
 
-def test_fetch_prompt_messages_chat_mode_includes_query_memory_and_supported_files(mocker: MockerFixture):
+def test_fetch_prompt_messages_chat_mode_includes_query_memory_and_supported_files(mocker: MockerFixture) -> None:
     model_instance = _build_model_instance(mocker, model_schema=_build_model_schema(features=[ModelFeature.VISION]))
     memory = mock.MagicMock()
     memory.get_history_prompt_messages.return_value = [AssistantPromptMessage(content="history")]
@@ -857,7 +863,9 @@ def test_fetch_prompt_messages_chat_mode_includes_query_memory_and_supported_fil
     )
 
 
-def test_fetch_prompt_messages_completion_mode_updates_list_content_with_histories_and_query(mocker: MockerFixture):
+def test_fetch_prompt_messages_completion_mode_updates_list_content_with_histories_and_query(
+    mocker: MockerFixture,
+) -> None:
     model_instance = _build_model_instance(mocker, model_schema=_build_model_schema(features=[]))
     memory = mock.MagicMock()
     memory.get_history_prompt_messages.return_value = [
@@ -924,7 +932,7 @@ def test_fetch_prompt_messages_completion_mode_updates_list_content_with_histori
     ]
 
 
-def test_fetch_prompt_messages_filters_content_unsupported_by_model_features(mocker: MockerFixture):
+def test_fetch_prompt_messages_filters_content_unsupported_by_model_features(mocker: MockerFixture) -> None:
     model_instance = _build_model_instance(mocker, model_schema=_build_model_schema(features=[ModelFeature.DOCUMENT]))
     prompt_template = [
         LLMNodeChatModelMessage(
@@ -971,7 +979,9 @@ def test_fetch_prompt_messages_filters_content_unsupported_by_model_features(moc
     assert prompt_messages == [SystemPromptMessage(content="You are a classifier.")]
 
 
-def test_fetch_prompt_messages_completion_mode_supports_string_content_and_invalid_template_type(mocker: MockerFixture):
+def test_fetch_prompt_messages_completion_mode_supports_string_content_and_invalid_template_type(
+    mocker: MockerFixture,
+) -> None:
     model_instance = _build_model_instance(mocker, model_schema=_build_model_schema(features=[]))
 
     with (

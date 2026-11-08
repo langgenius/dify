@@ -224,9 +224,9 @@ class AgentBackendAgentAppRunInput(BaseModel):
     """Inputs to build one Agent App conversation-turn run request.
 
     Unlike the workflow-node input there is no workflow-node-job prompt and no
-    previous-node context: the user prompt is the chat message, and multi-turn
-    continuity comes from ``session_snapshot`` + the history layer keyed by the
-    conversation.
+    previous-node context: the user prompt is the chat message, optionally
+    prefixed with declared app inputs. Multi-turn continuity comes from
+    ``session_snapshot`` + the history layer keyed by the conversation.
     """
 
     model: AgentBackendModelConfig
