@@ -1764,7 +1764,7 @@ def test_workflow_image_conversion_rejects_non_image_content(monkeypatch: pytest
     monkeypatch.setattr(file_manager, "to_prompt_message_content", lambda *_args, **_kwargs: None)
 
     with pytest.raises(WorkflowAgentRuntimeRequestBuildError, match="cannot send file 'image.png'") as exc_info:
-        WorkflowAgentRuntimeRequestBuilder._build_user_images(_context(), "provider", "model")
+        WorkflowAgentRuntimeRequestBuilder._build_user_images(_context(), "provider", "model", [])
 
     assert exc_info.value.error_code == "agent_user_file_unsupported"
 
@@ -2128,3 +2128,137 @@ def test_runtime_request_adds_required_route_selection_with_resolved_conditions(
     assert "Matches Summarize the report." in schema["properties"]["switch"]["description"]
     assert schema["required"] == (["switch", "summary"] if custom else ["switch"])
     assert schema["properties"]["text"] == {"type": "string"}
+
+
+@pytest.mark.parametrize("source", ["start", "upstream"])
+@pytest.mark.parametrize("is_array", [False, True])
+@pytest.mark.parametrize("supports_vision", [True, False])
+def test_referenced_workflow_images_reach_vision_models(
+    monkeypatch: pytest.MonkeyPatch, source: str, is_array: bool, supports_vision: bool
+) -> None:
+    import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
+
+    image = File(
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="referenced-image"),
+        filename="referenced.png",
+        mime_type="image/png",
+    )
+    document = File(
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="referenced-document"),
+        filename="document.pdf",
+        mime_type="application/pdf",
+    )
+    pool = VariablePool()
+    pool.add([source, "attachment"], [image, document] if is_array else image)
+    context = replace(_context(), variable_pool=pool)
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {"workflow_prompt": f"Describe {{{{#{source}.attachment#}}}}"}
+    )
+    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: supports_vision)
+    converted: list[str | None] = []
+
+    def convert(file: File, **_kwargs: object) -> ImagePromptMessageContent:
+        converted.append(file.filename)
+        return ImagePromptMessageContent(format="png", base64_data="aW1hZ2U=", mime_type="image/png")
+
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", convert)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+
+    assert converted == (["referenced.png"] if supports_vision else [])
+    layers = _request_layers(result)
+    config = layers["user_prompt" if supports_vision else "workflow_user_prompt"]["config"]
+    assert isinstance(config, dict)
+    text = config["text" if supports_vision else "user"]
+    assert isinstance(text, str)
+    assert isinstance(image.reference, str)
+    assert image.reference in text
+    if is_array:
+        assert isinstance(document.reference, str)
+        assert document.reference in text
+    if supports_vision:
+        files = config["files"]
+        assert isinstance(files, list)
+        assert len(files) == 1
+        assert isinstance(files[0], dict)
+        assert files[0]["delivery"] == "multimodal"
+
+
+def test_workflow_images_deduplicate_uploads_and_referenced_files(monkeypatch: pytest.MonkeyPatch) -> None:
+    import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
+
+    image = File(
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="shared-image"),
+        filename="shared.png",
+        mime_type="image/png",
+    )
+    remote = File(
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.com/remote.png",
+        filename="remote.png",
+        mime_type="image/png",
+    )
+    pool = VariablePool()
+    pool.add(["sys", "files"], [image])
+    pool.add(["start", "image"], image.model_copy())
+    pool.add(["upstream", "images"], [image.model_copy(), remote, remote.model_copy()])
+    context = replace(_context(), variable_pool=pool)
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {"workflow_prompt": "Describe {{#start.image#}} and {{#upstream.images#}}"}
+    )
+    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: True)
+    converted: list[str | None] = []
+
+    def convert(file: File, **_kwargs: object) -> ImagePromptMessageContent:
+        converted.append(file.filename)
+        return ImagePromptMessageContent(format="png", base64_data="aW1hZ2U=", mime_type="image/png")
+
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", convert)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+
+    assert converted == ["shared.png", "remote.png"]
+    config = _request_layers(result)["user_prompt"]["config"]
+    assert isinstance(config, dict)
+    files = config["files"]
+    assert isinstance(files, list)
+    assert len(files) == 2
+
+
+def test_unreferenced_workflow_image_is_not_attached(monkeypatch: pytest.MonkeyPatch) -> None:
+    import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
+
+    pool = VariablePool()
+    pool.add(["sys", "query"], "Describe the current request")
+    pool.add(
+        ["start", "image"],
+        File(
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=build_file_reference(record_id="stale-image"),
+            filename="stale.png",
+            mime_type="image/png",
+        ),
+    )
+    context = replace(_context(), variable_pool=pool)
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Use only the current request.",
+            "previous_node_output_refs": [{"selector": ["start", "image"]}],
+        }
+    )
+    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: True)
+
+    def unexpected_conversion(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("Unreferenced image must not be converted")
+
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", unexpected_conversion)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+
+    assert "workflow_user_prompt" in _request_layers(result)
+    assert "stale-image" not in _workflow_user_prompt(result)

@@ -283,7 +283,12 @@ class WorkflowAgentRuntimeRequestBuilder:
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
-                user_images=self._build_user_images(context, agent_soul.model.model_provider, agent_soul.model.model),
+                user_images=self._build_user_images(
+                    context,
+                    agent_soul.model.model_provider,
+                    agent_soul.model.model,
+                    effective_node_job.previous_node_output_refs,
+                ),
                 output=self._build_output_config(
                     node_job.declared_outputs, node_job.output_routes, context.variable_pool
                 ),
@@ -310,19 +315,33 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _build_user_images(
-        context: WorkflowAgentRuntimeBuildContext, provider_name: str, model_name: str
+        context: WorkflowAgentRuntimeBuildContext,
+        provider_name: str,
+        model_name: str,
+        previous_node_output_refs: Sequence[WorkflowPreviousNodeOutputRef],
     ) -> list[DifyUserPromptImageConfig]:
-        """Convert uploaded system images only when the selected model supports vision.
+        """Convert uploaded and explicitly referenced images for vision models.
 
-        Other workflow values and the existing text references remain unchanged.
-        Unsupported image transports fail the run rather than silently losing data.
+        Inputs are trusted workflow File values; serialized mappings are not rebuilt.
+        Text references remain unchanged, and each transport/reference pair is sent
+        once. Missing/invalid refs and unsupported image transports fail the run.
+        Non-vision models return no image content and perform no file conversion.
         """
-        files = get_system_value(context.variable_pool, SystemVariableKey.FILES)
-        images = (
-            [file for file in files if isinstance(file, File) and file.type == FileType.IMAGE]
-            if isinstance(files, (list, tuple))
-            else []
+        values: list[Any] = [get_system_value(context.variable_pool, SystemVariableKey.FILES)]
+        values.extend(
+            WorkflowAgentRuntimeRequestBuilder._resolve_previous_node_output(context.variable_pool, ref)[1]
+            for ref in previous_node_output_refs
         )
+        images_by_reference: dict[tuple[FileTransferMethod, str | None], File] = {}
+        for value in values:
+            files = value if isinstance(value, (list, tuple)) else [value]
+            for file in files:
+                if isinstance(file, File) and file.type == FileType.IMAGE:
+                    reference = (
+                        file.remote_url if file.transfer_method == FileTransferMethod.REMOTE_URL else file.reference
+                    )
+                    images_by_reference.setdefault((file.transfer_method, reference), file)
+        images = list(images_by_reference.values())
         if not images or not resolve_model_supports_vision(
             run_context=context.dify_context, provider_name=provider_name, model_name=model_name
         ):
@@ -476,26 +495,32 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> list[dict[str, Any]]:
         resolved: list[dict[str, Any]] = []
         for ref in refs:
-            selector = normalize_previous_node_output_selector(ref)
-            if not selector:
-                raise WorkflowAgentRuntimeRequestBuildError(
-                    "invalid_previous_node_output_ref",
-                    "Workflow Agent node has invalid previous node output ref.",
-                )
-            segment = variable_pool.get(selector)
-            if segment is None:
-                raise WorkflowAgentRuntimeRequestBuildError(
-                    "missing_previous_node_output",
-                    f"Workflow Agent node cannot resolve previous node output {'.'.join(selector)}.",
-                )
-            value = getattr(segment, "value", None)
-            resolved.append(
-                {
-                    "label": ".".join(selector),
-                    "value": self._summarize_value(value),
-                }
-            )
+            label, value = self._resolve_previous_node_output(variable_pool, ref)
+            resolved.append({"label": label, "value": self._summarize_value(value)})
         return resolved
+
+    @staticmethod
+    def _resolve_previous_node_output(
+        variable_pool: VariablePoolReader, ref: WorkflowPreviousNodeOutputRef
+    ) -> tuple[str, Any]:
+        """Resolve a canonical selector to its label and unmodified workflow value.
+
+        The pool must contain the referenced segment. Invalid or missing references
+        raise the existing request-build error; no pool state is changed.
+        """
+        selector = normalize_previous_node_output_selector(ref)
+        if not selector:
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "invalid_previous_node_output_ref",
+                "Workflow Agent node has invalid previous node output ref.",
+            )
+        segment = variable_pool.get(selector)
+        if segment is None:
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "missing_previous_node_output",
+                f"Workflow Agent node cannot resolve previous node output {'.'.join(selector)}.",
+            )
+        return ".".join(selector), segment.value
 
     @staticmethod
     def _summarize_value(value: Any) -> str:
