@@ -10,6 +10,7 @@
  */
 
 @import '../themes/theme.css';
+@import '../themes/variant.css';
 @import '../themes/light.css' layer(base);
 @import '../themes/dark.css' layer(base);
 @import './utilities.css';
