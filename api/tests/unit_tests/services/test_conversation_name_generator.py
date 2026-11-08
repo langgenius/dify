@@ -83,7 +83,7 @@ def test_real_provider_invocation_releases_preparation_session_and_preserves_cal
         caller_app.name = "Pending caller edit"
         caller_transaction = caller_session.get_transaction()
         original_metadata = get_credit_usage_metadata()
-        event.listen(db.session.session_factory, "after_begin", observe_transaction)
+        event.listen(sqlite_session_factory, "after_begin", observe_transaction)
         plugin_http._httpx_client.event_hooks["request"].append(observe_request)
         try:
             with use_credit_usage_metadata({"request_id": "name-request", "app_id": target.id}):
@@ -109,7 +109,7 @@ def test_real_provider_invocation_releases_preparation_session_and_preserves_cal
                 assert get_credit_usage_metadata() == inherited_metadata
         finally:
             plugin_http._httpx_client.event_hooks["request"].remove(observe_request)
-            event.remove(db.session.session_factory, "after_begin", observe_transaction)
+            event.remove(sqlite_session_factory, "after_begin", observe_transaction)
 
         assert invocation_metadata == [
             {
@@ -180,9 +180,8 @@ def test_provider_resolution_failure_closes_inner_session_and_preserves_caller_c
     def observe_provider_transaction(
         session: Session, _transaction: SessionTransaction, connection: Connection
     ) -> None:
-        # Observe real default-model/provider SQL within the nested app context.
+        # Observe real default-model/provider SQL in its own short-lived session.
         # A missing default model fails before plugin I/O.
-        assert session is db.session()
         assert connection.scalar(select(App.name).where(App.id == target.id)) == "Original app"
         provider_sessions.append(session)
         metadata.append(dict(get_credit_usage_metadata() or {}))
@@ -194,7 +193,7 @@ def test_provider_resolution_failure_closes_inner_session_and_preserves_caller_c
         caller_app.name = "Pending caller edit"
         caller_transaction = caller_session.get_transaction()
         original_metadata = get_credit_usage_metadata()
-        event.listen(db.session.session_factory, "after_begin", observe_provider_transaction)
+        event.listen(sqlite_session_factory, "after_begin", observe_provider_transaction)
         try:
             with use_credit_usage_metadata({"request_id": "name-request"}):
                 inherited_metadata = dict(get_credit_usage_metadata() or {})
@@ -208,7 +207,7 @@ def test_provider_resolution_failure_closes_inner_session_and_preserves_caller_c
                     )
                 assert get_credit_usage_metadata() == inherited_metadata
         finally:
-            event.remove(db.session.session_factory, "after_begin", observe_provider_transaction)
+            event.remove(sqlite_session_factory, "after_begin", observe_provider_transaction)
         assert get_credit_usage_metadata() == original_metadata
         assert provider_sessions
         assert all(
