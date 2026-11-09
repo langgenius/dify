@@ -96,7 +96,7 @@
   min-width: 190px;
   padding: 4px 24px;
   border-radius: 100px;
-  color: #959eab;
+  color: var(--pricing-muted);
   font-size: 24px;
   line-height: 30px;
   font-weight: 500;
@@ -193,7 +193,7 @@
   line-height: 25px;
 }
 .originalPrice {
-  color: #959eab;
+  color: var(--pricing-muted);
   font-size: 20px;
   line-height: 25px;
   text-decoration: line-through;
@@ -260,7 +260,7 @@
   width: 18px;
   height: 18px;
   margin: -4px;
-  color: #b9bece;
+  color: var(--pricing-muted);
 }
 .footer {
   display: flex;

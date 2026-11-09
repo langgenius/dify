@@ -23,17 +23,17 @@ export function PricingFooter() {
             {t(($) => $['plansCommon.taxTip'], { ns: 'billing' })}
           </span>
         </div>
-        <span className="flex h-fit min-w-0 items-center gap-x-1 text-saas-dify-blue-accessible xl:shrink-0">
-          <Link
-            href={pricingPageURL}
-            className="rounded-xs system-md-regular hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+        <Link
+          href={pricingPageURL}
+          className="group flex h-fit min-w-0 items-center gap-x-1 rounded-xs system-md-regular text-saas-dify-blue-accessible focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid xl:shrink-0"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span className="group-hover:underline group-focus-visible:underline">
             {t(($) => $['plansCommon.comparePlanAndFeatures'], { ns: 'billing' })}
-          </Link>
-          <span aria-hidden className="i-ri-arrow-right-up-line size-6" />
-        </span>
+          </span>
+          <span aria-hidden className="i-ri-arrow-right-up-line size-6 shrink-0" />
+        </Link>
       </div>
     </div>
   )

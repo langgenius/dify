@@ -20,7 +20,7 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
       label: paid
         ? t(($) => $['pricing.runs.unlimited'])
         : t(($) => $['pricing.runs.limited'], { count: 500 }),
-      description: t(($) => $['pricing.runs.tooltip']),
+      description: paid ? undefined : t(($) => $['pricing.runs.tooltip']),
     },
     {
       id: 'credits',
@@ -81,7 +81,7 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
       label:
         t(($) => $[`plansCommon.priority.${info.documentProcessingPriority}`]) +
         t(($) => $['plansCommon.documentProcessingPriority']),
-      description: t(($) => $['pricing.processing.tooltip']),
+      description: t(($) => $[`pricing.processing.${plan}Tooltip`]),
     },
     {
       id: 'triggers',
@@ -95,7 +95,7 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
             : t(($) => $['pricing.triggers.total'], {
                 count: info.triggerEvents.count,
               }),
-      description: t(($) => $['plansCommon.triggerEvents.tooltip']),
+      description: t(($) => $[`pricing.triggers.${plan}Tooltip`]),
     },
     {
       id: 'execution',
