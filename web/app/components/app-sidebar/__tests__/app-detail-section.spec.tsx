@@ -48,15 +48,11 @@ vi.mock('@/context/workspace-state', async () => {
 })
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
+  useSelectedLayoutSegment: () => mockPathname.split('/').pop(),
 }))
 
 vi.mock('../app-info', () => ({
   AppInfoView: () => <div />,
-}))
-
-vi.mock('../nav-link', () => ({
-  default: ({ name, href, disabled }: { name: string; href: string; disabled?: boolean }) =>
-    disabled ? <button disabled>{name}</button> : <a href={href}>{name}</a>,
 }))
 
 describe('AppDetailSection', () => {

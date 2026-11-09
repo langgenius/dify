@@ -239,8 +239,8 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                     </div>
                   </td>
                   <td className="h-10 pe-1 text-end">
-                    <Menu>
-                      <MenuTrigger
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
                         render={
                           <button
                             type="button"
