@@ -4410,6 +4410,7 @@ export default interface Resources {
     'mainNav.integrations': 'Integrations'
     'mainNav.marketplace': 'Marketplace'
     'mainNav.skills': 'Skills'
+    'mainNav.visitedApps': 'Visited apps'
     'mainNav.webApps.noResults': 'No web apps found'
     'mainNav.webApps.searchPlaceholder': 'Search web apps'
     'mainNav.workspace.creditsUnit': 'credits'

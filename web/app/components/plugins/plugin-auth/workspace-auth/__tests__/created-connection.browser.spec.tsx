@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { PermissionLevel } from '@/models/permission'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import WorkspaceConnectionSelector from '../workspace-connection-selector'
 
@@ -42,6 +43,8 @@ const createdOAuth: Credential = {
 }
 let serverCredentials: Credential[]
 let creationIncludesId: boolean
+let refreshRequest: ReturnType<typeof createDeferred> | undefined
+const refreshStarted = vi.fn()
 
 async function showSelector(onSelect: (id: string) => void) {
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
@@ -64,7 +67,11 @@ async function showSelector(onSelect: (id: string) => void) {
           isLoading: false,
           credentials,
           notAllowCustomCredential: false,
-          invalidPluginCredentialInfo: () => setCredentials(serverCredentials),
+          invalidPluginCredentialInfo: async () => {
+            refreshStarted()
+            await refreshRequest?.promise
+            setCredentials(serverCredentials)
+          },
         }}
         onAuthorizationItemClick={(id) => {
           setCredentialId(id)
@@ -85,6 +92,8 @@ async function showSelector(onSelect: (id: string) => void) {
 beforeEach(() => {
   serverCredentials = [existing]
   creationIncludesId = true
+  refreshRequest = undefined
+  refreshStarted.mockClear()
   mocks.openOAuthPopup.mockReset()
   mocks.consoleCall.mockImplementation(async (path: string[]) => {
     if (path.slice(-3).join('.') === 'oauth.clientSchema.get')
@@ -110,9 +119,11 @@ beforeEach(() => {
 })
 
 it.each([true, false])(
-  'uses only the created API key identity returned by the server (includes ID: %s)',
+  'refreshes the available API keys before using the created identity (includes ID: %s)',
   async (includesId) => {
     creationIncludesId = includesId
+    const refresh = createDeferred()
+    refreshRequest = refresh
     const onSelect = vi.fn()
     const screen = await showSelector(onSelect)
     await screen.getByRole('button', { name: /Existing connection/ }).click()
@@ -123,6 +134,16 @@ it.each([true, false])(
       .getByRole('textbox', { name: 'plugin.auth.authorizationName' })
       .fill(createdApi.name)
     await modal.getByRole('button', { name: 'common.operation.save' }).click()
+
+    try {
+      await expect.poll(() => refreshStarted.mock.calls.length).toBe(1)
+      expect(onSelect).not.toHaveBeenCalled()
+      await expect.element(modal).toBeVisible()
+      await expect.element(screen.getByText('plugin.auth.authRemoved')).not.toBeInTheDocument()
+      await expect.element(screen.getByText('plugin.auth.unavailable')).not.toBeInTheDocument()
+    } finally {
+      refresh.resolve()
+    }
 
     await expect.element(modal).not.toBeInTheDocument()
     if (includesId) {
@@ -137,16 +158,29 @@ it.each([true, false])(
   },
 )
 
-it('selects the exact OAuth connection returned by the completed authorization', async () => {
+it('refreshes the available OAuth accounts before selecting the completed authorization', async () => {
+  const refresh = createDeferred()
+  refreshRequest = refresh
   mocks.openOAuthPopup.mockImplementation((_url, callback) => {
     serverCredentials = [...serverCredentials, createdOAuth]
     callback({ type: 'oauth_callback', success: true, connectionId: createdOAuth.id })
+    callback()
   })
   const onSelect = vi.fn()
   const screen = await showSelector(onSelect)
   await screen.getByRole('button', { name: /Existing connection/ }).click()
   await screen.getByRole('button', { name: 'plugin.auth.addOAuth' }).click()
   await screen.getByRole('button', { name: 'plugin.auth.authorize' }).click()
+
+  try {
+    await expect.poll(() => refreshStarted.mock.calls.length).toBe(1)
+    expect(onSelect).not.toHaveBeenCalled()
+    await expect.element(screen.getByRole('button', { name: /Existing connection/ })).toBeVisible()
+    await expect.element(screen.getByText('plugin.auth.authRemoved')).not.toBeInTheDocument()
+    await expect.element(screen.getByText('plugin.auth.unavailable')).not.toBeInTheDocument()
+  } finally {
+    refresh.resolve()
+  }
 
   await expect.element(screen.getByRole('button', { name: /New OAuth account/ })).toBeVisible()
   expect(onSelect).toHaveBeenCalledExactlyOnceWith(createdOAuth.id)
@@ -165,4 +199,25 @@ it('preserves the existing selection when the OAuth popup closes without a compl
     .not.toBeInTheDocument()
   expect(onSelect).not.toHaveBeenCalled()
   await expect.element(screen.getByRole('button', { name: /Existing connection/ })).toBeVisible()
+})
+
+it('does not repeat a successful API key creation when refreshing its list fails', async () => {
+  const refresh = createDeferred()
+  refreshRequest = refresh
+  const onSelect = vi.fn()
+  const screen = await showSelector(onSelect)
+  await screen.getByRole('button', { name: /Existing connection/ }).click()
+  await screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' }).click()
+  const modal = screen.getByRole('dialog', { name: 'plugin.auth.useApiAuth' })
+  await modal.getByLabelText(/API Key/).fill('new-secret')
+  await modal.getByRole('button', { name: 'common.operation.save' }).click()
+  await expect.poll(() => refreshStarted.mock.calls.length).toBe(1)
+  refresh.reject(new Error('Connection list could not be loaded'))
+
+  await expect.element(modal).not.toBeInTheDocument()
+  expect(onSelect).not.toHaveBeenCalled()
+  await expect.element(screen.getByRole('button', { name: /Existing connection/ })).toBeVisible()
+  expect(
+    mocks.consoleCall.mock.calls.filter(([path]) => path.slice(-2).join('.') === 'add.post'),
+  ).toHaveLength(1)
 })

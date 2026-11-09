@@ -12,10 +12,10 @@ const cookieRewrite: CookieRewriteOptions = {
   localCookieScope: 'target-origin',
 }
 
-const createApp = (fetchImpl: typeof fetch, requestCookies?: DevProxyRoute['requestCookies']) =>
+const createApp = (fetchImpl: typeof fetch, requestHeaders?: DevProxyRoute['requestHeaders']) =>
   createDevProxyApp({
     routes: [
-      { paths: '/console/api', target: 'https://cloud.example.com', cookieRewrite, requestCookies },
+      { paths: '/console/api', target: 'https://cloud.example.com', cookieRewrite, requestHeaders },
     ],
     sessionImport: {
       refreshPath: '/console/api/refresh-token',
@@ -94,8 +94,8 @@ describe('session import', () => {
     ])
   })
 
-  // Scenario: session imports must include access cookies required by the upstream gateway.
-  it('should include configured request cookies when refreshing an imported session', async () => {
+  // Scenario: session imports must authenticate with configured gateway service headers.
+  it('should include configured request headers when refreshing an imported session', async () => {
     // Arrange
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
       new Response('{}', {
@@ -104,14 +104,16 @@ describe('session import', () => {
     )
 
     // Act
-    const response = await createApp(fetchImpl, { CF_Authorization: 'configured' }).request(
-      postInput('old-refresh'),
-    )
+    const response = await createApp(fetchImpl, {
+      'CF-Access-Client-Id': 'configured-id',
+      'CF-Access-Client-Secret': 'configured-secret',
+    }).request(postInput('old-refresh'))
 
     // Assert
-    expect(new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get('cookie')).toBe(
-      '__Host-refresh_token=old-refresh; CF_Authorization=configured',
-    )
+    const headers = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers)
+    expect(headers.get('cookie')).toBe('__Host-refresh_token=old-refresh')
+    expect(headers.get('cf-access-client-id')).toBe('configured-id')
+    expect(headers.get('cf-access-client-secret')).toBe('configured-secret')
     expect(response.status).toBe(303)
   })
 

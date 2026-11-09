@@ -124,9 +124,10 @@ const createProxyRequestHeaders = (
   headers: Headers,
   targetUrl: URL,
   cookieRewrite: CookieRewriteOptions | false | undefined,
-  requestCookies?: DevProxyRoute['requestCookies'],
+  requestHeaders?: DevProxyRoute['requestHeaders'],
 ) => {
   const upstreamHeaders = new Headers(headers)
+  Object.entries(requestHeaders || {}).forEach(([name, value]) => upstreamHeaders.set(name, value))
   removeHopByHopHeaders(upstreamHeaders)
   upstreamHeaders.delete('host')
   upstreamHeaders.set('accept-encoding', UPSTREAM_ACCEPT_ENCODING)
@@ -156,20 +157,6 @@ const createProxyRequestHeaders = (
       if (scopedCsrfToken) upstreamHeaders.set(cookieRewrite.csrfHeader.headerName, scopedCsrfToken)
       else upstreamHeaders.delete(cookieRewrite.csrfHeader.headerName)
     }
-  }
-
-  if (requestCookies && Object.keys(requestCookies).length) {
-    const cookies = (upstreamHeaders.get('cookie') || '')
-      .split(';')
-      .map((cookie) => cookie.trim())
-      .filter(Boolean)
-      .filter((cookie) => {
-        const separatorIndex = cookie.indexOf('=')
-        const name = separatorIndex === -1 ? cookie : cookie.slice(0, separatorIndex).trim()
-        return !Object.hasOwn(requestCookies, name)
-      })
-    cookies.push(...Object.entries(requestCookies).map(([name, value]) => `${name}=${value}`))
-    upstreamHeaders.set('cookie', cookies.join('; '))
   }
 
   return upstreamHeaders
@@ -227,7 +214,7 @@ const proxyRequest = async (
     context.req.raw.headers,
     targetUrl,
     route.cookieRewrite,
-    route.requestCookies,
+    route.requestHeaders,
   )
   const requestInit: RequestInit & { duplex?: 'half' } = {
     method: context.req.method,
@@ -361,7 +348,7 @@ export const createWebSocketUpgradeHandler = (
       createHeadersFromIncomingMessage(request),
       targetUrl,
       route.cookieRewrite,
-      route.requestCookies,
+      route.requestHeaders,
     )
     requestHeaders.set('connection', 'Upgrade')
     requestHeaders.set('upgrade', upgradeProtocol)
@@ -517,7 +504,7 @@ const registerSessionImportRoute = (
         localHeaders,
         refreshUrl,
         route.cookieRewrite,
-        route.requestCookies,
+        route.requestHeaders,
       ),
       redirect: 'manual',
     })

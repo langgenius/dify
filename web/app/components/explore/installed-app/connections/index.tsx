@@ -84,10 +84,11 @@ function InstalledConnectionRow({
           !!authorization.canOAuth && requirement.allowed_credential_types.includes('oauth2'),
         canApiKey:
           !!authorization.canApiKey && requirement.allowed_credential_types.includes('api-key'),
-        invalidPluginCredentialInfo: () => {
-          authorization.invalidPluginCredentialInfo()
-          state.retry()
-        },
+        invalidPluginCredentialInfo: (options) =>
+          Promise.all([
+            authorization.invalidPluginCredentialInfo(options),
+            state.retry(options),
+          ]).then(() => {}),
       }}
       disabled={disabled}
       useWorkspaceDefault={false}

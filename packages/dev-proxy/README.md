@@ -70,15 +70,21 @@ Config files can be `.ts`, `.mts`, `.js`, or `.mjs`.
 
 `routes` are matched in declaration order. The first matching route wins. Each configured path matches both the exact path and all child paths, so `paths: '/api'` matches `/api`, `/api/apps`, and `/api/apps/123`.
 
-Use route-level `requestCookies` for upstream gateway authentication. These cookies are merged after cookie rewriting for HTTP requests, WebSocket upgrades, and session imports. Configured names replace incoming cookies with the same name; other cookies are preserved. Keep credentials in an ignored local env file and configure them only on routes for the intended upstream.
+Use route-level `requestHeaders` for upstream gateway service tokens. Configured headers replace incoming values for HTTP requests, WebSocket upgrades, and session imports, before normal proxy header sanitization and cookie rewriting. Keep credentials in an ignored local env file and configure them only on routes for the intended upstream.
+
+`requestHeaders` is optional. In Dify Web, `DEV_PROXY_CF_ACCESS_CLIENT_ID` and `DEV_PROXY_CF_ACCESS_CLIENT_SECRET` are also optional: leave both unset to run the proxy without Cloudflare Access service-token headers. To enable service-token authentication, set both values in `.env.local`. When enabled, Dify Web sends these headers to all configured proxy targets.
 
 ```ts
 {
   paths: '/api',
   target: 'https://example.com',
-  requestCookies: process.env.DEV_PROXY_ACCESS_COOKIE
-    ? { gateway_access: process.env.DEV_PROXY_ACCESS_COOKIE }
-    : undefined,
+  requestHeaders:
+    process.env.DEV_PROXY_CF_ACCESS_CLIENT_ID && process.env.DEV_PROXY_CF_ACCESS_CLIENT_SECRET
+      ? {
+          'CF-Access-Client-Id': process.env.DEV_PROXY_CF_ACCESS_CLIENT_ID,
+          'CF-Access-Client-Secret': process.env.DEV_PROXY_CF_ACCESS_CLIENT_SECRET,
+        }
+      : undefined,
 }
 ```
 

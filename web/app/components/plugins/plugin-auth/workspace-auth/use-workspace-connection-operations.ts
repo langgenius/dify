@@ -1,3 +1,4 @@
+import type { InvalidateOptions } from '@tanstack/react-query'
 import type { ApiKeyModalDataSource } from '../authorize/api-key-modal'
 import type { ConnectionActionsDataSource } from '../connections/connection-actions'
 import type { PluginPayload } from '../types'
@@ -14,7 +15,7 @@ import { CredentialTypeEnum } from '../types'
 type WorkspaceConnectionOperationsProps = {
   pluginPayload: PluginPayload
   canApiKey: boolean
-  onUpdate: () => void
+  onUpdate: (options?: InvalidateOptions) => void | Promise<void>
 }
 
 export const useWorkspaceConnectionOperations = ({
@@ -68,7 +69,12 @@ export const useWorkspaceConnectionOperations = ({
           params,
           body: { credentials, type: CredentialTypeEnum.API_KEY, name, visibility },
         })
-        onUpdate()
+        try {
+          await onUpdate({ throwOnError: true })
+        } catch {
+          // Creation succeeded. Leave selection unchanged and let the list expose its refresh error.
+          return
+        }
         if ('id' in result && typeof result.id === 'string' && result.id)
           return { credentialId: result.id }
         return

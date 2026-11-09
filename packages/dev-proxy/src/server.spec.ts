@@ -161,14 +161,8 @@ describe('dev proxy server', () => {
     expect(requestHeaders.get('cookie')).toBe('access_token=abc; refresh_token=def')
   })
 
-  // Scenario: upstream access cookies must coexist with application cookies and replace stale copies.
-  it.each([
-    [undefined, 'CF_Authorization=configured'],
-    [
-      'access_token=abc; CF_Authorization=stale; theme=dark; CF_Authorization=duplicate',
-      '__Host-access_token=abc; theme=dark; CF_Authorization=configured',
-    ],
-  ])('should merge configured request cookies with %s', async (cookie, expectedCookie) => {
+  // Scenario: configured gateway headers must override stale client headers without changing proxy invariants.
+  it('should merge configured request headers only into the matching route', async () => {
     // Arrange
     const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => new Response('ok'))
     const app = createDevProxyApp({
@@ -177,7 +171,15 @@ describe('dev proxy server', () => {
           paths: '/console/api',
           target: 'https://cloud.example.com',
           cookieRewrite: { hostPrefixCookies: ['access_token'] },
-          requestCookies: { CF_Authorization: 'configured' },
+          requestHeaders: {
+            'CF-Access-Client-Id': 'configured-id',
+            'CF-Access-Client-Secret': 'configured-secret',
+            Host: 'wrong.example.com',
+            Connection: 'keep-alive, X-Hop',
+            'X-Hop': 'configured-hop',
+            'Accept-Encoding': 'gzip',
+            Origin: 'https://wrong.example.com',
+          },
         },
         { paths: '/api', target: 'https://other.example.com' },
       ],
@@ -186,13 +188,27 @@ describe('dev proxy server', () => {
 
     // Act
     await app.request('http://localhost:5001/console/api/apps', {
-      headers: cookie ? { Cookie: cookie } : {},
+      headers: {
+        Cookie: 'access_token=abc; theme=dark',
+        'cf-access-client-id': 'stale-id',
+        'cf-access-client-secret': 'stale-secret',
+      },
     })
-    await app.request('http://localhost:5001/api/apps', { headers: { Cookie: 'theme=dark' } })
+    await app.request('http://localhost:5001/api/apps')
 
     // Assert
-    expect(new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get('cookie')).toBe(expectedCookie)
-    expect(new Headers(fetchImpl.mock.calls[1]?.[1]?.headers).get('cookie')).toBe('theme=dark')
+    const configuredHeaders = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers)
+    expect(configuredHeaders.get('cf-access-client-id')).toBe('configured-id')
+    expect(configuredHeaders.get('cf-access-client-secret')).toBe('configured-secret')
+    expect(configuredHeaders.get('cookie')).toBe('__Host-access_token=abc; theme=dark')
+    expect(configuredHeaders.get('host')).toBeNull()
+    expect(configuredHeaders.get('connection')).toBeNull()
+    expect(configuredHeaders.get('x-hop')).toBeNull()
+    expect(configuredHeaders.get('accept-encoding')).toBe('identity')
+    expect(configuredHeaders.get('origin')).toBe('https://cloud.example.com')
+    const otherHeaders = new Headers(fetchImpl.mock.calls[1]?.[1]?.headers)
+    expect(otherHeaders.get('cf-access-client-id')).toBeNull()
+    expect(otherHeaders.get('cf-access-client-secret')).toBeNull()
   })
 
   // Scenario: local HTTP upstreams expect local cookie names even when cookie rewriting is configured.
@@ -329,6 +345,8 @@ describe('dev proxy server', () => {
     const sockets = new Set<net.Socket>()
     let upstreamRequest:
       | {
+          clientId: string | string[] | undefined
+          clientSecret: string | string[] | undefined
           connection: string | undefined
           cookie: string | undefined
           keepAlive: string | string[] | undefined
@@ -344,6 +362,8 @@ describe('dev proxy server', () => {
     upstreamServer.on('connection', (socket) => sockets.add(socket))
     upstreamServer.on('upgrade', (request, socket) => {
       upstreamRequest = {
+        clientId: request.headers['cf-access-client-id'],
+        clientSecret: request.headers['cf-access-client-secret'],
         connection: request.headers.connection,
         cookie: request.headers.cookie,
         keepAlive: request.headers['keep-alive'],
@@ -388,7 +408,10 @@ describe('dev proxy server', () => {
             paths: '/socket.io',
             target: upstreamOrigin,
             cookieRewrite,
-            requestCookies: { CF_Authorization: 'configured' },
+            requestHeaders: {
+              'CF-Access-Client-Id': 'configured-id',
+              'CF-Access-Client-Secret': 'configured-secret',
+            },
           },
         ],
       }),
@@ -419,7 +442,9 @@ describe('dev proxy server', () => {
               'Proxy-Authorization: Basic secret',
               'TE: trailers',
               'Origin: http://localhost:3000',
-              `Cookie: ${accessTokenCookieName}=secret; CF_Authorization=stale`,
+              'CF-Access-Client-Id: stale-id',
+              'CF-Access-Client-Secret: stale-secret',
+              `Cookie: ${accessTokenCookieName}=secret`,
               '',
               '',
             ].join('\r\n'),
@@ -451,8 +476,10 @@ describe('dev proxy server', () => {
       expect(response).not.toContain('__Host-access_token')
       expect(response).not.toContain('__Secure-refresh_token')
       expect(upstreamRequest).toEqual({
+        clientId: 'configured-id',
+        clientSecret: 'configured-secret',
         connection: 'Upgrade',
-        cookie: 'access_token=secret; CF_Authorization=configured',
+        cookie: 'access_token=secret',
         keepAlive: undefined,
         origin: upstreamOrigin,
         proxyAuthorization: undefined,
