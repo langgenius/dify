@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Nhấn vào bất kỳ cơ sở kiến thức nào để mở trang quản lý tài liệu của nó — cập nhật tài liệu, cài đặt truy xuất và quyền truy cập từ đó.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Mở và quản lý từng cơ sở kiến thức",
   "stepByStepTour.guides.primaryActionLabel": "Đã hiểu",
+  "stepByStepTour.guides.studio.empty.blank.description": "Bắt đầu từ một canvas trống khi bạn đã biết mình muốn xây dựng gì.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Tạo từ đầu",
   "stepByStepTour.guides.studio.empty.dsl.description": "Nhập gói ứng dụng hoặc tệp DSL để khôi phục ứng dụng đã chia sẻ hoặc sao lưu.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Nhập App",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Mới dùng Dify? Hãy xem qua một bài học có hướng dẫn trước — bạn sẽ thấy Workflows, Agents và nhiều thứ khác hoạt động thực tế.",

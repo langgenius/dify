@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Tapnite kateri koli knowledge base, da odprete stran za upravljanje dokumentov — tam posodobite dokumente, nastavitve pridobivanja in dostop.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Odprite in upravljajte vsak knowledge base",
   "stepByStepTour.guides.primaryActionLabel": "Razumem",
+  "stepByStepTour.guides.studio.empty.blank.description": "Začnite s praznim platnom, če že veste, kaj želite zgraditi.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Ustvari iz nič",
   "stepByStepTour.guides.studio.empty.dsl.description": "Uvozite paket aplikacije ali datoteko DSL, da obnovite aplikacijo v skupni rabi ali varnostno kopijo.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Uvozi aplikacijo",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Ste novi v Dify? Najprej opravite vodeno lekcijo — v praksi boste videli Workflows, Agents in več.",

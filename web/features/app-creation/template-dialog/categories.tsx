@@ -1,5 +1,6 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 
 export const AppCategories = {
@@ -12,9 +13,10 @@ type SidebarProps = {
   current: AppCategories | string
   categories: string[]
   onClick?: (category: AppCategories | string) => void
+  onCreateFromBlank?: () => void
 }
 
-export default function Sidebar({ current, categories, onClick }: SidebarProps) {
+export default function Sidebar({ current, categories, onClick, onCreateFromBlank }: SidebarProps) {
   const { t } = useTranslation(['app'])
   return (
     <div className="flex size-full flex-col">
@@ -38,6 +40,21 @@ export default function Sidebar({ current, categories, onClick }: SidebarProps) 
           />
         ))}
       </ul>
+      {onCreateFromBlank && (
+        <>
+          <Separator className="my-2 h-[0.5px]" variant="gradient" />
+          <button
+            type="button"
+            className="flex w-full cursor-pointer items-center gap-1 border-none bg-transparent px-3 py-1 text-start text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={onCreateFromBlank}
+          >
+            <span aria-hidden className="i-ri-sticky-note-add-line size-3.5" />
+            <span className="system-xs-regular">
+              {t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
+            </span>
+          </button>
+        </>
+      )}
     </div>
   )
 }
