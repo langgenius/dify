@@ -6,7 +6,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEvaluationStore } from '../../store'
-import { getConditionMetricValueTypeTranslationKey } from '../../utils'
+import {
+  getConditionMetricValueTypeTranslationKey,
+  shouldShowConditionGroupLabel,
+} from '../../utils'
 
 type AddConditionSelectProps = EvaluationResourceProps & {
   metricOptionGroups: ConditionMetricOptionGroup[]
@@ -38,7 +41,7 @@ const AddConditionSelect = ({
             aria-label={t(($) => $['conditions.addCondition'])}
             disabled={disabled}
           >
-            <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
+            <span aria-hidden="true" className="me-1 i-ri-add-line h-4 w-4" />
             {t(($) => $['conditions.addCondition'])}
           </Button>
         }
@@ -51,15 +54,17 @@ const AddConditionSelect = ({
         <div className="max-h-[360px] overflow-y-auto bg-components-panel-bg p-1" role="menu">
           {metricOptionGroups.map((group) => (
             <div key={group.label} role="group" aria-label={group.label}>
-              <div className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">
-                {group.label}
-              </div>
+              {shouldShowConditionGroupLabel(group) && (
+                <div className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">
+                  {group.label}
+                </div>
+              )}
               {group.options.map((option) => (
                 <button
                   key={option.id}
                   type="button"
                   role="menuitem"
-                  className="flex h-auto w-full items-center gap-3 overflow-hidden rounded-lg px-3 py-2 text-left hover:bg-components-panel-on-panel-item-bg-hover"
+                  className="flex h-auto w-full items-center gap-3 overflow-hidden rounded-lg px-3 py-2 text-start hover:bg-components-panel-on-panel-item-bg-hover"
                   onClick={() => {
                     addCondition(resourceType, resourceId, option.variableSelector)
                     setOpen(false)
@@ -68,7 +73,7 @@ const AddConditionSelect = ({
                   <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
                     {option.itemLabel}
                   </span>
-                  <span className="ml-auto shrink-0 system-xs-medium text-text-tertiary">
+                  <span className="ms-auto shrink-0 system-xs-medium text-text-tertiary">
                     {t(($) => $[getConditionMetricValueTypeTranslationKey(option.valueType)])}
                   </span>
                 </button>

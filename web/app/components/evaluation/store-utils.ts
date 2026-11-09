@@ -654,6 +654,28 @@ export const withLatestNodeTitles = <T extends Pick<EvaluationResourceState, 'me
   return changed ? { ...resource, metrics } : resource
 }
 
+/**
+ * Saved configs keep only the evaluator workflow id, so its name is filled in once loaded.
+ * Returns the same object when the metric already has a name or is not found.
+ */
+export const withCustomMetricWorkflowName = <T extends Pick<EvaluationResourceState, 'metrics'>>(
+  resource: T,
+  metricId: string,
+  workflowName: string,
+): T => {
+  const metric = resource.metrics.find((item) => item.id === metricId)
+  if (!metric?.customConfig || metric.customConfig.workflowName) return resource
+
+  return {
+    ...resource,
+    metrics: resource.metrics.map((item) =>
+      item.id === metricId && item.customConfig
+        ? { ...item, customConfig: { ...item.customConfig, workflowName } }
+        : item,
+    ),
+  }
+}
+
 export const isCustomMetricConfigured = (metric: EvaluationMetric) => {
   if (metric.kind !== 'custom-workflow') return true
 

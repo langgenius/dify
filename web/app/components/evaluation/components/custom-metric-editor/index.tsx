@@ -88,6 +88,9 @@ const CustomMetricEditorCard = ({
   const setCustomMetricWorkflow = useEvaluationStore((state) => state.setCustomMetricWorkflow)
   const syncCustomMetricMappings = useEvaluationStore((state) => state.syncCustomMetricMappings)
   const syncCustomMetricOutputs = useEvaluationStore((state) => state.syncCustomMetricOutputs)
+  const syncCustomMetricWorkflowName = useEvaluationStore(
+    (state) => state.syncCustomMetricWorkflowName,
+  )
   const updateCustomMetricMapping = useEvaluationStore((state) => state.updateCustomMetricMapping)
   const selectedWorkflowAppId =
     metric.customConfig?.workflowAppId ?? metric.customConfig?.workflowId ?? ''
@@ -212,6 +215,21 @@ const CustomMetricEditorCard = ({
     resourceType,
     syncCustomMetricOutputs,
     workflowOutputs,
+  ])
+
+  // Saved configs carry no evaluator name; fill it in so conditions can say whose output it is.
+  const resolvedWorkflowName = selectedWorkflow?.marked_name || selectedEvaluatorApp?.name
+  useEffect(() => {
+    if (!resolvedWorkflowName || metric.customConfig?.workflowName) return
+
+    syncCustomMetricWorkflowName(resourceType, resourceId, metric.id, resolvedWorkflowName)
+  }, [
+    metric.customConfig?.workflowName,
+    metric.id,
+    resolvedWorkflowName,
+    resourceId,
+    resourceType,
+    syncCustomMetricWorkflowName,
   ])
 
   if (!metric.customConfig) return null
