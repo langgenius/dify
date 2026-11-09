@@ -2,6 +2,7 @@
 
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useShallow } from 'zustand/react/shallow'
+import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
 import { SnippetCollapsedPreview } from '@/app/components/snippets/components/snippet-collapsed-preview'
 import { SnippetSidebarContent } from '@/app/components/snippets/components/snippet-sidebar'
 import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
@@ -21,6 +22,7 @@ export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
     select: ({ deployment_edition }) => deployment_edition,
   })
   const evaluationEnabled = isEvaluationEdition(deploymentEdition)
+  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
   const section =
     evaluationEnabled && pathname.endsWith('/evaluation') ? 'evaluation' : 'orchestrate'
   const snippetNavigation = useSnippetDetailStore(
@@ -40,6 +42,7 @@ export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
         section={section}
         isPublished={snippetNavigation.snippet?.is_published}
         evaluationEnabled={evaluationEnabled}
+        evaluationRequiresUpgrade={evaluationRequiresUpgrade}
       />
     )
 
@@ -57,6 +60,7 @@ export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
       readonly={snippetNavigation.readonly}
       onFieldsChange={snippetNavigation.onFieldsChange}
       evaluationEnabled={evaluationEnabled}
+      evaluationRequiresUpgrade={evaluationRequiresUpgrade}
     />
   )
 }

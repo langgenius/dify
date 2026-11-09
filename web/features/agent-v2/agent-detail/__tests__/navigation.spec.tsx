@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   exportAppDsl: vi.fn(),
   pathname: '/agents/agent-1/configure',
   deploymentEdition: 'ENTERPRISE' as DeploymentEdition,
+  cloudPlan: 'professional' as 'sandbox' | 'professional',
   queryData: undefined as ReturnType<typeof createAgentFixture> | undefined,
   replace: vi.fn(),
 }))
@@ -77,6 +78,7 @@ const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}) =>
 function renderAgentDetailSection(expand = true) {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: mocks.deploymentEdition, rbac_enabled: true },
+    features: { billing: { subscription: { plan: mocks.cloudPlan } } },
   })
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
@@ -95,6 +97,7 @@ describe('AgentDetailSection', () => {
     mocks.pathname = '/agents/agent-1/configure'
     mocks.deploymentEdition = 'ENTERPRISE'
     mocks.queryData = createAgent()
+    mocks.cloudPlan = 'professional'
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -256,6 +259,17 @@ describe('AgentDetailSection', () => {
     renderAgentDetailSection()
 
     expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
+  })
+
+  it('disables evaluation on a Cloud plan without evaluation instead of redirecting', async () => {
+    mocks.deploymentEdition = 'CLOUD'
+    mocks.cloudPlan = 'sandbox'
+
+    renderAgentDetailSection()
+
+    expect(
+      await screen.findByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toBeDisabled()
   })
 
   it('hides evaluation in the community edition', () => {

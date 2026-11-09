@@ -18,6 +18,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
+import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
@@ -175,6 +176,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
 
 export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
@@ -182,6 +184,8 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
+
+  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
 
   if (!agentId) return null
 
@@ -261,7 +265,15 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
             name={t(($) => $[item.labelKey])}
             href={item.href}
             pathname={pathname}
-            disabled={item.requiresPublishedAgent && agent?.access_ready !== true}
+            disabled={
+              (item.requiresPublishedAgent && agent?.access_ready !== true) ||
+              (item.labelKey === 'agentDetail.sections.evaluation' && evaluationRequiresUpgrade)
+            }
+            disabledReason={
+              item.labelKey === 'agentDetail.sections.evaluation' && evaluationRequiresUpgrade
+                ? tCommon(($) => $['compliance.sandboxUpgradeTooltip'])
+                : undefined
+            }
           />
         ))}
       </nav>
