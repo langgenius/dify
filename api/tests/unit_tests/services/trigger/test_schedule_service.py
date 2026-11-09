@@ -84,7 +84,7 @@ class TestScheduleService(unittest.TestCase):
         with pytest.raises(ZoneInfoNotFoundError):
             calculate_next_run_at(cron_expr, timezone)
 
-    def test_calculate_next_run_at_malformed_timezone(self):
+    def test_calculate_next_run_at_malformed_timezone(self) -> None:
         """Test that a malformed timezone raises ValueError with the value escaped."""
         cron_expr = "30 10 * * *"
 
