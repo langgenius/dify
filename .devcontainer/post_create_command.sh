@@ -1,8 +1,10 @@
 #!/bin/bash
 WORKSPACE_ROOT=$(pwd)
 
-export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-corepack enable
+# pnpm 12 is a native binary. Corepack skips its install script and launches a Node shim.
+npm install -g --prefix "$HOME/.local" --allow-scripts=pnpm "pnpm@$(node -p "require('./package.json').packageManager.slice(5).split('+')[0]")"
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+export PATH="$HOME/.local/bin:$PATH"
 cd web && pnpm install
 pipx install uv
 
