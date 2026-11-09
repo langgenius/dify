@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "Waktu Dibuat",
   "agentDetail.logs.table.endUser": "Pengguna akhir",
   "agentDetail.logs.table.messageCount": "Jumlah Pesan",
-  "agentDetail.logs.table.operationRate": "Tingkat Operasi",
+  "agentDetail.logs.table.operationRate": "Tingkat Admin",
   "agentDetail.logs.table.source": "Sumber",
   "agentDetail.logs.table.title": "Judul",
   "agentDetail.logs.table.unread": "Belum dibaca",

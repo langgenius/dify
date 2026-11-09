@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "निर्मित समय",
   "agentDetail.logs.table.endUser": "अंतिम-उपयोगकर्ता",
   "agentDetail.logs.table.messageCount": "संदेश संख्या",
-  "agentDetail.logs.table.operationRate": "ऑपरेशन दर",
+  "agentDetail.logs.table.operationRate": "ऑपरेटर दर",
   "agentDetail.logs.table.source": "स्रोत",
   "agentDetail.logs.table.title": "शीर्षक",
   "agentDetail.logs.table.unread": "अपठित",
