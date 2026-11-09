@@ -128,7 +128,9 @@ def test_preparation_failure_localizes_reason_and_retains_machine_evidence() -> 
         ),
     )
     card = result_card(run, reply_language="zh-Hans")
-    assert isinstance(card.failure_reason, BuilderCopy)
-    assert card.failure_reason.params == {"reason": "连接被拒绝"}
+    assert isinstance(card.failure_reason, str)
+    assert "连接被拒绝" in card.failure_reason
+    assert "工作流尚未开始执行" in card.failure_reason
+    assert "确认一次新测试" in card.failure_reason
     assert card.failure_code == "connection_refused"
     assert summary.model_dump() == before

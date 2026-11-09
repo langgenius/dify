@@ -96,6 +96,8 @@ FILES += [
     "api/tests/unit_tests/services/dify_builder/test_effect_disclosure.py",
     "api/tests/unit_tests/services/dify_builder/test_effect_mock.py",
     "api/tests/unit_tests/services/dify_builder/test_confirmed_full_run.py",
+    "api/tests/unit_tests/services/dify_builder/test_initialization_recovery.py",
+    "api/tests/unit_tests/services/dify_builder/test_initialization_runtime.py",
     "api/tests/unit_tests/core/dify_builder/test_effect_confirmation_gate.py",
 ]
 FILES += ["api/tests/unit_tests/services/dify_builder/test_effect_account_bindings.py"]
@@ -222,6 +224,8 @@ SELECTED_GUARDS = [
     "api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_same_goal_capability_reentry_preserves_repair_budget",
     "api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_connect_existing_form_selection_reaches_plan_and_real_intent_guard",
     "api/tests/unit_tests/services/dify_builder/test_conversation_tasks.py::test_new_task_after_completion_resets_native_failure_budget",
+    "api/tests/unit_tests/services/dify_builder/test_conversation_tasks.py::test_known_failed_run_allows_fresh_form_without_reusing_consent",
+    "api/tests/unit_tests/services/dify_builder/test_execution_recovery_messages.py::test_preparation_failure_localizes_reason_and_retains_machine_evidence",
     "api/tests/unit_tests/services/dify_builder/test_graph_ops.py::test_insert_between_can_reuse_complete_existing_node_and_replay_without_duplicates",
     "api/tests/unit_tests/services/dify_builder/test_graph_ops.py::test_reuse_existing_insertion_rejects_invalid_or_ambiguous_request",
     "api/tests/unit_tests/services/dify_builder/test_graph_ops.py::test_reuse_existing_insertion_preserves_unrelated_edges_and_exact_branch_handle",
@@ -332,7 +336,7 @@ a3_expected = {
         "test_upload_request_returns_origin_free_uri": 1,
         "test_upload_request_payload_requires_non_negative_max_size": 1,
         "test_download_request_returns_origin_free_uri_for_sandbox": 1,
-        "test_download_request_binds_frontend_url": 1,
+        "test_download_request_binds_requested_url": 3,
     },
     "tests.unit_tests.controllers.inner_api.knowledge.test_retrieval": {
         "test_post_returns_404_when_api_key_missing": 1,
@@ -2373,7 +2377,19 @@ a4_expected["tests.unit_tests.core.dify_builder.test_handlers_edit"] = {
     "test_sufficient_goal_reaches_plan_gate_or_actionable_retry_with_monotonic_progress": 2,
 }
 a4_expected["tests.unit_tests.services.dify_builder.test_conversation_tasks"] = {
-    "test_new_task_after_completion_resets_native_failure_budget": 1
+    "test_new_task_after_completion_resets_native_failure_budget": 1,
+    "test_known_failed_run_allows_fresh_form_without_reusing_consent": 2,
+}
+a4_expected["tests.unit_tests.services.dify_builder.test_initialization_recovery"] = {
+    "test_root_metadata_failure_is_sealed_but_other_worker_failures_remain_unknown": 9,
+}
+a4_expected["tests.unit_tests.services.dify_builder.test_initialization_runtime"] = {
+    "test_real_root_graph_failure_proves_no_execution_only_before_first_preparation": 2,
+    "test_real_graph_failure_is_saved_once_and_same_input_recovery_does_not_dispatch": 1,
+    "test_repaired_metadata_and_fresh_input_execute_new_native_run_without_replaying_failure": 1,
+}
+a4_expected["tests.unit_tests.services.dify_builder.test_execution_recovery_messages"] = {
+    "test_preparation_failure_localizes_reason_and_retains_machine_evidence": 1,
 }
 a4_expected["tests.unit_tests.services.dify_builder.test_dify_port_preflight"] = {
     "test_a_node_the_healer_touched_is_still_not_a_node_this_batch_wrote": 1,

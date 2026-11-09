@@ -126,10 +126,14 @@ def observed_failure_message(
         message = (
             copy_text(BuilderCopyId.TEST_RUNTIME_SERVICE_FAILED)
             if summary.failure_phase == "execution"
-            else copy_text(
-                BuilderCopyId.TEST_PREPARATION_FAILED,
-                reason=_display_label(_REASON_LABELS, summary.failure_reason or "unknown", reply_language),
-            )
+            else (
+                "测试准备失败（{reason}），工作流尚未开始执行。请检查模型/工具服务和配置，"
+                "或选择其他工作区资源，再准备并确认一次新测试。"
+                if reply_language.lower().startswith("zh")
+                else "Test preparation failed ({reason}) before workflow execution started. "
+                "Check model/tool services and configuration, or choose another workspace resource; "
+                "then prepare and confirm a fresh test."
+            ).format(reason=_display_label(_REASON_LABELS, summary.failure_reason or "unknown", reply_language))
         )
         if summary.failure_resource:
             _, provider, name = summary.failure_resource

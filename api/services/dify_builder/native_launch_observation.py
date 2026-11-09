@@ -1,7 +1,7 @@
 """Observe the native worker boundary, without granting execution authority.
 
-Only instrumented synchronous generation can prove preparation failed before
-worker dispatch. Missing instrumentation and interrupted processes stay unknown.
+Instrumented generation and failed root preparation can prove execution never
+began. Missing instrumentation and interrupted processes stay unknown.
 """
 
 import re
@@ -22,6 +22,8 @@ class NativeLaunchObservation:
     failure_node_id: str | None = None
     _resource_node_observed: bool = field(default=False, repr=False)
     _resource_error: Exception | None = field(default=None, repr=False)
+    initialization_error: Exception | None = field(default=None, repr=False)
+    _initialization_claimed: bool = field(default=False, repr=False)
 
     def resource_for(self, error: Exception) -> FailureResource | None:
         current: BaseException | None = error
@@ -69,6 +71,28 @@ def mark_dispatched() -> None:
     # Mark before Thread.start: a start acknowledgement failure is conservative.
     if (observation := _active.get()) is not None:
         observation.dispatched = True
+
+
+@contextmanager
+def observe_initialization() -> Generator[None]:
+    """Observe only the first root preparation of this dispatched launch.
+
+    The orchestrator calls this before any engine can run. A successful first
+    preparation permanently closes the boundary, so nested workflow failures
+    cannot claim that the parent did not execute. Only an escaping, attributed
+    metadata exception is retained; no stream text grants this proof.
+    """
+    observation = _active.get()
+    if observation is None or not observation.dispatched or observation._initialization_claimed:
+        yield
+        return
+    observation._initialization_claimed = True
+    try:
+        yield
+    except Exception as exc:
+        if observation.resource_for(exc) is not None:
+            observation.initialization_error = exc
+        raise
 
 
 def _public_id(value: str) -> bool:

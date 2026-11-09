@@ -6,7 +6,6 @@ from typing_extensions import TypedDict
 
 from core.dify_builder import models
 from core.dify_builder.models import Run
-from runtime_contracts.builder.presentation import BuilderCopy
 from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
@@ -304,9 +303,10 @@ def test_observed_preparation_failure_has_specific_copy_without_entering_repair(
     assert is_execution_policy_blocker(run)
     card = result_card(run)
     assert card.outcome == "execution_failed"
-    assert isinstance(card.failure_reason, BuilderCopy)
-    assert card.failure_reason.id == "test.preparationFailed"
-    assert card.failure_reason.params == {"reason": "connection refused"}
+    assert isinstance(card.failure_reason, str)
+    assert "connection refused" in card.failure_reason
+    assert "before workflow execution started" in card.failure_reason
+    assert "confirm a fresh test" in card.failure_reason
     assert card.failure_phase == "preparation"
     assert card.failure_code == "connection_refused"
     assert "secret" not in english_text(card.failure_reason)

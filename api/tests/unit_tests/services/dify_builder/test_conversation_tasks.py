@@ -391,7 +391,10 @@ def test_edit_continuation_does_not_inherit_previous_task_restore_point() -> Non
     assert current.checkpoint_seq >= 2
 
 
-def test_known_failed_run_allows_fresh_form_without_reusing_consent() -> None:
+@pytest.mark.parametrize("before_execution", [False, True])
+def test_known_failed_run_allows_fresh_form_without_reusing_consent(before_execution: bool) -> None:
+    from copy import deepcopy
+
     from core.dify_builder.models import RunVerification
     from runtime_contracts.builder.execution import ExecutionEvidenceSummary
 
@@ -401,25 +404,29 @@ def test_known_failed_run_allows_fresh_form_without_reusing_consent() -> None:
         policy_version="builder-confirmed-run-v1",
         mode="confirmed_run",
         sealed=True,
-        safety_outcome="native_failed",
+        safety_outcome="preparation_failed" if before_execution else "native_failed",
         sandbox_profile="native",
-        native_run_id="native",
+        native_run_id=None if before_execution else "native",
+        failure_phase="preparation" if before_execution else None,
+        failure_reason="unknown" if before_execution else None,
     )
     run = Run(
         session_id=session.id,
         status="failed",
         kind="verify",
+        immutable=True,
         verification=RunVerification(
             execution_revision="old",
             executed_graph_revision="old",
             terminal_outputs=None,
             output_findings=[],
-            executed_node_ids=["start"],
+            executed_node_ids=[] if before_execution else ["start"],
             no_output_dead_branch=False,
             execution_evidence=evidence,
         ),
     )
     repo.save_run(session.id, run)
+    previous = deepcopy(repo.get_run(run.id))
     _, context = repo.get_session(session.id)
     context.verify_run_id = run.id
     context.confirmed_consent_id = "old-consent"
@@ -430,6 +437,9 @@ def test_known_failed_run_allows_fresh_form_without_reusing_consent() -> None:
     _, context = repo.get_session(session.id)
     assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
     assert context.confirmed_consent_id == context.confirmed_command_id == ""
+    assert context.effect_confirmation == {}
+    assert repo.get_run(run.id) == previous
+    assert any(row.kind == "form" for row in repo.list_conversation(session.id))
     assert len(repo._runs) == 1
 
 
