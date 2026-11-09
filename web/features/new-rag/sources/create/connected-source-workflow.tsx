@@ -497,13 +497,14 @@ function ResourceList({
                 ? expandedPageKeys.has(resource.key)
                 : !collapsed.has(resource.key)
               : expandedDriveContainers.has(resource.key)
+          const githubPreviewContainer = isGitHubPreviewContainer(resource)
           const rendersCheckbox = hasDriveFolderCheckbox(resource) || isSelectableResource(resource)
           return (
             <Fragment key={resource.key}>
               <li
                 className={cn('flex items-center gap-2 pe-3', expandable ? 'h-8.5' : 'h-7.5')}
                 style={{
-                  paddingInlineStart: `${12 + resource.depth * 26}px`,
+                  paddingInlineStart: `${12 + resource.depth * 26 + (githubPreviewContainer ? 24 : 0)}px`,
                 }}
               >
                 {expandable ? (
@@ -536,9 +537,9 @@ function ResourceList({
                     indeterminate={indeterminate}
                     onCheckedChange={() => onToggle(resource)}
                   />
-                ) : (
+                ) : !githubPreviewContainer ? (
                   <span className="size-4 shrink-0" />
-                )}
+                ) : null}
                 <span aria-hidden className={`${resourceIcon(resource)} size-4 shrink-0`} />
                 <span className="min-w-0 flex-1 truncate system-xs-regular text-text-primary">
                   {resourceName(resource)}
