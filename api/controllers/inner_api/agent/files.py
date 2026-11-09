@@ -65,6 +65,7 @@ class AgentFileDownloadRequestPayload(BaseModel):
     ]
     file: RequestDownloadFileMapping
     for_frontend: bool = True
+    for_external: bool = True
 
     model_config = ConfigDict(extra="forbid")
 
@@ -161,7 +162,7 @@ class AgentFileUploadRequestApi(Resource):
 
 @inner_api_ns.route("/agent/files/download-request")
 class AgentFileDownloadRequestApi(Resource):
-    """Allocate a transfer URI or frontend URL for one Agent CLI file."""
+    """Allocate a transfer URI or a signed URL for one Agent file."""
 
     @setup_required
     @agent_endpoint_api_only
@@ -174,6 +175,12 @@ class AgentFileDownloadRequestApi(Resource):
     )
     @with_session(write=False)
     def post(self, session: Session) -> dict[str, object]:
+        """Resolve an authorized file and bind its signed URI when requested.
+
+        Transfer consumers receive the resolved URI directly. Bound URLs use
+        the external origin by default. Plugin consumers can request the
+        internal origin, with the external origin as a fallback.
+        """
         try:
             payload = AgentFileDownloadRequestPayload.model_validate(inner_api_ns.payload or {})
         except ValidationError as exc:
@@ -220,7 +227,10 @@ class AgentFileDownloadRequestApi(Resource):
 
         download_uri = result.download_uri
         if payload.for_frontend:
-            download_uri = bind_file_uri(download_uri, dify_config.FILES_URL)
+            base_url = dify_config.FILES_URL
+            if not payload.for_external:
+                base_url = dify_config.INTERNAL_FILES_URL or base_url
+            download_uri = bind_file_uri(download_uri, base_url)
 
         return AgentFileDownloadRequestResponse(
             filename=result.filename,
