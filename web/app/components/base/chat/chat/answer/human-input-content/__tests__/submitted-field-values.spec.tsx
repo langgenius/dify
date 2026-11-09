@@ -82,23 +82,17 @@ const values: Record<string, HumanInputFormValue> = {
 }
 
 describe('SubmittedFieldValues', () => {
-  it('renders text and select values as text', () => {
+  it('renders submitted text, selections, and attachments together', () => {
     render(<SubmittedFieldValues fields={fields} values={values} />)
 
     expect(screen.getByTestId('submitted-field-summary')).toHaveTextContent('Need more context')
     expect(screen.getByTestId('submitted-field-decision')).toHaveTextContent('approve')
-  })
-
-  it('renders file and file-list values as file lists', () => {
-    render(<SubmittedFieldValues fields={fields} values={values} />)
-
     expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
     expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
       'src',
       'https://example.com/evidence-1.png',
     )
     expect(screen.getByText('evidence-2.pdf')).toBeInTheDocument()
-    expect(screen.getAllByTestId('file-list')).toHaveLength(2)
   })
 
   it('skips fields with missing values', () => {

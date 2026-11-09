@@ -4,7 +4,6 @@ import type { ParameterExtractorNodeType } from './types'
 import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { AppModeEnum } from '@/types/app'
 import { ReasoningModeType } from './types'
 
 const i18nPrefix = ''
@@ -21,7 +20,7 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
     model: {
       provider: '',
       name: '',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       completion_params: {
         temperature: 0.7,
       },
@@ -31,7 +30,7 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
       enabled: false,
     },
   },
-  checkValid(payload: ParameterExtractorNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: ParameterExtractorNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     if (!errorMessages && (!payload.query || payload.query.length === 0))
       errorMessages = t(($) => $[`${i18nPrefix}errorMsg.fieldRequired`], {

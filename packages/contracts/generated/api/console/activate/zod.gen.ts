@@ -22,6 +22,70 @@ export const zActivationResponse = z.object({
 })
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountInFreezeError
+ *
+ * This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
+ */
+export const zAccountInFreezeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_in_freeze'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailDomainSuspendedError
+ *
+ * This email domain has been suspended.
+ */
+export const zEmailDomainSuspendedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_domain_suspended'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AlreadyActivateError
+ *
+ * Auth Token is invalid or account already activated, please check again.
+ */
+export const zAlreadyActivateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('already_activate'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * InvitationAccountMismatchError
+ *
+ * This invitation was sent to another account. Please sign in with the invited account.
+ */
+export const zInvitationAccountMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invitation_account_mismatch'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * ActivationCheckData
  */
 export const zActivationCheckData = z.object({

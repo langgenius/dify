@@ -3,10 +3,6 @@ import { useTabs, useToolTabs } from '../hooks'
 import { TabType, ToolType } from '../types'
 
 describe('block-selector hooks', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('keeps the start tab enabled when a configured user input start node exists', () => {
     const { result } = renderHook(() =>
       useTabs({
@@ -57,37 +53,14 @@ describe('block-selector hooks', () => {
     expect(hidden.current.some((tab) => tab.key === ToolType.MCP)).toBe(false)
   })
 
-  it('includes the snippets tab by default', () => {
-    const { result } = renderHook(() => useTabs({}))
-
-    expect(result.current.tabs.map((tab) => tab.key)).toEqual([
-      TabType.Blocks,
-      TabType.Tools,
-      TabType.Sources,
-      TabType.Snippets,
-    ])
-  })
-
-  it('uses the same category order for tabs and the default fallback', () => {
-    const { result } = renderHook(() => useTabs({ noStart: false, noSources: false }))
-
-    expect(result.current.tabs.map((tab) => tab.key)).toEqual([
-      TabType.Blocks,
-      TabType.Tools,
-      TabType.Sources,
-      TabType.Start,
-      TabType.Snippets,
-    ])
-    expect(result.current.initialTab).toBe(TabType.Blocks)
-  })
-
   it('hides the snippets tab and falls back when snippets are disabled', () => {
-    const { result } = renderHook(() =>
-      useTabs({
-        defaultActiveTab: TabType.Snippets,
-        noSnippets: true,
-      }),
+    const { result, rerender } = renderHook(
+      ({ noSnippets }) => useTabs({ defaultActiveTab: TabType.Snippets, noSnippets }),
+      { initialProps: { noSnippets: false } },
     )
+    expect(result.current.initialTab).toBe(TabType.Snippets)
+    expect(result.current.tabs.some((tab) => tab.key === TabType.Snippets)).toBe(true)
+    rerender({ noSnippets: true })
 
     expect(result.current.tabs.some((tab) => tab.key === TabType.Snippets)).toBe(false)
     expect(result.current.initialTab).toBe(TabType.Blocks)

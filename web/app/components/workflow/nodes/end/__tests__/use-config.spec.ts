@@ -1,30 +1,8 @@
 import type { EndNodeType } from '../types'
-import { act, renderHook } from '@testing-library/react'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { act } from '@testing-library/react'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { renderNodeConfig } from '../../__tests__/render-node-config'
 import useConfig from '../use-config'
-
-const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
-const mockUseNodeCrud = vi.hoisted(() => vi.fn())
-const mockUseVarList = vi.hoisted(() => vi.fn())
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => mockUseNodesReadOnly(),
-  }
-})
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseNodeCrud(...args),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-var-list', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseVarList(...args),
-}))
 
 const createPayload = (overrides: Partial<EndNodeType> = {}): EndNodeType => ({
   title: 'End',
@@ -35,53 +13,18 @@ const createPayload = (overrides: Partial<EndNodeType> = {}): EndNodeType => ({
 })
 
 describe('end/use-config', () => {
-  const mockHandleVarListChange = vi.fn()
-  const mockHandleAddVariable = vi.fn()
-  const mockSetInputs = vi.fn()
-  let currentInputs: EndNodeType
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    currentInputs = createPayload()
-
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true })
-    mockUseNodeCrud.mockReturnValue({
-      inputs: currentInputs,
-      setInputs: mockSetInputs,
-    })
-    mockUseVarList.mockReturnValue({
-      handleVarListChange: mockHandleVarListChange,
-      handleAddVariable: mockHandleAddVariable,
-    })
-  })
-
-  it('should build var-list handlers against outputs and surface the readonly state', () => {
-    const { result } = renderHook(() => useConfig('end-node', currentInputs))
-    const config = mockUseVarList.mock.calls[0]![0] as { setInputs: (inputs: EndNodeType) => void }
-
-    expect(mockUseVarList).toHaveBeenCalledWith(
-      expect.objectContaining({
-        inputs: currentInputs,
-        setInputs: expect.any(Function),
-        varKey: 'outputs',
-      }),
-    )
-    expect(result.current.readOnly).toBe(true)
-    expect(result.current.handleVarListChange).toBe(mockHandleVarListChange)
-    expect(result.current.handleAddVariable).toBe(mockHandleAddVariable)
-
-    act(() => {
-      config.setInputs(
-        createPayload({
-          outputs: currentInputs.outputs,
-        }),
-      )
-    })
-
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        outputs: currentInputs.outputs,
-      }),
-    )
+  it('adds output bindings without losing existing outputs', () => {
+    const { result } = renderNodeConfig(useConfig, createPayload())
+    const output = {
+      variable: 'result',
+      value_selector: ['source', 'text'],
+      value_type: VarType.string,
+    }
+    act(() => result.current.config.handleVarListChange([output]))
+    act(() => result.current.config.handleAddVariable())
+    expect(result.current.flow.getNode('node')?.data.outputs).toEqual([
+      output,
+      { variable: '', value_selector: [] },
+    ])
   })
 })

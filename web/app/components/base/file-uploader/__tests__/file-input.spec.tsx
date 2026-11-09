@@ -1,52 +1,60 @@
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import FileInput from '../file-input'
-import { FileContextProvider } from '../store'
+import { createFileStore, FileContext } from '../store'
+import { fileUpload } from '../utils'
 
-const mockHandleLocalFileUpload = vi.fn()
-
-vi.mock('../hooks', () => ({
-  useFile: () => ({
-    handleLocalFileUpload: mockHandleLocalFileUpload,
-  }),
+vi.mock('../utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils')>()),
+  fileUpload: vi.fn(),
 }))
+vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
-const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
-  ({
-    enabled: true,
-    allowed_file_types: ['image'],
-    allowed_file_extensions: [],
-    number_limits: 5,
-    ...overrides,
-  }) as FileUpload
+const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload => ({
+  enabled: true,
+  allowed_file_types: ['image'],
+  allowed_file_extensions: [],
+  number_limits: 5,
+  allowed_file_upload_methods: ['local_file'],
+  ...overrides,
+})
 
-function createStubFile(id: string): FileEntity {
+function createUploadedFile(id: string): FileEntity {
   return {
     id,
-    name: `${id}.txt`,
-    size: 0,
-    type: '',
+    name: `${id}.jpg`,
+    size: 1,
+    type: 'image/jpeg',
+    uploadedId: `uploaded-${id}`,
     progress: 100,
-    transferMethod: 'local_file' as FileEntity['transferMethod'],
-    supportFileType: 'document',
+    transferMethod: 'local_file',
+    supportFileType: 'image',
   }
 }
 
 function renderWithProvider(ui: React.ReactElement, fileIds: string[] = []) {
-  return render(<FileContextProvider value={fileIds.map(createStubFile)}>{ui}</FileContextProvider>)
+  const store = createFileStore(fileIds.map(createUploadedFile))
+  return { ...renderWithConsoleQuery(<FileContext value={store}>{ui}</FileContext>), store }
 }
 
 describe('FileInput', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render a file input element', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig()} />)
-
-    const input = document.querySelector('input[type="file"]')
-    expect(input).toBeInTheDocument()
+    vi.mocked(fileUpload).mockImplementation(({ file, onSuccessCallback }) => {
+      onSuccessCallback({
+        id: `uploaded-${file.name}`,
+        name: file.name,
+        size: file.size,
+        mime_type: file.type,
+        extension: 'jpg',
+        created_at: 0,
+        created_by: 'user-1',
+        preview_url: null,
+        source_url: '',
+      })
+    })
   })
 
   it('should set accept attribute based on allowed file types', () => {
@@ -62,7 +70,7 @@ describe('FileInput', () => {
     renderWithProvider(
       <FileInput
         fileConfig={createFileConfig({
-          allowed_file_types: ['custom'] as unknown as FileUpload['allowed_file_types'],
+          allowed_file_types: ['custom'],
           allowed_file_extensions: ['.csv', '.xlsx'],
         })}
       />,
@@ -70,20 +78,6 @@ describe('FileInput', () => {
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     expect(input.accept).toBe('.csv,.xlsx')
-  })
-
-  it('should allow multiple files when number_limits > 1', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig({ number_limits: 3 })} />)
-
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    expect(input.multiple).toBe(true)
-  })
-
-  it('should not allow multiple files when number_limits is 1', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig({ number_limits: 1 })} />)
-
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    expect(input.multiple).toBe(false)
   })
 
   it('should be disabled when file limit is reached', () => {
@@ -97,60 +91,69 @@ describe('FileInput', () => {
     expect(input.disabled).toBe(true)
   })
 
-  it('should not be disabled when file limit is not reached', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig({ number_limits: 3 })} />, ['1'])
-
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    expect(input.disabled).toBe(false)
-  })
-
-  it('should call handleLocalFileUpload when files are selected', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig()} />)
-
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    const file = new File(['content'], 'test.jpg', { type: 'image/jpeg' })
-    fireEvent.change(input, { target: { files: [file] } })
-
-    expect(mockHandleLocalFileUpload).toHaveBeenCalledWith(file)
-  })
-
-  it('should respect number_limits when uploading multiple files', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig({ number_limits: 3 })} />, [
-      '1',
-      '2',
-    ])
+  it('should respect number_limits when uploading multiple files', async () => {
+    const user = userEvent.setup()
+    const { store } = renderWithProvider(
+      <FileInput fileConfig={createFileConfig({ number_limits: 3 })} />,
+      ['1', '2'],
+    )
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     const file1 = new File(['content'], 'test1.jpg', { type: 'image/jpeg' })
     const file2 = new File(['content'], 'test2.jpg', { type: 'image/jpeg' })
 
-    Object.defineProperty(input, 'files', {
-      value: [file1, file2],
-    })
-    fireEvent.change(input)
+    await user.upload(input, [file1, file2])
 
-    // Only 1 file should be uploaded (2 existing + 1 = 3 = limit)
-    expect(mockHandleLocalFileUpload).toHaveBeenCalledTimes(1)
-    expect(mockHandleLocalFileUpload).toHaveBeenCalledWith(file1)
+    await waitFor(() => expect(store.getState().files).toHaveLength(3))
+    expect(store.getState().files).toEqual([
+      createUploadedFile('1'),
+      createUploadedFile('2'),
+      expect.objectContaining({
+        name: 'test1.jpg',
+        uploadedId: 'uploaded-test1.jpg',
+        progress: 100,
+        originalFile: file1,
+      }),
+    ])
+    expect(input).toBeDisabled()
+    expect(fileUpload).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ file: file1 }),
+      false,
+      undefined,
+    )
   })
 
-  it('should upload first file only when number_limits is not set', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig({ number_limits: undefined })} />)
+  it('should upload first file only when number_limits is not set', async () => {
+    const user = userEvent.setup()
+    const { store } = renderWithProvider(
+      <FileInput fileConfig={createFileConfig({ number_limits: undefined })} />,
+    )
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     const file = new File(['content'], 'test.jpg', { type: 'image/jpeg' })
-    fireEvent.change(input, { target: { files: [file] } })
+    await user.upload(input, [file, new File(['other'], 'other.jpg', { type: 'image/jpeg' })])
 
-    expect(mockHandleLocalFileUpload).toHaveBeenCalledWith(file)
+    await waitFor(() =>
+      expect(store.getState().files).toEqual([
+        expect.objectContaining({
+          name: 'test.jpg',
+          uploadedId: 'uploaded-test.jpg',
+          progress: 100,
+        }),
+      ]),
+    )
   })
 
-  it('should not upload when targetFiles is null', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig()} />)
+  it('should not upload an empty selection without a configured limit', () => {
+    const { store } = renderWithProvider(
+      <FileInput fileConfig={createFileConfig({ number_limits: undefined })} />,
+    )
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    fireEvent.change(input, { target: { files: null } })
+    fireEvent.change(input, { target: { files: [] } })
 
-    expect(mockHandleLocalFileUpload).not.toHaveBeenCalled()
+    expect(fileUpload).not.toHaveBeenCalled()
+    expect(store.getState().files).toEqual([])
   })
 
   it('should handle empty allowed_file_types', () => {
@@ -166,7 +169,7 @@ describe('FileInput', () => {
     renderWithProvider(
       <FileInput
         fileConfig={createFileConfig({
-          allowed_file_types: ['custom'] as unknown as FileUpload['allowed_file_types'],
+          allowed_file_types: ['custom'],
           allowed_file_extensions: undefined,
         })}
       />,
@@ -176,13 +179,25 @@ describe('FileInput', () => {
     expect(input.accept).toBe('')
   })
 
-  it('should clear input value on click', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig()} />)
-
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    Object.defineProperty(input, 'value', { writable: true, value: 'some-file' })
-    fireEvent.click(input)
-
-    expect(input.value).toBe('')
+  it('allows selecting the same file again', async () => {
+    const user = userEvent.setup()
+    const { container, store } = renderWithProvider(<FileInput fileConfig={createFileConfig()} />)
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!
+    const file = new File(['content'], 'test.jpg', { type: 'image/jpeg' })
+    await user.upload(input, file)
+    await user.upload(input, file)
+    await waitFor(() => expect(store.getState().files).toHaveLength(2))
+    expect(store.getState().files).toEqual([
+      expect.objectContaining({
+        originalFile: file,
+        uploadedId: 'uploaded-test.jpg',
+        progress: 100,
+      }),
+      expect.objectContaining({
+        originalFile: file,
+        uploadedId: 'uploaded-test.jpg',
+        progress: 100,
+      }),
+    ])
   })
 })

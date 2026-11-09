@@ -20,6 +20,8 @@ Vergessen Sie nicht, in der PR-Beschreibung ein bestehendes Issue zu verlinken o
 
 ### Fehlermeldungen
 
+Melden Sie Sicherheitslücken gemäß der [Sicherheitsrichtlinie](../../SECURITY.md) vertraulich, statt ein öffentliches Issue zu erstellen.
+
 > [!WICHTIG]
 > Bitte stellen Sie sicher, dass Sie folgende Informationen bei der Einreichung eines Fehlerberichts angeben:
 
@@ -34,7 +36,7 @@ Unsere Priorisierung:
 
 | Fehlertyp | Priorität |
 | ------------------------------------------------------------ | --------------- |
-| Fehler in Kernfunktionen (Cloud-Service, Login nicht möglich, Anwendungen funktionieren nicht, Sicherheitslücken) | Kritisch |
+| Fehler in Kernfunktionen (Cloud-Service, Login nicht möglich, Anwendungen funktionieren nicht) | Kritisch |
 | Nicht-kritische Fehler, Leistungsverbesserungen | Mittlere Priorität |
 | Kleinere Korrekturen (Tippfehler, verwirrende aber funktionierende UI) | Niedrige Priorität |
 
@@ -64,7 +66,7 @@ Unsere Priorisierung:
 1. Repository forken
 1. Vor dem Erstellen eines PRs bitte ein Issue zur Diskussion der Änderungen erstellen
 1. Einen neuen Branch für Ihre Änderungen erstellen
-1. Tests für Ihre Änderungen hinzufügen
+1. Tests ergänzen oder aktualisieren, wenn die Änderung beobachtbares Verhalten beeinflusst oder ein relevantes Regressionsrisiko birgt.
 1. Sicherstellen, dass Ihr Code die bestehenden Tests besteht
 1. Issue in der PR-Beschreibung verlinken (`fixes #<issue_number>`)
 1. Auf den Merge warten!
@@ -73,22 +75,11 @@ Unsere Priorisierung:
 
 #### Frontend
 
-Für die Einrichtung des Frontend-Service folgen Sie bitte unserer ausführlichen [Anleitung](https://github.com/langgenius/dify/blob/main/web/README.md) in der Datei `web/README.md`.
+Für die Einrichtung des Frontend-Service folgen Sie bitte unserer ausführlichen [Anleitung](../../web/README.md) in der Datei `web/README.md`.
 
 #### Backend
 
-Für die Einrichtung des Backend-Service folgen Sie bitte unseren detaillierten [Anweisungen](https://github.com/langgenius/dify/blob/main/api/README.md) in der Datei `api/README.md`.
-
-#### Weitere Hinweise
-
-Wir empfehlen, dieses Dokument sorgfältig zu lesen, da es wichtige Informationen enthält über:
-
-- Voraussetzungen und Abhängigkeiten
-- Installationsschritte
-- Konfigurationsdetails
-- Häufige Problemlösungen
-
-Bei Problemen während der Einrichtung können Sie sich gerne an uns wenden.
+Für die Einrichtung des Backend-Service folgen Sie bitte unseren detaillierten [Anweisungen](../../api/README.md) in der Datei `api/README.md`.
 
 ## Hilfe bekommen
 

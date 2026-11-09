@@ -1,21 +1,18 @@
-"""Client-safe DTOs for the Dify shell Agenton layer.
+"""Client-safe DTOs for the Dify shell layer.
 
 Server-only Agent Stub and redaction settings are injected by the runtime
-provider factory. The Sandbox dependency supplies the active shellctl data
+runtime services. The Sandbox dependency supplies the active shellctl data
 plane. Public config carries product-level Agent Soul settings that affect the
 workspace itself: CLI tool bootstrap commands, normal environment variables,
 secret environment variable names. Sandbox selection is a deployment concern.
 """
 
 import re
-from typing import ClassVar, Final
+from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from agenton.layers import LayerConfig
 
-
-DIFY_SHELL_LAYER_TYPE_ID: Final[str] = "dify.shell"
 _ENV_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -67,8 +64,11 @@ class DifyShellCliToolConfig(BaseModel):
         return [command for command in (item.strip() for item in value) if command]
 
 
-class DifyShellLayerConfig(LayerConfig):
+class DifyShellLayerConfig(BaseModel):
     """Public product behavior for the Sandbox-backed Dify Shell layer."""
+
+    runtime: str = "runtime"
+    execution_context: str | None = "execution_context"
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -79,7 +79,6 @@ class DifyShellLayerConfig(LayerConfig):
 
 
 __all__ = [
-    "DIFY_SHELL_LAYER_TYPE_ID",
     "DifyShellCliToolConfig",
     "DifyShellEnvVarConfig",
     "DifyShellLayerConfig",

@@ -1,5 +1,5 @@
 import type { SyncDraftWorkflowPayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { ConsoleClient } from './console-client'
+import type { ConsoleClient } from './console-client.ts'
 
 export async function syncMinimalWorkflowDraft(
   client: ConsoleClient,
@@ -27,6 +27,15 @@ export async function syncMinimalWorkflowDraft(
 export async function syncRunnableWorkflowDraft(
   client: ConsoleClient,
   appId: string,
+  {
+    mode = 'workflow',
+    variables = [],
+    answer = 'E2E response',
+  }: {
+    mode?: 'workflow' | 'advanced-chat'
+    variables?: Record<string, unknown>[]
+    answer?: string
+  } = {},
 ): Promise<void> {
   const body = {
     graph: {
@@ -35,18 +44,21 @@ export async function syncRunnableWorkflowDraft(
           id: 'start',
           type: 'custom',
           position: { x: 80, y: 282 },
-          data: { id: 'start', type: 'start', title: 'Start', variables: [] },
+          data: { id: 'start', type: 'start', title: 'Start', variables },
         },
         {
           id: 'end',
           type: 'custom',
           position: { x: 480, y: 282 },
-          data: {
-            id: 'end',
-            type: 'end',
-            title: 'End',
-            outputs: [{ variable: 'result', value_selector: ['sys', 'workflow_run_id'] }],
-          },
+          data:
+            mode === 'advanced-chat'
+              ? { id: 'end', type: 'answer', title: 'Answer', answer }
+              : {
+                  id: 'end',
+                  type: 'end',
+                  title: 'End',
+                  outputs: [{ variable: 'result', value_selector: ['sys', 'workflow_run_id'] }],
+                },
         },
       ],
       edges: [

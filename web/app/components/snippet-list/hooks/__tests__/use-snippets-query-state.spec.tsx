@@ -4,7 +4,6 @@ import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
 import { useSnippetsQueryState } from '../use-snippets-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
-  // oxlint-disable-next-line eslint-react/use-state -- renderHook executes a custom hook, not React.useState
   return renderHookWithNuqs(() => useSnippetsQueryState(), { searchParams })
 }
 
@@ -13,31 +12,27 @@ describe('useSnippetsQueryState', () => {
     vi.clearAllMocks()
   })
 
-  it('should expose snippets list query state actions', () => {
-    const { result } = renderWithAdapter()
-
-    expect(result.current.query).toEqual({
-      tagIDs: [],
-      keywords: '',
-      creatorIDs: [],
-    })
-    expect(typeof result.current.setKeywords).toBe('function')
-    expect(typeof result.current.setTagIDs).toBe('function')
-    expect(typeof result.current.setCreatorIDs).toBe('function')
-  })
-
-  it('should parse URL filters without creator state', () => {
-    const { result } = renderWithAdapter('?tagIDs=tag1;tag2&keywords=search+term')
+  it('parses all list filters from the URL', () => {
+    const { result } = renderWithAdapter(
+      '?tagIDs=tag1;tag2&keywords=search+term&creatorIDs=creator-1;creator-2&publishStatus=draft',
+    )
 
     expect(result.current.query).toEqual({
       tagIDs: ['tag1', 'tag2'],
       keywords: 'search term',
-      creatorIDs: [],
+      creatorIDs: ['creator-1', 'creator-2'],
+      publishStatus: 'draft',
     })
   })
 
   it('should update tag IDs URL state', async () => {
     const { result, onUrlUpdate } = renderWithAdapter()
+    expect(result.current.query).toEqual({
+      tagIDs: [],
+      keywords: '',
+      creatorIDs: [],
+      publishStatus: 'all',
+    })
 
     act(() => {
       result.current.setTagIDs(['tag1', 'tag2'])
@@ -73,7 +68,7 @@ describe('useSnippetsQueryState', () => {
     }
   })
 
-  it('should update creator IDs in local state without writing to the URL', () => {
+  it('writes creator IDs to the URL and removes them when cleared', async () => {
     const { result, onUrlUpdate } = renderWithAdapter()
 
     act(() => {
@@ -81,6 +76,52 @@ describe('useSnippetsQueryState', () => {
     })
 
     expect(result.current.query.creatorIDs).toEqual(['creator-1', 'creator-2'])
-    expect(onUrlUpdate).not.toHaveBeenCalled()
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('creatorIDs')).toBe(
+      'creator-1;creator-2',
+    )
+    await act(async () => result.current.setCreatorIDs([]))
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has('creatorIDs')).toBe(false),
+    )
+  })
+
+  it('writes publication status to the URL and removes the default', async () => {
+    const { result, onUrlUpdate } = renderWithAdapter()
+    await act(async () => result.current.setPublishStatus('draft'))
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('publishStatus')).toBe('draft'),
+    )
+    await act(async () => result.current.setPublishStatus('all'))
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has('publishStatus')).toBe(false),
+    )
+  })
+
+  it('ignores an invalid publication status', () => {
+    const { result } = renderWithAdapter('?publishStatus=invalid')
+    expect(result.current.query.publishStatus).toBe('all')
+  })
+
+  it('commits pending search before navigation and cancels the delayed write', async () => {
+    vi.useFakeTimers()
+    try {
+      const { result, onUrlUpdate } = renderWithAdapter()
+      act(() => result.current.setKeywords('sales'))
+      expect(onUrlUpdate).not.toHaveBeenCalled()
+      await act(async () => {
+        const pending = result.current.flush()
+        await vi.runAllTimersAsync()
+        await pending
+      })
+      expect(onUrlUpdate).toHaveBeenCalledOnce()
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('keywords')).toBe('sales')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SNIPPET_LIST_SEARCH_DEBOUNCE_MS + 100)
+      })
+      expect(onUrlUpdate).toHaveBeenCalledOnce()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

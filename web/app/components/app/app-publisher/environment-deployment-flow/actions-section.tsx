@@ -8,28 +8,32 @@ function environmentHref(path: string, appId: string, environmentId: string) {
 
 export function PublisherEnvironmentActionsSection({
   appId,
+  canViewAccessPoint,
   deployment,
   environmentId,
 }: {
   appId?: string
+  canViewAccessPoint: boolean
   deployment?: EnvironmentDeployment
   environmentId: string
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const actionsDisabled = !appId || !deployment
   const accessPointHref = appId ? environmentHref('access-point', appId, environmentId) : undefined
   const deployHref = appId ? environmentHref('deploy', appId, environmentId) : undefined
 
   return (
     <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
-      <SuggestedAction
-        disabled={actionsDisabled}
-        description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
-        link={accessPointHref}
-        icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
-      >
-        {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
-      </SuggestedAction>
+      {canViewAccessPoint && (
+        <SuggestedAction
+          disabled={actionsDisabled}
+          description={t(($) => $['common.accessPointDescription'], { ns: 'workflow' })}
+          link={accessPointHref}
+          icon={<span className="i-custom-vender-agent-v2-access-point size-4" />}
+        >
+          {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
+        </SuggestedAction>
+      )}
       <SuggestedAction
         disabled={actionsDisabled}
         description={t(($) => $['common.deployDescription'], { ns: 'workflow' })}

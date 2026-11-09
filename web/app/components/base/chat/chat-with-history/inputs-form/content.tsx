@@ -1,3 +1,4 @@
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -9,10 +10,9 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -24,9 +24,11 @@ type Props = Readonly<{
 }>
 
 const InputsFormContent = ({ showTip }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share', 'workflow'])
+  const baseId = useId()
   const {
     appParams,
+    clearChatList,
     inputsForms,
     currentConversationId,
     currentConversationInputs,
@@ -36,6 +38,19 @@ const InputsFormContent = ({ showTip }: Props) => {
     handleNewConversationInputsChange,
   } = useChatWithHistoryContext()
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputs
+  const fileInputsFormValue = currentConversationId
+    ? inputsFormValue
+    : {
+        ...Object.fromEntries(
+          inputsForms
+            .filter(
+              (form) =>
+                form.type === InputVarType.singleFile || form.type === InputVarType.multiFiles,
+            )
+            .map((form) => [form.variable, form.default]),
+        ),
+        ...inputsFormValue,
+      }
 
   const handleFormChange = useCallback(
     (variable: string, value: any) => {
@@ -64,7 +79,12 @@ const InputsFormContent = ({ showTip }: Props) => {
         <div key={form.variable} className="space-y-1">
           {form.type !== InputVarType.checkbox && (
             <div className="flex h-6 items-center gap-1">
-              <div className="system-md-semibold text-text-secondary">{form.label}</div>
+              <div
+                id={`${baseId}-${form.variable}-label`}
+                className="system-md-semibold text-text-secondary"
+              >
+                {form.label}
+              </div>
               {!form.required && (
                 <div className="system-xs-regular text-text-tertiary">
                   {t(($) => $['panel.optional'], { ns: 'workflow' })}
@@ -74,22 +94,24 @@ const InputsFormContent = ({ showTip }: Props) => {
           )}
           {form.type === InputVarType.textInput && (
             <Input
+              aria-labelledby={`${baseId}-${form.variable}-label`}
               value={inputsFormValue?.[form.variable] || ''}
-              onChange={(e) => handleFormChange(form.variable, e.target.value)}
+              onValueChange={(value) => handleFormChange(form.variable, value)}
               placeholder={form.label}
             />
           )}
           {form.type === InputVarType.number && (
             <Input
+              aria-labelledby={`${baseId}-${form.variable}-label`}
               type="number"
-              value={inputsFormValue?.[form.variable] || ''}
-              onChange={(e) => handleFormChange(form.variable, e.target.value)}
+              value={inputsFormValue?.[form.variable] ?? ''}
+              onValueChange={(value) => handleFormChange(form.variable, value)}
               placeholder={form.label}
             />
           )}
           {form.type === InputVarType.paragraph && (
             <Textarea
-              aria-label={form.label}
+              aria-labelledby={`${baseId}-${form.variable}-label`}
               value={inputsFormValue?.[form.variable] || ''}
               onValueChange={(value) => handleFormChange(form.variable, value)}
               placeholder={form.label}
@@ -108,7 +130,10 @@ const InputsFormContent = ({ showTip }: Props) => {
               value={(inputsFormValue?.[form.variable] ?? form.default ?? '') || null}
               onValueChange={(value) => value && handleFormChange(form.variable, value)}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger
+                aria-labelledby={`${baseId}-${form.variable}-label`}
+                className="w-full"
+              >
                 <SelectValue placeholder={form.label} />
               </SelectTrigger>
               <SelectContent>
@@ -121,10 +146,15 @@ const InputsFormContent = ({ showTip }: Props) => {
               </SelectContent>
             </Select>
           )}
-          {form.type === InputVarType.singleFile && (
+          {!clearChatList && form.type === InputVarType.singleFile && (
             <FileUploaderInAttachmentWrapper
-              value={inputsFormValue?.[form.variable] ? [inputsFormValue?.[form.variable]] : []}
-              onChange={(files) => handleFormChange(form.variable, files[0])}
+              key={currentConversationId}
+              value={
+                fileInputsFormValue?.[form.variable] ? [fileInputsFormValue[form.variable]] : []
+              }
+              onChange={(files) =>
+                handleFormChange(form.variable, files[0] ?? (form.required ? undefined : ''))
+              }
               fileConfig={{
                 allowed_file_types: form.allowed_file_types,
                 allowed_file_extensions: form.allowed_file_extensions,
@@ -134,9 +164,10 @@ const InputsFormContent = ({ showTip }: Props) => {
               }}
             />
           )}
-          {form.type === InputVarType.multiFiles && (
+          {!clearChatList && form.type === InputVarType.multiFiles && (
             <FileUploaderInAttachmentWrapper
-              value={inputsFormValue?.[form.variable] || []}
+              key={currentConversationId}
+              value={fileInputsFormValue?.[form.variable] || []}
               onChange={(files) => handleFormChange(form.variable, files)}
               fileConfig={{
                 allowed_file_types: form.allowed_file_types,

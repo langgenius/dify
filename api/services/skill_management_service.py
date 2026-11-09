@@ -21,9 +21,9 @@ import re
 import xml.etree.ElementTree as ET
 import zipfile
 from base64 import b64encode
-from collections.abc import Generator
-from contextlib import contextmanager
-from dataclasses import dataclass
+from collections.abc import Generator, Mapping
+from contextlib import contextmanager, suppress
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
@@ -39,6 +39,8 @@ from sqlalchemy.orm import Session, object_session
 from yaml.error import MarkedYAMLError
 
 from configs import dify_config
+from constants import BYTES_PER_MIB
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -54,11 +56,14 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.nodes.llm.reasoning import split_reasoning
+from libs.archive_writer import is_os_junk
 from libs.datetime_utils import naive_utc_now
+from libs.helper import escape_like_pattern
 from models.account import Account
 from models.agent import (
     Agent,
     AgentConfigDraft,
+    AgentConfigDraftType,
     AgentConfigSnapshot,
     AgentKind,
     AgentScope,
@@ -96,9 +101,7 @@ from services.file_service import FileService
 logger = logging.getLogger(__name__)
 
 _SKILL_MD = "SKILL.md"
-_MAX_SKILL_BYTES = 200 * 1024 * 1024
-_MAX_FILES_PER_SKILL = 5000
-_MAX_ZIP_COMPRESSION_RATIO = 1000
+_ZIP_MIME_TYPE = "application/zip"
 _MAX_FILE_CHECK_ITEMS = 100
 _MAX_SKILLS_PER_WORKSPACE = 500
 _MAX_AGENT_SKILLS = 20
@@ -113,7 +116,7 @@ _UNTITLED_SKILL_MD_BODY = """# Untitled skill
 
 Describe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.
 """
-_FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n?", re.DOTALL)
+_FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n)?", re.DOTALL)
 _FILE_EXTENSION_RE = re.compile(r"\.[A-Za-z0-9][A-Za-z0-9._+-]*\Z")
 _SKILL_ASSISTANT_SYSTEM_PROMPT = """You are Dify's Skill Authoring assistant.
 
@@ -233,6 +236,34 @@ _MAX_ASSISTANT_ATTACHMENTS = 10
 _MAX_ASSISTANT_ATTACHMENT_CHARS = 20_000
 _MAX_ASSISTANT_PDF_PAGES = 100
 _SKILL_ASSISTANT_ROLE = "__skill_authoring_assistant__"
+
+
+class SkillServiceErrorCode(StrEnum):
+    SKILL_NOT_FOUND = "skill_not_found"
+    SKILL_VERSION_NOT_FOUND = "skill_version_not_found"
+    SKILL_CONFLICT = "skill_conflict"
+    SKILL_NAME_CONFLICT = "skill_name_conflict"
+    SKILL_NAME_MISMATCH = "skill_name_mismatch"
+    MISSING_SKILL_MD = "missing_skill_md"
+    INVALID_SKILL_MD = "invalid_skill_md"
+    MISSING_SKILL_NAME = "missing_skill_name"
+    INVALID_SKILL_NAME = "invalid_skill_name"
+    MISSING_SKILL_DESCRIPTION = "missing_skill_description"
+    INVALID_SKILL_DESCRIPTION = "invalid_skill_description"
+    INVALID_SKILL_PACKAGE = "invalid_skill_package"
+    ARCHIVE_TOO_LARGE = "archive_too_large"
+    SKILL_TOO_LARGE = "skill_too_large"
+    TOO_MANY_FILES = "too_many_files"
+    DUPLICATE_FILE_PATH = "duplicate_file_path"
+    FILE_PATH_CONFLICT = "file_path_conflict"
+    INVALID_SKILL_FILE = "invalid_skill_file"
+
+
+class SkillErrorDetail(StrEnum):
+    """Keys of ``SkillManagementServiceError.details`` that callers read back."""
+
+    SKILL_ID = "skill_id"
+    NAME = "name"
 
 
 class SkillManagementServiceError(Exception):
@@ -402,6 +433,13 @@ class SkillImportPayload(BaseModel):
     filename: str
 
 
+class SkillOverwritePayload(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
+
+    content: bytes
+    expected_updated_at: int | None = None
+
+
 class SkillRestorePayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -501,10 +539,68 @@ class SkillAssistActionResult:
 
 
 @dataclass(frozen=True, slots=True)
+class DraftSkillArchive:
+    filename: str
+    mime_type: str
+    payload: bytes
+
+
+@dataclass(frozen=True, slots=True)
 class PublishedSkillArchive:
     filename: str
     mime_type: str
     payload: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeAgentSkillArchive:
+    skill_id: str
+    version_id: str
+    tool_file_id: str
+    storage_key: str
+    name: str
+    display_name: str
+    description: str
+    priority: int
+    size: int
+    hash: str
+
+
+@dataclass(frozen=True, slots=True)
+class _BinaryArchiveEntry:
+    path: str
+    payload: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class _SkillArchiveContents:
+    """Directories and text files are final draft items; binaries still need a stored tool file."""
+
+    entries: tuple[SkillDraftTreeItemPayload | _BinaryArchiveEntry, ...]
+    metadata: dict[str, Any]
+    skill_md_content: str
+
+
+@dataclass(frozen=True, slots=True)
+class _SkillPackage:
+    contents: _SkillArchiveContents
+    name: str
+    description: str
+
+
+@dataclass(slots=True)
+class _ToolFileUploads:
+    """Tool files one request stores or reuses.
+
+    ``candidate_ids`` maps a draft row's claimed ``(sha256, size)`` to its tool file ids. The claim is
+    client-set, so ``stored_digests`` caches the sha256 of each candidate's real bytes (None if unreadable).
+    """
+
+    tenant_id: str
+    user_id: str
+    candidate_ids: Mapping[tuple[str, int], tuple[str, ...]] = field(default_factory=dict)
+    stored_digests: dict[str, str | None] = field(default_factory=dict)
+    created: list[ToolFile] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -516,6 +612,30 @@ class SkillFileContent:
     content: str | None
     size: int
     hash: str
+
+
+def max_skill_archive_bytes() -> int:
+    return dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * BYTES_PER_MIB
+
+
+def _size_text(size_bytes: int) -> str:
+    if size_bytes % BYTES_PER_MIB:
+        return f"{size_bytes} bytes"
+    return f"{size_bytes // BYTES_PER_MIB} MiB"
+
+
+def _too_many_files_error() -> SkillManagementServiceError:
+    return SkillManagementServiceError(
+        SkillServiceErrorCode.TOO_MANY_FILES,
+        f"skill has more than {dify_config.SKILL_PACKAGE_MAX_ENTRIES} files",
+    )
+
+
+def _skill_too_large_error() -> SkillManagementServiceError:
+    return SkillManagementServiceError(
+        SkillServiceErrorCode.SKILL_TOO_LARGE,
+        f"skill is over {_size_text(dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES)} uncompressed",
+    )
 
 
 def validate_skill_name(name: str) -> str:
@@ -568,7 +688,7 @@ class SkillManagementService:
         self._session = session
 
     @contextmanager
-    def _session_scope(self, session: Session | None = None) -> Generator[Session, None, None]:
+    def _session_scope(self, session: Session | None = None) -> Generator[Session]:
         """Reuse a caller-owned transaction when one is available.
 
         The fallback keeps direct service consumers working while callers are
@@ -718,9 +838,11 @@ class SkillManagementService:
         with self._session_scope() as session:
             stmt = select(Skill).where(Skill.tenant_id == tenant_id).order_by(Skill.updated_at.desc())
             if keyword:
-                like = f"%{keyword.strip()}%"
+                like = f"%{escape_like_pattern(keyword.strip())}%"
                 stmt = stmt.where(
-                    (Skill.name.ilike(like)) | (Skill.display_name.ilike(like)) | (Skill.description.ilike(like))
+                    (Skill.name.ilike(like, escape="\\"))
+                    | (Skill.display_name.ilike(like, escape="\\"))
+                    | (Skill.description.ilike(like, escape="\\"))
                 )
             requested_tags = self._normalize_tags(tags or [])
             if requested_tags:
@@ -826,7 +948,7 @@ class SkillManagementService:
         tenant_id: str,
         skill_id: str,
         message: str,
-    ) -> Generator[str, None, None]:
+    ) -> Generator[str]:
         """Stream read-only Skill Authoring assistance from the tenant's default LLM.
 
         The assistant receives the current text draft as untrusted reference
@@ -849,7 +971,10 @@ class SkillManagementService:
             context = self._build_assistant_context(skill=skill, files=files)
 
         try:
-            model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_default_model_instance(
+            model_instance = ModelManager.for_tenant(
+                tenant_id=tenant_id,
+                request_metadata={"created_by": CreditUsageCreatedBy.SKILL_BUILDER},
+            ).get_default_model_instance(
                 tenant_id=tenant_id,
                 model_type=ModelType.LLM,
             )
@@ -860,7 +985,7 @@ class SkillManagementService:
                 status_code=400,
             ) from exc
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             try:
                 response = model_instance.invoke_llm(
                     prompt_messages=[
@@ -898,12 +1023,12 @@ class SkillManagementService:
         history: list[SkillAssistHistoryMessagePayload] | None = None,
         model_payload: SkillAssistModelPayload | None = None,
         target_path: str | None = None,
-    ) -> Generator[str, None, None]:
+    ) -> Generator[str]:
         """Stream Skill Builder text and apply model-requested draft file operations."""
 
         message_id = str(uuid4())
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             try:
                 yield self._assistant_progress_sse(message_id=message_id, stage="reading_draft")
                 yield self._assistant_progress_sse(message_id=message_id, stage="generating_plan")
@@ -1230,7 +1355,7 @@ class SkillManagementService:
         cls,
         *,
         message_id: str,
-        response: Generator[Any, None, None],
+        response: Generator[Any],
         reasoning_chunks: list[str],
     ) -> Generator[str, None, str]:
         raw_parts: list[str] = []
@@ -1398,7 +1523,10 @@ class SkillManagementService:
         tenant_id: str,
         model_payload: SkillAssistModelPayload | None,
     ) -> tuple[Any, dict[str, Any]]:
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        model_manager = ModelManager.for_tenant(
+            tenant_id=tenant_id,
+            request_metadata={"created_by": CreditUsageCreatedBy.SKILL_BUILDER},
+        )
         if model_payload is None:
             try:
                 model_instance = model_manager.get_default_model_instance(
@@ -1710,26 +1838,69 @@ class SkillManagementService:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._check_expected_updated_at(skill, payload.expected_updated_at)
             files = self._build_draft_rows_from_tree(skill=skill, payload=payload, strict_frontmatter=False)
-            session.execute(delete(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id))
-            session.flush()
-            for file in files:
-                session.add(file)
-            skill.updated_by = user_id
-            skill.updated_at = naive_utc_now()
-            session.flush()
-            try:
-                session.commit()
-            except IntegrityError as exc:
-                session.rollback()
-                raise SkillManagementServiceError("skill_name_conflict", "skill name already exists") from exc
-            return {
-                **self._serialize_skill(
-                    skill,
-                    tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(skill.id, []),
-                    accounts=self._skill_accounts(session, skill=skill),
-                ),
-                "files": [self._serialize_file(file) for file in sorted(files, key=lambda item: item.path)],
-            }
+            self._replace_draft_rows(session, skill=skill, files=files, user_id=user_id)
+            return self._serialize_skill_with_files(session, tenant_id=tenant_id, skill=skill, files=files)
+
+    def overwrite_skill(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        skill_id: str,
+        payload: SkillOverwritePayload,
+    ) -> dict[str, Any]:
+        with self._session_scope() as session:
+            skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
+            self._check_expected_updated_at(skill, payload.expected_updated_at)
+            package = self._read_skill_package(payload.content)
+            if package.name != skill.name:
+                raise SkillManagementServiceError(
+                    SkillServiceErrorCode.SKILL_NAME_MISMATCH,
+                    "skill package name does not match the existing skill",
+                    details={"expected": skill.name, "got": package.name},
+                )
+            files = self._replace_draft_from_archive(
+                session,
+                skill=skill,
+                user_id=user_id,
+                contents=package.contents,
+                display_name=self._display_name_from_frontmatter(metadata=package.contents.metadata, name=package.name),
+            )
+            return self._serialize_skill_with_files(session, tenant_id=tenant_id, skill=skill, files=files)
+
+    def _serialize_skill_with_files(
+        self,
+        session,
+        *,
+        tenant_id: str,
+        skill: Skill,
+        files: list[SkillDraftFile],
+    ) -> dict[str, Any]:
+        return {
+            **self._serialize_skill(
+                skill,
+                tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(skill.id, []),
+                accounts=self._skill_accounts(session, skill=skill),
+            ),
+            "files": [self._serialize_file(file) for file in sorted(files, key=lambda item: item.path)],
+        }
+
+    @staticmethod
+    def _replace_draft_rows(session, *, skill: Skill, files: list[SkillDraftFile], user_id: str) -> None:
+        session.execute(delete(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id))
+        session.flush()
+        for file in files:
+            session.add(file)
+        skill.updated_by = user_id
+        skill.updated_at = naive_utc_now()
+        session.flush()
+        try:
+            session.commit()
+        except IntegrityError as exc:
+            session.rollback()
+            raise SkillManagementServiceError(
+                SkillServiceErrorCode.SKILL_NAME_CONFLICT, "skill name already exists"
+            ) from exc
 
     def apply_draft_file_operation(
         self,
@@ -1849,7 +2020,7 @@ class SkillManagementService:
             tenant_id=tenant_id,
             conversation_id=None,
             file_binary=archive_bytes,
-            mimetype="application/zip",
+            mimetype=_ZIP_MIME_TYPE,
             filename=f"{skill_name}.zip",
         )
         with self._session_scope() as session:
@@ -2041,7 +2212,7 @@ class SkillManagementService:
             }
 
     def duplicate_skill(self, *, tenant_id: str, user_id: str, skill_id: str) -> dict[str, Any]:
-        """Create a draft-only copy, preferring the latest published snapshot when present."""
+        """Create an unpublished copy of the current saved draft."""
         with self._session_scope() as session:
             source = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._enforce_workspace_skill_limit(session, tenant_id=tenant_id)
@@ -2066,47 +2237,10 @@ class SkillManagementService:
                 skill_id=duplicate.id,
                 tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[source.id]).get(source.id, []),
             )
-            latest_version_id = source.latest_published_version_id
             source_draft_files = list(
                 session.scalars(select(SkillDraftFile).where(SkillDraftFile.skill_id == source.id))
             )
-            copied_draft_files = [self._copy_draft_file(file, skill_id=duplicate_id) for file in source_draft_files]
-            session.commit()
-
-        if latest_version_id is not None:
-            archive = self._load_version_archive(tenant_id=tenant_id, version_id=latest_version_id)
-            with self._session_scope() as session:
-                duplicate = self._require_skill(session, tenant_id=tenant_id, skill_id=duplicate_id)
-                duplicate_identity = (
-                    duplicate.name,
-                    duplicate.display_name,
-                    duplicate.description,
-                    duplicate.name_manually_edited,
-                )
-                files = self._draft_rows_from_archive_bytes(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    skill=duplicate,
-                    archive_bytes=archive,
-                )
-                # Parsing the published SKILL.md synchronizes metadata onto the
-                # supplied ORM object. A duplicate must retain its new identity,
-                # otherwise the reused request session autoflushes the source
-                # name and violates the tenant/name unique constraint.
-                (
-                    duplicate.name,
-                    duplicate.display_name,
-                    duplicate.description,
-                    duplicate.name_manually_edited,
-                ) = duplicate_identity
-        else:
-            files = copied_draft_files
-
-        with self._session_scope() as session:
-            duplicate = self._require_skill(session, tenant_id=tenant_id, skill_id=duplicate_id)
-            if latest_version_id is not None:
-                for file in files:
-                    file.skill_id = duplicate.id
+            files = [self._copy_draft_file(file, skill_id=duplicate_id) for file in source_draft_files]
             for file in files:
                 if file.path == _SKILL_MD and file.content_text is not None:
                     synced_content = self._sync_skill_md_text(duplicate, file.content_text)
@@ -2131,40 +2265,41 @@ class SkillManagementService:
             }
 
     def import_skill(self, *, tenant_id: str, user_id: str, payload: SkillImportPayload) -> dict[str, Any]:
-        max_archive_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
-        if len(payload.content) > max_archive_bytes:
-            raise SkillManagementServiceError("archive_too_large", "skill archive exceeds size limit")
-
-        draft_payload, metadata, skill_md_content = self._draft_payload_from_zip(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            archive_bytes=payload.content,
-        )
-        name = validate_skill_name(str(metadata.get("name") or ""))
-        description = self._require_frontmatter_description(metadata, content=skill_md_content)
-        display_name = self._display_name_from_frontmatter(metadata=metadata, name=name)
+        package = self._read_skill_package(payload.content)
+        display_name = self._display_name_from_frontmatter(metadata=package.contents.metadata, name=package.name)
         with self._session_scope() as session:
             self._enforce_workspace_skill_limit(session, tenant_id=tenant_id)
-            skill = Skill(
-                tenant_id=tenant_id,
-                name=name,
-                display_name=display_name,
-                icon="📄",
-                description=description[:1024],
-                name_manually_edited=True,
-                created_by=user_id,
-                updated_by=user_id,
-            )
-            session.add(skill)
-            try:
-                session.flush()
-                files = self._build_draft_rows_from_tree(skill=skill, payload=draft_payload)
-                for file in files:
-                    session.add(file)
-                session.commit()
-            except IntegrityError as exc:
-                session.rollback()
-                raise SkillManagementServiceError("skill_name_conflict", "skill name already exists") from exc
+            self._reject_taken_skill_name(session, tenant_id=tenant_id, name=package.name)
+            # Ends the pre-check read transaction so none stays open while the binaries upload.
+            session.commit()
+            uploads = _ToolFileUploads(tenant_id=tenant_id, user_id=user_id)
+            with self._discard_uploads_on_failure(session, uploads=uploads):
+                draft_payload = self._store_archive_entries(package.contents, uploads=uploads)
+                skill = Skill(
+                    tenant_id=tenant_id,
+                    name=package.name,
+                    display_name=display_name,
+                    icon="📄",
+                    description=package.description[:1024],
+                    name_manually_edited=True,
+                    created_by=user_id,
+                    updated_by=user_id,
+                )
+                session.add(skill)
+                try:
+                    session.flush()
+                    files = self._build_draft_rows_from_tree(skill=skill, payload=draft_payload)
+                    for file in files:
+                        session.add(file)
+                    session.commit()
+                except IntegrityError as exc:
+                    session.rollback()
+                    # The name was free at the pre-check, so which skill took it since is not known here.
+                    raise SkillManagementServiceError(
+                        SkillServiceErrorCode.SKILL_NAME_CONFLICT,
+                        "skill name already exists",
+                        details={SkillErrorDetail.NAME: package.name},
+                    ) from exc
             session.refresh(skill)
             return {
                 **self._serialize_skill(skill, tags=[], accounts=self._skill_accounts(session, skill=skill)),
@@ -2214,23 +2349,26 @@ class SkillManagementService:
         archive_bytes = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=archive_file_id)
         with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
-            draft_files = self._draft_rows_from_archive_bytes(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                skill=skill,
-                archive_bytes=archive_bytes,
-            )
-            session.execute(delete(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id))
-            session.flush()
-            for file in draft_files:
-                session.add(file)
-            skill.updated_by = user_id
-            skill.updated_at = naive_utc_now()
-            session.commit()
+            contents = self._read_skill_archive(archive_bytes=archive_bytes)
+            self._replace_draft_from_archive(session, skill=skill, user_id=user_id, contents=contents)
 
         # Restore only replaces the editable draft. Publishing remains an explicit
         # follow-up action so restoring history cannot unexpectedly activate it.
         return self.get_skill(tenant_id=tenant_id, skill_id=skill_id)
+
+    def export_draft_archive(self, *, tenant_id: str, skill_id: str) -> DraftSkillArchive:
+        """Export the current saved draft without requiring or creating a published version."""
+        with self._session_scope() as session:
+            skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
+            files = list(session.scalars(select(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id)))
+            # Snapshot the loaded rows so archive storage reads happen outside this scope.
+            draft_skill = Skill(
+                tenant_id=tenant_id, name=skill.name, display_name=skill.display_name, description=skill.description
+            )
+            draft_files = [self._copy_draft_file(file, skill_id=skill.id) for file in files]
+            filename = f"{skill.name}.zip"
+        archive_bytes, _ = self._build_archive_from_draft(skill=draft_skill, files=draft_files)
+        return DraftSkillArchive(filename=filename, mime_type=_ZIP_MIME_TYPE, payload=archive_bytes)
 
     def pull_published_archive(self, *, tenant_id: str, skill_id: str) -> PublishedSkillArchive:
         with self._session_scope() as session:
@@ -2246,10 +2384,22 @@ class SkillManagementService:
                 )
             tool_file_id = version.archive_tool_file_id
             filename = f"{skill.name}.zip"
+        return self._stored_archive(tenant_id=tenant_id, tool_file_id=tool_file_id, filename=filename)
+
+    def export_version_archive(self, *, tenant_id: str, skill_id: str, version_id: str) -> PublishedSkillArchive:
+        with self._session_scope() as session:
+            skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
+            version = self._require_version(session, skill_id=skill.id, version_id=version_id)
+            tool_file_id = version.archive_tool_file_id
+            filename = f"{skill.name}-v{version.version_number}.zip"
+        return self._stored_archive(tenant_id=tenant_id, tool_file_id=tool_file_id, filename=filename)
+
+    @classmethod
+    def _stored_archive(cls, *, tenant_id: str, tool_file_id: str, filename: str) -> PublishedSkillArchive:
         return PublishedSkillArchive(
             filename=filename,
-            mime_type="application/zip",
-            payload=self._load_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id),
+            mime_type=_ZIP_MIME_TYPE,
+            payload=cls._load_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id),
         )
 
     def list_runtime_agent_skills(
@@ -2258,8 +2408,37 @@ class SkillManagementService:
         tenant_id: str,
         agent_id: str,
         include_draft: bool = False,
+        config_snapshot_id: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Return workspace Skills from the Agent draft or active published snapshot."""
+        """Return workspace Skills from the Agent draft or a published snapshot."""
+        return [
+            {
+                "id": item.skill_id,
+                "name": item.name,
+                "file_id": item.tool_file_id,
+                "description": item.description,
+                "size": item.size,
+                "hash": item.hash,
+                "mime_type": _ZIP_MIME_TYPE,
+            }
+            for item in self.list_runtime_agent_skill_archives(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                include_draft=include_draft,
+                config_snapshot_id=config_snapshot_id,
+            )
+        ]
+
+    def list_runtime_agent_skill_archives(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        include_draft: bool = False,
+        config_snapshot_id: str | None = None,
+    ) -> list[RuntimeAgentSkillArchive]:
+        """Return export-ready workspace Skill archives with published identity compatibility."""
+
         with self._session_scope() as session:
             binding_model = AgentSkillBinding if include_draft else AgentSkillBindingSnapshot
             conditions = [
@@ -2269,32 +2448,43 @@ class SkillManagementService:
                 Agent.tenant_id == tenant_id,
             ]
             if not include_draft:
-                conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
+                if config_snapshot_id is None:
+                    conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
+                else:
+                    conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == config_snapshot_id)
             rows = list(
                 session.execute(
-                    select(binding_model, Skill, SkillVersion)
+                    select(binding_model, Skill, SkillVersion, ToolFile)
                     .join(Skill, Skill.id == binding_model.skill_id)
                     .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
                     .join(Agent, Agent.id == binding_model.agent_id)
+                    .join(
+                        ToolFile,
+                        (ToolFile.id == SkillVersion.archive_tool_file_id) & (ToolFile.tenant_id == tenant_id),
+                    )
                     .where(*conditions)
                     .order_by(Skill.name)
                 )
             )
-            return [
-                {
-                    "id": skill.id,
-                    "name": published_name,
-                    "file_id": version.archive_tool_file_id,
-                    "description": published_description,
-                    "size": version.archive_size,
-                    "hash": version.hash_code,
-                    "mime_type": "application/zip",
-                }
-                for _binding, skill, version in rows
-                for published_name, _published_display_name, published_description in [
-                    self._published_skill_identity(skill, version)
-                ]
+
+        return [
+            RuntimeAgentSkillArchive(
+                skill_id=skill.id,
+                version_id=version.id,
+                tool_file_id=version.archive_tool_file_id,
+                storage_key=tool_file.file_key,
+                name=published_name,
+                display_name=published_display_name,
+                description=published_description,
+                priority=binding.priority,
+                size=version.archive_size,
+                hash=version.hash_code,
+            )
+            for binding, skill, version, tool_file in rows
+            for published_name, published_display_name, published_description in [
+                self._published_skill_identity(skill, version)
             ]
+        ]
 
     def pull_runtime_agent_skill(
         self,
@@ -2348,7 +2538,7 @@ class SkillManagementService:
             filename = f"{published_name}.zip"
         return PublishedSkillArchive(
             filename=filename,
-            mime_type="application/zip",
+            mime_type=_ZIP_MIME_TYPE,
             payload=archive_bytes,
         )
 
@@ -2627,36 +2817,35 @@ class SkillManagementService:
                 )
             )
         )
-        configured_names: set[str] = set()
-        snapshot = session.scalar(
-            select(AgentConfigSnapshot).where(
-                AgentConfigSnapshot.tenant_id == tenant_id,
-                AgentConfigSnapshot.agent_id == agent_id,
-                AgentConfigSnapshot.id
-                == select(Agent.active_config_snapshot_id)
-                .where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
-                .scalar_subquery(),
-            )
-        )
-        if snapshot is not None:
-            configured_names.update(
-                skill.name
-                for skill in AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).config_skills
-                if not skill.is_missing
-            )
-        drafts = session.scalars(
+        # Bindings are edited against the normal draft, including unpublished removals.
+        config: AgentConfigDraft | AgentConfigSnapshot | None = session.scalar(
             select(AgentConfigDraft).where(
                 AgentConfigDraft.tenant_id == tenant_id,
                 AgentConfigDraft.agent_id == agent_id,
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                AgentConfigDraft.account_id.is_(None),
             )
         )
-        for draft in drafts:
-            configured_names.update(
-                skill.name
-                for skill in AgentSoulConfig.model_validate(draft.config_snapshot_dict).config_skills
-                if not skill.is_missing
+        if config is None:
+            config = session.scalar(
+                select(AgentConfigSnapshot).where(
+                    AgentConfigSnapshot.tenant_id == tenant_id,
+                    AgentConfigSnapshot.agent_id == agent_id,
+                    AgentConfigSnapshot.id
+                    == select(Agent.active_config_snapshot_id)
+                    .where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
+                    .scalar_subquery(),
+                )
             )
-
+        configured_names = (
+            {
+                skill.name
+                for skill in AgentSoulConfig.model_validate(config.config_snapshot_dict).config_skills
+                if not skill.is_missing
+            }
+            if config is not None
+            else set()
+        )
         conflicts = sorted(set(selected_skill_names) & (configured_names - current_bound_names))
         if conflicts:
             raise SkillManagementServiceError(
@@ -3351,7 +3540,7 @@ class SkillManagementService:
     def _require_skill(session, *, tenant_id: str, skill_id: str) -> Skill:
         skill = session.scalar(select(Skill).where(Skill.tenant_id == tenant_id, Skill.id == skill_id))
         if skill is None:
-            raise SkillManagementServiceError("skill_not_found", "skill not found", status_code=404)
+            raise SkillManagementServiceError(SkillServiceErrorCode.SKILL_NOT_FOUND, "skill not found", status_code=404)
         return skill
 
     @staticmethod
@@ -3495,12 +3684,24 @@ class SkillManagementService:
             raise SkillManagementServiceError("skill_limit_exceeded", "workspace skill limit exceeded")
 
     @staticmethod
+    def _reject_taken_skill_name(session, *, tenant_id: str, name: str) -> None:
+        taken_id = session.scalar(select(Skill.id).where(Skill.tenant_id == tenant_id, Skill.name == name).limit(1))
+        if taken_id is not None:
+            raise SkillManagementServiceError(
+                SkillServiceErrorCode.SKILL_NAME_CONFLICT,
+                "skill name already exists",
+                details={SkillErrorDetail.SKILL_ID: taken_id},
+            )
+
+    @staticmethod
     def _require_version(session, *, skill_id: str, version_id: str) -> SkillVersion:
         version = session.scalar(
             select(SkillVersion).where(SkillVersion.skill_id == skill_id, SkillVersion.id == version_id)
         )
         if version is None:
-            raise SkillManagementServiceError("skill_version_not_found", "skill version not found", status_code=404)
+            raise SkillManagementServiceError(
+                SkillServiceErrorCode.SKILL_VERSION_NOT_FOUND, "skill version not found", status_code=404
+            )
         return version
 
     @staticmethod
@@ -3607,7 +3808,13 @@ class SkillManagementService:
             )
 
     @staticmethod
-    def _parse_frontmatter(content: str) -> dict[str, Any]:
+    def _normalize_newlines(content: str) -> str:
+        """Normalize Windows/Mac newlines so SKILL.md frontmatter parsing is stable."""
+        return content.replace("\r\n", "\n").replace("\r", "\n")
+
+    @classmethod
+    def _parse_frontmatter(cls, content: str) -> dict[str, Any]:
+        content = cls._normalize_newlines(content)
         match = _FRONTMATTER_RE.match(content)
         if match is None:
             return {}
@@ -3616,7 +3823,7 @@ class SkillManagementService:
         except yaml.YAMLError as exc:
             line = None
             if isinstance(exc, MarkedYAMLError) and exc.problem_mark is not None:
-                line = int(exc.problem_mark.line) + 2
+                line = exc.problem_mark.line + 2
             raise SkillManagementServiceError(
                 "invalid_skill_md",
                 f"SKILL.md frontmatter YAML is invalid: {exc}",
@@ -3632,9 +3839,9 @@ class SkillManagementService:
             )
         return payload
 
-    @staticmethod
-    def _frontmatter_field_line(content: str, field: str) -> int:
-        match = _FRONTMATTER_RE.match(content)
+    @classmethod
+    def _frontmatter_field_line(cls, content: str, field: str) -> int:
+        match = _FRONTMATTER_RE.match(cls._normalize_newlines(content))
         if match is None:
             return 2
         frontmatter_start_line = 2
@@ -3740,76 +3947,223 @@ class SkillManagementService:
 
     @staticmethod
     def _strip_single_root(paths: list[str]) -> dict[str, str]:
-        if not paths:
-            return {}
-        first_segments = {path.split("/", 1)[0] for path in paths if "/" in path}
-        root = next(iter(first_segments)) if len(first_segments) == 1 else None
-        if root is None or f"{root}/{_SKILL_MD}" not in paths or _SKILL_MD in paths:
+        if not paths or _SKILL_MD in paths:
             return {path: path for path in paths}
-        stripped = {path: path.removeprefix(f"{root}/") for path in paths}
-        return stripped
+        # Identify the root by the unique top-level `<root>/SKILL.md`, rather than
+        # requiring every path to share one first segment: tools like macOS Finder's
+        # "Compress" add a sibling `__MACOSX/` metadata folder that must not defeat
+        # stripping of the real skill folder. Entries outside the detected root
+        # (like `__MACOSX/...`) are dropped rather than passed through, matching
+        # skill_package_service._normalize_members(ignore_outside_selected_root=True).
+        skill_md_roots = {
+            path.split("/", 1)[0] for path in paths if path.count("/") == 1 and path.endswith(f"/{_SKILL_MD}")
+        }
+        if len(skill_md_roots) != 1:
+            return {path: path for path in paths}
+        root = next(iter(skill_md_roots))
+        prefix = f"{root}/"
+        # The explicit wrapper directory represents the new root, not a draft item.
+        return {path: path.removeprefix(prefix) for path in paths if path.startswith(prefix)}
 
-    def _draft_payload_from_zip(
-        self,
-        *,
-        tenant_id: str,
-        user_id: str,
-        archive_bytes: bytes,
-    ) -> tuple[SkillDraftTreePayload, dict[str, Any], str]:
+    @classmethod
+    def _read_skill_package(cls, content: bytes) -> _SkillPackage:
+        """Read an uploaded skill zip and validate the name and description in its SKILL.md."""
+        max_bytes = max_skill_archive_bytes()
+        if len(content) > max_bytes:
+            raise SkillManagementServiceError(
+                SkillServiceErrorCode.ARCHIVE_TOO_LARGE, f"skill archive is over {_size_text(max_bytes)}"
+            )
+        contents = cls._read_skill_archive(archive_bytes=content)
+        return _SkillPackage(
+            contents=contents,
+            name=cls._require_frontmatter_name(contents.metadata, content=contents.skill_md_content),
+            description=cls._require_frontmatter_description(contents.metadata, content=contents.skill_md_content),
+        )
+
+    @classmethod
+    def _read_skill_archive(cls, *, archive_bytes: bytes) -> _SkillArchiveContents:
         try:
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
-                infos = self._validate_archive_limits(archive)
+                infos = [
+                    info
+                    for info in cls._validate_archive_limits(archive)
+                    if not is_os_junk(normalize_skill_file_path(info.filename.strip("/")))
+                ]
                 raw_paths = [normalize_skill_file_path(info.filename.strip("/")) for info in infos]
-                path_map = self._strip_single_root(raw_paths)
+                path_map = cls._strip_single_root(raw_paths)
                 if _SKILL_MD not in set(path_map.values()):
                     raise SkillManagementServiceError("missing_skill_md", "Skill package must contain SKILL.md")
-                items: list[SkillDraftTreeItemPayload] = []
+                entries: list[SkillDraftTreeItemPayload | _BinaryArchiveEntry] = []
                 metadata: dict[str, Any] = {}
                 skill_md_content = ""
                 for info in infos:
                     raw_path = normalize_skill_file_path(info.filename.strip("/"))
+                    if raw_path not in path_map:
+                        continue
                     path = normalize_skill_file_path(path_map[raw_path])
                     if info.is_dir():
-                        items.append(SkillDraftTreeItemPayload(path=path, kind=SkillFileKind.DIRECTORY))
+                        entries.append(SkillDraftTreeItemPayload(path=path, kind=SkillFileKind.DIRECTORY))
                         continue
                     payload = archive.read(info)
-                    text = self._decode_text_payload(path, payload)
+                    text = cls._decode_text_payload(path, payload)
                     if path == _SKILL_MD:
                         if text is None:
                             raise SkillManagementServiceError("invalid_skill_md", "SKILL.md must be UTF-8 text")
-                        metadata = self._parse_frontmatter(text)
+                        text = cls._normalize_newlines(text)
+                        metadata = cls._parse_frontmatter(text)
                         skill_md_content = text
-                    if text is not None:
-                        items.append(
-                            SkillDraftTreeItemPayload(
-                                path=path,
-                                storage=SkillFileStorage.TEXT,
-                                mime_type=self._guess_mime_type(path),
-                                content=text,
-                            )
+                    if text is None:
+                        entries.append(_BinaryArchiveEntry(path=path, payload=payload))
+                        continue
+                    entries.append(
+                        SkillDraftTreeItemPayload(
+                            path=path,
+                            storage=SkillFileStorage.TEXT,
+                            mime_type=cls._guess_mime_type(path),
+                            content=text,
                         )
-                    else:
-                        tool_file = self._tool_files.create_file_by_raw(
-                            user_id=user_id,
-                            tenant_id=tenant_id,
-                            conversation_id=None,
-                            file_binary=payload,
-                            mimetype=self._guess_mime_type(path),
-                            filename=path.rsplit("/", 1)[-1],
-                        )
-                        items.append(
-                            SkillDraftTreeItemPayload(
-                                path=path,
-                                storage=SkillFileStorage.TOOL_FILE,
-                                mime_type=self._guess_mime_type(path),
-                                tool_file_id=tool_file.id,
-                                size=len(payload),
-                                hash=hashlib.sha256(payload).hexdigest(),
-                            )
-                        )
+                    )
         except zipfile.BadZipFile as exc:
             raise SkillManagementServiceError("invalid_skill_package", "skill package must be a valid zip") from exc
-        return SkillDraftTreePayload(files=items), metadata, skill_md_content
+        return _SkillArchiveContents(entries=tuple(entries), metadata=metadata, skill_md_content=skill_md_content)
+
+    def _store_archive_entries(
+        self, contents: _SkillArchiveContents, *, uploads: _ToolFileUploads
+    ) -> SkillDraftTreePayload:
+        items: list[SkillDraftTreeItemPayload] = []
+        for entry in contents.entries:
+            if isinstance(entry, _BinaryArchiveEntry):
+                items.append(self._store_binary_entry(entry, uploads=uploads))
+                continue
+            items.append(entry)
+        return SkillDraftTreePayload(files=items)
+
+    def _store_binary_entry(
+        self, entry: _BinaryArchiveEntry, *, uploads: _ToolFileUploads
+    ) -> SkillDraftTreeItemPayload:
+        digest = hashlib.sha256(entry.payload).hexdigest()
+        size = len(entry.payload)
+        mime_type = self._guess_mime_type(entry.path)
+        tool_file_id = self._reusable_tool_file_id(uploads, digest=digest, size=size)
+        if tool_file_id is None:
+            tool_file = self._tool_files.create_file_by_raw(
+                user_id=uploads.user_id,
+                tenant_id=uploads.tenant_id,
+                conversation_id=None,
+                file_binary=entry.payload,
+                mimetype=mime_type,
+                filename=entry.path.rsplit("/", 1)[-1],
+            )
+            uploads.created.append(tool_file)
+            tool_file_id = tool_file.id
+        return SkillDraftTreeItemPayload(
+            path=entry.path,
+            storage=SkillFileStorage.TOOL_FILE,
+            mime_type=mime_type,
+            tool_file_id=tool_file_id,
+            size=size,
+            hash=digest,
+        )
+
+    def _reusable_tool_file_id(self, uploads: _ToolFileUploads, *, digest: str, size: int) -> str | None:
+        for candidate_id in uploads.candidate_ids.get((digest, size), ()):
+            if candidate_id not in uploads.stored_digests:
+                uploads.stored_digests[candidate_id] = self._stored_tool_file_digest(
+                    tenant_id=uploads.tenant_id, tool_file_id=candidate_id
+                )
+            if uploads.stored_digests[candidate_id] == digest:
+                return candidate_id
+        return None
+
+    @classmethod
+    def _stored_tool_file_digest(cls, *, tenant_id: str, tool_file_id: str) -> str | None:
+        try:
+            payload = cls._load_draft_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id)
+        except Exception:
+            # Reuse is only an optimization; an unreadable candidate means storing a fresh copy.
+            logger.warning("Skill draft tool file %s could not be read for reuse", tool_file_id, exc_info=True)
+            return None
+        return hashlib.sha256(payload).hexdigest()
+
+    def _replace_draft_from_archive(
+        self,
+        session,
+        *,
+        skill: Skill,
+        user_id: str,
+        contents: _SkillArchiveContents,
+        display_name: str | None = None,
+    ) -> list[SkillDraftFile]:
+        """``display_name`` replaces the skill's unless SKILL.md names one; None keeps the skill's.
+
+        It is set only after the uploads, so no pending skill update holds a row lock while they run.
+        """
+        uploads = _ToolFileUploads(
+            tenant_id=skill.tenant_id,
+            user_id=user_id,
+            candidate_ids=self._reuse_candidate_ids(session, skill=skill),
+        )
+        with self._discard_uploads_on_failure(session, uploads=uploads):
+            draft_payload = self._store_archive_entries(contents, uploads=uploads)
+            if display_name is not None:
+                skill.display_name = display_name
+            files = self._build_draft_rows_from_tree(
+                skill=skill,
+                payload=draft_payload,
+                sync_frontmatter_name=True,
+                strict_frontmatter=True,
+            )
+            self._replace_draft_rows(session, skill=skill, files=files, user_id=user_id)
+        return files
+
+    @staticmethod
+    def _reuse_candidate_ids(session, *, skill: Skill) -> dict[tuple[str, int], tuple[str, ...]]:
+        """Draft rows whose tool file exists in the skill's tenant with the size the row claims."""
+        rows = session.execute(
+            select(SkillDraftFile.hash, SkillDraftFile.size, SkillDraftFile.tool_file_id)
+            .join(ToolFile, ToolFile.id == SkillDraftFile.tool_file_id)
+            .where(
+                SkillDraftFile.skill_id == skill.id,
+                SkillDraftFile.storage == SkillFileStorage.TOOL_FILE,
+                SkillDraftFile.hash != "",
+                ToolFile.tenant_id == skill.tenant_id,
+                ToolFile.size == SkillDraftFile.size,
+            )
+        ).all()
+        candidates: dict[tuple[str, int], tuple[str, ...]] = {}
+        for row in rows:
+            key = (row.hash, row.size)
+            candidates[key] = (*candidates.get(key, ()), row.tool_file_id)
+        return candidates
+
+    @contextmanager
+    def _discard_uploads_on_failure(self, session, *, uploads: _ToolFileUploads) -> Generator[None]:
+        """Delete the tool files this request created when the block fails, then re-raise.
+
+        Reused files are never in ``uploads.created``: other draft rows or features may reference them.
+        """
+        try:
+            yield
+        except Exception:
+            if uploads.created:
+                self._delete_created_tool_files(session, uploads=uploads)
+            raise
+
+    @staticmethod
+    def _delete_created_tool_files(session, *, uploads: _ToolFileUploads) -> None:
+        tool_file_ids = [tool_file.id for tool_file in uploads.created]
+        try:
+            # Release the failed transaction's row locks before the slower storage deletes.
+            session.rollback()
+            for tool_file in uploads.created:
+                with suppress(FileNotFoundError):
+                    storage.delete(tool_file.file_key)
+            with session_factory.create_session() as cleanup_session, cleanup_session.begin():
+                cleanup_session.execute(
+                    delete(ToolFile).where(ToolFile.tenant_id == uploads.tenant_id, ToolFile.id.in_(tool_file_ids))
+                )
+        except Exception:
+            logger.exception("Failed to delete tool files stored by a failed skill archive request: %s", tool_file_ids)
 
     def _version_files_from_archive_bytes(self, archive_bytes: bytes) -> list[dict[str, Any]]:
         try:
@@ -3871,8 +4225,8 @@ class SkillManagementService:
     def _validate_archive_limits(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
         """Validate ZIP metadata before any member is decompressed or persisted."""
         infos = archive.infolist()
-        if len(infos) > _MAX_FILES_PER_SKILL:
-            raise SkillManagementServiceError("too_many_files", "skill file count limit exceeded")
+        if len(infos) > dify_config.SKILL_PACKAGE_MAX_ENTRIES:
+            raise _too_many_files_error()
 
         total_uncompressed = 0
         for info in infos:
@@ -3880,32 +4234,14 @@ class SkillManagementService:
                 raise SkillManagementServiceError("invalid_skill_package", "skill package has invalid ZIP metadata")
 
             total_uncompressed += info.file_size
-            if total_uncompressed > _MAX_SKILL_BYTES:
-                raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
+            if total_uncompressed > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
+                raise _skill_too_large_error()
 
             if info.is_dir() or info.file_size == 0:
                 continue
-            if info.compress_size == 0 or info.file_size / info.compress_size > _MAX_ZIP_COMPRESSION_RATIO:
-                raise SkillManagementServiceError(
-                    "invalid_skill_package",
-                    "skill package compression ratio exceeds the allowed limit",
-                )
+            if info.compress_size == 0:
+                raise SkillManagementServiceError("invalid_skill_package", "skill package has invalid ZIP metadata")
         return infos
-
-    def _draft_rows_from_archive_bytes(
-        self,
-        *,
-        tenant_id: str,
-        user_id: str,
-        skill: Skill,
-        archive_bytes: bytes,
-    ) -> list[SkillDraftFile]:
-        payload, _metadata, _skill_md_content = self._draft_payload_from_zip(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            archive_bytes=archive_bytes,
-        )
-        return self._build_draft_rows_from_tree(skill=skill, payload=payload, sync_frontmatter_name=True)
 
     @staticmethod
     def _draft_payload_items_from_rows(files: list[SkillDraftFile]) -> list[SkillDraftTreeItemPayload]:
@@ -4079,8 +4415,8 @@ class SkillManagementService:
                     )
                 parent = posixpath.dirname(parent)
 
-        if len(entries_by_path) > _MAX_FILES_PER_SKILL:
-            raise SkillManagementServiceError("too_many_files", "skill file count limit exceeded")
+        if len(entries_by_path) > dify_config.SKILL_PACKAGE_MAX_ENTRIES:
+            raise _too_many_files_error()
 
         rows: list[SkillDraftFile] = []
         total_size = 0
@@ -4112,8 +4448,8 @@ class SkillManagementService:
                 )
             )
 
-        if total_size > _MAX_SKILL_BYTES:
-            raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
+        if total_size > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
+            raise _skill_too_large_error()
         return rows
 
     def _sync_skill_metadata_from_draft_skill_md(self, *, skill: Skill, content: str) -> None:
@@ -4373,8 +4709,8 @@ class SkillManagementService:
     @staticmethod
     def _enforce_total_size(files: list[SkillDraftFile]) -> None:
         total = sum(file.size or 0 for file in {file.path: file for file in files}.values())
-        if total > _MAX_SKILL_BYTES:
-            raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
+        if total > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
+            raise _skill_too_large_error()
 
     @staticmethod
     def _load_tool_file_bytes(*, tenant_id: str, file_id: str) -> bytes:
@@ -4382,14 +4718,15 @@ class SkillManagementService:
             tool_file = session.scalar(select(ToolFile).where(ToolFile.tenant_id == tenant_id, ToolFile.id == file_id))
             if tool_file is None:
                 raise SkillManagementServiceError("skill_archive_missing", "skill archive is missing", status_code=404)
-            try:
-                return storage.load_once(tool_file.file_key)
-            except (OSError, SQLAlchemyError) as exc:
-                raise SkillManagementServiceError(
-                    "skill_archive_missing",
-                    "skill archive is missing",
-                    status_code=404,
-                ) from exc
+            file_key = tool_file.file_key
+        try:
+            return storage.load_once(file_key)
+        except (OSError, SQLAlchemyError) as exc:
+            raise SkillManagementServiceError(
+                "skill_archive_missing",
+                "skill archive is missing",
+                status_code=404,
+            ) from exc
 
     @staticmethod
     def _load_assistant_tool_file_bytes(*, tenant_id: str, file_id: str) -> bytes:
@@ -4522,6 +4859,7 @@ class SkillManagementService:
     @staticmethod
     def _extract_docx_text(payload: bytes, *, max_chars: int) -> str:
         parts: list[str] = []
+        inline_text = {"tab": "\t", "br": "\n", "cr": "\n", "noBreakHyphen": "\u2011", "softHyphen": "\u00ad"}
         try:
             with zipfile.ZipFile(io.BytesIO(payload)) as archive:
                 for name in sorted(archive.namelist()):
@@ -4529,7 +4867,27 @@ class SkillManagementService:
                         name == "word/document.xml" or name.startswith("word/header") or name.startswith("word/footer")
                     ):
                         continue
-                    parts.extend(SkillManagementService._xml_text_content(archive.read(name), text_tags={"t"}))
+                    paragraph_text: list[str] = []
+                    ancestors: list[str] = []
+                    for event, node in ET.iterparse(io.BytesIO(archive.read(name)), events=("start", "end")):
+                        tag = node.tag.rsplit("}", 1)[-1]
+                        if event == "start":
+                            ancestors.append(tag)
+                        # Runs share a paragraph; nested text-box paragraphs must not be collected twice.
+                        if tag == "p":
+                            if paragraph_text:
+                                parts.append("".join(paragraph_text))
+                                paragraph_text = []
+                        elif event == "end" and tag == "t":
+                            paragraph_text.append(node.text or "")
+                        elif event == "end" and tag in inline_text and len(ancestors) > 1:
+                            if ancestors[-2] == "r" or (tag == "br" and ancestors[-2] == "p"):
+                                paragraph_text.append(inline_text[tag])
+                        if event == "end":
+                            ancestors.pop()
+                            node.clear()
+                    if paragraph_text:
+                        parts.append("".join(paragraph_text))
                     if sum(len(part) for part in parts) >= max_chars:
                         break
         except (ET.ParseError, OSError, zipfile.BadZipFile):
@@ -4541,9 +4899,37 @@ class SkillManagementService:
         parts: list[str] = []
         try:
             with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                archive_names = set(archive.namelist())
                 slide_names = sorted(
                     name for name in archive.namelist() if name.startswith("ppt/slides/slide") and name.endswith(".xml")
                 )
+                if {"ppt/presentation.xml", "ppt/_rels/presentation.xml.rels"} <= archive_names:
+                    # Part filenames need not match the presentation's displayed slide order.
+                    relationships = ET.fromstring(archive.read("ppt/_rels/presentation.xml.rels"))
+                    slide_targets: dict[str, str] = {}
+                    for relationship in relationships:
+                        if (
+                            not relationship.attrib.get("Type", "").endswith("/slide")
+                            or relationship.attrib.get("TargetMode") == "External"
+                        ):
+                            continue
+                        relationship_id = relationship.attrib.get("Id")
+                        target = relationship.attrib.get("Target")
+                        if relationship_id and target:
+                            slide_targets[relationship_id] = posixpath.normpath(posixpath.join("ppt", target)).lstrip(
+                                "/"
+                            )
+                    presentation = ET.fromstring(archive.read("ppt/presentation.xml"))
+                    slide_names = []
+                    for slide in presentation.iter():
+                        if slide.tag.rsplit("}", 1)[-1] != "sldId":
+                            continue
+                        relationship_id = next(
+                            (value for key, value in slide.attrib.items() if key.endswith("}id")), ""
+                        )
+                        target = slide_targets.get(relationship_id)
+                        if target is not None and target in archive_names:
+                            slide_names.append(target)
                 for name in slide_names:
                     parts.extend(SkillManagementService._xml_text_content(archive.read(name), text_tags={"t"}))
                     if sum(len(part) for part in parts) >= max_chars:
@@ -4599,23 +4985,33 @@ class SkillManagementService:
     @staticmethod
     def _extract_rtf_text(payload: bytes, *, max_chars: int) -> str:
         try:
-            source = payload.decode("utf-8")
+            payload.decode("utf-8")
+            text_encoding = "utf-8"
         except UnicodeDecodeError:
-            source = payload.decode("latin-1", errors="replace")
+            text_encoding = "latin-1"
+        # Keep source positions byte-aligned: \bin lengths count bytes, not decoded characters.
+        source = payload.decode("latin-1")
 
         text_parts: list[str] = []
         destination_skip_depth: int | None = None
         depth = 0
+        unicode_skip = 1
+        unicode_skip_stack: list[int] = []
+        fallback_remaining = 0
         index = 0
         while index < len(source):
             char = source[index]
             if char == "{":
+                unicode_skip_stack.append(unicode_skip)
+                fallback_remaining = 0
                 depth += 1
                 index += 1
                 if source[index : index + 1] == "\\" and source[index + 1 : index + 2] == "*":
                     destination_skip_depth = depth
                 continue
             if char == "}":
+                unicode_skip = unicode_skip_stack.pop() if unicode_skip_stack else 1
+                fallback_remaining = 0
                 if destination_skip_depth is not None and depth <= destination_skip_depth:
                     destination_skip_depth = None
                 depth = max(0, depth - 1)
@@ -4625,7 +5021,17 @@ class SkillManagementService:
                 index += 1
                 continue
             if char != "\\":
-                text_parts.append("\n" if char in "\r\n" else char)
+                if fallback_remaining:
+                    if char not in "\r\n\x00":
+                        fallback_remaining -= 1
+                else:
+                    end = index + 1
+                    while end < len(source) and source[end] not in "\\{}":
+                        end += 1
+                    literal = payload[index:end].decode(text_encoding, errors="replace")
+                    text_parts.append(literal.replace("\r", "\n"))
+                    index = end
+                    continue
                 index += 1
                 continue
 
@@ -4633,7 +5039,15 @@ class SkillManagementService:
             if match:
                 word = match.group(1)
                 value = match.group(2)
-                if word in {"par", "line"}:
+                index += len(match.group(0))
+                if fallback_remaining:
+                    # A control word (including its binary payload) counts as one fallback character.
+                    fallback_remaining -= 1
+                    if word == "bin" and value is not None:
+                        index += max(0, int(value))
+                elif word == "uc" and value is not None:
+                    unicode_skip = max(0, int(value))
+                elif word in {"par", "line"}:
                     text_parts.append("\n")
                 elif word == "tab":
                     text_parts.append("\t")
@@ -4642,25 +5056,31 @@ class SkillManagementService:
                     if codepoint < 0:
                         codepoint += 65536
                     text_parts.append(chr(codepoint))
-                index += len(match.group(0))
-                if word == "u" and source[index : index + 2].startswith("\\'"):
-                    index += 4
-                elif word == "u" and index < len(source):
-                    index += 1
+                    fallback_remaining = unicode_skip
                 continue
 
             if source[index : index + 2] == "\\'":
-                try:
-                    text_parts.append(bytes.fromhex(source[index + 2 : index + 4]).decode("latin-1"))
-                except ValueError:
-                    pass
+                if fallback_remaining:
+                    fallback_remaining -= 1
+                else:
+                    with suppress(ValueError):
+                        text_parts.append(bytes.fromhex(source[index + 2 : index + 4]).decode("latin-1"))
                 index += 4
                 continue
-            if index + 1 < len(source):
+            if fallback_remaining:
+                fallback_remaining -= 1
+            elif index + 1 < len(source):
                 text_parts.append(source[index + 1])
             index += 2
 
-        text = re.sub(r"[ \t]+\n", "\n", "".join(text_parts))
+        raw_text = "".join(text_parts)
+        text = re.sub(
+            r"([\uD800-\uDBFF])([\uDC00-\uDFFF])",
+            lambda m: chr(0x10000 + ((ord(m.group(1)) - 0xD800) << 10) + (ord(m.group(2)) - 0xDC00)),
+            raw_text,
+        )
+        text = re.sub(r"[\uD800-\uDFFF]", "\ufffd", text)
+        text = re.sub(r"[ \t]+\n", "\n", text)
         text = re.sub(r"\n{3,}", "\n\n", text).strip()
         if len(text) > max_chars:
             return f"{text[:max_chars]}\n[TRUNCATED]"
@@ -4734,6 +5154,7 @@ class SkillManagementService:
 
 
 __all__ = [
+    "DraftSkillArchive",
     "PublishedSkillArchive",
     "SkillAssistAttachmentPayload",
     "SkillAssistHistoryMessagePayload",
@@ -4744,13 +5165,16 @@ __all__ = [
     "SkillDraftFileOperationPayload",
     "SkillDraftTreeItemPayload",
     "SkillDraftTreePayload",
+    "SkillErrorDetail",
     "SkillImportPayload",
     "SkillManagementService",
     "SkillManagementServiceError",
     "SkillMetadataPayload",
     "SkillPublishPayload",
     "SkillRestorePayload",
+    "SkillServiceErrorCode",
     "SkillVersionUpdatePayload",
+    "max_skill_archive_bytes",
     "normalize_skill_file_path",
     "validate_skill_description",
     "validate_skill_name",

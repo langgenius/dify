@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from '@hey-api/openapi-ts'
-import { loadOpenApiYaml } from './openapi-yaml'
+import { loadOpenApiYaml } from './openapi-yaml.ts'
+import { stripEnterpriseSchemaNamePrefix, typescriptPlugin } from './typescript-generation.ts'
 
 type JsonObject = Record<string, unknown>
 
@@ -76,14 +77,6 @@ const stripConsoleApiPrefix = (routePath: string) => {
   if (isConsoleApiPath(routePath)) return routePath.replace('/console/api', '')
 
   return routePath
-}
-
-const stripSchemaNamePrefix = (schemaName: string) => {
-  return schemaName
-    .replace(/^dify\.enterprise\.api\.enterprise\./, '')
-    .replace(/^dify\.enterprise\.api\.appdeploy\.v1\./, '')
-    .replace(/^dify\.enterprise\.api\.appdeploy\./, '')
-    .replace(/^pagination\./, '')
 }
 
 const contractTagSegment = (tag?: string) => {
@@ -173,7 +166,9 @@ const findSchemaEntry = (
   schemas: Record<string, OpenApiSchema>,
   schemaName: string,
 ): [string, OpenApiSchema] | undefined => {
-  return Object.entries(schemas).find(([name]) => stripSchemaNamePrefix(name) === schemaName)
+  return Object.entries(schemas).find(
+    ([name]) => stripEnterpriseSchemaNamePrefix(name) === schemaName,
+  )
 }
 
 const enumValuesKey = (values: unknown[]) => JSON.stringify(values)
@@ -202,7 +197,7 @@ const enumSchemaKey = (
   if (Array.isArray(existingEnumValues) && enumValuesKey(existingEnumValues) === valuesKey)
     return existingEnumEntry[0]
 
-  return `${stripSchemaNamePrefix(schemaName)}${toPascalCase(toWords(propertyName))}`
+  return `${stripEnterpriseSchemaNamePrefix(schemaName)}${toPascalCase(toWords(propertyName))}`
 }
 
 const promoteInlineEnumSchema = (
@@ -289,9 +284,12 @@ const normalizeEnterpriseOpenApi = () => {
   return document
 }
 
+export const enterpriseDocument = normalizeEnterpriseOpenApi()
+
 export default defineConfig({
-  input: normalizeEnterpriseOpenApi(),
+  input: enterpriseDocument,
   output: {
+    module: { extension: '.ts' },
     entryFile: false,
     path: 'generated/enterprise-app-deploy',
     fileName: {
@@ -306,17 +304,11 @@ export default defineConfig({
   },
   parser: {
     transforms: {
-      schemaName: stripSchemaNamePrefix,
+      schemaName: stripEnterpriseSchemaNamePrefix,
     },
   },
   plugins: [
-    {
-      name: '@hey-api/typescript',
-      comments: false,
-      enums: {
-        mode: 'javascript',
-      },
-    },
+    typescriptPlugin(true),
     'zod',
     {
       name: 'orpc',

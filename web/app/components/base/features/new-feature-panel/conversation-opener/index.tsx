@@ -10,7 +10,6 @@ import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
 import { useModalContext } from '@/context/modal-context'
 
 type Props = Readonly<{
@@ -28,7 +27,7 @@ const ConversationOpener = ({
   workflowVariables,
   onAutoAddPromptVariable,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { setShowOpeningModal } = useModalContext()
   const opening = useFeatures((s) => s.features.opening)
   const featuresStore = useFeaturesStore()
@@ -85,7 +84,10 @@ const ConversationOpener = ({
     <FeatureCard
       icon={
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-          <LoveMessage className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-features-love-message size-4 text-text-primary-on-surface"
+          />
         </div>
       }
       title={t(($) => $['feature.conversationOpener.title'], { ns: 'appDebug' })}

@@ -6,6 +6,7 @@ from werkzeug import Request
 
 from core.plugin.entities.plugin_daemon import PluginOAuthAuthorizationUrlResponse, PluginOAuthCredentialsResponse
 from core.plugin.impl.base import BasePluginClient
+from services.plugin.dispatch_identity import plugin_dispatch_headers
 
 
 class OAuthHandler(BasePluginClient):
@@ -17,6 +18,8 @@ class OAuthHandler(BasePluginClient):
         provider: str,
         redirect_uri: str,
         system_credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthAuthorizationUrlResponse:
         try:
             response = self._request_with_plugin_daemon_response_stream(
@@ -31,16 +34,13 @@ class OAuthHandler(BasePluginClient):
                         "system_credentials": system_credentials,
                     },
                 },
-                headers={
-                    "X-Plugin-ID": plugin_id,
-                    "Content-Type": "application/json",
-                },
+                headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
             )
             for resp in response:
                 return resp
             raise ValueError("No response received from plugin daemon for authorization URL request.")
         except Exception as e:
-            raise ValueError(f"Error getting authorization URL: {e}")
+            raise ValueError(f"Error getting authorization URL: {e}") from e
 
     def get_credentials(
         self,
@@ -51,14 +51,43 @@ class OAuthHandler(BasePluginClient):
         redirect_uri: str,
         system_credentials: Mapping[str, Any],
         request: Request,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthCredentialsResponse:
         """
         Get credentials from the given request.
         """
 
         try:
-            # encode request to raw http request
-            raw_request_bytes = self._convert_request_to_raw_data(request)
+            raw_request = self._convert_request_to_raw_data(request)
+        except Exception as error:
+            raise ValueError(f"Error getting credentials: {error}") from error
+
+        return self.get_credentials_from_raw_request(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            plugin_id=plugin_id,
+            provider=provider,
+            redirect_uri=redirect_uri,
+            system_credentials=system_credentials,
+            raw_request=raw_request,
+            plugin_unique_identifier=plugin_unique_identifier,
+        )
+
+    def get_credentials_from_raw_request(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        plugin_id: str,
+        provider: str,
+        redirect_uri: str,
+        system_credentials: Mapping[str, Any],
+        raw_request: bytes,
+        plugin_unique_identifier: str | None,
+    ) -> PluginOAuthCredentialsResponse:
+        """Exchange a detached callback without depending on Flask's request lifetime."""
+        try:
             response = self._request_with_plugin_daemon_response_stream(
                 "POST",
                 f"plugin/{tenant_id}/dispatch/oauth/get_credentials",
@@ -70,19 +99,16 @@ class OAuthHandler(BasePluginClient):
                         "redirect_uri": redirect_uri,
                         "system_credentials": system_credentials,
                         # for json serialization
-                        "raw_http_request": binascii.hexlify(raw_request_bytes).decode(),
+                        "raw_http_request": binascii.hexlify(raw_request).decode(),
                     },
                 },
-                headers={
-                    "X-Plugin-ID": plugin_id,
-                    "Content-Type": "application/json",
-                },
+                headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
             )
             for resp in response:
                 return resp
             raise ValueError("No response received from plugin daemon for authorization URL request.")
         except Exception as e:
-            raise ValueError(f"Error getting credentials: {e}")
+            raise ValueError(f"Error getting credentials: {e}") from e
 
     def refresh_credentials(
         self,
@@ -93,6 +119,8 @@ class OAuthHandler(BasePluginClient):
         redirect_uri: str,
         system_credentials: Mapping[str, Any],
         credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthCredentialsResponse:
         try:
             response = self._request_with_plugin_daemon_response_stream(
@@ -108,16 +136,13 @@ class OAuthHandler(BasePluginClient):
                         "credentials": credentials,
                     },
                 },
-                headers={
-                    "X-Plugin-ID": plugin_id,
-                    "Content-Type": "application/json",
-                },
+                headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
             )
             for resp in response:
                 return resp
             raise ValueError("No response received from plugin daemon for refresh credentials request.")
         except Exception as e:
-            raise ValueError(f"Error refreshing credentials: {e}")
+            raise ValueError(f"Error refreshing credentials: {e}") from e
 
     def _convert_request_to_raw_data(self, request: Request) -> bytes:
         """

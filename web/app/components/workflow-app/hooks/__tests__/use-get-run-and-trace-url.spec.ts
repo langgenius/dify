@@ -1,24 +1,11 @@
-import { renderHook } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useGetRunAndTraceUrl } from '../use-get-run-and-trace-url'
 
-const mockWorkflowStore = {
-  getState: vi.fn(),
-}
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => mockWorkflowStore,
-}))
-
 describe('useGetRunAndTraceUrl', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowStore.getState.mockReturnValue({
-      appId: 'app-123',
-    })
-  })
-
   it('should build workflow run and trace urls from the current app id', () => {
-    const { result } = renderHook(() => useGetRunAndTraceUrl())
+    const { result } = renderHook(() => useGetRunAndTraceUrl(), {
+      resource: { kind: 'app', appId: 'app-123', mode: 'workflow' },
+    })
 
     expect(result.current.getWorkflowRunAndTraceUrl('run-1')).toEqual({
       runUrl: '/apps/app-123/workflow-runs/run-1',

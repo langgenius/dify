@@ -61,7 +61,7 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
 
   return (
     <Select multiple value={value} onValueChange={onChange} disabled={disabled || isLoading}>
-      <div className="grow">
+      <div className="min-w-0 grow">
         <SelectTrigger aria-label={placeholder || selectedLabel || 'Options'}>
           <span className={cn('flex min-w-0 items-center', textClassName)}>
             {isLoading && <LoadingIndicator />}
@@ -103,15 +103,22 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
 }
 
 type JsonEditorFieldProps = {
+  readOnly?: boolean
   onChange: (value: string) => void
   placeholder?: ReactElement | string
   value: string
 }
 
-export const JsonEditorField: FC<JsonEditorFieldProps> = ({ onChange, placeholder, value }) => {
+export const JsonEditorField: FC<JsonEditorFieldProps> = ({
+  onChange,
+  placeholder,
+  value,
+  readOnly,
+}) => {
   return (
     <div className="mt-1 w-full">
       <CodeEditor
+        readOnly={readOnly}
         title="JSON"
         value={value}
         isExpand

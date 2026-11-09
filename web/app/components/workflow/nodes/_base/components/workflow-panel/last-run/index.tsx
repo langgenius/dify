@@ -1,19 +1,21 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ResultPanelProps } from '@/app/components/workflow/run/result-panel'
 import type { NodeTracing } from '@/types/workflow'
 import { RiLoader2Line } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { isNotFoundError } from '@/service/http-error'
 import { useLastRun } from '@/service/use-workflow'
-import { FlowType } from '@/types/common'
 import NoData from './no-data'
 
 type Props = Readonly<{
-  appId: string
   nodeId: string
   canSingleRun: boolean
   isRunAfterSingleRun: boolean
@@ -27,7 +29,6 @@ type Props = Readonly<{
   Partial<ResultPanelProps>
 
 const LastRun: FC<Props> = ({
-  appId: _appId,
   nodeId,
   canSingleRun,
   isRunAfterSingleRun,
@@ -39,7 +40,16 @@ const LastRun: FC<Props> = ({
   isPaused,
   ...otherResultPanelProps
 }) => {
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const finishedStatuses: readonly NodeRunningStatus[] = [
+    NodeRunningStatus.Succeeded,
+    NodeRunningStatus.Failed,
+  ]
+  const activeStatuses: readonly NodeRunningStatus[] = [
+    NodeRunningStatus.Running,
+    NodeRunningStatus.NotStart,
+  ]
+
+  const resource = useAtomValue(editorResourceAtom)
   const isOneStepRunSucceed = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
   const isOneStepRunFailed = oneStepRunRunningStatus === NodeRunningStatus.Failed
   // hide page and return to page would lost the oneStepRunRunningStatus
@@ -48,35 +58,27 @@ const LastRun: FC<Props> = ({
   const [pageHasHide, setPageHasHide] = useState(false)
   const [pageShowed, setPageShowed] = useState(false)
 
-  const hidePageOneStepRunFinished = [
-    NodeRunningStatus.Succeeded,
-    NodeRunningStatus.Failed,
-  ].includes(hidePageOneStepFinishedStatus!)
+  const hidePageOneStepRunFinished = finishedStatuses.includes(hidePageOneStepFinishedStatus!)
   const canRunLastRun =
     !isRunAfterSingleRun ||
     isOneStepRunSucceed ||
     isOneStepRunFailed ||
     (pageHasHide && hidePageOneStepRunFinished)
-  const {
-    data: lastRunResult,
-    isFetching,
-    error,
-  } = useLastRun(
-    configsMap?.flowType || FlowType.appFlow,
-    configsMap?.flowId || '',
-    nodeId,
-    canRunLastRun,
-  )
+  const { data: lastRunResult, isFetching, error } = useLastRun(resource, nodeId, canRunLastRun)
   const hasAuthoritativeLastRun = canRunLastRun && !!lastRunResult
   const isRunning =
     !isPaused &&
     (isRunAfterSingleRun
-      ? !hasAuthoritativeLastRun &&
-        [NodeRunningStatus.Running, NodeRunningStatus.NotStart].includes(oneStepRunRunningStatus!)
+      ? !hasAuthoritativeLastRun && activeStatuses.includes(oneStepRunRunningStatus!)
       : isFetching)
 
-  const noLastRun = (error as any)?.status === 404
+  const noLastRun = isNotFoundError(error)
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
+  const lastRunNode = runResult as Partial<NodeTracing>
+  const externalTrace =
+    resource.kind === 'app' && isBoundAgentV2Execution(lastRunNode) && lastRunNode.id
+      ? { appId: resource.appId, kind: 'node' as const, nodeExecutionId: lastRunNode.id }
+      : undefined
 
   let resolvedStatus = (runResult as any).status || otherResultPanelProps.status
   if (isPaused || oneStepRunRunningStatus === NodeRunningStatus.Stopped)
@@ -107,7 +109,12 @@ const LastRun: FC<Props> = ({
   ])
 
   useEffect(() => {
-    if ([NodeRunningStatus.Succeeded, NodeRunningStatus.Failed].includes(oneStepRunRunningStatus!))
+    const finishedStatuses: readonly NodeRunningStatus[] = [
+      NodeRunningStatus.Succeeded,
+      NodeRunningStatus.Failed,
+    ]
+
+    if (finishedStatuses.includes(oneStepRunRunningStatus!))
       setHidePageOneStepFinishedStatus(oneStepRunRunningStatus!)
   }, [oneStepRunRunningStatus])
 
@@ -155,6 +162,7 @@ const LastRun: FC<Props> = ({
         }
         nodeInfo={runResult as NodeTracing}
         showSteps={false}
+        externalTrace={externalTrace}
       />
     </div>
   )

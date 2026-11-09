@@ -68,7 +68,7 @@ export const sectionByToolCategory: Record<ToolCategory, IntegrationSection> = {
   mcp: 'mcp',
 }
 
-export const marketplaceUrlPathByIntegrationSection: Partial<Record<IntegrationSection, string>> = {
+const marketplaceUrlPathByIntegrationSection: Partial<Record<IntegrationSection, string>> = {
   provider: '/plugins/model',
   builtin: '/plugins/tool',
   mcp: '/plugins/tool',
@@ -81,7 +81,7 @@ export const marketplaceUrlPathByIntegrationSection: Partial<Record<IntegrationS
   extension: '/plugins/extension',
 }
 
-export const integrationPathBySection: Record<IntegrationSection, string> = {
+const integrationPathBySection: Record<IntegrationSection, string> = {
   provider: '/integrations/model-provider',
   builtin: '/integrations/tools/built-in',
   'custom-tool': '/integrations/tools/api',

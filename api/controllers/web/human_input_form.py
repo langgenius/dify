@@ -9,7 +9,6 @@ from typing import Self
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -21,15 +20,23 @@ from controllers.web import web_ns
 from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.site import WebAppSiteResponse
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import RateLimiter, dump_response, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
+from models.human_input import RecipientType
 from models.model import App, AppMode, Site
-from repositories.factory import DifyAPIRepositoryFactory
 from services.feature_service import FeatureService
-from services.human_input_file_upload_service import HumanInputFileUploadService
-from services.human_input_service import Form, FormNotFoundError, HumanInputService
+from services.human_input_service import (
+    Form,
+    FormExpiredError,
+    FormNotFoundError,
+    FormSubmittedError,
+    HumanInputService,
+    InvalidFormDataError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -99,19 +106,11 @@ _FORM_UPLOAD_TOKEN_RATE_LIMITER = RateLimiter(
 )
 
 
-def _create_upload_service() -> HumanInputFileUploadService:
-    session_factory = sessionmaker(bind=db.engine)
-    workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
-    return HumanInputFileUploadService(
-        session_factory=session_factory,
-        workflow_run_repository=workflow_run_repository,
-    )
-
-
 @web_ns.route("/form/human_input/<string:form_token>/upload-token")
 class HumanInputFormUploadTokenApi(Resource):
     """API for issuing HITL upload tokens for active human input forms."""
 
+    @error_responses(FormExpiredError, FormSubmittedError, WebFormRateLimitExceededError)
     @web_ns.doc("create_human_input_form_upload_token")
     @web_ns.doc(description="Issue an upload token for an active human input form")
     @web_ns.doc(params={"form_token": "Human input form token"})
@@ -139,10 +138,11 @@ class HumanInputFormUploadTokenApi(Resource):
             raise WebFormRateLimitExceededError()
         _FORM_UPLOAD_TOKEN_RATE_LIMITER.increment_rate_limit(ip_address)
 
+        _get_public_form_by_token(HumanInputService(db.engine), form_token)
         try:
-            token = _create_upload_service().issue_upload_token(form_token)
-        except FormNotFoundError:
-            raise NotFoundError("Form not found")
+            token = application_services().human_input_file_uploads.issue_upload_token(form_token)
+        except FormNotFoundError as caught_error:
+            raise NotFoundError("Form not found") from caught_error
 
         return HumanInputUploadTokenResponse(
             upload_token=token.upload_token, expires_at=to_timestamp(token.expires_at)
@@ -155,7 +155,7 @@ class HumanInputFormApi(Resource):
 
     # NOTE(QuantumGhost): this endpoint is unauthenticated on purpose for now.
 
-    # def get(self, _app_model: App, _end_user: EndUser, form_token: str):
+    @error_responses(FormExpiredError, FormSubmittedError, WebFormRateLimitExceededError)
     @web_ns.doc("get_human_input_form")
     @web_ns.doc(description="Get a human input form definition by token")
     @web_ns.doc(params={"form_token": "Human input form token"})
@@ -185,16 +185,11 @@ class HumanInputFormApi(Resource):
         _FORM_ACCESS_RATE_LIMITER.increment_rate_limit(ip_address)
 
         service = HumanInputService(db.engine)
-        # TODO(QuantumGhost): forbid submission for form tokens
-        # that are only for console.
-        form = service.get_form_by_token(form_token)
-
-        if form is None:
-            raise NotFoundError("Form not found")
+        form = _get_public_form_by_token(service, form_token)
 
         service.ensure_form_active(form)
         app_model, site = _get_app_site_from_form(form)
-        tenant = app_model.tenant
+        tenant = app_model.tenant(db.session)
         if tenant is None:
             raise Forbidden()
         inputs = service.resolve_form_inputs(form)
@@ -217,7 +212,7 @@ class HumanInputFormApi(Resource):
             ),
         )
 
-    # def post(self, _app_model: App, _end_user: EndUser, form_token: str):
+    @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError, WebFormRateLimitExceededError)
     @web_ns.expect(web_ns.models[HumanInputFormSubmitPayload.__name__])
     @web_ns.doc("submit_human_input_form")
     @web_ns.doc(description="Submit a human input form by token")
@@ -257,9 +252,7 @@ class HumanInputFormApi(Resource):
         _FORM_SUBMIT_RATE_LIMITER.increment_rate_limit(ip_address)
 
         service = HumanInputService(db.engine)
-        form = service.get_form_by_token(form_token)
-        if form is None:
-            raise NotFoundError("Form not found")
+        form = _get_public_form_by_token(service, form_token)
 
         if (recipient_type := form.recipient_type) is None:
             logger.warning("Recipient type is None for form, form_id=%s", form.id)
@@ -272,12 +265,27 @@ class HumanInputFormApi(Resource):
                 selected_action_id=payload.action,
                 form_data=payload.inputs,
                 submission_end_user_id=None,
-                # submission_end_user_id=_end_user.id,
             )
-        except FormNotFoundError:
-            raise NotFoundError("Form not found")
+        except FormNotFoundError as caught_error:
+            raise NotFoundError("Form not found") from caught_error
 
         return HumanInputFormSubmitResponse().model_dump(mode="json"), 200
+
+
+def _get_public_form_by_token(service: HumanInputService, form_token: str) -> Form:
+    """Reject internal Console/Backstage tokens before public form operations.
+
+    Email delivery links also use this Web API, so email recipients remain
+    allowed alongside standalone Web App recipients.
+    """
+    form = service.get_form_by_token(form_token)
+    if form is None or form.recipient_type not in {
+        RecipientType.STANDALONE_WEB_APP,
+        RecipientType.EMAIL_MEMBER,
+        RecipientType.EMAIL_EXTERNAL,
+    }:
+        raise NotFoundError("Form not found")
+    return form
 
 
 def _get_app_site_from_form(form: Form) -> tuple[App, Site]:
@@ -290,7 +298,8 @@ def _get_app_site_from_form(form: Form) -> tuple[App, Site]:
     if site is None:
         raise Forbidden()
 
-    if app_model.tenant is None or app_model.tenant.status == TenantStatus.ARCHIVE:
+    tenant = app_model.tenant(db.session)
+    if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden()
 
     return app_model, site

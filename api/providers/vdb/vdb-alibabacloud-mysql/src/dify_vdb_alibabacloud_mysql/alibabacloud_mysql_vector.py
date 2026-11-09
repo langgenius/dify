@@ -8,6 +8,7 @@ from typing import Any, Literal, cast, override
 import mysql.connector
 from mysql.connector import Error as MySQLError
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import parse_metadata_json
@@ -261,13 +262,10 @@ class AlibabaCloudMySQLVector(BaseVector):
                 try:
                     distance = float(record["distance"])
                     # Convert distance to similarity score
-                    if self.distance_function == "cosine":
-                        # For cosine distance: similarity = 1 - distance
-                        similarity = 1.0 - distance
-                    else:
-                        # For euclidean distance: use inverse relationship
-                        # similarity = 1 / (1 + distance)
-                        similarity = 1.0 / (1.0 + distance)
+                    # For cosine distance: similarity = 1 - distance
+                    # For euclidean distance: use inverse relationship
+                    # similarity = 1 / (1 + distance)
+                    similarity = 1.0 - distance if self.distance_function == "cosine" else 1.0 / (1.0 + distance)
 
                     metadata = parse_metadata_json(record["meta"])
                     metadata["score"] = similarity
@@ -365,7 +363,9 @@ class AlibabaCloudMySQLVectorFactory(AbstractVectorFactory):
         return cast(Literal["cosine", "euclidean"], distance_function)
 
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> AlibabaCloudMySQLVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> AlibabaCloudMySQLVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix

@@ -11,12 +11,13 @@ import type {
   StepByStepTourSessionState,
   StepByStepTourTaskId,
 } from './types'
+import { notifyManager } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithMutation, atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 const stepByStepTourStateQueryKey = () =>
   consoleQuery.onboarding.stepByStepTour.state.get.queryKey()
@@ -180,26 +181,19 @@ export const activeStepByStepTourGuideIndexesAtom = atom(
 
 export const stepByStepTourSkipRecoveryVisibleAtom = atom(false)
 
+export const stepByStepTourChecklistMinimizedAtom = atom(false)
+
 export const startStepByStepTourTaskAtom = atom(
   null,
   (
     _get,
     set,
-    {
-      taskId,
-      guideGroup,
-      guideIndexes,
-    }: {
-      taskId: StepByStepTourTaskId
-      guideGroup?: StepByStepTourGuideGroup
-      guideIndexes?: number[]
-    },
+    { taskId, guideGroup }: { taskId: StepByStepTourTaskId; guideGroup?: StepByStepTourGuideGroup },
   ) => {
     set(stepByStepTourSessionAtom, {
       activeTaskId: taskId,
       activeGuideIndex: 0,
       activeGuideGroup: guideGroup,
-      activeGuideIndexes: guideIndexes,
     })
   },
 )
@@ -334,6 +328,9 @@ const patchStepByStepTourState = async (
   }
 
   queryClient.setQueryData(stepByStepTourStateQueryKey(), state)
+  // The query atom receives the saved state through a scheduled notification; dropping the
+  // optimistic command before it lands would show the previous state for a render.
+  await new Promise<void>((resolve) => notifyManager.schedule(resolve))
   const reconciliation = settleStepByStepTourStateCommand(get, set, queryClient, command)
   options?.onSuccess?.(
     state.completed_task_ids?.filter((taskId): taskId is StepByStepTourTaskId => Boolean(taskId)) ??

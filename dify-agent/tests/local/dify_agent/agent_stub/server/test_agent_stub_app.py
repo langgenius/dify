@@ -2,14 +2,28 @@ from __future__ import annotations
 
 import base64
 import importlib
+import os
 import time
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from dify_agent.agent_stub.server.app import create_agent_stub_app
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.server.settings import ServerSettings
+
+
+@pytest.fixture(autouse=True)
+def _isolated_agent_stub_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    # ServerSettings reads the process environment and a dotenv file resolved
+    # against the current directory. A developer's local dify-agent/.env can
+    # configure the Agent Stub, which would silently invalidate the unconfigured
+    # cases here, so every case states the settings it exercises.
+    for name in tuple(os.environ):
+        if name.startswith("DIFY_AGENT_"):
+            monkeypatch.delenv(name)
+    monkeypatch.setitem(ServerSettings.model_config, "env_file", None)
 
 
 def _base64url_secret(value: bytes) -> str:

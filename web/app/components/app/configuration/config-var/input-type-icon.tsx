@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { InputVarType } from '@/app/components/workflow/types'
 
@@ -17,7 +17,12 @@ const IconMap = (type: IInputTypeIconProps['type'], className: string) => {
     paragraph: <InputVarTypeIcon type={InputVarType.paragraph} className={classNames} />,
     select: <InputVarTypeIcon type={InputVarType.select} className={classNames} />,
     number: <InputVarTypeIcon type={InputVarType.number} className={classNames} />,
-    api: <ApiConnection className={classNames} />,
+    api: (
+      <span
+        aria-hidden
+        className={cn('i-custom-vender-solid-development-api-connection h-6 w-6', classNames)}
+      />
+    ),
   }
 
   return icons[type]

@@ -1,11 +1,12 @@
-import type { ChangeEvent, FC, FormEvent } from 'react'
+import type { FC, SubmitEvent } from 'react'
 import type { InputValueTypes } from '../types'
+import type { FileUploaderInAttachmentRef } from '@/app/components/base/file-uploader/file-uploader-in-attachment'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -18,16 +19,13 @@ import {
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
-import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -54,10 +52,18 @@ const RunOnce: FC<IRunOnceProps> = ({
   onVisionFilesChange,
   runControl,
 }) => {
-  const { t } = useTranslation()
-  const media = useBreakpoints()
-  const isPC = media === MediaType.pc
+  const { t } = useTranslation(['common', 'share', 'workflow'])
+  const baseId = useId()
   const [isInitialized, setIsInitialized] = useState(false)
+  const fileUploadersRef = useRef(new Map<string, FileUploaderInAttachmentRef>())
+
+  const handleInputsChange = useCallback(
+    (newInputs: Record<string, any>) => {
+      onInputsChange(newInputs)
+      inputsRef.current = newInputs
+    },
+    [onInputsChange, inputsRef],
+  )
 
   const onClear = () => {
     const newInputs: Record<string, InputValueTypes> = {}
@@ -65,12 +71,15 @@ const RunOnce: FC<IRunOnceProps> = ({
       if (item.type === 'string' || item.type === 'paragraph') newInputs[item.key] = ''
       else if (item.type === 'number') newInputs[item.key] = ''
       else if (item.type === 'checkbox') newInputs[item.key] = false
+      else if (item.type === 'file' && item.required === false) newInputs[item.key] = ''
+      else if (item.type === 'file-list') newInputs[item.key] = []
       else newInputs[item.key] = undefined
     })
-    onInputsChange(newInputs)
+    fileUploadersRef.current.forEach((uploader) => uploader.clear())
+    handleInputsChange(newInputs)
   }
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const onSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     onSend()
   }
@@ -85,14 +94,6 @@ const RunOnce: FC<IRunOnceProps> = ({
     [isRunning, runControl],
   )
 
-  const handleInputsChange = useCallback(
-    (newInputs: Record<string, any>) => {
-      onInputsChange(newInputs)
-      inputsRef.current = newInputs
-    },
-    [onInputsChange, inputsRef],
-  )
-
   useEffect(() => {
     if (isInitialized) return
     const newInputs: Record<string, any> = {}
@@ -102,8 +103,13 @@ const RunOnce: FC<IRunOnceProps> = ({
         newInputs[item.key] = item.default || ''
       else if (item.type === 'number') newInputs[item.key] = item.default ?? ''
       else if (item.type === 'checkbox') newInputs[item.key] = item.default || false
-      else if (item.type === 'file') newInputs[item.key] = undefined
-      else if (item.type === 'file-list') newInputs[item.key] = []
+      else if (item.type === 'file')
+        newInputs[item.key] =
+          item.default && typeof item.default === 'object' && !Array.isArray(item.default)
+            ? item.default
+            : undefined
+      else if (item.type === 'file-list')
+        newInputs[item.key] = Array.isArray(item.default) ? item.default : []
       else newInputs[item.key] = undefined
     })
     onInputsChange(newInputs)
@@ -133,7 +139,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                     <div className="mt-4 w-full" key={item.key}>
                       {item.type !== 'checkbox' && (
                         <div className="flex h-6 items-center gap-1 system-md-semibold text-text-secondary">
-                          <div className="truncate">{item.name}</div>
+                          <div id={`${baseId}-${item.key}-label`} className="truncate">
+                            {item.name}
+                          </div>
                           {!item.required && (
                             <span className="system-xs-regular text-text-tertiary">
                               {t(($) => $['panel.optional'], { ns: 'workflow' })}
@@ -150,7 +158,10 @@ const RunOnce: FC<IRunOnceProps> = ({
                               handleInputsChange({ ...inputsRef.current, [item.key]: nextValue })
                             }}
                           >
-                            <SelectTrigger className="w-full">
+                            <SelectTrigger
+                              aria-labelledby={`${baseId}-${item.key}-label`}
+                              className="w-full"
+                            >
                               <SelectValue
                                 placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
                               />
@@ -167,13 +178,14 @@ const RunOnce: FC<IRunOnceProps> = ({
                         )}
                         {item.type === 'string' && (
                           <Input
+                            aria-labelledby={`${baseId}-${item.key}-label`}
                             type="text"
                             placeholder={item.name}
                             value={inputs[item.key] as string}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                            onValueChange={(value) => {
                               handleInputsChange({
                                 ...inputsRef.current,
-                                [item.key]: e.target.value,
+                                [item.key]: value,
                               })
                             }}
                             maxLength={item.max_length || undefined}
@@ -181,7 +193,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         )}
                         {item.type === 'paragraph' && (
                           <Textarea
-                            aria-label={item.name}
+                            aria-labelledby={`${baseId}-${item.key}-label`}
                             className="h-26 sm:text-xs"
                             placeholder={item.name}
                             value={inputs[item.key] as string}
@@ -192,13 +204,14 @@ const RunOnce: FC<IRunOnceProps> = ({
                         )}
                         {item.type === 'number' && (
                           <Input
+                            aria-labelledby={`${baseId}-${item.key}-label`}
                             type="number"
                             placeholder={item.name}
                             value={inputs[item.key] as number}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                            onValueChange={(value) => {
                               handleInputsChange({
                                 ...inputsRef.current,
-                                [item.key]: e.target.value,
+                                [item.key]: value,
                               })
                             }}
                           />
@@ -215,6 +228,10 @@ const RunOnce: FC<IRunOnceProps> = ({
                         )}
                         {item.type === 'file' && (
                           <FileUploaderInAttachmentWrapper
+                            ref={(uploader) => {
+                              if (uploader) fileUploadersRef.current.set(item.key, uploader)
+                              else fileUploadersRef.current.delete(item.key)
+                            }}
                             value={
                               inputs[item.key] &&
                               typeof inputs[item.key] === 'object' &&
@@ -223,7 +240,8 @@ const RunOnce: FC<IRunOnceProps> = ({
                                 : []
                             }
                             onChange={(files) => {
-                              handleInputsChange({ ...inputsRef.current, [item.key]: files[0] })
+                              const value = files[0] ?? (item.required === false ? '' : undefined)
+                              handleInputsChange({ ...inputsRef.current, [item.key]: value })
                             }}
                             fileConfig={{
                               ...item.config,
@@ -233,6 +251,10 @@ const RunOnce: FC<IRunOnceProps> = ({
                         )}
                         {item.type === 'file-list' && (
                           <FileUploaderInAttachmentWrapper
+                            ref={(uploader) => {
+                              if (uploader) fileUploadersRef.current.set(item.key, uploader)
+                              else fileUploadersRef.current.delete(item.key)
+                            }}
                             value={
                               Array.isArray(inputs[item.key])
                                 ? (inputs[item.key] as FileEntity[])
@@ -302,7 +324,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 </span>
               </Button>
               <Button
-                className={cn(!isPC && 'grow')}
+                className="max-md:grow"
                 type={isRunning ? 'button' : 'submit'}
                 variant={isRunning ? 'secondary' : 'primary'}
                 disabled={isRunning && runControl?.isStopping}
@@ -313,7 +335,10 @@ const RunOnce: FC<IRunOnceProps> = ({
                     {runControl?.isStopping ? (
                       <RiLoader2Line className="size-4 shrink-0 animate-spin" aria-hidden="true" />
                     ) : (
-                      <StopCircle className="size-4 shrink-0" aria-hidden="true" />
+                      <span
+                        aria-hidden="true"
+                        className="i-custom-vender-solid-mediaAndDevices-stop-circle size-4 shrink-0"
+                      />
                     )}
                     <span className="text-[13px]">{stopLabel}</span>
                   </>

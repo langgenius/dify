@@ -6,6 +6,16 @@ export type ClientOptions = {
 
 export type ApiBasedExtensionListResponse = Array<ApiBasedExtensionResponse>
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ApiBasedExtensionPayload = {
   api_endpoint: string
   api_key: string
@@ -27,6 +37,12 @@ export type GetApiBasedExtensionData = {
   url: '/api-based-extension'
 }
 
+export type GetApiBasedExtensionErrors = {
+  default: ErrorResponse
+}
+
+export type GetApiBasedExtensionError = GetApiBasedExtensionErrors[keyof GetApiBasedExtensionErrors]
+
 export type GetApiBasedExtensionResponses = {
   200: ApiBasedExtensionListResponse
 }
@@ -40,6 +56,13 @@ export type PostApiBasedExtensionData = {
   query?: never
   url: '/api-based-extension'
 }
+
+export type PostApiBasedExtensionErrors = {
+  default: ErrorResponse
+}
+
+export type PostApiBasedExtensionError =
+  PostApiBasedExtensionErrors[keyof PostApiBasedExtensionErrors]
 
 export type PostApiBasedExtensionResponses = {
   201: ApiBasedExtensionResponse
@@ -57,6 +80,13 @@ export type DeleteApiBasedExtensionByIdData = {
   url: '/api-based-extension/{id}'
 }
 
+export type DeleteApiBasedExtensionByIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteApiBasedExtensionByIdError =
+  DeleteApiBasedExtensionByIdErrors[keyof DeleteApiBasedExtensionByIdErrors]
+
 export type DeleteApiBasedExtensionByIdResponses = {
   204: void
 }
@@ -73,6 +103,13 @@ export type GetApiBasedExtensionByIdData = {
   url: '/api-based-extension/{id}'
 }
 
+export type GetApiBasedExtensionByIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetApiBasedExtensionByIdError =
+  GetApiBasedExtensionByIdErrors[keyof GetApiBasedExtensionByIdErrors]
+
 export type GetApiBasedExtensionByIdResponses = {
   200: ApiBasedExtensionResponse
 }
@@ -88,6 +125,13 @@ export type PostApiBasedExtensionByIdData = {
   query?: never
   url: '/api-based-extension/{id}'
 }
+
+export type PostApiBasedExtensionByIdErrors = {
+  default: ErrorResponse
+}
+
+export type PostApiBasedExtensionByIdError =
+  PostApiBasedExtensionByIdErrors[keyof PostApiBasedExtensionByIdErrors]
 
 export type PostApiBasedExtensionByIdResponses = {
   200: ApiBasedExtensionResponse

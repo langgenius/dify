@@ -3,6 +3,34 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountAlreadyInitedError,
+  zAccountInFreezeError,
+  zAccountNotFoundError,
+  zBillingOperationFailedError,
+  zBillingRequestInProgressError,
+  zBillingUnavailableError,
+  zCurrentPasswordIncorrectError,
+  zEducationActivateFailedError,
+  zEducationActivateLimitError,
+  zEducationVerifyFailedError,
+  zEducationVerifyLimitError,
+  zEmailAlreadyInUseError,
+  zEmailChangeLimitError,
+  zEmailChangeRateLimitExceededError,
+  zEmailCodeAccountDeletionRateLimitExceededError,
+  zEmailCodeError,
+  zEmailDomainSuspendedError,
+  zEmailSendIpLimitError,
+  zInvalidAccountDeletionCodeError,
+  zInvalidAccountPasswordError,
+  zInvalidEmailError,
+  zInvalidInvitationCodeError,
+  zInvalidOrExpiredTokenError,
+  zMissingInvitationCodeError,
+} from './zod.gen.ts'
+import {
+  zDeleteAccountPersonalAccessTokensByTokenIdPath,
+  zDeleteAccountPersonalAccessTokensByTokenIdResponse,
   zGetAccountAvatarQuery,
   zGetAccountAvatarResponse,
   zGetAccountDeleteVerifyResponse,
@@ -11,11 +39,20 @@ import {
   zGetAccountEducationResponse,
   zGetAccountEducationVerifyResponse,
   zGetAccountIntegratesResponse,
+  zGetAccountPersonalAccessTokenResourcesQuery,
+  zGetAccountPersonalAccessTokenResourcesResponse,
+  zGetAccountPersonalAccessTokensByTokenIdPath,
+  zGetAccountPersonalAccessTokensByTokenIdResponse,
+  zGetAccountPersonalAccessTokensQuery,
+  zGetAccountPersonalAccessTokensResponse,
+  zGetAccountPersonalAccessTokenWorkspacesQuery,
+  zGetAccountPersonalAccessTokenWorkspacesResponse,
   zGetAccountProfileResponse,
+  zPatchAccountPersonalAccessTokensByTokenIdBody,
+  zPatchAccountPersonalAccessTokensByTokenIdPath,
+  zPatchAccountPersonalAccessTokensByTokenIdResponse,
   zPatchAccountProfileBody,
   zPatchAccountProfileResponse,
-  zPostAccountAvatarBody,
-  zPostAccountAvatarResponse,
   zPostAccountChangeEmailBody,
   zPostAccountChangeEmailCheckEmailUniqueBody,
   zPostAccountChangeEmailCheckEmailUniqueResponse,
@@ -32,17 +69,12 @@ import {
   zPostAccountEducationResponse,
   zPostAccountInitBody,
   zPostAccountInitResponse,
-  zPostAccountInterfaceLanguageBody,
-  zPostAccountInterfaceLanguageResponse,
-  zPostAccountInterfaceThemeBody,
-  zPostAccountInterfaceThemeResponse,
-  zPostAccountNameBody,
-  zPostAccountNameResponse,
   zPostAccountPasswordBody,
   zPostAccountPasswordResponse,
-  zPostAccountTimezoneBody,
-  zPostAccountTimezoneResponse,
-} from './zod.gen'
+  zPostAccountPersonalAccessTokensBody,
+  zPostAccountPersonalAccessTokensHeaders,
+  zPostAccountPersonalAccessTokensResponse,
+} from './zod.gen.ts'
 
 /**
  * Get account avatar url
@@ -59,30 +91,11 @@ export const get = oc
   .input(z.object({ query: zGetAccountAvatarQuery }))
   .output(zGetAccountAvatarResponse)
 
-/**
- * Deprecated. Use PATCH /account/profile instead.
- *
- * @deprecated
- */
-export const post = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated. Use PATCH /account/profile instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountAvatar',
-    path: '/account/avatar',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountAvatarBody }))
-  .output(zPostAccountAvatarResponse)
-
 export const avatar = {
   get,
-  post,
 }
 
-export const post2 = oc
+export const post = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -92,12 +105,17 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostAccountChangeEmailCheckEmailUniqueBody }))
   .output(zPostAccountChangeEmailCheckEmailUniqueResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+  })
 
 export const checkEmailUnique = {
-  post: post2,
+  post,
 }
 
-export const post3 = oc
+export const post2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -107,12 +125,19 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostAccountChangeEmailResetBody }))
   .output(zPostAccountChangeEmailResetResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
 
 export const reset = {
-  post: post3,
+  post: post2,
 }
 
-export const post4 = oc
+export const post3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -122,12 +147,18 @@ export const post4 = oc
   })
   .input(z.object({ body: zPostAccountChangeEmailValidityBody }))
   .output(zPostAccountChangeEmailValidityResponse)
+  .errors({
+    email_change_limit: { status: 429, data: zEmailChangeLimitError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
 
 export const validity = {
-  post: post4,
+  post: post3,
 }
 
-export const post5 = oc
+export const post4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -137,15 +168,22 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostAccountChangeEmailBody }))
   .output(zPostAccountChangeEmailResponse)
+  .errors({
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    email_change_rate_limit_exceeded: { status: 429, data: zEmailChangeRateLimitExceededError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
 
 export const changeEmail = {
-  post: post5,
+  post: post4,
   checkEmailUnique,
   reset,
   validity,
 }
 
-export const post6 = oc
+export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -157,7 +195,7 @@ export const post6 = oc
   .output(zPostAccountDeleteFeedbackResponse)
 
 export const feedback = {
-  post: post6,
+  post: post5,
 }
 
 export const get2 = oc
@@ -169,12 +207,19 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetAccountDeleteVerifyResponse)
+  .errors({
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    email_code_account_deletion_rate_limit_exceeded: {
+      status: 429,
+      data: zEmailCodeAccountDeletionRateLimitExceededError,
+    },
+  })
 
 export const verify = {
   get: get2,
 }
 
-export const post7 = oc
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -184,9 +229,12 @@ export const post7 = oc
   })
   .input(z.object({ body: zPostAccountDeleteBody }))
   .output(zPostAccountDeleteResponse)
+  .errors({
+    invalid_account_deletion_code: { status: 400, data: zInvalidAccountDeletionCodeError },
+  })
 
 export const delete_ = {
-  post: post7,
+  post: post6,
   feedback,
   verify,
 }
@@ -201,6 +249,10 @@ export const get3 = oc
   })
   .input(z.object({ query: zGetAccountEducationAutocompleteQuery }))
   .output(zGetAccountEducationAutocompleteResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const autocomplete = {
   get: get3,
@@ -215,6 +267,14 @@ export const get4 = oc
     tags: ['console'],
   })
   .output(zGetAccountEducationVerifyResponse)
+  .errors({
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    education_verify_failed: { status: 400, data: zEducationVerifyFailedError },
+    education_verify_limit: { status: 429, data: zEducationVerifyLimitError },
+  })
 
 export const verify2 = {
   get: get4,
@@ -229,8 +289,13 @@ export const get5 = oc
     tags: ['console'],
   })
   .output(zGetAccountEducationResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
-export const post8 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -240,15 +305,23 @@ export const post8 = oc
   })
   .input(z.object({ body: zPostAccountEducationBody }))
   .output(zPostAccountEducationResponse)
+  .errors({
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    education_activate_failed: { status: 400, data: zEducationActivateFailedError },
+    education_activate_limit: { status: 429, data: zEducationActivateLimitError },
+  })
 
 export const education = {
   get: get5,
-  post: post8,
+  post: post7,
   autocomplete,
   verify: verify2,
 }
 
-export const post9 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -258,9 +331,15 @@ export const post9 = oc
   })
   .input(z.object({ body: zPostAccountInitBody }))
   .output(zPostAccountInitResponse)
+  .errors({
+    account_already_inited: { status: 400, data: zAccountAlreadyInitedError },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    invalid_invitation_code: { status: 400, data: zInvalidInvitationCodeError },
+    missing_invitation_code: { status: 400, data: zMissingInvitationCodeError },
+  })
 
 export const init = {
-  post: post9,
+  post: post8,
 }
 
 export const get6 = oc
@@ -277,73 +356,7 @@ export const integrates = {
   get: get6,
 }
 
-/**
- * Deprecated. Use PATCH /account/profile instead.
- *
- * @deprecated
- */
-export const post10 = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated. Use PATCH /account/profile instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountInterfaceLanguage',
-    path: '/account/interface-language',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountInterfaceLanguageBody }))
-  .output(zPostAccountInterfaceLanguageResponse)
-
-export const interfaceLanguage = {
-  post: post10,
-}
-
-/**
- * Deprecated. Use PATCH /account/profile instead.
- *
- * @deprecated
- */
-export const post11 = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated. Use PATCH /account/profile instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountInterfaceTheme',
-    path: '/account/interface-theme',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountInterfaceThemeBody }))
-  .output(zPostAccountInterfaceThemeResponse)
-
-export const interfaceTheme = {
-  post: post11,
-}
-
-/**
- * Deprecated. Use PATCH /account/profile instead.
- *
- * @deprecated
- */
-export const post12 = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated. Use PATCH /account/profile instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountName',
-    path: '/account/name',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountNameBody }))
-  .output(zPostAccountNameResponse)
-
-export const name = {
-  post: post12,
-}
-
-export const post13 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -353,12 +366,130 @@ export const post13 = oc
   })
   .input(z.object({ body: zPostAccountPasswordBody }))
   .output(zPostAccountPasswordResponse)
+  .errors({
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    current_password_incorrect: { status: 400, data: zCurrentPasswordIncorrectError },
+    invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
+  })
 
 export const password = {
-  post: post13,
+  post: post9,
 }
 
+/**
+ * List account-visible candidates for the validated search, type, and cursor
+ */
 export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokenResources',
+    path: '/account/personal-access-token-resources',
+    summary: 'List account-visible candidates for the validated search, type, and cursor',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAccountPersonalAccessTokenResourcesQuery.optional() }).optional())
+  .output(zGetAccountPersonalAccessTokenResourcesResponse)
+
+export const personalAccessTokenResources = {
+  get: get7,
+}
+
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokenWorkspaces',
+    path: '/account/personal-access-token-workspaces',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAccountPersonalAccessTokenWorkspacesQuery.optional() }).optional())
+  .output(zGetAccountPersonalAccessTokenWorkspacesResponse)
+
+export const personalAccessTokenWorkspaces = {
+  get: get8,
+}
+
+export const delete2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAccountPersonalAccessTokensByTokenId',
+    path: '/account/personal-access-tokens/{token_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteAccountPersonalAccessTokensByTokenIdPath }))
+  .output(zDeleteAccountPersonalAccessTokensByTokenIdResponse)
+
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokensByTokenId',
+    path: '/account/personal-access-tokens/{token_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAccountPersonalAccessTokensByTokenIdPath }))
+  .output(zGetAccountPersonalAccessTokensByTokenIdResponse)
+
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAccountPersonalAccessTokensByTokenId',
+    path: '/account/personal-access-tokens/{token_id}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchAccountPersonalAccessTokensByTokenIdBody,
+      params: zPatchAccountPersonalAccessTokensByTokenIdPath,
+    }),
+  )
+  .output(zPatchAccountPersonalAccessTokensByTokenIdResponse)
+
+export const byTokenId = {
+  delete: delete2,
+  get: get9,
+  patch,
+}
+
+export const get10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAccountPersonalAccessTokens',
+    path: '/account/personal-access-tokens',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAccountPersonalAccessTokensQuery.optional() }).optional())
+  .output(zGetAccountPersonalAccessTokensResponse)
+
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAccountPersonalAccessTokens',
+    path: '/account/personal-access-tokens',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAccountPersonalAccessTokensBody,
+      headers: zPostAccountPersonalAccessTokensHeaders.optional(),
+    }),
+  )
+  .output(zPostAccountPersonalAccessTokensResponse)
+
+export const personalAccessTokens = {
+  get: get10,
+  post: post10,
+  byTokenId,
+}
+
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -367,8 +498,9 @@ export const get7 = oc
     tags: ['console'],
   })
   .output(zGetAccountProfileResponse)
+  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
-export const patch = oc
+export const patch2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -378,32 +510,11 @@ export const patch = oc
   })
   .input(z.object({ body: zPatchAccountProfileBody }))
   .output(zPatchAccountProfileResponse)
+  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const profile = {
-  get: get7,
-  patch,
-}
-
-/**
- * Deprecated. Use PATCH /account/profile instead.
- *
- * @deprecated
- */
-export const post14 = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated. Use PATCH /account/profile instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountTimezone',
-    path: '/account/timezone',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountTimezoneBody }))
-  .output(zPostAccountTimezoneResponse)
-
-export const timezone = {
-  post: post14,
+  get: get11,
+  patch: patch2,
 }
 
 export const account = {
@@ -413,12 +524,11 @@ export const account = {
   education,
   init,
   integrates,
-  interfaceLanguage,
-  interfaceTheme,
-  name,
   password,
+  personalAccessTokenResources,
+  personalAccessTokenWorkspaces,
+  personalAccessTokens,
   profile,
-  timezone,
 }
 
 export const contract = {

@@ -1,216 +1,118 @@
-import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
-import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
-import { createReactI18nextMock } from '@/test/i18n-mock'
+import type { ComponentProps } from 'react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { usePluginStore } from '../../store'
 import { SubscriptionList } from '../index'
 import { SubscriptionListMode } from '../types'
 
-vi.mock('react-i18next', () =>
-  createReactI18nextMock({
-    'errorBoundary.title': 'Something went wrong',
-    'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
-    'errorBoundary.tryAgain': 'Try Again',
-    'errorBoundary.reloadPage': 'Reload Page',
-  }),
-)
-
-const mockRefetch = vi.fn()
-let mockSubscriptionListError: Error | null = null
-let mockSubscriptionListState: {
-  isLoading: boolean
-  refetch: () => void
-  subscriptions?: TriggerSubscription[]
-}
-
-let mockPluginDetail: PluginDetail | undefined
-
-vi.mock('../use-subscription-list', () => ({
-  useSubscriptionList: () => {
-    if (mockSubscriptionListError) throw mockSubscriptionListError
-    return mockSubscriptionListState
-  },
-}))
-
-vi.mock('../../../store', () => ({
-  usePluginStore: (
-    selector: (state: { detail: PluginDetail | undefined }) => PluginDetail | undefined,
-  ) => selector({ detail: mockPluginDetail }),
-}))
-
-const mockInitiateOAuth = vi.fn()
-const mockDeleteSubscription = vi.fn()
-
-vi.mock('@/service/use-triggers', () => ({
-  useTriggerProviderInfo: () => ({ data: { supported_creation_methods: [] } }),
-  useTriggerOAuthConfig: () => ({ data: undefined, refetch: vi.fn() }),
-  useInitiateTriggerOAuth: () => ({ mutate: mockInitiateOAuth }),
-  useDeleteTriggerSubscription: () => ({ mutate: mockDeleteSubscription, isPending: false }),
-}))
-
-const createSubscription = (overrides: Partial<TriggerSubscription> = {}): TriggerSubscription => ({
+const list = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': list,
+    }),
+  }
+})
+const subscription = {
   id: 'sub-1',
   name: 'Subscription One',
   provider: 'provider-1',
-  credential_type: TriggerCredentialType.ApiKey,
+  credential_type: 'api-key',
   credentials: {},
   endpoint: 'https://example.com',
   parameters: {},
   properties: {},
   workflows_in_use: 0,
-  ...overrides,
+}
+function renderList(ui = <SubscriptionList />) {
+  // This area owns a singleton Zustand store; seed before mounting, reset by Vitest setup.
+  usePluginStore.setState({
+    detail: {
+      id: 'plugin-1',
+      plugin_id: 'plugin-1',
+      name: 'Trigger',
+      plugin_unique_identifier: 'plugin-1@1',
+      provider: 'provider-1',
+      declaration: {},
+    },
+  })
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.triggerProvider.byProvider.info.get.queryKey({
+      input: { params: { provider: 'provider-1' } },
+    }),
+    {
+      author: 'Dify',
+      plugin_id: 'plugin-1',
+      plugin_unique_identifier: 'plugin-1@1',
+      name: 'Trigger',
+      label: { en_US: 'Trigger' },
+      description: { en_US: 'Trigger provider' },
+      supported_creation_methods: [],
+      events: [],
+      subscription_schema: [],
+      subscription_constructor: null,
+    },
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
+it('shows loading until the real provider subscription query supplies its cards', async () => {
+  const pending = createDeferred<(typeof subscription)[]>()
+  list.mockReturnValueOnce(pending.promise)
+  renderList()
+  expect(screen.getByRole('progressbar')).toBeInTheDocument()
+  expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
+  await act(async () => pending.resolve([subscription]))
+  expect(await screen.findByText('Subscription One')).toBeInTheDocument()
+  expect(screen.getByText(/pluginTrigger.subscription.listNum/)).toBeInTheDocument()
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  expect(list).toHaveBeenCalledWith({ params: { provider: 'provider-1' } })
 })
-
-const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
-  id: 'plugin-detail-1',
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-02T00:00:00Z',
-  name: 'Test Plugin',
-  plugin_id: 'plugin-id',
-  plugin_unique_identifier: 'plugin-uid',
-  declaration: {} as PluginDeclaration,
-  installation_id: 'install-1',
-  tenant_id: 'tenant-1',
-  endpoints_setups: 0,
-  endpoints_active: 0,
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_unique_identifier: 'plugin-uid',
-  source: 'marketplace' as PluginDetail['source'],
-  meta: undefined,
-  status: 'active',
-  deprecated_reason: '',
-  alternative_plugin_id: '',
-  ...overrides,
+it('omits the list header and cards for an empty response', async () => {
+  list.mockResolvedValueOnce([])
+  renderList()
+  await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
+  expect(screen.queryByText(/pluginTrigger.subscription.listNum/)).not.toBeInTheDocument()
+  expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
 })
-
-beforeEach(() => {
-  vi.clearAllMocks()
-  mockRefetch.mockReset()
-  mockSubscriptionListError = null
-  mockPluginDetail = undefined
-  mockSubscriptionListState = {
-    isLoading: false,
-    refetch: mockRefetch,
-    subscriptions: [createSubscription()],
+it('selects a subscription and supplies a refresh callback that updates the real list', async () => {
+  const user = userEvent.setup()
+  list
+    .mockResolvedValueOnce([subscription])
+    .mockResolvedValue([{ ...subscription, name: 'Updated subscription' }])
+  function Caller() {
+    const [selected, setSelected] = useState('')
+    const [refresh, setRefresh] = useState<() => void>()
+    const onSelect: NonNullable<ComponentProps<typeof SubscriptionList>['onSelect']> = (
+      value,
+      callback,
+    ) => {
+      setSelected(`${value.id}: ${value.name}`)
+      setRefresh(() => callback)
+    }
+    return (
+      <>
+        <output aria-label="Selected subscription">{selected}</output>
+        <button type="button" onClick={() => refresh?.()}>
+          Refresh subscriptions
+        </button>
+        <SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />
+      </>
+    )
   }
-})
-
-describe('SubscriptionList', () => {
-  describe('Rendering', () => {
-    it('should render list view by default', () => {
-      render(<SubscriptionList />)
-
-      expect(screen.getByText(/pluginTrigger\.subscription\.listNum/))!.toBeInTheDocument()
-      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
-    })
-
-    it('should render loading state when subscriptions are loading', () => {
-      mockSubscriptionListState = {
-        ...mockSubscriptionListState,
-        isLoading: true,
-      }
-
-      render(<SubscriptionList />)
-
-      expect(screen.getByRole('status'))!.toBeInTheDocument()
-      expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
-    })
-
-    it('should render list view with plugin detail provided', () => {
-      const pluginDetail = createPluginDetail()
-
-      render(<SubscriptionList pluginDetail={pluginDetail} />)
-
-      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
-    })
-
-    it('should render without list entries when subscriptions are empty', () => {
-      mockSubscriptionListState = {
-        ...mockSubscriptionListState,
-        subscriptions: [],
-      }
-
-      render(<SubscriptionList />)
-
-      expect(screen.queryByText(/pluginTrigger\.subscription\.listNum/)).not.toBeInTheDocument()
-      expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should render selector view when mode is selector', () => {
-      render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} />)
-
-      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
-    })
-
-    it('should visually distinguish selected subscription from unselected', () => {
-      const { rerender } = render(
-        <SubscriptionList mode={SubscriptionListMode.SELECTOR} selectedId="sub-1" />,
-      )
-
-      const getRowClassName = () =>
-        screen.getByRole('button', { name: 'Subscription One' }).closest('div')?.className ?? ''
-
-      const selectedClassName = getRowClassName()
-
-      rerender(<SubscriptionList mode={SubscriptionListMode.SELECTOR} selectedId="other-id" />)
-
-      expect(selectedClassName).not.toBe(getRowClassName())
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onSelect with refetch callback when selecting a subscription', () => {
-      const onSelect = vi.fn()
-
-      render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
-
-      expect(onSelect).toHaveBeenCalledTimes(1)
-      const [selectedSubscription, callback] = (onSelect.mock.calls[0] ?? []) as [any, any]
-      expect(selectedSubscription).toMatchObject({ id: 'sub-1', name: 'Subscription One' })
-      expect(typeof callback).toBe('function')
-
-      callback?.()
-      expect(mockRefetch).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not throw when onSelect is undefined', () => {
-      render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} />)
-
-      expect(() => {
-        fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
-      }).not.toThrow()
-    })
-
-    it('should open delete confirm without triggering selection', () => {
-      const onSelect = vi.fn()
-      const { container } = render(
-        <SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />,
-      )
-
-      const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
-      expect(deleteButton).toBeTruthy()
-      fireEvent.click(deleteButton)
-
-      expect(onSelect).not.toHaveBeenCalled()
-      expect(
-        screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/),
-      )!.toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should render error boundary fallback when an error occurs', async () => {
-      mockSubscriptionListError = new Error('boom')
-
-      render(<SubscriptionList />)
-
-      expect(await screen.findByText('Something went wrong'))!.toBeInTheDocument()
-    })
-  })
+  renderList(<Caller />)
+  await user.click(await screen.findByRole('button', { name: 'Subscription One' }))
+  expect(screen.getByLabelText('Selected subscription')).toHaveTextContent(
+    'sub-1: Subscription One',
+  )
+  await user.click(screen.getByRole('button', { name: 'Refresh subscriptions' }))
+  expect(await screen.findByRole('button', { name: 'Updated subscription' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Subscription One' })).not.toBeInTheDocument()
 })

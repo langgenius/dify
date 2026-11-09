@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -14,11 +15,13 @@ MIGRATION_MODULE = "services.plugin.plugin_migration"
 
 
 @pytest.fixture(autouse=True)
-def _marketplace_enabled(config_overrides) -> None:
+def _marketplace_enabled(config_overrides: Callable[..., None]) -> None:
     config_overrides(MARKETPLACE_ENABLED=True)
 
 
-def test_fetch_latest_package_identifier_returns_none_when_disabled(mocker: MockerFixture, config_overrides) -> None:
+def test_fetch_latest_package_identifier_returns_none_when_disabled(
+    mocker: MockerFixture, config_overrides: Callable[..., None]
+) -> None:
     config_overrides(MARKETPLACE_ENABLED=False)
     batch_fetch = mocker.patch("services.plugin.plugin_migration.marketplace.batch_fetch_plugin_manifests")
 
@@ -66,14 +69,14 @@ def test_extract_app_tables_checks_agent_mode_with_its_session(mocker: MockerFix
 
 
 class TestHandlePluginInstanceInstall:
-    def test_raises_when_disabled_and_map_nonempty(self, config_overrides) -> None:
+    def test_raises_when_disabled_and_map_nonempty(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(MARKETPLACE_ENABLED=False)
         with pytest.raises(ValueError, match="Marketplace disabled"):
             PluginMigration.handle_plugin_instance_install(
                 "tenant1", {"langgenius/openai": "langgenius/openai:1.0.0@abc"}
             )
 
-    def test_no_raise_when_disabled_and_map_empty(self, config_overrides) -> None:
+    def test_no_raise_when_disabled_and_map_empty(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(MARKETPLACE_ENABLED=False)
         with patch(f"{MIGRATION_MODULE}.PluginInstaller") as mock_installer_cls:
             mock_installer = MagicMock()
@@ -139,7 +142,7 @@ class TestHandlePluginInstanceInstall:
             patch(f"{MIGRATION_MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
             mock_installer = MagicMock()
-            mock_installer.list_plugins.return_value = []
+            mock_installer.list_plugins.return_value = list[object]()
             mock_installer_cls.return_value = mock_installer
 
             PluginMigration.install_plugins(str(extracted_plugins), str(output_file), workers=1)
@@ -165,7 +168,7 @@ class TestHandlePluginInstanceInstall:
             patch(f"{MIGRATION_MODULE}.PluginService.invalidate_plugin_model_providers_cache"),
         ):
             mock_installer = MagicMock()
-            mock_installer.list_plugins.return_value = []
+            mock_installer.list_plugins.return_value = list[object]()
             mock_installer_cls.return_value = mock_installer
 
             PluginMigration.install_plugins(str(extracted_plugins), str(output_file), workers=1)
@@ -195,7 +198,7 @@ class TestHandlePluginInstanceInstall:
             patch(f"{MIGRATION_MODULE}.PluginInstaller") as mock_installer_cls,
         ):
             mock_installer = MagicMock()
-            mock_installer.list_plugins.return_value = []
+            mock_installer.list_plugins.return_value = list[object]()
             mock_installer_cls.return_value = mock_installer
 
             PluginMigration.install_plugins(str(extracted_plugins), str(output_file), workers=1)

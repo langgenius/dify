@@ -16,8 +16,8 @@ from graphon.enums import WorkflowExecutionStatus
 class _DummyConverter(AppGenerateResponseConverter[WorkflowAppBlockingResponse]):
     blocking_full_calls: list[WorkflowAppBlockingResponse] = []
     blocking_simple_calls: list[WorkflowAppBlockingResponse] = []
-    stream_full_calls: list[Generator[AppStreamResponse, None, None]] = []
-    stream_simple_calls: list[Generator[AppStreamResponse, None, None]] = []
+    stream_full_calls: list[Generator[AppStreamResponse]] = []
+    stream_simple_calls: list[Generator[AppStreamResponse]] = []
 
     @classmethod
     def reset(cls) -> None:
@@ -38,15 +38,15 @@ class _DummyConverter(AppGenerateResponseConverter[WorkflowAppBlockingResponse])
 
     @classmethod
     def convert_stream_full_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, object] | str]:
         cls.stream_full_calls.append(stream_response)
         yield {"kind": "stream-full"}
 
     @classmethod
     def convert_stream_simple_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, object] | str]:
         cls.stream_simple_calls.append(stream_response)
         yield {"kind": "stream-simple"}
 
@@ -70,7 +70,7 @@ def _build_blocking_response() -> WorkflowAppBlockingResponse:
     )
 
 
-def _build_stream_response() -> Generator[AppStreamResponse, None, None]:
+def _build_stream_response() -> Generator[AppStreamResponse]:
     yield WorkflowAppStreamResponse(
         workflow_run_id="run-1",
         stream_response=PingStreamResponse(task_id="task-1"),

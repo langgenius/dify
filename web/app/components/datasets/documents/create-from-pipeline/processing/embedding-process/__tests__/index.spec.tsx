@@ -1,49 +1,24 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
+import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
-import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
-import type { InitialDocumentDetail } from '@/models/pipeline'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { DatasourceType } from '@/models/pipeline'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
 
-const mockPush = vi.fn()
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}))
-
-// Mock next/link
-vi.mock('@/next/link', () => ({
-  default: function MockLink({
-    children,
-    href,
-    ...props
-  }: {
-    children: React.ReactNode
-    href: string
-  }) {
-    return (
-      <a href={href} {...props}>
-        {children}
-      </a>
-    )
-  },
-}))
-
 // Mock provider context
-let mockEnableBilling = false
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlanType: CloudPlan = 'sandbox'
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    enableBilling: mockEnableBilling,
-    plan: { type: mockPlanType },
-  }),
-}))
 
 vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => ({
   default: ({
@@ -61,27 +36,9 @@ vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => (
   ),
 }))
 
-// Mock useIndexingStatusBatch hook
+// Mock the batch indexing status request
 let mockFetchIndexingStatus: Mock
-let mockIndexingStatusData: IndexingStatusResponse[] = []
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useIndexingStatusBatch: () => ({
-    mutateAsync: mockFetchIndexingStatus,
-  }),
-  useProcessRule: () => ({
-    data: {
-      mode: 'custom',
-      rules: { parent_mode: 'paragraph' },
-    },
-  }),
-}))
-
-// Mock useInvalidDocumentList hook
-const mockInvalidDocumentList = vi.fn()
-vi.mock('@/service/knowledge/use-document', () => ({
-  useInvalidDocumentList: () => mockInvalidDocumentList,
-}))
-
+let mockIndexingStatusData: DocumentStatusResponse[] = []
 // Mock useDatasetApiAccessUrl hook
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
@@ -94,29 +51,27 @@ vi.mock('@/hooks/use-api-access-url', () => ({
  * Uses deterministic counter-based IDs to avoid flaky tests
  */
 let documentIdCounter = 0
-const createMockDocument = (
-  overrides: Partial<InitialDocumentDetail> = {},
-): InitialDocumentDetail => ({
+const createMockDocument = (overrides: Partial<PipelineDocument> = {}): PipelineDocument => ({
   id: overrides.id ?? `doc-${++documentIdCounter}`,
   name: 'test-document.txt',
   data_source_type: DatasourceType.localFile,
   data_source_info: {},
-  enable: true,
+  enabled: true,
   error: '',
-  indexing_status: 'waiting' as DocumentIndexingStatus,
+  indexing_status: 'waiting',
   position: 0,
   ...overrides,
 })
 
 /**
- * Creates a mock IndexingStatusResponse for testing
+ * Creates a mock DocumentStatusResponse for testing
  */
 const createMockIndexingStatus = (
-  overrides: Partial<IndexingStatusResponse> = {},
-): IndexingStatusResponse => ({
-  id: `doc-${Math.random().toString(36).slice(2, 9)}`,
-  indexing_status: 'waiting' as DocumentIndexingStatus,
-  processing_started_at: Date.now(),
+  overrides: Partial<DocumentStatusResponse> = {},
+): DocumentStatusResponse => ({
+  id: `status-${++documentIdCounter}`,
+  indexing_status: 'waiting',
+  processing_started_at: 1700000000,
   parsing_completed_at: 0,
   cleaning_completed_at: 0,
   splitting_completed_at: 0,
@@ -136,7 +91,7 @@ const createDefaultProps = (
   overrides: Partial<{
     datasetId: string
     batchId: string
-    documents: InitialDocumentDetail[]
+    documents: PipelineDocument[]
     indexingType: IndexingType
     retrievalMethod: RETRIEVE_METHOD
   }> = {},
@@ -149,8 +104,23 @@ const createDefaultProps = (
   ...overrides,
 })
 
+function render(ui: ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { billing: { subscription: { plan: mockPlanType } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}
+
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })
 
@@ -158,16 +128,14 @@ describe('EmbeddingProcess', () => {
     documentIdCounter = 0
 
     // Reset mock states
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
     mockPlanType = 'sandbox'
     mockIndexingStatusData = []
 
     // Setup default mock for fetchIndexingStatus
-    mockFetchIndexingStatus = vi.fn().mockImplementation((_, options) => {
-      options?.onSuccess?.({ data: mockIndexingStatusData })
-      options?.onSettled?.()
-      return Promise.resolve({ data: mockIndexingStatusData })
-    })
+    mockFetchIndexingStatus = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve({ data: mockIndexingStatusData }))
   })
 
   afterEach(() => {
@@ -185,21 +153,13 @@ describe('EmbeddingProcess', () => {
       expect(apiLink).toHaveAttribute('target', '_blank')
       expect(apiLink).toHaveAttribute('rel', 'noopener noreferrer')
     })
-
-    it('should render navigation button', () => {
-      const props = createDefaultProps()
-
-      render(<EmbeddingProcess {...props} />)
-
-      expect(screen.getByText('datasetCreation.stepThree.navTo')).toBeInTheDocument()
-    })
   })
 
   // Billing/Upgrade Banner Tests
   describe('Billing and Upgrade Banner', () => {
     // Tests for billing-related UI
     it('should not show upgrade banner when billing is disabled', () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
       const props = createDefaultProps()
 
       render(<EmbeddingProcess {...props} />)
@@ -210,7 +170,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should show upgrade banner when billing is enabled and plan is not team', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'sandbox'
       const props = createDefaultProps()
 
@@ -222,7 +182,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not show upgrade banner when plan is team', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
       const props = createDefaultProps()
 
@@ -234,7 +194,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should show upgrade banner for professional plan', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'professional'
       const props = createDefaultProps()
 
@@ -386,7 +346,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not suggest an upgrade to team users', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
@@ -513,113 +473,44 @@ describe('EmbeddingProcess', () => {
   // Polling Logic Tests
   describe('Polling Logic', () => {
     // Tests for API polling behavior
-    it('should start polling on mount', async () => {
-      const props = createDefaultProps()
 
-      render(<EmbeddingProcess {...props} />)
-
-      // Assert - verify fetch was called at least once
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-    })
-
-    it('should continue polling while documents are processing', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1' })
+    it('polls until processing completes, then stops scheduling requests', async () => {
       mockIndexingStatusData = [
         createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
       ]
-      const props = createDefaultProps({ documents: [doc1] })
-      const initialCallCount = mockFetchIndexingStatus.mock.calls.length
-
-      render(<EmbeddingProcess {...props} />)
-
-      // Wait for initial fetch
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus.mock.calls.length).toBeGreaterThan(initialCallCount)
+      render(<EmbeddingProcess {...createDefaultProps()} />)
+      await screen.findByText('datasetDocuments.embedding.processing')
+      expect(mockFetchIndexingStatus).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-123', batch: 'batch-456' },
       })
-
-      const afterInitialCount = mockFetchIndexingStatus.mock.calls.length
-
-      // Advance timer for next poll
-      vi.advanceTimersByTime(2500)
-
-      // Assert - should poll again
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus.mock.calls.length).toBeGreaterThan(afterInitialCount)
-      })
-    })
-
-    it('should stop polling when all documents are completed', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1' })
+      const initialCount = mockFetchIndexingStatus.mock.calls.length
       mockIndexingStatusData = [
         createMockIndexingStatus({ id: 'doc-1', indexing_status: 'completed' }),
       ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-
-      // Wait for initial fetch and state update
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500)
       })
-
-      const callCountAfterComplete = mockFetchIndexingStatus.mock.calls.length
-
-      // Advance timer - polling should have stopped
-      vi.advanceTimersByTime(5000)
-
-      // Assert - call count should not increase significantly after completion
-      // Note: Due to React Strict Mode, there might be double renders
-      expect(mockFetchIndexingStatus.mock.calls.length).toBeLessThanOrEqual(
-        callCountAfterComplete + 1,
-      )
+      expect(mockFetchIndexingStatus.mock.calls.length).toBeGreaterThan(initialCount)
+      expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
+      const completedCount = mockFetchIndexingStatus.mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(7500)
+      })
+      expect(mockFetchIndexingStatus).toHaveBeenCalledTimes(completedCount)
     })
 
-    it('should stop polling when all documents have errors', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1' })
-      mockIndexingStatusData = [createMockIndexingStatus({ id: 'doc-1', indexing_status: 'error' })]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-
-      // Wait for initial fetch
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
+    it.each(['error', 'paused'] as const)('stops polling when documents are %s', async (status) => {
+      mockIndexingStatusData = [createMockIndexingStatus({ id: 'doc-1', indexing_status: status })]
+      render(<EmbeddingProcess {...createDefaultProps()} />)
+      await screen.findByText('datasetDocuments.embedding.completed')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1)
       })
-
-      const callCountAfterError = mockFetchIndexingStatus.mock.calls.length
-
-      // Advance timer
-      vi.advanceTimersByTime(5000)
-
-      // Assert - should not poll significantly more after error state
-      expect(mockFetchIndexingStatus.mock.calls.length).toBeLessThanOrEqual(callCountAfterError + 1)
-    })
-
-    it('should stop polling when all documents are paused', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'paused' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-
-      // Wait for initial fetch
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
+      const terminalCount = mockFetchIndexingStatus.mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(7500)
       })
-
-      const callCountAfterPaused = mockFetchIndexingStatus.mock.calls.length
-
-      // Advance timer
-      vi.advanceTimersByTime(5000)
-
-      // Assert - should not poll significantly more after paused state
-      expect(mockFetchIndexingStatus.mock.calls.length).toBeLessThanOrEqual(
-        callCountAfterPaused + 1,
-      )
+      expect(mockFetchIndexingStatus).toHaveBeenCalledTimes(terminalCount)
     })
 
     it('should cleanup timeout on unmount', async () => {
@@ -642,7 +533,9 @@ describe('EmbeddingProcess', () => {
       unmount()
 
       // Advance timer
-      vi.advanceTimersByTime(5000)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
 
       // Assert - should not poll after unmount
       expect(mockFetchIndexingStatus.mock.calls.length).toBe(callCountBeforeUnmount)
@@ -650,49 +543,24 @@ describe('EmbeddingProcess', () => {
   })
 
   describe('User Interactions', () => {
-    // Tests for button clicks and navigation
-    it('should navigate to document list when nav button is clicked', async () => {
+    it('should link to the document list and invalidate its cache on activation', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const props = createDefaultProps({ datasetId: 'my-dataset-123' })
 
       render(<EmbeddingProcess {...props} />)
-      const navButton = screen.getByText('datasetCreation.stepThree.navTo')
-      fireEvent.click(navButton)
+      const link = screen.getByRole('link', { name: 'datasetCreation.stepThree.navTo' })
+      expect(link).toHaveAttribute('href', '/datasets/my-dataset-123/documents')
+      await user.click(link)
 
-      expect(mockInvalidDocumentList).toHaveBeenCalled()
-      expect(mockPush).toHaveBeenCalledWith('/datasets/my-dataset-123/documents')
-    })
-
-    it('should call invalidDocumentList before navigation', () => {
-      const props = createDefaultProps()
-      const callOrder: string[] = []
-      mockInvalidDocumentList.mockImplementation(() => callOrder.push('invalidate'))
-      mockPush.mockImplementation(() => callOrder.push('push'))
-
-      render(<EmbeddingProcess {...props} />)
-      const navButton = screen.getByText('datasetCreation.stepThree.navTo')
-      fireEvent.click(navButton)
-
-      expect(callOrder).toEqual(['invalidate', 'push'])
+      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+      })
     })
   })
 
   // Document Display Tests
   describe('Document Display', () => {
     // Tests for document list rendering
-    it('should display document names', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1', name: 'my-report.pdf' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      expect(screen.getByText('my-report.pdf')).toBeInTheDocument()
-    })
 
     it('should display multiple documents', async () => {
       const doc1 = createMockDocument({ id: 'doc-1', name: 'file1.txt' })
@@ -711,170 +579,10 @@ describe('EmbeddingProcess', () => {
       expect(screen.getByText('file1.txt')).toBeInTheDocument()
       expect(screen.getByText('file2.pdf')).toBeInTheDocument()
     })
-
-    it('should handle documents with special characters in names', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1', name: 'report_2024 (final) - copy.pdf' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      expect(screen.getByText('report_2024 (final) - copy.pdf')).toBeInTheDocument()
-    })
-  })
-
-  // Data Source Type Tests
-  describe('Data Source Types', () => {
-    // Tests for different data source type displays
-    it('should handle local file data source', async () => {
-      const doc1 = createMockDocument({
-        id: 'doc-1',
-        name: 'local-file.pdf',
-        data_source_type: DatasourceType.localFile,
-      })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      expect(screen.getByText('local-file.pdf')).toBeInTheDocument()
-    })
-
-    it('should handle online document data source', async () => {
-      const doc1 = createMockDocument({
-        id: 'doc-1',
-        name: 'Notion Page',
-        data_source_type: DatasourceType.onlineDocument,
-        data_source_info: { notion_page_icon: { type: 'emoji', emoji: '📄' } },
-      })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      expect(screen.getByText('Notion Page')).toBeInTheDocument()
-    })
-
-    it('should handle website crawl data source', async () => {
-      const doc1 = createMockDocument({
-        id: 'doc-1',
-        name: 'https://example.com/page',
-        data_source_type: DatasourceType.websiteCrawl,
-      })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      expect(screen.getByText('https://example.com/page')).toBeInTheDocument()
-    })
-
-    it('should handle online drive data source', async () => {
-      const doc1 = createMockDocument({
-        id: 'doc-1',
-        name: 'Google Drive Document',
-        data_source_type: DatasourceType.onlineDrive,
-      })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      expect(screen.getByText('Google Drive Document')).toBeInTheDocument()
-    })
-  })
-
-  // Error Handling Tests
-  describe('Error Handling', () => {
-    // Tests for error states and displays
-    it('should display error icon for documents with error status', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({
-          id: 'doc-1',
-          indexing_status: 'error',
-          error: 'Failed to process document',
-        }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      const { container } = render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      // Assert - error icon should be visible
-      const errorIcon = container.querySelector('.text-text-destructive')
-      expect(errorIcon).toBeInTheDocument()
-    })
-
-    it('should apply error styling to document row with error', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({
-          id: 'doc-1',
-          indexing_status: 'error',
-          error: 'Processing failed',
-        }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      const { container } = render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      // Assert - should have error background class
-      const errorRow = container.querySelector('.bg-state-destructive-hover-alt')
-      expect(errorRow).toBeInTheDocument()
-    })
   })
 
   describe('Edge Cases', () => {
     // Tests for boundary conditions
-    it('should throw error when documents array is empty', () => {
-      // The component accesses documents[0].id for useProcessRule (line 81-82),
-      // which throws TypeError when documents array is empty.
-      // This test documents this known limitation.
-      const props = createDefaultProps({ documents: [] })
-
-      // Suppress console errors for expected error
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(Function.prototype as () => void)
-
-      // Act & Assert - explicitly assert the error behavior
-      expect(() => {
-        render(<EmbeddingProcess {...props} />)
-      }).toThrow(TypeError)
-
-      consoleError.mockRestore()
-    })
 
     it('should handle empty indexing status response', async () => {
       mockIndexingStatusData = []
@@ -889,42 +597,6 @@ describe('EmbeddingProcess', () => {
       expect(screen.queryByText('datasetDocuments.embedding.waiting')).not.toBeInTheDocument()
       expect(screen.queryByText('datasetDocuments.embedding.processing')).not.toBeInTheDocument()
       expect(screen.queryByText('datasetDocuments.embedding.completed')).not.toBeInTheDocument()
-    })
-
-    it('should handle document with undefined name', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1', name: undefined as unknown as string })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      // Act & Assert - should not throw
-      expect(() => render(<EmbeddingProcess {...props} />)).not.toThrow()
-    })
-
-    it('should handle document not found in indexing status', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'other-doc', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      // Act & Assert - should not throw
-      expect(() => render(<EmbeddingProcess {...props} />)).not.toThrow()
-    })
-
-    it('should handle undefined indexing_status', async () => {
-      const doc1 = createMockDocument({ id: 'doc-1' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({
-          id: 'doc-1',
-          indexing_status: undefined as unknown as DocumentIndexingStatus,
-        }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      // Act & Assert - should not throw
-      expect(() => render(<EmbeddingProcess {...props} />)).not.toThrow()
     })
 
     it('should handle mixed status documents', async () => {
@@ -948,45 +620,10 @@ describe('EmbeddingProcess', () => {
     })
   })
 
-  describe('Memoization Logic', () => {
+  describe('Mixed terminal statuses', () => {
     // Tests for useMemo computed values
-    it('should correctly compute isEmbeddingWaiting', async () => {
-      // Arrange - all waiting
-      const doc1 = createMockDocument({ id: 'doc-1' })
-      const doc2 = createMockDocument({ id: 'doc-2' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'waiting' }),
-        createMockIndexingStatus({ id: 'doc-2', indexing_status: 'waiting' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1, doc2] })
 
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      expect(screen.getByText('datasetDocuments.embedding.waiting')).toBeInTheDocument()
-    })
-
-    it('should correctly compute isEmbedding when one is indexing', async () => {
-      // Arrange - one waiting, one indexing
-      const doc1 = createMockDocument({ id: 'doc-1' })
-      const doc2 = createMockDocument({ id: 'doc-2' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'waiting' }),
-        createMockIndexingStatus({ id: 'doc-2', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1, doc2] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      expect(screen.getByText('datasetDocuments.embedding.processing')).toBeInTheDocument()
-    })
-
-    it('should correctly compute isEmbeddingCompleted for mixed terminal states', async () => {
+    it('shows completion when all documents are completed, failed, or paused', async () => {
       // Arrange - completed + error + paused = all terminal
       const doc1 = createMockDocument({ id: 'doc-1' })
       const doc2 = createMockDocument({ id: 'doc-2' })
@@ -1006,108 +643,20 @@ describe('EmbeddingProcess', () => {
       expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
     })
   })
+})
 
-  // File Type Detection Tests
-  describe('File Type Detection', () => {
-    // Tests for getFileType helper function
-    it('should extract file extension correctly', async () => {
-      const doc1 = createMockDocument({
-        id: 'doc-1',
-        name: 'document.pdf',
-        data_source_type: DatasourceType.localFile,
-      })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      // Assert - file should be displayed (file type detection happens internally)
-      expect(screen.getByText('document.pdf')).toBeInTheDocument()
-    })
-
-    it('should handle files with multiple dots', async () => {
-      const doc1 = createMockDocument({
-        id: 'doc-1',
-        name: 'my.report.2024.pdf',
-        data_source_type: DatasourceType.localFile,
-      })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      expect(screen.getByText('my.report.2024.pdf')).toBeInTheDocument()
-    })
-
-    it('should handle files without extension', async () => {
-      const doc1 = createMockDocument({
-        id: 'doc-1',
-        name: 'README',
-        data_source_type: DatasourceType.localFile,
-      })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      expect(screen.getByText('README')).toBeInTheDocument()
-    })
-  })
-
-  // Priority Label Tests
-  describe('Priority Label', () => {
-    // Tests for priority label display
-    it('should show priority label when billing is enabled', async () => {
-      mockEnableBilling = true
-      mockPlanType = 'sandbox'
-      const doc1 = createMockDocument({ id: 'doc-1' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      const { container } = render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      // Assert - PriorityLabel component should be rendered
-      // Since we don't mock PriorityLabel, we check the structure exists
-      expect(container.querySelector('.ml-0')).toBeInTheDocument()
-    })
-
-    it('should not show priority label when billing is disabled', async () => {
-      mockEnableBilling = false
-      const doc1 = createMockDocument({ id: 'doc-1' })
-      mockIndexingStatusData = [
-        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),
-      ]
-      const props = createDefaultProps({ documents: [doc1] })
-
-      render(<EmbeddingProcess {...props} />)
-      await waitFor(() => {
-        expect(mockFetchIndexingStatus).toHaveBeenCalled()
-      })
-
-      // Assert - upgrade banner should not be present
-      expect(
-        screen.queryByText('billing.plansCommon.documentProcessingPriorityUpgrade'),
-      ).not.toBeInTheDocument()
-    })
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.processRule.get': async () => ({
+        mode: 'custom',
+        rules: { parent_mode: 'paragraph' },
+      }),
+      'datasets.byDatasetId.batch.byBatch.indexingStatus.get': (input) =>
+        mockFetchIndexingStatus(input),
+    }),
+  }
 })

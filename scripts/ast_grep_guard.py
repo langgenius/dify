@@ -4,17 +4,19 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCAN_ROOT = Path.cwd()
@@ -106,11 +108,19 @@ def git_output(*args: str, allow_missing: bool = False) -> str:
 
 def collect_diff_text(args: argparse.Namespace) -> str:
     if args.staged:
-        return git_output("diff", "--cached", "--unified=0", "--diff-filter=AM", "--no-ext-diff")
+        return git_output(
+            "diff",
+            "--cached",
+            "--unified=0",
+            "--no-renames",
+            "--diff-filter=AMD",
+            "--no-ext-diff",
+        )
     return git_output(
         "diff",
         "--unified=0",
-        "--diff-filter=AM",
+        "--no-renames",
+        "--diff-filter=AMD",
         "--no-ext-diff",
         f"{args.base_rev}..HEAD",
     )
@@ -160,12 +170,12 @@ def load_file_versions(path: str, args: argparse.Namespace) -> tuple[str, str]:
     if args.staged:
         return (
             git_output("show", f"HEAD:{path}", allow_missing=True),
-            git_output("show", f":{path}"),
+            git_output("show", f":{path}", allow_missing=True),
         )
 
     return (
         git_output("show", f"{args.base_rev}:{path}", allow_missing=True),
-        git_output("show", f"HEAD:{path}"),
+        git_output("show", f"HEAD:{path}", allow_missing=True),
     )
 
 
@@ -254,29 +264,50 @@ def has_reasoned_guard_ignore(source_line: str, rule_id: str) -> bool:
     return bool(reason.strip())
 
 
-def collect_hunk_violations(
-    path: str,
+def match_key(match: Match) -> str:
+    """Ignore formatting when comparing moved Python syntax, retaining literal values."""
+    return ast.dump(ast.parse(textwrap.dedent(match.text)))
+
+
+def filter_moved_matches(
+    added: list[tuple[str, Match]],
+    removed: Counter[str],
+) -> list[tuple[str, Match]]:
+    unmatched = []
+    for path, match in added:
+        key = match_key(match)
+        if removed[key]:
+            removed[key] -= 1
+        else:
+            unmatched.append((path, match))
+    return unmatched
+
+
+def collect_hunk_changes(
     old_matches: list[Match],
     new_matches: list[Match],
     hunk: Hunk,
     *,
     is_reportable_match: MatchPredicate,
-    violation_message: str,
-) -> list[Violation]:
+) -> tuple[Counter[str], list[Match]]:
     old_in_hunk = [
         match for match in old_matches if hunk.contains_old(match.line_number) and is_reportable_match(match)
     ]
     new_in_hunk = [
         match for match in new_matches if hunk.contains_new(match.line_number) and is_reportable_match(match)
     ]
-    surplus = len(new_in_hunk) - len(old_in_hunk)
-    if surplus <= 0:
-        return []
-
-    return [
-        Violation(path=path, line_number=match.line_number, message=violation_message)
-        for match in new_in_hunk[-surplus:]
-    ]
+    existing = Counter(match_key(match) for match in old_in_hunk)
+    added = []
+    for match in new_in_hunk:
+        key = match_key(match)
+        if existing[key]:
+            existing[key] -= 1
+        else:
+            added.append(match)
+    # Preserve the existing allowance for replacing legacy calls within a hunk.
+    remaining = list(existing.elements())
+    replacements = min(len(remaining), len(added))
+    return Counter(remaining[replacements:]), added[replacements:]
 
 
 def find_net_new_violations(
@@ -288,7 +319,8 @@ def find_net_new_violations(
     is_reportable_match: MatchPredicate,
     violation_message: str,
 ) -> list[Violation]:
-    violations: list[Violation] = []
+    removed: Counter[str] = Counter()
+    added: list[tuple[str, Match]] = []
     for path, hunks in changed_hunks.items():
         if not is_scanned_path(path):
             continue
@@ -296,16 +328,17 @@ def find_net_new_violations(
         old_matches = run_ast_grep(old_source, rule=rule)
         new_matches = run_ast_grep(new_source, rule=rule)
         for hunk in hunks:
-            violations.extend(
-                collect_hunk_violations(
-                    path,
-                    old_matches,
-                    new_matches,
-                    hunk,
-                    is_reportable_match=is_reportable_match,
-                    violation_message=violation_message,
-                )
+            removed_in_hunk, added_in_hunk = collect_hunk_changes(
+                old_matches,
+                new_matches,
+                hunk,
+                is_reportable_match=is_reportable_match,
             )
+            removed.update(removed_in_hunk)
+            added.extend((path, match) for match in added_in_hunk)
+    violations = [
+        Violation(path, match.line_number, violation_message) for path, match in filter_moved_matches(added, removed)
+    ]
     return sorted(violations, key=lambda item: (item.path, item.line_number))
 
 

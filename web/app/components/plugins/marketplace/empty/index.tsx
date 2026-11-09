@@ -1,7 +1,6 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
-import { Group } from '@/app/components/base/icons/src/vender/other'
 import Line from './line'
 
 type Props = Readonly<{
@@ -11,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const Empty = ({ text, lightCard, className }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   return (
     <div className={cn('relative flex h-0 grow flex-wrap overflow-hidden p-2', className)}>
@@ -29,7 +28,7 @@ const Empty = ({ text, lightCard, className }: Props) => {
       {!lightCard && <div className="absolute inset-0 z-1 bg-marketplace-plugin-empty"></div>}
       <div className="absolute top-1/2 left-1/2 z-2 flex -translate-1/2 flex-col items-center">
         <div className="relative mb-3 flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-deep bg-components-card-bg shadow-lg">
-          <Group className="size-5 text-text-primary" />
+          <span aria-hidden className="i-custom-vender-other-group size-5 text-text-primary" />
           <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
           <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
           <Line className="absolute top-0 left-1/2 -translate-1/2 rotate-90" />

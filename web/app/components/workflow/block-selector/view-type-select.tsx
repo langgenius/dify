@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 function ViewTypeSelect({ viewType, onChange }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   return (
     <SegmentedControl<ViewType>

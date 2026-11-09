@@ -1,3 +1,5 @@
 import { defineConfig } from 'vite-plus'
 
-export default defineConfig({})
+export default defineConfig({
+  test: {},
+})

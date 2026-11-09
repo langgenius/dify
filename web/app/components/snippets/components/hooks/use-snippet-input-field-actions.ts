@@ -1,4 +1,4 @@
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import { useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useSnippetDraftStore } from '../../draft-store'
@@ -22,7 +22,7 @@ export const useSnippetInputFieldActions = ({
   )
 
   const handleFieldsChange = useCallback(
-    (newFields: SnippetInputField[]) => {
+    (newFields: InputVar[]) => {
       if (!canEdit) return
 
       setInputFields(newFields)

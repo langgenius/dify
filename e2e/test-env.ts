@@ -1,4 +1,4 @@
-import './scripts/env-register'
+import './scripts/env-register.ts'
 
 export const defaultBaseURL = 'http://127.0.0.1:3000'
 export const defaultApiURL = 'http://127.0.0.1:5001'

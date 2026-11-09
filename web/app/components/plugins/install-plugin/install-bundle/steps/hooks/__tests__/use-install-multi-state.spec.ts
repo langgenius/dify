@@ -3,36 +3,30 @@ import type {
   GitHubItemAndMarketPlaceDependency,
   PackageDependency,
   Plugin,
-  VersionInfo,
 } from '@/app/components/plugins/types'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
-import { getPluginKey, useInstallMultiState } from '../use-install-multi-state'
+import { createDeferred } from '@/test/deferred'
+import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
+import { useInstallMultiState } from '../use-install-multi-state'
 
-let mockMarketplaceData: ReturnType<typeof createMarketplaceApiData> | null = null
-let mockMarketplaceError: Error | null = null
-let mockInstalledInfo: Record<string, VersionInfo> = {}
-let mockCanInstall = true
-
-vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByInfo: () => ({
-    isLoading: false,
-    data: mockMarketplaceData,
-    error: mockMarketplaceError,
-  }),
+const requests = vi.hoisted(() => ({ marketplace: vi.fn(), installed: vi.fn() }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  postMarketplace: requests.marketplace,
 }))
-
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
-  default: () => ({
-    installedInfo: mockInstalledInfo,
-  }),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit', () => ({
-  pluginInstallLimit: () => ({ canInstall: mockCanInstall }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': requests.installed,
+    }),
+  }
+})
 
 const createMockPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
   type: 'plugin',
@@ -59,607 +53,164 @@ const createMockPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
   ...overrides,
 })
 
-const createPackageDependency = (index: number) =>
-  ({
-    type: 'package',
-    value: {
-      unique_identifier: `package-plugin-${index}-uid`,
-      manifest: {
-        plugin_unique_identifier: `package-plugin-${index}-uid`,
-        version: '1.0.0',
-        author: 'test-author',
-        icon: 'icon.png',
-        name: `Package Plugin ${index}`,
-        category: PluginCategoryEnum.tool,
-        label: { 'en-US': `Package Plugin ${index}` },
-        description: { 'en-US': 'Test package plugin' },
-        created_at: '2024-01-01',
-        resource: {},
-        plugins: [],
-        verified: true,
-        endpoint: { settings: [], endpoints: [] },
-        model: null,
-        tags: [],
-        agent_strategy: null,
-        meta: { version: '1.0.0' },
-        trigger: {},
-      },
-    },
-  }) as unknown as PackageDependency
-
-const createMarketplaceDependency = (index: number): GitHubItemAndMarketPlaceDependency => ({
-  type: 'marketplace',
+const packageDependency: PackageDependency = {
+  type: 'package',
   value: {
-    marketplace_plugin_unique_identifier: `test-org/plugin-${index}:1.0.0`,
-    plugin_unique_identifier: `plugin-${index}`,
-    version: '1.0.0',
+    unique_identifier: 'test/local:1.0.0',
+    manifest: createPluginDeclarationFixture({ author: 'test', name: 'local' }),
   },
-})
-
-const createGitHubDependency = (index: number): GitHubItemAndMarketPlaceDependency => ({
+}
+const githubDependency: Dependency = {
   type: 'github',
-  value: {
-    repo: `test-org/plugin-${index}`,
-    version: 'v1.0.0',
-    package: `plugin-${index}.zip`,
-  },
-})
-
-const createMarketplaceApiData = (indexes: number[]) => ({
-  data: {
-    list: indexes.map((i) => ({
-      plugin: {
-        plugin_id: `test-org/plugin-${i}`,
-        org: 'test-org',
-        name: `Test Plugin ${i}`,
-        version: '1.0.0',
-        latest_version: '1.0.0',
-      },
-      version: {
-        unique_identifier: `plugin-${i}-uid`,
-      },
-    })),
-  },
-})
-
-const createDefaultParams = (overrides = {}) => ({
-  allPlugins: [createPackageDependency(0)] as Dependency[],
+  value: { repo: 'test/github', release: 'v1.0.0', packages: 'plugin.difypkg' },
+}
+const marketplaceDependency: GitHubItemAndMarketPlaceDependency = {
+  type: 'marketplace',
+  value: { marketplace_plugin_unique_identifier: 'test/remote:1.0.0@hash' },
+}
+const params = (allPlugins: Dependency[]) => ({
+  allPlugins,
   selectedPlugins: [] as Plugin[],
   onSelect: vi.fn(),
   onLoadedAllPlugin: vi.fn(),
-  ...overrides,
 })
 
-// ==================== getPluginKey Tests ====================
-
-describe('getPluginKey', () => {
-  it('should return org/name when org is available', () => {
-    const plugin = createMockPlugin({ org: 'my-org', name: 'my-plugin' })
-
-    expect(getPluginKey(plugin)).toBe('my-org/my-plugin')
-  })
-
-  it('should fall back to author when org is not available', () => {
-    const plugin = createMockPlugin({ org: undefined, author: 'my-author', name: 'my-plugin' })
-
-    expect(getPluginKey(plugin)).toBe('my-author/my-plugin')
-  })
-
-  it('should prefer org over author when both exist', () => {
-    const plugin = createMockPlugin({ org: 'my-org', author: 'my-author', name: 'my-plugin' })
-
-    expect(getPluginKey(plugin)).toBe('my-org/my-plugin')
-  })
-
-  it('should handle undefined plugin', () => {
-    expect(getPluginKey(undefined)).toBe('undefined/undefined')
-  })
+beforeEach(() => {
+  vi.clearAllMocks()
+  requests.installed.mockResolvedValue({ plugins: [] })
+  requests.marketplace.mockResolvedValue({ data: { list: [] } })
 })
 
-// ==================== useInstallMultiState Tests ====================
-
-describe('useInstallMultiState', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockMarketplaceData = null
-    mockMarketplaceError = null
-    mockInstalledInfo = {}
-    mockCanInstall = true
+describe('bundle metadata', () => {
+  it.each([
+    { marketplace_plugin_unique_identifier: 'test/remote:1.0.0@hash' },
+    { organization: 'test', plugin: 'remote', version: '1.0.0' },
+  ])('normalizes dependency %j and maps metadata back to the original slots', async (value) => {
+    const remote = createMockPlugin({ org: 'test', name: 'remote', plugin_id: 'test/remote' })
+    const second = createMockPlugin({
+      org: 'test',
+      name: 'second',
+      plugin_id: 'test/second',
+      version: '',
+      latest_version: '2.0.0',
+    })
+    // For identifier dependencies, the response can arrive in a different order.
+    const responseOrder =
+      'marketplace_plugin_unique_identifier' in value ? [remote, second] : [second, remote]
+    requests.marketplace.mockResolvedValue({
+      data: { list: responseOrder.map((plugin) => ({ plugin })) },
+    })
+    const input = params([
+      packageDependency,
+      { type: 'marketplace', value: { marketplace_plugin_unique_identifier: 'test/second:2.0.0' } },
+      { type: 'marketplace', value },
+    ])
+    const { result } = renderHook(() => useInstallMultiState(input))
+    await waitFor(() => expect(input.onLoadedAllPlugin).toHaveBeenCalledWith({}))
+    expect(requests.marketplace).toHaveBeenCalledWith('/plugins/versions/batch', {
+      body: {
+        plugin_tuples: [
+          { org: 'test', name: 'second', version: '2.0.0' },
+          { org: 'test', name: 'remote', version: '1.0.0' },
+        ],
+      },
+    })
+    expect(result.current.plugins).toMatchObject([
+      { plugin_id: 'test/local:1.0.0' },
+      { plugin_id: 'test/second', version: '2.0.0' },
+      { plugin_id: 'test/remote', version: '1.0.0' },
+    ])
+    expect(requests.installed).toHaveBeenCalledWith({
+      body: { plugin_ids: ['test/local', 'test/second', 'test/remote'] },
+    })
+    expect(result.current.errorIndexes).toEqual([])
   })
 
-  // ==================== Initial State ====================
-  describe('Initial State', () => {
-    it('should initialize plugins from package dependencies', () => {
-      const params = createDefaultParams()
-      const { result } = renderHook(() => useInstallMultiState(params))
+  it.each(['invalid-identifier', 'test/:1.0.0', undefined])(
+    'rejects malformed marketplace identifier %s without fetching it',
+    async (identifier) => {
+      const input = params([
+        packageDependency,
+        { type: 'marketplace', value: { marketplace_plugin_unique_identifier: identifier } },
+      ])
+      const { result } = renderHook(() => useInstallMultiState(input))
+      await waitFor(() => expect(input.onLoadedAllPlugin).toHaveBeenCalledWith({}))
+      expect(result.current.errorIndexes).toEqual([1])
+      expect(requests.marketplace).not.toHaveBeenCalled()
+    },
+  )
 
-      expect(result.current.plugins).toHaveLength(1)
-      expect(result.current.plugins[0]).toBeDefined()
-      expect(result.current.plugins[0]?.plugin_id).toBe('package-plugin-0-uid')
+  it('marks only missing marketplace entries as failed', async () => {
+    requests.marketplace.mockResolvedValue({
+      data: { list: [{ plugin: createMockPlugin({ plugin_id: 'test/remote' }) }] },
     })
-
-    it('should have slots for all dependencies even when no packages exist', () => {
-      const params = createDefaultParams({
-        allPlugins: [createGitHubDependency(0)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      // Array has slots for all dependencies, but unresolved ones are undefined
-      expect(result.current.plugins).toHaveLength(1)
-      expect(result.current.plugins[0]).toBeUndefined()
-    })
-
-    it('should return undefined for non-package items in mixed dependencies', () => {
-      const params = createDefaultParams({
-        allPlugins: [createPackageDependency(0), createGitHubDependency(1)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      expect(result.current.plugins).toHaveLength(2)
-      expect(result.current.plugins[0]).toBeDefined()
-      expect(result.current.plugins[1]).toBeUndefined()
-    })
-
-    it('should start with empty errorIndexes', () => {
-      const params = createDefaultParams()
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      expect(result.current.errorIndexes).toEqual([])
-    })
+    const input = params([
+      packageDependency,
+      marketplaceDependency,
+      {
+        type: 'marketplace',
+        value: { marketplace_plugin_unique_identifier: 'test/missing:1.0.0' },
+      },
+    ])
+    const { result } = renderHook(() => useInstallMultiState(input))
+    await waitFor(() => expect(input.onLoadedAllPlugin).toHaveBeenCalledWith({}))
+    expect(result.current.errorIndexes).toEqual([2])
+    expect(result.current.plugins[0]?.plugin_id).toBe('test/local:1.0.0')
+    expect(result.current.plugins[1]?.plugin_id).toBe('test/remote')
   })
 
-  // ==================== Marketplace Data Sync ====================
-  describe('Marketplace Data Sync', () => {
-    it('should update plugins when marketplace data loads by ID', async () => {
-      mockMarketplaceData = createMarketplaceApiData([0])
-
-      const params = createDefaultParams({
-        allPlugins: [createMarketplaceDependency(0)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(result.current.plugins[0]).toBeDefined()
-        expect(result.current.plugins[0]?.version).toBe('1.0.0')
-      })
+  it('waits for every source and installed lookup while preserving concurrent GitHub results and failures', async () => {
+    requests.marketplace.mockRejectedValueOnce(new Error('Marketplace unavailable'))
+    const installed = createDeferred<{ plugins: [] }>()
+    requests.installed.mockReturnValueOnce(installed.promise)
+    const input = params([
+      packageDependency,
+      marketplaceDependency,
+      githubDependency,
+      githubDependency,
+      githubDependency,
+    ])
+    const { result } = renderHook(() => useInstallMultiState(input))
+    await waitFor(() => expect(result.current.errorIndexes).toEqual([1]))
+    expect(input.onLoadedAllPlugin).not.toHaveBeenCalled()
+    expect(requests.installed).not.toHaveBeenCalled()
+    const github = createMockPlugin({ org: 'test', name: 'github', plugin_id: 'test/github' })
+    act(() => {
+      result.current.handleGitHubPluginFetched(2)(github)
+      result.current.handleGitHubPluginFetchError(3)()
+      result.current.handleGitHubPluginFetchError(4)()
     })
+    await waitFor(() => expect(requests.installed).toHaveBeenCalledOnce())
+    expect(input.onLoadedAllPlugin).not.toHaveBeenCalled()
+    installed.resolve({ plugins: [] })
+    await waitFor(() => expect(input.onLoadedAllPlugin).toHaveBeenCalledWith({}))
+    expect(result.current.errorIndexes).toEqual([1, 3, 4])
+    expect(result.current.plugins).toEqual([
+      expect.objectContaining({ plugin_id: 'test/local:1.0.0' }),
+      undefined,
+      github,
+      undefined,
+      undefined,
+    ])
+  })
 
-    it('should update plugins when marketplace data loads by meta', async () => {
-      mockMarketplaceData = createMarketplaceApiData([0])
-
-      const params = createDefaultParams({
-        allPlugins: [createMarketplaceDependency(0)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      // The "by meta" effect sets plugin_id from version.unique_identifier
-      await waitFor(() => {
-        expect(result.current.plugins[0]).toBeDefined()
-      })
-    })
-
-    it('should add to errorIndexes when marketplace item not found in response', async () => {
-      mockMarketplaceData = { data: { list: [] } }
-
-      const params = createDefaultParams({
-        allPlugins: [createMarketplaceDependency(0)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(result.current.errorIndexes).toContain(0)
-      })
-    })
-
-    it('should handle multiple marketplace plugins', async () => {
-      mockMarketplaceData = createMarketplaceApiData([0, 1])
-
-      const params = createDefaultParams({
-        allPlugins: [
-          createMarketplaceDependency(0),
-          createMarketplaceDependency(1),
-        ] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(result.current.plugins[0]).toBeDefined()
-        expect(result.current.plugins[1]).toBeDefined()
-      })
-    })
-
-    it('should fall back to latest_version when marketplace plugin version is missing', async () => {
-      mockMarketplaceData = {
-        data: {
-          list: [
-            {
-              plugin: {
-                plugin_id: 'test-org/plugin-0',
-                org: 'test-org',
-                name: 'Test Plugin 0',
-                version: '',
-                latest_version: '2.0.0',
-              },
-              version: {
-                unique_identifier: 'plugin-0-uid',
-              },
-            },
-          ],
+  it('excludes unresolved plugins from bulk selection before metadata finishes', () => {
+    const input = params([packageDependency, githubDependency])
+    input.selectedPlugins = [createMockPlugin({ plugin_id: 'test/local:1.0.0' })]
+    const { result } = renderHook(() => useInstallMultiState(input), {
+      systemFeatures: {
+        plugin_installation_permission: {
+          plugin_installation_scope: 'all',
+          restrict_to_marketplace_only: false,
         },
-      }
-
-      const params = createDefaultParams({
-        allPlugins: [createMarketplaceDependency(0)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(result.current.plugins[0]?.version).toBe('2.0.0')
-      })
+      },
     })
-
-    it('should resolve marketplace dependency from organization and plugin fields', async () => {
-      mockMarketplaceData = createMarketplaceApiData([0])
-
-      const params = createDefaultParams({
-        allPlugins: [
-          {
-            type: 'marketplace',
-            value: {
-              organization: 'test-org',
-              plugin: 'plugin-0',
-              version: '1.0.0',
-            },
-          } as GitHubItemAndMarketPlaceDependency,
-        ] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(result.current.plugins[0]).toBeDefined()
-        expect(result.current.errorIndexes).not.toContain(0)
-      })
+    expect(result.current.getInstallablePlugins()).toEqual({
+      installablePlugins: [expect.objectContaining({ plugin_id: 'test/local:1.0.0' })],
+      selectedIndexes: [0],
     })
-  })
-
-  // ==================== Error Handling ====================
-  describe('Error Handling', () => {
-    it('should mark marketplace index as error when identifier misses plugin and version parts', async () => {
-      const params = createDefaultParams({
-        allPlugins: [
-          {
-            type: 'marketplace',
-            value: {
-              marketplace_plugin_unique_identifier: 'invalid-identifier',
-              version: '1.0.0',
-            },
-          } as GitHubItemAndMarketPlaceDependency,
-        ] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(result.current.errorIndexes).toContain(0)
-      })
-    })
-
-    it('should mark marketplace index as error when identifier has an empty plugin segment', async () => {
-      const params = createDefaultParams({
-        allPlugins: [
-          {
-            type: 'marketplace',
-            value: {
-              marketplace_plugin_unique_identifier: 'test-org/:1.0.0',
-              version: '1.0.0',
-            },
-          } as GitHubItemAndMarketPlaceDependency,
-        ] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(result.current.errorIndexes).toContain(0)
-      })
-    })
-
-    it('should mark marketplace index as error when identifier is missing', async () => {
-      const params = createDefaultParams({
-        allPlugins: [
-          {
-            type: 'marketplace',
-            value: {
-              version: '1.0.0',
-            },
-          } as GitHubItemAndMarketPlaceDependency,
-        ] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(result.current.errorIndexes).toContain(0)
-      })
-    })
-
-    it('should mark all marketplace indexes as errors on fetch failure', async () => {
-      mockMarketplaceError = new Error('Fetch failed')
-
-      const params = createDefaultParams({
-        allPlugins: [
-          createMarketplaceDependency(0),
-          createMarketplaceDependency(1),
-        ] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(result.current.errorIndexes).toContain(0)
-        expect(result.current.errorIndexes).toContain(1)
-      })
-    })
-
-    it('should not affect non-marketplace indexes on marketplace fetch error', async () => {
-      mockMarketplaceError = new Error('Fetch failed')
-
-      const params = createDefaultParams({
-        allPlugins: [createPackageDependency(0), createMarketplaceDependency(1)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(result.current.errorIndexes).toContain(1)
-        expect(result.current.errorIndexes).not.toContain(0)
-      })
-    })
-
-    it('should ignore marketplace requests whose dsl index cannot be mapped', () => {
-      const duplicatedMarketplaceDependency = createMarketplaceDependency(0)
-      const allPlugins = [duplicatedMarketplaceDependency] as Dependency[]
-
-      allPlugins.filter = vi.fn(() => [
-        duplicatedMarketplaceDependency,
-        duplicatedMarketplaceDependency,
-      ]) as typeof allPlugins.filter
-
-      const params = createDefaultParams({ allPlugins })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      expect(result.current.plugins).toHaveLength(1)
-      expect(result.current.errorIndexes).toEqual([])
-    })
-  })
-
-  // ==================== Loaded All Data Notification ====================
-  describe('Loaded All Data Notification', () => {
-    it('should call onLoadedAllPlugin when all data loaded', async () => {
-      const params = createDefaultParams()
-      renderHook(() => useInstallMultiState(params))
-
-      await waitFor(() => {
-        expect(params.onLoadedAllPlugin).toHaveBeenCalledWith(mockInstalledInfo)
-      })
-    })
-
-    it('should not call onLoadedAllPlugin when not all plugins resolved', () => {
-      // GitHub plugin not fetched yet → isLoadedAllData = false
-      const params = createDefaultParams({
-        allPlugins: [createPackageDependency(0), createGitHubDependency(1)] as Dependency[],
-      })
-      renderHook(() => useInstallMultiState(params))
-
-      expect(params.onLoadedAllPlugin).not.toHaveBeenCalled()
-    })
-
-    it('should call onLoadedAllPlugin after all errors are counted', async () => {
-      mockMarketplaceError = new Error('Fetch failed')
-
-      const params = createDefaultParams({
-        allPlugins: [createMarketplaceDependency(0)] as Dependency[],
-      })
-      renderHook(() => useInstallMultiState(params))
-
-      // Error fills errorIndexes → isLoadedAllData becomes true
-      await waitFor(() => {
-        expect(params.onLoadedAllPlugin).toHaveBeenCalled()
-      })
-    })
-  })
-
-  // ==================== handleGitHubPluginFetched ====================
-  describe('handleGitHubPluginFetched', () => {
-    it('should update plugin at the specified index', async () => {
-      const params = createDefaultParams({
-        allPlugins: [createGitHubDependency(0)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-      const mockPlugin = createMockPlugin({ plugin_id: 'github-plugin-0' })
-
-      await act(async () => {
-        result.current.handleGitHubPluginFetched(0)(mockPlugin)
-      })
-
-      expect(result.current.plugins[0]).toEqual(mockPlugin)
-    })
-
-    it('should not affect other plugin slots', async () => {
-      const params = createDefaultParams({
-        allPlugins: [createPackageDependency(0), createGitHubDependency(1)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-      const originalPlugin0 = result.current.plugins[0]
-      const mockPlugin = createMockPlugin({ plugin_id: 'github-plugin-1' })
-
-      await act(async () => {
-        result.current.handleGitHubPluginFetched(1)(mockPlugin)
-      })
-
-      expect(result.current.plugins[0]).toEqual(originalPlugin0)
-      expect(result.current.plugins[1]).toEqual(mockPlugin)
-    })
-  })
-
-  // ==================== handleGitHubPluginFetchError ====================
-  describe('handleGitHubPluginFetchError', () => {
-    it('should add index to errorIndexes', async () => {
-      const params = createDefaultParams({
-        allPlugins: [createGitHubDependency(0)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await act(async () => {
-        result.current.handleGitHubPluginFetchError(0)()
-      })
-
-      expect(result.current.errorIndexes).toContain(0)
-    })
-
-    it('should accumulate multiple error indexes without stale closure', async () => {
-      const params = createDefaultParams({
-        allPlugins: [createGitHubDependency(0), createGitHubDependency(1)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await act(async () => {
-        result.current.handleGitHubPluginFetchError(0)()
-      })
-      await act(async () => {
-        result.current.handleGitHubPluginFetchError(1)()
-      })
-
-      expect(result.current.errorIndexes).toContain(0)
-      expect(result.current.errorIndexes).toContain(1)
-    })
-  })
-
-  // ==================== getVersionInfo ====================
-  describe('getVersionInfo', () => {
-    it('should return hasInstalled false when plugin not installed', () => {
-      const params = createDefaultParams()
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      const info = result.current.getVersionInfo('unknown/plugin')
-
-      expect(info.hasInstalled).toBe(false)
-      expect(info.installedVersion).toBeUndefined()
-      expect(info.toInstallVersion).toBe('')
-    })
-
-    it('should return hasInstalled true with version when installed', () => {
-      mockInstalledInfo = {
-        'test-author/Package Plugin 0': {
-          installedId: 'installed-1',
-          installedVersion: '0.9.0',
-          uniqueIdentifier: 'uid-1',
-        },
-      }
-      const params = createDefaultParams()
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      const info = result.current.getVersionInfo('test-author/Package Plugin 0')
-
-      expect(info.hasInstalled).toBe(true)
-      expect(info.installedVersion).toBe('0.9.0')
-    })
-  })
-
-  // ==================== handleSelect ====================
-  describe('handleSelect', () => {
-    it('should call onSelect with plugin, index, and installable count', async () => {
-      const params = createDefaultParams()
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await act(async () => {
-        result.current.handleSelect(0)()
-      })
-
-      expect(params.onSelect).toHaveBeenCalledWith(result.current.plugins[0], 0, expect.any(Number))
-    })
-
-    it('should filter installable plugins using pluginInstallLimit', async () => {
-      const params = createDefaultParams({
-        allPlugins: [createPackageDependency(0), createPackageDependency(1)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      await act(async () => {
-        result.current.handleSelect(0)()
-      })
-
-      // mockCanInstall is true, so all 2 plugins are installable
-      expect(params.onSelect).toHaveBeenCalledWith(expect.anything(), 0, 2)
-    })
-  })
-
-  // ==================== isPluginSelected ====================
-  describe('isPluginSelected', () => {
-    it('should return true when plugin is in selectedPlugins', () => {
-      const selectedPlugin = createMockPlugin({ plugin_id: 'package-plugin-0-uid' })
-      const params = createDefaultParams({
-        selectedPlugins: [selectedPlugin],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      expect(result.current.isPluginSelected(0)).toBe(true)
-    })
-
-    it('should return false when plugin is not in selectedPlugins', () => {
-      const params = createDefaultParams({ selectedPlugins: [] })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      expect(result.current.isPluginSelected(0)).toBe(false)
-    })
-
-    it('should return false when plugin at index is undefined', () => {
-      const params = createDefaultParams({
-        allPlugins: [createGitHubDependency(0)] as Dependency[],
-        selectedPlugins: [createMockPlugin()],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      // plugins[0] is undefined (GitHub not yet fetched)
-      expect(result.current.isPluginSelected(0)).toBe(false)
-    })
-  })
-
-  // ==================== getInstallablePlugins ====================
-  describe('getInstallablePlugins', () => {
-    it('should return all plugins when canInstall is true', () => {
-      mockCanInstall = true
-      const params = createDefaultParams({
-        allPlugins: [createPackageDependency(0), createPackageDependency(1)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      const { installablePlugins, selectedIndexes } = result.current.getInstallablePlugins()
-
-      expect(installablePlugins).toHaveLength(2)
-      expect(selectedIndexes).toEqual([0, 1])
-    })
-
-    it('should return empty arrays when canInstall is false', () => {
-      mockCanInstall = false
-      const params = createDefaultParams({
-        allPlugins: [createPackageDependency(0)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      const { installablePlugins, selectedIndexes } = result.current.getInstallablePlugins()
-
-      expect(installablePlugins).toHaveLength(0)
-      expect(selectedIndexes).toEqual([])
-    })
-
-    it('should skip unloaded (undefined) plugins', () => {
-      mockCanInstall = true
-      const params = createDefaultParams({
-        allPlugins: [createPackageDependency(0), createGitHubDependency(1)] as Dependency[],
-      })
-      const { result } = renderHook(() => useInstallMultiState(params))
-
-      const { installablePlugins, selectedIndexes } = result.current.getInstallablePlugins()
-
-      // Only package plugin is loaded; GitHub not yet fetched
-      expect(installablePlugins).toHaveLength(1)
-      expect(selectedIndexes).toEqual([0])
-    })
+    expect(result.current.isPluginSelected(0)).toBe(true)
+    expect(result.current.isPluginSelected(1)).toBe(false)
+    expect(input.onLoadedAllPlugin).not.toHaveBeenCalled()
   })
 })

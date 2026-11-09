@@ -15,13 +15,11 @@ export type ConsoleStateFixture = {
   currentWorkspace?: Partial<GetWorkspacesCurrentSummaryResponse> | null
   isCurrentWorkspaceManager?: boolean
   isCurrentWorkspaceOwner?: boolean
-  isCurrentWorkspaceEditor?: boolean
   isCurrentWorkspaceDatasetOperator?: boolean
   isLoadingCurrentWorkspace?: boolean
   isLoadingWorkspacePermissionKeys?: boolean
   workspacePermissionKeys?: string[]
   datasetRbacEnabled?: boolean
-  knowledgeFsEnabled?: boolean
   deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   brandingEnabled?: boolean
   refreshCurrentWorkspace?: () => void
@@ -43,7 +41,6 @@ const currentWorkspaceAtom = atom<GetWorkspacesCurrentSummaryResponse>(defaultCu
 const currentWorkspaceIdAtom = atom((get) => get(currentWorkspaceAtom).id)
 const isCurrentWorkspaceManagerAtom = atom(false)
 const isCurrentWorkspaceOwnerAtom = atom(false)
-const isCurrentWorkspaceEditorAtom = atom(false)
 const isCurrentWorkspaceDatasetOperatorAtom = atom(false)
 const currentWorkspaceLoadingAtom = atom(false)
 const refreshCurrentWorkspaceCallbackAtom = atom({ callback: () => {} })
@@ -80,7 +77,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
   })
   store.set(isCurrentWorkspaceManagerAtom, state.isCurrentWorkspaceManager ?? false)
   store.set(isCurrentWorkspaceOwnerAtom, state.isCurrentWorkspaceOwner ?? false)
-  store.set(isCurrentWorkspaceEditorAtom, state.isCurrentWorkspaceEditor ?? false)
   store.set(isCurrentWorkspaceDatasetOperatorAtom, state.isCurrentWorkspaceDatasetOperator ?? false)
   store.set(currentWorkspaceLoadingAtom, state.isLoadingCurrentWorkspace ?? false)
   store.set(workspacePermissionKeysAtom, state.workspacePermissionKeys ?? [])
@@ -89,7 +85,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
     systemFeaturesAtom,
     createSystemFeaturesFixture({
       rbac_enabled: state.datasetRbacEnabled ?? false,
-      knowledge_fs_enabled: state.knowledgeFsEnabled ?? false,
       deployment_edition: state.deploymentEdition ?? 'COMMUNITY',
       branding: {
         enabled: state.brandingEnabled ?? false,
@@ -110,7 +105,6 @@ export const createWorkspaceStateModuleMock = (getState: ConsoleStateFixtureReso
       currentWorkspace: state.currentWorkspace,
       isCurrentWorkspaceManager: state.isCurrentWorkspaceManager,
       isCurrentWorkspaceOwner: state.isCurrentWorkspaceOwner,
-      isCurrentWorkspaceEditor: state.isCurrentWorkspaceEditor,
       isCurrentWorkspaceDatasetOperator: state.isCurrentWorkspaceDatasetOperator,
       isLoadingCurrentWorkspace: state.isLoadingCurrentWorkspace,
       refreshCurrentWorkspace: state.refreshCurrentWorkspace,
@@ -121,7 +115,6 @@ export const createWorkspaceStateModuleMock = (getState: ConsoleStateFixtureReso
     currentWorkspaceIdAtom,
     isCurrentWorkspaceManagerAtom,
     isCurrentWorkspaceOwnerAtom,
-    isCurrentWorkspaceEditorAtom,
     isCurrentWorkspaceDatasetOperatorAtom,
     currentWorkspaceLoadingAtom,
     refreshCurrentWorkspaceAtom,

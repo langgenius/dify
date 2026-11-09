@@ -1,5 +1,8 @@
-import type { EnvironmentVariable, ModelConfig } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
+import type {
+  EnvironmentVariable,
+  ModelConfig,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import {
   getLLMEnvironmentModel,
   getLLMModelIssue,
@@ -58,7 +61,7 @@ describe('llm utils', () => {
     const model: ModelConfig = {
       provider: 'direct-provider',
       name: 'direct-model',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       completion_params: { temperature: 0.3 },
     }
     const environmentVariables: EnvironmentVariable[] = [
@@ -69,7 +72,7 @@ describe('llm utils', () => {
         value: {
           provider: 'shared-provider',
           name: 'shared-model',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
           completion_params: { temperature: 0.8 },
         },
         description: '',
@@ -80,7 +83,7 @@ describe('llm utils', () => {
       expect(resolveLLMNodeModel(model, ['env', 'for_summarize'], environmentVariables)).toEqual({
         provider: 'shared-provider',
         name: 'shared-model',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         completion_params: { temperature: 0.8 },
       })
     })
@@ -92,7 +95,7 @@ describe('llm utils', () => {
           value: {
             provider: 'shared-provider',
             name: 'shared-model',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           },
         },
       ] as EnvironmentVariable[]
@@ -102,7 +105,7 @@ describe('llm utils', () => {
       ).toEqual({
         provider: 'shared-provider',
         name: 'shared-model',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         completion_params: { temperature: 0.3 },
       })
     })
@@ -114,7 +117,7 @@ describe('llm utils', () => {
           value: {
             provider: 'shared-provider',
             name: 'shared-completion-model',
-            mode: AppModeEnum.COMPLETION,
+            mode: 'completion' as const,
             completion_params: { temperature: 0.8 },
           },
         },
@@ -123,7 +126,7 @@ describe('llm utils', () => {
       expect(getLLMEnvironmentModel(['env', 'for_summarize'], completionModelVariables)).toEqual({
         provider: 'shared-provider',
         name: 'shared-completion-model',
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         completion_params: { temperature: 0.8 },
       })
     })
@@ -135,7 +138,7 @@ describe('llm utils', () => {
           value: {
             provider: 'shared-provider',
             name: 'shared-model',
-            mode: AppModeEnum.COMPLETION,
+            mode: 'completion' as const,
           },
         },
       ] as EnvironmentVariable[]
@@ -158,7 +161,16 @@ describe('llm utils', () => {
       const selector = ['start', 'MODEL_NAME']
 
       expect(isEnvironmentModelSource(selector)).toBe(false)
-      expect(resolveLLMNodeModel(model, selector, environmentVariables)).toBe(model)
+      expect(resolveLLMNodeModel(model, selector, environmentVariables)).toEqual(model)
+    })
+
+    it('keeps the static model when the persisted selector is null', () => {
+      // A DSL exported from an older/AI-generated workflow can persist `model_selector: null`
+      // instead of omitting the key; this must not crash the same way `undefined` doesn't.
+      const selector = null as unknown as ValueSelector
+
+      expect(isEnvironmentModelSource(selector)).toBe(false)
+      expect(resolveLLMNodeModel(model, selector, environmentVariables)).toEqual(model)
     })
   })
 })

@@ -22,7 +22,7 @@ type ChunkCardProps = {
 
 const ChunkCard = (props: ChunkCardProps) => {
   const { chunkType, parentMode, content, positionId, wordCount } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   const isFullDoc = useMemo(() => {
     return chunkType === ChunkingMode.parentChild && parentMode === 'full-doc'

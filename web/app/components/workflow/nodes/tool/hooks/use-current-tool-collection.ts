@@ -1,23 +1,32 @@
 import type { ToolNodeType } from '../types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
-import { canFindTool } from '@/utils'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { consoleQuery } from '@/service/console'
+import { matchesProviderReference } from '@/utils/provider-reference'
 
 const useCurrentToolCollection = (
   providerType: ToolNodeType['provider_type'],
   providerId: string,
 ) => {
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
 
   const currentTools = useMemo<ToolWithProvider[]>(() => {
     switch (providerType) {
@@ -35,7 +44,7 @@ const useCurrentToolCollection = (
   }, [buildInTools, customTools, mcpTools, providerType, workflowTools])
 
   const currCollection = useMemo(() => {
-    return currentTools.find((item) => canFindTool(item.id, providerId))
+    return currentTools.find((item) => matchesProviderReference(item, providerId))
   }, [currentTools, providerId])
 
   return {

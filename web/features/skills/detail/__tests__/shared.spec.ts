@@ -1,12 +1,9 @@
 import { QueryClient } from '@tanstack/react-query'
-import { describe, expect, it, vi } from 'vitest'
-import { consoleQuery } from '@/service/client'
+import { describe, expect, it } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import {
   createUploadItemId,
   deriveSkillDetailFromDraftFiles,
-  getErrorCode,
-  getErrorDetailNumber,
-  getErrorDetailString,
   getUploadFileName,
   getUploadPath,
   isEditableKeyboardTarget,
@@ -15,29 +12,6 @@ import {
 } from '../shared'
 
 describe('skill detail shared utilities', () => {
-  it('reads error codes and details from supported error shapes', () => {
-    expect(getErrorCode({ code: 'direct' })).toBe('direct')
-    expect(getErrorCode({ data: { code: 'data' } })).toBe('data')
-    expect(getErrorCode({ body: { code: 'body' } })).toBe('body')
-    expect(getErrorCode('error')).toBeUndefined()
-
-    expect(
-      getErrorDetailNumber({ details: { current_updated_at: 12 } }, 'current_updated_at'),
-    ).toBe(12)
-    expect(
-      getErrorDetailNumber({ data: { details: { current_updated_at: 13 } } }, 'current_updated_at'),
-    ).toBe(13)
-    expect(
-      getErrorDetailString(
-        { body: { details: { current_file_hash: 'hash' } } },
-        'current_file_hash',
-      ),
-    ).toBe('hash')
-    expect(
-      getErrorDetailString({ details: { current_file_hash: 1 } }, 'current_file_hash'),
-    ).toBeUndefined()
-  })
-
   it('normalizes upload paths and names', () => {
     const plainFile = new File(['guide'], 'guide.md', { type: 'text/markdown' })
     const nestedFile = new File(['guide'], 'guide.md', { type: 'text/markdown' })
@@ -72,7 +46,7 @@ describe('skill detail shared utilities', () => {
     expect(isEditableKeyboardTarget(null)).toBe(false)
   })
 
-  it('falls back to a deterministic upload item id when randomUUID is unavailable', () => {
+  it('keeps simultaneous uploads distinct when randomUUID is unavailable', () => {
     const originalCrypto = globalThis.crypto
     Object.defineProperty(globalThis, 'crypto', {
       configurable: true,
@@ -80,9 +54,7 @@ describe('skill detail shared utilities', () => {
     })
     try {
       const file = new File(['guide'], 'guide.md', { type: 'text/markdown' })
-      vi.spyOn(file, 'lastModified', 'get').mockReturnValue(123)
-
-      expect(createUploadItemId(file, 2)).toBe('guide.md-5-123-2')
+      expect(new Set([createUploadItemId(file, 1), createUploadItemId(file, 2)]).size).toBe(2)
     } finally {
       Object.defineProperty(globalThis, 'crypto', {
         configurable: true,

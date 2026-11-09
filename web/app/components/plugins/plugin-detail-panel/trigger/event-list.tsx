@@ -1,7 +1,7 @@
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useTriggerProviderInfo } from '@/service/use-triggers'
@@ -17,19 +17,28 @@ const TriggerEventCard = ({ eventInfo, providerInfo }: TriggerEventCardProps) =>
   const { identity, description } = eventInfo
   const language = useLanguage()
   const [showDetail, setShowDetail] = useState(false)
+  const titleId = useId()
+  const descriptionId = useId()
   const title = identity.label?.[language] ?? identity.label?.en_US ?? ''
   const descriptionText = description?.[language] ?? description?.en_US ?? ''
   return (
     <>
-      <div
+      <button
+        type="button"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionText ? descriptionId : undefined}
         className={cn(
-          'bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+          'bg-components-panel-item-bg w-full cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 text-left shadow-xs outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         )}
         onClick={() => setShowDetail(true)}
       >
-        <div className="pb-0.5 system-md-semibold text-text-secondary">{title}</div>
-        <div className="line-clamp-2 system-xs-regular text-text-tertiary">{descriptionText}</div>
-      </div>
+        <div id={titleId} className="pb-0.5 system-md-semibold text-text-secondary">
+          {title}
+        </div>
+        <div id={descriptionId} className="line-clamp-2 system-xs-regular text-text-tertiary">
+          {descriptionText}
+        </div>
+      </button>
       {showDetail && (
         <EventDetailDrawer
           eventInfo={eventInfo}
@@ -42,7 +51,7 @@ const TriggerEventCard = ({ eventInfo, providerInfo }: TriggerEventCardProps) =>
 }
 
 export const TriggerEventsList = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
   const detail = usePluginStore((state) => state.detail)
 
   const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')

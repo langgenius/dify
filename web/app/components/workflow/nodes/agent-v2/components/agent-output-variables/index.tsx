@@ -7,9 +7,11 @@ import type {
   EditingState,
 } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import OutputVars from '../../../_base/components/output-vars'
 import { AGENT_V2_RESERVED_OUTPUT_NAMES } from '../../output-variables'
 import { OutputEditCard } from './edit-card'
@@ -41,7 +43,7 @@ function OutputRow({
   onDelete: () => void
   onEdit: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common', 'workflowAgent'])
   const description = getOutputDescription(output, t)
   return (
     <div className="group flex min-h-12 flex-col rounded-lg py-0.5 focus-within:bg-state-base-hover hover:bg-state-base-hover">
@@ -57,44 +59,63 @@ function OutputRow({
           </span>
           {output.required && (
             <span className="flex h-3 shrink-0 items-center px-1 system-2xs-medium-uppercase text-text-warning">
-              {t(($) => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflowAgent' })}
             </span>
           )}
         </div>
         {editable && (
           <div className="pointer-events-none flex shrink-0 items-center gap-x-0.5 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
             {onAddChild && (
-              <button
-                type="button"
-                aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${output.name}`}
-                className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                onClick={onAddChild}
-              >
-                <span aria-hidden="true" className="i-ri-add-circle-line size-4" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <IconButton
+                      aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${output.name}`}
+                      className="hover:bg-state-base-hover-alt"
+                      onClick={onAddChild}
+                    >
+                      <span aria-hidden="true" className="i-ri-add-circle-line size-4" />
+                    </IconButton>
+                  }
+                />
+                <TooltipContent>{t(($) => $['operation.add'], { ns: 'common' })}</TooltipContent>
+              </Tooltip>
             )}
-            <button
-              type="button"
-              aria-label={t(($) => $['nodes.agent.outputVars.edit'], {
-                ns: 'workflow',
-                name: output.name,
-              })}
-              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={onEdit}
-            >
-              <span aria-hidden="true" className="i-ri-pencil-line size-4" />
-            </button>
-            <button
-              type="button"
-              aria-label={t(($) => $['nodes.agent.outputVars.delete'], {
-                ns: 'workflow',
-                name: output.name,
-              })}
-              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={onDelete}
-            >
-              <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['nodes.agent.outputVars.edit'], {
+                      ns: 'workflowAgent',
+                      name: output.name,
+                    })}
+                    className="hover:bg-state-base-hover-alt"
+                    onClick={onEdit}
+                  >
+                    <span aria-hidden="true" className="i-ri-pencil-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipContent>{t(($) => $['operation.edit'], { ns: 'common' })}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['nodes.agent.outputVars.delete'], {
+                      ns: 'workflowAgent',
+                      name: output.name,
+                    })}
+                    tone="destructive"
+                    className="hover:bg-state-base-hover-alt"
+                    onClick={onDelete}
+                  >
+                    <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipContent>{t(($) => $['operation.delete'], { ns: 'common' })}</TooltipContent>
+            </Tooltip>
           </div>
         )}
       </div>
@@ -124,7 +145,7 @@ export function AgentOutputVariables({
   collapsed,
   onCollapse,
 }: AgentOutputVariablesProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowAgent'])
   const [editingState, setEditingState] = useState<EditingState | null>(null)
   const [internalCollapsed, setInternalCollapsed] = useState(true)
   const isCollapsed = collapsed ?? internalCollapsed
@@ -312,7 +333,7 @@ export function AgentOutputVariables({
             )
           })}
           <div className="py-1">
-            <Divider type="horizontal" className="h-px bg-divider-subtle" />
+            <Separator decorative orientation="horizontal" className="my-2 bg-divider-subtle" />
           </div>
           {editingState && editingState.outputIndex == null ? (
             <OutputEditCard
@@ -331,7 +352,7 @@ export function AgentOutputVariables({
                 onClick={handleNewOutput}
               >
                 <span aria-hidden="true" className="i-ri-add-line size-3.5" />
-                {t(($) => $['nodes.agent.outputVars.newOutput'], { ns: 'workflow' })}
+                {t(($) => $['nodes.agent.outputVars.newOutput'], { ns: 'workflowAgent' })}
               </Button>
             </div>
           )}

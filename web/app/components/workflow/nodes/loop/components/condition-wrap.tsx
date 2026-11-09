@@ -72,7 +72,7 @@ const ConditionWrap: FC<Props> = ({
   availableNodes = [],
   availableVars = [],
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowLogic'])
 
   const getAvailableVars = useGetAvailableVars()
 
@@ -145,12 +145,12 @@ const ConditionWrap: FC<Props> = ({
                 >
                   <Button size="small" disabled={readOnly}>
                     <RiAddLine className="size-3.5" />
-                    {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
+                    {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflowLogic' })}
                   </Button>
                 </SelectTrigger>
                 <SelectPortal>
                   <SelectPositioner>
-                    <SelectPopup className="w-[165px]">
+                    <SelectPopup className="w-41.25">
                       <SelectList className="max-h-none p-1">
                         {subVarOptions.map((option) => (
                           <SelectItem key={option.value} value={option.value}>

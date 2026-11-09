@@ -2,9 +2,11 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Any, Literal, NotRequired, Protocol, TypedDict, cast
+from typing import Any, Literal, Protocol, TypedDict, cast
 
 import json_repair
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ConversationNamed
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,7 +14,6 @@ from core.app.app_config.entities import ModelConfig
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
-from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
     GENERATOR_QA_PROMPT,
@@ -24,10 +25,7 @@ from core.llm_generator.prompts import (
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_context import with_credit_usage_created_by
-from core.model_manager import ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.utils import measure_time
+from core.model_manager import ModelInstance, ModelManager
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.telemetry import PromptGenerationEvent, TelemetryContext
 from core.telemetry import emit as telemetry_emit
@@ -37,17 +35,12 @@ from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
+from libs.datetime_utils import Timing, measure_time
 from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
-
-
-class SuggestedQuestionsModelConfig(TypedDict):
-    provider: str
-    name: str
-    completion_params: NotRequired[dict[str, object]]
 
 
 def _normalize_completion_params(completion_params: dict[str, object]) -> tuple[dict[str, object], list[str]]:
@@ -61,10 +54,7 @@ def _normalize_completion_params(completion_params: dict[str, object]) -> tuple[
     """
     normalized_parameters = dict(completion_params)
     stop_value = normalized_parameters.pop("stop", [])
-    if isinstance(stop_value, list) and all(isinstance(item, str) for item in stop_value):
-        stop = stop_value
-    else:
-        stop = []
+    stop = stop_value if isinstance(stop_value, list) and all(isinstance(item, str) for item in stop_value) else []
 
     for token_limit_key in ("max_tokens", "max_output_tokens"):
         token_limit = normalized_parameters.get(token_limit_key)
@@ -122,9 +112,7 @@ def _parse_string_list(text: str) -> list[str]:
 
 
 class WorkflowServiceInterface(Protocol):
-    def get_draft_workflow(
-        self, app_model: App, workflow_id: str | None = None, *, session: Session
-    ) -> Workflow | None:
+    def get_draft_workflow(self, app_model: App, *, session: Session) -> Workflow | None:
         pass
 
     def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
@@ -153,7 +141,7 @@ class LLMGenerator:
         generated_output: str,
         model_provider: str,
         model_name: str,
-        timer: dict,
+        timer: Timing,
         result: LLMResult | None = None,
         error: str | None = None,
     ) -> None:
@@ -177,11 +165,12 @@ class LLMGenerator:
                         "prompt_tokens": usage.prompt_tokens if usage else 0,
                         "completion_tokens": usage.completion_tokens if usage else 0,
                         "total_tokens": usage.total_tokens if usage else 0,
-                        "latency": (timer["end"] - timer["start"]).total_seconds() if timer.get("end") else 0.0,
+                        "latency": (timer.ended_at - timer.started_at).total_seconds(),
                         "total_price": float(usage.total_price) if usage and usage.total_price else None,
                         "currency": usage.currency if usage else None,
-                        "timer": timer,
                         "error": error,
+                        "started_at": timer.started_at,
+                        "ended_at": timer.ended_at,
                     },
                 )
             )
@@ -193,11 +182,19 @@ class LLMGenerator:
     def generate_conversation_name(
         cls,
         tenant_id: str,
-        query,
+        query: str,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ):
+        *,
+        model_instance: ModelInstance | None = None,
+        trace_scope: TraceScope | None,
+    ) -> str:
+        """Generate with a resolved model, or resolve it for legacy background callers.
+
+        Passing a model lets the caller close its preparation session before invocation.
+        ``None`` retains inline resolution for the first-message naming worker.
+        """
         prompt = CONVERSATION_TITLE_PROMPT
 
         if len(query) > 2000:
@@ -207,11 +204,12 @@ class LLMGenerator:
 
         prompt += query + "\n"
 
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
-        model_instance = model_manager.get_default_model_instance(
-            tenant_id=tenant_id,
-            model_type=ModelType.LLM,
-        )
+        if model_instance is None:
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+            )
         prompts: list[PromptMessage] = [UserPromptMessage(content=prompt)]
 
         with measure_time() as timer:
@@ -231,119 +229,26 @@ class LLMGenerator:
                 answer = query
             else:
                 output = result_dict.get("Your Output")
-                if isinstance(output, str) and output.strip():
-                    answer = output.strip()
-                else:
-                    answer = query
+                answer = output.strip() if isinstance(output, str) and output.strip() else query
 
         name = answer.strip()
 
         if len(name) > 75:
             name = name[:75] + "..."
 
-        # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.GENERATE_NAME_TRACE,
-                conversation_id=conversation_id,
-                message_id=message_id,
-                generate_conversation_name=name,
-                inputs=prompt,
-                timer=timer,
-                tenant_id=tenant_id,
+        if trace_scope is not None:
+            trace_scope.emit(
+                ConversationNamed(
+                    conversation_id=conversation_id,
+                    message_id=message_id,
+                    inputs=prompt,
+                    name=name,
+                    started_at=timer.started_at,
+                    ended_at=timer.ended_at,
+                )
             )
-        )
 
         return name
-
-    @classmethod
-    @with_credit_usage_created_by(CreditUsageCreatedBy.SUGGESTED_QUESTIONS)
-    def generate_suggested_questions_after_answer(
-        cls,
-        tenant_id: str,
-        histories: str,
-        *,
-        instruction_prompt: str | None = None,
-        model_config: object | None = None,
-    ) -> Sequence[str]:
-        output_parser = SuggestedQuestionsAfterAnswerOutputParser(instruction_prompt=instruction_prompt)
-        format_instructions = output_parser.get_format_instructions()
-
-        prompt_template = PromptTemplateParser(template="{{histories}}\n{{format_instructions}}\nquestions:\n")
-
-        prompt = prompt_template.format({"histories": histories, "format_instructions": format_instructions})
-
-        try:
-            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
-            configured_model = cast(dict[str, object], model_config) if isinstance(model_config, dict) else {}
-            provider = configured_model.get("provider")
-            model_name = configured_model.get("name")
-            use_configured_model = False
-
-            if isinstance(provider, str) and provider and isinstance(model_name, str) and model_name:
-                try:
-                    model_instance = model_manager.get_model_instance(
-                        tenant_id=tenant_id,
-                        model_type=ModelType.LLM,
-                        provider=provider,
-                        model=model_name,
-                    )
-                    use_configured_model = True
-                except Exception:
-                    logger.warning(
-                        "Failed to use configured suggested-questions model %s/%s, fallback to default model",
-                        provider,
-                        model_name,
-                        exc_info=True,
-                    )
-                    model_instance = model_manager.get_default_model_instance(
-                        tenant_id=tenant_id,
-                        model_type=ModelType.LLM,
-                    )
-            else:
-                model_instance = model_manager.get_default_model_instance(
-                    tenant_id=tenant_id,
-                    model_type=ModelType.LLM,
-                )
-        except InvokeAuthorizationError:
-            return []
-
-        prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt)]
-
-        questions: Sequence[str] = []
-
-        try:
-            model_parameters: dict[str, object]
-            stop: list[str]
-            configured_completion_params = configured_model.get("completion_params")
-            if use_configured_model and isinstance(configured_completion_params, dict):
-                model_parameters, stop = _normalize_completion_params(configured_completion_params)
-            elif use_configured_model:
-                model_parameters = {}
-                stop = []
-            else:
-                # Default-model generation keeps the built-in suggested-questions tuning.
-                model_parameters = {
-                    "max_tokens": 2560,
-                    "temperature": 0.0,
-                }
-                stop = []
-
-            response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages),
-                model_parameters=model_parameters,
-                stop=stop,
-                stream=False,
-            )
-
-            text_content = response.message.get_text_content()
-            questions = output_parser.parse(text_content) if text_content else []
-        except Exception:
-            logger.exception("Failed to generate suggested questions after answer")
-            questions = []
-
-        return questions
 
     @classmethod
     @with_credit_usage_created_by(CreditUsageCreatedBy.WORKFLOW_INSTRUCTION_SUGGESTIONS)
@@ -793,8 +698,9 @@ class LLMGenerator:
         instruction: str,
         model_config: ModelConfig,
         ideal_output: str | None,
+        session: Session,
     ):
-        last_run: Message | None = db.session.scalar(
+        last_run: Message | None = session.scalar(
             select(Message)
             .join(App, App.id == Message.app_id)
             .where(Message.app_id == flow_id, App.tenant_id == tenant_id)
@@ -841,9 +747,8 @@ class LLMGenerator:
         model_config: ModelConfig,
         ideal_output: str | None,
         workflow_service: WorkflowServiceInterface,
+        session: Session,
     ):
-        session = db.session()
-
         app: App | None = session.scalar(select(App).where(App.id == flow_id, App.tenant_id == tenant_id).limit(1))
         if not app:
             raise ValueError("App not found.")
@@ -920,16 +825,16 @@ class LLMGenerator:
         node_type: str,
         ideal_output: str | None,
     ):
-        LAST_RUN = "{{#last_run#}}"
-        CURRENT = "{{#current#}}"
-        ERROR_MESSAGE = "{{#error_message#}}"
+        last_run_type = "{{#last_run#}}"
+        current_type = "{{#current#}}"
+        error_message_type = "{{#error_message#}}"
         injected_instruction = instruction
-        if LAST_RUN in injected_instruction:
-            injected_instruction = injected_instruction.replace(LAST_RUN, json.dumps(last_run))
-        if CURRENT in injected_instruction:
-            injected_instruction = injected_instruction.replace(CURRENT, current or "null")
-        if ERROR_MESSAGE in injected_instruction:
-            injected_instruction = injected_instruction.replace(ERROR_MESSAGE, error_message or "null")
+        if last_run_type in injected_instruction:
+            injected_instruction = injected_instruction.replace(last_run_type, json.dumps(last_run))
+        if current_type in injected_instruction:
+            injected_instruction = injected_instruction.replace(current_type, current or "null")
+        if error_message_type in injected_instruction:
+            injected_instruction = injected_instruction.replace(error_message_type, error_message or "null")
         model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,

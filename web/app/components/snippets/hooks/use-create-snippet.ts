@@ -1,16 +1,13 @@
 import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
 import { canCreateAndModifySnippets } from '../utils/permission'
 
 export const useCreateSnippet = () => {
-  const { t } = useTranslation()
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const createSnippetMutation = useCreateSnippetMutation()
@@ -56,7 +53,6 @@ export const useCreateSnippet = () => {
         },
       })
 
-      toast.success(t(($) => $['snippet.createSuccess'], { ns: 'workflow' }))
       handleCloseCreateSnippetDialog()
       push(`/snippets/${snippet.id}/orchestrate`)
     } catch {

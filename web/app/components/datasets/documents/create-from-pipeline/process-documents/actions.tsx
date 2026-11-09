@@ -10,7 +10,7 @@ type ActionsProps = {
 }
 
 const Actions = ({ onBack, runDisabled, onProcess }: ActionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
 
   return (
     <div className="flex items-center justify-between">

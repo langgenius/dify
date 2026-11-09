@@ -135,7 +135,14 @@ class ProviderConfiguration(BaseModel):
                 )
                 and ConfigurateMethod.PREDEFINED_MODEL not in self.provider.configurate_methods
             ):
-                self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
+                self.provider = self.provider.model_copy(
+                    update={
+                        "configurate_methods": [
+                            *self.provider.configurate_methods,
+                            ConfigurateMethod.PREDEFINED_MODEL,
+                        ]
+                    },
+                )
         return self
 
     def bind_model_runtime(self, model_runtime: ModelRuntime) -> None:
@@ -312,14 +319,10 @@ class ProviderConfiguration(BaseModel):
         )
 
         with Session(db.engine) as session:
-            # Prefer the actual provider record name if exists (to handle aliased provider names)
-            provider_record = self._get_provider_record(session)
-            provider_name = provider_record.provider_name if provider_record else self.provider.provider
-
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
                 ProviderCredential.tenant_id == self.tenant_id,
-                ProviderCredential.provider_name == provider_name,
+                ProviderCredential.provider_name.in_(self._get_provider_names()),
             )
 
             credential = session.execute(stmt).scalar_one_or_none()
@@ -533,7 +536,7 @@ class ProviderConfiguration(BaseModel):
 
         ProviderManager.invalidate_configurations_cache(self.tenant_id, sources=sources)
 
-    def create_provider_credential(self, credentials: dict[str, Any], credential_name: str | None):
+    def create_provider_credential(self, credentials: dict[str, Any], credential_name: str | None) -> str:
         """
         Add custom provider credentials.
         :param credentials: provider credentials
@@ -561,6 +564,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(new_record)
                 session.flush()
+                new_credential_id = new_record.id
 
                 if not provider_record:
                     provider_record = Provider(
@@ -608,6 +612,7 @@ class ProviderConfiguration(BaseModel):
             preferred_model_providers=preferred_model_providers_changed,
             provider_credentials=True,
         )
+        return new_credential_id
 
     def update_provider_credential(
         self,
@@ -1048,7 +1053,7 @@ class ProviderConfiguration(BaseModel):
 
     def create_custom_model_credential(
         self, model_type: ModelType, model: str, credentials: dict[str, Any], credential_name: str | None
-    ) -> None:
+    ) -> str:
         """
         Create a custom model credential.
 
@@ -1086,6 +1091,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(credential)
                 session.flush()
+                new_credential_id = credential.id
 
                 if not provider_model_record:
                     provider_model_record = ProviderModel(
@@ -1113,6 +1119,7 @@ class ProviderConfiguration(BaseModel):
             provider_models=True,
             provider_model_credentials=True,
         )
+        return new_credential_id
 
     def update_custom_model_credential(
         self,

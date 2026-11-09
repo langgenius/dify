@@ -4,6 +4,8 @@ from collections.abc import Callable, Mapping
 from functools import lru_cache
 from typing import Any
 
+from pydantic import JsonValue
+
 from core.workflow.file_reference import parse_file_reference
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.file.constants import FILE_MODEL_IDENTITY, maybe_file_object
@@ -234,3 +236,36 @@ def build_file_from_input_mapping(
         file_mapping=file_mapping,
         tenant_id=tenant_id,
     )
+
+
+def restore_input_files(
+    *,
+    inputs: Mapping[str, JsonValue | File | list[File]],
+    tenant_resolver: Callable[[], str],
+) -> dict[str, JsonValue | File | list[File]]:
+    """Restore top-level file inputs, preserving mixed lists and ordinary mappings.
+
+    Resolve the app tenant lazily: legacy files may already carry their tenant,
+    and external remote files do not need an owner lookup.
+    """
+    restored = dict(inputs)
+    for key, value in inputs.items():
+        match value:
+            case dict() if value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                restored[key] = build_file_from_input_mapping(
+                    file_mapping=value,
+                    tenant_resolver=tenant_resolver,
+                )
+            case list():
+                if all(
+                    isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
+                ):
+                    restored[key] = [
+                        build_file_from_input_mapping(
+                            file_mapping=item,
+                            tenant_resolver=tenant_resolver,
+                        )
+                        for item in value
+                        if isinstance(item, dict)
+                    ]
+    return restored

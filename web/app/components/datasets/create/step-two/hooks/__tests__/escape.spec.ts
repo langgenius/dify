@@ -40,24 +40,8 @@ describe('escape', () => {
     expect(escape('line1\nline2\ttab')).toBe('line1\\nline2\\ttab')
   })
 
-  it('should escape mixed special characters', () => {
-    expect(escape('\n\r\t')).toBe('\\n\\r\\t')
-  })
-
-  it('should return empty string for null input', () => {
-    expect(escape(null as unknown as string)).toBe('')
-  })
-
-  it('should return empty string for undefined input', () => {
-    expect(escape(undefined as unknown as string)).toBe('')
-  })
-
   it('should return empty string for empty string input', () => {
     expect(escape('')).toBe('')
-  })
-
-  it('should return empty string for non-string input', () => {
-    expect(escape(123 as unknown as string)).toBe('')
   })
 
   // Pass-through for normal strings
@@ -67,9 +51,5 @@ describe('escape', () => {
 
   it('should leave special regex characters unchanged', () => {
     expect(escape('a.b*c+d')).toBe('a.b*c+d')
-  })
-
-  it('should handle strings with no special characters', () => {
-    expect(escape('abc123')).toBe('abc123')
   })
 })

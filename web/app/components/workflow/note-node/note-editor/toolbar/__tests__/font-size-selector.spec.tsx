@@ -1,60 +1,50 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { LexicalEditor } from 'lexical'
+import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { $createParagraphNode, $createTextNode, $getRoot, $isTextNode } from 'lexical'
 import FontSizeSelector from '../font-size-selector'
 
-const { mockHandleFontSize, mockHandleOpenFontSizeSelector } = vi.hoisted(() => ({
-  mockHandleFontSize: vi.fn(),
-  mockHandleOpenFontSizeSelector: vi.fn(),
-}))
-
-let mockFontSizeSelectorShow = false
-let mockFontSize = '12px'
-
-vi.mock('../hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../hooks')>()
-  return {
-    ...actual,
-    useFontSize: () => ({
-      fontSize: mockFontSize,
-      fontSizeSelectorShow: mockFontSizeSelectorShow,
-      handleFontSize: mockHandleFontSize,
-      handleOpenFontSizeSelector: mockHandleOpenFontSizeSelector,
-    }),
-  }
-})
-
 describe('NoteEditor FontSizeSelector', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockFontSizeSelectorShow = false
-    mockFontSize = '12px'
-  })
+  it('applies the chosen size to selected note text and closes the menu', async () => {
+    const user = userEvent.setup()
+    let editor: LexicalEditor
+    function CaptureEditor() {
+      ;[editor] = useLexicalComposerContext()
+      return null
+    }
+    render(
+      <LexicalComposer
+        initialConfig={{
+          namespace: 'font-size-test',
+          onError: (error) => {
+            throw error
+          },
+          editorState: () => {
+            const text = $createTextNode('Selected note')
+            $getRoot().append($createParagraphNode().append(text))
+            text.select(0, text.getTextContentSize())
+          },
+        }}
+      >
+        <CaptureEditor />
+        <FontSizeSelector />
+      </LexicalComposer>,
+    )
 
-  it('should show the current font size label and request opening when clicked', () => {
-    render(<FontSizeSelector />)
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.note.editor.small' }))
+    await user.click(await screen.findByText('workflow.nodes.note.editor.large'))
 
-    fireEvent.click(screen.getByText('workflow.nodes.note.editor.small'))
-
-    expect(mockHandleOpenFontSizeSelector.mock.calls[0]?.[0]).toBe(true)
-  })
-
-  it('should select a new font size and close the popup', () => {
-    mockFontSizeSelectorShow = true
-    mockFontSize = '14px'
-
-    render(<FontSizeSelector />)
-
-    fireEvent.click(screen.getByText('workflow.nodes.note.editor.large'))
-
-    expect(screen.getAllByText('workflow.nodes.note.editor.medium').length).toBeGreaterThan(0)
-    expect(mockHandleFontSize).toHaveBeenCalledWith('16px')
-    expect(mockHandleOpenFontSizeSelector).toHaveBeenCalledWith(false)
-  })
-
-  it('should fall back to the small label when current font size is unknown', () => {
-    mockFontSize = '18px'
-
-    render(<FontSizeSelector />)
-
-    expect(screen.getByText('workflow.nodes.note.editor.small')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'workflow.nodes.note.editor.large' }),
+      ).toBeInTheDocument()
+      editor.getEditorState().read(() => {
+        const text = $getRoot().getFirstDescendant()
+        expect($isTextNode(text) && text.getStyle()).toBe('font-size: 16px;')
+      })
+    })
+    expect(screen.queryByText('workflow.nodes.note.editor.medium')).not.toBeInTheDocument()
   })
 })

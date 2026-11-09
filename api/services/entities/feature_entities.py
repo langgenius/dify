@@ -1,6 +1,7 @@
 """Feature query results and policy values shared by their consumers."""
 
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,17 +14,10 @@ class FeatureResponseModel(BaseModel):
 
 class SubscriptionModel(FeatureResponseModel):
     plan: CloudPlan = CloudPlan.SANDBOX
-    interval: str = ""
+    interval: Literal["", "month", "year"] = ""
 
 
 class BillingModel(FeatureResponseModel):
-    # Deprecated compatibility field. Deployment edition is the only source of truth for product edition.
-    # TODO: Remove after clients migrate to `SystemFeatureModel.deployment_edition`.
-    enabled: bool = Field(
-        default=False,
-        deprecated=True,
-        description="Deprecated. Use system features deployment_edition to determine the product edition.",
-    )
     subscription: SubscriptionModel = SubscriptionModel()
 
 
@@ -73,8 +67,10 @@ class LicenseLimitationModel(FeatureResponseModel):
 
 class Quota(FeatureResponseModel):
     usage: int = 0
-    limit: int = 0
-    reset_date: int = -1
+    limit: int = Field(default=0, description="Quota limit; -1 means unlimited and 0 means no quota")
+    reset_date: int = Field(
+        default=-1, description="Next quota reset as a Unix timestamp in seconds; -1 means no reset"
+    )
 
 
 class LicenseStatus(StrEnum):
@@ -149,19 +145,21 @@ class PluginInstallationPermissionModel(FeatureResponseModel):
 
 
 class FeatureModel(FeatureResponseModel):
+    """Effective feature availability and limits for the current workspace."""
+
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     enable_skill: bool = True
+    enable_knowledge_fs: bool = False
+    workflow_collaboration_enabled: bool = False
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
-    vector_space: LimitationModel | None = LimitationModel(size=0, limit=5)
-    knowledge_rate_limit: int = 10
+    # Indexing tasks still consume this internally; Console queries vector usage separately.
+    vector_space: LimitationModel | None = Field(default=LimitationModel(size=0, limit=5), exclude=True)
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
-    docs_processing: str = "standard"
     can_replace_logo: bool = False
     model_load_balancing_enabled: bool = False
-    dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
     is_allow_transfer_workspace: bool = True
@@ -169,20 +167,28 @@ class FeatureModel(FeatureResponseModel):
     api_rate_limit: Quota = Quota(usage=0, limit=5000, reset_date=0)
     # Controls whether email delivery is allowed for HumanInput nodes.
     human_input_email_delivery_enabled: bool = False
+    # Centrally managed IM channels and default bindings cannot be edited in Console.
+    # Workspaces may override bindings without changing the shared channel credentials.
+    im_centrally_managed: bool = False
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
-    next_credit_reset_date: int = 0
+    # Workspace and model-provider credit responses own the public reset-date contract.
+    next_credit_reset_date: int = Field(default=0, exclude=True)
 
 
 class KnowledgeRateLimitModel(FeatureResponseModel):
     enabled: bool = False
     limit: int = 10
-    subscription_plan: str = ""
+    subscription_plan: Literal["", "sandbox", "professional", "team"] = ""
 
 
 class SystemFeatureModel(FeatureResponseModel):
     """Non-sensitive bootstrap snapshot exposed before Console or Web authentication."""
 
     deployment_edition: DeploymentEdition
+    agent_tracing_api_collection_enabled: bool = Field(
+        description="Deployment-level API gate for Agent trace collection, independent of workspace and provider "
+        "configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery.",
+    )
     enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: SSOProtocol | None = None
@@ -190,7 +196,6 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
-    enable_collaboration_mode: bool = True
     is_allow_register: bool = False
     is_email_setup: bool = False
     license: LicenseStatusModel = LicenseStatusModel()
@@ -203,4 +208,3 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_learn_app: bool = True
     enable_step_by_step_tour: bool = False
     rbac_enabled: bool = False
-    knowledge_fs_enabled: bool = False

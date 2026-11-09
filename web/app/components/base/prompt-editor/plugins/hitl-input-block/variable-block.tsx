@@ -44,7 +44,7 @@ const HITLInputVariableBlockComponent = ({
   conversationVariables,
   ragVariables,
 }: HITLInputVariableBlockComponentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editor] = useLexicalComposerContext()
   const variablesLength = variables.length
   const isRagVar = isRagVariableVar(variables)
@@ -98,7 +98,8 @@ const HITLInputVariableBlockComponent = ({
         UPDATE_WORKFLOW_NODES_MAP,
         (payload: UpdateWorkflowNodesMapPayload) => {
           setLocalWorkflowNodesMap(payload.workflowNodesMap)
-          return true
+          // Every rendered variable block must receive this broadcast update.
+          return false
         },
         COMMAND_PRIORITY_EDITOR,
       ),

@@ -178,7 +178,7 @@ DIFY_E2E_EDITION=ee bun run test:e2e:smoke --testNamePattern "\[EE\]"
 bun run test:e2e:local
 
 # Run a single file
-bun vitest --config vitest.e2e.config.ts test/e2e/suites/auth/status.e2e.ts
+vp test --config vitest.e2e.config.ts test/e2e/suites/auth/status.e2e.ts
 ```
 
 ## Test execution order

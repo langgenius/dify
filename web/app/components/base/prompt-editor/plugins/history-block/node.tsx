@@ -1,9 +1,10 @@
 import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
 import type { RoleName } from './index'
+import { noop } from 'es-toolkit/function'
 import { DecoratorNode } from 'lexical'
 import HistoryBlockComponent from './component'
 
-export type SerializedNode = SerializedLexicalNode & { roleName: RoleName; onEditRole: () => void }
+export type SerializedNode = SerializedLexicalNode & { roleName: RoleName; onEditRole?: () => void }
 
 export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
   __roleName: RoleName
@@ -61,7 +62,7 @@ export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 
   static override importJSON(serializedNode: SerializedNode): HistoryBlockNode {
-    const node = $createHistoryBlockNode(serializedNode.roleName, serializedNode.onEditRole)
+    const node = $createHistoryBlockNode(serializedNode.roleName, serializedNode.onEditRole ?? noop)
 
     return node
   }
@@ -71,7 +72,7 @@ export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
       type: 'history-block',
       version: 1,
       roleName: this.getRoleName(),
-      onEditRole: this.getOnEditRole,
+      onEditRole: this.getOnEditRole(),
     }
   }
 

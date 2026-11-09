@@ -1,27 +1,91 @@
 """Flask adapter for Console API admission."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from functools import wraps
+from http import HTTPStatus
 from typing import Concatenate
 
 from flask import Response, abort, request
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 from configs import dify_config
-from controllers.common.wraps import enforce_rbac_access
+from controllers.common.rbac import RBAC_CHECKS_ATTR, RBACCheck, enforce_rbac_checks
+from controllers.console.admin import admin_required
 from controllers.console.wraps import (
     account_initialization_required,
+    cloud_edition_billing_resource_check,
     enable_change_email,
     enterprise_license_required,
+    is_allow_transfer_owner,
     setup_required,
 )
 from core.logging.context import get_request_id, get_trace_id
-from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
-from libs.login import current_account_with_tenant, login_required
-from machinery.context import RequestContext
-from machinery.errors import AdmissionConfigurationError
-from models.account import TenantAccountRole
+from enums.account import TenantAccountRole
+from extensions.ext_login import ACCOUNT_ONLY_ADMISSION_ATTR
+from libs.login import current_account_with_tenant, current_account_with_tenant_optional, login_required
+from libs.oauth_bearer import bearer_feature_required
+from libs.token import extract_console_cookie_token, is_admin_api_key_request
+from machinery.context import AccountRequestContext, RequestContext
+from models.account import AccountStatus
+from services.system_feature_service import SystemFeatureService
+
+
+def console_personal_account_admission[T, **P, R](
+    view: Callable[Concatenate[T, AccountRequestContext, P], R],
+) -> Callable[Concatenate[T, P], R | Response]:
+    """Require an active browser account and CSRF, without an active workspace."""
+
+    @wraps(view)
+    def inject_account_context(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        account, _ = current_account_with_tenant_optional()
+        if account is None or account.status != AccountStatus.ACTIVE:
+            raise Unauthorized("Active account required.")
+        context = AccountRequestContext(
+            account_id=account.id,
+            request_id=get_request_id(),
+            trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+        )
+        return view(self, context, *args, **kwargs)
+
+    authenticated = login_required(inject_account_context)
+
+    @wraps(view)
+    def require_browser_session(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R | Response:
+        # Generic Console login also admits admin-key impersonation. Personal
+        # credentials must only be managed by the holder's browser session.
+        if is_admin_api_key_request(request) or not extract_console_cookie_token(request):
+            raise Unauthorized("Personal access tokens require a browser session.")
+        return authenticated(self, *args, **kwargs)
+
+    admitted = setup_required(require_browser_session)
+    setattr(admitted, ACCOUNT_ONLY_ADMISSION_ATTR, True)
+    return admitted
+
+
+def console_admin_admission[T, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    """Admit a configured admin API key without requiring a Console account."""
+
+    return setup_required(admin_required(view))
+
+
+def console_email_registration_admission[T, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R | Response]:
+    """Apply the complete admission policy for anonymous email registration."""
+
+    @wraps(view)
+    def check_registration_features(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        if (
+            not SystemFeatureService.is_email_password_login_enabled()
+            or not SystemFeatureService.is_registration_allowed()
+        ):
+            abort(403)
+        return view(self, *args, **kwargs)
+
+    return setup_required(check_registration_features)
 
 
 def console_account_admission[T, **P, R](
@@ -30,24 +94,21 @@ def console_account_admission[T, **P, R](
     require_change_email_enabled: bool = False,
     require_initialized: bool = True,
     require_valid_enterprise_license: bool = False,
+    require_owner_transfer_enabled: bool = False,
+    billing_resource: str | None = None,
+    require_oauth_bearer_enabled: bool = False,
     allowed_roles: frozenset[TenantAccountRole] | None = None,
-    rbac_resource_scope: RBACResourceScope | None = None,
-    rbac_permission: RBACPermission | None = None,
-    rbac_resource_required: bool = True,
+    rbac_checks: Sequence[RBACCheck] | None = None,
 ) -> Callable[
     [Callable[Concatenate[T, RequestContext, P], R]],
     Callable[Concatenate[T, P], R | Response],
 ]:
     """Declare Console account admission and inject a stable RequestContext.
 
-    All combinations use this decorator factory. Requirements are data, while
-    the execution order stays fixed: edition, setup, login/CSRF, optional
-    account initialization, optional enterprise license, role/RBAC checks, then
-    context construction.
+    Checks run in a fixed order: setup, login/CSRF, optional account
+    initialization, edition, license, feature and billing checks, role/RBAC
+    checks, then context construction.
     """
-
-    if (rbac_resource_scope is None) != (rbac_permission is None):
-        raise AdmissionConfigurationError("RBAC resource scope and permission must be configured together")
 
     def decorator(
         view: Callable[Concatenate[T, RequestContext, P], R],
@@ -59,13 +120,11 @@ def console_account_admission[T, **P, R](
             tenant_id = account_with_tenant.tenant_id
             if allowed_roles is not None and not dify_config.RBAC_ENABLED and account.role not in allowed_roles:
                 raise Forbidden()
-            if rbac_resource_scope is not None and rbac_permission is not None:
-                enforce_rbac_access(
+            if rbac_checks is not None:
+                enforce_rbac_checks(
                     tenant_id=tenant_id,
                     account_id=account.id,
-                    resource_type=rbac_resource_scope,
-                    scene=rbac_permission,
-                    resource_required=rbac_resource_required,
+                    checks=rbac_checks,
                     path_args=kwargs,
                 )
             request_context = RequestContext(
@@ -76,25 +135,38 @@ def console_account_admission[T, **P, R](
             )
             return view(self, request_context, *args, **kwargs)
 
+        if rbac_checks is not None:
+            setattr(inject_request_context, RBAC_CHECKS_ATTR, rbac_checks)
+
         admitted: Callable[Concatenate[T, P], R | Response] = inject_request_context
+        if billing_resource is not None:
+            admitted = cloud_edition_billing_resource_check(billing_resource)(admitted)
         if require_change_email_enabled:
             admitted = enable_change_email(admitted)
+        if require_owner_transfer_enabled:
+            admitted = is_allow_transfer_owner(admitted)
+        if require_oauth_bearer_enabled:
+            admitted = bearer_feature_required(admitted)
         if require_valid_enterprise_license:
             admitted = enterprise_license_required(admitted)
+        if editions is not None:
+            admitted = enforce_edition(admitted)
         if require_initialized:
             admitted = account_initialization_required(admitted)
         admitted = login_required(admitted)
         admitted = setup_required(admitted)
 
-        if editions is None:
-            return admitted
+        return admitted
 
-        @wraps(view)
-        def enforce_edition(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R | Response:
-            if dify_config.DEPLOYMENT_EDITION not in editions:
-                abort(404)
+    def enforce_edition(
+        admitted: Callable[Concatenate[T, P], R | Response],
+    ) -> Callable[Concatenate[T, P], R | Response]:
+        @wraps(admitted)
+        def checked(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R | Response:
+            if editions is not None and dify_config.DEPLOYMENT_EDITION not in editions:
+                abort(HTTPStatus.NOT_FOUND)
             return admitted(self, *args, **kwargs)
 
-        return enforce_edition
+        return checked
 
     return decorator

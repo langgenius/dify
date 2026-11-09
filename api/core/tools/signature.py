@@ -164,8 +164,13 @@ def verify_plugin_file_signature(
     if sign != recalculated_encoded_sign:
         return False
 
+    try:
+        signed_at = int(timestamp)
+    except ValueError:
+        return False
+
     current_time = int(time.time())
-    return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+    return current_time - signed_at <= dify_config.FILES_ACCESS_TIMEOUT
 
 
 def _plugin_upload_signature_payload(

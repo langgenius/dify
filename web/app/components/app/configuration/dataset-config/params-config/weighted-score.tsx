@@ -27,7 +27,7 @@ type WeightedScoreProps = {
   readonly?: boolean
 }
 const WeightedScore = ({ value, onChange = noop, readonly = false }: WeightedScoreProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const semanticLabel = t(($) => $['weightedScore.semantic'], { ns: 'dataset' })
   const keywordLabel = t(($) => $['weightedScore.keyword'], { ns: 'dataset' })
   const semanticWeight = value.value[0]!
@@ -59,7 +59,7 @@ const WeightedScore = ({ value, onChange = noop, readonly = false }: WeightedSco
             </SliderControl>
           </Slider>
         </div>
-        <div className="mt-3 flex justify-between">
+        <div className="mt-3 flex flex-wrap justify-between gap-2">
           <div className="flex w-22.5 shrink-0 items-center system-xs-semibold-uppercase text-util-colors-blue-light-blue-light-500">
             <div className="mr-1 truncate uppercase" title={semanticLabel || ''}>
               {semanticLabel}

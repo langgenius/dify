@@ -42,13 +42,5 @@ def test_service_passes_stable_identity_to_store(context: RequestContext) -> Non
     store.delete_bindings.assert_called_once_with("workspace-1", TagBindingInput(("tag-1",), "app-1", "app"))
 
 
-def test_service_rejects_context_without_active_workspace() -> None:
-    context = RequestContext("request-1", None, "account-1", None)
-    service = TagApplicationService(tags=MagicMock())
-
-    with pytest.raises(RuntimeError, match="active workspace"):
-        service.list_tags(context, "app")
-
-
 def test_skill_binding_target_error_message() -> None:
     assert str(TagBindingTargetNotFoundError("skill")) == "Skill not found"

@@ -1,3 +1,5 @@
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -7,11 +9,17 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import Input from '@/app/components/base/input'
 import { InputVarType } from '@/app/components/workflow/types'
+
+const toAppInputFile = (file: FileEntity): FileEntity => {
+  if (file.progress !== 100 || !file.uploadedId) return file
+  const persistedFile = { ...file }
+  delete persistedFile.originalFile
+  return persistedFile
+}
 
 type Props = Readonly<{
   inputsForms: any[]
@@ -20,25 +28,27 @@ type Props = Readonly<{
   onFormChange: (value: Record<string, any>) => void
 }>
 const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
+  const baseId = useId()
 
   const handleFormChange = useCallback(
     (variable: string, value: any) => {
-      onFormChange({
-        ...inputsRef.current,
-        [variable]: value,
-      })
+      const nextInputs = { ...inputsRef.current }
+      if (value === undefined) delete nextInputs[variable]
+      else nextInputs[variable] = value
+      onFormChange(nextInputs)
     },
     [onFormChange, inputsRef],
   )
 
-  const renderField = (form: any) => {
+  const renderField = (form: any, labelId: string) => {
     const { label, variable, options } = form
     if (form.type === InputVarType.textInput) {
       return (
         <Input
+          aria-labelledby={labelId}
           value={inputs[variable] || ''}
-          onChange={(e) => handleFormChange(variable, e.target.value)}
+          onValueChange={(value) => handleFormChange(variable, value)}
           placeholder={label}
         />
       )
@@ -46,9 +56,10 @@ const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) 
     if (form.type === InputVarType.number) {
       return (
         <Input
+          aria-labelledby={labelId}
           type="number"
           value={inputs[variable] || ''}
-          onChange={(e) => handleFormChange(variable, e.target.value)}
+          onValueChange={(value) => handleFormChange(variable, value)}
           placeholder={label}
         />
       )
@@ -56,7 +67,7 @@ const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) 
     if (form.type === InputVarType.paragraph) {
       return (
         <Textarea
-          aria-label={label}
+          aria-labelledby={labelId}
           value={inputs[variable] || ''}
           onValueChange={(value) => handleFormChange(variable, value)}
           placeholder={label}
@@ -75,7 +86,9 @@ const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) 
           value={selectedOption?.value ?? null}
           onValueChange={(value) => value && handleFormChange(variable, value)}
         >
-          <SelectTrigger className="w-full">{selectedOption?.name ?? label}</SelectTrigger>
+          <SelectTrigger aria-labelledby={labelId} className="w-full">
+            {selectedOption?.name ?? label}
+          </SelectTrigger>
           <SelectContent>
             {selectOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
@@ -91,7 +104,9 @@ const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) 
       return (
         <FileUploaderInAttachmentWrapper
           value={inputs[variable] ? [inputs[variable]] : []}
-          onChange={(files) => handleFormChange(variable, files[0])}
+          onChange={(files) =>
+            handleFormChange(variable, files[0] ? toAppInputFile(files[0]) : undefined)
+          }
           fileConfig={{
             allowed_file_types: form.allowed_file_types,
             allowed_file_extensions: form.allowed_file_extensions,
@@ -106,7 +121,7 @@ const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) 
       return (
         <FileUploaderInAttachmentWrapper
           value={inputs[variable]}
-          onChange={(files) => handleFormChange(variable, files)}
+          onChange={(files) => handleFormChange(variable, files.map(toAppInputFile))}
           fileConfig={{
             allowed_file_types: form.allowed_file_types,
             allowed_file_extensions: form.allowed_file_extensions,
@@ -123,19 +138,25 @@ const AppInputsForm = ({ inputsForms, inputs, inputsRef, onFormChange }: Props) 
 
   return (
     <div className="flex flex-col gap-4 px-4 py-2">
-      {inputsForms.map((form) => (
-        <div key={form.variable}>
-          <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
-            <div className="truncate">{form.label}</div>
-            {!form.required && (
-              <span className="system-xs-regular text-text-tertiary">
-                {t(($) => $['panel.optional'], { ns: 'workflow' })}
-              </span>
-            )}
+      {inputsForms.map((form) => {
+        const labelId = `${baseId}-${form.variable}-label`
+
+        return (
+          <div key={form.variable}>
+            <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
+              <div id={labelId} className="truncate">
+                {form.label}
+              </div>
+              {!form.required && (
+                <span className="system-xs-regular text-text-tertiary">
+                  {t(($) => $['panel.optional'], { ns: 'workflow' })}
+                </span>
+              )}
+            </div>
+            {renderField(form, labelId)}
           </div>
-          {renderField(form)}
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

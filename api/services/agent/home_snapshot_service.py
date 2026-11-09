@@ -137,6 +137,21 @@ class AgentHomeSnapshotService:
         return [row.id for row in rows]
 
     @classmethod
+    def retire_all_for_tenant(cls, *, session: Session, tenant_id: str) -> list[str]:
+        """Retire every tenant Home Snapshot in the caller's transaction.
+
+        Includes orphan snapshots whose Agent row is already gone. Returns all
+        matched ids, including already-retired ones, so repeated collection converges.
+        """
+        rows = session.scalars(select(AgentHomeSnapshot).where(AgentHomeSnapshot.tenant_id == tenant_id)).all()
+        now = naive_utc_now()
+        for row in rows:
+            if row.status == AgentWorkingResourceStatus.ACTIVE:
+                row.status = AgentWorkingResourceStatus.RETIRED
+                row.retired_at = now
+        return [row.id for row in rows]
+
+    @classmethod
     def collect_retired_home_snapshot(cls, *, tenant_id: str, home_snapshot_id: str) -> None:
         with session_factory.create_session() as session:
             snapshot = session.scalar(

@@ -1,11 +1,13 @@
 import type { ChunkingMode } from '@/models/datasets'
 
-export enum EffectColor {
-  indigo = 'indigo',
-  blueLight = 'blue-light',
-  orange = 'orange',
-  purple = 'purple',
-}
+export const EffectColor = {
+  indigo: 'indigo',
+  blueLight: 'blue-light',
+  orange: 'orange',
+  purple: 'purple',
+} as const
+
+export type EffectColor = (typeof EffectColor)[keyof typeof EffectColor]
 
 export type Option = {
   id: ChunkingMode

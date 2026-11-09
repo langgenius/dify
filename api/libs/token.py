@@ -204,7 +204,7 @@ def check_csrf_token(request: Request, user_id: str):
         raise Unauthorized("CSRF token is missing or invalid.")
 
     for pattern in CSRF_WHITE_LIST:
-        if pattern.match(request.path):
+        if pattern.fullmatch(request.path):
             return
 
     csrf_token = extract_csrf_token(request)
@@ -219,7 +219,6 @@ def check_csrf_token(request: Request, user_id: str):
         verified = PassportService().verify(csrf_token)
     except Exception:
         _unauthorized()
-        raise  # unreachable, but helps the type checker see verified is always bound
 
     if verified.get("sub") != user_id:
         _unauthorized()

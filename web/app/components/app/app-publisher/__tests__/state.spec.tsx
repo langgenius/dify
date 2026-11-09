@@ -1,9 +1,9 @@
 import {
   DeploymentOperationStatus,
-  DeploymentStatus,
+  RuntimeState,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { screen, render as testingLibraryRender, waitFor } from '@testing-library/react'
+import { act, screen, render as testingLibraryRender, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Provider, useAtomValue, useSetAtom } from 'jotai'
 import { createQueryAtomTestStore } from '@/test/query-atom'
@@ -20,95 +20,33 @@ import {
   startPublisherEnvironmentDeploymentPollingAtom,
 } from '../state'
 
-type QueryOptions = {
-  enabled?: boolean
-  input: unknown
-  refetchInterval?: (query: {
-    state: {
-      data?: {
-        environment_deployment: {
-          deployment?: {
-            latest_operation?: {
-              id: string
-              status: string
-            }
-            status: string
-          }
-        }
-      }
-      fetchFailureCount?: number
-      status?: 'error' | 'pending' | 'success'
-    }
-  }) => false | number
-}
-
 const queryMocks = vi.hoisted(() => ({
-  deploymentListOptions: vi.fn(),
   deploymentListRequest: vi.fn(),
-  deploymentOptions: vi.fn(),
   deploymentRequest: vi.fn(),
-  environmentOptions: vi.fn(),
   environmentRequest: vi.fn(),
 }))
 
-vi.mock('@/service/client', async () => {
-  const { skipToken } = await import('@tanstack/react-query')
-
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
-    consoleQuery: {
-      enterprise: {
-        appDeploy: {
-          deploymentService: {
-            getEnvironmentDeployment: {
-              queryOptions: (options: QueryOptions) => {
-                queryMocks.deploymentOptions(options)
-                const environmentId =
-                  typeof options.input === 'object' && options.input
-                    ? (options.input as { params: { environment_id: string } }).params
-                        .environment_id
-                    : 'disabled'
-
-                return {
-                  ...options,
-                  queryFn:
-                    options.input === skipToken
-                      ? skipToken
-                      : () => queryMocks.deploymentRequest(options.input),
-                  queryKey: ['publisherEnvironmentDeployment', environmentId],
-                }
-              },
-            },
-            listEnvironmentDeployments: {
-              queryOptions: (options: QueryOptions) => {
-                queryMocks.deploymentListOptions(options)
-
-                return {
-                  ...options,
-                  queryFn:
-                    options.input === skipToken
-                      ? skipToken
-                      : () => queryMocks.deploymentListRequest(options.input),
-                  queryKey: ['publisherEnvironmentDeployments'],
-                }
-              },
-            },
-            listAppEnvironments: {
-              queryOptions: (options: QueryOptions) => {
-                queryMocks.environmentOptions(options)
-
-                return {
-                  ...options,
-                  queryFn: () => queryMocks.environmentRequest(),
-                  queryKey: ['publisherEnvironments'],
-                }
-              },
-            },
-          },
-        },
-      },
-    },
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'enterprise.appDeploy.deploymentService.getEnvironmentDeployment': (input) =>
+        queryMocks.deploymentRequest(input),
+      'enterprise.appDeploy.deploymentService.listEnvironmentDeployments': (input) =>
+        queryMocks.deploymentListRequest(input),
+      'enterprise.appDeploy.deploymentService.listAppEnvironments': (input) =>
+        queryMocks.environmentRequest(input),
+    }),
   }
 })
+
+const advancePolling = async () => {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(3000)
+  })
+}
 
 function StateConsumer() {
   useRefreshAppEnvironmentsAfterPublisherDeploymentPolling('app-1')
@@ -204,11 +142,11 @@ function renderState(initialOpen = true) {
 }
 
 function environmentDeploymentResponse({
-  deploymentStatus,
+  runtimeState,
   operationId,
   operationStatus,
 }: {
-  deploymentStatus: string
+  runtimeState: string
   operationId: string
   operationStatus: string
 }) {
@@ -220,7 +158,7 @@ function environmentDeploymentResponse({
       },
       deployment: {
         current_version:
-          deploymentStatus === DeploymentStatus.DEPLOYMENT_STATUS_RUNNING
+          runtimeState === RuntimeState.RUNTIME_STATE_RUNNING
             ? {
                 id: 'version-development',
                 marked_comment: '',
@@ -239,7 +177,7 @@ function environmentDeploymentResponse({
           status: operationStatus,
           type: 'DEPLOYMENT_OPERATION_TYPE_DEPLOY',
         },
-        status: deploymentStatus,
+        runtimeState,
       },
       environment: {
         description: '',
@@ -270,24 +208,6 @@ const appEnvironments = (developmentInUse: boolean) => ({
   ],
 })
 
-function getDeploymentQueryOptions(environmentId: string) {
-  return queryMocks.deploymentOptions.mock.calls
-    .map(([options]) => options as QueryOptions)
-    .reverse()
-    .find((options) => {
-      if (typeof options.input !== 'object' || !options.input) return false
-
-      return (
-        (options.input as { params?: { environment_id?: string } }).params?.environment_id ===
-        environmentId
-      )
-    })
-}
-
-function getLatestDeploymentQueryOptions() {
-  return queryMocks.deploymentOptions.mock.calls.at(-1)?.[0] as QueryOptions | undefined
-}
-
 function getDeploymentRequestCount(environmentId: string) {
   return queryMocks.deploymentRequest.mock.calls.filter((call) => {
     const input = call[0] as { params: { environment_id: string } }
@@ -297,7 +217,8 @@ function getDeploymentRequestCount(environmentId: string) {
 
 describe('app publisher environment state', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     queryMocks.deploymentListRequest.mockResolvedValue({
       environment_deployments: [],
     })
@@ -316,7 +237,7 @@ describe('app publisher environment state', () => {
               marked_name: `Release ${input.params.environment_id}`,
               version: `2026-07-31.${input.params.environment_id}`,
             },
-            status: 'DEPLOYMENT_STATUS_RUNNING',
+            runtimeState: 'RUNTIME_STATE_RUNNING',
           },
           environment: {
             description: '',
@@ -328,6 +249,7 @@ describe('app publisher environment state', () => {
       }),
     )
   })
+  afterEach(() => vi.useRealTimers())
 
   it('derives deployed tabs from the environment in_use field', async () => {
     const user = userEvent.setup()
@@ -335,14 +257,7 @@ describe('app publisher environment state', () => {
 
     expect(await screen.findByText('Joined: staging')).toBeInTheDocument()
     expect(screen.getByText('Environments: Staging, Development')).toBeInTheDocument()
-    expect(queryMocks.environmentOptions).toHaveBeenCalledWith({
-      enabled: true,
-      input: {
-        params: {
-          app_id: 'app-1',
-        },
-      },
-    })
+    expect(queryMocks.environmentRequest).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
 
     await user.click(screen.getByRole('button', { name: 'Add development' }))
 
@@ -361,7 +276,7 @@ describe('app publisher environment state', () => {
   it('discovers and resumes polling a first deployment while the environment remains not in use', async () => {
     const user = userEvent.setup()
     const response = environmentDeploymentResponse({
-      deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+      runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
       operationId: 'operation-development',
       operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
     })
@@ -382,46 +297,30 @@ describe('app publisher environment state', () => {
         },
       })
     })
-    expect(
-      getDeploymentQueryOptions('development')?.refetchInterval?.({
-        state: {
-          data: response,
-        },
-      }),
-    ).toBe(3000)
+    const requests = getDeploymentRequestCount('development')
+    await advancePolling()
+    await waitFor(() => expect(getDeploymentRequestCount('development')).toBeGreaterThan(requests))
   })
 
-  it('stops automatic status polling while the deployment query is failing', async () => {
+  it('stops automatic status polling after a deployment request fails', async () => {
     const user = userEvent.setup()
-    const response = environmentDeploymentResponse({
-      deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
-      operationId: 'operation-staging',
-      operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
-    })
+    queryMocks.deploymentRequest
+      .mockResolvedValueOnce(
+        environmentDeploymentResponse({
+          runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
+          operationId: 'operation-staging',
+          operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+        }),
+      )
+      .mockRejectedValue(new Error('Deployment unavailable'))
     renderState()
-
     await screen.findByText('Joined: staging')
     await user.click(screen.getByRole('button', { name: 'Select staging' }))
-
-    const refetchInterval = getDeploymentQueryOptions('staging')?.refetchInterval
-    expect(refetchInterval).toBeTypeOf('function')
-    expect(
-      refetchInterval?.({
-        state: {
-          data: response,
-          fetchFailureCount: 1,
-          status: 'success',
-        },
-      }),
-    ).toBe(false)
-    expect(
-      refetchInterval?.({
-        state: {
-          data: response,
-          status: 'error',
-        },
-      }),
-    ).toBe(false)
+    await waitFor(() => expect(getDeploymentRequestCount('staging')).toBe(1))
+    await advancePolling()
+    await waitFor(() => expect(getDeploymentRequestCount('staging')).toBe(2))
+    await advancePolling()
+    expect(getDeploymentRequestCount('staging')).toBe(2)
   })
 
   it('queries deployment details only after selecting an in-use non-built-in environment', async () => {
@@ -465,7 +364,7 @@ describe('app publisher environment state', () => {
       .mockResolvedValue(appEnvironments(true))
     queryMocks.deploymentRequest.mockResolvedValue(
       environmentDeploymentResponse({
-        deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+        runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
         operationId: 'operation-development',
         operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
       }),
@@ -491,30 +390,9 @@ describe('app publisher environment state', () => {
     expect(await screen.findByText('Development in use: true')).toBeInTheDocument()
     expect(screen.getByText('Polling: none')).toBeInTheDocument()
 
-    const deploymentQueryOptions = getDeploymentQueryOptions('development')
-    expect(deploymentQueryOptions?.refetchInterval).toBeTypeOf('function')
-    expect(
-      deploymentQueryOptions?.refetchInterval?.({
-        state: {
-          data: environmentDeploymentResponse({
-            deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
-            operationId: 'operation-development',
-            operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
-          }),
-        },
-      }),
-    ).toBe(3000)
-    expect(
-      deploymentQueryOptions?.refetchInterval?.({
-        state: {
-          data: environmentDeploymentResponse({
-            deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
-            operationId: 'operation-development',
-            operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
-          }),
-        },
-      }),
-    ).toBe(false)
+    const requests = getDeploymentRequestCount('development')
+    await advancePolling()
+    expect(getDeploymentRequestCount('development')).toBe(requests)
     expect(queryMocks.environmentRequest).toHaveBeenCalledTimes(2)
   })
 
@@ -525,12 +403,12 @@ describe('app publisher environment state', () => {
       async (input: { params: { environment_id: string } }) =>
         input.params.environment_id === 'staging'
           ? environmentDeploymentResponse({
-              deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+              runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
               operationId: 'operation-staging',
               operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
             })
           : environmentDeploymentResponse({
-              deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+              runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
               operationId: 'operation-development',
               operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
             }),
@@ -547,17 +425,11 @@ describe('app publisher environment state', () => {
         },
       })
     })
-    expect(
-      getDeploymentQueryOptions('staging')?.refetchInterval?.({
-        state: {
-          data: environmentDeploymentResponse({
-            deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
-            operationId: 'operation-staging',
-            operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
-          }),
-        },
-      }),
-    ).toBe(3000)
+    const initialStagingCount = getDeploymentRequestCount('staging')
+    await advancePolling()
+    await waitFor(() =>
+      expect(getDeploymentRequestCount('staging')).toBeGreaterThan(initialStagingCount),
+    )
 
     await user.click(screen.getByRole('button', { name: 'Start staging deployment' }))
     expect(screen.getByText('Polling: operation-staging')).toBeInTheDocument()
@@ -573,17 +445,9 @@ describe('app publisher environment state', () => {
         },
       })
     })
-    expect(
-      getDeploymentQueryOptions('development')?.refetchInterval?.({
-        state: {
-          data: environmentDeploymentResponse({
-            deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
-            operationId: 'operation-development',
-            operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
-          }),
-        },
-      }),
-    ).toBe(false)
+    const settledCount = queryMocks.deploymentRequest.mock.calls.length
+    await advancePolling()
+    expect(queryMocks.deploymentRequest).toHaveBeenCalledTimes(settledCount)
 
     const stagingRequestCount = getDeploymentRequestCount('staging')
     await user.click(screen.getByRole('button', { name: 'Select staging' }))
@@ -598,9 +462,9 @@ describe('app publisher environment state', () => {
     await waitFor(() => {
       expect(screen.getByText('Polling: none')).toBeInTheDocument()
     })
-    await waitFor(() => {
-      expect(getLatestDeploymentQueryOptions()?.enabled).toBe(false)
-    })
+    const requestCount = queryMocks.deploymentRequest.mock.calls.length
+    await advancePolling()
+    expect(queryMocks.deploymentRequest).toHaveBeenCalledTimes(requestCount)
   })
 
   it('resets open state and active polling when the last publisher subscriber unmounts', async () => {
@@ -608,7 +472,7 @@ describe('app publisher environment state', () => {
     queryMocks.environmentRequest.mockResolvedValue(appEnvironments(true))
     queryMocks.deploymentRequest.mockResolvedValue(
       environmentDeploymentResponse({
-        deploymentStatus: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+        runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
         operationId: 'operation-staging',
         operationStatus: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
       }),
@@ -628,8 +492,8 @@ describe('app publisher environment state', () => {
 
     expect(await screen.findByText('Open: false')).toBeInTheDocument()
     expect(screen.getByText('Polling: none')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(getLatestDeploymentQueryOptions()?.enabled).toBe(false)
-    })
+    const requestCount = queryMocks.deploymentRequest.mock.calls.length
+    await advancePolling()
+    expect(queryMocks.deploymentRequest).toHaveBeenCalledTimes(requestCount)
   })
 })

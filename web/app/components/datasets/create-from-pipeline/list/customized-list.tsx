@@ -1,10 +1,17 @@
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { usePipelineTemplateList } from '@/service/use-pipeline'
+import { selectPipelineTemplateList } from '@/app/components/rag-pipeline/utils/query-select'
+import { consoleQuery } from '@/service/console'
 import TemplateCard from './template-card'
 
 const CustomizedList = () => {
-  const { t } = useTranslation()
-  const { data: pipelineList, isLoading } = usePipelineTemplateList({ type: 'customized' })
+  const { t } = useTranslation(['datasetPipeline'])
+  const { data: pipelineList, isLoading } = useQuery(
+    consoleQuery.rag.pipeline.templates.get.queryOptions({
+      input: { query: { type: 'customized' } },
+      select: selectPipelineTemplateList,
+    }),
+  )
   const list = pipelineList?.pipeline_templates || []
 
   if (isLoading || list.length === 0) return null

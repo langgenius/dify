@@ -160,7 +160,7 @@ export const parseWorkflowClipboardText = (
   }
 }
 
-export const stringifyWorkflowClipboardData = (
+const stringifyWorkflowClipboardData = (
   payload: WorkflowClipboardData,
   currentClipboardVersion: string,
 ): string => {

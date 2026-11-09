@@ -9,6 +9,7 @@ SANDBOX_CONTAINER_NAME="${CONTAINER_NAME}-sandbox"
 AGENT_PROXY_CONTAINER_NAME="${CONTAINER_NAME}-agent-proxy"
 API_CONTAINER_NAME="${CONTAINER_NAME}-api"
 AGENT_BACKEND_CONTAINER_NAME="${CONTAINER_NAME}-agent-backend"
+INTERNAL_SERVICE_CONTAINER_NAME="${CONTAINER_NAME}-internal-service"
 NETWORK_NAME="${SSRF_PROXY_TEST_NETWORK:-dify-ssrf-proxy-test-$$}"
 RUN_PUBLIC_CHECK="${SSRF_PROXY_TEST_PUBLIC_CHECK:-true}"
 
@@ -18,6 +19,7 @@ cleanup() {
   docker rm -f "$AGENT_PROXY_CONTAINER_NAME" >/dev/null 2>&1 || true
   docker rm -f "$API_CONTAINER_NAME" >/dev/null 2>&1 || true
   docker rm -f "$AGENT_BACKEND_CONTAINER_NAME" >/dev/null 2>&1 || true
+  docker rm -f "$INTERNAL_SERVICE_CONTAINER_NAME" >/dev/null 2>&1 || true
   docker network rm "$NETWORK_NAME" >/dev/null 2>&1 || true
 }
 
@@ -204,6 +206,16 @@ docker run \
   sh -c "mkdir -p /www/agent-stub && echo stub-ok > /www/agent-stub/config && echo denied > /www/index.html && httpd -f -p 5050 -h /www" \
   >/dev/null
 
+# Mock internal service reachable only on the private Docker network.
+docker run \
+  --detach \
+  --name "$INTERNAL_SERVICE_CONTAINER_NAME" \
+  --network "$NETWORK_NAME" \
+  --network-alias internal_api \
+  "$CLIENT_IMAGE" \
+  sh -c "mkdir -p /www && echo internal-ok > /www/health && httpd -f -p 8080 -h /www" \
+  >/dev/null
+
 docker run \
   --detach \
   --name "$AGENT_PROXY_CONTAINER_NAME" \
@@ -214,6 +226,8 @@ docker run \
   --volume "$ROOT_DIR/docker/ssrf_proxy/docker-agent-entrypoint.sh:/docker-entrypoint-mount.sh:ro" \
   --env HTTP_PORT=3128 \
   --env COREDUMP_DIR=/var/spool/squid \
+  --env "SSRF_PROXY_ALLOW_PRIVATE_IPS=${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}" \
+  --env "SSRF_PROXY_ALLOW_PRIVATE_DOMAINS=${SSRF_PROXY_ALLOW_PRIVATE_DOMAINS:-internal_api}" \
   "$IMAGE" \
   -c "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" \
   >/dev/null
@@ -236,6 +250,9 @@ fi
 # Private targets must be blocked.
 assert_private_target_blocked "$agent_proxy_url" "http://127.0.0.1:80/"
 assert_private_target_blocked "$agent_proxy_url" "http://169.254.169.254/latest/meta-data/"
+
+# Allowlisted private domains must be reachable for agent skills.
+assert_public_target_allowed "$agent_proxy_url" "http://internal_api:8080/health"
 
 # agent_backend /agent-stub/* must be allowed.
 assert_public_target_allowed "$agent_proxy_url" "http://agent_backend:5050/agent-stub/config"

@@ -1,6 +1,7 @@
-import type { PluginTriggerNodeType, PluginTriggerVarInputs } from './types'
+import type { PluginTriggerNodeType } from './types'
 import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo } from 'react'
@@ -14,17 +15,16 @@ import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { VarKindType } from '../_base/types'
 
 const normalizeEventParameters = (
-  params: PluginTriggerVarInputs | Record<string, unknown> | null | undefined,
+  params: ResourceVarInputs | Record<string, unknown> | null | undefined,
   { allowScalars = false }: { allowScalars?: boolean } = {},
-): PluginTriggerVarInputs => {
-  if (!params || typeof params !== 'object' || Array.isArray(params))
-    return {} as PluginTriggerVarInputs
+): ResourceVarInputs => {
+  if (!params || typeof params !== 'object' || Array.isArray(params)) return {} as ResourceVarInputs
 
   return Object.entries(params).reduce((acc, [key, entry]) => {
     if (!entry && entry !== 0 && entry !== false) return acc
 
     if (typeof entry === 'object' && !Array.isArray(entry) && 'type' in entry && 'value' in entry) {
-      const normalizedEntry = { ...(entry as PluginTriggerVarInputs[string]) }
+      const normalizedEntry = { ...(entry as ResourceVarInputs[string]) }
       if (normalizedEntry.type === VarKindType.mixed) normalizedEntry.type = VarKindType.constant
       acc[key] = normalizedEntry
       return acc
@@ -56,7 +56,7 @@ const normalizeEventParameters = (
     }
 
     return acc
-  }, {} as PluginTriggerVarInputs)
+  }, {} as ResourceVarInputs)
 }
 
 const useConfig = (id: string, payload: PluginTriggerNodeType) => {
@@ -75,11 +75,11 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   } = inputs
 
   const event_parameters = useMemo(
-    () => normalizeEventParameters(rawEventParameters as PluginTriggerVarInputs),
+    () => normalizeEventParameters(rawEventParameters),
     [rawEventParameters],
   )
   const legacy_config_parameters = useMemo(
-    () => normalizeEventParameters(config as PluginTriggerVarInputs, { allowScalars: true }),
+    () => normalizeEventParameters(config, { allowScalars: true }),
     [config],
   )
 
@@ -120,7 +120,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   }, [triggerSpecificParameterSchema])
 
   const triggerParameterValue = useMemo(() => {
-    if (!triggerParameterSchema.length) return {} as PluginTriggerVarInputs
+    if (!triggerParameterSchema.length) return {} as ResourceVarInputs
 
     const hasStoredParameters = event_parameters && Object.keys(event_parameters).length > 0
     const baseValue = hasStoredParameters ? event_parameters : legacy_config_parameters
@@ -128,7 +128,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     const configuredValue = getConfiguredValue(
       baseValue,
       triggerParameterSchema,
-    ) as PluginTriggerVarInputs
+    ) as ResourceVarInputs
     return normalizeEventParameters(configuredValue)
   }, [triggerParameterSchema, event_parameters, legacy_config_parameters])
 
@@ -147,7 +147,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   }, [doSetInputs, event_parameters, inputs, triggerParameterSchema, triggerParameterValue])
 
   const setTriggerParameterValue = useCallback(
-    (value: PluginTriggerVarInputs) => {
+    (value: ResourceVarInputs) => {
       const sanitizedValue = normalizeEventParameters(value)
       const newInputs = produce(inputs, (draft) => {
         draft.event_parameters = sanitizedValue
@@ -167,7 +167,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
             type: VarKindType.variable,
             value: varDetail.variable,
           },
-        } as PluginTriggerVarInputs)
+        } as ResourceVarInputs)
 
         draft.event_parameters = nextEventParameters
         draft.config = nextEventParameters

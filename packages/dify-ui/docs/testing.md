@@ -10,6 +10,11 @@ diagnostics. Run the remaining commands from `packages/dify-ui/`:
 
 ## Test boundary
 
+This guide owns the Dify UI testing policy and runtime setup. Add tests for observable Dify
+integration behavior or a reproducible regression, not merely because a component or prop exists.
+Check existing stories and tests before adding coverage. Browser execution alone does not justify
+a new case; review incidental visual adjustments in Storybook without adding a permanent test.
+
 The package has two [Vitest projects]. Both run in Playwright Chromium [Browser Mode]; the project
 name identifies the behavior owner, not a different runtime.
 
@@ -18,34 +23,42 @@ configured accessibility checks through the [Storybook Vitest addon]. Add `play`
 also owns visible state changes, user interaction, keyboard paths, overlay flows, form behavior,
 loading behavior, or controlled-state coordination.
 
-Use regular Vitest tests for lower-level wrapper contracts such as class variants, Base UI
-passthrough props, hidden-input serialization, data-attribute hooks, stores, and edge cases that
-do not need a documented example.
+Use regular Vitest tests for Dify integration behavior that does not need a documented example,
+such as submitted values, store behavior, or a known regression reached through a public API.
+Prop passthrough alone does not justify a test. Assert the resulting behavior instead of CSS class
+names or private structure, and do not duplicate behavior already owned by Base UI or the browser.
+Vitest 5 browser locators match string names exactly by default. Assert a control's accessible name
+or description when that is the contract. `toHaveTextContent` also checks the full text exactly;
+use `toMatchTextContent` only when the complete text is intentionally outside the test's scope.
 
 Storybook [accessibility testing] uses `a11y.test = 'error'`, so enabled violations fail the test.
 Color contrast is the only globally disabled rule because it is a known design-token gap. Do not
 add another global exception. Keep a temporary exception local to the affected story, and do not
 use a `play` test in place of an accessibility fix.
 
+## Type contracts
+
+Keep compile-only public API fixtures in `__tests__/types.tsx`; package type checking includes them
+without registering runtime tests. Import public subpaths, verify useful inference with
+`expectTypeOf`, and use `@ts-expect-error` for intentional API boundaries. Cover nullable callbacks,
+value models and unsupported composition, not every forwarded prop. Runtime assertions cannot
+prove TypeScript inference, and type fixtures cannot prove focus, DOM semantics or interaction.
+
+A documented example and its `play` belong in one story; do not create an automatic duplicate just
+to run the same render. Keep Docs autoplay off for examples that move focus or open portals. Retain
+explicit open previews when needed for accessibility checks on popup content. Regressions that do
+not teach a distinct usage belong in the unit project rather than extra sidebar entries.
+
 ## Animation setup
 
 Base UI can wait for `element.getAnimations()` before unmounting transition-driven components.
-Set its test flag in a Vitest setup file when a test asserts final DOM state rather than animation
-behavior:
-
-```ts
-;(
-  globalThis as typeof globalThis & {
-    BASE_UI_ANIMATIONS_DISABLED: boolean
-  }
-).BASE_UI_ANIMATIONS_DISABLED = true
-```
-
-`vitest.setup.ts` already applies this for primitive tests. Storybook uses its preview setup and
-must retain real animation lifecycles. A unit test that intentionally asserts animation behavior
-may restore the flag to `false` locally, but must restore the previous value during cleanup.
+[`vitest.setup.ts`] sets `BASE_UI_ANIMATIONS_DISABLED = true` for primitive tests
+that assert final DOM state. Storybook uses its preview setup and retains real animation lifecycles.
+A unit test that intentionally asserts animation behavior may set the flag to `false` locally,
+but must restore the previous value during cleanup.
 
 [Browser Mode]: https://vitest.dev/guide/browser
 [Storybook Vitest addon]: https://storybook.js.org/docs/writing-tests/integrations/vitest-addon/index
 [Vitest projects]: https://vitest.dev/guide/projects.html
+[`vitest.setup.ts`]: ../vitest.setup.ts
 [accessibility testing]: https://storybook.js.org/docs/writing-tests/accessibility-testing

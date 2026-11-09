@@ -1,10 +1,11 @@
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -24,7 +25,7 @@ const DSLConfirmModal = ({
   onConfirm,
   confirmDisabled = false,
 }: DSLConfirmModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <AlertDialog
@@ -33,15 +34,12 @@ const DSLConfirmModal = ({
         if (!open) onCancel()
       }}
     >
-      <AlertDialogContent className="w-120 max-w-none! overflow-hidden! border-none p-6 text-left align-middle shadow-xl">
-        <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}
           </AlertDialogTitle>
-          <AlertDialogDescription
-            render={<div />}
-            className="flex grow flex-col system-md-regular text-text-secondary"
-          >
+          <AlertDialogDescription render={<div />}>
             <div>{t(($) => $['newApp.appCreateDSLErrorPart1'], { ns: 'app' })}</div>
             <div>{t(($) => $['newApp.appCreateDSLErrorPart2'], { ns: 'app' })}</div>
             <br />
@@ -54,15 +52,15 @@ const DSLConfirmModal = ({
               <span className="system-md-medium">{versions.systemVersion}</span>
             </div>
           </AlertDialogDescription>
-        </div>
-        <AlertDialogActions className="items-start p-0 pt-6">
-          <AlertDialogCancelButton variant="secondary">
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancelButton>
             {t(($) => $['newApp.Cancel'], { ns: 'app' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>
+          <AlertDialogConfirmButton tone="default" onClick={onConfirm} disabled={confirmDisabled}>
             {t(($) => $['newApp.Confirm'], { ns: 'app' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

@@ -1,13 +1,16 @@
 import type { AccessControlSubjects } from '../specific-groups-or-members'
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
-import { screen } from '@testing-library/react'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { SubjectType } from '@/models/access-control'
+import { AccessMode, SubjectType } from '@/models/access-control'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import AccessControlItem from '../access-control-item'
 import AddMemberOrGroupDialog from '../add-member-or-group-pop'
 
 const mockUseSearchForWhiteListCandidates = vi.fn()
+const originalIntersectionObserver = globalThis.IntersectionObserver
 const intersectionObserverMocks = vi.hoisted(() => ({
   callback: null as null | ((entries: Array<{ isIntersecting: boolean }>) => void),
 }))
@@ -50,6 +53,20 @@ function ControlledDialog({
   return <AddMemberOrGroupDialog subjects={subjects} onChange={handleChange} />
 }
 
+function DialogInsideAccessOption() {
+  return (
+    <RadioGroup
+      aria-label="Access"
+      value={AccessMode.SPECIFIC_GROUPS_MEMBERS}
+      onValueChange={() => {}}
+    >
+      <AccessControlItem type={AccessMode.SPECIFIC_GROUPS_MEMBERS}>
+        <ControlledDialog />
+      </AccessControlItem>
+    </RadioGroup>
+  )
+}
+
 describe('AddMemberOrGroupDialog', () => {
   const baseGroup = createGroup()
   const baseMember = createMember()
@@ -89,6 +106,10 @@ describe('AddMemberOrGroupDialog', () => {
         pages: [{ currPage: 1, subjects: [groupSubject, memberSubject], hasMore: false }],
       },
     })
+  })
+
+  afterAll(() => {
+    globalThis.IntersectionObserver = originalIntersectionObserver
   })
 
   it('should open the search popover and display candidates', async () => {
@@ -142,22 +163,44 @@ describe('AddMemberOrGroupDialog', () => {
     expect(memberToggle).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('should show the empty state when no candidates are returned', async () => {
-    mockUseSearchForWhiteListCandidates.mockReturnValue({
-      isLoading: false,
+  it('should stay open when expanding a group inside an access option', async () => {
+    const user = userEvent.setup()
+    render(<DialogInsideAccessOption />)
+
+    const addButton = screen.getByRole('button', { name: 'common.operation.add' })
+    await user.click(addButton)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'app.accessControlDialog.operateGroupAndMember.expand',
+      }),
+    )
+
+    expect(addButton).toHaveAttribute('aria-expanded', 'true')
+    expect(mockUseSearchForWhiteListCandidates).toHaveBeenLastCalledWith(
+      expect.objectContaining({ groupId: baseGroup.id }),
+      true,
+    )
+  })
+
+  it('keeps member-search loading text in its existing live region', async () => {
+    const query = {
+      isLoading: true,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
       data: { pages: [] },
-    })
-
+    }
+    mockUseSearchForWhiteListCandidates.mockReturnValue(query)
     const user = userEvent.setup()
-    render(<ControlledDialog />)
-
+    const view = render(<ControlledDialog />)
     await user.click(screen.getByText('common.operation.add'))
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('common.loading')
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
 
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'app.accessControlDialog.operateGroupAndMember.noResult',
-    )
+    mockUseSearchForWhiteListCandidates.mockReturnValue({ ...query, isLoading: false })
+    view.rerender(<ControlledDialog />)
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('app.accessControlDialog.operateGroupAndMember.noResult')
   })
 
   it('should keep breadcrumbs visible when the current group has no candidates', async () => {
@@ -185,7 +228,13 @@ describe('AddMemberOrGroupDialog', () => {
       name: 'app.accessControlDialog.operateGroupAndMember.allMembers',
     })
     expect(allMembersButton).toBeInTheDocument()
-    expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
+    const path = within(
+      screen.getByRole('navigation', {
+        name: 'app.accessControlDialog.operateGroupAndMember.allMembers',
+      }),
+    )
+    expect(path.getAllByRole('listitem')).toHaveLength(2)
+    expect(path.getByText(baseGroup.name)).toHaveAttribute('aria-current', 'location')
     expect(screen.getByRole('status')).toHaveTextContent(
       'app.accessControlDialog.operateGroupAndMember.noResult',
     )

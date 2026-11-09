@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const Remove: FC<Props> = ({ onClick }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   return (
     <IconButton
       aria-label={t(($) => $['operation.remove'], { ns: 'common' })}

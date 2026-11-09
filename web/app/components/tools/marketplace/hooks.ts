@@ -7,9 +7,9 @@ import {
 } from '@/app/components/plugins/marketplace/hooks'
 import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
-export const useMarketplace = (
+export const useToolMarketplace = (
   searchPluginText: string,
   filterPluginTags: string[],
   enabled = true,
@@ -29,13 +29,13 @@ export const useMarketplace = (
   } = useMarketplaceCollectionsAndPlugins()
   const {
     plugins,
-    resetPlugins,
+    resetQueryParams,
     queryPlugins,
     isLoading: isPluginsLoading,
     fetchNextPage,
     hasNextPage,
     page: pluginsPage,
-  } = useMarketplacePlugins()
+  } = useMarketplacePlugins(enabled)
   const searchPluginTextRef = useRef(searchPluginText)
   const filterPluginTagsRef = useRef(filterPluginTags)
 
@@ -72,7 +72,7 @@ export const useMarketplace = (
           exclude,
           type: 'plugin',
         })
-        resetPlugins()
+        resetQueryParams()
       }
     }
   }, [
@@ -80,7 +80,7 @@ export const useMarketplace = (
     filterPluginTags,
     queryPlugins,
     queryMarketplaceCollectionsAndPlugins,
-    resetPlugins,
+    resetQueryParams,
     exclude,
     enabled,
     isSuccess,

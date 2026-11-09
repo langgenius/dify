@@ -1,5 +1,5 @@
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
 import SpecificGroupsOrMembers from '../specific-groups-or-members'
@@ -67,7 +67,7 @@ describe('SpecificGroupsOrMembers', () => {
       />,
     )
 
-    expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+    expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
     expect(mockAddMemberOrGroupDialog).not.toHaveBeenCalled()
   })
 

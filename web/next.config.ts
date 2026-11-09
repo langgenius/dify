@@ -2,6 +2,10 @@ import type { NextConfig } from '@/next'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
 
+const openapiLoader = {
+  loader: '@dify/openapi-content-mapper/loader',
+}
+
 const isDev = process.env.NODE_ENV === 'development'
 const allowedDevOrigins = process.env.NEXT_ALLOWED_DEV_ORIGINS?.split(',')
   .map((origin) => origin.trim())
@@ -13,14 +17,20 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   serverExternalPackages: ['loro-crdt'],
   turbopack: {
-    rules: codeInspectorPlugin({
-      bundler: 'turbopack',
-    }),
+    rules: {
+      ...codeInspectorPlugin({ bundler: 'turbopack' }),
+      '*.openapi': { loaders: [openapiLoader], as: '*.js' },
+      '*.openapi-source': { loaders: [openapiLoader], as: '*.js' },
+      '*openapi-namespace.js': { loaders: [openapiLoader], as: '*.js' },
+    },
   },
-  experimental: {
-    // TODO: Remove when the `typescript` package can point to TypeScript 7.
-    // Next.js resolves that package, while compiler-API consumers still require TypeScript 6.
-    useTypeScriptCli: false,
+  webpack(config) {
+    config.module.rules.push({
+      test: /(?:\.openapi|\.openapi-source|openapi-namespace\.js)$/,
+      type: 'javascript/auto',
+      use: [openapiLoader],
+    })
+    return config
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   typescript: {

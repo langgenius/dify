@@ -12,6 +12,6 @@ describe('PluginSourceBadge', () => {
   ])('labels the %s source badge', (source, label) => {
     render(<PluginSourceBadge source={source} />)
 
-    expect(screen.getByLabelText(label)).toBeInTheDocument()
+    expect(screen.getByText(label)).toBeInTheDocument()
   })
 })

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, override
 from unittest.mock import PropertyMock, patch
 
@@ -16,19 +17,17 @@ from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from models.tools import ToolLabelBinding
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     """Expose the SQLite engine to code that owns its session lifecycle."""
 
     engine: Engine
 
-    def __init__(self, engine: Engine) -> None:
-        self.engine = engine
-
 
 # Create a mock class for testing abstract/base classes
 class _ConcreteBuiltinToolProviderController(BuiltinToolProviderController):
     @override
-    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
+    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
         return None
 
 
@@ -46,14 +45,14 @@ def _workflow_controller(provider_id: str = "wf-1") -> WorkflowToolProviderContr
 
 
 # Test pure logic: filtering and deduplication
-def test_tool_label_manager_filter_tool_labels():
+def test_tool_label_manager_filter_tool_labels() -> None:
     filtered = ToolLabelManager.filter_tool_labels(["search", "search", "invalid", "news"])
     assert set(filtered) == {"search", "news"}
     assert len(filtered) == 2
 
 
 @pytest.mark.parametrize("sqlite_session", [(ToolLabelBinding,)], indirect=True)
-def test_tool_label_manager_update_tool_labels_db(sqlite_session: Session):
+def test_tool_label_manager_update_tool_labels_db(sqlite_session: Session) -> None:
     """
     Test the database update logic for tool labels.
     Focus: Verify that labels are filtered, de-duplicated, and safely handled within a database session.
@@ -78,7 +77,7 @@ def test_tool_label_manager_update_tool_labels_db(sqlite_session: Session):
 
 
 # Test error handling
-def test_tool_label_manager_update_tool_labels_unsupported():
+def test_tool_label_manager_update_tool_labels_unsupported() -> None:
     with pytest.raises(ValueError, match="Unsupported tool type"):
         ToolLabelManager.update_tool_labels(object(), ["search"])  # type: ignore[arg-type]
 
@@ -87,7 +86,7 @@ def test_tool_label_manager_update_tool_labels_unsupported():
 @pytest.mark.parametrize("sqlite_session", [(ToolLabelBinding,)], indirect=True)
 def test_tool_label_manager_get_tool_labels_for_builtin_and_db(
     monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
-):
+) -> None:
     # Mocking a property (@property) using PropertyMock
     with patch.object(
         _ConcreteBuiltinToolProviderController,
@@ -112,7 +111,7 @@ def test_tool_label_manager_get_tool_labels_for_builtin_and_db(
     assert set(labels) == {"search", "news"}
 
 
-def test_tool_label_manager_get_tool_labels_unsupported():
+def test_tool_label_manager_get_tool_labels_unsupported() -> None:
     """
     Negative Test: Ensure get_tool_labels raises ValueError for unsupported controller types.
     This protects the internal API contract against accidental regressions during refactoring.
@@ -126,7 +125,7 @@ def test_tool_label_manager_get_tool_labels_unsupported():
 @pytest.mark.parametrize("sqlite_session", [(ToolLabelBinding,)], indirect=True)
 def test_tool_label_manager_get_tools_labels_batch(
     monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
-):
+) -> None:
     assert ToolLabelManager.get_tools_labels([]) == {}
 
     api = _api_controller("api-1")
@@ -149,7 +148,7 @@ def test_tool_label_manager_get_tools_labels_batch(
     assert labels["wf-1"] == ["utilities"]
 
 
-def test_tool_label_manager_get_tools_labels_unsupported():
+def test_tool_label_manager_get_tools_labels_unsupported() -> None:
     """
     Negative Test: Ensure get_tools_labels raises ValueError if the list contains
     unsupported controller types, even alongside valid ones.

@@ -27,7 +27,7 @@ vi.mock('@/service/share', () => serviceMocks)
 
 describe('ExternalMemberSSOAuth redirect security', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    Object.values(serviceMocks).forEach((mock) => mock.mockReset())
     navigationMocks.searchParams = new URLSearchParams({
       redirect_url: 'https://evil.example/chatbot/evil-app',
     })
@@ -75,7 +75,7 @@ describe('ExternalMemberSSOAuth redirect security', () => {
 
     await waitFor(() => {
       expect(serviceMock).toHaveBeenCalledWith('share-app', '/chatbot/share-app?foo=bar')
+      expect(navigationMocks.push).toHaveBeenCalledWith('https://idp.example/authorize')
     })
-    expect(navigationMocks.push).toHaveBeenCalledWith('https://idp.example/authorize')
   })
 })

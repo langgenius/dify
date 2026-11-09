@@ -6,6 +6,7 @@ from typing import Any, override
 
 import tablestore  # type: ignore
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 from tablestore import BatchGetRowRequest, TableInBatchGetRowItem
 
 from configs import dify_config
@@ -404,7 +405,9 @@ class TableStoreVector(BaseVector):
 
 class TableStoreVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TableStoreVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> TableStoreVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix

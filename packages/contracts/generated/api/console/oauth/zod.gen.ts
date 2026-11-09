@@ -10,6 +10,31 @@ export const zOAuthDataSourceBindingResponse = z.object({
 })
 
 /**
+ * ErrorMessageResponse
+ *
+ * Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+ */
+export const zErrorMessageResponse = z.object({
+  error: z.string(),
+})
+
+/**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * OAuthDataSourceResponse
  */
 export const zOAuthDataSourceResponse = z.object({
@@ -60,11 +85,12 @@ export const zOAuthClientPayload = z.object({
  */
 export const zOAuthProviderAccountResponse = z.object({
   avatar: z.string().nullish(),
+  created_at: z.int(),
   email: z.string(),
   id: z.string(),
-  interface_language: z.string(),
+  interface_language: z.string().nullable(),
   name: z.string(),
-  timezone: z.string(),
+  timezone: z.string().nullable(),
 })
 
 /**

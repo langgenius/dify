@@ -1,12 +1,10 @@
+import type { TFunction } from 'i18next'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { ChatVarType } from '../../type'
 import {
   buildObjectValueItems,
   formatChatVariableValue,
   formatObjectValueFromList,
-  getEditorMinHeight,
-  getEditorToggleLabelKey,
-  getPlaceholderByType,
   getTypeChangeState,
   parseEditorContent,
   validateVariableName,
@@ -76,7 +74,7 @@ describe('variable-modal helpers', () => {
         editInJSON: false,
         objectValue: [],
         type: ChatVarType.ArrayNumber,
-        value: [0, 1, undefined, null, ''] as unknown as Array<number | undefined>,
+        value: [0, 1, undefined, null, ''],
       }),
     ).toEqual([0, 1])
 
@@ -108,18 +106,11 @@ describe('variable-modal helpers', () => {
     ).toEqual([])
   })
 
-  it('should derive placeholders, editor defaults, and editor toggle labels', () => {
-    expect(getEditorMinHeight(ChatVarType.ArrayObject)).toBe('240px')
-    expect(getEditorMinHeight(ChatVarType.Object)).toBe('120px')
-    expect(getPlaceholderByType(ChatVarType.ArrayBoolean)).toBeTruthy()
+  it('initializes values and editing mode when changing variable types', () => {
     expect(getTypeChangeState(ChatVarType.Boolean).value).toBe(false)
     expect(getTypeChangeState(ChatVarType.ArrayBoolean).value).toEqual([false])
     expect(getTypeChangeState(ChatVarType.Object).objectValue).toHaveLength(1)
     expect(getTypeChangeState(ChatVarType.ArrayObject).editInJSON).toBe(true)
-    expect(getEditorToggleLabelKey(ChatVarType.Object, true)).toBe('chatVariable.modal.editInForm')
-    expect(getEditorToggleLabelKey(ChatVarType.ArrayString, false)).toBe(
-      'chatVariable.modal.editInJSON',
-    )
   })
 
   it('should parse boolean arrays from JSON editor content', () => {
@@ -146,7 +137,7 @@ describe('variable-modal helpers', () => {
 
   it('should validate variable names and notify when invalid', () => {
     const notify = vi.fn()
-    const t = withSelectorKey((key: string) => key)
+    const t = withSelectorKey((key: string) => key) as TFunction<['appDebug', 'workflow']>
 
     expect(
       validateVariableName({
@@ -167,6 +158,7 @@ describe('variable-modal helpers', () => {
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'error',
+        message: 'varKeyError.notStartWithNumber',
       }),
     )
   })

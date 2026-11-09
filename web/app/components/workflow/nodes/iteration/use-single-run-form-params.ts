@@ -20,10 +20,10 @@ const i18nPrefix = 'nodes.iteration'
 type Params = {
   id: string
   payload: IterationNodeType
-  runInputData: Record<string, any>
-  runInputDataRef: RefObject<Record<string, any>>
+  runInputData: Record<string, unknown>
+  runInputDataRef: RefObject<Record<string, unknown>>
   getInputVars: (textList: string[]) => InputVar[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: (data: Record<string, unknown>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
   iterationRunResult: NodeTracing[]
 }
@@ -35,7 +35,7 @@ const useSingleRunFormParams = ({
   setRunInputData,
   iterationRunResult,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { isNodeInIteration } = useIsNodeInIteration(id)
 
   const { getIterationNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
@@ -65,7 +65,9 @@ const useSingleRunFormParams = ({
       }
     > = {}
     iterationChildrenNodes.forEach((node) => {
-      const nodeVars = getNodeUsedVars(node).filter((item) => item && item.length > 0)
+      const nodeVars = getNodeUsedVars(node, { forExecution: true }).filter(
+        (item) => item && item.length > 0,
+      )
       nodeVars.forEach((varSelector) => {
         if (varSelector[0] === id) {
           // skip iteration node itself variable: item, index
@@ -112,13 +114,13 @@ const useSingleRunFormParams = ({
   })()
 
   const setInputVarValues = useCallback(
-    (newPayload: Record<string, any>) => {
+    (newPayload: Record<string, unknown>) => {
       setRunInputData(newPayload)
     },
     [setRunInputData],
   )
   const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
+    const vars: Record<string, unknown> = {}
     Object.keys(runInputData).forEach((key) => {
       vars[key] = runInputData[key]
     })

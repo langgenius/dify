@@ -1,8 +1,14 @@
 import type { WebAppAddress } from './webapp-address'
+import { v4 as uuidV4 } from 'uuid'
 import { ACCESS_TOKEN_LOCAL_STORAGE_NAME, PASSPORT_LOCAL_STORAGE_NAME } from '@/config'
-import { AccessMode } from '@/models/access-control'
 import { getPublic, postPublic } from './base'
-import { getWebAppPassportKey, resolveWebAppAddress } from './webapp-address'
+import { getWebAppPassportKey, getWebAppScopeKey, resolveWebAppAddress } from './webapp-address'
+
+const WEB_APP_AUTHORIZATION_RECOVERY_KEY_PREFIX = 'webapp-authorization-recovery-'
+
+function getWebAppAuthorizationRecoveryKey(address: WebAppAddress) {
+  return `${WEB_APP_AUTHORIZATION_RECOVERY_KEY_PREFIX}${getWebAppScopeKey(address)}`
+}
 
 export function setWebAppAccessToken(token: string) {
   localStorage.setItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME, token)
@@ -10,6 +16,18 @@ export function setWebAppAccessToken(token: string) {
 
 export function setWebAppPassport(address: WebAppAddress, token: string) {
   localStorage.setItem(PASSPORT_LOCAL_STORAGE_NAME(getWebAppPassportKey(address)), token)
+}
+
+export function beginWebAppAuthorizationRecovery(address: WebAppAddress) {
+  const key = getWebAppAuthorizationRecoveryKey(address)
+  if (sessionStorage.getItem(key)) return false
+
+  sessionStorage.setItem(key, 'pending')
+  return true
+}
+
+export function completeWebAppAuthorizationRecovery(address: WebAppAddress) {
+  sessionStorage.removeItem(getWebAppAuthorizationRecoveryKey(address))
 }
 
 export function getWebAppAccessToken() {
@@ -21,11 +39,25 @@ export function getWebAppPassport(address: WebAppAddress | null) {
   return localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME(getWebAppPassportKey(address))) || ''
 }
 
+export function getOrCreateWebAppSessionId(address: WebAppAddress) {
+  if (address.kind !== 'environment') return ''
+
+  const key = `session_id-${getWebAppScopeKey(address)}`
+  // oxlint-disable-next-line no-restricted-globals -- Environment passport requests need a stable session ID synchronously.
+  const sessionId = localStorage.getItem(key)
+  if (sessionId) return sessionId
+
+  const created = uuidV4()
+  // oxlint-disable-next-line no-restricted-globals -- Environment passport requests need a stable session ID synchronously.
+  localStorage.setItem(key, created)
+  return created
+}
+
 function clearWebAppAccessToken() {
   localStorage.removeItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)
 }
 
-function clearWebAppPassport(address: WebAppAddress | null) {
+export function clearWebAppPassport(address: WebAppAddress | null) {
   if (!address) return
   localStorage.removeItem(PASSPORT_LOCAL_STORAGE_NAME(getWebAppPassportKey(address)))
 }
@@ -35,11 +67,7 @@ type isWebAppLogin = {
   app_logged_in: boolean
 }
 
-export async function webAppLoginStatus(
-  shareCode: string,
-  accessMode: AccessMode,
-  userId?: string,
-) {
+export async function webAppLoginStatus(shareCode: string, userId?: string) {
   // always need to check login to prevent passport from being outdated
   // check remotely, the access token could be in cookie (enterprise SSO redirected with https)
   const address = resolveWebAppAddress()
@@ -50,8 +78,7 @@ export async function webAppLoginStatus(
     `/login/status?${params.toString()}`,
   )
   return {
-    userLoggedIn:
-      address?.kind === 'environment' && accessMode === AccessMode.PUBLIC ? true : logged_in,
+    userLoggedIn: logged_in,
     appLoggedIn: app_logged_in,
   }
 }

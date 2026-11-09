@@ -1,486 +1,128 @@
-import type { RefObject } from 'react'
-import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createElement, useRef } from 'react'
 import { useUploader } from '../use-uploader'
 
-describe('useUploader Hook', () => {
-  let mockContainerRef: RefObject<HTMLDivElement | null>
-  let mockOnFileChange: (file: File | null) => void
-  let mockContainer: HTMLDivElement
+const file = new File(['content'], 'test.difypkg', { type: 'application/octet-stream' })
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-
-    mockContainer = document.createElement('div')
-    document.body.appendChild(mockContainer)
-
-    mockContainerRef = { current: mockContainer }
-    mockOnFileChange = vi.fn()
+function Uploader({
+  onFileChange,
+  enabled = true,
+}: {
+  onFileChange: (file: File | null) => void
+  enabled?: boolean
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { dragging, fileUploader, fileChangeHandle, removeFile } = useUploader({
+    onFileChange,
+    containerRef,
+    enabled,
   })
+  return createElement(
+    'div',
+    { ref: containerRef, 'aria-label': 'Plugin upload', role: 'region' },
+    createElement('span', { role: 'status' }, dragging ? 'Drop package here' : 'Choose package'),
+    createElement('input', {
+      ref: fileUploader,
+      type: 'file',
+      'aria-label': 'Package',
+      disabled: !fileChangeHandle,
+      onChange: fileChangeHandle ?? undefined,
+    }),
+    createElement('button', { disabled: !removeFile, onClick: removeFile ?? undefined }, 'Remove'),
+  )
+}
 
-  afterEach(() => {
-    if (mockContainer.parentNode) document.body.removeChild(mockContainer)
+it('shows file dragging, ignores text drags and keeps the drop target active over children', () => {
+  render(createElement(Uploader, { onFileChange: vi.fn() }))
+  const target = screen.getByRole('region')
+  fireEvent.dragEnter(target, { dataTransfer: { types: ['text/plain'] } })
+  expect(screen.getByRole('status')).toHaveTextContent('Choose package')
+  fireEvent.dragEnter(target, { dataTransfer: { types: ['Files'] } })
+  expect(screen.getByRole('status')).toHaveTextContent('Drop package here')
+  const leaveToChild = new MouseEvent('dragleave', {
+    bubbles: true,
+    relatedTarget: screen.getByLabelText('Package'),
   })
-
-  describe('Initial State', () => {
-    it('should return initial state with dragging false', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      expect(result.current.dragging).toBe(false)
-      expect(result.current.fileUploader.current).toBeNull()
-      expect(result.current.fileChangeHandle).not.toBeNull()
-      expect(result.current.removeFile).not.toBeNull()
-    })
-
-    it('should return null handlers when disabled', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-          enabled: false,
-        }),
-      )
-
-      expect(result.current.dragging).toBe(false)
-      expect(result.current.fileChangeHandle).toBeNull()
-      expect(result.current.removeFile).toBeNull()
-    })
-  })
-
-  describe('Drag Events', () => {
-    it('should handle dragenter and set dragging to true', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragEnterEvent, 'dataTransfer', {
-        value: { types: ['Files'] },
-      })
-
-      act(() => {
-        mockContainer.dispatchEvent(dragEnterEvent)
-      })
-
-      expect(result.current.dragging).toBe(true)
-    })
-
-    it('should not set dragging when dragenter without Files type', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragEnterEvent, 'dataTransfer', {
-        value: { types: ['text/plain'] },
-      })
-
-      act(() => {
-        mockContainer.dispatchEvent(dragEnterEvent)
-      })
-
-      expect(result.current.dragging).toBe(false)
-    })
-
-    it('should handle dragover event', () => {
-      renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      const dragOverEvent = new Event('dragover', { bubbles: true, cancelable: true })
-
-      act(() => {
-        mockContainer.dispatchEvent(dragOverEvent)
-      })
-
-      // dragover should prevent default and stop propagation
-      expect(mockContainer).toBeInTheDocument()
-    })
-
-    it('should handle dragleave when relatedTarget is null', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      // First set dragging to true
-      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragEnterEvent, 'dataTransfer', {
-        value: { types: ['Files'] },
-      })
-      act(() => {
-        mockContainer.dispatchEvent(dragEnterEvent)
-      })
-      expect(result.current.dragging).toBe(true)
-
-      // Then trigger dragleave with null relatedTarget
-      const dragLeaveEvent = new Event('dragleave', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragLeaveEvent, 'relatedTarget', {
-        value: null,
-      })
-
-      act(() => {
-        mockContainer.dispatchEvent(dragLeaveEvent)
-      })
-
-      expect(result.current.dragging).toBe(false)
-    })
-
-    it('should handle dragleave when relatedTarget is outside container', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      // First set dragging to true
-      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragEnterEvent, 'dataTransfer', {
-        value: { types: ['Files'] },
-      })
-      act(() => {
-        mockContainer.dispatchEvent(dragEnterEvent)
-      })
-      expect(result.current.dragging).toBe(true)
-
-      // Create element outside container
-      const outsideElement = document.createElement('div')
-      document.body.appendChild(outsideElement)
-
-      // Trigger dragleave with relatedTarget outside container
-      const dragLeaveEvent = new Event('dragleave', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragLeaveEvent, 'relatedTarget', {
-        value: outsideElement,
-      })
-
-      act(() => {
-        mockContainer.dispatchEvent(dragLeaveEvent)
-      })
-
-      expect(result.current.dragging).toBe(false)
-      document.body.removeChild(outsideElement)
-    })
-
-    it('should not set dragging to false when relatedTarget is inside container', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      // First set dragging to true
-      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragEnterEvent, 'dataTransfer', {
-        value: { types: ['Files'] },
-      })
-      act(() => {
-        mockContainer.dispatchEvent(dragEnterEvent)
-      })
-      expect(result.current.dragging).toBe(true)
-
-      // Create element inside container
-      const insideElement = document.createElement('div')
-      mockContainer.appendChild(insideElement)
-
-      // Trigger dragleave with relatedTarget inside container
-      const dragLeaveEvent = new Event('dragleave', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragLeaveEvent, 'relatedTarget', {
-        value: insideElement,
-      })
-
-      act(() => {
-        mockContainer.dispatchEvent(dragLeaveEvent)
-      })
-
-      // Should still be dragging since relatedTarget is inside container
-      expect(result.current.dragging).toBe(true)
-    })
-  })
-
-  describe('Drop Events', () => {
-    it('should handle drop event with files', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      // First set dragging to true
-      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragEnterEvent, 'dataTransfer', {
-        value: { types: ['Files'] },
-      })
-      act(() => {
-        mockContainer.dispatchEvent(dragEnterEvent)
-      })
-
-      // Create mock file
-      const file = new File(['content'], 'test.difypkg', { type: 'application/octet-stream' })
-
-      // Trigger drop event
-      const dropEvent = new Event('drop', { bubbles: true, cancelable: true })
-      Object.defineProperty(dropEvent, 'dataTransfer', {
-        value: { files: [file] },
-      })
-
-      act(() => {
-        mockContainer.dispatchEvent(dropEvent)
-      })
-
-      expect(result.current.dragging).toBe(false)
-      expect(mockOnFileChange).toHaveBeenCalledWith(file)
-    })
-
-    it('should not call onFileChange when drop has no dataTransfer', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      // Set dragging first
-      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
-      Object.defineProperty(dragEnterEvent, 'dataTransfer', {
-        value: { types: ['Files'] },
-      })
-      act(() => {
-        mockContainer.dispatchEvent(dragEnterEvent)
-      })
-
-      // Drop without dataTransfer
-      const dropEvent = new Event('drop', { bubbles: true, cancelable: true })
-      // No dataTransfer property
-
-      act(() => {
-        mockContainer.dispatchEvent(dropEvent)
-      })
-
-      expect(result.current.dragging).toBe(false)
-      expect(mockOnFileChange).not.toHaveBeenCalled()
-    })
-
-    it('should not call onFileChange when drop has empty files array', () => {
-      renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      const dropEvent = new Event('drop', { bubbles: true, cancelable: true })
-      Object.defineProperty(dropEvent, 'dataTransfer', {
-        value: { files: [] },
-      })
-
-      act(() => {
-        mockContainer.dispatchEvent(dropEvent)
-      })
-
-      expect(mockOnFileChange).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('File Change Handler', () => {
-    it('should call onFileChange with file from input', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      const file = new File(['content'], 'test.difypkg', { type: 'application/octet-stream' })
-      const mockEvent = {
-        target: {
-          files: [file],
-        },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle?.(mockEvent)
-      })
-
-      expect(mockOnFileChange).toHaveBeenCalledWith(file)
-    })
-
-    it('should call onFileChange with null when no files', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      const mockEvent = {
-        target: {
-          files: null,
-        },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle?.(mockEvent)
-      })
-
-      expect(mockOnFileChange).toHaveBeenCalledWith(null)
-    })
-  })
-
-  describe('Remove File', () => {
-    it('should call onFileChange with null', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      act(() => {
-        result.current.removeFile?.()
-      })
-
-      expect(mockOnFileChange).toHaveBeenCalledWith(null)
-    })
-
-    it('should handle removeFile when fileUploader has a value', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      // Create a mock input element with value property
-      const mockInput = {
-        value: 'test.difypkg',
-      }
-
-      // Override the fileUploader ref
-      Object.defineProperty(result.current.fileUploader, 'current', {
-        value: mockInput,
-        writable: true,
-      })
-
-      act(() => {
-        result.current.removeFile?.()
-      })
-
-      expect(mockOnFileChange).toHaveBeenCalledWith(null)
-      expect(mockInput.value).toBe('')
-    })
-
-    it('should handle removeFile when fileUploader is null', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-        }),
-      )
-
-      // fileUploader.current is null by default
-      act(() => {
-        result.current.removeFile?.()
-      })
-
-      expect(mockOnFileChange).toHaveBeenCalledWith(null)
-    })
-  })
-
-  describe('Enabled/Disabled State', () => {
-    it('should not add event listeners when disabled', () => {
-      const addEventListenerSpy = vi.spyOn(mockContainer, 'addEventListener')
-
-      renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-          enabled: false,
-        }),
-      )
-
-      expect(addEventListenerSpy).not.toHaveBeenCalled()
-    })
-
-    it('should add event listeners when enabled', () => {
-      const addEventListenerSpy = vi.spyOn(mockContainer, 'addEventListener')
-
-      renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-          enabled: true,
-        }),
-      )
-
-      expect(addEventListenerSpy).toHaveBeenCalledWith('dragenter', expect.any(Function))
-      expect(addEventListenerSpy).toHaveBeenCalledWith('dragover', expect.any(Function))
-      expect(addEventListenerSpy).toHaveBeenCalledWith('dragleave', expect.any(Function))
-      expect(addEventListenerSpy).toHaveBeenCalledWith('drop', expect.any(Function))
-    })
-
-    it('should remove event listeners on cleanup', () => {
-      const removeEventListenerSpy = vi.spyOn(mockContainer, 'removeEventListener')
-
-      const { unmount } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-          enabled: true,
-        }),
-      )
-
-      unmount()
-
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('dragenter', expect.any(Function))
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('dragover', expect.any(Function))
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('dragleave', expect.any(Function))
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('drop', expect.any(Function))
-    })
-
-    it('should return false for dragging when disabled', () => {
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: mockContainerRef,
-          enabled: false,
-        }),
-      )
-
-      expect(result.current.dragging).toBe(false)
-    })
-  })
-
-  describe('Container Ref Edge Cases', () => {
-    it('should handle null containerRef.current', () => {
-      const nullRef: RefObject<HTMLDivElement | null> = { current: null }
-
-      const { result } = renderHook(() =>
-        useUploader({
-          onFileChange: mockOnFileChange,
-          containerRef: nullRef,
-        }),
-      )
-
-      expect(result.current.dragging).toBe(false)
-    })
-  })
+  fireEvent(target, leaveToChild)
+  expect(screen.getByRole('status')).toHaveTextContent('Drop package here')
+  fireEvent.dragLeave(target, { relatedTarget: document.body })
+  expect(screen.getByRole('status')).toHaveTextContent('Choose package')
+  fireEvent.dragEnter(target, { dataTransfer: { types: ['Files'] } })
+  fireEvent.dragLeave(target, { relatedTarget: null })
+  expect(screen.getByRole('status')).toHaveTextContent('Choose package')
+})
+
+it('prevents browser drag navigation and consumes only the first dropped package', () => {
+  const onFileChange = vi.fn()
+  render(createElement(Uploader, { onFileChange }))
+  const target = screen.getByRole('region')
+  const bubble = vi.fn()
+  document.body.addEventListener('dragover', bubble)
+  try {
+    const event = new Event('dragover', { bubbles: true, cancelable: true })
+    fireEvent(target, event)
+    expect(event.defaultPrevented).toBe(true)
+    expect(bubble).not.toHaveBeenCalled()
+  } finally {
+    document.body.removeEventListener('dragover', bubble)
+  }
+  fireEvent.dragEnter(target, { dataTransfer: { types: ['Files'] } })
+  fireEvent.drop(target, { dataTransfer: { files: [file, new File(['other'], 'other.difypkg')] } })
+  expect(onFileChange).toHaveBeenCalledExactlyOnceWith(file)
+  expect(screen.getByRole('status')).toHaveTextContent('Choose package')
+})
+
+it.each([undefined, { files: [] }])(
+  'clears dragging without selecting a file for an empty drop (%s)',
+  (dataTransfer) => {
+    const onFileChange = vi.fn()
+    render(createElement(Uploader, { onFileChange }))
+    const target = screen.getByRole('region')
+    fireEvent.dragEnter(target, { dataTransfer: { types: ['Files'] } })
+    fireEvent.drop(target, { dataTransfer })
+    expect(screen.getByRole('status')).toHaveTextContent('Choose package')
+    expect(onFileChange).not.toHaveBeenCalled()
+  },
+)
+
+it('selects, removes and reselects the same file through the real input', async () => {
+  const user = userEvent.setup()
+  const onFileChange = vi.fn()
+  render(createElement(Uploader, { onFileChange }))
+  const input = screen.getByLabelText('Package') as HTMLInputElement
+  await user.upload(input, file)
+  expect(onFileChange).toHaveBeenLastCalledWith(file)
+  await user.click(screen.getByRole('button', { name: 'Remove' }))
+  expect(onFileChange).toHaveBeenLastCalledWith(null)
+  expect(input.value).toBe('')
+  await user.upload(input, file)
+  expect(onFileChange).toHaveBeenCalledTimes(3)
+  expect(onFileChange).toHaveBeenLastCalledWith(file)
+  fireEvent.change(input, { target: { files: [] } })
+  expect(onFileChange).toHaveBeenLastCalledWith(null)
+})
+
+it('ignores dragging and drops while disabled, then enables the upload controls', () => {
+  const onFileChange = vi.fn()
+  const { rerender } = render(createElement(Uploader, { onFileChange, enabled: false }))
+  const target = screen.getByRole('region')
+  fireEvent.dragEnter(target, { dataTransfer: { types: ['Files'] } })
+  fireEvent.drop(target, { dataTransfer: { files: [file] } })
+  expect(screen.getByRole('status')).toHaveTextContent('Choose package')
+  expect(screen.getByLabelText('Package')).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled()
+  expect(onFileChange).not.toHaveBeenCalled()
+  rerender(createElement(Uploader, { onFileChange }))
+  fireEvent.drop(target, { dataTransfer: { files: [file] } })
+  expect(onFileChange).toHaveBeenCalledExactlyOnceWith(file)
+})
+
+it('stops responding to drops after the hook unmounts', () => {
+  const containerRef = { current: document.createElement('div') }
+  const onFileChange = vi.fn()
+  const { unmount } = renderHook(() => useUploader({ containerRef, onFileChange }))
+  unmount()
+  act(() => fireEvent.drop(containerRef.current, { dataTransfer: { files: [file] } }))
+  expect(onFileChange).not.toHaveBeenCalled()
 })

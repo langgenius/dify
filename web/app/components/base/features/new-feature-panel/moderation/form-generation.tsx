@@ -10,7 +10,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 
 type FormGenerationProps = {
   forms: CodeBasedExtensionForm[]
@@ -21,12 +21,15 @@ const FormGeneration: FC<FormGenerationProps> = ({ forms, value, onChange }) => 
   const locale = useLocale()
 
   const handleFormChange = (type: string, v: string) => {
-    onChange({ ...value, [type]: v })
+    onChange({ [type]: v })
   }
 
   return (
     <>
-      {forms.map((form, index) => {
+      {forms.map((form) => {
+        const fieldValue = value?.[form.variable]
+        const inputValue =
+          typeof fieldValue === 'string' || typeof fieldValue === 'number' ? fieldValue : ''
         const selectOptions =
           form.type === 'select'
             ? form.options.map((option) => ({
@@ -38,13 +41,14 @@ const FormGeneration: FC<FormGenerationProps> = ({ forms, value, onChange }) => 
           selectOptions.find((option) => option.value === value?.[form.variable]) ?? null
 
         return (
-          <div key={index} className="py-2">
+          <div key={form.variable} className="py-2">
             <div className="flex h-9 items-center text-sm font-medium text-text-primary">
               {locale === 'zh-Hans' ? form.label['zh-Hans'] : form.label['en-US']}
             </div>
             {form.type === 'text-input' && (
               <input
-                value={value?.[form.variable] || ''}
+                aria-label={locale === 'zh-Hans' ? form.label['zh-Hans'] : form.label['en-US']}
+                value={inputValue}
                 className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden"
                 placeholder={form.placeholder}
                 onChange={(e) => handleFormChange(form.variable, e.target.value)}
@@ -55,7 +59,7 @@ const FormGeneration: FC<FormGenerationProps> = ({ forms, value, onChange }) => 
                 <Textarea
                   aria-label={locale === 'zh-Hans' ? form.label['zh-Hans'] : form.label['en-US']}
                   className="resize-none"
-                  value={value?.[form.variable] || ''}
+                  value={inputValue}
                   placeholder={form.placeholder}
                   onValueChange={(value) => handleFormChange(form.variable, value)}
                 />

@@ -1,19 +1,18 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { renderWithConsoleQuery as renderWithoutUrlState } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ApiBasedExtensionSelector } from '../selector'
 
-const { mockApiBasedExtensionsQuery, mockCreateApiBasedExtension, mockUpdateApiBasedExtension } =
-  vi.hoisted(() => ({
-    mockApiBasedExtensionsQuery: vi.fn(),
+const { listExtensions, mockCreateApiBasedExtension, mockUpdateApiBasedExtension } = vi.hoisted(
+  () => ({
+    listExtensions: vi.fn(),
     mockCreateApiBasedExtension: vi.fn(),
     mockUpdateApiBasedExtension: vi.fn(),
-  }))
-
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
+  }),
+)
 
 vi.mock('@/context/i18n', () => ({
   useDocLink:
@@ -22,33 +21,21 @@ vi.mock('@/context/i18n', () => ({
       `https://docs.dify.ai${path}`,
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    apiBasedExtension: {
-      get: {
-        queryOptions: () => ({}),
-      },
-      post: {
-        mutationOptions: () => ({ mutationFn: mockCreateApiBasedExtension }),
-      },
-      byId: {
-        post: {
-          mutationOptions: () => ({ mutationFn: mockUpdateApiBasedExtension }),
-        },
-      },
-    },
-  },
-}))
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(() => mockApiBasedExtensionsQuery()),
-  useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
-    isPending: false,
-    mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
-      options.mutationFn(variables).then((data) => mutationOptions?.onSuccess?.(data))
-    },
-  })),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apiBasedExtension.get': listExtensions,
+      'apiBasedExtension.post': mockCreateApiBasedExtension,
+      'apiBasedExtension.byId.post': mockUpdateApiBasedExtension,
+    }),
+  }
+})
 
 describe('ApiBasedExtensionSelector', () => {
   const mockOnChange = vi.fn()
@@ -60,116 +47,71 @@ describe('ApiBasedExtensionSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockApiBasedExtensionsQuery.mockReturnValue({
-      data: mockData,
-      isPending: false,
-      isError: false,
-    })
+    listExtensions.mockResolvedValue(mockData)
   })
 
-  describe('Rendering', () => {
-    it('should render placeholder when no value is selected', () => {
-      // Act
-      render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
-
-      // Assert
-      // Assert
-      expect(screen.getByText('common.apiBasedExtension.selector.placeholder'))!.toBeInTheDocument()
-    })
-
-    it('should render selected item name', async () => {
-      // Act
-      render(<ApiBasedExtensionSelector value="1" onChange={mockOnChange} />)
-
-      // Assert
-      // Assert
-      expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
-    })
+  it('selects an extension, updates its displayed name and closes the picker', async () => {
+    const user = userEvent.setup()
+    function Selector() {
+      const [value, setValue] = useState('1')
+      return <ApiBasedExtensionSelector value={value} onChange={setValue} />
+    }
+    render(<Selector />)
+    await user.click(await screen.findByRole('button', { name: /^Extension 1/ }))
+    await user.click(await screen.findByRole('button', { name: /^Extension 2/ }))
+    await waitFor(() =>
+      expect(screen.queryByText('common.apiBasedExtension.selector.title')).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('button', { name: /^Extension 2/ })).toBeVisible()
   })
 
-  describe('Dropdown Interactions', () => {
-    it('should open dropdown when clicked', async () => {
-      // Act
-      render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
-      const trigger = screen.getByText('common.apiBasedExtension.selector.placeholder')
+  it('opens account settings at custom endpoints when choosing manage', async () => {
+    const user = userEvent.setup()
+    render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
+    await user.click(
+      screen.getByRole('button', { name: 'common.apiBasedExtension.selector.placeholder' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'common.apiBasedExtension.selector.manage' }),
+    )
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('custom-endpoint'),
+    )
+  })
 
-      fireEvent.click(trigger)
-
-      // Assert
-      // Assert
+  it('creates an extension from the picker and closes the dialog after saving', async () => {
+    const user = userEvent.setup()
+    mockCreateApiBasedExtension.mockResolvedValue({
+      id: 'new-id',
+      name: 'New Ext',
+      api_endpoint: 'https://api.test',
+      api_key: 'secret-key',
+    })
+    render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
+    await user.click(
+      screen.getByRole('button', { name: 'common.apiBasedExtension.selector.placeholder' }),
+    )
+    await user.click(await screen.findByRole('button', { name: 'common.operation.add' }))
+    await user.type(
+      await screen.findByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
+      'New Ext',
+    )
+    await user.type(
+      screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
+      'https://api.test',
+    )
+    await user.type(
+      screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
+      'secret-key',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => {
+      expect(mockCreateApiBasedExtension).toHaveBeenCalledWith({
+        body: { name: 'New Ext', api_endpoint: 'https://api.test', api_key: 'secret-key' },
+      })
       expect(
-        await screen.findByText('common.apiBasedExtension.selector.title'),
-      )!.toBeInTheDocument()
-    })
-
-    it('should call onChange and closes dropdown when an extension is selected', async () => {
-      // Act
-      render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
-      fireEvent.click(screen.getByText('common.apiBasedExtension.selector.placeholder'))
-
-      const option = await screen.findByText('Extension 2')
-      fireEvent.click(option)
-
-      // Assert
-      expect(mockOnChange).toHaveBeenCalledWith('2')
-    })
-  })
-
-  describe('Manage and Add Extensions', () => {
-    it('should open account settings when clicking manage', async () => {
-      // Act
-      render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
-      fireEvent.click(screen.getByText('common.apiBasedExtension.selector.placeholder'))
-
-      const manageButton = await screen.findByText('common.apiBasedExtension.selector.manage')
-      fireEvent.click(manageButton)
-
-      // Assert
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('custom-endpoint')
-    })
-
-    it('should open add modal when clicking add button and close it after save', async () => {
-      // Arrange
-      mockCreateApiBasedExtension.mockResolvedValue({
-        id: 'new-id',
-        name: 'New Ext',
-        api_endpoint: 'https://api.test',
-        api_key: 'secret-key',
-      })
-
-      // Act
-      render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
-      fireEvent.click(screen.getByText('common.apiBasedExtension.selector.placeholder'))
-
-      const addButton = await screen.findByText('common.operation.add')
-      fireEvent.click(addButton)
-      fireEvent.change(
-        screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
-        { target: { value: 'New Ext' } },
-      )
-      fireEvent.change(
-        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
-        { target: { value: 'https://api.test' } },
-      )
-      fireEvent.change(
-        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
-        { target: { value: 'secret-key' } },
-      )
-      fireEvent.click(screen.getByText('common.operation.save'))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockCreateApiBasedExtension).toHaveBeenCalledWith({
-          body: {
-            name: 'New Ext',
-            api_endpoint: 'https://api.test',
-            api_key: 'secret-key',
-          },
-        })
-        expect(
-          screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.title' }),
-        ).not.toBeInTheDocument()
-      })
+        screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.title' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

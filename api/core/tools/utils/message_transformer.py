@@ -5,10 +5,11 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import numpy as np
-import pytz
 
+from core.app.file_access import grant_tool_file_access
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from core.workflow.file_reference import parse_file_reference
@@ -27,7 +28,7 @@ def safe_json_value(v):
             tz_name = "UTC"
             if isinstance(current_user, Account) and current_user.timezone is not None:
                 tz_name = current_user.timezone
-            return v.astimezone(pytz.timezone(tz_name)).isoformat()
+            return v.astimezone(ZoneInfo(tz_name)).isoformat()
         case date():
             return v.isoformat()
         case UUID():
@@ -65,11 +66,11 @@ class ToolFileMessageTransformer:
     @classmethod
     def transform_tool_invoke_messages(
         cls,
-        messages: Generator[ToolInvokeMessage, None, None],
+        messages: Generator[ToolInvokeMessage],
         user_id: str,
         tenant_id: str,
         conversation_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         Transform tool message and handle file download
         """
@@ -214,6 +215,11 @@ class ToolFileMessageTransformer:
         resolved_tool_file_id = tool_file_id or ToolFileMessageTransformer._extract_tool_file_id(url)
         if resolved_tool_file_id and "tool_file_id" not in normalized_meta:
             normalized_meta["tool_file_id"] = resolved_tool_file_id
+        if resolved_tool_file_id:
+            # Plugin/tool files may be owned by a different user than the chatting
+            # end user (workflow-as-tool from an agent). Grant this execution so
+            # later LLM nodes can attach the file instead of dropping it (#41169).
+            grant_tool_file_access([resolved_tool_file_id])
         return normalized_meta
 
     @staticmethod

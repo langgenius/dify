@@ -1,5 +1,5 @@
 import type { AppMode } from '@dify/contracts/api/web/types.gen'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import type { AppIconType } from '@/types/app'
 
 export type ConversationItem = {

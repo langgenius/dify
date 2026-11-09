@@ -8,12 +8,12 @@ import type { RoleName } from './plugins/history-block'
 import type { RosterReferenceToken } from './plugins/roster-reference-block/utils'
 import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 
-export type Option = {
+type Option = {
   value: string
   name: string
 }
 
-export type ExternalToolOption = {
+type ExternalToolOption = {
   name: string
   variableName: string
   icon?: string

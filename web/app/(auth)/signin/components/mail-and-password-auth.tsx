@@ -1,0 +1,150 @@
+import type { LoginPayload } from '@dify/contracts/api/console/login/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
+import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
+import { toast } from '@/app/notifications'
+import { emailRegex } from '@/config'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { encryptPassword } from '@/utils/encryption'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { basePath } from '@/utils/var'
+import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
+
+type MailAndPasswordAuthProps = {
+  isInvite: boolean
+  isEmailSetup: boolean
+}
+
+function hasErrorCode(error: unknown, code: string) {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === code
+}
+
+export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
+  const { t } = useTranslation(['login'])
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const searchParams = useSearchParams()
+  const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
+  const [email, setEmail] = useState(emailFromLink)
+  const [password, setPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleEmailPasswordLogin = async () => {
+    if (isLoading) return
+    try {
+      setIsLoading(true)
+      const loginData: LoginPayload = {
+        email,
+        password: encryptPassword(password),
+        remember_me: true,
+      }
+      if (isInvite)
+        loginData.invite_token = decodeURIComponent(searchParams.get('invite_token') as string)
+      const res = await consoleClient.login.post({ body: loginData })
+      if (res.result === 'success') {
+        trackEvent('user_login_success', {
+          method: 'email_password',
+          is_invite: isInvite,
+        })
+
+        if (isInvite) {
+          router.replace(`/signin/invite-settings?${searchParams.toString()}`)
+        } else {
+          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
+          replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
+        }
+      } else {
+        toast.error(res.data)
+      }
+    } catch (error) {
+      if (hasErrorCode(error, 'authentication_failed'))
+        toast.error(t(($) => $['error.invalidEmailOrPassword'], { ns: 'login' }))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <Form
+      onFormSubmit={() => {
+        void handleEmailPasswordLogin()
+      }}
+    >
+      <Field
+        name="email"
+        disabled={isInvite}
+        validate={(value) => {
+          const emailValue = String(value)
+          return !emailValue || emailRegex.test(emailValue)
+            ? null
+            : t(($) => $['error.emailInValid'], { ns: 'login' })
+        }}
+        className="mb-3"
+      >
+        <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
+        <Input
+          value={email}
+          onValueChange={setEmail}
+          disabled={isInvite}
+          type="email"
+          required
+          autoComplete="email"
+          spellCheck={false}
+          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' })}
+        />
+        <FieldError>
+          {t(($) => $[email ? 'error.emailInValid' : 'error.emailEmpty'], { ns: 'login' })}
+        </FieldError>
+      </Field>
+
+      <Field name="password" className="relative mb-3">
+        <FieldLabel>{t(($) => $.password, { ns: 'login' })}</FieldLabel>
+        <PasswordField>
+          <PasswordFieldInput
+            value={password}
+            onValueChange={setPassword}
+            required
+            autoComplete="current-password"
+            placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
+          />
+          <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+        </PasswordField>
+        {isEmailSetup ? (
+          <Link
+            href={`/reset-password?${searchParams.toString()}`}
+            className="absolute inset-e-0 top-1 rounded-sm system-xs-regular text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            {t(($) => $.forget, { ns: 'login' })}
+          </Link>
+        ) : (
+          <span className="absolute inset-e-0 top-1 system-xs-regular text-components-button-secondary-accent-text-disabled">
+            {t(($) => $.forget, { ns: 'login' })}
+          </span>
+        )}
+        <FieldError>
+          {t(($) => $[password.trim() ? 'error.passwordInvalid' : 'error.passwordEmpty'], {
+            ns: 'login',
+          })}
+        </FieldError>
+      </Field>
+
+      <div className="mb-2">
+        <Button type="submit" loading={isLoading} variant="primary" className="w-full">
+          {t(($) => $.signBtn, { ns: 'login' })}
+        </Button>
+      </div>
+    </Form>
+  )
+}

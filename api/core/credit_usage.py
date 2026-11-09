@@ -7,6 +7,7 @@ class CreditUsageCreatedBy(StrEnum):
     APP = "app"
     AGENT_NODE = "agent_node"
     BUILD_DRAFT = "build_draft"
+    SKILL_BUILDER = "skill_builder"
     CONVERSATION_NAME = "conversation_name"
     SUGGESTED_QUESTIONS = "suggested_questions"
     WORKFLOW_GENERATION = "workflow_generation"
@@ -39,6 +40,7 @@ class CreditUsageAppType(StrEnum):
     COMPLETION = "completion"
     CHANNEL = "channel"
     RAG_PIPELINE = "rag_pipeline"
+    NEW_RAG = "new_rag"
     UNKNOWN = "unknown"
 
 

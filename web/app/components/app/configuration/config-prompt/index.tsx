@@ -1,7 +1,8 @@
 'use client'
+
 import type { FC } from 'react'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { PromptItem, PromptVariable } from '@/models/debug'
-import type { AppModeEnum } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiAddLine } from '@remixicon/react'
 import { produce } from 'immer'
@@ -16,7 +17,7 @@ import { ModelModeType } from '@/types/app'
 import SimplePromptInput from './simple-prompt-input'
 
 export type IPromptProps = {
-  mode: AppModeEnum
+  mode: ConfigurationAppMode
   promptTemplate: string
   promptVariables: PromptVariable[]
   readonly?: boolean
@@ -38,7 +39,7 @@ const Prompt: FC<IPromptProps> = ({
   noResize,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
 
   const {
     isAdvancedMode,

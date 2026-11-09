@@ -1,15 +1,16 @@
 """Application service for Console Billing portal links."""
 
 from collections.abc import Callable
-from typing import TypedDict
+from typing import Protocol
 
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.account_ports import AccountRepository
 
 
-class BillingPortalLink(TypedDict):
-    url: str
+class BillingPortalLink(Protocol):
+    @property
+    def url(self) -> str: ...
 
 
 class BillingPortalService:
@@ -40,8 +41,6 @@ class BillingPortalService:
 
     def _resolve_account_email_and_workspace_id(self, context: RequestContext) -> tuple[str, str]:
         workspace_id = context.active_workspace_id
-        if workspace_id is None:
-            raise RuntimeError("Console account admission did not resolve an active workspace")
 
         account = self._accounts.get(context.account_id)
         if account is None:

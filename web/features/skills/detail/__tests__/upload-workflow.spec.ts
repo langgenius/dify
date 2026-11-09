@@ -1,5 +1,5 @@
 import type { SkillFileResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import {
   buildUploadReviewItems,
   createAvailableUploadPath,
@@ -20,7 +20,7 @@ const existingFile = (path: string): SkillFileResponse => ({
 })
 
 describe('Skill upload workflow', () => {
-  it('generates the Figma keep-both suffix after existing paths', () => {
+  it('generates an available keep-both suffix after existing paths', () => {
     expect(createAvailableUploadPath('report.pdf', ['report.pdf'])).toBe('report-2.pdf')
     expect(
       createAvailableUploadPath('references/report.pdf', [
@@ -35,7 +35,7 @@ describe('Skill upload workflow', () => {
     expect(createSuggestedUploadPath('my notes!.md', ['my-notes.md'])).toBe('my-notes-2.md')
   })
 
-  it('maps backend check errors into ready, decision, and skipped states', () => {
+  it('maps upload conflicts, invalid names, and unsupported files to review decisions', () => {
     const report = new File(['pdf'], 'report.pdf', { type: 'application/pdf' })
     const notes = new File(['notes'], 'my notes!.md', { type: 'text/markdown' })
     const unsupported = new File(['data'], 'report.abcd')

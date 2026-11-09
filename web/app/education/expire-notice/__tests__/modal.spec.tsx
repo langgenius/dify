@@ -1,14 +1,11 @@
 import { screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import ExpireNoticeModal from '../modal'
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,
-}))
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: () => vi.fn(),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -21,9 +18,14 @@ describe('ExpireNoticeModal', () => {
       systemFeatures: { deployment_edition: 'CLOUD' },
     })
 
-    render(<ExpireNoticeModal expireAt={1787155200} expired={false} onClose={vi.fn()} />, {
-      wrapper,
-    })
+    render(
+      <NuqsTestingAdapter>
+        <ExpireNoticeModal expireAt={1787155200} expired={false} onClose={vi.fn()} />
+      </NuqsTestingAdapter>,
+      {
+        wrapper,
+      },
+    )
 
     expect(screen.getByRole('link', { name: 'education.notice.action.reVerify' })).toHaveAttribute(
       'href',

@@ -10,7 +10,7 @@ import RunMode from './run-mode'
 import ViewHistory from './view-history'
 
 const PreviewMode = memo(({ disabled = false }: { disabled?: boolean }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleWorkflowStartRunInChatflow } = useWorkflowStartRun()
   const canRun = useHooksStore((s) => s.accessControl.canRun)
   const isDisabled = disabled || !canRun

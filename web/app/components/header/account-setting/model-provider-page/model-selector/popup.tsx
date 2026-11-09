@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelSelectorPreviewPayload } from './popup-item'
 import type {
   ModelSelectorModel,
@@ -12,17 +13,16 @@ import {
   PreviewCardContent,
 } from '@langgenius/dify-ui/preview-card'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useProviderContext } from '@/context/provider-context'
+import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { renderI18nObject } from '@/i18n-config'
-import { consoleQuery } from '@/service/client'
+import { renderI18nObject } from '@/i18n/metadata'
+import { consoleQuery } from '@/service/console'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelTypeEnum } from '../declarations'
@@ -50,6 +50,9 @@ import {
   ModelSelectorSearchHeader,
   ShowIncompatibleModelsButton,
 } from './popup-layout'
+
+const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryListResponse['data'] = []
+const EMPTY_MODEL_PROVIDER_PLUGINS: ModelProviderSummaryListResponse['plugins'] = {}
 
 export type PopupProps = {
   defaultModel?: ModelSelectorValue
@@ -79,20 +82,17 @@ function Popup({
   onOpenMarketplace,
   onHide,
 }: PopupProps) {
-  const { t } = useTranslation()
-  const { theme } = useTheme()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const language = useLanguage()
-  const previewCardHandle = useMemo(
-    () => createPreviewCardHandle<ModelSelectorPreviewPayload>(),
-    [],
-  )
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<ModelSelectorPreviewPayload>())
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const [showIncompatibleModels, setShowIncompatibleModels] = useState(false)
-  const { modelProviders, modelProviderPlugins = {} } = useProviderContext()
-  const { data: enableMarketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (systemFeatures) => systemFeatures.enable_marketplace,
-  })
+  const { data: providerSummary } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
+  )
+  const modelProviders = providerSummary?.data ?? EMPTY_MODEL_PROVIDERS
+  const modelProviderPlugins = providerSummary?.plugins ?? EMPTY_MODEL_PROVIDER_PLUGINS
+  const marketplace = useMarketplace()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -115,16 +115,16 @@ function Popup({
     [modelProviders],
   )
   const aiCreditVisibleProviders = useMemo(() => {
-    if (!enableMarketplace || isCreditsExhausted) return new Set<string>()
+    if (!marketplace || isCreditsExhausted) return new Set<string>()
 
     return new Set(
       modelProviders
         .filter((provider) => providerSupportsCredits(provider, trialModels, deploymentEdition))
         .map((provider) => provider.provider),
     )
-  }, [deploymentEdition, enableMarketplace, isCreditsExhausted, modelProviders, trialModels])
+  }, [deploymentEdition, marketplace, isCreditsExhausted, modelProviders, trialModels])
   const showCreditsExhaustedAlert =
-    enableMarketplace &&
+    marketplace !== null &&
     isCreditsExhausted &&
     modelProviders.some((provider) =>
       providerSupportsCredits(provider, trialModels, deploymentEdition),
@@ -141,7 +141,7 @@ function Popup({
 
   const handleInstallPlugin = useCallback(
     async (key: ModelProviderQuotaGetPaid) => {
-      if (!enableMarketplace || !canInstallPlugin || installingProvider) return
+      if (!marketplace || !canInstallPlugin || installingProvider) return
       const pluginId = providerKeyToPluginId[key]
       const [org, name] = pluginId.split('/')
       if (!org || !name) return
@@ -153,7 +153,11 @@ function Popup({
         const { all_installed, task_id } = await installPackageFromMarketPlace(uniqueIdentifier)
         if (!all_installed) {
           const { check } = checkTaskStatus()
-          await check({ taskId: task_id, pluginUniqueIdentifier: uniqueIdentifier })
+          const { status } = await check({
+            taskId: task_id,
+            pluginUniqueIdentifier: uniqueIdentifier,
+          })
+          if (status !== TaskStatus.success) return
         }
         refreshPluginList({ category: PluginCategoryEnum.model })
       } catch {
@@ -162,7 +166,7 @@ function Popup({
       }
     },
     [
-      enableMarketplace,
+      marketplace,
       canInstallPlugin,
       installPackageFromMarketPlace,
       installingProvider,
@@ -231,7 +235,7 @@ function Popup({
   const shouldShowModelPredicateReveal = !!modelPredicate
 
   const marketplaceProviders = useMemo(() => {
-    if (!enableMarketplace) return []
+    if (!marketplace) return []
 
     const installedPluginIds = new Set(
       Object.values(modelProviderPlugins).map((plugin) => plugin.plugin_id),
@@ -239,12 +243,12 @@ function Popup({
     return MODEL_PROVIDER_QUOTA_GET_PAID.filter(
       (key) => !installedPluginIds.has(providerKeyToPluginId[key]),
     )
-  }, [enableMarketplace, modelProviderPlugins])
+  }, [marketplace, modelProviderPlugins])
 
   const searchStatus =
     !filteredModelList.length && installedModelList.length > 0
       ? t(($) => $['modelProvider.selector.noModelFoundForSearch'], {
-          ns: 'common',
+          ns: 'modelProvider',
           query: inputValue,
         })
       : null
@@ -256,7 +260,9 @@ function Popup({
     <>
       <ModelSelectorSearchHeader inputValue={inputValue} onInputValueChange={onInputValueChange} />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <ModelSelectorScrollBody label={t(($) => $['modelProvider.models'], { ns: 'common' })}>
+        <ModelSelectorScrollBody
+          label={t(($) => $['modelProvider.models'], { ns: 'modelProvider' })}
+        >
           {showCreditsExhaustedAlert && (
             <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
           )}
@@ -298,13 +304,13 @@ function Popup({
                 onClick={() => setShowIncompatibleModels((value) => !value)}
               />
             )}
-            {enableMarketplace && (
+            {marketplace && (
               <MarketplaceSection
+                marketplace={marketplace}
                 marketplaceProviders={marketplaceProviders}
                 marketplaceCollapsed={marketplaceCollapsed}
                 installingProvider={installingProvider}
                 canInstallPlugin={canInstallPlugin}
-                theme={theme}
                 onMarketplaceCollapsedChange={setMarketplaceCollapsed}
                 onInstallPlugin={handleInstallPlugin}
                 onOpenMarketplace={onOpenMarketplace}
@@ -321,7 +327,7 @@ function Popup({
           <ModelSelectorPreviewCard
             capabilitiesLabel={t(($) => $['model.capabilities'], { ns: 'common' })}
             language={language}
-            payload={payload as ModelSelectorPreviewPayload | undefined}
+            payload={payload}
           />
         )}
       </PreviewCard>
@@ -343,11 +349,16 @@ function ModelSelectorPreviewCard({
   if (!payload) return null
 
   const { provider, modelItem } = payload
+  const modelTypesWithCapabilities: ModelTypeEnum[] = [
+    ModelTypeEnum.textGeneration,
+    ModelTypeEnum.textEmbedding,
+    ModelTypeEnum.rerank,
+  ]
 
   return (
     <PreviewCardContent
-      placement="right"
-      className="w-[206px] bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
+      side="right"
+      className="w-51.5 bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
     >
       <div className="flex flex-col gap-1">
         <div className="flex flex-col items-start gap-2">
@@ -369,9 +380,7 @@ function ModelSelectorPreviewCard({
             <ModelBadge>{sizeFormat(modelItem.model_properties.context_size as number)}</ModelBadge>
           )}
         </div>
-        {[ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].includes(
-          modelItem.model_type as ModelTypeEnum,
-        ) &&
+        {modelTypesWithCapabilities.includes(modelItem.model_type as ModelTypeEnum) &&
           modelItem.features?.some((feature) =>
             [
               ModelFeatureEnum.vision,

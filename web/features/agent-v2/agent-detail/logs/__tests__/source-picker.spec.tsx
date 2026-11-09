@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { AgentLogSourcePicker } from '../components/source-picker'
 
 const sources = {
@@ -83,32 +84,60 @@ describe('AgentLogSourcePicker', () => {
     expect(screen.getByText('agentV2.agentDetail.logs.filters.source.empty')).toBeInTheDocument()
   })
 
-  it('should keep selected item state and checkbox icon DOM in sync', async () => {
+  it('adds and removes sources across groups while keeping the trigger count in sync', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(
-      <AgentLogSourcePicker {...commonProps} value={[sources.webapp.id]} />,
+    const onChange = vi.fn()
+    function Picker() {
+      const [value, setValue] = useState([sources.webapp.id])
+      return (
+        <AgentLogSourcePicker
+          {...commonProps}
+          value={value}
+          onChange={(next) => {
+            setValue(next)
+            onChange(next)
+          }}
+        />
+      )
+    }
+    render(<Picker />)
+    const trigger = screen.getByRole('combobox', {
+      name: 'agentV2.agentDetail.logs.filters.source.label',
+    })
+    expect(trigger).toHaveTextContent('Book Translation')
+    await user.click(trigger)
+    expect(screen.getByRole('option', { name: /Book Translation/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
     )
+    await user.click(screen.getByRole('option', { name: /SVG Logo Design/ }))
+    expect(onChange).toHaveBeenLastCalledWith([sources.webapp.id, sources.workflow.id])
+    expect(trigger).toHaveTextContent('common.dynamicSelect.selected:{"count":2}')
+    await user.click(screen.getByRole('option', { name: /Book Translation/ }))
+    expect(onChange).toHaveBeenLastCalledWith([sources.workflow.id])
+    expect(trigger).toHaveTextContent('SVG Logo Design')
+  })
+
+  it('should preserve selected source ids that are outside the current result set', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(<AgentLogSourcePicker {...commonProps} value={['missing-source']} onChange={onChange} />)
+
+    expect(
+      screen.getByRole('combobox', {
+        name: 'agentV2.agentDetail.logs.filters.source.label',
+      }),
+    ).toHaveTextContent('common.dynamicSelect.selected:{"count":1}')
 
     await user.click(
       screen.getByRole('combobox', {
         name: 'agentV2.agentDetail.logs.filters.source.label',
       }),
     )
+    await user.click(screen.getByRole('option', { name: /Book Translation/ }))
 
-    const webappOption = screen.getByRole('option', { name: /Book Translation/ })
-    const workflowOption = screen.getByRole('option', { name: /SVG Logo Design/ })
-    expect(webappOption).toHaveClass('min-h-7', 'grid-cols-[1fr]', 'px-1', 'py-1')
-    expect(webappOption).toHaveAttribute('data-selected')
-    expect(webappOption.querySelector('.i-ri-check-line')).toBeInTheDocument()
-    expect(workflowOption).not.toHaveAttribute('data-selected')
-    expect(workflowOption.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
-
-    rerender(<AgentLogSourcePicker {...commonProps} value={[sources.workflow.id]} />)
-
-    expect(webappOption).not.toHaveAttribute('data-selected')
-    expect(webappOption.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
-    expect(workflowOption).toHaveAttribute('data-selected')
-    expect(workflowOption.querySelector('.i-ri-check-line')).toBeInTheDocument()
+    expect(onChange).toHaveBeenCalledWith(['missing-source', sources.webapp.id])
   })
 
   it('should show one named popup state and keep retry outside the listbox', async () => {
@@ -132,9 +161,6 @@ describe('AgentLogSourcePicker', () => {
       }),
     )
 
-    const searchInput = screen.getByRole('combobox', {
-      name: 'agentV2.agentDetail.logs.filters.source.searchLabel',
-    })
     const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
 
     expect(
@@ -146,11 +172,6 @@ describe('AgentLogSourcePicker', () => {
     expect(
       screen.queryByText('agentV2.agentDetail.logs.filters.source.empty'),
     ).not.toBeInTheDocument()
-    searchInput.focus()
-    expect(searchInput).toHaveFocus()
-
-    await user.tab()
-    expect(retryButton).toHaveFocus()
     await user.click(retryButton)
     expect(onRetry).toHaveBeenCalledTimes(1)
   })

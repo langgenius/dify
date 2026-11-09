@@ -1,5 +1,6 @@
 'use client'
 
+import type { inferParserType } from 'nuqs'
 import {
   Select,
   SelectContent,
@@ -7,45 +8,60 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useQueryState } from 'nuqs'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { rosterQueryParamNames, rosterSortByQueryParser } from '../query-params'
-import { DEFAULT_ROSTER_SORT_BY, rosterSortOptions } from './roster-sort'
+
+type RosterSortBy = inferParserType<typeof rosterSortByQueryParser>
 
 export function RosterSortSelect() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentRoster'])
+  const sortLabelId = useId()
   const [value, setValue] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
-  const selectedOption =
-    rosterSortOptions.find((option) => option.value === value) ??
-    rosterSortOptions.find((option) => option.value === DEFAULT_ROSTER_SORT_BY)!
+  const options = [
+    {
+      value: 'last_modified',
+      label: t(($) => $['roster.sort.lastModified'], { ns: 'agentRoster' }),
+    },
+    {
+      value: 'recently_created',
+      label: t(($) => $['roster.sort.recentlyCreated'], { ns: 'agentRoster' }),
+    },
+    {
+      value: 'earliest_created',
+      label: t(($) => $['roster.sort.earliestCreated'], { ns: 'agentRoster' }),
+    },
+  ] satisfies Array<{ value: RosterSortBy; label: string }>
+  const sortByLabel = t(($) => $['roster.sort.label'], { ns: 'agentRoster' })
 
   return (
-    <Select
+    <Select<RosterSortBy>
+      items={options}
       value={value}
       onValueChange={(nextValue) => {
-        void setValue(nextValue)
+        if (nextValue !== null) void setValue(nextValue)
       }}
     >
-      <SelectTrigger
-        aria-label={t(($) => $['roster.sort.label'])}
-        className="h-8 w-fit max-w-45 min-w-0 gap-0 py-1 pr-2.5 pl-2"
-      >
-        <span className="flex min-w-0 items-center gap-1 px-1">
-          <span className="shrink-0 system-sm-regular text-text-tertiary">
-            {t(($) => $['roster.sort.label'])}
-          </span>
-          <span className="truncate system-sm-medium text-text-secondary">
-            {t(($) => $[selectedOption.labelKey])}
-          </span>
+      <SelectTrigger aria-labelledby={sortLabelId} className="w-auto max-w-45 min-w-0">
+        <span className="flex min-w-0 items-center gap-1 whitespace-nowrap">
+          {/* aria-labelledby names the control; exclude this prefix from its accessible value. */}
+          <span
+            id={sortLabelId}
+            aria-hidden="true"
+            className="shrink-0 font-normal text-text-tertiary"
+          >
+            {sortByLabel}
+          </span>{' '}
+          <SelectValue className="min-w-0 truncate font-medium text-text-secondary" />
         </span>
       </SelectTrigger>
-      <SelectContent placement="bottom-start" sideOffset={4} className="w-60">
-        {rosterSortOptions.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            <SelectItemText title={t(($) => $[option.labelKey])}>
-              {t(($) => $[option.labelKey])}
-            </SelectItemText>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem<RosterSortBy> key={option.value} value={option.value}>
+            <SelectItemText>{option.label}</SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
         ))}

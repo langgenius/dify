@@ -24,7 +24,7 @@ import {
   zPostOauthProviderResponse,
   zPostOauthProviderTokenBody,
   zPostOauthProviderTokenResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Bind OAuth data source with authorization code

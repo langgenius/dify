@@ -2,7 +2,18 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zPostLoginBody, zPostLoginResponse } from './zod.gen'
+import {
+  zAccountBannedError,
+  zAccountInFreezeError,
+  zAccountNotFoundError,
+  zAuthenticationFailedError,
+  zEmailCodeLoginLimitError,
+  zEmailDomainSuspendedError,
+  zInvalidAccountPasswordError,
+  zInvalidEmailError,
+  zLimitExceededError,
+} from './zod.gen.ts'
+import { zPostLoginBody, zPostLoginResponse } from './zod.gen.ts'
 
 /**
  * Authenticate user and login
@@ -18,6 +29,17 @@ export const post = oc
   })
   .input(z.object({ body: zPostLoginBody }))
   .output(zPostLoginResponse)
+  .errors({
+    account_banned: { status: 400, data: zAccountBannedError },
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    email_code_login_limit: { status: 429, data: zEmailCodeLoginLimitError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    limit_exceeded: { status: 400, data: zLimitExceededError },
+  })
 
 export const login = {
   post,
