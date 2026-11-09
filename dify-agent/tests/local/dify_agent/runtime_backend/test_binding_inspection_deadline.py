@@ -2,7 +2,9 @@
 
 import asyncio
 import json
+import shlex
 import subprocess
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -11,7 +13,7 @@ from typing import override
 import pytest
 
 from dify_agent.protocol import InspectExecutionBindingRequest
-from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, _LOCAL_INSPECTION_PROBE
 
 
 @pytest.mark.anyio
@@ -23,10 +25,22 @@ async def test_local_inspection_has_total_deadline_and_private_cleanup(
     home_root.mkdir()
     workspace_root.mkdir()
     (home_root / "b").mkdir()
+    probe_args = json.dumps(
+        dict(
+            binding_ref="b:w",
+            workspace_ref="w",
+            home_root=str(home_root),
+            workspace_root=str(workspace_root),
+            home_path=str(home_root / "b"),
+            workspace_path=str(workspace_root / "w"),
+        )
+    )
+    expected_script = shlex.join(["python3", "-c", _LOCAL_INSPECTION_PROBE, probe_args])
     # A real missing Workspace would authorize gone only after bounded cleanup.
     release = threading.Event()
     polling = mode in {"poll", "poll_delete"}
     requests: list[str] = []
+    probes_match: list[bool] = []
     marker = "PRIVATE_CREDENTIAL_/private/home/b_PROVIDER_BODY"
 
     class Handler(BaseHTTPRequestHandler):
@@ -46,6 +60,12 @@ async def test_local_inspection_has_total_deadline_and_private_cleanup(
         def do_POST(self) -> None:
             requests.append(self.path)
             body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            if self.path == "/v1/jobs/run":
+                matches = body.get("script") == expected_script
+                probes_match.append(matches)
+                if not matches:
+                    self.reply({"error": "unexpected inspection command"}, status=400)
+                    return
             if mode == "run":
                 release.wait(10)
             if self.path.endswith("/wait"):
@@ -53,9 +73,7 @@ async def test_local_inspection_has_total_deadline_and_private_cleanup(
                 output = ""
             else:
                 output = subprocess.run(
-                    body["script"],
-                    shell=True,
-                    executable="/bin/sh",
+                    [sys.executable, "-c", _LOCAL_INSPECTION_PROBE, probe_args],
                     check=True,
                     capture_output=True,
                     text=True,
@@ -109,6 +127,7 @@ async def test_local_inspection_has_total_deadline_and_private_cleanup(
         assert marker not in result.model_dump_json() + caplog.text
         assert all(record.exc_info is None for record in caplog.records)
         assert requests.count("/v1/jobs/run") == 1
+        assert probes_match == [True]
         assert all(path == "/v1/jobs/run" or path.startswith("/v1/jobs/probe") for path in requests)
         assert sum(path.startswith("/v1/jobs/probe?force=") for path in requests) <= 1
     finally:
