@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from email import policy
 from email.parser import BytesParser
 from pathlib import Path
+from types import TracebackType
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -200,7 +201,7 @@ class _SMTPRelay:
         hostname: str | None = None,
         reject_at: str | None = None,
         fail_quit: bool = False,
-    ):
+    ) -> None:
         self.context, self.mode, self.hostname = context, mode, hostname
         self.reject_at, self.fail_quit = reject_at, fail_quit
         self.commands: list[str] = []
@@ -213,19 +214,24 @@ class _SMTPRelay:
         self.port = self.listener.getsockname()[1]
         self.thread = threading.Thread(target=self._serve, daemon=True)
 
-    def __enter__(self):
+    def __enter__(self) -> "_SMTPRelay":
         """Start a single bounded loopback receiver before returning its address."""
         self.thread.start()
         return self
 
-    def __exit__(self, *args):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         """Close and join the receiver; never leave a failed server hidden in a thread."""
         self.thread.join(timeout=6)
         self.listener.close()
         assert not self.thread.is_alive(), "SMTP receiver did not stop"
         assert not self.errors, self.errors
 
-    def _serve(self):
+    def _serve(self) -> None:
         """Perform real SMTP/TLS and envelope exchanges for one test client."""
         connection = None
         reader = None
@@ -316,7 +322,9 @@ def _relay_client(relay: _SMTPRelay, *, username: str = "", password: str = "") 
 
 @pytest.mark.parametrize("mode", ["plain", "starttls", "ssl"])
 @pytest.mark.parametrize("hostname", [None, "dify.test.invalid"])
-def test_real_smtp_preserves_local_hostname(mode, hostname, smtp_tls_context, monkeypatch):
+def test_real_smtp_preserves_local_hostname(
+    mode: str, hostname: str | None, smtp_tls_context: ssl.SSLContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """All transport modes use the configured/default identity and preserve message content."""
     monkeypatch.setattr(dify_config, "SMTP_LOCAL_HOSTNAME", hostname)
     expected = hostname or smtplib.SMTP().local_hostname
@@ -349,7 +357,9 @@ def test_real_smtp_preserves_local_hostname(mode, hostname, smtp_tls_context, mo
     ],
 )
 @pytest.mark.parametrize("fail_quit", [False, True])
-def test_real_smtp_preserves_failure_and_cleanup(reject_at, error, fail_quit, smtp_tls_context):
+def test_real_smtp_preserves_failure_and_cleanup(
+    reject_at: str, error: type[smtplib.SMTPResponseException], fail_quit: bool, smtp_tls_context: ssl.SSLContext
+) -> None:
     """A protocol rejection propagates without resend, even when cleanup disconnects."""
     with _SMTPRelay(smtp_tls_context, "starttls", reject_at=reject_at, fail_quit=fail_quit) as relay:
         with pytest.raises(error) as failure:
@@ -360,7 +370,7 @@ def test_real_smtp_preserves_failure_and_cleanup(reject_at, error, fail_quit, sm
     assert not relay.messages
 
 
-def test_real_smtp_accepted_message_survives_cleanup_disconnect(smtp_tls_context):
+def test_real_smtp_accepted_message_survives_cleanup_disconnect(smtp_tls_context: ssl.SSLContext) -> None:
     """A failed QUIT must not turn an accepted message into a retryable send failure."""
     with _SMTPRelay(smtp_tls_context, "starttls", fail_quit=True) as relay:
         assert _relay_client(relay).send(_mail()) is None
@@ -371,7 +381,9 @@ def test_real_smtp_accepted_message_survives_cleanup_disconnect(smtp_tls_context
     ("username", "password", "auth_count"),
     [("test-user", "test-password", 1), ("", "test-password", 0), ("test-user", "", 0), (" ", " ", 0)],
 )
-def test_real_smtp_authentication_selection(username, password, auth_count, smtp_tls_context):
+def test_real_smtp_authentication_selection(
+    username: str, password: str, auth_count: int, smtp_tls_context: ssl.SSLContext
+) -> None:
     """Keep authentication opt-in to two nonblank credentials; send exactly once."""
     with _SMTPRelay(smtp_tls_context, "plain") as relay:
         _relay_client(relay, username=username, password=password).send(_mail())
