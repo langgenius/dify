@@ -12,6 +12,7 @@ from uuid import NAMESPACE_URL, uuid5
 import pytest
 from flask import Flask
 from flask.views import MethodView
+from pydantic import ValidationError
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
@@ -24,6 +25,7 @@ from controllers.console.workspace.tool_providers import (
     BuiltinProviderDefaultCredentialPayload,
     BuiltinToolAddPayload,
     BuiltinToolCredentialDeletePayload,
+    BuiltinToolProviderCreateResponse,
     BuiltinToolUpdatePayload,
     ToolApiListApi,
     ToolApiProviderAddApi,
@@ -64,6 +66,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity as CoreToolPr
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolParameter
 from enums import DeploymentEdition
+from libs.helper import dump_response
 from models import Account as _tool_providers_Account
 from models import BuiltinToolProvider, Tenant, TenantAccountJoin
 from models.account import Account as _tool_provider_apis_Account
@@ -74,6 +77,16 @@ from repositories.credentials.query_repository import CredentialQueryRepository
 from services.credentials.query import CredentialQuery
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
+
+
+def test_builtin_provider_create_response_requires_id_and_excludes_secrets() -> None:
+    payload = {"result": "success", "id": "credential-1", "credentials": {"api_key": "private-secret"}}
+    assert dump_response(BuiltinToolProviderCreateResponse, payload) == {"result": "success", "id": "credential-1"}
+    schema = BuiltinToolProviderCreateResponse.model_json_schema(mode="serialization")
+    assert "id" in schema["required"]
+    assert schema["properties"]["id"]["type"] == "string"
+    with pytest.raises(ValidationError):
+        dump_response(BuiltinToolProviderCreateResponse, {"result": "success"})
 
 
 class TestOauthCustomClientPermissionsCases:
@@ -368,13 +381,13 @@ class TestToolProviderApisCases:
                 app.test_request_context("/", json=payload),
                 patch(
                     "controllers.console.workspace.tool_providers.BuiltinToolManageService.add_builtin_tool_provider",
-                    return_value={"result": "success"},
+                    return_value={"result": "success", "id": "credential-1"},
                 ),
             ):
-                assert (
-                    method(api, BuiltinToolAddPayload(**payload), "t", make_account(), "provider")["result"]
-                    == "success"
-                )
+                assert method(api, BuiltinToolAddPayload(**payload), "t", make_account(), "provider") == {
+                    "result": "success",
+                    "id": "credential-1",
+                }
 
         def test_update(self, app: Flask) -> None:
             api = ToolBuiltinProviderUpdateApi()
@@ -1117,13 +1130,12 @@ def _mock_oauth_callback_deps(controller_module: ModuleType, monkeypatch: pytest
             "langgenius/github:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
         ),
     )
-    add_provider = MagicMock()
+    add_provider = MagicMock(return_value={"result": "success", "id": "oauth-credential-1"})
     monkeypatch.setattr(controller_module.BuiltinToolManageService, "add_builtin_tool_provider", add_provider)
     credentials_response = MagicMock(credentials={"access_token": "tok"}, expires_at=-1)
     oauth_handler_instance = MagicMock()
     oauth_handler_instance.get_credentials.return_value = credentials_response
     monkeypatch.setattr(controller_module, "OAuthHandler", MagicMock(return_value=oauth_handler_instance))
-    monkeypatch.setattr(controller_module, "redirect", lambda url: {"redirect": url})
     yield add_provider
 
 
@@ -1211,7 +1223,7 @@ class TestToolProvidersCases:
         user.role = TenantAccountRole.ADMIN
         _set_current_account(monkeypatch, controller_module, user, "tenant-456")
 
-        service_mock = MagicMock(return_value={"result": "success"})
+        service_mock = MagicMock(return_value={"result": "success", "id": "credential-1"})
         monkeypatch.setattr(controller_module.BuiltinToolManageService, "add_builtin_tool_provider", service_mock)
 
         payload = {
@@ -1227,7 +1239,7 @@ class TestToolProvidersCases:
         ):
             response = controller_module.ToolBuiltinProviderAddApi().post(provider="openai")
 
-        assert response == {"result": "success"}
+        assert response == {"result": "success", "id": "credential-1"}
         service_mock.assert_called_once_with(
             user_id=user.id,
             tenant_id="tenant-456",
@@ -1745,7 +1757,12 @@ class TestToolProvidersCases:
         expected: str,
     ):
         with _mock_oauth_callback_deps(controller_module, monkeypatch) as add_provider:
-            _invoke_oauth_callback(controller_module, app, stored_visibility=stored)
+            response = _invoke_oauth_callback(controller_module, app, stored_visibility=stored)
+
+        assert response.status_code == 302
+        assert response.location == (
+            f"{controller_module.dify_config.CONSOLE_WEB_URL}/oauth-callback?connection_id=oauth-credential-1"
+        )
 
         _, kwargs = add_provider.call_args
         assert kwargs["visibility"] == expected
