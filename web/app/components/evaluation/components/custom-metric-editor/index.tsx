@@ -236,42 +236,45 @@ const CustomMetricEditorCard = ({
         }
       />
 
-      <div className="mt-4">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div className="system-xs-medium-uppercase text-text-tertiary">
-            {t(($) => $['metrics.custom.mappingTitle'])}
+      {/* Nothing to map until a workflow is chosen; the card badge already says it needs setup. */}
+      {metric.customConfig.workflowId && (
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="system-xs-medium-uppercase text-text-tertiary">
+              {t(($) => $['metrics.custom.mappingTitle'])}
+            </div>
           </div>
-        </div>
-        <div className="space-y-2">
-          {mappingSource &&
-            inputVariables.map((inputVariable) => {
-              const mapping = metric.customConfig?.mappings.find(
-                (item) => item.inputVariableId === inputVariable.id,
-              )
+          <div className="space-y-2">
+            {mappingSource &&
+              inputVariables.map((inputVariable) => {
+                const mapping = metric.customConfig?.mappings.find(
+                  (item) => item.inputVariableId === inputVariable.id,
+                )
 
-              return (
-                <MappingRow
-                  key={inputVariable.id}
-                  inputVariable={inputVariable}
-                  source={mappingSource}
-                  value={mapping?.outputVariableId ?? null}
-                  onUpdate={(outputVariableId) => {
-                    if (!mapping) return
+                return (
+                  <MappingRow
+                    key={inputVariable.id}
+                    inputVariable={inputVariable}
+                    source={mappingSource}
+                    value={mapping?.outputVariableId ?? null}
+                    onUpdate={(outputVariableId) => {
+                      if (!mapping) return
 
-                    updateCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id, {
-                      outputVariableId,
-                    })
-                  }}
-                />
-              )
-            })}
-        </div>
-        {!isConfigured && (
-          <div className="mt-3 rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-tertiary">
-            {t(($) => $['metrics.custom.mappingWarning'])}
+                      updateCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id, {
+                        outputVariableId,
+                      })
+                    }}
+                  />
+                )
+              })}
           </div>
-        )}
-      </div>
+          {!isConfigured && (
+            <div className="mt-3 rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-tertiary">
+              {t(($) => $['metrics.custom.mappingWarning'])}
+            </div>
+          )}
+        </div>
+      )}
 
       {!!workflowOutputs.length && (
         <div className="mt-4 py-1">
