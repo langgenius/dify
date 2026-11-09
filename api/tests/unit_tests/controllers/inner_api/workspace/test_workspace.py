@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec
@@ -47,6 +48,7 @@ from services.trigger.oauth_gateway import (
 )
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_binding_service import TriggerSubscriptionBindingService
 from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway, invalidate_subscription_properties
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
@@ -166,6 +168,13 @@ class TestWorkspaceCases:
             ),
             trigger_providers=PluginTriggerProviderQuery(),
             trigger_subscriptions=subscription_queries,
+            trigger_binding_queries=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+            create_trigger_binding_service=lambda session: TriggerSubscriptionBindingService(
+                sync_bindings=partial(
+                    TriggerSubscriptionRepository(session_factory=sqlite_session_factory).sync_workflow_bindings,
+                    session=session,
+                )
+            ),
             trigger_events=TriggerEventService(
                 subscriptions=subscription_queries,
                 plugins=PluginTriggerEventGateway(),
