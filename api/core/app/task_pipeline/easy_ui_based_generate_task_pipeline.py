@@ -62,6 +62,8 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from repositories.conversation_access import ConversationAccessDeniedError, require_web_message_owner
+from repositories.entities.web_execution import EndUserBusyError
 
 logger = logging.getLogger(__name__)
 
@@ -263,6 +265,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                         raise RuntimeError("TTS publisher returned an error terminal without an exception")
                     yield ErrorStreamResponse(err=audio.error, task_id=task_id)
                 return
+        except (ConversationAccessDeniedError, EndUserBusyError) as error:
+            yield self.error_to_stream_response(error)
         finally:
             if publisher:
                 publisher.cancel()
@@ -304,6 +308,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                         )
 
                     stopped_agent_message: Message | None = None
+                    completed_chat_message: Message | None = None
                     with session_factory.create_session() as session:
                         # A stopped Agent run may persist provider-reported usage after
                         # cancellation completes. Do not replace it with local token estimates.
@@ -312,8 +317,15 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                             if self._app_config.app_mode == AppMode.AGENT:
                                 stopped_agent_message = saved_message
                         else:
-                            self._save_message(session=session)
+                            saved_message = self._save_message(session=session)
+                        if self._requires_web_chat_ownership_check():
+                            completed_chat_message = saved_message
                         session.commit()
+                    if completed_chat_message is not None:
+                        message_was_created.send(
+                            completed_chat_message,
+                            application_generate_entity=self._application_generate_entity,
+                        )
                     if stopped_agent_message is not None:
                         # Provider/billing subscribers may perform external I/O.
                         # Release the stop-save row lock before notifying them.
@@ -418,9 +430,22 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         preserve_existing_usage: bool = False,
     ) -> Message:
         """
-        Save message.
+        Stage message output only while the original Chatbot actor still owns its history.
+
+        The caller commits or rolls back this short transaction. Ownership loss
+        raises before mutation or completion signals; no replacement actor is inferred.
         :return:
         """
+        entity = self._application_generate_entity
+        check_owner = self._requires_web_chat_ownership_check()
+        if check_owner:
+            require_web_message_owner(
+                session,
+                tenant_id=entity.app_config.tenant_id,
+                app_id=entity.app_config.app_id,
+                end_user_id=entity.user_id,
+                message_id=self._message_id,
+            )
         llm_result = self._task_state.llm_result
         usage = llm_result.usage
 
@@ -478,7 +503,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             metadata["agent_stop_requested"] = True
         message.message_metadata = json.dumps(metadata, ensure_ascii=False)
 
-        if not agent_stop_requested:
+        if not agent_stop_requested and not check_owner:
             message_was_created.send(
                 message,
                 application_generate_entity=self._application_generate_entity,

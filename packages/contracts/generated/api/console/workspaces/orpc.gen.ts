@@ -5184,12 +5184,22 @@ export const api = {
   update: update2,
 }
 
+/**
+ * Create a credential for the admitted member and return its persisted ID
+ *
+ * Requires validated credentials and Workspace creation permission. Success
+ * preserves the result field and exposes the created credential as a Connection;
+ * creation failures propagate without returning an ID or credential secrets.
+ */
 export const post75 = oc
   .route({
+    description:
+      'Requires validated credentials and Workspace creation permission. Success\npreserves the result field and exposes the created credential as a Connection;\ncreation failures propagate without returning an ID or credential secrets.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesCurrentToolProviderBuiltinByProviderAdd',
     path: '/workspaces/current/tool-provider/builtin/{provider}/add',
+    summary: 'Create a credential for the admitted member and return its persisted ID',
     tags: ['console'],
   })
   .input(

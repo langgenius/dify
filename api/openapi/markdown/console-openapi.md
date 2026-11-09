@@ -11526,6 +11526,13 @@ Initiate OAuth login process
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/tool/callback
+**Complete an authorized OAuth attempt and redirect with its Connection ID**
+
+Requires valid provider state and the initiating browser's proxy context.
+Personal attempts retain their own callback flow; Workspace attempts expose
+only the persisted credential ID after creation. Invalid attempts raise
+without a success redirect or exposing provider credentials.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -18138,6 +18145,12 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/add
+**Create a credential for the admitted member and return its persisted ID**
+
+Requires validated credentials and Workspace creation permission. Success
+preserves the result field and exposes the created credential as a Connection;
+creation failures propagate without returning an ID or credential secrets.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -18154,7 +18167,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Builtin provider added successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Builtin provider added successfully | **application/json**: [BuiltinToolProviderCreateResponse](#builtintoolprovidercreateresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/info
@@ -23320,6 +23333,13 @@ Sandbox file download is unavailable.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credential_id | string |  | Yes |
+
+#### BuiltinToolProviderCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string | ID of the created Workspace credential, used as the Connection ID. | Yes |
+| result | string | Operation result. | Yes |
 
 #### BuiltinToolUpdatePayload
 

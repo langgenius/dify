@@ -151,6 +151,13 @@ class WebMigrationService:
         return result
 
     def _stop_guest_runs(self, source: GuestMigrationSource, *, deadline: float) -> int:
+        """Stop tracked runs within the shared deadline; Chatbot uses snapshot transfer.
+
+        Return accepted Workflow/Chatflow stop requests without changing ownership.
+        Chatbot returns zero immediately and relies on transactional actor checks.
+        """
+        if source.app_mode == AppMode.CHAT:
+            return 0
         requested: set[str] = set()
         pending = self._store.active_task_ids(source)
         while pending:
