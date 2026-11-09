@@ -15,6 +15,8 @@ export type ExternalAccessDraft = {
   agentEnabled: boolean
   serviceApiEnabled: boolean
   workflowEnabled: boolean
+  /** Members' own agents (Claude Code, Codex, MCP clients); allowed unless a manager blocks it. */
+  personalAgentEnabled: boolean
 }
 
 export type RetrievalSettingsDraft = {

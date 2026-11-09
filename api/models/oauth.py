@@ -121,6 +121,9 @@ class OAuthAccessToken(TypeBase):
     token_hash: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
     revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
+    # Set only for ``dfok_`` knowledge-agent bearers: the connection this row authenticates. Revoking
+    # the row through the account's session list ends that connection too.
+    knowledge_agent_grant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False

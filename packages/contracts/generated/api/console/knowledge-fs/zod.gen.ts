@@ -19,6 +19,52 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * KnowledgeAgentAuthorizationPayload
+ */
+export const zKnowledgeAgentAuthorizationPayload = z.object({
+  approve: z.boolean(),
+  client_id: z.string().max(2048).nullish(),
+  code_challenge: z.string().max(128).nullish(),
+  code_challenge_method: z.string().max(16).nullish(),
+  knowledge_base_ids: z.array(z.string()).max(100).optional(),
+  redirect_uri: z.string().max(2048).nullish(),
+  resource: z.string().max(2048).nullish(),
+  response_type: z.string().nullish(),
+  scope: z.string().max(512).nullish(),
+  state: z.string().max(1024).nullish(),
+})
+
+/**
+ * KnowledgeAgentAuthorizationDecisionResponse
+ */
+export const zKnowledgeAgentAuthorizationDecisionResponse = z.object({
+  redirect_to: z.string(),
+})
+
+/**
+ * KnowledgeAgentGrantUpdatePayload
+ */
+export const zKnowledgeAgentGrantUpdatePayload = z.object({
+  knowledge_base_ids: z.array(z.string()).min(1).max(100),
+})
+
+/**
+ * KnowledgeAgentTokenPayload
+ */
+export const zKnowledgeAgentTokenPayload = z.object({
+  expires_in_days: z.int().gte(1).lte(90).optional().default(30),
+  knowledge_base_ids: z.array(z.string()).min(1).max(100),
+  name: z.string().min(1).max(100),
+})
+
+/**
+ * KnowledgeAgentWorkspacePayload
+ */
+export const zKnowledgeAgentWorkspacePayload = z.object({
+  enabled: z.boolean(),
+})
+
+/**
  * KnowledgeFSFeaturesResponse
  */
 export const zKnowledgeFsFeaturesResponse = z.object({
@@ -142,6 +188,7 @@ export const zKnowledgeFsDocumentChunkListResponse = z.object({
 export const zKnowledgeFsExternalAccessResponse = z.object({
   agent_enabled: z.boolean(),
   mcp_enabled: z.boolean(),
+  personal_agent_enabled: z.boolean().optional().default(true),
   revision: z.int(),
   service_api_enabled: z.boolean(),
   workflow_enabled: z.boolean(),
@@ -153,6 +200,7 @@ export const zKnowledgeFsExternalAccessResponse = z.object({
 export const zKnowledgeFsExternalAccessPayload = z.object({
   agent_enabled: z.boolean(),
   mcp_enabled: z.boolean().optional().default(false),
+  personal_agent_enabled: z.boolean().nullish(),
   service_api_enabled: z.boolean(),
   workflow_enabled: z.boolean(),
 })
@@ -490,6 +538,43 @@ export const zKnowledgeFsSpaceTagsReplacePayload = z.object({
 })
 
 /**
+ * KnowledgeFSTidyActionPayload
+ */
+export const zKnowledgeFsTidyActionPayload = z.object({
+  action: z.enum(['disable_document', 'dismiss', 'review', 'undo']),
+  documentId: z.string().nullish(),
+  expectedRevision: z.int().gt(0),
+})
+
+/**
+ * KnowledgeFSTidyRetryResponse
+ */
+export const zKnowledgeFsTidyRetryResponse = z.object({
+  resumed: z.int(),
+})
+
+/**
+ * KnowledgeFSTidySettingsResponse
+ */
+export const zKnowledgeFsTidySettingsResponse = z.object({
+  conflicts: z.boolean(),
+  enabled: z.boolean(),
+  lastError: z.enum(['authorization_failed', 'model_unavailable', 'scan_failed']).nullable(),
+  revision: z.int(),
+  updatedAt: z.string(),
+})
+
+/**
+ * KnowledgeFSTidySettingsPayload
+ */
+export const zKnowledgeFsTidySettingsPayload = z.object({
+  acknowledgeTokenUsage: z.boolean().optional().default(false),
+  conflicts: z.boolean().nullish(),
+  enabled: z.boolean(),
+  expectedRevision: z.int().gte(0),
+})
+
+/**
  * KnowledgeFSUploadSessionCreatePayload
  */
 export const zKnowledgeFsUploadSessionCreatePayload = z.object({
@@ -568,6 +653,86 @@ export const zKnowledgeFsjwkResponse = z.object({
  */
 export const zKnowledgeFsjwksResponse = z.object({
   keys: z.array(zKnowledgeFsjwkResponse),
+})
+
+/**
+ * KnowledgeAgentAuthorizationClientResponse
+ */
+export const zKnowledgeAgentAuthorizationClientResponse = z.object({
+  kind: z.enum(['cimd', 'dcr']),
+  name: z.string(),
+  redirect_host: z.string(),
+})
+
+/**
+ * KnowledgeAgentAuthorizationWorkspaceResponse
+ */
+export const zKnowledgeAgentAuthorizationWorkspaceResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * KnowledgeAgentAuthorizationResponse
+ */
+export const zKnowledgeAgentAuthorizationResponse = z.object({
+  agent_access_enabled: z.boolean(),
+  blocked_knowledge_base_ids: z.array(z.string()),
+  client: zKnowledgeAgentAuthorizationClientResponse,
+  scopes: z.array(z.string()),
+  workspace: zKnowledgeAgentAuthorizationWorkspaceResponse,
+})
+
+/**
+ * KnowledgeAgentGrantAccountResponse
+ */
+export const zKnowledgeAgentGrantAccountResponse = z.object({
+  email: z.string(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * KnowledgeAgentGrantResponse
+ */
+export const zKnowledgeAgentGrantResponse = z.object({
+  account: zKnowledgeAgentGrantAccountResponse.nullish(),
+  client_name: z.string().nullish(),
+  created_at: z.iso.datetime(),
+  expires_at: z.iso.datetime().nullish(),
+  id: z.string(),
+  kind: z.enum(['oauth', 'personal']),
+  knowledge_base_ids: z.array(z.string()),
+  last_used_at: z.iso.datetime().nullish(),
+  name: z.string(),
+  scopes: z.array(z.string()),
+})
+
+/**
+ * KnowledgeAgentMineResponse
+ */
+export const zKnowledgeAgentMineResponse = z.object({
+  agent_access_enabled: z.boolean(),
+  available: z.boolean(),
+  blocked_knowledge_base_ids: z.array(z.string()),
+  grants: z.array(zKnowledgeAgentGrantResponse),
+  mcp_url: z.string(),
+})
+
+/**
+ * KnowledgeAgentTokenCreatedResponse
+ */
+export const zKnowledgeAgentTokenCreatedResponse = z.object({
+  grant: zKnowledgeAgentGrantResponse,
+  token: z.string(),
+})
+
+/**
+ * KnowledgeAgentWorkspaceResponse
+ */
+export const zKnowledgeAgentWorkspaceResponse = z.object({
+  agent_access_enabled: z.boolean(),
+  grants: z.array(zKnowledgeAgentGrantResponse),
 })
 
 /**
@@ -2433,6 +2598,119 @@ export const zKnowledgeFsSpaceListResponse = z.object({
   page: z.int(),
 })
 
+/**
+ * KnowledgeFSTidyDocumentCardResponse
+ *
+ * What the review page shows about a document a finding quotes.
+ */
+export const zKnowledgeFsTidyDocumentCardResponse = z.object({
+  enabled: z.boolean(),
+  mimeType: z.string(),
+  publishedAt: z.string(),
+  sizeBytes: z.int(),
+  title: z.string(),
+})
+
+/**
+ * KnowledgeFSTidyEvidenceResponse
+ */
+export const zKnowledgeFsTidyEvidenceResponse = z.object({
+  chunkId: z.string(),
+  documentId: z.string(),
+  end: z.int(),
+  revision: z.int(),
+  start: z.int(),
+  text: z.string(),
+  title: z.string(),
+})
+
+/**
+ * KnowledgeFSTidyFindingResponse
+ */
+export const zKnowledgeFsTidyFindingResponse = z.object({
+  actionId: z.string().nullable(),
+  createdAt: z.string(),
+  id: z.string(),
+  kind: z.enum(['conflict', 'duplicate', 'similar']),
+  left: zKnowledgeFsTidyEvidenceResponse,
+  reason: z.string(),
+  revision: z.int(),
+  right: zKnowledgeFsTidyEvidenceResponse,
+  similarity: z.number().nullable(),
+  stale: z.boolean().optional().default(false),
+  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']),
+})
+
+/**
+ * KnowledgeFSTidyFindingListResponse
+ */
+export const zKnowledgeFsTidyFindingListResponse = z.object({
+  documents: z.record(z.string(), zKnowledgeFsTidyDocumentCardResponse).optional(),
+  items: z.array(zKnowledgeFsTidyFindingResponse),
+  nextCursor: z.string().nullable(),
+})
+
+/**
+ * KnowledgeFSTidyScanResponse
+ */
+export const zKnowledgeFsTidyScanResponse = z.object({
+  documentId: z.string(),
+  error: z.string().nullable(),
+  modelCalls: z.int(),
+  state: z.enum(['complete', 'failed', 'pending', 'scanning']),
+  title: z.string(),
+  windows: z.int(),
+})
+
+/**
+ * KnowledgeFSTidyScanListResponse
+ */
+export const zKnowledgeFsTidyScanListResponse = z.object({
+  items: z.array(zKnowledgeFsTidyScanResponse),
+  nextCursor: z.string().nullable(),
+})
+
+/**
+ * KnowledgeFSTidyCurrentScanResponse
+ *
+ * How far the scanner is through the document it is scanning now.
+ */
+export const zKnowledgeFsTidyCurrentScanResponse = z.object({
+  documentId: z.string(),
+  passagesDone: z.int(),
+  passagesTotal: z.int(),
+  title: z.string(),
+})
+
+/**
+ * KnowledgeFSTidyDocumentProgressResponse
+ */
+export const zKnowledgeFsTidyDocumentProgressResponse = z.object({
+  complete: z.int(),
+  failed: z.int(),
+  pending: z.int(),
+  scanning: z.int(),
+})
+
+/**
+ * KnowledgeFSTidyFindingCountResponse
+ */
+export const zKnowledgeFsTidyFindingCountResponse = z.object({
+  count: z.int(),
+  kind: z.enum(['conflict', 'duplicate', 'similar']),
+  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']),
+})
+
+/**
+ * KnowledgeFSTidySummaryResponse
+ */
+export const zKnowledgeFsTidySummaryResponse = z.object({
+  current: zKnowledgeFsTidyCurrentScanResponse.nullish(),
+  documents: zKnowledgeFsTidyDocumentProgressResponse,
+  findings: z.array(zKnowledgeFsTidyFindingCountResponse),
+  modelCalls: z.int(),
+})
+
 export const zKnowledgeFsTraceSource = z.enum([
   'agent',
   'mcp',
@@ -3500,6 +3778,74 @@ export const zKnowledgeFsQualityReplayListResponse = z.object({
  * Agent Knowledge Base Capability v2 public keys
  */
 export const zGetKnowledgeFsWellKnownJwksJsonResponse = zKnowledgeFsjwksResponse
+
+/**
+ * Your agent connections
+ */
+export const zGetKnowledgeFsAgentAccessResponse = zKnowledgeAgentMineResponse
+
+export const zGetKnowledgeFsAgentAccessAuthorizeQuery = z.object({
+  client_id: z.string().max(2048).optional(),
+  code_challenge: z.string().max(128).optional(),
+  code_challenge_method: z.string().max(16).optional(),
+  redirect_uri: z.string().max(2048).optional(),
+  resource: z.string().max(2048).optional(),
+  response_type: z.string().optional(),
+  scope: z.string().max(512).optional(),
+  state: z.string().max(1024).optional(),
+})
+
+/**
+ * Authorization request
+ */
+export const zGetKnowledgeFsAgentAccessAuthorizeResponse = zKnowledgeAgentAuthorizationResponse
+
+export const zPostKnowledgeFsAgentAccessAuthorizeBody = zKnowledgeAgentAuthorizationPayload
+
+/**
+ * Where the browser goes next
+ */
+export const zPostKnowledgeFsAgentAccessAuthorizeResponse =
+  zKnowledgeAgentAuthorizationDecisionResponse
+
+export const zDeleteKnowledgeFsAgentAccessGrantsByGrantIdPath = z.object({
+  grant_id: z.string(),
+})
+
+/**
+ * Disconnected
+ */
+export const zDeleteKnowledgeFsAgentAccessGrantsByGrantIdResponse = z.void()
+
+export const zPatchKnowledgeFsAgentAccessGrantsByGrantIdBody = zKnowledgeAgentGrantUpdatePayload
+
+export const zPatchKnowledgeFsAgentAccessGrantsByGrantIdPath = z.object({
+  grant_id: z.string(),
+})
+
+/**
+ * Connection updated
+ */
+export const zPatchKnowledgeFsAgentAccessGrantsByGrantIdResponse = zKnowledgeAgentGrantResponse
+
+export const zPostKnowledgeFsAgentAccessTokensBody = zKnowledgeAgentTokenPayload
+
+/**
+ * Personal token created
+ */
+export const zPostKnowledgeFsAgentAccessTokensResponse = zKnowledgeAgentTokenCreatedResponse
+
+/**
+ * Workspace agent access
+ */
+export const zGetKnowledgeFsAgentAccessWorkspaceResponse = zKnowledgeAgentWorkspaceResponse
+
+export const zPatchKnowledgeFsAgentAccessWorkspaceBody = zKnowledgeAgentWorkspacePayload
+
+/**
+ * Workspace agent access updated
+ */
+export const zPatchKnowledgeFsAgentAccessWorkspaceResponse = zKnowledgeAgentWorkspaceResponse
 
 /**
  * Agent Knowledge Base availability
@@ -5015,6 +5361,96 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdTagsPath = z.object({
  * Agent Knowledge Base tags replaced
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdTagsResponse = zKnowledgeFsSpaceTagListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsQuery = z.object({
+  cursor: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  kind: z.enum(['conflict', 'duplicate', 'similar']).optional(),
+  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']).optional(),
+})
+
+/**
+ * Tidy result
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsResponse =
+  zKnowledgeFsTidyFindingListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsBody =
+  zKnowledgeFsTidyActionPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsPath = z.object({
+  control_space_id: z.string(),
+  finding_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsResponse =
+  zKnowledgeFsTidyFindingResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryResponse = zKnowledgeFsTidyRetryResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansQuery = z.object({
+  cursor: z.string().optional(),
+  state: z.enum(['complete', 'failed', 'pending', 'scanning']).optional(),
+})
+
+/**
+ * Tidy result
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansResponse =
+  zKnowledgeFsTidyScanListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse =
+  zKnowledgeFsTidySettingsResponse
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsBody =
+  zKnowledgeFsTidySettingsPayload
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse =
+  zKnowledgeFsTidySettingsResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponse =
+  zKnowledgeFsTidySummaryResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesPath = z.object({
   control_space_id: z.string(),

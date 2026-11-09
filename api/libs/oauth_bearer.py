@@ -257,7 +257,11 @@ class _TokenTypeResolver:
             return None
 
         now = datetime.now(UTC)
-        if row.expires_at is not None and row.expires_at <= now:
+        expires_at = row.expires_at
+        # Dialects without zone-aware DATETIME (MySQL, SQLite) return naive values stored in UTC.
+        if expires_at is not None and expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if expires_at is not None and expires_at <= now:
             self._parent.hard_expire(session, row.id, token_hash)
             return None
 
@@ -275,7 +279,7 @@ class _TokenTypeResolver:
             account_id=uuid.UUID(str(row.account_id)) if row.account_id else None,
             client_id=row.client_id,
             token_id=uuid.UUID(str(row.id)),
-            expires_at=row.expires_at,
+            expires_at=expires_at,
         )
         self._parent.cache_set_positive(token_hash, resolved)
         return resolved

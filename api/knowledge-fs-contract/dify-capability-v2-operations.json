@@ -35,6 +35,23 @@
       "resourceType": "namespace"
     },
     {
+      "action": "knowledge_spaces.tidy.manage",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "actOnTidyFinding",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/tidy/findings/{findingId}/actions",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "knowledge_spaces.status.batch",
       "allowedCallerKinds": [
         "interactive",
@@ -1138,6 +1155,40 @@
       "resourceType": "job"
     },
     {
+      "action": "knowledge_spaces.tidy.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getTidySettings",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/tidy/settings",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.tidy.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getTidySummary",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/tidy/summary",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "knowledge_fs.grep",
       "allowedCallerKinds": [
         "interactive",
@@ -1671,6 +1722,40 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "knowledge_spaces.tidy.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listTidyFindings",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/tidy/findings",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.tidy.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listTidyScans",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/tidy/scans",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "golden-questions.write",
       "allowedCallerKinds": [
         "interactive",
@@ -2033,6 +2118,23 @@
       "resourceType": "job"
     },
     {
+      "action": "knowledge_spaces.tidy.configure",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "retryTidyScans",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/tidy/retry",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "capability_grants.revoke",
       "allowedCallerKinds": [
         "service",
@@ -2288,6 +2390,23 @@
       "operationId": "updateQualityBadCase",
       "parentResourceBinding": null,
       "path": "/knowledge-spaces/{id}/quality/bad-cases/{badCaseId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.tidy.configure",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "updateTidySettings",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/tidy/settings",
       "resourceBinding": {
         "pathParameter": "id"
       },

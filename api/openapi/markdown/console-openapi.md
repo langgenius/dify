@@ -8366,6 +8366,137 @@ Get instruction generation template
 | 200 | Agent Knowledge Base Capability v2 public keys | **application/json**: [KnowledgeFSJWKSResponse](#knowledgefsjwksresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /knowledge-fs/agent-access
+**Your agent connections in the current workspace, the MCP URL and both switches**
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Your agent connections | **application/json**: [KnowledgeAgentMineResponse](#knowledgeagentmineresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/agent-access/authorize
+**Validate an agent's authorization request for the consent page**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| client_id | query |  | No | string |
+| code_challenge | query |  | No | string |
+| code_challenge_method | query |  | No | string |
+| redirect_uri | query |  | No | string |
+| resource | query |  | No | string |
+| response_type | query |  | No | string |
+| scope | query |  | No | string |
+| state | query |  | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Authorization request | **application/json**: [KnowledgeAgentAuthorizationResponse](#knowledgeagentauthorizationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/agent-access/authorize
+**Approve (with chosen knowledge bases) or deny; returns the agent's redirect URI**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeAgentAuthorizationPayload](#knowledgeagentauthorizationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Where the browser goes next | **application/json**: [KnowledgeAgentAuthorizationDecisionResponse](#knowledgeagentauthorizationdecisionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/agent-access/grants/{grant_id}
+**Disconnect: yours, or any member's for workspace admins**
+
+Takes effect at once.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| grant_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Disconnected |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/agent-access/grants/{grant_id}
+**Change which knowledge bases your connection may read**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| grant_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeAgentGrantUpdatePayload](#knowledgeagentgrantupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Connection updated | **application/json**: [KnowledgeAgentGrantResponse](#knowledgeagentgrantresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/agent-access/tokens
+**Create a personal token for chosen knowledge bases; the token is shown once**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeAgentTokenPayload](#knowledgeagenttokenpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Personal token created | **application/json**: [KnowledgeAgentTokenCreatedResponse](#knowledgeagenttokencreatedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/agent-access/workspace
+**The workspace switch and every member's connections (workspace admins)**
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace agent access | **application/json**: [KnowledgeAgentWorkspaceResponse](#knowledgeagentworkspaceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/agent-access/workspace
+**Turn personal agents on or off for the whole workspace (workspace admins)**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeAgentWorkspacePayload](#knowledgeagentworkspacepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace agent access updated | **application/json**: [KnowledgeAgentWorkspaceResponse](#knowledgeagentworkspaceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /knowledge-fs/features
 Get which Agent Knowledge Base capabilities this deployment offers
 
@@ -10807,6 +10938,164 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/findings
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| kind | query |  | No | string, <br>**Available values:** "conflict", "duplicate", "similar" |
+| status | query |  | No | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyFindingListResponse](#knowledgefstidyfindinglistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/findings/{finding_id}/actions
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| finding_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSTidyActionPayload](#knowledgefstidyactionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyFindingResponse](#knowledgefstidyfindingresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/retry
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyRetryResponse](#knowledgefstidyretryresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/scans
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| state | query |  | No | string, <br>**Available values:** "complete", "failed", "pending", "scanning" |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyScanListResponse](#knowledgefstidyscanlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/settings
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidySettingsResponse](#knowledgefstidysettingsresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/tidy/settings
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSTidySettingsPayload](#knowledgefstidysettingspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidySettingsResponse](#knowledgefstidysettingsresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/summary
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidySummaryResponse](#knowledgefstidysummaryresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces
@@ -27597,6 +27886,134 @@ This invitation was sent to another account. Please sign in with the invited acc
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
 
+#### KnowledgeAgentAuthorizationClientResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string, <br>**Available values:** "cimd", "dcr" | *Enum:* `"cimd"`, `"dcr"` | Yes |
+| name | string |  | Yes |
+| redirect_host | string |  | Yes |
+
+#### KnowledgeAgentAuthorizationDecisionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| redirect_to | string |  | Yes |
+
+#### KnowledgeAgentAuthorizationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| approve | boolean |  | Yes |
+| client_id | string |  | No |
+| code_challenge | string |  | No |
+| code_challenge_method | string |  | No |
+| knowledge_base_ids | [ string ] |  | No |
+| redirect_uri | string |  | No |
+| resource | string |  | No |
+| response_type | string |  | No |
+| scope | string |  | No |
+| state | string |  | No |
+
+#### KnowledgeAgentAuthorizationQuery
+
+The OAuth authorization request the agent opened the consent page with.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | No |
+| code_challenge | string |  | No |
+| code_challenge_method | string |  | No |
+| redirect_uri | string |  | No |
+| resource | string |  | No |
+| response_type | string |  | No |
+| scope | string |  | No |
+| state | string |  | No |
+
+#### KnowledgeAgentAuthorizationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_access_enabled | boolean |  | Yes |
+| blocked_knowledge_base_ids | [ string ] |  | Yes |
+| client | [KnowledgeAgentAuthorizationClientResponse](#knowledgeagentauthorizationclientresponse) |  | Yes |
+| scopes | [ string ] |  | Yes |
+| workspace | [KnowledgeAgentAuthorizationWorkspaceResponse](#knowledgeagentauthorizationworkspaceresponse) |  | Yes |
+
+#### KnowledgeAgentAuthorizationWorkspaceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### KnowledgeAgentGrantAccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### KnowledgeAgentGrantResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account | [KnowledgeAgentGrantAccountResponse](#knowledgeagentgrantaccountresponse) |  | No |
+| client_name | string |  | No |
+| created_at | dateTime |  | Yes |
+| expires_at | string |  | No |
+| id | string |  | Yes |
+| kind | string, <br>**Available values:** "oauth", "personal" | *Enum:* `"oauth"`, `"personal"` | Yes |
+| knowledge_base_ids | [ string ] |  | Yes |
+| last_used_at | string |  | No |
+| name | string |  | Yes |
+| scopes | [ string ] |  | Yes |
+
+#### KnowledgeAgentGrantUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| knowledge_base_ids | [ string ] |  | Yes |
+
+#### KnowledgeAgentMineResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_access_enabled | boolean | The workspace switch | Yes |
+| available | boolean | Whether this deployment offers agent connections at all | Yes |
+| blocked_knowledge_base_ids | [ string ] |  | Yes |
+| grants | [ [KnowledgeAgentGrantResponse](#knowledgeagentgrantresponse) ] |  | Yes |
+| mcp_url | string |  | Yes |
+
+#### KnowledgeAgentTokenCreatedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| grant | [KnowledgeAgentGrantResponse](#knowledgeagentgrantresponse) |  | Yes |
+| token | string | Shown once; only its SHA-256 digest is stored | Yes |
+
+#### KnowledgeAgentTokenPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_in_days | integer, <br>**Default:** 30 |  | No |
+| knowledge_base_ids | [ string ] |  | Yes |
+| name | string |  | Yes |
+
+#### KnowledgeAgentWorkspacePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+
+#### KnowledgeAgentWorkspaceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_access_enabled | boolean |  | Yes |
+| grants | [ [KnowledgeAgentGrantResponse](#knowledgeagentgrantresponse) ] |  | Yes |
+
 #### KnowledgeConfig
 
 | Name | Type | Description | Required |
@@ -28382,6 +28799,7 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 | ---- | ---- | ----------- | -------- |
 | agent_enabled | boolean |  | Yes |
 | mcp_enabled | boolean |  | No |
+| personal_agent_enabled | boolean |  | No |
 | service_api_enabled | boolean |  | Yes |
 | workflow_enabled | boolean |  | Yes |
 
@@ -28391,6 +28809,7 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 | ---- | ---- | ----------- | -------- |
 | agent_enabled | boolean |  | Yes |
 | mcp_enabled | boolean |  | Yes |
+| personal_agent_enabled | boolean, <br>**Default:** true |  | No |
 | revision | integer |  | Yes |
 | service_api_enabled | boolean |  | Yes |
 | workflow_enabled | boolean |  | Yes |
@@ -30123,6 +30542,157 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | name | string |  | Yes |
 | revision | integer |  | Yes |
 | slug | string |  | Yes |
+
+#### KnowledgeFSTidyActionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string, <br>**Available values:** "disable_document", "dismiss", "review", "undo" | *Enum:* `"disable_document"`, `"dismiss"`, `"review"`, `"undo"` | Yes |
+| documentId | string |  | No |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSTidyCurrentScanResponse
+
+How far the scanner is through the document it is scanning now.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| passagesDone | integer |  | Yes |
+| passagesTotal | integer |  | Yes |
+| title | string |  | Yes |
+
+#### KnowledgeFSTidyDocumentCardResponse
+
+What the review page shows about a document a finding quotes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| mimeType | string |  | Yes |
+| publishedAt | string |  | Yes |
+| sizeBytes | integer |  | Yes |
+| title | string |  | Yes |
+
+#### KnowledgeFSTidyDocumentProgressResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| complete | integer |  | Yes |
+| failed | integer |  | Yes |
+| pending | integer |  | Yes |
+| scanning | integer |  | Yes |
+
+#### KnowledgeFSTidyEvidenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chunkId | string |  | Yes |
+| documentId | string |  | Yes |
+| end | integer |  | Yes |
+| revision | integer |  | Yes |
+| start | integer |  | Yes |
+| text | string |  | Yes |
+| title | string |  | Yes |
+
+#### KnowledgeFSTidyFindingCountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | Yes |
+| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" | *Enum:* `"conflict"`, `"duplicate"`, `"similar"` | Yes |
+| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"outdated"`, `"reviewed"` | Yes |
+
+#### KnowledgeFSTidyFindingListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | object |  | No |
+| items | [ [KnowledgeFSTidyFindingResponse](#knowledgefstidyfindingresponse) ] |  | Yes |
+| nextCursor | string |  | Yes |
+
+#### KnowledgeFSTidyFindingQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" |  | No |
+| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" |  | No |
+
+#### KnowledgeFSTidyFindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actionId | string |  | Yes |
+| createdAt | string |  | Yes |
+| id | string |  | Yes |
+| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" | *Enum:* `"conflict"`, `"duplicate"`, `"similar"` | Yes |
+| left | [KnowledgeFSTidyEvidenceResponse](#knowledgefstidyevidenceresponse) |  | Yes |
+| reason | string |  | Yes |
+| revision | integer |  | Yes |
+| right | [KnowledgeFSTidyEvidenceResponse](#knowledgefstidyevidenceresponse) |  | Yes |
+| similarity | number |  | Yes |
+| stale | boolean |  | No |
+| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"outdated"`, `"reviewed"` | Yes |
+
+#### KnowledgeFSTidyRetryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| resumed | integer |  | Yes |
+
+#### KnowledgeFSTidyScanListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSTidyScanResponse](#knowledgefstidyscanresponse) ] |  | Yes |
+| nextCursor | string |  | Yes |
+
+#### KnowledgeFSTidyScanQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| state | string, <br>**Available values:** "complete", "failed", "pending", "scanning" |  | No |
+
+#### KnowledgeFSTidyScanResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| error | string |  | Yes |
+| modelCalls | integer |  | Yes |
+| state | string, <br>**Available values:** "complete", "failed", "pending", "scanning" | *Enum:* `"complete"`, `"failed"`, `"pending"`, `"scanning"` | Yes |
+| title | string |  | Yes |
+| windows | integer |  | Yes |
+
+#### KnowledgeFSTidySettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| acknowledgeTokenUsage | boolean |  | No |
+| conflicts | boolean |  | No |
+| enabled | boolean |  | Yes |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSTidySettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conflicts | boolean |  | Yes |
+| enabled | boolean |  | Yes |
+| lastError | string, <br>**Available values:** "authorization_failed", "model_unavailable", "scan_failed" |  | Yes |
+| revision | integer |  | Yes |
+| updatedAt | string |  | Yes |
+
+#### KnowledgeFSTidySummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current | [KnowledgeFSTidyCurrentScanResponse](#knowledgefstidycurrentscanresponse) |  | No |
+| documents | [KnowledgeFSTidyDocumentProgressResponse](#knowledgefstidydocumentprogressresponse) |  | Yes |
+| findings | [ [KnowledgeFSTidyFindingCountResponse](#knowledgefstidyfindingcountresponse) ] |  | Yes |
+| modelCalls | integer |  | Yes |
 
 #### KnowledgeFSTraceEntriesQuery
 

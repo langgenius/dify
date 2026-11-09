@@ -391,8 +391,20 @@ class KnowledgeFSControlPlaneService:
                 "workflow": payload.workflow_enabled,
                 "mcp": payload.mcp_enabled,
             }
+            requested_personal_agents = (
+                policy.personal_agent_enabled
+                if payload.personal_agent_enabled is None
+                else payload.personal_agent_enabled
+            )
             if previous_channels == requested_channels:
+                # Personal agents act as the member and hold no channel grants: no epoch or revocation.
+                if requested_personal_agents != policy.personal_agent_enabled:
+                    policy.personal_agent_enabled = requested_personal_agents
+                    policy.revision += 1
+                    policy.updated_by_account_id = actor_account_id
+                    session.flush()
                 return _external_access_response(policy)
+            policy.personal_agent_enabled = requested_personal_agents
             policy.service_api_enabled = payload.service_api_enabled
             policy.agent_enabled = payload.agent_enabled
             policy.workflow_enabled = payload.workflow_enabled
@@ -473,6 +485,7 @@ def _external_access_response(policy: KnowledgeFSExternalAccessPolicy | None) ->
         agent_enabled=policy.agent_enabled if policy else False,
         workflow_enabled=policy.workflow_enabled if policy else False,
         mcp_enabled=policy.mcp_enabled if policy else False,
+        personal_agent_enabled=policy.personal_agent_enabled if policy else True,
         revision=policy.revision if policy else 0,
     )
 

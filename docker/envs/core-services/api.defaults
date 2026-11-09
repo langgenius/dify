@@ -90,6 +90,8 @@ CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@
 # OPENAPI_RATE_LIMIT_PER_TOKEN=60
 # DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR=10
 # ENABLE_OAUTH_BEARER=false
+# Personal agents (Claude Code, Codex) reading Agent Knowledge Bases over MCP at /mcp/knowledge.
+# KNOWLEDGE_AGENT_ACCESS_ENABLED=true
 
 # Container variable mappings; keep these expressions unchanged in the copy.
 AGENT_BACKEND_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}

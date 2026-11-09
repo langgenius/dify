@@ -69,6 +69,19 @@ server {
       include proxy.conf;
     }
 
+    # OAuth discovery for MCP clients connecting to /mcp/knowledge (RFC 9728 and RFC 8414).
+    location /.well-known/oauth-protected-resource {
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
+      include proxy.conf;
+    }
+
+    location /.well-known/oauth-authorization-server {
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
+      include proxy.conf;
+    }
+
     location /triggers {
       set $api_upstream api:5001;
       proxy_pass http://$api_upstream;

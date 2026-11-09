@@ -16,6 +16,8 @@
   "settings.membersRequired": "اختر عضوًا واحدًا على الأقل من الفريق.",
   "settings.nameRequired": "اسم قاعدة معرفة Agent مطلوب.",
   "settings.pageDescription": "إدارة المعلومات الأساسية والوصول إلى API والاسترجاع.",
+  "settings.personalAgentDescription": "يمكن للأعضاء السماح لوكلائهم (Claude Code وCodex وعملاء MCP) بقراءة قاعدة المعرفة هذه بصلاحياتهم.",
+  "settings.personalAgentLabel": "الوكلاء الشخصيون",
   "settings.reloadLatest": "إعادة تحميل أحدث الإعدادات",
   "settings.rerankModelRequired": "اختر نموذج إعادة ترتيب.",
   "settings.retrievalDepth": "عمق الاسترجاع",

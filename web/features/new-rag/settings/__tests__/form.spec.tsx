@@ -227,6 +227,7 @@ const settings = {
 const externalAccess = {
   agent_enabled: true,
   mcp_enabled: true,
+  personal_agent_enabled: true,
   revision: 2,
   service_api_enabled: true,
   workflow_enabled: true,
@@ -447,7 +448,12 @@ describe('KnowledgeSettingsPage workflows', () => {
     serviceMock.patchExternalAccess.mockImplementation(
       async ({ body }: { body: KnowledgeFsExternalAccessPayload }) => {
         const current = knowledgeQueryMock.externalAccess!
-        const saved = { ...current, ...body, revision: current.revision + 1 }
+        const saved = {
+          ...current,
+          ...body,
+          personal_agent_enabled: body.personal_agent_enabled ?? current.personal_agent_enabled,
+          revision: current.revision + 1,
+        }
         knowledgeQueryMock.externalAccess = saved
         return saved
       },
@@ -752,6 +758,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
         body: {
+          personal_agent_enabled: true,
           agent_enabled: false,
           mcp_enabled: true,
           service_api_enabled: false,
@@ -808,6 +815,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
         body: {
+          personal_agent_enabled: true,
           agent_enabled: false,
           mcp_enabled: true,
           service_api_enabled: false,
@@ -847,6 +855,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
         body: {
+          personal_agent_enabled: true,
           agent_enabled: true,
           mcp_enabled: true,
           service_api_enabled: false,
@@ -856,6 +865,35 @@ describe('KnowledgeSettingsPage workflows', () => {
       })
     })
     await waitFor(() => expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true'))
+  })
+
+  it('blocks personal agents for this knowledge base without touching the other channels', async () => {
+    const user = userEvent.setup()
+    await renderForm()
+
+    const personalAgentSwitch = screen.getByRole('switch', {
+      name: 'knowledgeSettings.settings.personalAgentLabel',
+    })
+    expect(personalAgentSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(personalAgentSwitch).toHaveAccessibleDescription(
+      'knowledgeSettings.settings.personalAgentDescription',
+    )
+    await user.click(personalAgentSwitch)
+    expectNoWrites()
+    await saveChanges(user)
+
+    await waitFor(() => {
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
+        body: {
+          agent_enabled: true,
+          mcp_enabled: true,
+          personal_agent_enabled: false,
+          service_api_enabled: true,
+          workflow_enabled: true,
+        },
+        params: { control_space_id: 'space-1' },
+      })
+    })
   })
 
   it('shows a partially enabled API channel as on and disables both channels directly', async () => {
@@ -880,6 +918,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
         body: {
+          personal_agent_enabled: true,
           agent_enabled: false,
           mcp_enabled: true,
           service_api_enabled: false,
@@ -1951,6 +1990,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
     expect(serviceMock.patchExternalAccess).toHaveBeenCalledExactlyOnceWith({
       body: {
+        personal_agent_enabled: true,
         agent_enabled: false,
         service_api_enabled: false,
         workflow_enabled: false,

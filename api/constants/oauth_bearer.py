@@ -19,6 +19,8 @@ class Scope(StrEnum):
     APPS_RUN = "apps:run"
     WORKSPACE_READ = "workspace:read"
     WORKSPACE_WRITE = "workspace:write"
+    # Knowledge-agent (`dfok_`) bearers: read chosen Agent Knowledge Bases over MCP, nothing else.
+    KNOWLEDGE_READ = "knowledge:read"
 
 
 class SubjectType(StrEnum):
@@ -31,6 +33,7 @@ class SubjectType(StrEnum):
     RESOURCE_ACCESS = ("resource_access", frozenset({Scope.WORKSPACE_READ, Scope.APPS_READ, Scope.APPS_RUN}), False)
     ACCOUNT = ("account", frozenset({Scope.FULL}), True)
     EXTERNAL_SSO = ("external_sso", frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL}), False)
+    KNOWLEDGE_AGENT = ("knowledge_agent", frozenset({Scope.KNOWLEDGE_READ}), True)
 
     def __new__(cls, value: str, scopes: frozenset[Scope], bound_to_account: bool) -> SubjectType:
         obj = str.__new__(cls, value)
@@ -51,6 +54,9 @@ class TokenType(StrEnum):
     RESOURCE_ACCESS = ("resource_access", "sk-", SubjectType.RESOURCE_ACCESS)
     OAUTH_ACCOUNT = ("oauth_account", "dfoa_", SubjectType.ACCOUNT)
     OAUTH_EXTERNAL_SSO = ("oauth_external_sso", "dfoe_", SubjectType.EXTERNAL_SSO)
+    # Only the knowledge MCP endpoint resolves this type; the openapi authenticator does not, so a
+    # knowledge-agent bearer cannot reach any other openapi route.
+    OAUTH_KNOWLEDGE_AGENT = ("oauth_knowledge_agent", "dfok_", SubjectType.KNOWLEDGE_AGENT)
 
     def __new__(cls, value: str, prefix: str, subject: SubjectType) -> TokenType:
         obj = str.__new__(cls, value)

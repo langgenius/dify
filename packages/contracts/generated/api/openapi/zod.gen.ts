@@ -2001,7 +2001,12 @@ export const zSkillVersionListResponse = z.object({
 /**
  * SubjectType
  */
-export const zSubjectType = z.enum(['account', 'external_sso', 'resource_access'])
+export const zSubjectType = z.enum([
+  'account',
+  'external_sso',
+  'knowledge_agent',
+  'resource_access',
+])
 
 /**
  * SupportedAppType

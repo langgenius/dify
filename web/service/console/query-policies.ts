@@ -1716,6 +1716,36 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
+            tidy: {
+              settings: {
+                patch: {
+                  mutationOptions: {
+                    onSuccess: (_data, _variables, _result, context) =>
+                      invalidateTidyQueries(consoleQuery, context.client),
+                  },
+                },
+              },
+              retry: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, _variables, _result, context) =>
+                      invalidateTidyQueries(consoleQuery, context.client),
+                  },
+                },
+              },
+              findings: {
+                byFindingId: {
+                  actions: {
+                    post: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _result, context) =>
+                          invalidateTidyQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                },
+              },
+            },
             delete: {
               mutationOptions: {
                 onSuccess: (_data, variables, _result, context) => {
@@ -2976,6 +3006,14 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
+}
+
+function invalidateTidyQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
+  return invalidateQueryKeys(client, [
+    query.knowledgeFs.spaces.byControlSpaceId.tidy.key(),
+    query.knowledgeFs.spaces.byControlSpaceId.documents.key(),
+    query.knowledgeFs.spaces.byControlSpaceId.overview.key(),
+  ])
 }
 
 function invalidateNetworkAccessGroupQueries(

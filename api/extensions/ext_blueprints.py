@@ -59,6 +59,7 @@ def init_app(app: DifyApp):
     from controllers.service_api import bp as service_api_bp
     from controllers.trigger import bp as trigger_bp
     from controllers.web import bp as web_bp
+    from controllers.well_known import bp as well_known_bp
 
     _apply_cors_once(
         service_api_bp,
@@ -133,6 +134,8 @@ def init_app(app: DifyApp):
 
     app.register_blueprint(inner_api_bp)
     app.register_blueprint(mcp_bp)
+    # OAuth discovery for the knowledge MCP endpoint lives at the API root (`/.well-known/...`).
+    app.register_blueprint(well_known_bp)
 
     # Register trigger blueprint with CORS for webhook calls
     _apply_cors_once(

@@ -16,6 +16,8 @@
   "settings.membersRequired": "Wählen Sie mindestens ein Teammitglied aus.",
   "settings.nameRequired": "Der Name der Agent-Wissensdatenbank ist erforderlich.",
   "settings.pageDescription": "Grundinformationen, API-Zugriff und Abruf verwalten.",
+  "settings.personalAgentDescription": "Mitglieder können ihre eigenen Agenten (Claude Code, Codex, MCP-Clients) diese Wissensdatenbank mit ihren Berechtigungen lesen lassen.",
+  "settings.personalAgentLabel": "Persönliche Agenten",
   "settings.reloadLatest": "Aktuelle Einstellungen laden",
   "settings.rerankModelRequired": "Wählen Sie ein Rerank-Modell aus.",
   "settings.retrievalDepth": "Suchtiefe",

@@ -3137,3 +3137,103 @@ def test_prepare_logical_document_download_rejects_pending_document_without_acti
 
     assert facade.list_document_revisions_calls == []
     assert facade.get_document_calls == []
+
+
+def test_tidy_calls_use_fresh_scoped_capabilities_and_preserve_evidence() -> None:
+    from services.knowledge_fs.tidy_dto import (
+        KnowledgeFSTidyActionPayload,
+        KnowledgeFSTidyFindingQuery,
+        KnowledgeFSTidyScanQuery,
+        KnowledgeFSTidySettingsPayload,
+    )
+
+    class TidyRemote(RecordingRemote):
+        @override
+        def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
+            self.requests.append(request)
+            if request.operation_id in {"getTidySettings", "updateTidySettings"}:
+                return {
+                    "enabled": True,
+                    "conflicts": False,
+                    "revision": 1,
+                    "lastError": "authorization_failed",
+                    "updatedAt": "2026-11-03",
+                }
+            if request.operation_id in {"listTidyFindings", "listTidyScans"}:
+                return {"items": [], "nextCursor": None}
+            if request.operation_id == "getTidySummary":
+                return {
+                    "findings": [{"status": "open", "kind": "similar", "count": 2}],
+                    "documents": {"pending": 1, "scanning": 0, "complete": 4, "failed": 1},
+                    "modelCalls": 0,
+                    "current": {"documentId": "doc-a", "title": "Big.txt", "passagesDone": 179, "passagesTotal": 285},
+                }
+            if request.operation_id == "retryTidyScans":
+                return {"resumed": 1}
+            return {
+                "id": "f" * 64,
+                "kind": "conflict",
+                "left": {
+                    "documentId": "doc-a",
+                    "revision": 1,
+                    "title": "A",
+                    "chunkId": "chunk-a",
+                    "start": 0,
+                    "end": 3,
+                    "text": "十四天",
+                },
+                "right": {
+                    "documentId": "doc-b",
+                    "revision": 2,
+                    "title": "B",
+                    "chunkId": "chunk-b",
+                    "start": 0,
+                    "end": 2,
+                    "text": "七天",
+                },
+                "reason": "期限不同",
+                "similarity": None,
+                "status": "disabled",
+                "revision": 2,
+                "actionId": "action-1",
+                "createdAt": "2026-11-03",
+            }
+
+    remote = TidyRemote()
+    broker = RecordingBroker()
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)
+    common: _FacadeScope = {"tenant_id": "tenant-1", "account_id": "account-1", "control_space_id": "control-1"}
+    settings = facade.get_tidy_settings(**common)
+    facade.update_tidy_settings(
+        **common, payload=KnowledgeFSTidySettingsPayload(enabled=True, conflicts=False, expectedRevision=0)
+    )
+    facade.list_tidy_findings(**common, query=KnowledgeFSTidyFindingQuery(status="open", kind="similar"))
+    facade.list_tidy_scans(**common, query=KnowledgeFSTidyScanQuery(state="failed"))
+    result = facade.act_on_tidy_finding(
+        **common,
+        finding_id="f" * 64,
+        payload=KnowledgeFSTidyActionPayload(action="disable_document", expectedRevision=1, documentId="doc-b"),
+    )
+    facade.retry_tidy_scans(**common)
+    summary = facade.get_tidy_summary(**common)
+    assert result.left.text == "十四天"
+    assert result.right.text == "七天"
+    assert settings.lastError == "authorization_failed"
+    assert summary.documents.failed == 1
+    assert summary.findings[0].kind == "similar"
+    assert summary.current is not None
+    assert (summary.current.passagesDone, summary.current.passagesTotal) == (179, 285)
+    assert len(broker.calls) == 7
+    assert all(call["tenant_id"] == "tenant-1" and call["account_id"] == "account-1" for call in broker.calls)
+    # Text-only scanning makes no model calls, so it needs no token acknowledgment.
+    assert remote.requests[1].payload == {
+        "enabled": True,
+        "conflicts": False,
+        "expectedRevision": 0,
+        "acknowledgeTokenUsage": False,
+    }
+    assert remote.requests[2].query == (("status", "open"), ("kind", "similar"))
+    assert remote.requests[3].query == (("state", "failed"),)
+    assert remote.requests[6].path.endswith("/tidy/summary")
+    assert remote.requests[4].path.endswith(f"/tidy/findings/{'f' * 64}/actions")
+    assert remote.requests[4].payload == {"action": "disable_document", "expectedRevision": 1, "documentId": "doc-b"}
