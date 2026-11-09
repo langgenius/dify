@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from constants.oauth_bearer import TokenType
 from controllers.openapi._catalog import CATALOG_HEADER, current_catalog
 from controllers.openapi._errors import CatalogStale
 from controllers.openapi.auth.context import Context
@@ -57,10 +56,6 @@ class Pipeline:
         `CheckSubject` ahead of `_RequiresEnterprise`.
         """
         requirements = spec.requirements + self.fixed
-        if auth.token_type is TokenType.PERSONAL_ACCESS:
-            if spec.pat_policy is None:
-                raise Forbidden("personal_access_token_not_supported")
-            requirements += (CheckPersonalAccess(spec.pat_policy),)
         for requirement in sorted(requirements, key=lambda item: item.rank):
             requirement.run(subject, ctx, session)
         with mounted(subject, auth, ctx):
@@ -107,7 +102,7 @@ class _RequiresCurrentCatalog(Requirement):
 
 
 class AccountPipeline(Pipeline, serves=AccountSubject):
-    fixed = (_RequiresCurrentCatalog(), ResolveCaller())
+    fixed = (_RequiresCurrentCatalog(), CheckPersonalAccess(), ResolveCaller())
 
 
 class ResourceAccessPipeline(Pipeline, serves=ResourceAccessSubject):

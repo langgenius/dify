@@ -1,4 +1,4 @@
-"""What the request resolved, and nothing else: no fetching, no checking, no
+"""Resolved request data and declared PAT policy: no fetching, no checking, no
 opinion about the shape of the request. `loaders.py` fills a slot once; the
 properties hand handlers the non-optional value, and raise when no requirement
 on the route loaded it, so a handler can never fetch its way past a missing
@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from core.logging.context import get_request_id, get_trace_id
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountRole
@@ -43,6 +44,8 @@ class Context:
     view_args: Mapping[str, str]
     request_id: str = field(default_factory=get_request_id)
     trace_id: str | None = field(default_factory=get_trace_id)
+    # None means the endpoint has not opted into PAT access; PAT admission must deny it.
+    pat_policy: PersonalAccessTokenPolicy | None = field(default=None, kw_only=True)
     resource_app_ids: frozenset[str] | None = field(default=None, init=False)
     personal_workspace_ids: frozenset[str] | None = field(default=None, init=False)
     personal_app_ids: frozenset[str] | None = field(default=None, init=False)
