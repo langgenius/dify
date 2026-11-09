@@ -81,7 +81,8 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
 
   return (
     <div className="min-h-0 flex-1 overflow-auto py-2">
-      <table className="min-w-full table-fixed border-collapse overflow-hidden rounded-lg">
+      {/* w-max keeps the declared column widths; wide runs scroll instead of squeezing text. */}
+      <table className="w-max min-w-full table-fixed border-collapse overflow-hidden rounded-lg">
         <colgroup>
           <col className="w-10" />
           <col className="w-[220px]" />
@@ -112,6 +113,11 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
                 )}
               >
                 {column.label}
+                {column.nodeLabel && (
+                  <span className="block truncate system-2xs-regular text-text-quaternary normal-case">
+                    {column.nodeLabel}
+                  </span>
+                )}
               </th>
             ))}
           </tr>
@@ -193,7 +199,11 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
                       >
                         <ResultCellValue
                           value={formatValue(metricValue)}
-                          label={column.label}
+                          label={
+                            column.nodeLabel
+                              ? `${column.label} · ${column.nodeLabel}`
+                              : column.label
+                          }
                           viewDetailsLabel={viewDetailsLabel}
                         />
                       </td>

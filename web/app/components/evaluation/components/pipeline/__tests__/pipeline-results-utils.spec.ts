@@ -4,6 +4,7 @@ import {
   formatExpectedOutput,
   getIsItemPassed,
   getMetricColumns,
+  getMetricValue,
   toPlainTextPreview,
 } from '../pipeline-results-utils'
 
@@ -83,7 +84,7 @@ describe('result metric columns', () => {
     ]
 
     expect(getMetricColumns(resource, items)).toEqual([
-      { id: 'answer_correctness', label: 'Answer Correctness' },
+      { id: 'answer_correctness', metricName: 'answer_correctness', label: 'Answer Correctness' },
     ])
   })
 
@@ -95,6 +96,37 @@ describe('result metric columns', () => {
 
     expect(
       getMetricColumns(resource, [createItem({ metrics: [{ name: 'tool_selection', value: 1 }] })]),
-    ).toEqual([{ id: 'tool_selection', label: 'Tool Selection' }])
+    ).toEqual([{ id: 'tool_selection', metricName: 'tool_selection', label: 'Tool Selection' }])
+  })
+
+  it('splits a metric scored on several nodes into one column per node', () => {
+    const resource = buildStateFromEvaluationConfig('apps', 'app-1', {
+      evaluation_framework: 'ragas',
+      default_metrics: [],
+    })
+    const classic = { node_id: 'kr', title: 'Classic Knowledge', type: 'knowledge-retrieval' }
+    const agentKnowledge = {
+      node_id: 'akr',
+      title: 'Agent Knowledge',
+      type: 'knowledge-retrieval-v2',
+    }
+    const item = createItem({
+      metrics: [
+        { name: 'context_precision', value: 0.4, node_info: classic },
+        { name: 'context_precision', value: 0.9, node_info: agentKnowledge },
+        { name: 'answer_correctness', value: 1, node_info: nodeInfo },
+      ],
+    })
+
+    const columns = getMetricColumns(resource, [item])
+
+    expect(columns.map(({ label, nodeLabel }) => [label, nodeLabel])).toEqual([
+      ['Context Precision', 'Classic Knowledge'],
+      ['Context Precision', 'Agent Knowledge'],
+      ['Answer Correctness', undefined],
+    ])
+    expect(columns.map((column) => getMetricValue(item.metrics ?? [], column))).toEqual([
+      0.4, 0.9, 1,
+    ])
   })
 })
