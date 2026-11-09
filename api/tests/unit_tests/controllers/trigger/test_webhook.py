@@ -11,7 +11,7 @@ from models.workflow import Workflow
 from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from services.errors.app import QuotaExceededError
 from services.trigger.app_trigger_service import AppTriggerService
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_workflow
 
 
 class _RequestStub:

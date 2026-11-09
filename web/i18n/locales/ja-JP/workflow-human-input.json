@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "アクション値",
   "nodes.humanInput.userActions.buttonTextTooLong": "ボタンテキストは{{maxLength}}文字以下である必要があります",
   "nodes.humanInput.userActions.chooseStyle": "ボタンスタイルを選択",
+  "nodes.humanInput.userActions.defaultTitle": "ボタンのテキスト {{index}}",
   "nodes.humanInput.userActions.emptyTip": "'+'ボタンをクリックしてユーザーアクションを追加",
   "nodes.humanInput.userActions.title": "ユーザーアクション",
   "nodes.humanInput.userActions.tooltip": "ユーザーがこのフォームに応答するためにクリックできるボタンを定義します。アクションIDは分岐を制御します。アクション値は選択された組み込み出力として下流に公開されます。アクションIDは文字またはアンダースコアで始まり、その後に文字、数字、またはアンダースコアが続く必要があります。",

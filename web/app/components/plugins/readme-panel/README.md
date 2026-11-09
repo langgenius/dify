@@ -8,8 +8,8 @@ text and binary resources.
 
 The Console `PluginReadmeApi` and `PluginAssetApi` controllers in
 `api/controllers/console/workspace/plugin.py` own the public HTTP contracts.
-`PluginReadmeResponse` contains `readme: string`; `BinaryFileResponse` is generated
-as `Blob | File`. The backend adapts the daemon's Readme content to the Console
+`PluginReadmeResponse` contains `readme: string`; the asset response declares
+`application/octet-stream` and is generated as `Blob | File`. The backend adapts the daemon's Readme content to the Console
 response. A successful empty string and a failed request are distinct outcomes:
 the panel displays its empty state for the former and its failure state for the
 latter.

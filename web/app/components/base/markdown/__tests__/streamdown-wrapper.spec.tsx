@@ -61,6 +61,25 @@ describe('StreamdownWrapper', () => {
     })
   })
 
+  describe('Soft line breaks', () => {
+    it('should render soft line breaks by default', () => {
+      render(<StreamdownWrapper latexContent={'first line\nsecond line'} />)
+      expect(document.querySelector('br')).not.toBeNull()
+    })
+
+    it('should collapse soft line breaks when disabled and preserve paragraph breaks', () => {
+      render(
+        <StreamdownWrapper
+          latexContent={'first line\nsecond line\n\nnext paragraph'}
+          renderSoftBreaks={false}
+        />,
+      )
+      expect(document.querySelector('br')).toBeNull()
+      expect(screen.getByText('first line second line')).toBeInTheDocument()
+      expect(screen.getByText('next paragraph')).toBeInTheDocument()
+    })
+  })
+
   describe('Plugin Info behavior', () => {
     it('should render PluginImg and PluginParagraph when pluginInfo is provided', () => {
       // Arrange

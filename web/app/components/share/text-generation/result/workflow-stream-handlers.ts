@@ -14,6 +14,7 @@ import {
   updatePendingHumanInputForm,
 } from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
+import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { sseGet } from '@/service/base'
 
@@ -26,6 +27,7 @@ type CreateWorkflowStreamHandlersParams = {
   markEnded: () => void
   notify: Notify
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
+  onPaused?: (workflowRunId: string, handlers: IOtherOptions) => void
   resetRunState: () => void
   setCompletionRes: (res: string) => void
   setCurrentTaskId: Dispatch<SetStateAction<string | null>>
@@ -251,6 +253,7 @@ export const createWorkflowStreamHandlers = ({
   markEnded,
   notify,
   onCompleted,
+  onPaused,
   resetRunState,
   setCompletionRes,
   setCurrentTaskId,
@@ -325,6 +328,9 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowFinished: ({ data }) => {
       const workflowStatus = data.status as WorkflowRunningStatus | undefined
+      const localizedError = localizeKnowledgeRetrievalV2Error(data.error, (key) =>
+        t(($) => $[key], { ns: 'workflow' }),
+      )
       if (isTimedOut()) {
         const finishedStatus =
           workflowStatus === WorkflowRunningStatus.Stopped
@@ -333,7 +339,7 @@ export const createWorkflowStreamHandlers = ({
               ? WorkflowRunningStatus.Failed
               : WorkflowRunningStatus.Succeeded
         setWorkflowProcessData(
-          applyWorkflowFinishedState(getWorkflowProcessData(), finishedStatus, data.error),
+          applyWorkflowFinishedState(getWorkflowProcessData(), finishedStatus, localizedError),
         )
         notify({
           type: 'warning',
@@ -348,7 +354,7 @@ export const createWorkflowStreamHandlers = ({
           applyWorkflowFinishedState(
             getWorkflowProcessData(),
             WorkflowRunningStatus.Stopped,
-            data.error,
+            localizedError,
           ),
         )
         finishWithFailure()
@@ -356,12 +362,12 @@ export const createWorkflowStreamHandlers = ({
       }
 
       if (data.error) {
-        notify({ type: 'error', message: data.error })
+        notify({ type: 'error', message: localizedError! })
         setWorkflowProcessData(
           applyWorkflowFinishedState(
             getWorkflowProcessData(),
             WorkflowRunningStatus.Failed,
-            data.error,
+            localizedError,
           ),
         )
         finishWithFailure()
@@ -403,6 +409,11 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
+      if (onPaused) {
+        setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
+        onPaused(data.workflow_run_id, otherOptions)
+        return
+      }
       if (!hasStartedResumeStream) {
         hasStartedResumeStream = true
         void sseGet(

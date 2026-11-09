@@ -47,6 +47,25 @@ it('honors an external expand change and exposes an error without tracing detail
   )
 })
 
+it('localizes a KnowledgeFS permissions rejection in the collapsed and expanded states', async () => {
+  const user = userEvent.setup()
+  render(
+    <WorkflowProcessItem
+      data={createWorkflowProcessFixture({
+        status: WorkflowRunningStatus.Failed,
+        error:
+          '[knowledge_fs_authorization_not_ready] KnowledgeFS Space space-a permissions are not ready',
+      })}
+      expand={false}
+    />,
+  )
+  const localized = 'workflow.nodes.knowledgeRetrievalV2.errors.permissionsNotReady'
+  expect(screen.getByText(localized)).toBeInTheDocument()
+  expect(screen.queryByText(/KnowledgeFS Space space-a/)).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button'))
+  expect(screen.getByRole('alert')).toHaveTextContent(localized)
+})
+
 it('hides the process in readonly chat', () => {
   const { container } = render(<WorkflowProcessItem data={data} readonly />)
   expect(container).toBeEmptyDOMElement()

@@ -12,7 +12,7 @@ import {
 import { FeaturesProvider } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import ConfigContext from '@/context/debug-configuration'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
@@ -166,8 +166,8 @@ function setup({
                   setConfigs(next)
                 }}
               />
-              <AppToastHost />
-              <AppToastHost manager={appConfigurationToastManager} />
+              <AppToaster />
+              <AppToaster manager={appConfigurationToastManager} />
             </EventEmitterContextProvider>
           </FeaturesProvider>
         </ConfigContext.Provider>
@@ -323,6 +323,83 @@ it.each([
     expect(api.stream).not.toHaveBeenCalled()
   },
 )
+it.each(['chat', 'completion'] as const)(
+  'displays and sends a required numeric zero default in %s preview',
+  async (mode) => {
+    const { user } = setup({
+      context: {
+        mode,
+        modelConfig: createModelConfigFixture({
+          provider: 'openai',
+          model_id: 'gpt-4',
+          mode: ModelModeType.chat,
+          configs: {
+            prompt_template: 'Count {{count}}',
+            prompt_variables: [
+              { key: 'count', name: 'Count', type: 'number', required: true, default: 0 },
+            ],
+          },
+        }),
+      },
+    })
+
+    expect.soft(screen.getByRole('spinbutton', { name: 'Count' })).toHaveValue(0)
+    if (mode === 'completion') await run(user)
+    else await sendChat(user)
+
+    expect(api.stream).toHaveBeenCalledTimes(1)
+    expect(api.stream.mock.lastCall![1].body).toHaveProperty('inputs', { count: 0 })
+  },
+)
+
+it('blocks missing and cleared required numeric inputs', async () => {
+  const { user } = setup({
+    context: {
+      mode: 'completion',
+      modelConfig: createModelConfigFixture({
+        configs: {
+          prompt_template: 'Count {{count}}',
+          prompt_variables: [{ key: 'count', name: 'Count', type: 'number', required: true }],
+        },
+      }),
+    },
+  })
+  const input = screen.getByRole('spinbutton', { name: 'Count' })
+
+  await run(user)
+  expect(
+    await screen.findByText('appDebug.errorMessage.valueOfVarRequired:{"key":"Count"}'),
+  ).toBeVisible()
+  expect(api.stream).not.toHaveBeenCalled()
+
+  await user.type(input, '1')
+  await user.clear(input)
+  await run(user)
+  expect(api.stream).not.toHaveBeenCalled()
+})
+
+it('keeps a required numeric false value invalid', async () => {
+  const { user } = setup({
+    context: {
+      mode: 'completion',
+      inputs: { count: false },
+      modelConfig: createModelConfigFixture({
+        configs: {
+          prompt_template: 'Count {{count}}',
+          prompt_variables: [{ key: 'count', name: 'Count', type: 'number', required: true }],
+        },
+      }),
+    },
+  })
+
+  await run(user)
+
+  expect(
+    await screen.findByText('appDebug.errorMessage.valueOfVarRequired:{"key":"Count"}'),
+  ).toBeVisible()
+  expect(api.stream).not.toHaveBeenCalled()
+})
+
 it('validates a required completion input and sends the corrected value', async () => {
   const { user } = setup({ context: { mode: 'completion', modelConfig: variableModel() } })
   await run(user)

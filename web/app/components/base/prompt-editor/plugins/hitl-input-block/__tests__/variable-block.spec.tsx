@@ -123,22 +123,70 @@ describe('HITLInputVariableBlockComponent', () => {
       const editor = getEditor()
       expect(editor).not.toBeNull()
 
-      let handled = false
       act(() => {
         editor!.update(() => {
           $getRoot().selectEnd()
         })
-        handled = editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+        editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
           workflowNodesMap: createWorkflowNodesMap(),
           availableVariables: [],
         })
       })
 
-      expect(handled).toBe(true)
       await waitFor(() => {
         expect(screen.getByText('Node One')).toBeInTheDocument()
       })
     })
+  })
+
+  it('refreshes every Human Input variable block from a single workflow map update', async () => {
+    let editor: LexicalEditor | null = null
+    render(
+      <LexicalComposer
+        initialConfig={{
+          namespace: 'hitl-variable-broadcast-test',
+          nodes: [HITLInputNode],
+          onError: (error: Error) => {
+            throw error
+          },
+        }}
+      >
+        <HITLInputVariableBlockComponent variables={['node-1', 'first']} workflowNodesMap={{}} />
+        <HITLInputVariableBlockComponent variables={['node-1', 'second']} workflowNodesMap={{}} />
+        <CaptureEditorPlugin
+          onReady={(value) => {
+            editor = value
+          }}
+        />
+      </LexicalComposer>,
+    )
+
+    await waitFor(() => {
+      expect(editor).not.toBeNull()
+    })
+    expect(screen.queryByText('Node One')).not.toBeInTheDocument()
+
+    act(() => {
+      editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+        workflowNodesMap: createWorkflowNodesMap(),
+        availableVariables: [],
+      })
+    })
+    await waitFor(() => {
+      expect(screen.getAllByText('Node One')).toHaveLength(2)
+    })
+
+    // Later edits must also reach both references, rather than retaining a stale title.
+    act(() => {
+      editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+        workflowNodesMap: createWorkflowNodesMap('Renamed Node'),
+        availableVariables: [],
+      })
+    })
+    await waitFor(() => {
+      expect(screen.getAllByText('Renamed Node')).toHaveLength(2)
+    })
+    expect(screen.queryByText('Node One')).not.toBeInTheDocument()
   })
 
   describe('Validation branches', () => {

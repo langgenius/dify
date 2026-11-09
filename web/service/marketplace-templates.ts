@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplaceApiUrl } from '@/features/marketplace/api'
 import { marketplaceQuery } from '@/service/marketplace'
 
 export const useMarketplaceTemplateDetail = (templateId: string | null) => {
@@ -12,8 +12,7 @@ export const useMarketplaceTemplateDetail = (templateId: string | null) => {
 }
 
 export const fetchMarketplaceTemplateDSL = async (templateId: string): Promise<string> => {
-  const url = `${MARKETPLACE_API_PREFIX}/templates/${templateId}/dsl`
-  const response = await fetch(url)
+  const response = await fetch(getMarketplaceApiUrl(`templates/${templateId}/dsl`))
   if (!response.ok) throw new Error(`Failed to fetch DSL: ${response.statusText}`)
   return response.text()
 }

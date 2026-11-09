@@ -10,7 +10,7 @@ from services.account_errors import AccountNotFoundError, CurrentAccountPassword
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.entities.account_entities import AccountPasswordDigest
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 def _context() -> RequestContext:

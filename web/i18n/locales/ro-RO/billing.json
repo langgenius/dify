@@ -8,6 +8,9 @@
   "apps.fullTip2": "Limita planului a fost atinsă",
   "apps.fullTip2des": "Se recomandă curățarea aplicațiilor inactive pentru a elibera resurse, sau contactați-ne.",
   "buyPermissionDeniedTip": "Vă rugăm să contactați administratorul dvs. de întreprindere pentru a vă abona",
+  "errors.operationFailed": "Nu am putut finaliza această solicitare. Încercați din nou mai târziu. Dacă problema persistă, contactați asistența.",
+  "errors.requestInProgress": "Solicitarea anterioară este încă în curs de procesare. Încercați din nou în câteva momente.",
+  "errors.unavailable": "Acest serviciu este temporar indisponibil. Încercați din nou mai târziu.",
   "plans.community.btnText": "Începe cu Comunitatea",
   "plans.community.description": "Pentru utilizatori individuali, echipe mici sau proiecte necomerciale",
   "plans.community.features": [

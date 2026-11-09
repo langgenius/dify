@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -70,6 +71,32 @@ describe('config-modal utils', () => {
       expect(nextPayload.default).toBeUndefined()
     })
 
+    it.each([
+      { from: InputVarType.singleFile, to: InputVarType.textInput },
+      { from: InputVarType.singleFile, to: InputVarType.multiFiles },
+      { from: InputVarType.multiFiles, to: InputVarType.singleFile },
+    ])('should clear the file default when switching from $from to $to', ({ from, to }) => {
+      const file: FileEntity = {
+        id: 'local-file',
+        name: 'document.txt',
+        size: 8,
+        type: 'text/plain',
+        progress: 100,
+        transferMethod: 'local_file',
+        supportFileType: 'document',
+        uploadedId: 'uploaded-file-id',
+      }
+      const payload = createInputVar({
+        type: from,
+        default: from === InputVarType.singleFile ? file : [file],
+      })
+
+      const nextPayload = createPayloadForType(payload, to)
+
+      expect(nextPayload.type).toBe(to)
+      expect(nextPayload.default).toBeUndefined()
+    })
+
     it('should normalize empty select defaults to undefined', () => {
       const nextPayload = normalizeSelectDefaultValue(
         createInputVar({
@@ -134,6 +161,75 @@ describe('config-modal utils', () => {
   })
 
   describe('validation', () => {
+    it.each([InputVarType.singleFile, InputVarType.multiFiles])(
+      'should remove upload binaries from %s defaults without changing the uploader file',
+      (type) => {
+        const originalFile = new File(['document'], 'document.txt', { type: 'text/plain' })
+        const uploadedMetadata: FileEntity = {
+          id: 'local-file',
+          name: 'document.txt',
+          size: originalFile.size,
+          type: originalFile.type,
+          progress: 100,
+          transferMethod: 'local_file',
+          supportFileType: 'document',
+          uploadedId: 'uploaded-file-id',
+        }
+        const uploadedFile = { ...uploadedMetadata, originalFile }
+        const remoteFile: FileEntity = {
+          ...uploadedMetadata,
+          id: 'remote-file',
+          transferMethod: 'remote_url',
+          url: 'https://example.com/document.txt',
+        }
+        const tempPayload = createInputVar({
+          type,
+          allowed_file_types: [SupportUploadFileTypes.document],
+          default: type === InputVarType.singleFile ? uploadedFile : [uploadedFile, remoteFile],
+        })
+
+        const { payloadToSave } = validateConfigModalPayload({ tempPayload, t })
+
+        const savedFiles = [payloadToSave?.default].flat() as FileEntity[]
+        expect(savedFiles.some((file) => file.originalFile instanceof Blob)).toBe(false)
+        expect(payloadToSave?.default).toEqual(
+          type === InputVarType.singleFile ? uploadedMetadata : [uploadedMetadata, remoteFile],
+        )
+        expect(uploadedFile.originalFile).toBe(originalFile)
+      },
+    )
+
+    it.each([
+      '{"originalFile":"document.txt","count":2}',
+      '[null,{"originalFile":"document.txt"}]',
+    ])('should preserve JSON default data: %s', (json) => {
+      const defaultValue = JSON.parse(json)
+      const { payloadToSave } = validateConfigModalPayload({
+        tempPayload: createInputVar({ type: InputVarType.jsonObject, default: defaultValue }),
+        t,
+      })
+
+      expect(payloadToSave?.default).toEqual(defaultValue)
+    })
+
+    it.each([
+      { type: InputVarType.singleFile, defaultValue: undefined },
+      { type: InputVarType.singleFile, defaultValue: '' },
+      { type: InputVarType.multiFiles, defaultValue: undefined },
+      { type: InputVarType.multiFiles, defaultValue: [] },
+    ])('should preserve an empty $type default', ({ type, defaultValue }) => {
+      const { payloadToSave } = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type,
+          default: defaultValue,
+          allowed_file_types: [SupportUploadFileTypes.document],
+        }),
+        t,
+      })
+
+      expect(payloadToSave?.default).toEqual(defaultValue)
+    })
+
     it('should reject duplicate select options', () => {
       const result = validateConfigModalPayload({
         tempPayload: createInputVar({

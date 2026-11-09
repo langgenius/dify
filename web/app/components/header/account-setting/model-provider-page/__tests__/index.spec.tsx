@@ -324,6 +324,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.modelProviders.summary.get': () => new Promise(() => {}),
+      'workspaces.current.modelProviders.credits.get': () => new Promise(() => {}),
       'workspaces.current.defaultModel.get': mockDefaultModelQuery,
       'workspaces.current.models.modelTypes.byModelType.get': () => ({ data: [] }),
       'workspaces.current.plugin.list.latestVersions.post': () => new Promise(() => {}),
@@ -698,7 +699,11 @@ describe('ModelProviderPage', () => {
       const refreshedDialog = screen.getByRole('dialog', {
         name: 'modelProvider.modelProvider.systemModelSettingsTitle',
       })
-      expect(await within(refreshedDialog).findByRole('button', { name: /^GPT-4/ })).toBeVisible()
+      expect(
+        await within(refreshedDialog).findByRole('button', {
+          name: 'modelProvider.modelProvider.systemReasoningModel.key GPT-4',
+        }),
+      ).toBeVisible()
       expect(mockDefaultModelQuery).toHaveBeenCalledTimes(5)
     })
 

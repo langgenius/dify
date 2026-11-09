@@ -109,9 +109,9 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               <Input
                 required
                 defaultValue={editingApiBasedExtension?.name || ''}
-                placeholder={
-                  t(($) => $['apiBasedExtension.modal.name.placeholder'], { ns: 'common' }) || ''
-                }
+                placeholder={t(($) => $['apiBasedExtension.modal.name.placeholder'], {
+                  ns: 'common',
+                })}
               />
               <FieldError match="valueMissing">
                 {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: nameLabel })}
@@ -123,11 +123,9 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               <Input
                 required
                 defaultValue={editingApiBasedExtension?.api_endpoint || ''}
-                placeholder={
-                  t(($) => $['apiBasedExtension.modal.apiEndpoint.placeholder'], {
-                    ns: 'common',
-                  }) || ''
-                }
+                placeholder={t(($) => $['apiBasedExtension.modal.apiEndpoint.placeholder'], {
+                  ns: 'common',
+                })}
               />
               <FieldDescription>
                 <a
@@ -137,7 +135,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
                   className="inline-flex w-fit items-center text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 >
                   <span
-                    className="mr-1 i-custom-vender-line-education-book-open-01 size-3"
+                    className="me-1 i-custom-vender-line-education-book-open-01 size-3"
                     aria-hidden="true"
                   />
                   {t(($) => $['apiBasedExtension.link'], { ns: 'common' })}
@@ -161,9 +159,9 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               <Input
                 required
                 defaultValue={editingApiBasedExtension?.api_key || ''}
-                placeholder={
-                  t(($) => $['apiBasedExtension.modal.apiKey.placeholder'], { ns: 'common' }) || ''
-                }
+                placeholder={t(($) => $['apiBasedExtension.modal.apiKey.placeholder'], {
+                  ns: 'common',
+                })}
               />
               <FieldError match="valueMissing">
                 {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: apiKeyLabel })}

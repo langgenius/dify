@@ -81,7 +81,6 @@ export function PublisherActionsSection({
                   ? disabledFunctionTooltip
                   : t(($) => $['common.openWebAppDescription'], { ns: 'workflow' })
               }
-              external
               focusableWhenDisabled={Boolean(disabledFunctionTooltip)}
               link={appURL}
               icon={<span className="i-ri-planet-line size-4" />}

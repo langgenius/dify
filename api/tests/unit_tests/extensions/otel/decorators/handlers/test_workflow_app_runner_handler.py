@@ -6,6 +6,8 @@ Test objectives:
 2. Verify span attribute mapping correctness
 """
 
+from unittest.mock import MagicMock
+
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -15,8 +17,8 @@ from sqlalchemy import Engine
 from extensions.otel.decorators.handlers.workflow_app_runner_handler import WorkflowAppRunnerHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from services.workflow_run_agg import WorkflowRunAgg
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.services.workflow.test_workflow_run_agg import make_workflow_runner
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.unit_tests.services.test_workflow_run_agg import make_workflow_runner
 
 
 def test_service_driver_emits_workflow_span(sqlite_engine: Engine) -> None:
@@ -41,7 +43,7 @@ def test_service_driver_emits_workflow_span(sqlite_engine: Engine) -> None:
 class TestWorkflowAppRunnerHandler:
     """Core tests for WorkflowAppRunnerHandler"""
 
-    def test_handler_structure_dependencies(self):
+    def test_handler_structure_dependencies(self) -> None:
         """
         Verify handler dependencies on WorkflowAppRunner structure.
 
@@ -69,8 +71,11 @@ class TestWorkflowAppRunnerHandler:
 
     @config_overrides_context(ENABLE_OTEL=True)
     def test_all_span_attributes_set_correctly(
-        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_workflow_runner
-    ):
+        self,
+        tracer_provider_with_memory_exporter: TracerProvider,
+        memory_span_exporter: InMemorySpanExporter,
+        mock_workflow_runner: MagicMock,
+    ) -> None:
         """Verify all span attributes are mapped correctly"""
         handler = WorkflowAppRunnerHandler()
         tracer = tracer_provider_with_memory_exporter.get_tracer(__name__)
@@ -86,7 +91,7 @@ class TestWorkflowAppRunnerHandler:
         mock_workflow_runner.application_generate_entity.app_config.tenant_id = test_tenant_id
         mock_workflow_runner.application_generate_entity.app_config.workflow_id = test_workflow_id
 
-        def runner_run(runner):
+        def runner_run(runner: MagicMock) -> str:
             return "result"
 
         handler.wrapper(tracer, runner_run, mock_workflow_runner)
@@ -94,6 +99,7 @@ class TestWorkflowAppRunnerHandler:
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
         attrs = spans[0].attributes
+        assert attrs is not None
 
         assert attrs[DifySpanAttributes.APP_ID] == test_app_id
         assert attrs[DifySpanAttributes.TENANT_ID] == test_tenant_id

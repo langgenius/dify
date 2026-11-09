@@ -13,14 +13,8 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -30,7 +24,7 @@ import { PolicyReferencedApps } from '@/features/network-access/policy-reference
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 
-export const policyRowClassName = 'flex items-center pl-3 pr-1'
+export const policyRowClassName = 'flex items-center ps-3 pe-1'
 export const policyNameColClassName = 'min-w-0 flex-1 truncate'
 export const policyIpEntriesColClassName = 'w-30 shrink-0'
 export const policyUsedByColClassName = 'w-32 shrink-0'
@@ -86,35 +80,46 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
 
   return (
     <div
+      role="row"
       className={`${policyRowClassName} relative border-b border-divider-subtle py-3 hover:bg-state-base-hover`}
     >
-      {/* Extend the native button's hit area across the row without nesting the actions. */}
-      <Button
-        variant="ghost"
-        aria-label={group.name}
-        className="h-auto min-w-0 flex-1 justify-start gap-0 overflow-visible rounded-none p-0 text-left after:absolute after:inset-0 hover:bg-transparent"
-        onClick={() => onView(group)}
+      <div role="cell" className="flex min-w-0 flex-1">
+        {/* Extend the name button's hit area across the row without nesting the actions. */}
+        <Button
+          variant="ghost"
+          className="h-auto w-full min-w-0 justify-start gap-0 overflow-visible rounded-none p-0 text-start after:absolute after:inset-0 hover:bg-transparent"
+          onClick={() => onView(group)}
+        >
+          <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
+            {group.name}
+          </span>
+        </Button>
+      </div>
+      <div
+        role="cell"
+        className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}
       >
-        <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
-          {group.name}
-        </span>
-        <span className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}>
-          {group.allowed_cidrs.length}
-        </span>
-        <span className={`${policyUsedByColClassName} system-sm-regular text-text-tertiary`}>
-          {usedByLabel}
-        </span>
-        <span className={`${policyUpdatedColClassName} system-sm-regular text-text-tertiary`}>
-          {formatTimeFromNow(Date.parse(group.updated_at))}
-        </span>
-      </Button>
-      <div className={`${policyActionsColClassName} pointer-events-none relative`}>
+        {group.allowed_cidrs.length}
+      </div>
+      <div
+        role="cell"
+        className={`${policyUsedByColClassName} system-sm-regular text-text-tertiary`}
+      >
+        {usedByLabel}
+      </div>
+      <div
+        role="cell"
+        className={`${policyUpdatedColClassName} system-sm-regular text-text-tertiary`}
+      >
+        {formatTimeFromNow(Date.parse(group.updated_at))}
+      </div>
+      <div role="cell" className={`${policyActionsColClassName} pointer-events-none relative`}>
         {canMutate && (
-          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+          <Menu open={menuOpen} onOpenChange={setMenuOpen}>
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <DropdownMenuTrigger
+                  <MenuTrigger
                     render={
                       <IconButton
                         size="md"
@@ -134,8 +139,8 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 {t(($) => $['settings.ipPolicyMore'], { ns: 'common' })}
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-35">
-              <DropdownMenuItem
+            <MenuContent align="end" className="min-w-35">
+              <MenuItem
                 disabled={!canMutate}
                 className="system-sm-semibold text-text-secondary"
                 onClick={() => {
@@ -144,9 +149,9 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 }}
               >
                 {t(($) => $['operation.edit'], { ns: 'common' })}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
+              </MenuItem>
+              <MenuSeparator />
+              <MenuItem
                 disabled={!canMutate}
                 variant="destructive"
                 className="system-sm-semibold"
@@ -161,9 +166,9 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 }}
               >
                 {t(($) => $['operation.delete'], { ns: 'common' })}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </MenuItem>
+            </MenuContent>
+          </Menu>
         )}
       </div>
       <AlertDialog

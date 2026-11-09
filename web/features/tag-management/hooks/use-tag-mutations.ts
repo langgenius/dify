@@ -21,25 +21,31 @@ export const useApplyTagBindingsMutation = () => {
 
       if (addTagIds.length) {
         operations.push(
-          consoleClient.tagBindings.post({
-            body: {
-              tag_ids: addTagIds,
-              target_id: targetId,
-              type,
+          consoleClient.tagBindings.post(
+            {
+              body: {
+                tag_ids: addTagIds,
+                target_id: targetId,
+                type,
+              },
             },
-          }),
+            { context: { silent: true } },
+          ),
         )
       }
 
       if (removeTagIds.length) {
         operations.push(
-          consoleClient.tagBindings.remove.post({
-            body: {
-              tag_ids: removeTagIds,
-              target_id: targetId,
-              type,
+          consoleClient.tagBindings.remove.post(
+            {
+              body: {
+                tag_ids: removeTagIds,
+                target_id: targetId,
+                type,
+              },
             },
-          }),
+            { context: { silent: true } },
+          ),
         )
       }
 

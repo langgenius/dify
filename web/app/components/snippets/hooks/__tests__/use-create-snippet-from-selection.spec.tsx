@@ -1,57 +1,76 @@
-import type { ReactNode } from 'react'
-import type { CreateSnippetDialogPayload } from '../../create-snippet-dialog'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
-import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
-import { act, render, renderHook, screen } from '@testing-library/react'
+import type { Edge, EnvironmentVariable } from '@/app/components/workflow/types'
+import type { SnippetCanvasData } from '@/models/snippet'
+import type { consoleClient } from '@/service/console'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createNode as createWorkflowNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useCreateSnippetFromSelection } from '../use-create-snippet-from-selection'
 
 const SNIPPET_INPUT_FIELD_NODE_ID = 'start'
-const mockHandleOpenCreateSnippetDialog = vi.fn()
-const mockHandleCloseCreateSnippetDialog = vi.fn()
-const mockHandleCreateSnippet = vi.fn()
-
-vi.mock('../use-create-snippet', () => ({
-  useCreateSnippet: () => ({
-    createSnippetMutation: {
-      isPending: false,
-    },
-    handleCloseCreateSnippetDialog: mockHandleCloseCreateSnippetDialog,
-    handleCreateSnippet: mockHandleCreateSnippet,
-    handleOpenCreateSnippetDialog: mockHandleOpenCreateSnippetDialog,
-    isCreateSnippetDialogOpen: true,
-    isCreatingSnippet: false,
-  }),
+const api = vi.hoisted(() => ({
+  create: vi.fn<typeof consoleClient.workspaces.current.customizedSnippets.post>(),
+  save: vi.fn<typeof consoleClient.snippets.bySnippetId.workflows.draft.post>(),
+  push: vi.fn(),
 }))
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: api.push }) }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.customizedSnippets.post': api.create,
+      'snippets.bySnippetId.workflows.draft.post': api.save,
+    }),
+  }
+})
+
+function renderSelection(params: Parameters<typeof useCreateSnippetFromSelection>[0]) {
+  function Selection() {
+    const { handleOpenCreateSnippet, createSnippetDialog } = useCreateSnippetFromSelection(params)
+    return (
+      <>
+        <button type="button" onClick={handleOpenCreateSnippet}>
+          Create from selection
+        </button>
+        {createSnippetDialog}
+      </>
+    )
+  }
+  renderWithConsoleQuery(<Selection />, { workspacePermissionKeys: ['snippets.create_and_modify'] })
+  return userEvent.setup()
+}
 
 vi.mock('@/app/notifications', () => ({
   toast: { error: vi.fn() },
 }))
 
-const submitDialog = async (dialog: ReactNode) => {
-  const user = userEvent.setup()
-  render(dialog)
+const submitDialog = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(
     screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' }),
     'Reusable selection',
   )
   await user.click(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
-  expect(mockHandleCreateSnippet).toHaveBeenCalledOnce()
-  return mockHandleCreateSnippet.mock.calls[0]![0] as CreateSnippetDialogPayload
+  await waitFor(() => expect(api.push).toHaveBeenCalledWith('/snippets/snippet-1/orchestrate'))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(api.create).toHaveBeenCalledOnce()
+  const submitted = api.create.mock.calls[0]![0].body
+  expect(api.save).toHaveBeenCalledExactlyOnceWith({
+    params: { snippet_id: 'snippet-1' },
+    body: { graph: submitted.graph, input_fields: submitted.input_fields },
+  })
+  return { ...submitted, graph: submitted.graph as SnippetCanvasData }
 }
 
-const createNode = (id: string, data: Record<string, unknown>): Node =>
-  ({
-    id,
-    type: 'custom',
-    position: { x: 0, y: 0 },
-    width: 200,
-    height: 100,
-    data,
-  }) as unknown as Node
+const createNode = (
+  id: string,
+  data: NonNullable<Parameters<typeof createWorkflowNode>[0]>['data'],
+) => createWorkflowNode({ id, width: 200, height: 100, data })
 
 const llmEnvironmentVariable: EnvironmentVariable = {
   id: 'model-env',
@@ -68,7 +87,24 @@ const llmEnvironmentVariable: EnvironmentVariable = {
 
 describe('useCreateSnippetFromSelection', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
+    api.create.mockImplementation(async ({ body }) => ({
+      id: 'snippet-1',
+      name: body.name,
+      type: body.type ?? 'group',
+      description: body.description ?? null,
+      graph: body.graph ?? {},
+      input_fields: body.input_fields ?? [],
+      created_at: 1,
+      created_by: null,
+      updated_at: 1,
+      updated_by: null,
+      is_published: false,
+      icon_info: null,
+      tags: [],
+      use_count: 0,
+      version: 1,
+    }))
+    api.save.mockResolvedValue({ result: 'success', hash: 'saved', updated_at: 1 })
   })
 
   it('should convert environment, conversation, and system variables into snippet input fields', async () => {
@@ -89,20 +125,16 @@ describe('useCreateSnippetFromSelection', () => {
     const edges: Edge[] = []
     const onClose = vi.fn()
 
-    const { result } = renderHook(() =>
-      useCreateSnippetFromSelection({
-        edges,
-        environmentVariables: [llmEnvironmentVariable],
-        selectedNodes,
-        onClose,
-      }),
-    )
-
-    act(() => {
-      result.current.handleOpenCreateSnippet()
+    const user = renderSelection({
+      edges,
+      environmentVariables: [llmEnvironmentVariable],
+      selectedNodes,
+      onClose,
     })
 
-    const submitted = await submitDialog(result.current.createSnippetDialog)
+    await user.click(screen.getByRole('button', { name: 'Create from selection' }))
+
+    const submitted = await submitDialog(user)
 
     expect(submitted.input_fields).toEqual([
       {
@@ -164,18 +196,16 @@ describe('useCreateSnippetFromSelection', () => {
         model_selector: ['start', 'MODEL_NAME'],
       }),
     ]
-    const { result } = renderHook(() =>
-      useCreateSnippetFromSelection({
-        edges: [],
-        environmentVariables: [],
-        selectedNodes,
-        onClose: vi.fn(),
-      }),
-    )
+    const user = renderSelection({
+      edges: [],
+      environmentVariables: [],
+      selectedNodes,
+      onClose: vi.fn(),
+    })
 
-    act(() => result.current.handleOpenCreateSnippet())
+    await user.click(screen.getByRole('button', { name: 'Create from selection' }))
 
-    const submitted = await submitDialog(result.current.createSnippetDialog)
+    const submitted = await submitDialog(user)
     expect(submitted.input_fields).toEqual([])
     expect((submitted.graph?.nodes[0]?.data as LLMNodeType).model_selector).toEqual([
       'start',
@@ -197,22 +227,20 @@ describe('useCreateSnippetFromSelection', () => {
       }),
     ]
     const onClose = vi.fn()
-    const { result } = renderHook(() =>
-      useCreateSnippetFromSelection({
-        edges: [],
-        environmentVariables: [],
-        selectedNodes,
-        onClose,
-      }),
-    )
+    const user = renderSelection({
+      edges: [],
+      environmentVariables: [],
+      selectedNodes,
+      onClose,
+    })
 
-    act(() => result.current.handleOpenCreateSnippet())
+    await user.click(screen.getByRole('button', { name: 'Create from selection' }))
 
     expect(toast.error).toHaveBeenCalledWith(
       'workflow.errorMsg.fieldRequired:{"field":"workflow.errorMsg.fields.model"}',
     )
-    expect(mockHandleCreateSnippet).not.toHaveBeenCalled()
-    expect(mockHandleOpenCreateSnippetDialog).not.toHaveBeenCalled()
+    expect(api.create).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
   })
 
@@ -258,20 +286,16 @@ describe('useCreateSnippetFromSelection', () => {
     ]
     const onClose = vi.fn()
 
-    const { result } = renderHook(() =>
-      useCreateSnippetFromSelection({
-        edges: [],
-        environmentVariables: [],
-        selectedNodes,
-        onClose,
-      }),
-    )
-
-    act(() => {
-      result.current.handleOpenCreateSnippet()
+    const user = renderSelection({
+      edges: [],
+      environmentVariables: [],
+      selectedNodes,
+      onClose,
     })
 
-    const submitted = await submitDialog(result.current.createSnippetDialog)
+    await user.click(screen.getByRole('button', { name: 'Create from selection' }))
+
+    const submitted = await submitDialog(user)
 
     expect(submitted.input_fields).toEqual([
       {
@@ -337,20 +361,16 @@ describe('useCreateSnippetFromSelection', () => {
     ]
     const onClose = vi.fn()
 
-    const { result } = renderHook(() =>
-      useCreateSnippetFromSelection({
-        edges: [],
-        environmentVariables: [],
-        selectedNodes,
-        onClose,
-      }),
-    )
-
-    act(() => {
-      result.current.handleOpenCreateSnippet()
+    const user = renderSelection({
+      edges: [],
+      environmentVariables: [],
+      selectedNodes,
+      onClose,
     })
 
-    const submitted = await submitDialog(result.current.createSnippetDialog)
+    await user.click(screen.getByRole('button', { name: 'Create from selection' }))
+
+    const submitted = await submitDialog(user)
     const nodeData = submitted.graph?.nodes[0]?.data as {
       context?: {
         enabled: boolean

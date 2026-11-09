@@ -4,7 +4,7 @@ import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -44,7 +44,7 @@ const show = (overrides: Partial<Parameters<typeof ModifyRetrievalModal>[0]> = {
           <Drawer open>
             <ModifyRetrievalModal {...props} />
           </Drawer>
-          <AppToastHost />
+          <AppToaster />
         </DatasetDetailContext.Provider>
       </NuqsTestingAdapter>,
       { queryClient },

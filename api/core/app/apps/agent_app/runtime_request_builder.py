@@ -1,16 +1,18 @@
 """Build dify-agent run requests for one Agent App conversation turn.
 
 Mirrors the workflow ``WorkflowAgentRuntimeRequestBuilder`` but for the Agent
-App surface: the user prompt is the chat message (no workflow-node job / no
-previous-node context), multi-turn continuity flows through the
-conversation-keyed ``session_snapshot`` plus the history layer, and Agent Soul
-knowledge config is mapped into the same fixed ``dify.knowledge_base`` layer
-used by workflow runs.
+App surface: the user prompt combines declared app inputs with the chat message
+(no workflow-node job / previous-node context). Multi-turn continuity flows
+through the conversation-keyed ``session_snapshot`` plus the history layer,
+and Agent Soul knowledge config is mapped into the same fixed
+``dify.knowledge_base`` layer used by workflow runs.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
 from dify_agent.layers.execution_context import (
@@ -25,6 +27,7 @@ from dify_agent.layers.user_prompt import (
     DifyUserPromptImageConfig,
 )
 from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from dify_agent.protocol.snapshot import SessionSnapshot
 
 from clients.agent_backend import (
@@ -52,10 +55,12 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_shell_layer_config,
     load_runtime_agent_skill_configs,
 )
+from extensions.tracing import application_tracing_hooks
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
-from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
+from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
+from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import expand_prompt_mentions
 
 
@@ -85,6 +90,7 @@ class AgentAppRuntimeBuildContext:
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     session_snapshot: SessionSnapshot | None = None
+    inputs: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,6 +129,7 @@ class AgentAppRuntimeRequestBuilder:
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
                 invoke_from=context.dify_context.invoke_from,
+                knowledge_fs_spaces=tuple(agent_soul.knowledge.spaces),
             )
         except WorkflowAgentDifyToolsBuildError as error:
             raise AgentAppRuntimeRequestBuildError(error.error_code, str(error)) from error
@@ -149,7 +156,10 @@ class AgentAppRuntimeRequestBuilder:
             agent_soul,
             runtime_config_skills=runtime_config_skills,
         )
-        knowledge_config = build_knowledge_layer_config(agent_soul)
+        try:
+            knowledge_fs_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
+        except KnowledgeFsError as exc:
+            raise AgentAppRuntimeRequestBuildError(exc.code, exc.message) from exc
         context_window_tokens = resolve_model_context_window(
             run_context=context.dify_context,
             provider_name=agent_soul.model.model_provider,
@@ -165,8 +175,10 @@ class AgentAppRuntimeRequestBuilder:
             provider_name=agent_soul.model.model_provider,
             model_name=agent_soul.model.model,
             image_detail_config=context.image_detail_config,
+            include_image_references=knowledge_fs_config is not None,
         )
 
+        tracing_hooks = application_tracing_hooks()
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(
@@ -188,6 +200,8 @@ class AgentAppRuntimeRequestBuilder:
                     user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     agent_mode="agent_app",
+                    trace_id=context.dify_context.trace_session_id,
+                    tracing=tracing_hooks.prepare_agent_app(context) if tracing_hooks is not None else None,
                 ),
                 backend_binding_ref=context.backend_binding_ref,
                 # ENG-616: expand slash-menu mention tokens to canonical names so
@@ -195,11 +209,12 @@ class AgentAppRuntimeRequestBuilder:
                 agent_soul_prompt=expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
                 or None,
                 agent_config_version_kind=context.agent_config_version_kind,
-                user_prompt=context.user_query,
+                user_prompt=_build_user_prompt(context.agent_soul, context.inputs, context.user_query),
                 user_files=user_files,
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
-                knowledge=knowledge_config,
+                knowledge=build_knowledge_layer_config(agent_soul),
+                knowledge_fs=knowledge_fs_config,
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
@@ -224,18 +239,23 @@ class AgentAppRuntimeRequestBuilder:
         provider_name: str,
         model_name: str,
         image_detail_config: ImagePromptMessageContent.DETAIL | None,
+        include_image_references: bool,
     ) -> list[DifyUserPromptFileConfig]:
         supports_vision = any(file.type == FileType.IMAGE for file in files) and resolve_model_supports_vision(
             run_context=run_context,
             provider_name=provider_name,
             model_name=model_name,
         )
-        return [
-            _build_user_image(file, image_detail_config=image_detail_config)
-            if supports_vision and file.type == FileType.IMAGE
-            else _build_user_download(file)
-            for file in files
-        ]
+        user_files: list[DifyUserPromptFileConfig] = []
+        for file in files:
+            if supports_vision and file.type == FileType.IMAGE:
+                user_files.append(_build_user_image(file, image_detail_config=image_detail_config))
+                # KnowledgeFS image search needs the upload reference even when
+                # the model also receives the image as native vision content.
+                if not include_image_references or file.transfer_method != FileTransferMethod.LOCAL_FILE:
+                    continue
+            user_files.append(_build_user_download(file))
+        return user_files
 
     def _build_tool_layers(
         self,
@@ -245,6 +265,7 @@ class AgentAppRuntimeRequestBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...],
     ) -> WorkflowAgentToolLayers:
         # Production Agent App runs intentionally keep existing plugin configs
         # on the direct `dify.plugin.tools` route. This builder emits plugin
@@ -255,6 +276,7 @@ class AgentAppRuntimeRequestBuilder:
             user_id=user_id,
             tools=tools,
             invoke_from=invoke_from,
+            knowledge_fs_spaces=knowledge_fs_spaces,
         )
 
     @staticmethod
@@ -266,6 +288,29 @@ class AgentAppRuntimeRequestBuilder:
             "agent_id": context.agent_id,
             "agent_config_snapshot_id": context.agent_config_snapshot_id,
         }
+
+
+def _build_user_prompt(agent_soul: AgentSoulConfig, inputs: Mapping[str, Any], query: str) -> str:
+    """Prefix declared app inputs to the query in declaration order.
+
+    Skips None and "" values; returns the query unchanged when nothing applies or it is blank.
+    """
+    if not query.strip():
+        return query
+    lines: list[str] = []
+    for variable in agent_soul.app_variables:
+        value = inputs.get(variable.name)
+        if value is None or value == "":
+            continue
+        lines.append(f"- {variable.name}: {json.dumps(value, ensure_ascii=False)}")
+    if not lines:
+        return query
+    return (
+        "App inputs for this run:\n"
+        + "\n".join(lines)
+        + "\nThe above app inputs are run-specific. Do not treat them as Agent Soul or persistent memory.\n\n"
+        + query
+    )
 
 
 def _build_user_image(
@@ -295,7 +340,9 @@ def _build_user_download(file: File) -> DifyUserPromptDownloadConfig:
     if file.transfer_method == FileTransferMethod.REMOTE_URL:
         if file.remote_url is None:
             raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "Remote user file is missing its URL.")
-        return DifyUserPromptDownloadConfig(type=file_type, transfer_method="remote_url", url=file.remote_url)
+        return DifyUserPromptDownloadConfig(
+            type=file_type, filename=file.filename or None, transfer_method="remote_url", url=file.remote_url
+        )
     if file.reference is None:
         raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "User file is missing its reference.")
     reference = file.reference
@@ -316,7 +363,9 @@ def _build_user_download(file: File) -> DifyUserPromptDownloadConfig:
                 "agent_user_file_invalid",
                 f"User file transfer method '{file.transfer_method.value}' is unsupported.",
             )
-    return DifyUserPromptDownloadConfig(type=file_type, transfer_method=transfer_method, reference=reference)
+    return DifyUserPromptDownloadConfig(
+        type=file_type, filename=file.filename or None, transfer_method=transfer_method, reference=reference
+    )
 
 
 __all__ = [

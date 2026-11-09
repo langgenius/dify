@@ -26,8 +26,10 @@ export {
   DateTimePickerTrigger,
   DateTimePickerValue,
 } from '@langgenius/dify-ui/date-time-picker'
-/** @public Prop types for the complete localized picker composition. */
+/** @public */
 export type {
+  DateTimePickerChangeEventDetails,
+  DateTimePickerChangeEventReason,
   DateTimePickerClearProps,
   DateTimePickerContentProps,
   DateTimePickerLabelProps,

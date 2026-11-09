@@ -209,6 +209,25 @@ const cookieRewrite: CookieRewriteOptions = {
 }
 ```
 
+## Session Import
+
+Some upstreams cannot be signed in to from a local origin, for example when the login form is protected by a captcha bound to the upstream hostname. `sessionImport` moves an existing upstream session into the local proxy instead.
+
+```ts
+sessionImport: {
+  refreshPath: '/console/api/refresh-token',
+  cookieName: 'refresh_token',
+  redirectTo: 'http://localhost:3000',
+}
+```
+
+The proxy serves an import page at its root, `http://localhost:<port>/`, and prints that URL on startup. Open it on the same host the frontend uses to call the proxy, because the imported cookies belong to that host.
+
+1. Sign in on the upstream site, then in DevTools → Network right-click any API request → Copy → Copy as cURL.
+2. Paste it into the import page. The proxy reads `cookieName` from the pasted text, sends it to `refreshPath` through the route that matches that path, stores the returned cookies with that route's `cookieRewrite`, and redirects to `redirectTo`.
+
+The upstream rotates the pasted refresh token during the import, so only the local session can keep refreshing. The browser session it was copied from stops refreshing once its access token expires.
+
 ## Behavior
 
 - The proxy preserves the matched path prefix when forwarding requests.
