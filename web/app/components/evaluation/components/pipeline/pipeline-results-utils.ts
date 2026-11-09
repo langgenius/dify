@@ -38,6 +38,45 @@ export const formatValue = (value: unknown) => {
   return JSON.stringify(value)
 }
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/**
+ * Expected outputs are keyed by the node they check, such as `{"LLM": "..."}`. Show the value
+ * itself, and label each one only when a row checks several nodes.
+ */
+const parseJsonObject = (value: string) => {
+  if (!value.trimStart().startsWith('{')) return null
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return isPlainObject(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+export const formatExpectedOutput = (value: unknown) => {
+  // The API may send the keyed object itself or its JSON text.
+  const keyedValue = typeof value === 'string' ? (parseJsonObject(value) ?? value) : value
+  if (!isPlainObject(keyedValue)) return formatValue(keyedValue)
+
+  const entries = Object.entries(keyedValue)
+  if (entries.length === 1) return formatValue(entries[0]![1])
+
+  return entries.map(([key, entryValue]) => `${key}: ${formatValue(entryValue)}`).join('\n')
+}
+
+/** A plain-text preview of Markdown for clamped table cells; the full value renders Markdown. */
+export const toPlainTextPreview = (markdown: string) => {
+  return markdown
+    .replace(/```[\s\S]*?```/g, (block) => block.replace(/```\w*/g, ''))
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/(\*\*|__|~~|`)/g, '')
+    .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|$|[.,;:!?])/g, '$1$2')
+}
+
 export const getQueryContent = (item: EvaluationRunItem) => {
   const inputs = item.inputs ?? {}
   for (const key of PREFERRED_QUERY_INPUT_KEYS) {

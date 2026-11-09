@@ -96,6 +96,12 @@ describe('evaluation history result preview', () => {
 
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    // Focus returns to the run that opened the details.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /evaluation.results.title.*2026-11-05/ }),
+      ).toHaveFocus(),
+    )
 
     await user.click(screen.getByRole('button', { name: /evaluation.results.title.*2026-11-04/ }))
     const secondDialog = await screen.findByRole('dialog', { name: 'evaluation.results.title' })
@@ -193,5 +199,49 @@ describe('evaluation history run status', () => {
     })
 
     expect(screen.getByLabelText(expectedLabel)).toBeInTheDocument()
+  })
+})
+
+describe('evaluation history run details', () => {
+  it('shows the time of each run and why a run failed', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(
+      consoleQuery.datasets.byDatasetId.evaluation.logs.get.queryKey({
+        input: {
+          params: { dataset_id: resourceId },
+          query: { page: 1, page_size: 16 },
+        },
+      }),
+      {
+        data: [
+          {
+            ...createRun('run-1', 1793894400),
+            status: 'failed',
+            error: 'Judge model quota exceeded',
+          },
+        ],
+        page: 1,
+        page_size: 16,
+        total: 1,
+      },
+    )
+    queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+      accounts: [],
+    })
+    act(() => useEvaluationStore.getState().ensureResource('datasets', resourceId))
+
+    renderWithConsoleQuery(<HistoryTab resourceType="datasets" resourceId={resourceId} />, {
+      queryClient,
+    })
+
+    expect(screen.getByRole('row', { name: /2026-11-0\d \d{2}:\d{2}/ })).toBeInTheDocument()
+    const status = screen.getByRole('button', {
+      name: 'evaluation.history.status.failed: Judge model quota exceeded',
+    })
+    await user.hover(status)
+    expect(
+      await screen.findByText('evaluation.history.status.failed: Judge model quota exceeded'),
+    ).toBeInTheDocument()
   })
 })

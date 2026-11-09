@@ -3,11 +3,14 @@ import type { MetricColumn } from './pipeline-results-utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
+import { Markdown } from '@/app/components/base/markdown'
 import {
+  formatExpectedOutput,
   formatValue,
   getIsItemPassed,
   getMetricValue,
   getQueryContent,
+  toPlainTextPreview,
 } from './pipeline-results-utils'
 
 const LOADING_ROW_IDS = ['1', '2', '3', '4', '5', '6']
@@ -17,6 +20,8 @@ type ResultCellValueProps = {
   label: string
   viewDetailsLabel: string
   isPlaceholder?: boolean
+  /** Model output: preview it as plain text and render the full value as Markdown. */
+  isMarkdown?: boolean
 }
 
 const ResultCellValue = ({
@@ -24,6 +29,7 @@ const ResultCellValue = ({
   label,
   viewDetailsLabel,
   isPlaceholder,
+  isMarkdown,
 }: ResultCellValueProps) => {
   if (isPlaceholder || value === '-') return <div className="wrap-anywhere">{value}</div>
 
@@ -38,7 +44,9 @@ const ResultCellValue = ({
         aria-label={`${viewDetailsLabel}: ${label}`}
         className="block w-full min-w-0 cursor-pointer rounded-sm text-start"
       >
-        <span className="line-clamp-2 wrap-anywhere">{value}</span>
+        <span className="line-clamp-2 wrap-anywhere">
+          {isMarkdown ? toPlainTextPreview(value) : value}
+        </span>
       </PopoverTrigger>
       <PopoverContent
         side="top"
@@ -46,9 +54,13 @@ const ResultCellValue = ({
         className="max-h-[min(60dvh,480px)] w-max max-w-[min(560px,calc(100vw-2rem))] overflow-y-auto overscroll-contain p-3"
       >
         <PopoverTitle className="system-xs-semibold text-text-primary">{label}</PopoverTitle>
-        <div className="mt-2 system-sm-regular wrap-anywhere whitespace-pre-wrap text-text-secondary">
-          {value}
-        </div>
+        {isMarkdown ? (
+          <Markdown className="mt-2 system-sm-regular wrap-anywhere" content={value} />
+        ) : (
+          <div className="mt-2 system-sm-regular wrap-anywhere whitespace-pre-wrap text-text-secondary">
+            {value}
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )
@@ -118,7 +130,7 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
               const isPassed = getIsItemPassed(item)
               const actualOutput = item.error ?? item.actual_output
               const queryContent = getQueryContent(item)
-              const expectedContent = formatValue(item.expected_output)
+              const expectedContent = formatExpectedOutput(item.expected_output)
               const actualContent = actualOutput
                 ? formatValue(actualOutput)
                 : t(($) => $['results.noResult'])
@@ -168,6 +180,7 @@ const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResul
                       label={actualLabel}
                       viewDetailsLabel={viewDetailsLabel}
                       isPlaceholder={!actualOutput}
+                      isMarkdown={!item.error}
                     />
                   </td>
                   {metricColumns.map((column) => {

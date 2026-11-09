@@ -77,7 +77,8 @@ export const useInputFieldsActions = ({
   const currentFileName = uploadedFileMeta?.name ?? resource.uploadedFileName
   const canDownloadTemplate = !evaluationActions.isDownloadingTemplate
   const isRunDisabled = !isRunnable || !uploadedFileId || isFileUploading || isRunning
-  const uploadButtonDisabled = !isPanelReady || isRunning
+  // The run needs a complete configuration, so don't offer the upload step before that.
+  const uploadButtonDisabled = !isPanelReady || !isRunnable || isRunning
 
   const handleDownloadTemplate = async () => {
     try {
