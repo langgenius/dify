@@ -122,3 +122,27 @@ def test_included_position_data(prepare_example_positions_yaml: str) -> None:
 
     # assert the result in the correct order
     assert sorted_data == ["forth", "first"]
+
+
+def test_position_helper_with_empty_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """An empty position file must yield an empty map, not a TypeError."""
+    monkeypatch.chdir(tmp_path)
+    tmp_path.joinpath("_position.yaml").write_text("", encoding="utf-8")
+
+    assert get_position_map(folder_path=str(tmp_path), file_name="_position.yaml") == {}
+
+
+def test_position_helper_with_whitespace_only_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression: a whitespace-only file is also treated as empty."""
+    monkeypatch.chdir(tmp_path)
+    tmp_path.joinpath("_position.yaml").write_text("   \n\n", encoding="utf-8")
+
+    assert get_position_map(folder_path=str(tmp_path), file_name="_position.yaml") == {}
+
+
+def test_position_helper_with_valid_yaml_regression(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression: a normal position list is still parsed unchanged."""
+    monkeypatch.chdir(tmp_path)
+    tmp_path.joinpath("_position.yaml").write_text("- alpha\n- beta\n", encoding="utf-8")
+
+    assert get_position_map(folder_path=str(tmp_path), file_name="_position.yaml") == {"alpha": 0, "beta": 1}

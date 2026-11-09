@@ -21,7 +21,7 @@ def get_position_map(folder_path: str, *, file_name: str = "_position.yaml") -> 
         yaml_content = load_yaml_file_cached(file_path=position_file_path)
     except Exception:
         yaml_content = []
-    positions = [item.strip() for item in yaml_content if item and isinstance(item, str) and item.strip()]
+    positions = [item.strip() for item in (yaml_content or []) if item and isinstance(item, str) and item.strip()]
     return {name: index for index, name in enumerate(positions)}
 
 
