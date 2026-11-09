@@ -13,8 +13,7 @@ export type MetricVisualTone = 'indigo' | 'green'
 
 export type MetricSelectorSection = {
   metric: MetricOption
-  hasNoNodeInfo: boolean
-  visibleNodes: NodeInfo[]
+  nodes: NodeInfo[]
 }
 
 export type BuiltinMetricMap = Map<string, EvaluationMetric>

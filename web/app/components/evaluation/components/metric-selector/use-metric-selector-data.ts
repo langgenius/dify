@@ -11,21 +11,19 @@ import { buildMetricOption, dedupeNodeInfoList, getDefaultMetricNodeInfoMap } fr
 
 type UseMetricSelectorDataOptions = {
   open: boolean
-  query: string
   resourceType: NonPipelineEvaluationResourceType
   resourceId: string
 }
 
 type UseMetricSelectorDataResult = {
   builtinMetricMap: BuiltinMetricMap
-  filteredSections: MetricSelectorSection[]
+  sections: MetricSelectorSection[]
   isRemoteLoading: boolean
   toggleNodeSelection: (metric: MetricOption, nodeInfo: NodeInfo) => void
 }
 
 export const useMetricSelectorData = ({
   open,
-  query,
   resourceType,
   resourceId,
 }: UseMetricSelectorDataOptions): UseMetricSelectorDataResult => {
@@ -64,55 +62,21 @@ export const useMetricSelectorData = ({
       .filter((metric): metric is MetricOption => !!metric)
   }, [defaultMetrics, resource.evaluationFramework])
 
-  const filteredSections = useMemo(() => {
-    const keyword = query.trim().toLowerCase()
-
-    return resolvedMetrics
-      .map((metric) => {
-        const metricDescription = getTranslatedMetricDescription(t, metric.id, metric.description)
-        const metricMatches =
-          !keyword ||
-          metric.label.toLowerCase().includes(keyword) ||
-          metricDescription.toLowerCase().includes(keyword)
-        const metricNodes = nodeInfoMap[metric.id] ?? []
-        const hasNoNodeInfo = metricNodes.length === 0
-
-        if (hasNoNodeInfo) {
-          if (!metricMatches) return null
-
-          return {
-            metric: {
-              ...metric,
-              description: metricDescription,
-            },
-            hasNoNodeInfo: true,
-            visibleNodes: [] as NodeInfo[],
-          }
-        }
-
-        const visibleNodes = metricMatches
-          ? metricNodes
-          : metricNodes.filter((nodeInfo) => {
-              return (
-                nodeInfo.title.toLowerCase().includes(keyword) ||
-                nodeInfo.type.toLowerCase().includes(keyword) ||
-                nodeInfo.node_id.toLowerCase().includes(keyword)
-              )
-            })
-
-        if (!metricMatches && visibleNodes.length === 0) return null
+  const sections = useMemo(
+    () =>
+      resolvedMetrics.map((metric) => {
+        const nodes = nodeInfoMap[metric.id] ?? []
 
         return {
           metric: {
             ...metric,
-            description: metricDescription,
+            description: getTranslatedMetricDescription(t, metric.id, metric.description),
           },
-          hasNoNodeInfo: false,
-          visibleNodes,
+          nodes,
         }
-      })
-      .filter((section): section is MetricSelectorSection => !!section)
-  }, [nodeInfoMap, query, resolvedMetrics, t])
+      }),
+    [nodeInfoMap, resolvedMetrics, t],
+  )
 
   const toggleNodeSelection = (metric: MetricOption, nodeInfo: NodeInfo) => {
     const metricId = metric.id
@@ -136,7 +100,7 @@ export const useMetricSelectorData = ({
 
   return {
     builtinMetricMap,
-    filteredSections,
+    sections,
     isRemoteLoading: isDefaultMetricsLoading,
     toggleNodeSelection,
   }
