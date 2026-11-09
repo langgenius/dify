@@ -50,6 +50,32 @@ func TestTrustedReferenceRejectsSymlinks(t *testing.T) {
 		t.Fatal("resolved traversal")
 	}
 }
+
+func TestStartBrokerRejectsSocketOutsideScopeState(t *testing.T) {
+	m := NewManager(Config{StateDir: t.TempDir()}, nil)
+	spec := validSpec()
+	outside := t.TempDir()
+	socket := filepath.Join(outside, "broker.sock")
+	if err := os.WriteFile(socket, []byte("outside state"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	dir := m.scopeDir(spec.ScopeID)
+	if err := os.MkdirAll(filepath.Dir(dir), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.startBroker(Scope{Spec: spec}); err == nil {
+		m.brokers[spec.ScopeID].Close()
+		t.Fatal("started broker outside the scope state directory")
+	}
+	data, err := os.ReadFile(socket)
+	if err != nil || string(data) != "outside state" {
+		t.Fatalf("modified file outside the scope state directory: %q, %v", data, err)
+	}
+}
+
 func TestMissingScopeAuthenticationNeverReachesJobs(t *testing.T) {
 	// Missing credentials must be rejected even when no runtime/store is installed.
 	m := NewManager(Config{AuthToken: "private-control-token"}, nil)
