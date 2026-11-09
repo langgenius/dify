@@ -42,6 +42,7 @@ from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelFeature
+from libs.generative_ui_prompt import load_generative_ui_prompt
 from models.agent_config_entities import AgentSoulConfig, AppVariableConfig
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
@@ -305,6 +306,18 @@ def _snapshot_for_layer_names(layer_names: list[str]) -> SessionSnapshot:
 
 
 class TestAgentAppRuntimeRequestBuilder:
+    def test_build_appends_openui_instructions_when_enabled(self) -> None:
+        soul = _soul_with_model()
+        soul.app_features.generative_ui.enabled = True
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder())
+
+        result = builder.build(_ctx(soul))
+
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        assert PromptConfig.model_validate(prompt_layer.config).prefix == (
+            f"You are Iris.\n\n{load_generative_ui_prompt().strip()}"
+        )
+
     def test_build_maps_soul_to_run_request(self, model_context_window_calls: list[tuple[object, str, str]]):
         builder = AgentAppRuntimeRequestBuilder(
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]

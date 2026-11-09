@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { createParser } from '@openuidev/lang-core'
 import { describe, expect, it } from 'vite-plus/test'
-import { promptOptions, schemaLibrary } from '../registry/definitions'
+import { promptOptions, schemaLibrary } from '../../../scripts/generate-openui-prompt'
 import { difyUILibrary } from '../registry/library'
 
 describe('Dify OpenUI component contract', () => {

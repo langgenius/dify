@@ -3,22 +3,28 @@
 import json
 from pathlib import Path
 from typing import Literal
+from uuid import uuid4
 
 import pytest
 
 from dev.evaluate_generative_ui import (
     DEFAULT_CASES,
+    EvaluationReport,
     QualityCase,
     assess_response,
     build_prompt,
     load_cases,
     main,
+    run_evaluation,
 )
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    PromptMessage,
     SystemPromptMessage,
     UserPromptMessage,
 )
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 
 @pytest.mark.parametrize(
@@ -97,6 +103,41 @@ def test_dataset_rejects_duplicate_case_ids(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="IDs must be unique"):
         load_cases(path, [])
+
+
+def test_evaluation_persists_remaining_cases_after_provider_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = make_model_instance(provider="langgenius/openai/openai", model="test-model")
+    cases = [
+        QualityCase(id="failed", prompt="Fail this call", ui="optional", rubric=[]),
+        QualityCase(id="complete", prompt="Say hello", ui="forbidden", rubric=[]),
+    ]
+
+    def invoke(*, prompt_messages: list[PromptMessage], stream: bool, **_kwargs: object) -> LLMResult:
+        assert not stream
+        if prompt_messages[-1].get_text_content() == cases[0].prompt:
+            raise RuntimeError("private provider error details")
+        return LLMResult(
+            model=model.model_name, message=AssistantPromptMessage(content="Hello."), usage=LLMUsage.empty_usage()
+        )
+
+    monkeypatch.setattr(model.model_type_instance, "invoke", invoke)
+    output = tmp_path / "reports" / "evaluation.json"
+
+    report = run_evaluation(uuid4(), model, cases, output)
+
+    contents = output.read_text(encoding="utf-8")
+    assert EvaluationReport.model_validate_json(contents) == report
+    assert "private provider error details" not in contents
+    failed, complete = report.results
+    assert failed.case == cases[0]
+    assert failed.error_type == "RuntimeError"
+    assert failed.automated_checks is None
+    assert complete.case == cases[1]
+    assert complete.prose == "Hello."
+    assert complete.automated_checks is not None
+    assert complete.automated_checks.passed
 
 
 def test_cli_requires_provider_and_model_together_before_runtime_setup(capsys: pytest.CaptureFixture[str]) -> None:

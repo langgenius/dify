@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import queue
 import uuid
 from collections.abc import Generator, Iterator, Sequence
 from contextlib import contextmanager
@@ -2591,6 +2590,7 @@ class TestEasyUiMessageEndFilesCases:
             get_signed_url.assert_called_once_with(upload_file_id=str(message_file_local.upload_file_id))
 
 
+@pytest.mark.usefixtures("agent_runtime_app")
 class TestAgentGenerativeUI:
     @pytest.fixture
     def pipeline(
@@ -2791,6 +2791,7 @@ class TestAgentGenerativeUI:
         agent_queue_manager: MessageBasedAppQueueManager,
         agent_records: tuple[Conversation, Message],
         sqlite_session: Session,
+        queued_tts_publisher: AppGeneratorTTSPublisher,
     ) -> None:
         final_answer = 'Summary.\n```openui\nroot = Card("Final")\n```\nDone.'
         events = [
@@ -2801,8 +2802,7 @@ class TestAgentGenerativeUI:
         ]
         for queue_event in events:
             agent_queue_manager.publish(queue_event, PublishFrom.TASK_PIPELINE)
-        publisher = AppGeneratorTTSPublisher.__new__(AppGeneratorTTSPublisher)
-        publisher._msg_queue = queue.Queue()
+        publisher = queued_tts_publisher
 
         responses = list(pipeline._process_stream_response(publisher=publisher))
 
@@ -3054,6 +3054,7 @@ class TestAgentGenerativeUI:
         agent_queue_manager: MessageBasedAppQueueManager,
         agent_records: tuple[Conversation, Message],
         sqlite_session: Session,
+        queued_tts_publisher: AppGeneratorTTSPublisher,
     ) -> None:
         initial = 'Original.\n```openui\nroot = Card("Partial'
         tail = '")\n```\nFollowing prose.\n```openui\nroot = Card("Later UI")\n```\nDone.'
@@ -3067,8 +3068,7 @@ class TestAgentGenerativeUI:
             QueueMessageEndEvent(llm_result=llm_result(initial + tail)),
         ]:
             agent_queue_manager.publish(queue_event, PublishFrom.TASK_PIPELINE)
-        publisher = AppGeneratorTTSPublisher.__new__(AppGeneratorTTSPublisher)
-        publisher._msg_queue = queue.Queue()
+        publisher = queued_tts_publisher
 
         responses = list(pipeline._process_stream_response(publisher=publisher))
 

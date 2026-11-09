@@ -32150,12 +32150,12 @@ OAuth schema
 | ---- | ---- | ----------- | -------- |
 | form_state | object |  | Yes |
 | id | string |  | Yes |
-| library_version | string, <br>**Default:** dify-ui-v1 |  | Yes |
+| library_version | string |  | Yes |
 | sequence | integer |  | Yes |
 | source | string |  | Yes |
 | status | [OpenUIContentStatus](#openuicontentstatus) |  | Yes |
 | text_offset | integer | Position in the prose answer before this block, measured in Unicode code points. | Yes |
-| type | string, <br>**Default:** openui |  | Yes |
+| type | string |  | Yes |
 
 #### OpenUIContentStatus
 

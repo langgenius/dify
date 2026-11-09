@@ -2,10 +2,12 @@
 
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
+from threading import Thread
 
 import pytest
 from redis import Redis
 
+from core.base.tts.app_generator_tts_publisher import AppGeneratorTTSPublisher
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
@@ -172,3 +174,14 @@ def audio_runtime(monkeypatch: pytest.MonkeyPatch) -> Iterator[AudioRuntimeObser
         redis.initialize(client)
         monkeypatch.setattr("core.plugin.impl.model_runtime.redis_client", redis)
         yield observed
+
+
+@pytest.fixture
+def queued_tts_publisher(
+    audio_runtime: AudioRuntimeObservations, monkeypatch: pytest.MonkeyPatch
+) -> AppGeneratorTTSPublisher:
+    """Keep speech input queued for assertions without starting synthesis."""
+    audio_runtime.voices = [{"name": "One", "value": "voice1"}]
+    with monkeypatch.context() as patch:
+        patch.setattr(Thread, "start", lambda _thread: None)
+        return AppGeneratorTTSPublisher("tenant", "voice1")

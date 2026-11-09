@@ -62,6 +62,7 @@ class RetrieverResource(ResponseModel):
 class MessageListItem(ResponseModel):
     content_blocks: list[OpenUIContentBlock] = Field(
         default_factory=list,
+        exclude_if=lambda blocks: not blocks,
         validation_alias=AliasChoices(
             "content_blocks",
             AliasPath("metadata", "content_blocks"),

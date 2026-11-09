@@ -2,10 +2,10 @@ import { createParser } from '@openuidev/lang-core'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
-import { ANALYTICS_DEMO_CASES } from '../demo-cases'
 import { GENERATIVE_UI_LIBRARY_VERSION } from '../registry/definitions'
 import { difyUILibrary } from '../registry/library'
 import { GenerativeUIRenderer } from '../renderer'
+import { ANALYTICS_DEMO_CASES } from './fixtures/analytics-demo-cases'
 
 // Keep OpenUI parsing and Dify's chart adapter real; Browser Mode covers the rendering engine.
 vi.mock('echarts-for-react/esm/core', () => ({ default: () => null }))

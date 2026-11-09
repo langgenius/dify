@@ -37,12 +37,12 @@ class DifyLLMNode(LLMNode):
             instructions = load_generative_ui_prompt()
             template = self.node_data.prompt_template
             if isinstance(template, LLMNodeCompletionModelPromptTemplate):
-                prompt_field = "jinja2_text" if template.edition_type == "jinja2" and template.jinja2_text else "text"
-                if prompt_field == "jinja2_text":
+                if template.edition_type == "jinja2" and template.jinja2_text:
                     instructions = "{% raw %}" + instructions + "{% endraw %}"
-                self.node_data.prompt_template = template.model_copy(
-                    update={prompt_field: f"{instructions}\n\n{getattr(template, prompt_field)}"}
-                )
+                    prompt_update = {"jinja2_text": f"{instructions}\n\n{template.jinja2_text}"}
+                else:
+                    prompt_update = {"text": f"{instructions}\n\n{template.text}"}
+                self.node_data.prompt_template = template.model_copy(update=prompt_update)
             else:
                 self.node_data.prompt_template = [
                     *template,

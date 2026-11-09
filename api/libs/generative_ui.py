@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic.json_schema import JsonSchemaValue
 
 OPENUI_LIBRARY_VERSION = "dify-ui-v1"
 
@@ -20,13 +21,19 @@ class GenerativeUIConfig(BaseModel):
     enabled: bool = False
 
 
+def _openui_snapshot_schema(schema: JsonSchemaValue) -> None:
+    """Describe complete wire snapshots without publishing the construction defaults."""
+    properties = schema["properties"]
+    schema["required"] = list(properties)
+    for field_schema in properties.values():
+        field_schema.pop("default", None)
+
+
 class OpenUIContentBlock(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         frozen=True,
-        json_schema_extra={
-            "required": ["id", "type", "library_version", "source", "status", "sequence", "text_offset", "form_state"]
-        },
+        json_schema_extra=_openui_snapshot_schema,
     )
 
     id: str

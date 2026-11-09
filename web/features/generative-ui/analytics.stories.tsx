@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type { AnalyticsDemoCase } from './demo-cases'
+import type { AnalyticsDemoCase } from './__tests__/fixtures/analytics-demo-cases'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import appDebug from '@/i18n/locales/en-US/app-debug.json'
-import { ANALYTICS_DEMO_CASES } from './demo-cases'
+import { ANALYTICS_DEMO_CASES } from './__tests__/fixtures/analytics-demo-cases'
 import { GENERATIVE_UI_LIBRARY_VERSION } from './registry/definitions'
 import { GenerativeUIRenderer } from './renderer'
 

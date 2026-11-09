@@ -97,6 +97,7 @@ def test_multiple_blocks_have_distinct_stable_identities() -> None:
 def test_wire_schema_requires_all_serialized_fields() -> None:
     schema = OpenUIContentBlock.model_json_schema()
     assert set(schema["required"]) == set(OpenUIContentBlock.model_fields)
+    assert all("default" not in field for field in schema["properties"].values())
     assert OpenUIContentBlock(id="block").model_dump()["form_state"] == {}
 
 

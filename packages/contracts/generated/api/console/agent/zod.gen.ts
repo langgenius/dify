@@ -1953,12 +1953,12 @@ export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', '
 export const zOpenUiContentBlock = z.object({
   form_state: z.record(z.string(), zJsonValue),
   id: z.string(),
-  library_version: z.literal('dify-ui-v1').default('dify-ui-v1'),
-  sequence: z.int().gte(0).default(0),
-  source: z.string().default(''),
-  status: zOpenUiContentStatus.default('streaming'),
-  text_offset: z.int().gte(0).default(0),
-  type: z.literal('openui').default('openui'),
+  library_version: z.literal('dify-ui-v1'),
+  sequence: z.int().gte(0),
+  source: z.string(),
+  status: zOpenUiContentStatus,
+  text_offset: z.int().gte(0),
+  type: z.literal('openui'),
 })
 
 /**

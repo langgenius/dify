@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import queue
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta
@@ -1386,11 +1385,13 @@ class TestChatflowGenerativeUI:
 
     @pytest.mark.parametrize("selector", [["plain-producer", "text"], None])
     def test_only_enabled_producer_separates_ui_from_plain_answer_and_speech(
-        self, pipeline: AdvancedChatAppGenerateTaskPipeline, selector: list[str] | None
+        self,
+        pipeline: AdvancedChatAppGenerateTaskPipeline,
+        queued_tts_publisher: AppGeneratorTTSPublisher,
+        selector: list[str] | None,
     ) -> None:
         source = '```openui\nroot = Card("Result")\n```\n'
-        publisher = AppGeneratorTTSPublisher.__new__(AppGeneratorTTSPublisher)
-        publisher._msg_queue = queue.Queue()
+        publisher = queued_tts_publisher
         responses = []
         for text, producer in [("Summary.\n" + source, ["ui-producer", "text"]), (source, selector)]:
             event = QueueTextChunkEvent(text=text, from_variable_selector=producer)
@@ -1521,6 +1522,7 @@ class TestChatflowGenerativeUI:
         pipeline: AdvancedChatAppGenerateTaskPipeline,
         agent_queue_manager: MessageBasedAppQueueManager,
         sqlite_session: Session,
+        queued_tts_publisher: AppGeneratorTTSPublisher,
     ) -> None:
         pipeline._graph_runtime_state = RuntimeState(
             workflow_id="workflow-1",
@@ -1542,8 +1544,7 @@ class TestChatflowGenerativeUI:
             QueueAdvancedChatMessageEndEvent(),
         ]:
             agent_queue_manager.publish(event, PublishFrom.TASK_PIPELINE)
-        publisher = AppGeneratorTTSPublisher.__new__(AppGeneratorTTSPublisher)
-        publisher._msg_queue = queue.Queue()
+        publisher = queued_tts_publisher
 
         responses = list(pipeline._process_stream_response(tts_publisher=publisher))
 
