@@ -42,21 +42,24 @@ const InputFieldsTab = ({
           <span aria-hidden="true" className="me-1 i-ri-download-line h-4 w-4" />
           {t(($) => $['batch.downloadTemplate'])}
         </Button>
-        <UploadRunPopover
-          open={actions.isUploadPopoverOpen}
-          onOpenChange={actions.setIsUploadPopoverOpen}
-          triggerDisabled={actions.uploadButtonDisabled}
-          inputFields={actions.templateColumns}
-          currentFileName={actions.currentFileName}
-          currentFileExtension={actions.currentFileExtension}
-          currentFileSize={actions.currentFileSize}
-          isFileUploading={actions.isFileUploading}
-          isRunDisabled={actions.isRunDisabled}
-          isRunning={actions.isRunning}
-          onUploadFile={actions.handleUploadFile}
-          onClearUploadedFile={actions.handleClearUploadedFile}
-          onRun={actions.handleRun}
-        />
+        {/* Own wrapper: an open popup inserts focus guards beside its trigger, which would shift space-y margins. */}
+        <div>
+          <UploadRunPopover
+            open={actions.isUploadPopoverOpen}
+            onOpenChange={actions.setIsUploadPopoverOpen}
+            triggerDisabled={actions.uploadButtonDisabled}
+            inputFields={actions.templateColumns}
+            currentFileName={actions.currentFileName}
+            currentFileExtension={actions.currentFileExtension}
+            currentFileSize={actions.currentFileSize}
+            isFileUploading={actions.isFileUploading}
+            isRunDisabled={actions.isRunDisabled}
+            isRunning={actions.isRunning}
+            onUploadFile={actions.handleUploadFile}
+            onClearUploadedFile={actions.handleClearUploadedFile}
+            onRun={actions.handleRun}
+          />
+        </div>
       </div>
       {!isRunnable && (
         <div className="rounded-xl border border-divider-subtle bg-background-default-subtle px-3 py-2 system-xs-regular text-text-tertiary">
