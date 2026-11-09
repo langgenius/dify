@@ -459,7 +459,7 @@ def test_guest_check_cannot_write_credentials_after_claim(harness: ClaimHarness)
 
     base.auth.on_check = claim_during_check
     with pytest.raises(ConnectionConflictError):
-        base.service.check_connection(base.context, selected.id, connection_revision=base.connection_revision)
+        base.service.check_connection_result(base.context, selected.id, connection_revision=base.connection_revision)
     assert base.service.get_connection(harness.account, selected.id).id == selected.id
 
 
@@ -631,15 +631,15 @@ def test_claimed_oauth_connection_refreshes_for_account_without_reauthorization(
             .where(EndUserConnection.id == selected.id)
             .values(expires_at=datetime(2000, 1, 1))
         )
-    checked = harness.oauth.base.service.check_connection(
+    checked = harness.oauth.base.service.check_connection_result(
         harness.account,
         selected.id,
         connection_revision=harness.oauth.base.service.get_connection_revision(
             harness.account, selected.id
         ).connection_revision,
     )
-    assert checked.connection_id == selected.id
-    assert checked.check.status == "valid"
+    assert checked.view.connection_id == selected.id
+    assert checked.view.check.status == "valid"
     assert harness.oauth.handler.exchanges == 1
     assert len(harness.oauth.handler.refreshes) == 1
 

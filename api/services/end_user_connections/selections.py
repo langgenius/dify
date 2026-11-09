@@ -126,6 +126,12 @@ class ConnectionSelectionService:
         )
 
     def save(self, context: WebConnectionContext, command: SaveConnectionConfigurationInput) -> ConnectionConfiguration:
+        """Replace the authenticated App user's choices under the submitted authorization contract.
+
+        Check ownership and target compatibility, then revalidate requirements before
+        the scoped write. Return visible saved details without checking credentials;
+        stale contracts or concurrent changes fail without overwriting configuration.
+        """
         conversation_id = str(command.conversation_id) if command.conversation_id is not None else None
         ids = frozenset(str(value) for value in command.connections.values() if value is not None)
         if ids:
@@ -143,11 +149,10 @@ class ConnectionSelectionService:
         )
         if requirements:
             require_personal_connection_access(context)
-        if command.connections.keys() - {item.target.node_id for item in requirements}:
+        if command.connections.keys() - {target.node_id for target in requirements}:
             raise ConnectionConfigurationError()
         selections = []
-        for requirement in requirements:
-            target = requirement.target
+        for target in requirements:
             connection_id = command.connections.get(target.node_id)
             if connection_id is None:
                 continue

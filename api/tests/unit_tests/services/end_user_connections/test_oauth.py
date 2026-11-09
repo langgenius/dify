@@ -339,9 +339,9 @@ def test_platform_client_requires_verified_provider_and_tracks_source(
             .values(expires_at=datetime(2000, 1, 1))
         )
     assert (
-        harness.base.service.check_connection(
+        harness.base.service.check_connection_result(
             harness.base.context, connection.id, connection_revision=harness.base.connection_revision
-        ).check.status
+        ).view.check.status
         == "valid"
     )
     assert len(harness.handler.refreshes) == 1
@@ -521,7 +521,7 @@ def test_oauth_operations_use_the_resolved_plugin_declaration(harness: OAuthHarn
     identifier = harness.providers.controller.plugin_unique_identifier
     connection = harness.finish(harness.start())
     assert harness.handler.requested_artifacts == [identifier, identifier]
-    harness.base.service.check_connection(
+    harness.base.service.check_connection_result(
         harness.base.context, connection.id, connection_revision=harness.base.connection_revision
     )
     assert harness.base.auth.check_artifacts[-1] == identifier

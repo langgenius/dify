@@ -206,7 +206,7 @@ def test_credential_fingerprint_blocks_out_of_band_secret_changes_without_plugin
             )
     harness.base.auth.calls.clear()
     with pytest.raises(ConnectionReauthorizationRequiredError):
-        harness.base.service.check_connection(
+        harness.base.service.check_connection_result(
             harness.base.context, connection.id, connection_revision=harness.base.connection_revision
         )
     assert harness.base.auth.calls == []

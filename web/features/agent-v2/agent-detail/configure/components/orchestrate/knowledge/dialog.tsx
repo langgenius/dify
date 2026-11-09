@@ -630,7 +630,7 @@ export function AgentKnowledgeRetrievalDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* A fixed height keeps the centered dialog still while knowledge is ticked;
           growing would re-center it and slide the list under the pointer. */}
-      <DialogContent initialFocus={filterRef} className="h-[min(40rem,80dvh)] w-xl overflow-hidden">
+      <DialogContent initialFocus={filterRef} className="h-160 max-h-[80dvh] w-xl overflow-hidden">
         <AgentKnowledgeRetrievalForm
           workflowNodeId={workflowNodeId}
           initialBindings={initialBindings}

@@ -104,10 +104,7 @@ export default function ConnectionReadme({ service }: { service: RequiredConnect
         <span aria-hidden="true" className="i-ri-book-open-line size-4 shrink-0" />
         {t(($) => $['readmeInfo.needHelpCheckReadme'], { ns: 'plugin' })}
       </DialogTrigger>
-      <DialogContent
-        className="h-[calc(100dvh-16px)] w-200 overflow-hidden"
-        backdropProps={{ forceRender: true }}
-      >
+      <DialogContent className="h-dvh w-200 overflow-hidden" backdropProps={{ forceRender: true }}>
         <ConnectionReadmeContent
           service={service}
           pluginUniqueIdentifier={service.pluginUniqueIdentifier}

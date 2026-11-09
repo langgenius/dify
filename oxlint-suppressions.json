@@ -200,9 +200,6 @@
     }
   },
   "web/app/components/app/app-access-control/access-control-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "shadcn/no-restyle": {
       "count": 1
     }
@@ -407,11 +404,6 @@
       "count": 4
     }
   },
-  "web/app/components/app/configuration/config/automatic/get-automatic-res.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/app/configuration/config/automatic/idea-output.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -441,11 +433,6 @@
     }
   },
   "web/app/components/app/configuration/config/automatic/version-selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
@@ -482,9 +469,6 @@
     }
   },
   "web/app/components/app/configuration/dataset-config/params-config/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
@@ -2747,11 +2731,6 @@
       "count": 1
     }
   },
-  "web/app/components/explore/try-app/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/explore/try-app/preview/agent-app-preview.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -2937,11 +2916,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/install-plugin/install-from-marketplace/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/marketplace/__tests__/hooks.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 2
@@ -2970,11 +2944,6 @@
   "web/app/components/plugins/marketplace/description/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 20
-    }
-  },
-  "web/app/components/plugins/marketplace/detail-dialog/frame.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/plugins/marketplace/empty/index.tsx": {
@@ -4621,11 +4590,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/email-configure-modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/method-item.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -4673,11 +4637,6 @@
       "count": 3
     },
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/upgrade-modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },
@@ -5030,11 +4989,6 @@
     }
   },
   "web/app/components/workflow/nodes/llm/components/resolution-picker.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/llm/components/structure-output.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
@@ -5508,11 +5462,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/panel/debug-and-preview/conversation-variable-modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 9
-    }
-  },
   "web/app/components/workflow/panel/debug-and-preview/hooks.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -5938,9 +5887,6 @@
     }
   },
   "web/app/components/workflow/workflow-generator/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "dify/require-disable-directive-description": {
       "count": 1
     }
@@ -6058,11 +6004,6 @@
       "count": 3
     }
   },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/skills/detail-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/skills/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 11
@@ -6136,9 +6077,6 @@
   "web/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
-    },
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/features/agent-v2/agent-detail/logs/components/log-detail-panel.tsx": {
