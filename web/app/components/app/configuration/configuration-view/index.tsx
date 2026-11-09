@@ -251,7 +251,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 <DrawerBackdrop className="bg-black/30" />
                 <DrawerViewport>
                   <DrawerPopup className="data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm">
-                    <DrawerContent className="flex min-h-0 flex-1 flex-col">
+                    <DrawerContent className="p-6">
                       <div className="mb-4 flex shrink-0 justify-end">
                         <DrawerClose
                           render={

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from typing import Any, cast
 
@@ -21,7 +20,7 @@ from core.workflow.system_variables import SystemVariableKey, get_system_text
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.runtime import VariablePool
-from graphon.variables.template_resolution import convert_template
+from graphon.variables.template_resolution import VARIABLE_PATTERN, convert_template
 from machinery.message_history import MessageHistory
 from models.model import Conversation
 
@@ -65,21 +64,11 @@ class AgentRuntimeSupport:
                         raise AgentVariableNotFoundError(str(agent_input.value))
                     parameter_value = variable.value
                 case "mixed" | "constant":
-                    try:
-                        if not isinstance(agent_input.value, str):
-                            parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
-                        else:
-                            parameter_value = str(agent_input.value)
-                    except TypeError:
-                        parameter_value = str(agent_input.value)
-
-                    segment_group = convert_template(variable_pool, parameter_value)
-                    parameter_value = segment_group.log if for_log else segment_group.text
-                    try:
-                        if not isinstance(agent_input.value, str):
-                            parameter_value = json.loads(parameter_value)
-                    except json.JSONDecodeError:
-                        parameter_value = parameter_value
+                    parameter_value = self._resolve_template_value(
+                        agent_input.value,
+                        variable_pool,
+                        for_log=for_log,
+                    )
                 case _:
                     raise AgentInputTypeError(agent_input.type)
 
@@ -296,6 +285,61 @@ class AgentRuntimeSupport:
         )
         model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
         return model_instance, model_schema
+
+    @classmethod
+    def _resolve_template_value(
+        cls,
+        value: Any,
+        variable_pool: VariablePool,
+        *,
+        for_log: bool,
+    ) -> Any:
+        """Resolve variable templates in a parameter value, preserving its structure.
+
+        Serializing the value to JSON text first breaks whenever a substituted variable contains
+        a quote, a backslash or a control character, because template substitution is not JSON-aware.
+        """
+        if isinstance(value, str):
+            # A top-level string is the template itself, so it keeps convert_template's behaviour.
+            segment_group = convert_template(variable_pool, value)
+            return segment_group.log if for_log else segment_group.text
+        return cls._resolve_nested_templates(value, variable_pool, for_log=for_log)
+
+    @classmethod
+    def _resolve_nested_templates(
+        cls,
+        value: Any,
+        variable_pool: VariablePool,
+        *,
+        for_log: bool,
+    ) -> Any:
+        """Resolve the explicit ``{{#node.var#}}`` markers inside a structured value.
+
+        convert_template also looks a literal fragment up as a selector whenever that fragment
+        contains a dot. It stayed dormant while the value was resolved as one serialized document,
+        because every fragment then carried JSON punctuation and never matched a selector. Resolving
+        leaves one by one would otherwise silently rewrite a literal tool argument such as
+        ``sys.query`` or ``env.SECRET`` into the value of that variable.
+        """
+        if isinstance(value, str):
+            parts = VARIABLE_PATTERN.split(value)
+            if len(parts) == 1:
+                return value
+            chunks: list[str] = []
+            for index, part in enumerate(parts):
+                if not part:
+                    continue
+                # A split on a pattern with one capture group yields the markers at odd indices.
+                segment = variable_pool.get(part.split(".")) if index % 2 else None
+                chunks.append(part if segment is None else (segment.log if for_log else segment.text))
+            return "".join(chunks)
+        if isinstance(value, dict):
+            return {
+                key: cls._resolve_nested_templates(item, variable_pool, for_log=for_log) for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [cls._resolve_nested_templates(item, variable_pool, for_log=for_log) for item in value]
+        return value
 
     @staticmethod
     def _remove_unsupported_model_features_for_old_version(model_schema: AIModelEntity) -> AIModelEntity:

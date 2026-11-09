@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "Obrigatório é usado apenas como referência para inferência do modelo, e não para validação obrigatória da saída do parâmetro.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "Tipo",
   "nodes.parameterExtractor.advancedSetting": "Configuração avançada",
-  "nodes.parameterExtractor.extractParametersNotSet": "Parâmetros de extração não configurados",
+  "nodes.parameterExtractor.extractParametersNotSet": "Nenhum parâmetro de extração configurado",
   "nodes.parameterExtractor.importFromTool": "Importar das ferramentas",
   "nodes.parameterExtractor.instruction": "Instrução",
   "nodes.parameterExtractor.instructionTip": "Insira instruções adicionais para ajudar o extrator de parâmetros a entender como extrair parâmetros.",
