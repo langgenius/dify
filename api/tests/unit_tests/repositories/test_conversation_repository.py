@@ -2090,6 +2090,4 @@ def test_end_user_history_writes_lock_current_ownership_for_migration(
             repository.set_pinned(ref=ref, is_pinned=operation == "pin")
     finally:
         event.remove(sqlite_session_factory, "do_orm_execute", record)
-    assert any("FOR UPDATE OF conversations" in statement for statement in statements) is (
-        account_login_enabled and mode == AppMode.ADVANCED_CHAT
-    )
+    assert any("FOR UPDATE OF conversations" in statement for statement in statements) is account_login_enabled

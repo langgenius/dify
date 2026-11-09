@@ -505,7 +505,7 @@ class ConversationRepository:
                     )
                 role = CreatorUserRole.END_USER
                 actor_id = ref.end_user_id
-                if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED and app.mode == AppMode.ADVANCED_CHAT:
+                if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED and app.mode in (AppMode.ADVANCED_CHAT, AppMode.CHAT):
                     self._resolve(session=session, ref=ref, lock=True)
             pin = session.scalar(
                 select(PinnedConversation)
@@ -565,7 +565,7 @@ class ConversationRepository:
             result is not None
             and lock
             and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
-            and result[0].mode == AppMode.ADVANCED_CHAT
+            and result[0].mode in (AppMode.ADVANCED_CHAT, AppMode.CHAT)
         ):
             result = session.execute(
                 statement.with_for_update(of=Conversation).execution_options(populate_existing=True)

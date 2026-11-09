@@ -332,7 +332,7 @@ class MessageRepository:
                     lock=(
                         dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
                         and not isinstance(actor, MessageAccount)
-                        and app.mode == AppMode.ADVANCED_CHAT
+                        and app.mode in (AppMode.ADVANCED_CHAT, AppMode.CHAT)
                     ),
                 )
             if message is None:
@@ -642,10 +642,11 @@ class MessageRepository:
         lock: bool = False,
         check_conversation: bool = False,
     ) -> Message | None:
-        """Read browser Chatflow history by conversation owner, preserving other actors' sender checks.
+        """Read browser Chatflow and Chatbot history by the current conversation owner.
 
-        The caller supplies a validated actor scope. An optional conversation lock
-        fences mutations against migration; an unavailable message returns None.
+        Other actors retain sender checks. The caller supplies a validated actor
+        scope. An optional conversation lock fences mutations against migration;
+        an unavailable message returns None.
         Feedback callers also require a live owned conversation. Generation reads
         validate the conversation separately to preserve their existing errors.
         """
@@ -660,7 +661,7 @@ class MessageRepository:
                 .join(EndUser, (EndUser.app_id == App.id) & (EndUser.tenant_id == App.tenant_id))
                 .where(
                     App.id == app_id,
-                    App.mode == AppMode.ADVANCED_CHAT,
+                    App.mode.in_((AppMode.ADVANCED_CHAT, AppMode.CHAT)),
                     EndUser.id == end_user_id,
                     EndUser.type == EndUserType.BROWSER,
                 )

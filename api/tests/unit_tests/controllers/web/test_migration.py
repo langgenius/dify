@@ -23,6 +23,15 @@ from controllers.console import bp as console_bp
 from controllers.console import wraps as console_wraps
 from controllers.console.auth import login as console_login
 from controllers.web import bp, connections, migration, passport, wraps
+from core.app.app_config.entities import (
+    AppAdditionalFeatures,
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom as AppInvokeFrom
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from libs.passport import PassportService
 from models.account import Account, AccountStatus
@@ -53,6 +62,7 @@ from services.web_passport_service import WebAppAuthType, WebPassportService
 from tests.helpers.end_user_api_key import PROVIDER
 from tests.helpers.end_user_conversation import make_selection_service
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
 @dataclass
@@ -942,7 +952,7 @@ def test_claimable_passports_omit_ineligible_identities(harness: ClaimHarness, u
                     sa.update(Workflow).where(Workflow.id == base.workflow_id).values(tenant_id=str(uuid4()))
                 )
             elif unavailable == "unsupported_mode":
-                session.execute(sa.update(App).where(App.id == base.context.app_id).values(mode=AppMode.CHAT))
+                session.execute(sa.update(App).where(App.id == base.context.app_id).values(mode=AppMode.COMPLETION))
             else:
                 session.execute(
                     sa.update(EndUser).where(EndUser.id == base.context.end_user_id).values(tenant_id=str(uuid4()))
@@ -1187,7 +1197,60 @@ def persist_migration_history(harness: ClaimHarness, owner: WebConnectionContext
         return conversation.id, message.id, run.id, upload.id
 
 
-def test_full_passport_claim_preserves_provenance_and_transfers_history_access(harness: ClaimHarness) -> None:
+def configure_chatbot(harness: ClaimHarness) -> str:
+    """Publish an ordinary Chatbot and convert the fixture's retained history."""
+    from models.model import AppModelConfig
+
+    base = harness.oauth.base
+    with base.sessions.begin() as session:
+        config = AppModelConfig(app_id=base.context.app_id)
+        session.add(config)
+        session.flush()
+        session.execute(
+            sa.update(App).where(App.id == base.context.app_id).values(mode=AppMode.CHAT, app_model_config_id=config.id)
+        )
+        session.execute(
+            sa.update(Conversation)
+            .where(Conversation.app_id == base.context.app_id)
+            .values(mode=AppMode.CHAT, app_model_config_id=config.id)
+        )
+        return config.id
+
+
+def chatbot_entity(harness: ClaimHarness) -> ChatAppGenerateEntity:
+    """Keep the admitted Guest actor independent of any later ownership transfer."""
+    guest = harness.oauth.base.context
+    with harness.oauth.base.sessions() as session:
+        config_id = session.scalar(
+            sa.select(App.app_model_config_id).where(App.id == guest.app_id, App.tenant_id == guest.tenant_id)
+        )
+        assert config_id is not None
+    return ChatAppGenerateEntity(
+        task_id=str(uuid4()),
+        app_config=EasyUIBasedAppConfig(
+            tenant_id=guest.tenant_id,
+            app_id=guest.app_id,
+            app_mode=AppMode.CHAT,
+            app_model_config_id=config_id,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider="test-provider", model="test-model"),
+            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+            additional_features=AppAdditionalFeatures(),
+        ),
+        model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
+        inputs={},
+        files=[],
+        user_id=guest.end_user_id,
+        stream=True,
+        invoke_from=AppInvokeFrom.WEB_APP,
+    )
+
+
+@pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.CHAT])
+def test_full_passport_claim_preserves_provenance_and_transfers_history_access(
+    harness: ClaimHarness, mode: AppMode
+) -> None:
     from models.enums import CreatorUserRole, FeedbackRating
     from models.model import Message, MessageFeedback
     from models.web import PinnedConversation, SavedMessage
@@ -1214,6 +1277,8 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
     conversation_id, message_id, run_id, upload_id = persist_migration_history(harness, base.context)
     existing_id, _, _, _ = persist_migration_history(harness, harness.account)
     save_choices(harness, base.context, connection.id, conversation_id)
+    if mode == AppMode.CHAT:
+        configure_chatbot(harness)
     preview = harness.client.post("/api/migration/claimable-passports", json={"passports": [harness.guest_passport]})
     assert preview.get_json()["data"][0]["conversation_count"] == 1
     response = harness.claim()
@@ -1354,6 +1419,349 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
     }
     repeat = harness.claim().get_json()["data"][0]
     assert (repeat["claimed_connections"], repeat["claimed_conversations"]) == (0, 0)
+
+
+@pytest.mark.parametrize("terminal", ["answer", "error"])
+def test_chatbot_claim_rejects_inflight_answer_and_error_writes(
+    harness: ClaimHarness,
+    terminal: str,
+    monkeypatch: pytest.MonkeyPatch,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    from core.app.apps import base_app_queue_manager
+    from core.app.apps.base_app_queue_manager import PublishFrom
+    from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+    from core.app.entities.queue_entities import QueueErrorEvent, QueueMessageEndEvent
+    from core.app.entities.task_entities import ErrorStreamResponse
+    from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
+    from models.model import Message
+    from repositories.conversation_access import ConversationAccessDeniedError
+
+    base = harness.oauth.base
+    monkeypatch.setattr(base_app_queue_manager, "redis_client", redis_transport[0])
+    conversation_id, message_id, _, _ = persist_migration_history(harness, base.context)
+    configure_chatbot(harness)
+    entity = chatbot_entity(harness)
+    queue = MessageBasedAppQueueManager(
+        task_id=entity.task_id,
+        user_id=entity.user_id,
+        invoke_from=entity.invoke_from,
+        conversation_id=conversation_id,
+        app_mode=AppMode.CHAT,
+        message_id=message_id,
+    )
+    with base.sessions() as session:
+        conversation = session.get(Conversation, conversation_id)
+        message = session.get(Message, message_id)
+        assert conversation is not None
+        assert message is not None
+        original = (message.answer, message.status, message.error)
+    pipeline = EasyUIBasedGenerateTaskPipeline(entity, queue, conversation, message, stream=True)
+    queue.publish(
+        QueueMessageEndEvent() if terminal == "answer" else QueueErrorEvent(error=ValueError("Late failure")),
+        PublishFrom.APPLICATION_MANAGER,
+    )
+
+    result = harness.claim().get_json()["data"][0]
+    assert (result["status"], result["claimed_conversations"], result["stop_requested_run_count"]) == ("success", 1, 0)
+    responses = list(pipeline._wrapper_process_stream_response())
+    assert len(responses) == 1
+    assert isinstance(responses[0], ErrorStreamResponse)
+    assert isinstance(responses[0].err, ConversationAccessDeniedError)
+    with base.sessions() as session:
+        stored = session.get(Message, message_id)
+        assert stored is not None
+        assert (stored.answer, stored.status, stored.error) == original
+        assert session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id)) == (
+            harness.account.end_user_id
+        )
+
+
+def test_chatbot_completion_releases_ownership_fence_before_notifying_subscribers(
+    harness: ClaimHarness,
+    monkeypatch: pytest.MonkeyPatch,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    from core.app.apps import base_app_queue_manager
+    from core.app.apps.base_app_queue_manager import PublishFrom
+    from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+    from core.app.entities.queue_entities import QueueMessageEndEvent
+    from core.app.entities.task_entities import MessageEndStreamResponse
+    from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
+    from events.message_event import message_was_created
+    from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+    from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+    from models.model import Message
+
+    base = harness.oauth.base
+    conversation_id, message_id, _, _ = persist_migration_history(harness, base.context)
+    configure_chatbot(harness)
+    entity = chatbot_entity(harness)
+    monkeypatch.setattr(base_app_queue_manager, "redis_client", redis_transport[0])
+    queue = MessageBasedAppQueueManager(
+        task_id=entity.task_id,
+        user_id=entity.user_id,
+        invoke_from=entity.invoke_from,
+        conversation_id=conversation_id,
+        app_mode=AppMode.CHAT,
+        message_id=message_id,
+    )
+    with base.sessions() as session:
+        conversation = session.get(Conversation, conversation_id)
+        message = session.get(Message, message_id)
+        assert conversation is not None
+        assert message is not None
+    pipeline = EasyUIBasedGenerateTaskPipeline(entity, queue, conversation, message, stream=True)
+    queue.publish(
+        QueueMessageEndEvent(
+            llm_result=LLMResult(
+                model="test-model",
+                prompt_messages=[],
+                message=AssistantPromptMessage(content="Committed answer"),
+                usage=LLMUsage.empty_usage(),
+            )
+        ),
+        PublishFrom.APPLICATION_MANAGER,
+    )
+    notifications: list[str] = []
+
+    def after_save(sender: Message, **_kwargs: object) -> None:
+        with base.sessions() as session:
+            assert session.scalar(sa.select(Message.answer).where(Message.id == sender.id)) == "Committed answer"
+        assert harness.claim().get_json()["data"][0]["status"] == "success"
+        notifications.append(sender.id)
+
+    with message_was_created.connected_to(after_save):
+        responses = list(pipeline._wrapper_process_stream_response())
+    assert isinstance(responses[-1], MessageEndStreamResponse)
+    assert notifications == [message_id]
+
+
+@pytest.mark.parametrize("granted", [False, True])
+def test_chatbot_admission_preserves_trusted_app_default_file_grants(harness: ClaimHarness, granted: bool) -> None:
+    from core.app.apps.chat.app_generator import ChatAppGenerator
+    from core.app.entities.app_invoke_entities import UserFrom
+    from core.app.file_access import FileAccessScope, bind_file_access_scope
+    from core.workflow.file_reference import build_file_reference
+    from graphon.file import File, FileTransferMethod, FileType
+    from models.enums import CreatorUserRole
+    from repositories.entities.web_execution import WebExecutionResourcesChangedError
+    from tests.helpers.unit.model_factories import make_upload_file
+
+    base = harness.oauth.base
+    configure_chatbot(harness)
+    entity = chatbot_entity(harness)
+    assert harness.account.account_id is not None
+    with base.sessions.begin() as session:
+        upload = make_upload_file(
+            tenant_id=base.context.tenant_id,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=harness.account.account_id,
+        )
+        session.add(upload)
+        session.flush()
+        upload_id, storage_key = upload.id, upload.key
+    entity.files = [
+        File(
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=build_file_reference(record_id=upload_id),
+            filename="default.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=1,
+            storage_key=storage_key,
+        )
+    ]
+    scope = FileAccessScope(
+        tenant_id=base.context.tenant_id,
+        user_id=entity.user_id,
+        user_from=UserFrom.END_USER,
+        invoke_from=entity.invoke_from,
+        granted_upload_file_ids=frozenset({upload_id}) if granted else frozenset(),
+    )
+    with bind_file_access_scope(scope), base.sessions() as session:
+        if granted:
+            _, message = ChatAppGenerator()._init_generate_records(entity, session=session)
+            assert message.from_end_user_id == entity.user_id
+        else:
+            with pytest.raises(WebExecutionResourcesChangedError):
+                ChatAppGenerator()._init_generate_records(entity, session=session)
+
+
+def test_chatbot_claim_rejects_stale_message_creation_and_history_reads(harness: ClaimHarness) -> None:
+    from core.app.apps.chat.app_generator import ChatAppGenerator
+    from core.memory.token_buffer_memory import TokenBufferMemory
+    from core.model_manager import ModelInstance
+    from models.model import Message
+    from repositories.conversation_access import ConversationAccessDeniedError
+    from services.errors.conversation import ConversationNotExistsError
+
+    base = harness.oauth.base
+    conversation_id, _, _, _ = persist_migration_history(harness, base.context)
+    configure_chatbot(harness)
+    entity = chatbot_entity(harness)
+    with base.sessions() as session:
+        conversation = session.get(Conversation, conversation_id)
+        assert conversation is not None
+    assert harness.claim().get_json()["data"][0]["status"] == "success"
+    with base.sessions() as session, pytest.raises(ConversationNotExistsError):
+        ChatAppGenerator()._init_generate_records(entity, conversation, session=session)
+    memory = TokenBufferMemory(
+        conversation=conversation,
+        model_instance=ModelInstance(
+            entity.model_conf.provider_model_bundle, entity.model_conf.model, credentials=entity.model_conf.credentials
+        ),
+        tenant_id=entity.app_config.tenant_id,
+        end_user_id=entity.user_id,
+    )
+    with pytest.raises(ConversationAccessDeniedError):
+        memory.get_history_prompt_messages()
+    with base.sessions() as session:
+        assert (
+            session.scalar(
+                sa.select(sa.func.count()).select_from(Message).where(Message.conversation_id == conversation_id)
+            )
+            == 1
+        )
+    account_entity = chatbot_entity(harness)
+    account_entity.user_id = harness.account.end_user_id
+    with base.sessions() as session:
+        current = session.get(Conversation, conversation_id)
+        assert current is not None
+        _, accepted = ChatAppGenerator()._init_generate_records(account_entity, current, session=session)
+        assert accepted.from_end_user_id == harness.account.end_user_id
+
+
+def test_chatbot_generated_attachment_cannot_be_added_after_claim(
+    harness: ClaimHarness,
+    monkeypatch: pytest.MonkeyPatch,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    from core.app.apps import base_app_queue_manager
+    from core.app.apps.base_app_runner import AppRunner
+    from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+    from core.tools import tool_file_manager
+    from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
+    from models.model import MessageFile
+    from models.tools import ToolFile
+    from repositories.conversation_access import ConversationAccessDeniedError
+
+    base = harness.oauth.base
+    conversation_id, message_id, _, _ = persist_migration_history(harness, base.context)
+    configure_chatbot(harness)
+    entity = chatbot_entity(harness)
+    monkeypatch.setattr(base_app_queue_manager, "redis_client", redis_transport[0])
+    queue = MessageBasedAppQueueManager(
+        task_id=entity.task_id,
+        user_id=entity.user_id,
+        invoke_from=entity.invoke_from,
+        conversation_id=conversation_id,
+        app_mode=AppMode.CHAT,
+        message_id=message_id,
+    )
+
+    def save_after_claim(_key: str, _data: bytes) -> None:
+        assert harness.claim().get_json()["data"][0]["status"] == "success"
+
+    storage = MagicMock()
+    storage.save.side_effect = save_after_claim
+    monkeypatch.setattr(tool_file_manager, "storage", storage)
+    with base.sessions() as session, pytest.raises(ConversationAccessDeniedError):
+        AppRunner()._handle_multimodal_image_content(
+            content=ImagePromptMessageContent(
+                base64_data=base64.b64encode(b"generated-image").decode(), format="png", mime_type="image/png"
+            ),
+            message_id=message_id,
+            user_id=entity.user_id,
+            tenant_id=base.context.tenant_id,
+            queue_manager=queue,
+            session=session,
+            app_id=entity.app_config.app_id,
+        )
+    with base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(MessageFile)) == 0
+        file = session.scalar(sa.select(ToolFile).where(ToolFile.user_id == entity.user_id))
+        assert file is not None
+        tool_id = file.id
+    assert harness.claim().get_json()["data"][0]["claimed_conversations"] == 0
+    with base.sessions() as session:
+        assert session.scalar(sa.select(ToolFile.user_id).where(ToolFile.id == tool_id)) == harness.account.end_user_id
+
+
+def test_chatbot_title_generated_during_claim_is_discarded(
+    harness: ClaimHarness,
+    monkeypatch: pytest.MonkeyPatch,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    from core.app.entities.task_entities import EasyUITaskState
+    from core.app.task_pipeline import message_cycle_manager
+    from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
+    from core.llm_generator.llm_generator import LLMGenerator
+    from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+    from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+
+    base = harness.oauth.base
+    monkeypatch.setattr(message_cycle_manager, "redis_client", redis_transport[0])
+    conversation_id, message_id, _, _ = persist_migration_history(harness, base.context)
+    configure_chatbot(harness)
+    entity = chatbot_entity(harness)
+    manager = MessageCycleManager(
+        application_generate_entity=entity,
+        task_state=EasyUITaskState(
+            llm_result=LLMResult(
+                model="test-model",
+                prompt_messages=[],
+                message=AssistantPromptMessage(content=""),
+                usage=LLMUsage.empty_usage(),
+            )
+        ),
+    )
+
+    def complete_model_call(*_args: object, **_kwargs: object) -> str:
+        assert harness.claim().get_json()["data"][0]["status"] == "success"
+        with base.sessions.begin() as session:
+            session.execute(
+                sa.update(Conversation).where(Conversation.id == conversation_id).values(name="Account title")
+            )
+        return "Late Guest title"
+
+    monkeypatch.setattr(LLMGenerator, "generate_conversation_name", complete_model_call)
+    manager._generate_conversation_name_worker(
+        harness.client.application, conversation_id, "Original query", message_id
+    )
+    with base.sessions() as session:
+        assert session.scalar(sa.select(Conversation.name).where(Conversation.id == conversation_id)) == "Account title"
+
+
+@pytest.mark.parametrize("unsupported", ["agent_config", "agent_history"])
+def test_chatbot_claim_excludes_legacy_agent_writers(harness: ClaimHarness, unsupported: str) -> None:
+    import json
+
+    from models.model import AppModelConfig
+
+    base = harness.oauth.base
+    conversation_id, _, _, _ = persist_migration_history(harness, base.context)
+    config_id = configure_chatbot(harness)
+    with base.sessions.begin() as session:
+        if unsupported == "agent_config":
+            session.execute(
+                sa.update(AppModelConfig)
+                .where(AppModelConfig.id == config_id)
+                .values(agent_mode=json.dumps({"enabled": True, "strategy": "function_call"}))
+            )
+        else:
+            session.execute(
+                sa.update(Conversation).where(Conversation.id == conversation_id).values(mode=AppMode.AGENT_CHAT)
+            )
+    preview = harness.client.post("/api/migration/claimable-passports", json={"passports": [harness.guest_passport]})
+    assert preview.get_json()["data"] == []
+    assert harness.claim().status_code == 400
+    with base.sessions() as session:
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
+            == base.context.end_user_id
+        )
 
 
 def test_conversation_failure_rolls_back_entire_passport(harness: ClaimHarness) -> None:
@@ -1584,7 +1992,7 @@ def test_claim_transfers_choices_without_transferring_app_authorization(harness:
     assert not service.get(harness.account, None).reauthorization_required
 
 
-@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.AGENT])
+@pytest.mark.parametrize("mode", [AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.AGENT])
 def test_migration_excludes_app_modes_without_supported_run_tracking(harness: ClaimHarness, mode: AppMode) -> None:
     from models.end_user_connection import EndUserConnection
     from models.model import AppModelConfig

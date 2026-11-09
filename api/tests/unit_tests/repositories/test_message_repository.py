@@ -1011,7 +1011,6 @@ def test_migrated_message_access_uses_current_conversation_owner(
     account_login_enabled: bool,
     mode: AppMode,
 ) -> None:
-    uses_migrated_message_ownership = mode == AppMode.ADVANCED_CHAT
     monkeypatch.setattr(dify_config, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", account_login_enabled)
     with sqlite_session_factory.begin() as session:
         session.execute(update(App).where(App.id == installation.app_id).values(mode=mode))
@@ -1050,44 +1049,24 @@ def test_migrated_message_access_uses_current_conversation_owner(
     assert [item.record.id for item in page.data] == [message.id]
     with sqlite_session_factory() as session:
         assert session.get_one(Message, message.id).from_end_user_id == guest.id
-        if uses_migrated_message_ownership:
-            context = repository.get_suggested_questions_context(
+        context = repository.get_suggested_questions_context(
+            app_id=installation.app_id,
+            app_owner_tenant_id=installation.app_owner_tenant_id,
+            session=session,
+            expected_app_mode=mode,
+            actor=MessageEndUser(owner.id),
+            message_id=message.id,
+        )
+        assert context.conversation.id == conversation.id
+        with pytest.raises(MessageNotExistsError):
+            repository.get_suggested_questions_context(
                 app_id=installation.app_id,
                 app_owner_tenant_id=installation.app_owner_tenant_id,
                 session=session,
                 expected_app_mode=mode,
-                actor=MessageEndUser(owner.id),
+                actor=MessageEndUser(guest.id),
                 message_id=message.id,
             )
-            assert context.conversation.id == conversation.id
-            with pytest.raises(MessageNotExistsError):
-                repository.get_suggested_questions_context(
-                    app_id=installation.app_id,
-                    app_owner_tenant_id=installation.app_owner_tenant_id,
-                    session=session,
-                    expected_app_mode=mode,
-                    actor=MessageEndUser(guest.id),
-                    message_id=message.id,
-                )
-        else:
-            with pytest.raises(MessageNotExistsError):
-                repository.get_suggested_questions_context(
-                    app_id=installation.app_id,
-                    app_owner_tenant_id=installation.app_owner_tenant_id,
-                    session=session,
-                    expected_app_mode=mode,
-                    actor=MessageEndUser(owner.id),
-                    message_id=message.id,
-                )
-            with pytest.raises(ConversationNotExistsError):
-                repository.get_suggested_questions_context(
-                    app_id=installation.app_id,
-                    app_owner_tenant_id=installation.app_owner_tenant_id,
-                    session=session,
-                    expected_app_mode=mode,
-                    actor=MessageEndUser(guest.id),
-                    message_id=message.id,
-                )
     with pytest.raises(ConversationNotExistsError):
         repository.get_message_page(
             app_id=installation.app_id,
@@ -1106,22 +1085,7 @@ def test_migrated_message_access_uses_current_conversation_owner(
 
     event.listen(sqlite_session_factory, "do_orm_execute", record)
     try:
-        if not uses_migrated_message_ownership:
-            for actor_id in (owner.id, guest.id):
-                with pytest.raises(MessageNotExistsError):
-                    repository.set_feedback(
-                        app_id=installation.app_id,
-                        app_owner_tenant_id=installation.app_owner_tenant_id,
-                        actor=MessageEndUser(actor_id),
-                        message_id=message.id,
-                        rating=FeedbackRating.LIKE,
-                        content="Rejected",
-                        app_wide=False,
-                        installed_app=None,
-                    )
-            assert not any("FOR UPDATE OF conversations" in statement for statement in statements)
-            return
-        actor = MessageEndUser(owner.id if uses_migrated_message_ownership else guest.id)
+        actor = MessageEndUser(owner.id)
         feedback = repository.set_feedback(
             app_id=installation.app_id,
             app_owner_tenant_id=installation.app_owner_tenant_id,
@@ -1134,10 +1098,8 @@ def test_migrated_message_access_uses_current_conversation_owner(
         )
         assert feedback is not None
         assert feedback.from_end_user_id == actor.end_user_id
-        assert any("FOR UPDATE OF conversations" in statement for statement in statements) is (
-            account_login_enabled and mode == AppMode.ADVANCED_CHAT
-        )
-        rejected = MessageEndUser(guest.id if uses_migrated_message_ownership else owner.id)
+        assert any("FOR UPDATE OF conversations" in statement for statement in statements) is (account_login_enabled)
+        rejected = MessageEndUser(guest.id)
         with pytest.raises(MessageNotExistsError):
             repository.set_feedback(
                 app_id=installation.app_id,
