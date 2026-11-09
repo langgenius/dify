@@ -13552,11 +13552,18 @@ Get the non-sensitive bootstrap snapshot exposed before Console or Web authentic
 Authentication configuration must be available before the authentication flow can be selected.
 Authenticated license detail is served separately by SystemFeatureLicenseApi.
 
+Preconditions: no Account, workspace, or app identity is required. URL
+settings are trusted deployment configuration, never request headers.
+Postconditions: return the WebApp frontend base URL with its base path
+intact, using the Console URL when APP_WEB_URL is unset. An empty URL
+means the same-origin root. Issue no credentials and change no state;
+feature-query failures propagate unchanged.
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
+| 200 | Success | **application/json**: [ConsoleSystemFeatureResponse](#consolesystemfeatureresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /system-features/license
@@ -23998,6 +24005,35 @@ Frozen form definition and effective expiration in UTC epoch seconds.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 | total_pages | integer |  | Yes |
+
+#### ConsoleSystemFeatureResponse
+
+Extend public bootstrap with the Console-only WebApp frontend address.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
+| branding | [BrandingModel](#brandingmodel) |  | Yes |
+| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
+| enable_app_deploy | boolean |  | Yes |
+| enable_change_email | boolean, <br>**Default:** true |  | Yes |
+| enable_creators_platform | boolean |  | Yes |
+| enable_email_code_login | boolean |  | Yes |
+| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
+| enable_explore_banner | boolean |  | Yes |
+| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
+| enable_marketplace | boolean |  | Yes |
+| enable_social_oauth_login | boolean |  | Yes |
+| enable_step_by_step_tour | boolean |  | Yes |
+| is_allow_register | boolean |  | Yes |
+| is_email_setup | boolean |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
+| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
+| rbac_enabled | boolean |  | Yes |
+| sso_enforced_for_signin | boolean |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
+| webapp_url | string | WebApp frontend base URL, preserving its deployment base path. Falls back to the Console frontend URL; an empty string means the same-origin root. | Yes |
 
 #### Contact
 
@@ -35982,34 +36018,6 @@ Model class for provider system configuration response.
 | current_quota_type | [ProviderQuotaType](#providerquotatype) |  | No |
 | enabled | boolean |  | Yes |
 | quota_configurations | [ [QuotaConfiguration](#quotaconfiguration) ], <br>**Default:**  |  | No |
-
-#### SystemFeatureModel
-
-Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
-| branding | [BrandingModel](#brandingmodel) |  | Yes |
-| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
-| enable_app_deploy | boolean |  | Yes |
-| enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_creators_platform | boolean |  | Yes |
-| enable_email_code_login | boolean |  | Yes |
-| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
-| enable_explore_banner | boolean |  | Yes |
-| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
-| enable_marketplace | boolean |  | Yes |
-| enable_social_oauth_login | boolean |  | Yes |
-| enable_step_by_step_tour | boolean |  | Yes |
-| is_allow_register | boolean |  | Yes |
-| is_email_setup | boolean |  | Yes |
-| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
-| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| rbac_enabled | boolean |  | Yes |
-| sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
-| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### SystemParameters
 
