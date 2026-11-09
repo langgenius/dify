@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "ແຕະທີ່ຖານຄວາມຮູ້ໃດໜຶ່ງເພື່ອເປີດໜ້າການຈັດການເອກະສານ — ອັບເດດເອກະສານ, ຕັ້ງຄ່າການດຶງຂໍ້ມູນ ແລະ ເຂົ້າເຖິງຈາກບ່ອນນັ້ນ.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "ເປີດ ແລະ ຈັດການແຕ່ລະຖານຄວາມຮູ້",
   "stepByStepTour.guides.primaryActionLabel": "ຮັບຊາບແລ້ວ",
+  "stepByStepTour.guides.studio.empty.blank.description": "ເລີ່ມຕົ້ນຈາກໜ້າຫວ່າງເປົ່າເມື່ອທ່ານຮູ້ແລ້ວວ່າຕ້ອງການສ້າງຫຍັງ.",
+  "stepByStepTour.guides.studio.empty.blank.title": "ສ້າງຈາກໜ້າຫວ່າງ",
   "stepByStepTour.guides.studio.empty.dsl.description": "ນຳເຂົ້າແພັກເກດແອັບ ຫຼື ໄຟລ໌ DSL ເພື່ອກູ້ຄືນແອັບທີ່ແບ່ງປັນ ຫຼື ສຳຮອງໄວ້.",
   "stepByStepTour.guides.studio.empty.dsl.title": "ນຳເຂົ້າແອັບ",
   "stepByStepTour.guides.studio.empty.learnDify.description": "ໃໝ່ສຳລັບ Dify ບໍ? ເບິ່ງບົດຮຽນແນະນຳກ່ອນ — ທ່ານຈະໄດ້ເຫັນການເຮັດວຽກຂອງ Workflows, Agents ແລະ ອື່ນໆ.",

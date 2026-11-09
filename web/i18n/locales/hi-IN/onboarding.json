@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "किसी भी knowledge base पर टैप करें ताकि उसका document management पेज खुले — वहीं से दस्तावेज़, retrieval settings और access अपडेट करें।",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "हर knowledge base खोलें और manage करें",
   "stepByStepTour.guides.primaryActionLabel": "समझ गए",
+  "stepByStepTour.guides.studio.empty.blank.description": "जब आपको पता हो कि क्या बनाना है, तो खाली canvas से शुरू करें।",
+  "stepByStepTour.guides.studio.empty.blank.title": "खाली से बनाएं",
   "stepByStepTour.guides.studio.empty.dsl.description": "साझा या बैकअप किए गए ऐप को पुनर्स्थापित करने के लिए ऐप पैकेज या DSL फ़ाइल आयात करें।",
   "stepByStepTour.guides.studio.empty.dsl.title": "ऐप आयात करें",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Dify में नए हैं? पहले एक guided lesson पूरा करें — आप Workflows, Agents और बहुत कुछ काम करते हुए देखेंगे।",

@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Apasă pe orice bază de cunoștințe pentru a deschide pagina de gestionare a documentelor — actualizează documente, setări de recuperare și acces de acolo.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Deschide și gestionează fiecare bază de cunoștințe",
   "stepByStepTour.guides.primaryActionLabel": "Am înțeles",
+  "stepByStepTour.guides.studio.empty.blank.description": "Începe de la o pânză goală atunci când știi deja ce vrei să construiești.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Creează de la zero",
   "stepByStepTour.guides.studio.empty.dsl.description": "Importă un pachet de aplicație sau un fișier DSL pentru a restaura o aplicație partajată sau salvată într-o copie de rezervă.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Importați aplicația",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Ești nou în Dify? Parcurge mai întâi o lecție ghidată — vei vedea Workflows, Agents și altele în acțiune.",
