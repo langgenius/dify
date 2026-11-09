@@ -268,6 +268,7 @@ async def test_ordinary_plugin_canonical_file_uses_current_run_download_owner(tr
         "user_from": "account",
         "invoke_from": "web-app",
         "file": {"transfer_method": transfer, "reference": "canonical-ref"},
+        "for_external": False,
     }
     assert seen[1][1]["tool"]["tool_parameters"]["input"] == {
         "dify_model_identity": "__dify__file__",
