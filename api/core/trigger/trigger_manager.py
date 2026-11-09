@@ -7,12 +7,9 @@ from collections.abc import Mapping
 from threading import Lock
 from typing import Any
 
-from flask import Request
-
 import contexts
 from configs import dify_config
 from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
-from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginDaemonError, PluginNotFoundError
 from core.plugin.impl.trigger import PluginTriggerClient
 from core.trigger.entities.entities import (
@@ -20,7 +17,6 @@ from core.trigger.entities.entities import (
     Subscription,
     UnsubscribeResult,
 )
-from core.trigger.errors import EventIgnoreError
 from core.trigger.provider import PluginTriggerProviderController
 from models.provider_ids import TriggerProviderID
 
@@ -147,54 +143,6 @@ class TriggerManager:
         return provider.get_events()
 
     @classmethod
-    def invoke_trigger_event(
-        cls,
-        tenant_id: str,
-        user_id: str,
-        provider_id: TriggerProviderID,
-        event_name: str,
-        parameters: Mapping[str, Any],
-        credentials: Mapping[str, str],
-        credential_type: CredentialType,
-        subscription: Subscription,
-        request: Request,
-        payload: Mapping[str, Any],
-    ) -> TriggerInvokeEventResponse:
-        """
-        Execute a trigger
-
-        :param tenant_id: Tenant ID
-        :param user_id: User ID
-        :param provider_id: Provider ID
-        :param event_name: Event name
-        :param parameters: Trigger parameters
-        :param credentials: Provider credentials
-        :param credential_type: Credential type
-        :param subscription: Subscription
-        :param request: Request
-        :param payload: Payload
-        :return: Trigger execution result
-        """
-        provider: PluginTriggerProviderController = cls.get_trigger_provider(
-            tenant_id=tenant_id, provider_id=provider_id
-        )
-        try:
-            return provider.invoke_trigger_event(
-                user_id=user_id,
-                event_name=event_name,
-                parameters=parameters,
-                credentials=credentials,
-                credential_type=credential_type,
-                subscription=subscription,
-                request=request,
-                payload=payload,
-            )
-        except EventIgnoreError:
-            return TriggerInvokeEventResponse(variables={}, cancelled=True)
-        except Exception as e:
-            raise e
-
-    @classmethod
     def subscribe_trigger(
         cls,
         tenant_id: str,
@@ -202,7 +150,7 @@ class TriggerManager:
         provider_id: TriggerProviderID,
         endpoint: str,
         parameters: Mapping[str, Any],
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription:
         """
@@ -235,7 +183,7 @@ class TriggerManager:
         user_id: str,
         provider_id: TriggerProviderID,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> UnsubscribeResult:
         """
@@ -265,7 +213,7 @@ class TriggerManager:
         tenant_id: str,
         provider_id: TriggerProviderID,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription:
         """
