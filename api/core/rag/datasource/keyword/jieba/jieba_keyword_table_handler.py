@@ -1,7 +1,19 @@
 import re
+import unicodedata
 from collections.abc import Callable
 from operator import itemgetter
 from typing import cast
+
+# jieba groups only Han characters, ASCII words and a few ASCII symbols. Every other
+# character is emitted alone, and TF-IDF drops single-character tokens, so katakana
+# words and full-width alphanumerics never became keywords. Protect those runs with
+# ASCII placeholders so TF-IDF still ranks them together with the rest of the text.
+_MULTILINGUAL_TOKEN_RE = re.compile(
+    r"[ァ-ヺー-ヾㇰ-ㇿ]+"  # katakana, ー and iteration marks
+    r"|[ｦ-ﾟ]+"  # half-width katakana and sound marks
+    r"|[Ａ-Ｚａ-ｚ０-９]+"  # full-width alphanumerics
+)
+_PLACEHOLDER_PREFIX = "zzdifykeyword"
 
 
 class JiebaKeywordTableHandler:
@@ -105,16 +117,53 @@ class JiebaKeywordTableHandler:
 
         return _SimpleTFIDF()
 
+    @staticmethod
+    def _protect_multilingual_tokens(text: str) -> tuple[str, dict[str, str]]:
+        """Replace katakana and full-width alphanumeric runs with ASCII placeholders.
+
+        Preconditions:
+            ``text`` is the chunk or query passed to jieba.
+
+        Postconditions:
+            Returns the text to tokenize and a placeholder-to-token map. Runs whose
+            NFKC form is shorter than two characters are left untouched because
+            TF-IDF drops one-character tokens anyway. Placeholders contain only ASCII
+            letters and digits, so jieba keeps each one whole and TF-IDF ranks it by
+            the run's frequency. The caller maps results back with the returned map.
+        """
+        replacements: dict[str, str] = {}
+        placeholder_by_token: dict[str, str] = {}
+        parts: list[str] = []
+        last_end = 0
+        for match in _MULTILINGUAL_TOKEN_RE.finditer(text):
+            token = unicodedata.normalize("NFKC", match.group()).strip()
+            if len(token) >= 2:
+                placeholder = placeholder_by_token.get(token)
+                if placeholder is None:
+                    placeholder = f"{_PLACEHOLDER_PREFIX}{len(placeholder_by_token)}zz"
+                    while placeholder in text or placeholder in replacements:
+                        placeholder += "z"
+                    placeholder_by_token[token] = placeholder
+                    replacements[placeholder] = token
+                parts.extend((text[last_end : match.start()], f" {placeholder} "))
+                last_end = match.end()
+        if not replacements:
+            return text, {}
+        parts.append(text[last_end:])
+        return "".join(parts), replacements
+
     def extract_keywords(self, text: str, max_keywords_per_chunk: int | None = 10) -> set[str]:
         """Extract keywords with JIEBA tfidf."""
+        protected_text, replacements = self._protect_multilingual_tokens(text)
         keywords = self._tfidf.extract_tags(
-            sentence=text,
+            sentence=protected_text,
             topK=max_keywords_per_chunk or 10,
         )
         # jieba.analyse.extract_tags returns an untyped list when withFlag is False by default.
         keywords = cast(list[str], keywords)
+        restored = {replacements.get(keyword, keyword) for keyword in keywords}
 
-        return set(self._expand_tokens_with_subtokens(set(keywords)))
+        return self._expand_tokens_with_subtokens(restored)
 
     def _expand_tokens_with_subtokens(self, tokens: set[str]) -> set[str]:
         """Get subtokens from a list of tokens., filtering for stopwords."""
