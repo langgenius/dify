@@ -11,6 +11,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import dynamic from 'next/dynamic'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isWorkflowAppMode } from '@/app/components/apps/app-type'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -26,9 +27,15 @@ import { CreateAppTypeMenu } from './type-menu'
 
 const CreateAppPromptDialog = dynamic(() => import('./prompt-dialog'), { ssr: false })
 
+type BlankAppMetadata = Pick<
+  CreateAppPayload,
+  'name' | 'description' | 'icon_type' | 'icon' | 'icon_background'
+>
+
 type AppCreationFlowProps = {
   children: (controls: {
     onSelectType: (mode: CreateAppPayload['mode']) => void
+    onCreateBlank: (mode: CreateAppPayload['mode'], metadata: BlankAppMetadata) => void
     disabled: boolean
     loading: boolean
     error: string
@@ -39,10 +46,14 @@ type AppCreationFlowProps = {
 export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowProps) {
   const { t } = useTranslation(['app', 'billing', 'common'])
   const { push } = useRouter()
-  const { data: features, isError: isFeaturesError } = useQuery(
-    consoleQuery.features.get.queryOptions(),
-  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isCloud = systemFeatures.deployment_edition === 'CLOUD'
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: isCloud,
+      select: (features) => features.apps,
+    }),
+  )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -58,20 +69,22 @@ export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowP
   const [isCreating, setIsCreating] = useState(false)
   const creatingRef = useRef(false)
   const [error, setError] = useState('')
-  const appQuota = features?.apps
-  const isCloud = systemFeatures.deployment_edition === 'CLOUD'
   const isAppsFull = isCloud && !!appQuota && appQuota.limit > 0 && appQuota.size >= appQuota.limit
   const unavailable = !canCreateApp
-  const isBuilderEnabled = !isFeaturesError && features?.dify_builder_enabled === true
-  const isStarterOpen = !!(starter?.open && isBuilderEnabled && canCreateApp)
+  const isStarterOpen = !!(starter?.open && canCreateApp)
 
-  const create = async (mode: CreateAppPayload['mode'], prompt?: string) => {
+  const create = async (
+    mode: CreateAppPayload['mode'],
+    prompt?: string,
+    metadata?: BlankAppMetadata,
+  ) => {
     if (unavailable || isAppsFull || creatingRef.current) return
     const goal = prompt?.trim()
-    if (prompt !== undefined && (!goal || !isBuilderEnabled)) return
+    if (prompt !== undefined && !goal) return
     creatingRef.current = true
     setIsCreating(true)
     setError('')
+    let created = false
     try {
       const app = await createApp({
         body: {
@@ -81,10 +94,13 @@ export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowP
           icon_type: 'emoji',
           icon: '\u{1F916}',
           icon_background: '#FFEAD5',
+          ...metadata,
         },
       })
+      created = true
       try {
-        void trackCreateApp({ source: 'studio_blank', appMode: mode })
+        const tracking = trackCreateApp({ source: 'studio_blank', appMode: mode })
+        if (metadata) await tracking
       } catch {
         // Analytics must not prevent navigation after creation succeeds.
       }
@@ -100,8 +116,10 @@ export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowP
       const message = getErrorMessage(cause) || t(($) => $['newApp.appCreateFailed'], { ns: 'app' })
       setError(message)
     } finally {
-      creatingRef.current = false
-      setIsCreating(false)
+      if (!metadata || !created) {
+        creatingRef.current = false
+        setIsCreating(false)
+      }
     }
   }
 
@@ -112,7 +130,7 @@ export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowP
       setShowQuota(true)
       return
     }
-    if (isBuilderEnabled && (mode === 'workflow' || mode === 'advanced-chat')) {
+    if (isWorkflowAppMode(mode)) {
       setStarter({ mode, open: true })
       return
     }
@@ -123,6 +141,7 @@ export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowP
     <>
       {children({
         onSelectType,
+        onCreateBlank: (mode, metadata) => void create(mode, undefined, metadata),
         disabled: unavailable,
         loading: isCreating,
         error: isStarterOpen ? '' : error,

@@ -24,9 +24,9 @@ and empty state. Prompt drafts belong to the mounted prompt dialog. Creating an
 app with a goal writes the one-shot Builder handoff before navigating; the
 workflow editor consumes it after its graph is ready.
 
-The Agent roster owns its separate creation menu in
-`features/agent-v2/roster/components/create-menu-actions.tsx`. Its Agent template
-picker continues to use this feature's public template dialog.
+Studio selects the Builder flow in `app/components/apps/list.tsx`. With Builder
+disabled, Studio shares the standard creation menu with the Agent roster and
+uses the standard blank creation form. Both flows use the template and DSL dialogs.
 
 `dsl-dialog/` owns file/URL selection and its import request lifecycle.
 `use-import-dsl.ts` is the public import command hook shared by template creation
