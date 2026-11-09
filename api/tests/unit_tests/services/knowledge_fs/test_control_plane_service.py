@@ -249,6 +249,56 @@ def test_member_visibility_and_external_policy_updates_bump_authorization_epochs
     assert external.revision == 1
 
 
+def test_personal_agents_default_to_allowed_and_toggle_without_touching_channel_grants(
+    sqlite_session: Session,
+) -> None:
+    space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="owner-1",
+        provisioning_key="provision-agents",
+    )
+    sqlite_session.add_all([space, KnowledgeFSAuthorizationRevision(tenant_id="tenant-1", control_space_id=space.id)])
+    sqlite_session.commit()
+    service = KnowledgeFSControlPlaneService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        product=FakeProduct(space),  # type: ignore[arg-type]
+        members=FakeMembers([]),
+    )
+
+    initial = service.get_external_access(tenant_id="tenant-1", actor_account_id="owner-1", control_space_id=space.id)
+    assert initial.personal_agent_enabled is True
+    blocked = service.update_external_access(
+        tenant_id="tenant-1",
+        actor_account_id="owner-1",
+        control_space_id=space.id,
+        payload=KnowledgeFSExternalAccessPayload(
+            service_api_enabled=False,
+            agent_enabled=False,
+            workflow_enabled=False,
+            personal_agent_enabled=False,
+        ),
+    )
+    # An older client that omits the flag keeps it as stored.
+    kept = service.update_external_access(
+        tenant_id="tenant-1",
+        actor_account_id="owner-1",
+        control_space_id=space.id,
+        payload=KnowledgeFSExternalAccessPayload(
+            service_api_enabled=False, agent_enabled=False, workflow_enabled=False
+        ),
+    )
+    revision = sqlite_session.scalar(
+        select(KnowledgeFSAuthorizationRevision).where(KnowledgeFSAuthorizationRevision.control_space_id == space.id)
+    )
+    assert blocked.personal_agent_enabled is False
+    assert blocked.revision == 1
+    assert kept.personal_agent_enabled is False
+    assert kept.revision == 1
+    # Personal agents act as the member and hold no channel grants: no epoch bump.
+    assert revision is not None
+    assert revision.external_access_epoch == 0
+
+
 @pytest.mark.parametrize(
     "sqlite_session",
     [

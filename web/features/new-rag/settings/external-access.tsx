@@ -13,6 +13,7 @@ import { knowledgeSettingsInteractionLockedAtom } from './state/workflow'
 
 const API_ACCESS_DESCRIPTION_ID = 'knowledge-api-access-description'
 const WORKFLOW_ACCESS_DESCRIPTION_ID = 'knowledge-workflow-access-description'
+const PERSONAL_AGENT_DESCRIPTION_ID = 'knowledge-personal-agent-description'
 
 export function ExternalAccessSection() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSettings'])
@@ -66,6 +67,28 @@ export function ExternalAccessSection() {
             className="min-w-0 flex-1 system-xs-regular text-text-tertiary"
           >
             {t(($) => $['settings.workflowAccessDescription'], { ns: 'knowledgeSettings' })}
+          </p>
+        </div>
+      </SettingsFieldRow>
+
+      <SettingsFieldRow
+        label={t(($) => $['settings.personalAgentLabel'], { ns: 'knowledgeSettings' })}
+      >
+        <div className="flex min-h-7 items-center gap-2">
+          <Switch
+            aria-label={t(($) => $['settings.personalAgentLabel'], { ns: 'knowledgeSettings' })}
+            aria-describedby={PERSONAL_AGENT_DESCRIPTION_ID}
+            checked={current.personalAgentEnabled}
+            disabled={disabled}
+            onCheckedChange={(personalAgentEnabled) =>
+              !disabled && updateDraft({ personalAgentEnabled })
+            }
+          />
+          <p
+            id={PERSONAL_AGENT_DESCRIPTION_ID}
+            className="min-w-0 flex-1 system-xs-regular text-text-tertiary"
+          >
+            {t(($) => $['settings.personalAgentDescription'], { ns: 'knowledgeSettings' })}
           </p>
         </div>
       </SettingsFieldRow>

@@ -16,6 +16,8 @@
   "settings.membersRequired": "Selecciona al menos un miembro del equipo.",
   "settings.nameRequired": "El nombre de la base de conocimiento Agent es obligatorio.",
   "settings.pageDescription": "Gestiona la información básica, el acceso a la API y la recuperación.",
+  "settings.personalAgentDescription": "Los miembros pueden permitir que sus propios agentes (Claude Code, Codex, clientes MCP) lean esta base de conocimiento con sus permisos.",
+  "settings.personalAgentLabel": "Agentes personales",
   "settings.reloadLatest": "Cargar configuración actual",
   "settings.rerankModelRequired": "Selecciona un modelo de reranking.",
   "settings.retrievalDepth": "Profundidad de recuperación",

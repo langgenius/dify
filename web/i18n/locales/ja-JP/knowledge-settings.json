@@ -16,6 +16,8 @@
   "settings.membersRequired": "チームメンバーを1人以上選択してください。",
   "settings.nameRequired": "Agent ナレッジベース名は必須です。",
   "settings.pageDescription": "基本情報、API アクセス、検索設定を管理します。",
+  "settings.personalAgentDescription": "メンバーは自分のエージェント（Claude Code、Codex、MCP クライアント）に、自分の権限でこのナレッジベースを読み取らせることができます。",
+  "settings.personalAgentLabel": "個人エージェント",
   "settings.reloadLatest": "最新の設定を再読み込み",
   "settings.rerankModelRequired": "再ランキングモデルを選択してください。",
   "settings.retrievalDepth": "検索の深度",

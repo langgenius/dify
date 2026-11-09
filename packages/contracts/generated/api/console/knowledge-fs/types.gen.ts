@@ -18,6 +18,76 @@ export type ErrorResponse = {
   status: number
 }
 
+export type KnowledgeAgentMineResponse = {
+  agent_access_enabled: boolean
+  available: boolean
+  blocked_knowledge_base_ids: Array<string>
+  grants: Array<KnowledgeAgentGrantResponse>
+  mcp_url: string
+}
+
+export type KnowledgeAgentAuthorizationResponse = {
+  agent_access_enabled: boolean
+  blocked_knowledge_base_ids: Array<string>
+  client: KnowledgeAgentAuthorizationClientResponse
+  scopes: Array<string>
+  workspace: KnowledgeAgentAuthorizationWorkspaceResponse
+}
+
+export type KnowledgeAgentAuthorizationPayload = {
+  approve: boolean
+  client_id?: string | null
+  code_challenge?: string | null
+  code_challenge_method?: string | null
+  knowledge_base_ids?: Array<string>
+  redirect_uri?: string | null
+  resource?: string | null
+  response_type?: string | null
+  scope?: string | null
+  state?: string | null
+}
+
+export type KnowledgeAgentAuthorizationDecisionResponse = {
+  redirect_to: string
+}
+
+export type KnowledgeAgentGrantUpdatePayload = {
+  knowledge_base_ids: Array<string>
+}
+
+export type KnowledgeAgentGrantResponse = {
+  account?: KnowledgeAgentGrantAccountResponse | null
+  client_name?: string | null
+  created_at: string
+  expires_at?: string | null
+  id: string
+  kind: 'oauth' | 'personal'
+  knowledge_base_ids: Array<string>
+  last_used_at?: string | null
+  name: string
+  scopes: Array<string>
+}
+
+export type KnowledgeAgentTokenPayload = {
+  expires_in_days?: number
+  knowledge_base_ids: Array<string>
+  name: string
+}
+
+export type KnowledgeAgentTokenCreatedResponse = {
+  grant: KnowledgeAgentGrantResponse
+  token: string
+}
+
+export type KnowledgeAgentWorkspaceResponse = {
+  agent_access_enabled: boolean
+  grants: Array<KnowledgeAgentGrantResponse>
+}
+
+export type KnowledgeAgentWorkspacePayload = {
+  enabled: boolean
+}
+
 export type KnowledgeFsFeaturesResponse = {
   agent_enabled: boolean
   upload_enabled: boolean
@@ -432,6 +502,7 @@ export type KnowledgeFsDocumentChunkResponse = {
 export type KnowledgeFsExternalAccessResponse = {
   agent_enabled: boolean
   mcp_enabled: boolean
+  personal_agent_enabled?: boolean
   revision: number
   service_api_enabled: boolean
   workflow_enabled: boolean
@@ -440,6 +511,7 @@ export type KnowledgeFsExternalAccessResponse = {
 export type KnowledgeFsExternalAccessPayload = {
   agent_enabled: boolean
   mcp_enabled?: boolean
+  personal_agent_enabled?: boolean | null
   service_api_enabled: boolean
   workflow_enabled: boolean
 }
@@ -1454,6 +1526,23 @@ export type KnowledgeFsjwkResponse = {
   kty: 'RSA'
   n: string
   use: 'sig'
+}
+
+export type KnowledgeAgentAuthorizationClientResponse = {
+  kind: 'cimd' | 'dcr'
+  name: string
+  redirect_host: string
+}
+
+export type KnowledgeAgentAuthorizationWorkspaceResponse = {
+  id: string
+  name: string
+}
+
+export type KnowledgeAgentGrantAccountResponse = {
+  email: string
+  id: string
+  name: string
 }
 
 export type KnowledgeFsQueryImageReference = {
@@ -2781,6 +2870,187 @@ export type GetKnowledgeFsWellKnownJwksJsonResponses = {
 
 export type GetKnowledgeFsWellKnownJwksJsonResponse =
   GetKnowledgeFsWellKnownJwksJsonResponses[keyof GetKnowledgeFsWellKnownJwksJsonResponses]
+
+export type GetKnowledgeFsAgentAccessData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/knowledge-fs/agent-access'
+}
+
+export type GetKnowledgeFsAgentAccessErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsAgentAccessError =
+  GetKnowledgeFsAgentAccessErrors[keyof GetKnowledgeFsAgentAccessErrors]
+
+export type GetKnowledgeFsAgentAccessResponses = {
+  200: KnowledgeAgentMineResponse
+}
+
+export type GetKnowledgeFsAgentAccessResponse =
+  GetKnowledgeFsAgentAccessResponses[keyof GetKnowledgeFsAgentAccessResponses]
+
+export type GetKnowledgeFsAgentAccessAuthorizeData = {
+  body?: never
+  path?: never
+  query?: {
+    client_id?: string
+    code_challenge?: string
+    code_challenge_method?: string
+    redirect_uri?: string
+    resource?: string
+    response_type?: string
+    scope?: string
+    state?: string
+  }
+  url: '/knowledge-fs/agent-access/authorize'
+}
+
+export type GetKnowledgeFsAgentAccessAuthorizeErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsAgentAccessAuthorizeError =
+  GetKnowledgeFsAgentAccessAuthorizeErrors[keyof GetKnowledgeFsAgentAccessAuthorizeErrors]
+
+export type GetKnowledgeFsAgentAccessAuthorizeResponses = {
+  200: KnowledgeAgentAuthorizationResponse
+}
+
+export type GetKnowledgeFsAgentAccessAuthorizeResponse =
+  GetKnowledgeFsAgentAccessAuthorizeResponses[keyof GetKnowledgeFsAgentAccessAuthorizeResponses]
+
+export type PostKnowledgeFsAgentAccessAuthorizeData = {
+  body: KnowledgeAgentAuthorizationPayload
+  path?: never
+  query?: never
+  url: '/knowledge-fs/agent-access/authorize'
+}
+
+export type PostKnowledgeFsAgentAccessAuthorizeErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsAgentAccessAuthorizeError =
+  PostKnowledgeFsAgentAccessAuthorizeErrors[keyof PostKnowledgeFsAgentAccessAuthorizeErrors]
+
+export type PostKnowledgeFsAgentAccessAuthorizeResponses = {
+  200: KnowledgeAgentAuthorizationDecisionResponse
+}
+
+export type PostKnowledgeFsAgentAccessAuthorizeResponse =
+  PostKnowledgeFsAgentAccessAuthorizeResponses[keyof PostKnowledgeFsAgentAccessAuthorizeResponses]
+
+export type DeleteKnowledgeFsAgentAccessGrantsByGrantIdData = {
+  body?: never
+  path: {
+    grant_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/agent-access/grants/{grant_id}'
+}
+
+export type DeleteKnowledgeFsAgentAccessGrantsByGrantIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsAgentAccessGrantsByGrantIdError =
+  DeleteKnowledgeFsAgentAccessGrantsByGrantIdErrors[keyof DeleteKnowledgeFsAgentAccessGrantsByGrantIdErrors]
+
+export type DeleteKnowledgeFsAgentAccessGrantsByGrantIdResponses = {
+  204: void
+}
+
+export type DeleteKnowledgeFsAgentAccessGrantsByGrantIdResponse =
+  DeleteKnowledgeFsAgentAccessGrantsByGrantIdResponses[keyof DeleteKnowledgeFsAgentAccessGrantsByGrantIdResponses]
+
+export type PatchKnowledgeFsAgentAccessGrantsByGrantIdData = {
+  body: KnowledgeAgentGrantUpdatePayload
+  path: {
+    grant_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/agent-access/grants/{grant_id}'
+}
+
+export type PatchKnowledgeFsAgentAccessGrantsByGrantIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsAgentAccessGrantsByGrantIdError =
+  PatchKnowledgeFsAgentAccessGrantsByGrantIdErrors[keyof PatchKnowledgeFsAgentAccessGrantsByGrantIdErrors]
+
+export type PatchKnowledgeFsAgentAccessGrantsByGrantIdResponses = {
+  200: KnowledgeAgentGrantResponse
+}
+
+export type PatchKnowledgeFsAgentAccessGrantsByGrantIdResponse =
+  PatchKnowledgeFsAgentAccessGrantsByGrantIdResponses[keyof PatchKnowledgeFsAgentAccessGrantsByGrantIdResponses]
+
+export type PostKnowledgeFsAgentAccessTokensData = {
+  body: KnowledgeAgentTokenPayload
+  path?: never
+  query?: never
+  url: '/knowledge-fs/agent-access/tokens'
+}
+
+export type PostKnowledgeFsAgentAccessTokensErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsAgentAccessTokensError =
+  PostKnowledgeFsAgentAccessTokensErrors[keyof PostKnowledgeFsAgentAccessTokensErrors]
+
+export type PostKnowledgeFsAgentAccessTokensResponses = {
+  201: KnowledgeAgentTokenCreatedResponse
+}
+
+export type PostKnowledgeFsAgentAccessTokensResponse =
+  PostKnowledgeFsAgentAccessTokensResponses[keyof PostKnowledgeFsAgentAccessTokensResponses]
+
+export type GetKnowledgeFsAgentAccessWorkspaceData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/knowledge-fs/agent-access/workspace'
+}
+
+export type GetKnowledgeFsAgentAccessWorkspaceErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsAgentAccessWorkspaceError =
+  GetKnowledgeFsAgentAccessWorkspaceErrors[keyof GetKnowledgeFsAgentAccessWorkspaceErrors]
+
+export type GetKnowledgeFsAgentAccessWorkspaceResponses = {
+  200: KnowledgeAgentWorkspaceResponse
+}
+
+export type GetKnowledgeFsAgentAccessWorkspaceResponse =
+  GetKnowledgeFsAgentAccessWorkspaceResponses[keyof GetKnowledgeFsAgentAccessWorkspaceResponses]
+
+export type PatchKnowledgeFsAgentAccessWorkspaceData = {
+  body: KnowledgeAgentWorkspacePayload
+  path?: never
+  query?: never
+  url: '/knowledge-fs/agent-access/workspace'
+}
+
+export type PatchKnowledgeFsAgentAccessWorkspaceErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsAgentAccessWorkspaceError =
+  PatchKnowledgeFsAgentAccessWorkspaceErrors[keyof PatchKnowledgeFsAgentAccessWorkspaceErrors]
+
+export type PatchKnowledgeFsAgentAccessWorkspaceResponses = {
+  200: KnowledgeAgentWorkspaceResponse
+}
+
+export type PatchKnowledgeFsAgentAccessWorkspaceResponse =
+  PatchKnowledgeFsAgentAccessWorkspaceResponses[keyof PatchKnowledgeFsAgentAccessWorkspaceResponses]
 
 export type GetKnowledgeFsFeaturesData = {
   body?: never

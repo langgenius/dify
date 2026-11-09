@@ -3819,6 +3819,8 @@ export default interface Resources {
     'settings.membersRequired': 'Select at least one team member.'
     'settings.nameRequired': 'Agent Knowledge Base name is required.'
     'settings.pageDescription': 'Manage basic info, API access, and retrieval.'
+    'settings.personalAgentDescription': 'Members can let their own agents (Claude Code, Codex, MCP clients) read this knowledge base with their permissions.'
+    'settings.personalAgentLabel': 'Personal agents'
     'settings.reloadLatest': 'Reload latest settings'
     'settings.rerankModelRequired': 'Select a rerank model.'
     'settings.retrievalDepth': 'Retrieval depth'
@@ -3923,6 +3925,67 @@ export default interface Resources {
     actionsColumn: 'Actions'
     addDocument: 'Add document'
     addSource: 'Add source'
+    'agents.allow': 'Allow'
+    'agents.allowAgents': 'Allow members to connect personal agents'
+    'agents.authorizeDescription': "{{client}} wants to read knowledge bases in this workspace as you. After you decide, you'll return to {{host}}."
+    'agents.authorizeFootnote': 'You can review or disconnect this agent anytime under Agent connections on the knowledge base list.'
+    'agents.authorizeInvalid': 'This request is invalid or has expired. Start connecting again from your agent.'
+    'agents.authorizeInvalidTitle': "This connection request can't be used"
+    'agents.authorizeTitle': 'Connect an agent'
+    'agents.back': 'Back'
+    'agents.button': 'Agent connections'
+    'agents.chooseKnowledgeBases': 'Choose the knowledge bases it may read'
+    'agents.connectDescription': 'Add this MCP server to your agent. It opens your browser so you can sign in and choose the knowledge bases it may read.'
+    'agents.connectTitle': 'Connect an agent'
+    'agents.connectionsDescription': 'Agents you approved and personal tokens you created in this workspace.'
+    'agents.connectionsTitle': 'Your connections'
+    'agents.create': 'Create token'
+    'agents.createToken': 'Create personal token'
+    'agents.createTokenDescription': "For agents that can't sign in through a browser, such as scripts or CI. The token is shown only once."
+    'agents.days': '{{days}} days'
+    'agents.deny': 'Deny'
+    'agents.description': 'Let your own agents, such as Claude Code, Codex, or any MCP client, read the knowledge bases you choose with your permissions.'
+    'agents.disconnect': 'Disconnect'
+    'agents.disconnectDescription': 'The agent loses access right away. To use it again, connect it again.'
+    'agents.disconnectMemberDescription': "{{member}}'s agent loses access right away."
+    'agents.disconnectTitle': 'Disconnect {{name}}?'
+    'agents.done': 'Done'
+    'agents.editKnowledgeBases': 'Edit knowledge bases'
+    'agents.editTitle': 'Knowledge bases for {{name}}'
+    'agents.errorBlocked': 'Personal agents are turned off for: {{names}}'
+    'agents.errorGeneric': 'Something went wrong. Please try again.'
+    'agents.errorKnowledgeBases': "These knowledge bases aren't available to you: {{names}}"
+    'agents.expires': 'expires {{time}}'
+    'agents.kindOAuth': 'Signed in'
+    'agents.kindToken': 'Token'
+    'agents.knowledgeBaseBlocked': 'Personal agents are turned off for this knowledge base'
+    'agents.knowledgeBases': 'Knowledge bases'
+    'agents.lastUsed': 'Last used {{time}}'
+    'agents.loadFailed': "Couldn't load agent connections."
+    'agents.loading': 'Loading…'
+    'agents.mcpUrl': 'MCP server URL'
+    'agents.membersConnections': "Members' connections"
+    'agents.moreKnowledgeBases': '+{{number}} more'
+    'agents.neverUsed': 'Not used yet'
+    'agents.noConnections': 'No agents connected yet.'
+    'agents.noKnowledgeBases': 'There are no knowledge bases you can share yet.'
+    'agents.noMemberConnections': 'No other member has connected an agent.'
+    'agents.permissionNoWrite': "It can't change, upload, or delete anything"
+    'agents.permissionRead': 'Search and read the knowledge bases you choose, as you'
+    'agents.readOnlyNote': "Agents can only search and read. Access follows your permissions and each knowledge base's settings, and you can disconnect at any time."
+    'agents.selectAll': 'Select all'
+    'agents.title': 'Agent connections'
+    'agents.token': 'Personal token'
+    'agents.tokenCreated': "Copy this token now. You won't be able to see it again."
+    'agents.tokenExpiry': 'Expires after'
+    'agents.tokenName': 'Name'
+    'agents.tokenNamePlaceholder': 'e.g. Laptop or CI'
+    'agents.tokenUsage': "Set it as DIFY_KNOWLEDGE_TOKEN in your agent's environment, then add the server:"
+    'agents.unavailable': "Agent connections aren't available on this deployment."
+    'agents.workspace': 'Workspace'
+    'agents.workspaceDescription': 'Admins decide whether members can connect personal agents and can disconnect any of them.'
+    'agents.workspaceDisabled': "An admin has turned off agent connections for this workspace. Existing connections stop working until it's turned back on."
+    'agents.workspaceTitle': 'Workspace settings'
     apiAccessActive: 'Active'
     apiAccessInactive: 'Inactive'
     apiAgentAccess: 'API Access'

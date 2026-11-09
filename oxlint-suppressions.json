@@ -6621,11 +6621,6 @@
       "count": 6
     }
   },
-  "web/features/new-rag/list/new-knowledge-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/new-rag/list/states.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
