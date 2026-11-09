@@ -456,7 +456,7 @@ func (m *Manager) startBroker(s Scope) error {
 	if err != nil {
 		return err
 	}
-	defer root.Close()
+	defer func() { _ = root.Close() }()
 	socketName := filepath.Join(id, "broker.sock")
 	if err := root.Remove(socketName); err != nil && !os.IsNotExist(err) {
 		return err
