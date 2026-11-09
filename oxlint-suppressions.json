@@ -538,16 +538,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/prompt-value-panel/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/app/configuration/tools/external-data-tool-modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/app/deploy/environment-table/deploy-menu/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -696,11 +686,6 @@
   "web/app/components/app/workflow-log/list.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 2
-    }
-  },
-  "web/app/components/apps/app-list-header.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/apps/creators-filter.tsx": {
@@ -3589,11 +3574,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/comment/comment-icon.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/comment/comment-input.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 7
@@ -3650,11 +3630,6 @@
   "web/app/components/workflow/header/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/header/run-mode.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
     }
   },
   "web/app/components/workflow/header/run-mode.tsx": {
@@ -5780,27 +5755,14 @@
       "count": 1
     }
   },
-  "web/features/app-creation/dialog-shell.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/app-creation/template-dialog/app-card/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
     }
   },
   "web/features/app-creation/template-dialog/categories.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    },
     "react/only-export-components": {
       "count": 1
-    }
-  },
-  "web/features/app-creation/template-dialog/template-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/features/dsl-import/uploader.tsx": {

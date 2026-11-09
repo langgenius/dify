@@ -35,13 +35,13 @@ import Sidebar, { AppCategories, AppCategoryLabel } from './categories'
 const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
 
 type AppsProps = {
-  onClose: () => void
+  onCreateFromBlank?: () => void
   /** Called after a successful import, before the redirect. Without it the picker stays open. */
   onCreated?: () => void
   templateMode?: 'agent'
 }
 
-const Apps = ({ onClose, onCreated, templateMode }: AppsProps) => {
+const Apps = ({ onCreateFromBlank, onCreated, templateMode }: AppsProps) => {
   const { t } = useTranslation(['app', 'common'])
   const locale = useLocale()
   const queryClient = useQueryClient()
@@ -268,6 +268,7 @@ const Apps = ({ onClose, onCreated, templateMode }: AppsProps) => {
               onClick={(category) => {
                 setCurrCategory(category)
               }}
+              onCreateFromBlank={onCreateFromBlank}
             />
           </div>
         )}

@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Belge yönetimi sayfasını açmak için herhangi bir knowledge base'e dokunun — belgeleri, retrieval ayarlarını ve erişimi oradan güncelleyin.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Her knowledge base'i açın ve yönetin",
   "stepByStepTour.guides.primaryActionLabel": "Anladım",
+  "stepByStepTour.guides.studio.empty.blank.description": "Ne oluşturacağınızı zaten biliyorsanız boş bir tuvalle başlayın.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Sıfırdan oluştur",
   "stepByStepTour.guides.studio.empty.dsl.description": "Paylaşılan veya yedeklenen bir uygulamayı geri yüklemek için uygulama paketi veya DSL dosyası içe aktarın.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Uygulamayı İçe Aktar",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Dify'da yeni misiniz? Önce rehberli bir dersten geçin — Workflow'ları, Agent'ları ve daha fazlasını iş başında göreceksiniz.",
