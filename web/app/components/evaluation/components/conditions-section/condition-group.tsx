@@ -23,7 +23,9 @@ import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   getAllowedOperators,
+  getIncompleteConditionIds,
   requiresConditionValue,
+  useConditionErrorsVisible,
   useEvaluationResource,
   useEvaluationStore,
 } from '../../store'
@@ -63,10 +65,6 @@ type ConditionValueInputProps = {
 
 type ConditionGroupProps = EvaluationResourceProps
 
-const getMetricVariableLabel = (variableName: string) => {
-  return variableName.replaceAll('-', '_')
-}
-
 const ConditionMetricLabel = ({ metric, placeholder }: ConditionMetricLabelProps) => {
   if (!metric)
     return (
@@ -79,9 +77,7 @@ const ConditionMetricLabel = ({ metric, placeholder }: ConditionMetricLabelProps
     return (
       <div className="flex min-w-0 items-center px-1">
         <div className="inline-flex h-6 min-w-0 items-center gap-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark py-1 ps-[5px] pe-1.5 shadow-xs">
-          <span className="truncate system-xs-medium text-text-secondary">
-            {getMetricVariableLabel(metric.variableSelector[1])}
-          </span>
+          <span className="truncate system-xs-medium text-text-secondary">{metric.groupLabel}</span>
           <span className="system-xs-regular text-divider-deep">/</span>
           <span className="flex min-w-0 shrink-0 items-center gap-0.5">
             <BlockIcon
@@ -130,7 +126,10 @@ const ConditionMetricSelect = ({
         if (nextMetric) onChange(nextMetric.variableSelector)
       }}
     >
-      <SelectTrigger className="h-auto bg-transparent px-1 py-1 hover:bg-transparent focus-visible:bg-transparent">
+      <SelectTrigger
+        aria-label={t(($) => $['conditions.fieldPlaceholder'])}
+        className="h-auto bg-transparent px-1 py-1 hover:bg-transparent focus-visible:bg-transparent"
+      >
         <ConditionMetricLabel metric={metric} placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent className="w-[360px]">
@@ -165,18 +164,22 @@ const ConditionOperatorSelect = ({
   onChange,
 }: ConditionOperatorSelectProps) => {
   const { t } = useTranslation(['workflowLogic'])
+  const { t: tEvaluation } = useTranslation(['evaluation'])
 
   return (
     <Select
       value={operator}
       onValueChange={(value) => value && onChange(value as ComparisonOperator)}
     >
-      <SelectTrigger className="h-8 w-auto min-w-[88px] gap-1 rounded-md bg-transparent px-1.5 py-0 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
+      <SelectTrigger
+        aria-label={tEvaluation(($) => $['conditions.operator'])}
+        className="h-8 w-auto min-w-[88px] gap-1 rounded-md bg-transparent px-1.5 py-0 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt"
+      >
         <span className="truncate system-xs-medium text-text-secondary">
           {getComparisonOperatorLabel(operator, t)}
         </span>
       </SelectTrigger>
-      <SelectContent className="z-1002 w-[240px] bg-components-panel-bg-blur backdrop-blur-[10px]">
+      <SelectContent className="z-1002 w-[160px] bg-components-panel-bg-blur backdrop-blur-[10px]">
         {operators.map((nextOperator) => (
           <SelectItem key={nextOperator} value={nextOperator}>
             {getComparisonOperatorLabel(nextOperator, t)}
@@ -199,7 +202,10 @@ const ConditionValueInput = ({ metric, condition, onChange }: ConditionValueInpu
           value={condition.value === null ? '' : String(condition.value)}
           onValueChange={(nextValue) => onChange(nextValue === 'true')}
         >
-          <SelectTrigger className="bg-transparent hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
+          <SelectTrigger
+            aria-label={t(($) => $['conditions.selectValue'])}
+            className="bg-transparent hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt"
+          >
             <SelectValue placeholder={t(($) => $['conditions.selectValue'])} />
           </SelectTrigger>
           <SelectContent>
@@ -224,6 +230,7 @@ const ConditionValueInput = ({ metric, condition, onChange }: ConditionValueInpu
       <Input
         type={metric.valueType === 'number' && !isMultiValue ? 'number' : 'text'}
         value={inputValue}
+        aria-label={t(($) => $['conditions.valuePlaceholder'])}
         className="border-none bg-transparent shadow-none hover:border-none hover:bg-state-base-hover-alt focus:border-none focus:bg-state-base-hover-alt focus:shadow-none"
         placeholder={t(($) => $['conditions.valuePlaceholder'])}
         onChange={(e) => {
@@ -257,6 +264,10 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
     or: t(($) => $['conditions.logical.or']),
   }
   const hasMultipleConditions = resource.judgmentConfig.conditions.length > 1
+  const showErrors = useConditionErrorsVisible(resourceType, resourceId)
+  const incompleteConditionIds = new Set(
+    showErrors ? getIncompleteConditionIds(resource, resourceType, resourceId) : [],
+  )
   const setConditionLogicalOperator = useEvaluationStore(
     (state) => state.setConditionLogicalOperator,
   )
@@ -299,10 +310,22 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
               resourceId,
             )
             const showValue = !!metric && requiresConditionValue(condition.comparisonOperator)
+            const errorMessage = incompleteConditionIds.has(condition.id)
+              ? metric
+                ? t(($) => $['conditions.valueRequired'])
+                : t(($) => $['conditions.selectFieldFirst'])
+              : null
+            const errorId = `condition-error-${condition.id}`
 
             return (
               <div key={condition.id} className="flex items-start overflow-hidden rounded-lg">
-                <div className="min-w-0 flex-1 rounded-lg bg-components-input-bg-normal">
+                <div
+                  className={cn(
+                    'min-w-0 flex-1 rounded-lg bg-components-input-bg-normal',
+                    errorMessage && 'ring-1 ring-components-input-border-destructive ring-inset',
+                  )}
+                  aria-describedby={errorMessage ? errorId : undefined}
+                >
                   <div className="flex items-center gap-0 pe-1">
                     <div className="min-w-0 flex-1 py-1">
                       <ConditionMetricSelect
@@ -333,6 +356,14 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
                         }
                       />
                     </div>
+                  )}
+                  {errorMessage && (
+                    <p
+                      id={errorId}
+                      className="border-t border-divider-subtle px-3 py-1.5 system-xs-regular text-text-destructive"
+                    >
+                      {errorMessage}
+                    </p>
                   )}
                 </div>
                 <div className="ps-1 pt-1">

@@ -51,16 +51,17 @@ const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSe
       <PopoverTrigger
         render={
           <Button variant="ghost-accent" className={triggerClassName}>
-            <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
+            <span aria-hidden="true" className="me-1 i-ri-add-line h-4 w-4" />
             {t(($) => $['metrics.add'])}
           </Button>
         }
       />
       <PopoverContent
+        side="bottom"
         align="start"
-        className="h-[560px] max-h-(--available-height) w-[360px] max-w-(--available-width) overflow-hidden rounded-xl border-[0.5px] border-components-panel-border p-0 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]"
+        className="flex max-h-[min(560px,var(--available-height))] w-[360px] max-w-(--available-width) overflow-hidden rounded-xl border-[0.5px] border-components-panel-border p-0 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]"
       >
-        <div className="flex h-full min-h-0 flex-col bg-components-panel-bg">
+        <div className="flex min-h-0 w-full flex-1 flex-col bg-components-panel-bg">
           <div className="shrink-0 border-b border-divider-subtle bg-background-section-burn px-2 py-2">
             <SearchInput
               value={query}

@@ -34,7 +34,7 @@ const EvaluationFrameworkSelector = ({ resourceType, resourceId }: EvaluationRes
       <SelectLabel className="system-md-semibold text-text-primary">
         {t(($) => $['judgeFramework.title'])}
       </SelectLabel>
-      <SelectTrigger className="mt-1.5 w-full">
+      <SelectTrigger aria-label={t(($) => $['judgeFramework.title'])} className="mt-1.5 w-full">
         <SelectValue<EvaluationFramework>>
           {(value) => FRAMEWORK_OPTIONS.find((option) => option.value === value)?.label}
         </SelectValue>

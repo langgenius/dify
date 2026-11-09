@@ -343,5 +343,6 @@
   "types.all": "Semua",
   "types.chatbot": "Chatbot",
   "types.completion": "Penyelesaian",
+  "types.evaluationWorkflow": "Alur kerja evaluasi",
   "types.workflow": "Alur Kerja"
 }

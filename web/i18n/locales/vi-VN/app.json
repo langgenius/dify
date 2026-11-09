@@ -343,5 +343,6 @@
   "types.all": "Tất cả",
   "types.chatbot": "Chatbot",
   "types.completion": "Hoàn thành",
+  "types.evaluationWorkflow": "Quy trình đánh giá",
   "types.workflow": "Quy trình"
 }

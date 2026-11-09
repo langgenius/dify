@@ -3,6 +3,7 @@ import type { EvaluationMetric } from '../../types'
 import type { MetricSelectorSection } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { getEvaluationNodeBlockType, getMetricVisual, getToneClasses } from './utils'
 
@@ -32,6 +33,7 @@ const SelectorMetricSection = ({
   onToggleNodeSelection,
   t,
 }: SelectorMetricSectionProps) => {
+  const { t: tCommon } = useTranslation(['common'])
   const { metric, visibleNodes, hasNoNodeInfo } = section
   const selectedNodeIds = new Set(
     addedMetric?.nodeInfoList?.length
@@ -54,6 +56,7 @@ const SelectorMetricSection = ({
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <button
           type="button"
+          aria-expanded={isExpanded}
           className="flex min-w-0 items-center gap-2"
           onClick={onToggleExpanded}
         >
@@ -116,13 +119,12 @@ const SelectorMetricSection = ({
                 key={nodeInfo.node_id}
                 data-testid={`evaluation-metric-node-${metric.id}-${nodeInfo.node_id}`}
                 type="button"
-                className={cn(
-                  'flex w-full items-center gap-1 rounded-md px-3 py-1.5 text-left transition-colors hover:bg-state-base-hover-alt',
-                  isAdded && 'opacity-50',
-                )}
+                // Clicking an added node removes it, so expose the row as a pressed toggle.
+                aria-pressed={isAdded}
+                className="group/node flex w-full items-center gap-1 rounded-md px-3 py-1.5 text-start transition-colors hover:bg-state-base-hover-alt"
                 onClick={() => onToggleNodeSelection(metric, nodeInfo)}
               >
-                <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-1">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5 pe-1">
                   <BlockIcon
                     type={getEvaluationNodeBlockType(nodeInfo)}
                     size="xs"
@@ -133,8 +135,17 @@ const SelectorMetricSection = ({
                   </span>
                 </div>
                 {isAdded && (
-                  <span className="shrink-0 px-1 system-xs-regular text-text-quaternary">
-                    {t(($) => $['metrics.added'])}
+                  <span className="flex shrink-0 items-center gap-0.5 px-1 system-xs-regular">
+                    <span className="flex items-center gap-0.5 text-text-accent group-hover/node:hidden group-focus-visible/node:hidden">
+                      <span aria-hidden="true" className="i-ri-check-line h-3.5 w-3.5" />
+                      {t(($) => $['metrics.added'])}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="hidden text-text-destructive group-hover/node:inline group-focus-visible/node:inline"
+                    >
+                      {tCommon(($) => $['operation.remove'])}
+                    </span>
                   </span>
                 )}
               </button>
@@ -143,10 +154,10 @@ const SelectorMetricSection = ({
           {hasMoreNodes && (
             <button
               type="button"
-              className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left hover:bg-state-base-hover-alt"
+              className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-start hover:bg-state-base-hover-alt"
               onClick={onToggleShowAllNodes}
             >
-              <div className="flex min-w-0 flex-1 items-center gap-1.5 pr-1">
+              <div className="flex min-w-0 flex-1 items-center gap-1.5 pe-1">
                 <div className="flex items-center px-1 text-text-tertiary">
                   <span
                     aria-hidden="true"

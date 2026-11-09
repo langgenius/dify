@@ -12,10 +12,15 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { Spinner } from '@langgenius/dify-ui/spinner'
 import { useInfiniteScroll } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { createWorkflowAppHref } from '@/app/components/apps/query-params'
 import { SearchInput } from '@/app/components/base/search-input'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import Link from '@/next/link'
+import { hasPermission } from '@/utils/permission'
 import { useAvailableEvaluationWorkflows } from '../../queries'
 
 type WorkflowSelectorProps = {
@@ -40,6 +45,10 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
   const [searchText, setSearchText] = useState('')
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
+  const canCreateWorkflowApp = hasPermission(
+    useAtomValue(workspacePermissionKeysAtom),
+    'app.create_and_management',
+  )
 
   const keyword = deferredSearchText.trim() || undefined
 
@@ -131,7 +140,7 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
         side="bottom"
         align="start"
         sideOffset={4}
-        className="w-[360px] overflow-hidden p-0"
+        className="w-(--anchor-width) min-w-[280px] overflow-hidden p-0"
       >
         <div className="bg-components-panel-bg">
           <div className="p-2 pb-1">
@@ -142,9 +151,25 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
             <div className="flex h-[120px] items-center justify-center">
               <Spinner size="large" aria-label={tCommon(($) => $.loading)} />
             </div>
-          ) : !workflows.length ? (
+          ) : !workflows.length && keyword ? (
             <div className="flex h-[120px] items-center justify-center system-sm-regular text-text-tertiary">
               {tCommon(($) => $.noData)}
+            </div>
+          ) : !workflows.length ? (
+            // Only published evaluation workflows can be picked; say so and where to make one.
+            <div className="flex min-h-[120px] flex-col items-center justify-center gap-2 px-6 py-4 text-center">
+              <div className="system-sm-regular text-text-tertiary">
+                {t(($) => $['metrics.custom.noEvaluationWorkflows'])}
+              </div>
+              {canCreateWorkflowApp && (
+                <Link
+                  href={createWorkflowAppHref}
+                  className="inline-flex items-center gap-1 system-sm-medium text-text-accent hover:underline"
+                >
+                  {t(($) => $['metrics.custom.createWorkflow'])}
+                  <span aria-hidden="true" className="i-ri-arrow-right-up-line h-3.5 w-3.5" />
+                </Link>
+              )}
             </div>
           ) : (
             <ScrollArea className="relative max-h-[240px] overflow-hidden">

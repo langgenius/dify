@@ -343,5 +343,6 @@
   "types.all": "Hamısı",
   "types.chatbot": "Çatbot",
   "types.completion": "Tamamlama",
+  "types.evaluationWorkflow": "Qiymətləndirmə iş axını",
   "types.workflow": "İş axını"
 }

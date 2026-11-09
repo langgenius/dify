@@ -343,5 +343,6 @@
   "types.all": "Toate",
   "types.chatbot": "Chatbot",
   "types.completion": "Finalizare",
+  "types.evaluationWorkflow": "Flux de evaluare",
   "types.workflow": "Flux de lucru"
 }

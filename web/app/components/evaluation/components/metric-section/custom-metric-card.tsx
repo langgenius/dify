@@ -42,7 +42,7 @@ const CustomMetricCard = ({ resourceType, resourceId, metric }: CustomMetricCard
             size="small"
             variant="ghost"
             aria-label={t(($) => $['metrics.remove'])}
-            className="h-6 w-6 shrink-0 rounded-md p-0 text-text-quaternary opacity-0 transition-opacity group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100"
+            className="h-6 w-6 shrink-0 rounded-md p-0 text-text-quaternary opacity-0 transition-opacity group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 pointer-coarse:opacity-100"
             onClick={() => removeMetric(resourceType, resourceId, metric.id)}
           >
             <span aria-hidden="true" className="i-ri-delete-bin-line h-4 w-4" />

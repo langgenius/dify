@@ -1,6 +1,7 @@
 'use client'
 
 import type { EvaluationResourceProps } from '../../types'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import BatchTestPanel from '../batch-test-panel'
@@ -16,12 +17,17 @@ const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps)
   const { t } = useTranslation(['evaluation'])
   const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
+  const judgeModelTitleId = useId()
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-background-default xl:flex-row">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex min-h-full max-w-[748px] flex-col px-6 py-4">
+    // Side by side, each panel scrolls on its own; stacked on narrower screens, the page
+    // scrolls as a whole so neither panel is squeezed into a short scroll box.
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default xl:flex-row xl:overflow-hidden">
+      <div className="shrink-0 xl:min-h-0 xl:flex-1 xl:shrink xl:overflow-y-auto">
+        <div className="flex max-w-[748px] flex-col px-6 py-4 xl:min-h-full">
+          {/* Keep Save reachable while the configuration scrolls. */}
           <SectionHeader
+            className="sticky top-0 z-10 -mx-6 -mt-4 bg-background-default px-6 pt-4 pb-2"
             title={t(($) => $.title)}
             description={
               <>
@@ -46,10 +52,15 @@ const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps)
           <section className="max-w-[700px] py-4">
             <InlineSectionHeader
               title={t(($) => $['judgeModel.title'])}
+              titleId={judgeModelTitleId}
               tooltip={t(($) => $['judgeModel.description'])}
             />
             <div className="mt-1.5">
-              <JudgeModelSelector resourceType={resourceType} resourceId={resourceId} />
+              <JudgeModelSelector
+                resourceType={resourceType}
+                resourceId={resourceId}
+                ariaLabelledBy={judgeModelTitleId}
+              />
             </div>
           </section>
           <div className="max-w-[700px] border-b border-divider-subtle" />
@@ -63,7 +74,7 @@ const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps)
         </div>
       </div>
 
-      <div className="h-[420px] shrink-0 border-t border-divider-subtle xl:h-auto xl:w-[450px] xl:border-s xl:border-t-0">
+      <div className="shrink-0 border-t border-divider-subtle xl:h-auto xl:w-[450px] xl:border-s xl:border-t-0">
         <BatchTestPanel resourceType={resourceType} resourceId={resourceId} />
       </div>
     </div>

@@ -343,5 +343,6 @@
   "types.all": "모두",
   "types.chatbot": "챗봇",
   "types.completion": "완료",
+  "types.evaluationWorkflow": "평가 워크플로",
   "types.workflow": "워크플로우"
 }

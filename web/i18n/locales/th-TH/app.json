@@ -343,5 +343,6 @@
   "types.all": "ทั้งหมด",
   "types.chatbot": "แชทบอท",
   "types.completion": "เสร็จสมบูรณ์",
+  "types.evaluationWorkflow": "เวิร์กโฟลว์การประเมิน",
   "types.workflow": "กระบวนการทำงาน"
 }

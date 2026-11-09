@@ -15,6 +15,8 @@ type SectionHeaderProps = {
 
 type InlineSectionHeaderProps = {
   title: string
+  /** Lets a control be labelled by the section title. */
+  titleId?: string
   tooltip?: ReactNode
   action?: ReactNode
   className?: string
@@ -45,6 +47,7 @@ const SectionHeader = ({
 
 export const InlineSectionHeader = ({
   title,
+  titleId,
   tooltip,
   action,
   className,
@@ -52,7 +55,9 @@ export const InlineSectionHeader = ({
   return (
     <div className={cn('flex flex-wrap items-center justify-between gap-3', className)}>
       <div className="flex min-h-6 items-center gap-1">
-        <div className="system-md-semibold text-text-primary">{title}</div>
+        <div id={titleId} className="system-md-semibold text-text-primary">
+          {title}
+        </div>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger

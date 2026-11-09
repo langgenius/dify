@@ -343,5 +343,6 @@
   "types.all": "全部",
   "types.chatbot": "聊天助手",
   "types.completion": "文字生成",
+  "types.evaluationWorkflow": "評估工作流",
   "types.workflow": "工作流"
 }

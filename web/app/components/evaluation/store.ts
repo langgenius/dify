@@ -20,6 +20,7 @@ import {
   createCustomMetric,
   getAllowedOperators as getAllowedOperatorsFromUtils,
   getConditionValue,
+  getIncompleteConditionIds as getIncompleteConditionIdsFromUtils,
   isCustomMetricConfigured as isCustomMetricConfiguredFromUtils,
   isEvaluationRunnable as isEvaluationRunnableFromUtils,
   requiresConditionValue as requiresConditionValueFromUtils,
@@ -34,6 +35,13 @@ import { buildConditionMetricOptions } from './utils'
 type EvaluationStore = {
   resources: Record<string, EvaluationResourceState>
   initialResources: Record<string, EvaluationResourceState>
+  /** Resources whose incomplete judgment conditions should be highlighted after a save attempt. */
+  conditionErrorsVisible: Record<string, boolean>
+  setConditionErrorsVisible: (
+    resourceType: EvaluationResourceType,
+    resourceId: string,
+    visible: boolean,
+  ) => void
   ensureResource: (resourceType: EvaluationResourceType, resourceId: string) => void
   hydrateResource: (
     resourceType: EvaluationResourceType,
@@ -195,16 +203,37 @@ const createConfigSnapshot = (
   }
 }
 
+// Metrics and conditions get a new generated id whenever they are re-added, so compare
+// configs without ids; re-adding a removed metric then counts as no change.
+const withoutId = <T extends { id: string }>({ id: _id, ...rest }: T) => rest
+
 const pickConfigComparableState = (resource: EvaluationResourceState) => ({
   evaluationFramework: resource.evaluationFramework,
   judgeModelId: resource.judgeModelId,
-  metrics: resource.metrics,
-  judgmentConfig: resource.judgmentConfig,
+  metrics: resource.metrics.map((metric) => ({
+    ...withoutId(metric),
+    customConfig: metric.customConfig && {
+      ...metric.customConfig,
+      mappings: metric.customConfig.mappings.map(withoutId),
+    },
+  })),
+  judgmentConfig: {
+    ...resource.judgmentConfig,
+    conditions: resource.judgmentConfig.conditions.map(withoutId),
+  },
 })
 
 export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
   resources: {},
   initialResources: {},
+  conditionErrorsVisible: {},
+  setConditionErrorsVisible: (resourceType, resourceId, visible) => {
+    const resourceKey = buildResourceKey(resourceType, resourceId)
+
+    set((state) => ({
+      conditionErrorsVisible: { ...state.conditionErrorsVisible, [resourceKey]: visible },
+    }))
+  },
   ensureResource: (resourceType, resourceId) => {
     const resourceKey = buildResourceKey(resourceType, resourceId)
     if (get().resources[resourceKey]) return
@@ -243,6 +272,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
           resourceType,
         ),
       },
+      conditionErrorsVisible: { ...state.conditionErrorsVisible, [resourceKey]: false },
     }))
   },
   markResourceConfigSaved: (resourceType, resourceId) => {
@@ -254,6 +284,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         ...state.initialResources,
         [resourceKey]: createConfigSnapshot(resourceType, resource),
       },
+      conditionErrorsVisible: { ...state.conditionErrorsVisible, [resourceKey]: false },
     }))
   },
   setEvaluationFramework: (resourceType, resourceId, framework) => {
@@ -645,6 +676,22 @@ export const isCustomMetricConfigured = (metric: EvaluationResourceState['metric
 
 export const isEvaluationRunnable = (state: EvaluationResourceState) => {
   return isEvaluationRunnableFromUtils(state)
+}
+
+export const getIncompleteConditionIds = (
+  state: EvaluationResourceState,
+  resourceType: EvaluationResourceType,
+  resourceId: string,
+) => {
+  return getIncompleteConditionIdsFromUtils(state, resourceType, resourceId)
+}
+
+export const useConditionErrorsVisible = (
+  resourceType: EvaluationResourceType,
+  resourceId: string,
+) => {
+  const resourceKey = buildResourceKey(resourceType, resourceId)
+  return useEvaluationStore((state) => !!state.conditionErrorsVisible[resourceKey])
 }
 
 export const requiresConditionValue = (operator: ComparisonOperator) => {
