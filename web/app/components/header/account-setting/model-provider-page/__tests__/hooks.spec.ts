@@ -1,16 +1,12 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RenderHookOptions } from '@testing-library/react'
 import type { Mock } from 'vite-plus/test'
-import type {
-  Credential,
-  CustomConfigurationModelFixedFields,
-  CustomModel,
-  DefaultModelResponse,
-  ModelProvider,
-} from '../declarations'
+import type { DefaultModelResponse, ModelProvider } from '../declarations'
 import { zModelWithProviderEntityResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryObserver } from '@tanstack/react-query'
-import { act, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createElement } from 'react'
 import { useLocale } from '#i18n'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
@@ -38,6 +34,7 @@ import {
   useUpdateModelList,
   useUpdateModelProviders,
 } from '../hooks'
+import { createCredentialProvider, renderCredentialComponent } from './credential-test-env'
 
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
@@ -45,13 +42,6 @@ vi.mock('#i18n', async (importOriginal) => ({
 }))
 
 // Mock dependencies
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: vi.fn((selector) => {
-    const state = { setShowModelModal: vi.fn() }
-    return selector(state)
-  }),
-}))
 
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: vi.fn(() => ({
@@ -66,16 +56,29 @@ vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   })),
 }))
 
-const { getDefaultModel, getModels } = vi.hoisted(() => ({
+const { getDefaultModel, getModels, saveProvider, saveModel, editModel } = vi.hoisted(() => ({
   getDefaultModel: vi.fn(),
   getModels: vi.fn(),
+  saveProvider: vi.fn(),
+  saveModel: vi.fn(),
+  editModel: vi.fn(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.credentials.post': saveProvider,
+      'workspaces.current.modelProviders.byProvider.models.credentials.post': saveModel,
+      'workspaces.current.modelProviders.byProvider.models.credentials.put': editModel,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.credentials.get': () => ({
+        credentials: { api_key: '[__HIDDEN__]' },
+        available_credentials: [],
+      }),
       'workspaces.current.defaultModel.get': getDefaultModel,
       'workspaces.current.models.modelTypes.byModelType.get': getModels,
     }),
@@ -109,13 +112,15 @@ const seedDefaultModel = (data: DefaultModelResponse) =>
     }),
     { data },
   )
-const { useModalContextSelector } = await import('@/context/modal-context')
 const { useMarketplacePlugins, useMarketplacePluginsByCollectionId } =
   await import('@/app/components/plugins/marketplace/hooks')
 
 describe('hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    saveProvider.mockResolvedValue({ result: 'success' })
+    saveModel.mockResolvedValue({ result: 'success' })
+    editModel.mockResolvedValue({ result: 'success' })
     vi.mocked(useLocale).mockReturnValue('en-US')
     ;(useMarketplacePlugins as Mock).mockReturnValue({
       plugins: [],
@@ -793,134 +798,124 @@ describe('hooks', () => {
   })
 
   describe('useModelModalHandler', () => {
-    const createMockProvider = (): ModelProvider => ({
-      provider: 'openai',
-      label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-      icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-      supported_model_types: [ModelTypeEnum.textGeneration],
-      configurate_methods: [ConfigurationMethodEnum.predefinedModel],
-      provider_credential_schema: { credential_form_schemas: [] },
-      model_credential_schema: {
-        model: {
-          label: { en_US: 'Model', zh_Hans: '模型' },
-          placeholder: { en_US: 'Select model', zh_Hans: '选择模型' },
-        },
-        credential_form_schemas: [],
-      },
-      preferred_provider_type: PreferredProviderTypeEnum.system,
-      custom_configuration: {
-        status: CustomConfigurationStatusEnum.noConfigure,
-      },
-      system_configuration: {
-        enabled: true,
-        current_quota_type: CurrentSystemQuotaTypeEnum.trial,
-        quota_configurations: [],
-      },
-      help: {
-        title: {
-          en_US: '',
-          zh_Hans: '',
-        },
-        url: {
-          en_US: '',
-          zh_Hans: '',
-        },
-      },
+    beforeAll(async () => {
+      // Load the real lazy dialog before measuring its user interactions.
+      await import('../model-modal')
     })
 
-    it('should open model modal with basic configuration', () => {
-      const setShowModelModal = vi.fn()
-      ;(useModalContextSelector as Mock).mockReturnValue(setShowModelModal)
+    function ModalLauncher({
+      args,
+    }: {
+      args: Parameters<ReturnType<typeof useModelModalHandler>>
+    }) {
+      const open = useModelModalHandler()
+      return createElement('button', { onClick: () => open(...args) }, 'Configure model')
+    }
+    async function fillAndSave(user: ReturnType<typeof userEvent.setup>) {
+      const key = await screen.findByLabelText(/API key/)
+      await user.clear(key)
+      await user.type(key, 'new-key')
+      const name = screen.getByRole('textbox', { name: /authorizationName/ })
+      await user.clear(name)
+      await user.type(name, 'My key')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    }
 
-      const provider = createMockProvider()
-      const { result } = renderHook(() => useModelModalHandler())
-
-      act(() => {
-        result.current(provider, ConfigurationMethodEnum.predefinedModel)
-      })
-
-      expect(setShowModelModal).toHaveBeenCalledWith({
-        payload: {
-          currentProvider: provider,
-          currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
-          currentCustomConfigurationModelFixedFields: undefined,
-          isModelCredential: undefined,
-          credential: undefined,
-          model: undefined,
-          mode: undefined,
-        },
-        onSaveCallback: expect.any(Function),
-      })
-    })
-
-    it('should open model modal with custom configuration', () => {
-      const setShowModelModal = vi.fn()
-      ;(useModalContextSelector as Mock).mockReturnValue(setShowModelModal)
-
-      const provider = createMockProvider()
-      const customFields: CustomConfigurationModelFixedFields = {
-        __model_name: 'gpt-4',
-        __model_type: ModelTypeEnum.textGeneration,
-      }
-
-      const { result } = renderHook(() => useModelModalHandler())
-
-      act(() => {
-        result.current(provider, ConfigurationMethodEnum.customizableModel, customFields)
-      })
-
-      expect(setShowModelModal).toHaveBeenCalledWith({
-        payload: {
-          currentProvider: provider,
-          currentConfigurationMethod: ConfigurationMethodEnum.customizableModel,
-          currentCustomConfigurationModelFixedFields: customFields,
-          isModelCredential: undefined,
-          credential: undefined,
-          model: undefined,
-          mode: undefined,
-        },
-        onSaveCallback: expect.any(Function),
-      })
-    })
-
-    it('should open model modal with extra options', () => {
-      const setShowModelModal = vi.fn()
-      ;(useModalContextSelector as Mock).mockReturnValue(setShowModelModal)
-
-      const provider = createMockProvider()
-      const credential: Credential = { credential_id: 'cred-1' }
-      const model: CustomModel = { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration }
-      const onUpdate = vi.fn()
-
-      const { result } = renderHook(() => useModelModalHandler())
-
-      act(() => {
-        result.current(provider, ConfigurationMethodEnum.predefinedModel, undefined, {
-          isModelCredential: true,
-          credential,
-          model,
-          onUpdate,
-          mode: ModelModalModeEnum.configProviderCredential,
-        })
-      })
-
-      expect(setShowModelModal).toHaveBeenCalledWith({
-        payload: {
-          currentProvider: provider,
-          currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
-          currentCustomConfigurationModelFixedFields: undefined,
-          isModelCredential: true,
-          credential,
-          model,
-          mode: ModelModalModeEnum.configProviderCredential,
-        },
-        onSaveCallback: expect.any(Function),
-      })
-      const savedPayload = setShowModelModal.mock.calls[0]![0].payload
-      act(() =>
-        setShowModelModal.mock.calls[0]![0].onSaveCallback(savedPayload, { api_key: 'new-key' }),
+    it('opens the provider form and saves its entered credential', async () => {
+      const user = userEvent.setup()
+      renderCredentialComponent(
+        createElement(ModalLauncher, {
+          args: [createCredentialProvider(), ConfigurationMethodEnum.predefinedModel],
+        }),
       )
-      expect(onUpdate).toHaveBeenCalledExactlyOnceWith(savedPayload, { api_key: 'new-key' })
+      await user.click(screen.getByRole('button', { name: 'Configure model' }))
+      await fillAndSave(user)
+      expect(saveProvider).toHaveBeenCalledExactlyOnceWith({
+        params: { provider: 'openai' },
+        body: { credential_id: undefined, credentials: { api_key: 'new-key' }, name: 'My key' },
+      })
+      expect(saveModel).not.toHaveBeenCalled()
+    })
+
+    it('opens a custom model form with the fixed name and type', async () => {
+      const user = userEvent.setup()
+      renderCredentialComponent(
+        createElement(ModalLauncher, {
+          args: [
+            createCredentialProvider({
+              configurate_methods: [ConfigurationMethodEnum.customizableModel],
+              provider_credential_schema: { credential_form_schemas: [] },
+            }),
+            ConfigurationMethodEnum.customizableModel,
+            { __model_name: 'gpt-4', __model_type: ModelTypeEnum.textGeneration },
+            { isModelCredential: true, mode: ModelModalModeEnum.configModelCredential },
+          ],
+        }),
+      )
+      await user.click(screen.getByRole('button', { name: 'Configure model' }))
+      await fillAndSave(user)
+      expect(saveModel).toHaveBeenCalledExactlyOnceWith({
+        params: { provider: 'openai' },
+        body: {
+          credential_id: undefined,
+          credentials: { api_key: 'new-key' },
+          name: 'My key',
+          model: 'gpt-4',
+          model_type: 'llm',
+        },
+      })
+    })
+
+    it('preserves the model credential identity and delivers actual saved form values to its caller', async () => {
+      const user = userEvent.setup()
+      const provider = createCredentialProvider()
+      const credential = { credential_id: 'cred-1', credential_name: 'Existing key' }
+      const model = { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration }
+      const onUpdate = vi.fn()
+      renderCredentialComponent(
+        createElement(ModalLauncher, {
+          args: [
+            provider,
+            ConfigurationMethodEnum.predefinedModel,
+            undefined,
+            {
+              isModelCredential: true,
+              credential,
+              model,
+              onUpdate,
+              mode: ModelModalModeEnum.configModelCredential,
+            },
+          ],
+        }),
+      )
+      await user.click(screen.getByRole('button', { name: 'Configure model' }))
+      expect(await screen.findByRole('textbox', { name: /authorizationName/ })).toHaveValue(
+        'Existing key',
+      )
+      await fillAndSave(user)
+      expect(editModel).toHaveBeenCalledExactlyOnceWith({
+        params: { provider: 'openai' },
+        body: {
+          credential_id: 'cred-1',
+          credentials: { api_key: 'new-key', __model_name: 'gpt-4', __model_type: 'llm' },
+          name: 'My key',
+          ...model,
+        },
+      })
+      expect(onUpdate).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          currentProvider: provider,
+          currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
+          isModelCredential: true,
+          credential,
+          model,
+          mode: ModelModalModeEnum.configModelCredential,
+        }),
+        expect.objectContaining({ api_key: 'new-key', __authorization_name__: 'My key' }),
+      )
+      expect(saveProvider).not.toHaveBeenCalled()
+      expect(saveModel).not.toHaveBeenCalled()
     })
   })
 })

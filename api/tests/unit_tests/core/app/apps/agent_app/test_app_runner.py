@@ -60,6 +60,7 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueRetrieverResourcesEvent,
 )
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -681,7 +682,7 @@ def _message_record() -> Message:
     message = Message(
         app_id="app-1",
         conversation_id="conv-1",
-        inputs={},
+        _inputs={},
         query="hello",
         message={},
         message_tokens=0,
@@ -1025,6 +1026,41 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
     assert rows[1].tool == ""
     assert rows[1].tool_input == ""
     assert rows[1].observation == "Knowledge base search results: browser skill"
+
+
+def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Session) -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    receipt = {
+        "id": "kfs_" + "a" * 32,
+        "control_space_id": "00000000-0000-4000-8000-000000000001",
+        "space_name": "Docs",
+        "node_id": "node",
+        "document_asset_id": "doc",
+        "artifact_hash": "hash",
+        "document_title": "manual.pdf",
+        "document_version": 2,
+    }
+    part = ToolReturnPart(
+        tool_name="shell_run",
+        tool_call_id="shell-call-1",
+        content={"knowledge_results": [{"data": {"receipt_id": receipt["id"], "text": "evidence"}}]},
+        metadata={"knowledge_fs_citations": [receipt]},
+    )
+    event = PydanticAIStreamRunEvent(run_id="run-1", data=FunctionToolResultEvent(part=part))
+    internal = AgentBackendStreamInternalEvent(run_id="run-1", data=event.model_dump(mode="json")["data"])
+    recorder.handle_stream_event(internal)
+    recorder.handle_stream_event(internal)
+    sources = [event for event in qm.events if isinstance(event, QueueRetrieverResourcesEvent)]
+    assert len(sources) == 1
+    assert sources[0].retriever_resources[0].document_name == "manual.pdf"
+    assert sources[0].retriever_resources[0].knowledge_fs_citation.id == receipt["id"]
+    assert sources[0].retriever_resources[0].content == "evidence"
+    assert _thought_rows(sqlite_session)[0].tool == "shell_run"
 
 
 def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -> None:
@@ -1591,3 +1627,32 @@ def test_terminal_output_to_answer_handles_plain_string_and_dict() -> None:
     assert AgentAppRunner._terminal_output_to_answer("plain text") == "plain text"
     assert AgentAppRunner._terminal_output_to_answer({"text": "hi"}) == "hi"
     assert AgentAppRunner._terminal_output_to_answer({"a": 1}) == '{"a": 1}'
+
+
+def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    contexts: list[AgentAppRuntimeBuildContext] = []
+    build = AgentAppRuntimeRequestBuilder.build
+
+    def record_build(self, context):
+        contexts.append(context)
+        return build(self, context)
+
+    monkeypatch.setattr(AgentAppRuntimeRequestBuilder, "build", record_build)
+    runner = _runner(FakeAgentBackendRunClient(), _FakeSessionStore())
+    inputs = {"name": "世界", "count": 0}
+    runner.run(
+        dify_context=_dify_ctx(),
+        agent_id="agent-1",
+        agent_config_snapshot_id="snap-1",
+        agent_soul=_soul(),
+        home_snapshot_id="home-1",
+        conversation_id="conv-1",
+        query="hello",
+        inputs=inputs,
+        message_id="msg-1",
+        model_name="gpt-4o-mini",
+        queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
+    )
+    assert len(contexts) == 1
+    assert contexts[0].inputs == inputs
+    assert contexts[0].user_query == "hello"

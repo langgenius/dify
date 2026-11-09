@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 
 @dataclass(frozen=True, slots=True)
@@ -238,8 +239,17 @@ type AccountChangeEmailTokenData = (
 
 
 @dataclass(frozen=True, slots=True)
-class AccountEducationVerification:
-    token: str | None
+class AccountEducationEligible:
+    token: str
+    status: Literal["eligible"] = "eligible"
+
+
+@dataclass(frozen=True, slots=True)
+class AccountEducationNotEligible:
+    status: Literal["not_eligible"] = "not_eligible"
+
+
+type AccountEducationVerification = AccountEducationEligible | AccountEducationNotEligible
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,14 +259,14 @@ class AccountEducationActivation:
 
 @dataclass(frozen=True, slots=True)
 class AccountEducationStatus:
-    result: bool | None
-    is_student: bool | None
-    expire_at: datetime | None
-    allow_refresh: bool | None
+    result: bool
+    is_student: bool
+    expire_at: datetime
+    allow_refresh: bool
 
 
 @dataclass(frozen=True, slots=True)
 class AccountEducationAutocomplete:
     data: tuple[str, ...]
-    curr_page: int | None
-    has_next: bool | None
+    curr_page: int
+    has_next: bool

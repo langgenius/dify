@@ -71,14 +71,18 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
   `DialogHeaderCloseButton` is the optional standard close icon inside `DialogHeader`; the header
   reserves inline-end space when it contains the button. Without it, the header keeps its normal
   gutters. Use the unstyled `DialogClose` with `render` for footer actions and custom close controls.
+  A dialog that submits a form cancels user-initiated closes while the submission is pending and
+  closes itself when it succeeds; a failure keeps the dialog open with the draft intact.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
   It blocks outside-press dismissal but still closes on Escape; cancel that close in
   `onOpenChange` when the answer must be explicit. `AlertDialogHeader` holds the title and
   description; anything the user fills in or reviews before answering goes in `AlertDialogBody`.
 - Use `Drawer` for side-panel interactions that follow the drawer model.
-- Use `DropdownMenu` for button-triggered action lists and `ContextMenu` for context actions.
-  A long action list filters with `DropdownMenuFilterProvider`; choosing a value is
+- Use `Menu` for button-triggered action lists and `ContextMenu` for context actions.
+  A long action list filters with `MenuFilterProvider`; choosing a value is
   [`Combobox`] in [Selection].
+  Use `ContextMenuPortal`, `ContextMenuPositioner`, and `ContextMenuPopup` for custom portal
+  containers or positioning beyond `ContextMenuContent`'s common options.
 - Use [`Tooltip`] for a supplementary visual label on a control that already has a primary
   action and an accessible name. Use `Infotip` when the information icon's action is to open
   the explanation. Text length alone does not determine the component. Follow the
@@ -89,8 +93,7 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
   touch or with assistive technology.
 
 Use a real `<button type="button">` for button-like triggers. If a Base UI trigger intentionally
-renders a non-button element, set `nativeButton={false}`. Let the primitive own placement and
-spacing unless its API documents a measured exception.
+renders a non-button element, set `nativeButton={false}`.
 
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
 [Infotip contract]: ../src/infotip/README.md

@@ -12,7 +12,7 @@ from configs.extra.agent_backend_config import AgentBackendConfig
 from dify_app import DifyApp
 from extensions import ext_celery
 from schedule.collect_agent_sandbox_usage import collect_agent_sandbox_usage
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 PROJECT = "431de237-596f-4d59-8a85-20a9846bf243"
 
@@ -42,7 +42,7 @@ def response(payload: object, status: int = 200) -> httpx.Response:
     )
 
 
-def test_task_uses_existing_queue_deadlines_and_single_authenticated_call(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_task_uses_configured_routing_deadlines_and_single_authenticated_call(monkeypatch: pytest.MonkeyPatch) -> None:
     post = MagicMock(return_value=response({"completed": True}))
     monkeypatch.setattr("schedule.collect_agent_sandbox_usage.ssrf_proxy.post", post)
     assert collect_agent_sandbox_usage() is True
@@ -56,7 +56,7 @@ def test_task_uses_existing_queue_deadlines_and_single_authenticated_call(monkey
     dispatch = MagicMock()
     monkeypatch.setattr(collect_agent_sandbox_usage.app, "send_task", dispatch)
     collect_agent_sandbox_usage.apply_async()
-    assert dispatch.call_args.kwargs["queue"] == "ops_trace"
+    assert dispatch.call_args.kwargs.get("queue") is None
     assert collect_agent_sandbox_usage.soft_time_limit == 270
     assert collect_agent_sandbox_usage.time_limit == 300
 

@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import {
   MarketplaceSearchAutocomplete,
   MarketplaceSearchForm,

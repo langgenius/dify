@@ -119,7 +119,7 @@ export function RosterToolbar({ publicationCounts }: RosterToolbarProps) {
         <div className="h-full w-px bg-divider-regular" />
       </div>
       <RosterCreatedByMeFilter />
-      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+      <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
         <RosterSortSelect />
         <RosterCreateMenu />
       </div>

@@ -1,3 +1,5 @@
+import type { StartNodeType } from '../nodes/start/types'
+import type { InputVar } from '../types'
 import type { PromptVariable } from '@/models/debug'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -10,8 +12,6 @@ import { InputVarType } from '../types'
 import { createStartNode } from './fixtures'
 import { renderWorkflowFlowComponent } from './workflow-test-env'
 
-const featureStore = createFeaturesStore()
-const mockHandleAddVariable = vi.fn()
 const mockUpdateFeatures = vi.fn()
 const mockOpenOpeningModal = vi.fn<
   (options: {
@@ -22,9 +22,6 @@ const mockOpenOpeningModal = vi.fn<
   }) => void
 >()
 
-vi.mock('../nodes/start/use-config', () => ({
-  default: () => ({ handleAddVariable: mockHandleAddVariable }),
-}))
 vi.mock('@/service/workflow', () => ({
   updateFeatures: (...args: unknown[]) => mockUpdateFeatures(...args),
 }))
@@ -55,22 +52,46 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+const initialVariables: InputVar[] = [
+  {
+    variable: 'existing_variable',
+    label: 'Existing Variable',
+    type: InputVarType.textInput,
+    required: true,
+  },
+]
 const startNode = createStartNode({
   id: 'start-node',
   data: {
-    variables: [{ variable: 'existing_variable', label: 'Existing Variable' }],
+    variables: initialVariables,
   },
 })
 function ReadyFeatures() {
-  const nodes = useNodes()
-  return nodes.length ? <Features /> : null
+  const nodes = useNodes<StartNodeType>()
+  return nodes.length ? (
+    <>
+      <Features />
+      <output aria-label="Start variables">
+        {JSON.stringify(nodes.find((node) => node.id === 'start-node')?.data.variables)}
+      </output>
+    </>
+  ) : null
 }
-function renderFeatures(mode: 'advanced-chat' | 'workflow' = 'advanced-chat') {
+function renderFeatures(
+  mode: 'advanced-chat' | 'workflow' = 'advanced-chat',
+  openingEnabled = false,
+) {
+  const featureStore = createFeaturesStore({
+    features: {
+      ...createFeaturesStore().getState().features,
+      opening: { enabled: openingEnabled, opening_statement: 'Hello' },
+    },
+  })
   return renderWorkflowFlowComponent(
     <NuqsTestingAdapter>
-      <FeaturesContext.Provider value={featureStore}>
+      <FeaturesContext value={featureStore}>
         <ReadyFeatures />
-      </FeaturesContext.Provider>
+      </FeaturesContext>
     </NuqsTestingAdapter>,
     {
       resource: { kind: 'app', appId: 'app-1', mode },
@@ -82,8 +103,6 @@ function renderFeatures(mode: 'advanced-chat' | 'workflow' = 'advanced-chat') {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  featureStore.setState({ features: createFeaturesStore().getState().features })
   mockUpdateFeatures.mockResolvedValue(undefined)
 })
 
@@ -123,14 +142,8 @@ it('omits chat-only feature controls for a workflow app', () => {
 it.each([true, undefined])(
   'converts an opening variable with required=%s into a start-node input',
   async (required) => {
-    featureStore.setState({
-      features: {
-        ...featureStore.getState().features,
-        opening: { enabled: true, opening_statement: 'Hello' },
-      },
-    })
     const user = userEvent.setup()
-    renderFeatures()
+    renderFeatures('advanced-chat', true)
     await user.hover(screen.getByText('appDebug.feature.conversationOpener.title'))
     const edit = screen.getByRole('button', { name: 'appDebug.openingStatement.writeOpener' })
     expect(edit).toBeEnabled()
@@ -144,13 +157,18 @@ it.each([true, undefined])(
         { key: 'name', name: 'Name', type: 'string', max_length: 120, required },
       ]),
     )
-    expect(mockHandleAddVariable).toHaveBeenCalledExactlyOnceWith({
-      variable: 'name',
-      label: 'Name',
-      type: InputVarType.textInput,
-      max_length: 120,
-      required: !!required,
-      options: [],
-    })
+    expect(
+      JSON.parse(screen.getByLabelText('Start variables', { selector: 'output' }).textContent!),
+    ).toEqual([
+      ...initialVariables,
+      {
+        variable: 'name',
+        label: 'Name',
+        type: InputVarType.textInput,
+        max_length: 120,
+        required: !!required,
+        options: [],
+      },
+    ])
   },
 )

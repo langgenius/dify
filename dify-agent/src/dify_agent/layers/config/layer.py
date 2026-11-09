@@ -34,19 +34,24 @@ for command names, arguments, and options.
 
 Config persistence rules:
 
-- Local shell edits to config files, skills, env, or notes are not saved by themselves.
+- Local shell edits to config files, skills, env, notes, or the prompt are not saved by themselves.
 - To persist an Agent config change, run the matching `dify-agent config ...` mutation command.
 - Mutation commands are available only when the manifest shows `config_version.kind` as `build_draft` and
-  `config_version.writable` as true."""
+  `config_version.writable` as true.
+- `config prompt pull` reads the raw system prompt, including unexpanded mention markers. Edit the local file and
+  run `config prompt push` to persist it. Only subsequent run requests built from that draft use the saved prompt;
+  already-built run requests keep their prompt."""
 _CONFIG_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent config --help": ("config",),
     "dify-agent config manifest --help": ("config", "manifest"),
     "dify-agent config skills pull --help": ("config", "skills", "pull"),
     "dify-agent config files pull --help": ("config", "files", "pull"),
     "dify-agent config note pull --help": ("config", "note", "pull"),
+    "dify-agent config prompt pull --help": ("config", "prompt", "pull"),
 }
 _CONFIG_CLI_MUTATION_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent config note push --help": ("config", "note", "push"),
+    "dify-agent config prompt push --help": ("config", "prompt", "push"),
     "dify-agent config env push --help": ("config", "env", "push"),
     "dify-agent config files push --help": ("config", "files", "push"),
     "dify-agent config files delete --help": ("config", "files", "delete"),

@@ -181,48 +181,51 @@ describe('workflow state transformations', () => {
     expect(second.resultText).toBe('Hello world')
   })
 
-  it('updates pending forms by identity and retains submitted form metadata separately', () => {
-    let process = upsertWorkflowNode(undefined, createTrace())!
-    process = updateHumanInputRequired(process, createHumanInput())
-    process = updateHumanInputRequired(process, createHumanInput({ expiration_time: 300 }))
-    process = updateHumanInputRequired(
-      process,
-      createHumanInput({ node_id: 'node-2', form_id: 'form-2' }),
-    )
-    expect(process.tracing[0]?.status).toBe(NodeRunningStatus.Paused)
-    expect(process.humanInputFormDataList?.map((form) => form.node_id)).toEqual([
-      'node-1',
-      'node-2',
-    ])
-    expect(process.humanInputFormDataList?.[0]?.expiration_time).toBe(300)
-    process = updateHumanInputTimeout(process, {
-      form_id: 'form-2',
-      node_id: 'node-2',
-      node_title: 'Node',
-      expiration_time: 400,
-    })
-    expect(process.humanInputFormDataList?.[1]?.expiration_time).toBe(400)
-    process = updateHumanInputFilled(process, {
-      form_id: 'form-1',
-      action_id: 'submit',
-      action_text: 'Submit',
-      node_id: 'node-1',
-      node_title: 'Node',
-      rendered_content: 'Done',
-    })
-    expect(process.humanInputFormDataList?.map((form) => form.node_id)).toEqual(['node-2'])
-    expect(process.humanInputFilledFormDataList).toEqual([
-      expect.objectContaining({
-        node_id: 'node-1',
+  it.each(['node-1', 'node-2'])(
+    'keeps pending forms independent when another form belongs to %s',
+    (secondNodeId) => {
+      let process = upsertWorkflowNode(undefined, createTrace())!
+      process = updateHumanInputRequired(process, createHumanInput())
+      process = updateHumanInputRequired(process, createHumanInput({ expiration_time: 300 }))
+      process = updateHumanInputRequired(
+        process,
+        createHumanInput({ node_id: secondNodeId, form_id: 'form-2' }),
+      )
+      expect(process.tracing[0]?.status).toBe(NodeRunningStatus.Paused)
+      expect(process.humanInputFormDataList?.map((form) => form.form_id)).toEqual([
+        'form-1',
+        'form-2',
+      ])
+      expect(process.humanInputFormDataList?.[0]?.expiration_time).toBe(300)
+      process = updateHumanInputTimeout(process, {
+        form_id: 'form-2',
+        node_id: secondNodeId,
+        node_title: 'Node',
+        expiration_time: 400,
+      })
+      expect(process.humanInputFormDataList?.[1]?.expiration_time).toBe(400)
+      process = updateHumanInputFilled(process, {
+        form_id: 'form-1',
+        action_id: 'submit',
         action_text: 'Submit',
-        form_content: 'content',
-        inputs: [],
-      }),
-    ])
-    const paused = applyWorkflowPaused(process)
-    expect(paused.status).toBe(WorkflowRunningStatus.Paused)
-    expect(paused.expand).toBe(false)
-  })
+        node_id: 'node-1',
+        node_title: 'Node',
+        rendered_content: 'Done',
+      })
+      expect(process.humanInputFormDataList?.map((form) => form.form_id)).toEqual(['form-2'])
+      expect(process.humanInputFilledFormDataList).toEqual([
+        expect.objectContaining({
+          node_id: 'node-1',
+          action_text: 'Submit',
+          form_content: 'content',
+          inputs: [],
+        }),
+      ])
+      const paused = applyWorkflowPaused(process)
+      expect(paused.status).toBe(WorkflowRunningStatus.Paused)
+      expect(paused.expand).toBe(false)
+    },
+  )
 })
 
 describe('createWorkflowStreamHandlers', () => {
@@ -622,6 +625,51 @@ describe('createWorkflowStreamHandlers', () => {
       expect.objectContaining({
         status: WorkflowRunningStatus.Failed,
         error: 'failed',
+      }),
+    )
+  })
+
+  it('should localize a KnowledgeFS workflow admission failure before notifying the user', () => {
+    const failureSetup = setupHandlers()
+    const failureHandlers = failureSetup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowFinished'>
+    >
+
+    act(() => {
+      failureHandlers.onWorkflowFinished({
+        task_id: 'task-knowledge-fs',
+        workflow_run_id: 'run-knowledge-fs',
+        event: 'workflow_finished',
+        data: {
+          id: 'run-knowledge-fs',
+          workflow_id: 'wf-1',
+          status: WorkflowRunningStatus.Failed,
+          outputs: null,
+          error:
+            '[knowledge_fs_workflow_access_disabled] Workflow access is disabled for KnowledgeFS Space space-a',
+          elapsed_time: 0,
+          total_tokens: 0,
+          total_steps: 0,
+          created_at: 0,
+          created_by: {
+            id: 'user-1',
+            name: 'User',
+            email: 'user@example.com',
+          },
+          finished_at: 0,
+        },
+      })
+    })
+
+    const localizedKey = 'nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled'
+    expect(failureSetup.notify).toHaveBeenCalledWith({
+      type: 'error',
+      message: localizedKey,
+    })
+    expect(failureSetup.workflowProcessData()).toEqual(
+      expect.objectContaining({
+        status: WorkflowRunningStatus.Failed,
+        error: localizedKey,
       }),
     )
   })

@@ -3,7 +3,7 @@
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Protocol, cast
+from typing import Protocol
 
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.entities.provider_entities import ProviderConfig
@@ -209,7 +209,7 @@ class TriggerOAuthClientService:
     @staticmethod
     def _parse_params(custom: TriggerOAuthTenantClientRecord, provider_id: TriggerProviderID) -> dict[str, object]:
         try:
-            params = json.loads(custom.encrypted_oauth_params or "{}")
+            params: object = json.loads(custom.encrypted_oauth_params or "{}")
         except json.JSONDecodeError as error:
             raise TriggerOAuthClientConfigError(
                 f"Stored OAuth client configuration for trigger provider {provider_id} is invalid."
@@ -218,4 +218,4 @@ class TriggerOAuthClientService:
             raise TriggerOAuthClientConfigError(
                 f"Stored OAuth client configuration for trigger provider {provider_id} must be an object."
             )
-        return cast(dict[str, object], params)
+        return params

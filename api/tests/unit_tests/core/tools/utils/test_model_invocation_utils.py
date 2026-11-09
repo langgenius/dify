@@ -31,7 +31,7 @@ from graphon.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from models.tools import ToolModelInvoke
-from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 USER_ID = "22222222-2222-2222-2222-222222222222"

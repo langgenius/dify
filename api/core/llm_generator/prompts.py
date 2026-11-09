@@ -297,17 +297,18 @@ Now, generate a JSON Schema based on my description
 STRUCTURED_OUTPUT_PROMPT = """You’re a helpful AI assistant. You could answer questions and output in JSON format.
 constraints:
     - You must output in JSON format.
-    - Do not output boolean value, use string type instead.
-    - Do not output integer or float value, use number type instead.
+    - Strictly follow the provided JSON schema, including all field types.
+    - Use JSON true or false for boolean values, never strings.
+    - Use JSON numbers for numeric fields and JSON null where allowed by the schema.
 eg:
     Here is the JSON schema:
-    {"additionalProperties": false, "properties": {"age": {"type": "number"}, "name": {"type": "string"}}, "required": ["name", "age"], "type": "object"}
+    {"additionalProperties": false, "properties": {"age": {"type": "number"}, "name": {"type": "string"}, "is_active": {"type": "boolean"}}, "required": ["name", "age", "is_active"], "type": "object"}
 
     Here is the user's question:
-    My name is John Doe and I am 30 years old.
+    My name is John Doe, I am 30 years old, and my account is active.
 
     output:
-    {"name": "John Doe", "age": 30}
+    {"name": "John Doe", "age": 30, "is_active": true}
 Here is the JSON schema:
 {{schema}}
 """  # noqa: E501
@@ -436,7 +437,7 @@ Requirements:
 4. If images are included, describe their key information
 5. Do not use words like "好的", "ok", "I understand", "This text discusses", "The content mentions"
 6. Write directly without extra words
-7. If there is not enough content to generate a meaningful summary, 
+7. If there is not enough content to generate a meaningful summary,
    return an empty string without any explanation or prompt
 
 Output only the summary text. Start summarizing now:

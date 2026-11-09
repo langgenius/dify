@@ -33,7 +33,7 @@ type PickerView = (typeof PickerView)[keyof typeof PickerView]
 
 export type DatasetMetadataPickerProps = Pick<
   PopoverContentProps,
-  'placement' | 'sideOffset' | 'alignOffset'
+  'side' | 'align' | 'sideOffset' | 'alignOffset'
 > & {
   datasetId: string
   onSelectMetadata: (metadata: MetadataItem) => void
@@ -51,7 +51,8 @@ function metadataFilter(metadata: MetadataItem, query: string) {
 
 export function DatasetMetadataPicker({
   datasetId,
-  placement = 'left-start',
+  side = 'left',
+  align = 'start',
   sideOffset = -38,
   alignOffset = 4,
   onSelectMetadata,
@@ -122,7 +123,8 @@ export function DatasetMetadataPicker({
         }
       />
       <PopoverContent
-        placement={placement}
+        side={side}
+        align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         className="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"
@@ -223,7 +225,7 @@ function MetadataPickerActions({
       <Button
         variant="ghost"
         size="medium"
-        className="min-w-0 justify-start gap-1 px-2 text-left text-text-secondary"
+        className="min-w-0 justify-start gap-1 px-2 text-start text-text-secondary"
         onClick={onStartMetadataCreation}
       >
         <span className="i-ri-add-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
@@ -236,14 +238,14 @@ function MetadataPickerActions({
         <Button
           variant="ghost"
           size="medium"
-          className="justify-start gap-1 px-2 text-left text-text-secondary"
+          className="justify-start gap-1 px-2 text-start text-text-secondary"
           onClick={onOpenMetadataManagement}
         >
           <span className="system-sm-medium">
             {t(($) => $[`${i18nPrefix}.manageAction`], { ns: 'dataset' })}
           </span>
           <span
-            className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
+            className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary rtl:-scale-x-100"
             aria-hidden="true"
           />
         </Button>

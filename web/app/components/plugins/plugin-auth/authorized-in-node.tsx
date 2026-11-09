@@ -136,7 +136,7 @@ const AuthorizedInNode = ({
       isOpen={isOpen}
       onOpenChange={setIsOpen}
       sideOffset={4}
-      placement="bottom-end"
+      align="end"
       triggerPopupSameWidth={false}
       popupClassName="w-[360px]"
       disableSetDefault

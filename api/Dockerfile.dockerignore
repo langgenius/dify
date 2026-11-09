@@ -7,10 +7,16 @@
 !dify-agent/README.md
 !dify-agent/src/
 !dify-agent/src/**
+**/node_modules/
+**/dist/
+**/.turbo/
 
 # Environment configuration and example
 .env
 *.env.*
+**/.env
+**/*.env
+**/*.env.*
 
 # Python related files
 **/__pycache__

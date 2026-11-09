@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "เช่น ผู้ช่วยวิจัย",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "การดำเนินการนี้จะลบ {{name}} อย่างถาวร เว็บแอปและการเข้าถึง API ของ Agent นี้ รวมถึงเวิร์กโฟลว์ที่ใช้ Agent นี้ จะหยุดทำงานทันที",
+  "roster.deleteDialog.inputLabel": "พิมพ์ <name>{{name}}</name> เพื่อยืนยัน",
+  "roster.deleteDialog.inputPlaceholder": "ป้อนชื่อเอเจนต์",
   "roster.deleteDialog.title": "ลบ {{name}} หรือไม่",
   "roster.deleteFailed": "ลบตัวแทนไม่สำเร็จ",
   "roster.duplicateDialog.description": "สร้างสำเนาของ {{name}} และปรับแต่งข้อมูลระบุตัวตนของ Agent",

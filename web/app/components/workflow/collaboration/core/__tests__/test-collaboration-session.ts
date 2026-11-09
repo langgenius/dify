@@ -37,12 +37,14 @@ export const createCollaborationTestEnvironment = () => {
     role = 'leader',
     nodes = [],
     edges = [],
+    preserveEmits = false,
   }: {
     appId?: string
     connected?: boolean
     role?: 'leader' | 'follower' | 'pending'
     nodes?: Node[]
     edges?: Edge[]
+    preserveEmits?: boolean
   } = {}) => {
     const transport = createSocket(`socket-${appId}`, connected)
     transports.set(appId, transport)
@@ -59,8 +61,11 @@ export const createCollaborationTestEnvironment = () => {
     }
     const store = { getState: () => state }
     const connectionId = await connect(manager, appId, store)
-    if (role !== 'pending') transport.receive('status', { isLeader: role === 'leader' })
-    transport.emit.mockClear()
+    if (role !== 'pending') {
+      transport.receive('status', { isLeader: role === 'leader' })
+      if (connected) transport.acknowledge('user_connect', { msg: 'connected' })
+    }
+    if (!preserveEmits) transport.emit.mockClear()
     return { manager, store, state, connectionId, ...transport }
   }
 

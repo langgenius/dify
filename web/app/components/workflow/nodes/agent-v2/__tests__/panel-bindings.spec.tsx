@@ -27,6 +27,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.trace.get': async () => ({ enabled: false, tracing_provider: null }),
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get': api.loadComposer,
       'snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get': api.loadComposer,
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post': api.copyApp,
@@ -197,7 +198,7 @@ describe('Agent panel bindings', () => {
   })
 
   it.each([
-    { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' },
     { kind: 'snippet', snippetId: 'snippet-1' },
   ] satisfies EditorResource[])(
     'copies a roster agent through the $kind endpoint and opens the new inline agent',

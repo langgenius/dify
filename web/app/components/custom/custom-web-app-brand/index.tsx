@@ -2,7 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useId } from 'react'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatPreviewCard from './components/chat-preview-card'
 import WorkflowPreviewCard from './components/workflow-preview-card'
@@ -13,6 +13,8 @@ const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 const CustomWebAppBrand = () => {
   const brandSwitchId = useId()
   const logoInputId = useId()
+  const uploadLabelId = useId()
+  const logoInputRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation(['appOverview', 'common', 'custom'])
   const {
     fileId,
@@ -47,11 +49,11 @@ const CustomWebAppBrand = () => {
       </div>
       <div
         className={cn(
-          'flex h-14 items-center justify-between rounded-xl bg-background-section-burn px-4',
+          'flex min-h-14 flex-col items-start gap-3 rounded-xl bg-background-section-burn p-4 sm:flex-row sm:items-center sm:justify-between sm:py-2',
           webappBrandRemoved && 'opacity-30',
         )}
       >
-        <div>
+        <div className="min-w-0 wrap-anywhere">
           <label htmlFor={logoInputId} className="block system-md-medium text-text-primary">
             {t(($) => $['webapp.changeLogo'], { ns: 'custom' })}
           </label>
@@ -59,7 +61,7 @@ const CustomWebAppBrand = () => {
             {t(($) => $['webapp.changeLogoTip'], { ns: 'custom' })}
           </div>
         </div>
-        <div className="flex items-center">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
           {!uploadDisabled && webappLogo && !webappBrandRemoved && (
             <>
               <Button
@@ -69,47 +71,41 @@ const CustomWebAppBrand = () => {
               >
                 {t(($) => $.restore, { ns: 'custom' })}
               </Button>
-              <div className="mx-2 h-5 w-px bg-divider-regular"></div>
+              <div className="h-5 w-px shrink-0 bg-divider-regular"></div>
             </>
           )}
-          {!uploading && (
-            <Button className="relative mr-2" disabled={uploadDisabled}>
-              <span className="i-ri-image-add-line size-4" />
-              {webappLogo || fileId
-                ? t(($) => $.change, { ns: 'custom' })
-                : t(($) => $.upload, { ns: 'custom' })}
-              <input
-                id={logoInputId}
-                className={cn(
-                  'absolute inset-0 block w-full text-[0] opacity-0',
-                  uploadDisabled ? 'cursor-not-allowed' : 'cursor-pointer',
-                )}
-                onClick={(e) => ((e.target as HTMLInputElement).value = '')}
-                type="file"
-                accept={ALLOW_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(',')}
-                onChange={handleChange}
-                disabled={uploadDisabled}
-              />
-            </Button>
-          )}
-          {uploading && (
-            <Button className="relative mr-2" disabled={true}>
-              <span className="i-ri-loader-2-line size-4 animate-spin" />
-              {t(($) => $.uploading, { ns: 'custom' })}
-            </Button>
-          )}
+          <Button
+            aria-labelledby={uploadLabelId}
+            disabled={uploadDisabled}
+            loading={uploading}
+            onClick={() => logoInputRef.current?.click()}
+          >
+            {!uploading && <span aria-hidden="true" className="i-ri-image-add-line size-4" />}
+            <span id={uploadLabelId} role="status" aria-atomic="true">
+              {uploading
+                ? t(($) => $.uploading, { ns: 'custom' })
+                : webappLogo || fileId
+                  ? t(($) => $.change, { ns: 'custom' })
+                  : t(($) => $.upload, { ns: 'custom' })}
+            </span>
+          </Button>
+          <input
+            ref={logoInputRef}
+            id={logoInputId}
+            hidden
+            onClick={(e) => ((e.target as HTMLInputElement).value = '')}
+            type="file"
+            accept={ALLOW_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(',')}
+            onChange={handleChange}
+            disabled={uploadDisabled || uploading}
+          />
           {fileId && (
             <>
-              <Button
-                className="mr-2"
-                onClick={handleCancel}
-                disabled={webappBrandRemoved || !canManageCustomBrand}
-              >
+              <Button onClick={handleCancel} disabled={webappBrandRemoved || !canManageCustomBrand}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button
                 variant="primary"
-                className="mr-2"
                 onClick={handleApply}
                 disabled={
                   isCustomConfigUnavailable ||
@@ -130,9 +126,9 @@ const CustomWebAppBrand = () => {
         </div>
       )}
       <div className="mt-5 mb-2 flex items-center gap-2">
-        <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">
+        <h4 className="shrink-0 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['overview.appInfo.preview'], { ns: 'appOverview' })}
-        </div>
+        </h4>
         <Separator decorative variant="gradient" className="my-2 h-[0.5px] grow" />
       </div>
       <div className="relative mb-2 flex items-center gap-3">

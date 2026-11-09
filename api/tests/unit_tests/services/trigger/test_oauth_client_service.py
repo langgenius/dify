@@ -25,7 +25,7 @@ from services.trigger.oauth_client_service import (
     TriggerOAuthClientService,
     TriggerOAuthProviderMetadata,
 )
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 _IDENTIFIER = "langgenius/github:1.0.0@test"
 _PROVIDER = TriggerProviderID("langgenius/github/github")

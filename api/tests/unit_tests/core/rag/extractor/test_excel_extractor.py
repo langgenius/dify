@@ -9,7 +9,7 @@ import core.rag.extractor.excel_extractor as excel_module
 from core.rag.extractor.excel_extractor import ExcelExtractor
 from models.base import TypeBase
 from models.model import UploadFile
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @pytest.fixture

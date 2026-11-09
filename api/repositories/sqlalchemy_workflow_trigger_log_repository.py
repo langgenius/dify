@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.trigger import WorkflowTriggerLog
-from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.workflow_trigger_log_repository import WorkflowTriggerLogRepository
 from services.workflow.entities import TriggerActor, TriggerData, TriggerWorkflowSnapshot
 
@@ -206,12 +206,12 @@ class SQLAlchemyWorkflowTriggerDispatchRepository:
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
             workflow_id=workflow.id,
-            type=workflow.type,
-            triggered_from=WorkflowRunTriggeredFrom.PLUGIN.value,
+            type=WorkflowType(workflow.type),
+            triggered_from=WorkflowRunTriggeredFrom.PLUGIN,
             version=workflow.version,
             graph=workflow.graph,
             inputs=json.dumps(dict(failure_inputs)),
-            status=WorkflowExecutionStatus.FAILED.value,
+            status=WorkflowExecutionStatus.FAILED,
             outputs="{}",
             error=error,
             elapsed_time=0.0,
@@ -219,10 +219,10 @@ class SQLAlchemyWorkflowTriggerDispatchRepository:
             total_steps=0,
             created_by_role=actor.role,
             created_by=actor.id,
-            created_at=now,
             finished_at=now,
             exceptions_count=0,
         )
+        run.created_at = now
         log = self._new_log(actor=actor, trigger_data=trigger_data, workflow_id=workflow.id, queue=queue)
         log.status = WorkflowTriggerStatus.FAILED
         log.error = error

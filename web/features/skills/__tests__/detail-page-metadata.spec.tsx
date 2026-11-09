@@ -240,7 +240,7 @@ describe('SkillDetailPage metadata', () => {
 
     expect(await sidebar.findByText('Search')).toBeInTheDocument()
     expect(sidebar.queryByText('Productivity')).not.toBeInTheDocument()
-    expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.detail.updateTagsFailed')
+    expect(mocks.toastError).toHaveBeenCalledWith('Saving tags failed')
     await user.click(
       screen.getByRole('combobox', {
         name: 'skill.skillManagement.detail.addTag',
@@ -402,7 +402,7 @@ describe('SkillDetailPage metadata', () => {
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.duplicate' }))
 
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.duplicateFailed')
+      expect(mocks.toastError).toHaveBeenCalledWith('Duplicate failed')
     })
     expect(mocks.routerPush).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'common.operation.rename' })).toHaveTextContent(

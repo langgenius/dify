@@ -45,9 +45,17 @@ const summary: WorkflowDraftVariableWithoutValueResponse = {
 }
 const variable: WorkflowDraftVariableResponse = { ...summary, value: 'result', full_content: null }
 const hosts: { resource: EditorResource; prefix: string }[] = [
-  { resource: { kind: 'app', appId: 'workflow-1', mode: 'workflow' }, prefix: '/apps/workflow-1' },
   {
-    resource: { kind: 'app', appId: 'chatflow-1', mode: 'advanced-chat' },
+    resource: { kind: 'app', collaborationEnabled: false, appId: 'workflow-1', mode: 'workflow' },
+    prefix: '/apps/workflow-1',
+  },
+  {
+    resource: {
+      kind: 'app',
+      collaborationEnabled: false,
+      appId: 'chatflow-1',
+      mode: 'advanced-chat',
+    },
     prefix: '/apps/chatflow-1',
   },
   {
@@ -132,7 +140,12 @@ describe.each(hosts)('inspector requests for $prefix', ({ resource, prefix }) =>
 it('invalidates only the current app variable queries and leaves other editors cached', async () => {
   request.mockResolvedValue(Response.json({ items: [variable] }))
   const client = createTestQueryClient()
-  const current: EditorResource = { kind: 'app', appId: 'app-1', mode: 'advanced-chat' }
+  const current: EditorResource = {
+    kind: 'app',
+    collaborationEnabled: false,
+    appId: 'app-1',
+    mode: 'advanced-chat',
+  }
   const input = (appId: string) => ({ input: { params: { app_id: appId } } })
   const conversation = consoleQuery.apps.byAppId.workflows.draft.conversationVariables.get
   const system = consoleQuery.apps.byAppId.workflows.draft.systemVariables.get
@@ -176,7 +189,7 @@ it.each(hosts.filter(({ resource }) => resource.kind !== 'app'))(
 
 const lastRunTargets = [
   {
-    resource: { kind: 'app', appId: 'shared-id', mode: 'workflow' },
+    resource: { kind: 'app', collaborationEnabled: false, appId: 'shared-id', mode: 'workflow' },
     keyForNode: (nodeId: string) =>
       consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryKey({
         input: { params: { app_id: 'shared-id', node_id: nodeId } },
@@ -197,7 +210,12 @@ const lastRunTargets = [
       }),
   },
   {
-    resource: { kind: 'app', appId: 'other-app', mode: 'advanced-chat' },
+    resource: {
+      kind: 'app',
+      collaborationEnabled: false,
+      appId: 'other-app',
+      mode: 'advanced-chat',
+    },
     keyForNode: (nodeId: string) =>
       consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryKey({
         input: { params: { app_id: 'other-app', node_id: nodeId } },

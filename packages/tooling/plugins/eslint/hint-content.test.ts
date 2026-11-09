@@ -198,13 +198,45 @@ it('keeps centered dialogs on DialogContent while DialogPopup places custom surf
   const diagnostics = lintFixture(`
     import { DialogContent, DialogPopup } from '@langgenius/dify-ui/dialog'
     const examples = <>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-160 overflow-hidden" />
+      <DialogContent className="w-160 overflow-hidden" />
       <DialogPopup className="fixed top-2 right-2 bottom-2 flex w-160 flex-col overflow-hidden rounded-xl" />
       <DialogPopup className="fixed top-1/2 left-1/2 w-120 -translate-x-1/2 -translate-y-1/2" />
     </>
   `)
   expect(diagnostics).toHaveLength(4)
   for (const className of ['top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2'])
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
+})
+
+it('keeps dialog sizes within the viewport bound owned by the surface', () => {
+  const diagnostics = lintFixture(`
+    import { DialogContent } from '@langgenius/dify-ui/dialog'
+    import { AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+    const examples = <>
+      <DialogContent className="h-170 w-285 xl:h-170 sm:w-132" />
+      <DialogContent className="h-dvh w-full max-h-[calc(100dvh-1rem)] max-w-[calc(100vw-1rem)]" />
+      <DialogContent className="h-[85dvh] max-h-[80dvh]" />
+      <DialogContent className="max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)]" />
+      <DialogContent className="max-h-[min(44rem,calc(100dvh-2rem))] min-h-[min(22.5rem,calc(100dvh-2rem))]" />
+      <DialogContent className="max-w-120 max-h-200 min-w-140 min-h-90 max-h-[80%]" />
+      <AlertDialogContent className="w-[min(960px,calc(100vw-2rem))] h-[min(680px,calc(100dvh-2rem))] h-[calc(100dvh-16px)]" />
+      <DialogContent className="max-w-[calc(100vw-32px)] max-h-[min(44rem,32rem)]" />
+    </>
+  `)
+  const rejected = [
+    'max-w-120',
+    'max-h-200',
+    'min-w-140',
+    'min-h-90',
+    'max-h-[80%]',
+    'w-[min(960px,calc(100vw-2rem))]',
+    'h-[min(680px,calc(100dvh-2rem))]',
+    'h-[calc(100dvh-16px)]',
+    'max-w-[calc(100vw-32px)]',
+    'max-h-[min(44rem,32rem)]',
+  ]
+  expect(diagnostics).toHaveLength(rejected.length)
+  for (const className of rejected)
     expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
 })
 
@@ -259,12 +291,12 @@ it('keeps focus styling owned by scroll areas, buttons and visible input surface
     import { Input } from '@langgenius/dify-ui/input'
     import { InputGroup, InputGroupInput } from '@langgenius/dify-ui/input-group'
     import { Textarea } from '@langgenius/dify-ui/textarea'
-    import { DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+    import { MenuTrigger } from '@langgenius/dify-ui/menu'
     const examples = <>
       <ScrollArea className="rounded-lg ring-2" />
       <Viewport className="focus-visible:ring-2 dark:focus-visible:ring-red-500! outline-hidden focus-visible:inset-ring-2" />
       <Button className="focus-visible:ring-0 focus-visible:inset-ring-0" />
-      <DropdownMenuTrigger render={<IconButton aria-label="Open" />} className="focus-visible:outline-2" />
+      <MenuTrigger render={<IconButton aria-label="Open" />} className="focus-visible:outline-2" />
       <Input className="focus:ring-0" />
       <InputGroup className="has-[>input:focus]:ring-2" />
       <InputGroupInput className="focus-visible:ring-2" />

@@ -6,6 +6,14 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDocLinkMock, resolveDocLink } from '../../__tests__/i18n'
 import Status from '../status'
 
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
+
 const mockDocLink = createDocLinkMock()
 const mockPauseDetails = vi.hoisted(() => vi.fn())
 
@@ -70,6 +78,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+vi.mock('@/utils/var', () => ({
+  basePath: '/dify',
+}))
+
 const createPausedDetails = (
   overrides: Partial<WorkflowPauseDetailsResponse> = {},
 ): WorkflowPauseDetailsResponse => ({
@@ -80,6 +92,7 @@ const createPausedDetails = (
 
 describe('Status', () => {
   beforeEach(() => {
+    releaseGate.enabled = true
     vi.resetAllMocks()
     mockPauseDetails.mockImplementation(() => new Promise(() => {}))
   })
@@ -189,7 +202,8 @@ describe('Status', () => {
             pause_type: {
               type: 'human_input',
               form_id: 'form-1',
-              backstage_input_url: 'https://example.com/a',
+              form_version: '1',
+              backstage_input_url: 'https://example.com/form/legacy-token',
             },
           },
           {
@@ -198,7 +212,8 @@ describe('Status', () => {
             pause_type: {
               type: 'human_input',
               form_id: 'form-2',
-              backstage_input_url: 'https://example.com/b',
+              form_version: '2',
+              backstage_input_url: 'https://example.com/form/console-token',
             },
           },
         ],
@@ -206,7 +221,7 @@ describe('Status', () => {
     )
 
     render(<Status status="paused" workflowRunId="run-4" />)
-    await screen.findByRole('link', { name: 'https://example.com/a' })
+    await screen.findByRole('link', { name: 'https://example.com/form/legacy-token' })
 
     expect(
       screen.getByText('workflowHumanInput.nodes.humanInput.log.reasonContent'),
@@ -214,13 +229,106 @@ describe('Status', () => {
     expect(
       screen.getByText('workflowHumanInput.nodes.humanInput.log.backstageInputURL'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'https://example.com/a' })).toHaveAttribute(
+    expect(
+      screen.getByRole('link', { name: 'https://example.com/form/legacy-token' }),
+    ).toHaveAttribute('href', 'https://example.com/form/legacy-token')
+    expect(screen.getByRole('link', { name: '/dify/human-input/console-token' })).toHaveAttribute(
       'href',
-      'https://example.com/a',
+      '/dify/human-input/console-token',
     )
-    expect(screen.getByRole('link', { name: 'https://example.com/b' })).toHaveAttribute(
-      'href',
-      'https://example.com/b',
+  })
+
+  it.each<{ formVersion?: '1' | '2'; backstageURL: string; destination: string }>([
+    {
+      formVersion: '1',
+      backstageURL: 'https://webapp.example.com/form/legacy-token',
+      destination: 'https://webapp.example.com/form/legacy-token',
+    },
+    {
+      backstageURL: '/dify/form/legacy-token?source=run',
+      destination: '/dify/form/legacy-token?source=run',
+    },
+    {
+      formVersion: '2',
+      backstageURL: 'https://webapp.example.com/form/console-token',
+      destination: '/dify/human-input/console-token',
+    },
+    {
+      formVersion: '2',
+      backstageURL: 'https://webapp.example.com/dify/form/approval%2Btoken/',
+      destination: '/dify/human-input/approval%2Btoken',
+    },
+    {
+      formVersion: '2',
+      backstageURL: '/form/console-token',
+      destination: '/dify/human-input/console-token',
+    },
+    {
+      formVersion: '2',
+      backstageURL: 'https://webapp.example.com/form-v2/v2-token',
+      destination: 'https://webapp.example.com/form-v2/v2-token',
+    },
+  ])(
+    'opens the appropriate approval surface for $formVersion $backstageURL',
+    async ({ formVersion, backstageURL, destination }) => {
+      mockPauseDetails.mockResolvedValue(
+        createPausedDetails({
+          paused_nodes: [
+            {
+              node_id: 'review-node',
+              node_title: 'Need review',
+              pause_type: {
+                type: 'human_input',
+                form_id: 'review-form',
+                form_version: formVersion,
+                backstage_input_url: backstageURL,
+              },
+            },
+          ],
+        }),
+      )
+
+      render(<Status status="paused" workflowRunId="paused-run" />)
+
+      expect(await screen.findByRole('link', { name: destination })).toHaveAttribute(
+        'href',
+        destination,
+      )
+    },
+  )
+  it('keeps legacy links but disables V2 approval links when the release gate is off', async () => {
+    releaseGate.enabled = false
+    mockPauseDetails.mockResolvedValue(
+      createPausedDetails({
+        paused_nodes: [
+          {
+            node_id: 'v1',
+            node_title: 'Legacy',
+            pause_type: {
+              type: 'human_input',
+              form_id: 'legacy',
+              form_version: '1',
+              backstage_input_url: 'https://example.com/form/legacy',
+            },
+          },
+          {
+            node_id: 'v2',
+            node_title: 'V2',
+            pause_type: {
+              type: 'human_input',
+              form_id: 'new',
+              form_version: '2',
+              backstage_input_url: 'https://example.com/form/v2-token',
+            },
+          },
+        ],
+      }),
     )
+    render(<Status status="paused" workflowRunId="run" />)
+    expect(
+      await screen.findByRole('link', { name: 'https://example.com/form/legacy' }),
+    ).toHaveAttribute('href', 'https://example.com/form/legacy')
+    expect(screen.getByText('share.humanInputV2.unavailable')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /v2-token/ })).not.toBeInTheDocument()
   })
 })

@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "Nilai Tindakan",
   "nodes.humanInput.userActions.buttonTextTooLong": "Teks tombol harus {{maxLength}} karakter atau kurang",
   "nodes.humanInput.userActions.chooseStyle": "Pilih gaya tombol",
+  "nodes.humanInput.userActions.defaultTitle": "Teks Tombol {{index}}",
   "nodes.humanInput.userActions.emptyTip": "Klik tombol '+' untuk menambahkan tindakan pengguna",
   "nodes.humanInput.userActions.title": "Tindakan Pengguna",
   "nodes.humanInput.userActions.tooltip": "Tentukan tombol yang dapat diklik pengguna untuk merespons formulir ini. ID tindakan mengontrol percabangan. Nilai Tindakan diekspos ke hilir sebagai output bawaan yang dipilih. ID tindakan harus dimulai dengan huruf atau garis bawah, diikuti dengan huruf, angka, atau garis bawah.",

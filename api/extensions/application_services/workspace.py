@@ -6,6 +6,7 @@ from functools import partial
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import delete_cache_for_subscription
@@ -47,6 +48,7 @@ from services.trigger.subscription_binding_service import (
     TriggerSubscriptionBindingQuery,
     TriggerSubscriptionBindingService,
 )
+from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
 from services.trigger.subscription_gateway import (
     PluginTriggerSubscriptionGateway,
     enqueue_subscription_refresh,
@@ -153,10 +155,13 @@ def build_workspace_services(
     trigger_providers = PluginTriggerProviderQuery()
     subscriptions = TriggerSubscriptionRepository(session_factory=database_client)
     subscription_provider = PluginTriggerSubscriptionGateway()
+    subscription_locks = RedisTriggerSubscriptionLocks(redis=redis)
+    subscription_codec = ProviderTriggerSubscriptionCodec()
     trigger_subscription_management = TriggerSubscriptionService(
         subscriptions=subscriptions,
         providers=subscription_provider,
-        locks=RedisTriggerSubscriptionLocks(redis=redis),
+        locks=subscription_locks,
+        codec=subscription_codec,
         invalidate_cache=delete_cache_for_subscription,
     )
     trigger_builders = TriggerSubscriptionBuilderService(
@@ -178,6 +183,11 @@ def build_workspace_services(
         providers=subscription_provider,
         oauth=trigger_oauth_provider,
         clients=trigger_oauth_clients,
+        locks=subscription_locks,
+        codec=subscription_codec,
+        credential_threshold=dify_config.TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS,
+        subscription_threshold=dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS,
+        console_api_url=dify_config.CONSOLE_API_URL,
         invalidate_cache=delete_cache_for_subscription,
         invalidate_properties=invalidate_subscription_properties,
     )

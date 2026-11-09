@@ -72,7 +72,7 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
   }
 
   return (
-    <div className="border-b border-divider-subtle px-4 py-3">
+    <div className="px-4 py-3">
       <BranchList
         nodeId={id}
         list={list}

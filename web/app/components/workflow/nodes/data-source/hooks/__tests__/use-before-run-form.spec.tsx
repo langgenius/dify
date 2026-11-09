@@ -2,11 +2,14 @@ import type { WorkflowRunNodeExecutionResponse } from '@dify/contracts/api/conso
 import type { ReactNode } from 'react'
 import type { CustomRunFormProps, DataSourceNodeType } from '../../types'
 import type { DataSourceShape } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { ReactFlowProvider } from 'reactflow'
+import type { Shape as HooksStore } from '@/app/components/workflow/hooks-store/store'
+import { QueryClient } from '@tanstack/react-query'
+import { act, waitFor } from '@testing-library/react'
+import { useStoreApi } from 'reactflow'
 import { createDataSourceStore } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { DataSourceContext } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
@@ -14,7 +17,11 @@ import { createDeferred } from '@/test/deferred'
 import { TransferMethod } from '@/types/app'
 import useBeforeRunForm from '../use-before-run-form'
 
-const mocks = vi.hoisted(() => ({ run: vi.fn(), inspect: vi.fn(), update: vi.fn(), sync: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  run: vi.fn(),
+  inspect: vi.fn(),
+  sync: vi.fn<HooksStore['doSyncWorkflowDraft']>(),
+}))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -30,13 +37,6 @@ vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
   fetchNodeInspectVars: mocks.inspect,
 }))
-vi.mock('../../../../hooks/use-node-data-update', () => ({
-  useNodeDataUpdate: () => ({ handleNodeDataUpdate: mocks.update }),
-}))
-vi.mock('../../../../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: mocks.sync }),
-}))
-
 const createData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType => ({
   title: 'Datasource',
   desc: '',
@@ -158,14 +158,26 @@ function setup(props = createProps(), selection: Partial<DataSourceShape> = {}) 
     })
   client.setQueryData(lastRunKey, { id: 'last-run-1', status: 'succeeded' })
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>
-      <ReactFlowProvider>
-        <DataSourceContext.Provider value={store}>{children}</DataSourceContext.Provider>
-      </ReactFlowProvider>
-    </QueryClientProvider>
+    <DataSourceContext value={store}>{children}</DataSourceContext>
+  )
+  let flow: ReturnType<typeof useStoreApi>
+  const rendered = renderWorkflowCanvasHook(
+    (props: CustomRunFormProps) => {
+      flow = useStoreApi()
+      return useBeforeRunForm(props)
+    },
+    {
+      initialProps: props,
+      wrapper,
+      queryClient: client,
+      resource: props.resource,
+      nodes: [createNode({ id: props.nodeId, data: props.payload })],
+      hooksStoreProps: { doSyncWorkflowDraft: mocks.sync },
+    },
   )
   return {
-    ...renderHook(useBeforeRunForm, { initialProps: props, wrapper }),
+    ...rendered,
+    nodeData: () => flow.getState().getNodes()[0]!.data,
     store,
     props,
     client,
@@ -177,14 +189,14 @@ beforeEach(() => {
   vi.resetAllMocks()
   mocks.run.mockResolvedValue({ id: 'run-1', status: NodeRunningStatus.Succeeded })
   mocks.inspect.mockResolvedValue([])
-  mocks.sync.mockImplementation((_sync, _skipRefresh, callbacks) => callbacks.onSuccess())
+  mocks.sync.mockImplementation(async (_skipRefresh, callbacks) => callbacks?.onSuccess?.())
 })
 
 describe('data source single run', () => {
   it.each(selections)(
     'reacts to selection changes and sends the $type payload',
     async ({ type, state, info }) => {
-      const { result, store, props } = setup(
+      const { result, store, props, nodeData } = setup(
         createProps({ payload: createData({ provider_type: type }) }),
       )
       expect(result.current.startRunBtnDisabled).toBe(true)
@@ -204,18 +216,15 @@ describe('data source single run', () => {
         },
       })
       expect(mocks.inspect).toHaveBeenCalledWith(props.resource, props.nodeId)
-      expect(props.appendNodeInspectVars).toHaveBeenCalledWith(props.nodeId, [], [])
+      expect(props.appendNodeInspectVars).toHaveBeenCalledWith(
+        props.nodeId,
+        [],
+        [expect.objectContaining({ id: props.nodeId })],
+      )
       expect(props.setIsRunAfterSingleRun).toHaveBeenCalledWith(true)
-      expect(mocks.update).toHaveBeenNthCalledWith(1, {
-        id: props.nodeId,
-        data: expect.objectContaining({ _singleRunningStatus: NodeRunningStatus.Running }),
-      })
-      expect(mocks.update).toHaveBeenLastCalledWith({
-        id: props.nodeId,
-        data: expect.objectContaining({
-          _singleRunningStatus: NodeRunningStatus.Succeeded,
-          _isSingleRun: false,
-        }),
+      expect(nodeData()).toMatchObject({
+        _singleRunningStatus: NodeRunningStatus.Succeeded,
+        _isSingleRun: false,
       })
     },
   )
@@ -232,11 +241,12 @@ describe('data source single run', () => {
   it('waits for draft synchronization and exposes pending state until the run settles', async () => {
     const pending = createDeferred<WorkflowRunNodeExecutionResponse>()
     mocks.run.mockReturnValue(pending.promise)
-    mocks.sync.mockImplementation(() => undefined)
-    const { result, props } = setup(createProps(), { localFileList: localFiles })
+    mocks.sync.mockImplementation(async () => undefined)
+    const { result, props, nodeData } = setup(createProps(), { localFileList: localFiles })
     act(() => result.current.handleRunWithSyncDraft())
     expect(mocks.run).not.toHaveBeenCalled()
-    act(() => mocks.sync.mock.calls[0]![2].onSuccess())
+    expect(nodeData()._singleRunningStatus).toBe(NodeRunningStatus.Running)
+    act(() => mocks.sync.mock.calls[0]![1]?.onSuccess?.())
     await waitFor(() => expect(result.current.isPending).toBe(true))
     await act(async () => pending.resolve({ id: 'run-1', status: NodeRunningStatus.Succeeded }))
     await waitFor(() => expect(props.onSuccess).toHaveBeenCalledOnce())
@@ -245,18 +255,15 @@ describe('data source single run', () => {
 
   it('marks a rejected request failed, invalidates last run and refreshes default error outputs', async () => {
     mocks.run.mockRejectedValue(new Error('Run failed'))
-    const { result, props, client, lastRunKey } = setup(createProps(), {
+    const { result, props, client, lastRunKey, nodeData } = setup(createProps(), {
       localFileList: localFiles,
     })
     act(() => result.current.handleRunWithSyncDraft())
     await waitFor(() => expect(props.appendNodeInspectVars).toHaveBeenCalledOnce())
     expect(client.getQueryState(lastRunKey)?.isInvalidated).toBe(true)
-    expect(mocks.update).toHaveBeenLastCalledWith({
-      id: props.nodeId,
-      data: expect.objectContaining({
-        _singleRunningStatus: NodeRunningStatus.Failed,
-        _isSingleRun: false,
-      }),
+    expect(nodeData()).toMatchObject({
+      _singleRunningStatus: NodeRunningStatus.Failed,
+      _isSingleRun: false,
     })
     expect(props.onSuccess).not.toHaveBeenCalled()
   })
@@ -266,7 +273,7 @@ describe('data source single run', () => {
     async (outcome) => {
       const pending = createDeferred<WorkflowRunNodeExecutionResponse>()
       mocks.run.mockReturnValue(pending.promise)
-      const { result, props, rerender, client, lastRunKey } = setup(createProps(), {
+      const { result, props, rerender, client, lastRunKey, nodeData } = setup(createProps(), {
         localFileList: localFiles,
       })
       act(() => result.current.handleRunWithSyncDraft())
@@ -277,7 +284,7 @@ describe('data source single run', () => {
         else pending.resolve({ id: 'run-1', status: NodeRunningStatus.Succeeded })
       })
       await waitFor(() => expect(result.current.isPending).toBe(false))
-      expect(mocks.update).toHaveBeenCalledTimes(1)
+      expect(nodeData()._singleRunningStatus).toBe(NodeRunningStatus.Running)
       expect(mocks.inspect).not.toHaveBeenCalled()
       expect(props.onSuccess).not.toHaveBeenCalled()
       expect(client.getQueryState(lastRunKey)?.isInvalidated).toBe(outcome === 'failed')
