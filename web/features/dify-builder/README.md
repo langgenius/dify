@@ -25,8 +25,8 @@ workflow canvas.
 | Resolve reply language and fixed copy                                 | [`i18n/`]                                                      |
 | Coordinate commands, reset, restore, and accepted session projections | [`session/use-session-controller.ts`]                          |
 | Load history or reconcile missing conversation rows                   | [`session/use-session-history.ts`]                             |
-| Observe a native execution after its Builder command ends             | [`session/use-native-execution.ts`]                            |
-| Pause or resume a task                                                | [`session/use-task-control.ts`]                                |
+| Connect and restore the shared session event stream                   | [`session/use-session-stream.ts`]                              |
+| Stop a task and any active test, or resume the task                   | [`session/use-task-control.ts`]                                |
 | Admit or switch a Fix task                                            | [`session/use-fix-control.ts`]                                 |
 | Clear a conversation or abandon a task                                | [`session/use-lifecycle-control.ts`]                           |
 | Reconcile an uncertain lifecycle operation                            | [`session/use-lifecycle-recovery.ts`]                          |
@@ -63,15 +63,15 @@ vp test run --project browser features/dify-builder
 Only the streaming assistant tail subscribes to token updates, so committed
 history and form cards do not rerender for every delta.
 
-The controller restores bounded session state with JSON GET and loads durable
-conversation groups through a separate paginated JSON GET. Create, action, and
-message commands use typed POST SSE requests; an independent GET SSE route is
-opened only while reconnecting to an active command. SSE never carries full
-history: `command_started` is a bounded handshake, the server persists durable
-items internally, and emits cards and complete assistant replies through
-`conversation_item_appended`. New-session prompts and message commands render
-the submitted user text immediately. Message turns use their client-generated
-`turn_id`; the matching durable event then supplies sequence and version
+The controller loads durable conversation groups through a paginated JSON GET.
+Create, action, and message POSTs return JSON. The client opens the session SSE
+stream and applies its `session_ready` snapshot before submitting work. The
+same stream delivers command progress, native test updates, and committed
+cards and replies through `conversation_item_appended`. Disabling Builder
+closes the stream. Re-enabling it restores the saved session and observes its
+existing native test without submitting another run. New-session prompts and
+message commands render the submitted user text immediately. Message turns use
+their client-generated `turn_id`, and the matching durable event supplies sequence and version
 metadata without adding a second bubble. The local display item never
 participates in durable sequence-gap checks.
 During an active command, restore keeps the preceding interaction dock hidden
@@ -84,8 +84,9 @@ watermarks, but are hidden in the conversation and excluded from model history.
 User submission receipts and native dynamic replies retain their existing
 payloads. Model changes update the selector and terminal state without adding
 a conversation item.
-The reconnect stream checks durable session state on idle heartbeats and emits
-the settled or interrupted projection if a terminal broadcast was missed.
+The stream checks durable session state on idle heartbeats while a command or
+native test is active. It emits the settled or interrupted projection if a
+terminal broadcast was missed.
 Trace export records restore requests, JSON state snapshots, and reconnect
 requests even before the first SSE event arrives.
 `agent_message` owns native assistant text: all deltas
@@ -145,6 +146,9 @@ refresh failure and completion. Only unmount cleanup retains lifecycle effects.
 The refresh module owns canvas-state reset; the outer reset command clears
 the composer and checklist state.
 Native test events retain the editor's existing per-node tracking and navigation.
+The composer uses Stop for a native test in progress or waiting for approval.
+Once cancellation settles, Resume continues the Builder task. A new test
+requires a separate Test Run.
 
 `workflow` envelopes carry the complete native debugger payload alongside
 Builder's session, operation, version, and revision metadata. Accepted
@@ -256,8 +260,8 @@ distinct feedback. Expanding run details loads native node tracing on demand.
 [`session/use-lifecycle-control.ts`]: session/use-lifecycle-control.ts
 [`session/use-lifecycle-recovery.ts`]: session/use-lifecycle-recovery.ts
 [`session/use-material-control.ts`]: session/use-material-control.ts
-[`session/use-native-execution.ts`]: session/use-native-execution.ts
 [`session/use-session-controller.ts`]: session/use-session-controller.ts
 [`session/use-session-history.ts`]: session/use-session-history.ts
+[`session/use-session-stream.ts`]: session/use-session-stream.ts
 [`session/use-task-control.ts`]: session/use-task-control.ts
 [`state.ts`]: state.ts

@@ -158,6 +158,37 @@ def test_native_stream_continues_after_command_finished(monkeypatch: pytest.Monk
     _assert_closed(subscription)
 
 
+def test_session_stream_relays_buffered_commands_and_native_state_on_one_subscription(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subscription = _subscription(
+        monkeypatch,
+        [
+            json.dumps(_internal_finished()).encode(),
+            json.dumps({"kind": "native_state_changed", "session_id": "s1"}).encode(),
+        ],
+    )
+    running = _receipt().model_copy(update={"native_run_id": "run-1"}).model_dump(mode="json")
+    terminal = _receipt("terminal", 2).model_copy(update={"native_run_id": "run-1"}).model_dump(mode="json")
+    settled = _view(version=3, conversation_last_seq=1, last_command_id="command-1", test_execution=terminal)
+    frames = list(
+        wiring.stream_session_frames(
+            _view(test_execution=running),
+            subscription,
+            read_session_view=lambda: settled,
+            initial_progress=None,
+            conversation_cleared=lambda: False,
+        )
+    )
+    events = [_decode(frame) for frame in frames]
+    assert [event["event"] for event in events] == ["session_ready", "command_finished", "session_state"]
+    assert events[0]["data"]["test_execution"]["native_run_id"] == "run-1"
+    assert events[-1]["data"]["test_execution"]["native_run_id"] == "run-1"
+    assert events[-1]["data"]["test_execution"]["status"] == "terminal"
+    assert events[-1]["data"]["conversation_last_seq"] == 1
+    _assert_closed(subscription)
+
+
 def test_legacy_stream_ignores_native_change_notifications(monkeypatch: pytest.MonkeyPatch) -> None:
     subscription = _subscription(
         monkeypatch,
@@ -459,7 +490,7 @@ def test_resumed_cancelled_parent_session_history_and_sse_stay_readonly(
             assert not receipt["can_resume"]
             history = controller._conversation(owner.session.id, {}, owner.case.actor)
             assert isinstance(history, dict)
-            response = controller._stream(owner.session.id, owner.case.actor, native_version="builder-native-test-v1")
+            response = controller._stream(owner.session.id, owner.case.actor)
             assert isinstance(response, Response)
             frames = response.get_data(as_text=True)
             assert '"outcome":"cancelled"' in frames.replace(" ", "")

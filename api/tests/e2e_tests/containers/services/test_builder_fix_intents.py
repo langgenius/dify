@@ -39,7 +39,7 @@ def setup(harness: Harness) -> tuple[DifyBuilderService, Actor, str, str]:
     service = harness.service
     service._fix_intent_repo = SqlFixIntentRepository(harness.repo)
     service._read_task_dsl_fn = lambda _app, _actor: ({}, "synthetic-draft-revision")
-    session_id, action = service._prepare_build_session(app, actor, "Original goal")
+    session_id, action = service.prepare_build_session(app, actor, "Original goal")
     assert action is not None
     service.dispatch(session_id, action, actor)
     native_id = str(uuid4())

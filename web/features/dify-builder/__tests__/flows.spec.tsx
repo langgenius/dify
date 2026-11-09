@@ -15,6 +15,7 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { DifyBuilderProvider } from '../editor'
 import DifyBuilderPanel from '../panel'
+import { useScriptedSessionTransport } from '../session/__tests__/fixtures'
 import { difyBuilderCanStartFixAtom, difyBuilderStartRunFixAtom } from '../state'
 
 const mocks = vi.hoisted(() => ({
@@ -149,6 +150,11 @@ const createSessionView = (overrides: Partial<SessionView> = {}): SessionView =>
     ...overrides,
   })
 
+const SessionTransportFixture = () => {
+  useScriptedSessionTransport(createSessionView)
+  return null
+}
+
 const commandStartedEvent = (view: SessionView): DifyBuilderStreamEventResponse => ({
   event: 'command_started',
   data: {
@@ -206,7 +212,7 @@ const assistantMessageEvents = (
       }),
     ]
   const text = item.payload.reply_text ?? ''
-  if (typeof text !== 'string') throw new Error('native streamed replies must be literal text')
+  if (typeof text !== 'string') throw new TypeError('native streamed replies must be literal text')
   const splitAt = Math.ceil(text.length / 2)
   const chunks = text ? [text.slice(0, splitAt), text.slice(splitAt)].filter(Boolean) : []
   let textBytes = 0
@@ -365,6 +371,7 @@ const renderFlow = (edgeCount = 0, reactStrictMode = false) => {
       userId="user-1"
     >
       <FixEntry />
+      <SessionTransportFixture />
       <DifyBuilderPanel />
     </DifyBuilderProvider>,
     { features: { dify_builder_enabled: true }, queryClient, reactStrictMode },
@@ -764,6 +771,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           { id: 'run_test', kind: 'primary', label: 'Run test' },
           { id: 'revert', kind: 'destructive', label: 'Revert' },
         ],
+        conversation_last_seq: 0,
         phase: 'modify',
         run_status: 'waiting_confirmation',
         version: 6,
@@ -790,7 +798,13 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       expect(getSubmitButton('Run test')).toBeDisabled()
       expect(mocks.refreshCanvas).not.toHaveBeenCalled()
 
-      await act(async () => finishHistory(conversationPage()))
+      await act(async () =>
+        finishHistory(
+          conversationPage([
+            { seq: 0, at_version: 6, kind: 'notice', payload: { text: 'Workflow ready' } },
+          ]),
+        ),
+      )
 
       await waitFor(() => expect(runTest).toBeEnabled())
       expect(screen.getByRole('radio', { name: 'Revert' })).toBeEnabled()
@@ -1157,6 +1171,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       const applied = createSessionView({
         version: 3,
         conversation_last_seq: 0,
+        last_command_id: 'apply-command',
       })
       const actionStream = createControlledEventStream()
       mocks.create.mockResolvedValue(
@@ -1179,7 +1194,16 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
 
       await act(async () => {
-        actionStream.push(commandStartedEvent(waiting))
+        actionStream.push({
+          event: 'command_started',
+          data: {
+            session_id: waiting.session_id,
+            command_id: 'apply-command',
+            version: waiting.version,
+            phase: waiting.phase,
+            run_status: 'processing',
+          },
+        })
         for (const event of assistantMessageEvents(changeSummary, 'apply-1'))
           actionStream.push(event)
       })
