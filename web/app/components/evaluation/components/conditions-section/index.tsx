@@ -30,7 +30,7 @@ const ConditionsSection = ({ resourceType, resourceId }: EvaluationResourceProps
   }
 
   return (
-    <section className="max-w-[700px] py-4">
+    <section className="py-4 xl:max-w-[700px]">
       <InlineSectionHeader
         title={t(($) => $['conditions.title'])}
         tooltip={resourceType === 'datasets' ? undefined : t(($) => $['conditions.description'])}

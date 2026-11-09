@@ -27,7 +27,7 @@ const MetricSection = ({ resourceType, resourceId }: NonPipelineEvaluationResour
   useSyncNodeTitles(resourceType, resourceId, defaultMetricsData?.default_metrics)
 
   return (
-    <section className="max-w-[700px] py-4">
+    <section className="py-4 xl:max-w-[700px]">
       <InlineSectionHeader
         title={t(($) => $['metrics.title'])}
         tooltip={t(($) => $['metrics.description'])}

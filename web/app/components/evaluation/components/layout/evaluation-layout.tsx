@@ -24,7 +24,8 @@ const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps)
     // scrolls as a whole so neither panel is squeezed into a short scroll box.
     <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default xl:flex-row xl:overflow-hidden">
       <div className="shrink-0 xl:min-h-0 xl:flex-1 xl:shrink xl:overflow-y-auto">
-        <div className="flex max-w-[748px] flex-col px-6 py-4 xl:min-h-full">
+        {/* The 700px reading width applies side by side; stacked, the config spans the panel like Batch Test below it. */}
+        <div className="flex flex-col px-6 py-4 xl:min-h-full xl:max-w-[748px]">
           {/* Keep Save reachable while the configuration scrolls. */}
           <SectionHeader
             className="sticky top-0 z-10 -mx-6 -mt-4 bg-background-default px-6 pt-4 pb-2"
@@ -42,11 +43,11 @@ const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps)
                 </a>
               </>
             }
-            descriptionClassName="max-w-[700px]"
+            descriptionClassName="xl:max-w-[700px]"
             action={<EvaluationConfigActions resourceType={resourceType} resourceId={resourceId} />}
           />
           {/* Two short selects share a row, so metrics and conditions start higher on the page. */}
-          <section className="grid max-w-[700px] grid-cols-2 gap-3 py-4">
+          <section className="grid grid-cols-2 gap-3 py-4 xl:max-w-[700px]">
             <div className="min-w-0">
               <EvaluationFrameworkSelector resourceType={resourceType} resourceId={resourceId} />
             </div>
@@ -65,13 +66,13 @@ const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps)
               </div>
             </div>
           </section>
-          <div className="max-w-[700px] border-b border-divider-subtle" />
+          <div className="border-b border-divider-subtle xl:max-w-[700px]" />
           {resourceType === 'datasets' || resourceType === 'agents' ? (
             <FixedMetricsSection resourceType={resourceType} resourceId={resourceId} />
           ) : (
             <MetricSection resourceType={resourceType} resourceId={resourceId} />
           )}
-          <div className="max-w-[700px] border-b border-divider-subtle" />
+          <div className="border-b border-divider-subtle xl:max-w-[700px]" />
           <ConditionsSection resourceType={resourceType} resourceId={resourceId} />
         </div>
       </div>
