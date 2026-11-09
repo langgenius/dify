@@ -139,3 +139,22 @@ it('returns directly to the Chatbot when no anonymous connections or conversatio
   )
   expect(window.localStorage.getItem(passportKey)).toBe('anonymous-chatbot')
 })
+
+it('keeps the legacy Agent outside migration and preserves anonymous data when continuing', async () => {
+  vi.mocked(fetchAppInfo).mockResolvedValue({ ...appInfo, mode: 'agent-chat' })
+  preventDocumentNavigation()
+  const screen = await showMigration()
+
+  await expect.element(screen.getByText('login.history.unsupportedTitle')).toBeVisible()
+  await expect
+    .element(screen.getByRole('radio', { name: 'login.history.add' }))
+    .not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('radio', { name: 'login.history.continueWithoutAdding' }))
+    .toBeChecked()
+  await screen.getByRole('button', { name: 'login.history.continue' }).click()
+
+  await expect.poll(() => destinations).toEqual([new URL(target, window.location.origin).href])
+  expect(mocks.call.mock.calls.map(([path]) => path.join('.'))).toEqual(['account.profile.get'])
+  expect(window.localStorage.getItem(passportKey)).toBe('anonymous-chatbot')
+})

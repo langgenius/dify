@@ -1,6 +1,5 @@
 import type { RequiredConnectionService } from '../connections/required-services'
 
-export type ConnectionAuthSource = 'cli' | 'api'
 export type ConnectionAuthState = 'setup' | 'expired' | 'configuration-changed'
 
 export const mockRequest = {
@@ -12,10 +11,8 @@ export const mockRequest = {
     iconBackground: '#FF4405',
   },
   accountEmail: 'alex@northstar.io',
-  sources: {
-    cli: { requester: 'Dify CLI', identity: 'al••••@northstar.io' },
-    api: { requester: 'Acme Assistant', identity: 'Feishu user •••1234' },
-  },
+  requester: 'Acme Assistant',
+  identity: 'Feishu user •••1234',
 }
 
 export function createMockServices(): RequiredConnectionService[] {
