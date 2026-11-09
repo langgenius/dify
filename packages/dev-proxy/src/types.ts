@@ -28,10 +28,17 @@ export type DevProxyRoute = {
   cookieRewrite?: CookieRewriteOptions | false
 }
 
+export type DevProxySessionImportConfig = {
+  refreshPath: string
+  cookieName: string
+  redirectTo: string
+}
+
 export type DevProxyConfig = {
   server?: DevProxyServerConfig
   routes: readonly DevProxyRoute[]
   cors?: DevProxyCorsConfig
+  sessionImport?: DevProxySessionImportConfig
 }
 
 export type DevProxyCliOptions = {
@@ -52,7 +59,7 @@ export type ResolvedDevProxyServerOptions = {
   port: number
 }
 
-export type CreateDevProxyAppOptions = Pick<DevProxyConfig, 'routes' | 'cors'> & {
+export type CreateDevProxyAppOptions = Pick<DevProxyConfig, 'routes' | 'cors' | 'sessionImport'> & {
   fetchImpl?: typeof globalThis.fetch
   logger?: Pick<Console, 'error'>
 }

@@ -4,8 +4,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from flask import Request
-
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.trigger.entities.entities import EventParameter
@@ -33,7 +31,7 @@ class PreparedTriggerEvent:
     subscription: TriggerSubscriptionRuntime = field(repr=False)
     event_name: str
     definition: TriggerEventDefinition
-    request: Request = field(repr=False)
+    raw_request: bytes = field(repr=False)
     payload: Mapping[str, Any] = field(repr=False)
 
 
@@ -48,7 +46,7 @@ class TriggerEventGateway(Protocol):
 
 
 class TriggerEventRequestReader(Protocol):
-    def get_request(self, request_id: str) -> Request: ...
+    def get_raw_request(self, request_id: str) -> bytes: ...
 
     def get_payload(self, request_id: str) -> Mapping[str, Any]: ...
 
@@ -69,7 +67,7 @@ class TriggerEventService:
         self, *, subscription: TriggerSubscriptionRuntime, event_name: str, request_id: str
     ) -> PreparedTriggerEvent:
         """Load external data once, before the caller's per-node invocation/dispatch loop."""
-        request = self._requests.get_request(request_id)
+        raw_request = self._requests.get_raw_request(request_id)
         payload = self._requests.get_payload(request_id)
         definition = self._plugins.describe(
             tenant_id=subscription.tenant_id,
@@ -77,7 +75,11 @@ class TriggerEventService:
             event_name=event_name,
         )
         return PreparedTriggerEvent(
-            subscription=subscription, event_name=event_name, definition=definition, request=request, payload=payload
+            subscription=subscription,
+            event_name=event_name,
+            definition=definition,
+            raw_request=raw_request,
+            payload=payload,
         )
 
     def invoke(

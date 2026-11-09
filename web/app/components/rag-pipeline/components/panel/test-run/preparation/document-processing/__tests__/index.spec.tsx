@@ -7,7 +7,7 @@ import { WorkflowContext } from '@/app/components/workflow/context'
 import { renderEditor } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { expectLoadingButton } from '@/test/button'
 import { createDeferred } from '@/test/deferred'
 import { createPipelineVariable } from '@/test/pipeline-variables'
@@ -47,7 +47,7 @@ function setup() {
   const view = (dataSourceNodeId: string) => (
     <QueryClientProvider client={client}>
       <WorkflowContext value={store}>
-        <AppToastHost />
+        <AppToaster />
         <DocumentProcessing
           dataSourceNodeId={dataSourceNodeId}
           onProcess={onProcess}

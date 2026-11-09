@@ -17,6 +17,7 @@ const mockNodeTypes = [
   BlockEnum.DataSource,
   BlockEnum.KnowledgeBase,
   BlockEnum.HumanInput,
+  BlockEnum.HumanInputV2,
   BlockEnum.LoopEnd,
 ]
 
@@ -52,6 +53,7 @@ const outside = [
   BlockEnum.DataSource,
   BlockEnum.KnowledgeBase,
   BlockEnum.HumanInput,
+  BlockEnum.HumanInputV2,
 ]
 const inside = [
   BlockEnum.Start,
@@ -60,6 +62,7 @@ const inside = [
   BlockEnum.IfElse,
   BlockEnum.Tool,
   BlockEnum.HumanInput,
+  BlockEnum.HumanInputV2,
   BlockEnum.LoopEnd,
 ]
 

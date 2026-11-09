@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 from models import Dataset
-from tests.unit_tests.model_factories import make_dataset
+from tests.helpers.unit.model_factories import make_dataset
 
 
 def _dataset() -> Dataset:

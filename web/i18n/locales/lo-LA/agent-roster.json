@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "ຕົວຢ່າງ: ຜູ້ຊ່ວຍການວິໄຈ",
   "roster.dateTimeFormat": "DD/MM/YYYY hh:mm:ss A",
   "roster.deleteDialog.description": "ການດຳເນີນການນີ້ຈະລຶບ {{name}} ຢ່າງຖາວອນ. ເວັບແອັບ ແລະ ການເຂົ້າເຖິງ API ຂອງຕົວແທນນີ້, ພ້ອມທັງເວີກໂຟລທີ່ໃຊ້ຕົວແທນນີ້, ຈະຢຸດໃຊ້ງານທັນທີ.",
+  "roster.deleteDialog.inputLabel": "ພິມ <name>{{name}}</name> ເພື່ອຢືນຢັນ",
+  "roster.deleteDialog.inputPlaceholder": "ປ້ອນຊື່ຕົວແທນ",
   "roster.deleteDialog.title": "ລຶບ {{name}} ບໍ?",
   "roster.deleteFailed": "ລຶບຕົວແທນບໍ່ສຳເລັດ.",
   "roster.duplicateDialog.description": "ສ້າງສຳເນົາຂອງ {{name}} ແລະ ປັບແຕ່ງຕົວຕົນຂອງຕົວແທນ.",

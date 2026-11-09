@@ -1,5 +1,5 @@
 import type { DeliveryMethod } from '../../../types'
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
@@ -8,112 +8,51 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { DeliveryMethodType } from '../../../types'
 import DeliveryMethodForm from '../index'
 
-const mockHandleSyncWorkflowDraft = vi.fn()
-
-vi.mock('../method-selector', () => ({
-  __esModule: true,
-  default: (props: { onAdd: (method: DeliveryMethod) => void; onShowUpgradeTip: () => void }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() =>
-          props.onAdd({ id: 'webapp-1', type: DeliveryMethodType.WebApp, enabled: true })
-        }
-      >
-        add-method
-      </button>
-      <button type="button" onClick={props.onShowUpgradeTip}>
-        show-upgrade
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../method-item', () => ({
-  __esModule: true,
-  default: (props: {
-    method: DeliveryMethod
-    onChange: (method: DeliveryMethod) => void
-    onDelete: (type: DeliveryMethodType) => void
-  }) => (
-    <section aria-label={props.method.type}>
-      <button
-        type="button"
-        onClick={() => props.onChange({ ...props.method, enabled: !props.method.enabled })}
-      >
-        change-method
-      </button>
-      <button type="button" onClick={() => props.onDelete(props.method.type)}>
-        delete-method
-      </button>
-    </section>
-  ),
-}))
-
-describe('DeliveryMethodForm', () => {
-  const onChange = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
+const prefix = 'workflowHumanInput.nodes.humanInput.deliveryMethod.'
+function renderMethods(initial: DeliveryMethod[], emailDeliveryEnabled = true) {
+  function Form() {
+    const [methods, setMethods] = useState(initial)
+    return <DeliveryMethodForm nodeId="node-1" value={methods} onChange={setMethods} />
+  }
+  const { queryClient } = createConsoleQueryWrapper({
+    features: { human_input_email_delivery_enabled: emailDeliveryEnabled },
   })
+  return renderWorkflowFlowComponent(
+    <NuqsTestingAdapter>
+      <Form />
+    </NuqsTestingAdapter>,
+    {
+      queryClient,
+    },
+  )
+}
 
-  it('adds, changes, and removes the selected method while preserving other methods', async () => {
-    const user = userEvent.setup()
-    const email: DeliveryMethod = { id: 'email-1', type: DeliveryMethodType.Email, enabled: false }
-    function Form() {
-      const [methods, setMethods] = useState<DeliveryMethod[]>([email])
-      return (
-        <DeliveryMethodForm
-          nodeId="node-1"
-          value={methods}
-          onChange={(next) => {
-            setMethods(next)
-            onChange(next)
-          }}
-        />
-      )
-    }
-    render(<Form />)
-    await user.click(screen.getByRole('button', { name: 'add-method' }))
-    const webapp: DeliveryMethod = {
-      id: 'webapp-1',
-      type: DeliveryMethodType.WebApp,
-      enabled: true,
-    }
-    expect(onChange).toHaveBeenLastCalledWith([email, webapp])
-    expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
-    const method = screen.getByRole('region', { name: DeliveryMethodType.WebApp })
-    await user.click(within(method).getByRole('button', { name: 'change-method' }))
-    expect(onChange).toHaveBeenLastCalledWith([email, { ...webapp, enabled: false }])
-    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith(true, undefined)
-    await user.click(within(method).getByRole('button', { name: 'delete-method' }))
-    expect(onChange).toHaveBeenLastCalledWith([email])
-    expect(
-      screen.queryByRole('region', { name: DeliveryMethodType.WebApp }),
-    ).not.toBeInTheDocument()
-    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-  })
-
-  it('should open and close the upgrade modal', async () => {
-    const user = userEvent.setup()
-    render(<DeliveryMethodForm nodeId="node-1" value={[]} onChange={onChange} />)
-
-    await user.click(screen.getByText('show-upgrade'))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.upgradeTipHide',
-      }),
-    )
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  })
+it('adds, changes, and removes the selected method while preserving other methods', async () => {
+  const user = userEvent.setup()
+  renderMethods([{ id: 'email-1', type: DeliveryMethodType.Email, enabled: false }])
+  await user.click(screen.getAllByRole('button', { name: `${prefix}title` })[1]!)
+  await user.click(screen.getByText(`${prefix}types.webapp.title`))
+  await user.keyboard('{Escape}')
+  const toggle = screen.getByRole('switch')
+  expect(toggle).toBeChecked()
+  expect(screen.getByText('email')).toBeInTheDocument()
+  await user.click(toggle)
+  expect(toggle).not.toBeChecked()
+  // The existing email entry precedes the newly added WebApp entry.
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[1]!)
+  expect(screen.queryByText('webapp')).not.toBeInTheDocument()
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  expect(screen.getByText('email')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: `${prefix}notConfigured` })).toBeInTheDocument()
 })
 
-function render(ui: React.ReactElement) {
-  const { queryClient } = createConsoleQueryWrapper()
-  return renderWorkflowFlowComponent(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, {
-    queryClient,
-    hooksStoreProps: { doSyncWorkflowDraft: mockHandleSyncWorkflowDraft },
-  })
-}
+it('opens the upgrade modal for unavailable email delivery and closes it', async () => {
+  const user = userEvent.setup()
+  renderMethods([], false)
+  await user.click(screen.getAllByRole('button', { name: `${prefix}title` })[1]!)
+  await user.click(screen.getByText(`${prefix}types.email.title`))
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: `${prefix}upgradeTipHide` }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.queryByText('email')).not.toBeInTheDocument()
+})

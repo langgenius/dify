@@ -131,13 +131,15 @@ function setup({
   rerankDefault?: boolean
   pendingDetails?: Promise<Awaited<ReturnType<typeof consoleClient.datasets.get>>>
 } = {}) {
-  getDatasets.mockReset().mockImplementation(async ({ query } = {}) => {
-    if (query?.ids && pendingDetails) return pendingDetails
-    const selected = query?.ids
-      ? datasets.filter((dataset) => query.ids!.includes(dataset.id))
-      : datasets
-    return { data: selected, has_more: false, limit: 20, page: 1, total: selected.length }
-  })
+  getDatasets
+    .mockReset()
+    .mockImplementation(async ({ query }: Parameters<typeof getDatasets>[0] = {}) => {
+      if (query?.ids && pendingDetails) return pendingDetails
+      const selected = query?.ids
+        ? datasets.filter((dataset) => query.ids!.includes(dataset.id))
+        : datasets
+      return { data: selected, has_more: false, limit: 20, page: 1, total: selected.length }
+    })
   getRules.mockReset().mockResolvedValue({
     data: [
       {

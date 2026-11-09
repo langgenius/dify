@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check:scenarios": "cucumber-js --config cucumber.config.ts --dry-run --tags \"not @skip\" --format summary",
     "e2e": "node ./scripts/run-cucumber.ts",
     "e2e:accessibility": "pnpm run e2e:accessibility:aa",
     "e2e:accessibility:a": "node ./scripts/run-cucumber.ts --full -- --tags \"@axe and @wcag-a\"",
@@ -26,7 +27,7 @@
     "e2e:web:build": "node ./scripts/setup.ts web-build",
     "seed": "node ./scripts/run-cucumber.ts --seed-only",
     "test:unit": "vp test run",
-    "type-check": "tsc"
+    "type-check": "tsrs --noEmit"
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",
@@ -41,6 +42,7 @@
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
     "eventsource-parser": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",

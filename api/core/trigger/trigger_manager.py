@@ -150,7 +150,7 @@ class TriggerManager:
         provider_id: TriggerProviderID,
         endpoint: str,
         parameters: Mapping[str, Any],
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription:
         """
@@ -183,7 +183,7 @@ class TriggerManager:
         user_id: str,
         provider_id: TriggerProviderID,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> UnsubscribeResult:
         """
@@ -213,7 +213,7 @@ class TriggerManager:
         tenant_id: str,
         provider_id: TriggerProviderID,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription:
         """

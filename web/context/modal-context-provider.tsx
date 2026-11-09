@@ -282,9 +282,7 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
         {!!triggerEventsLimitModal && (
           <TriggerEventsLimitModal
             show
-            usage={triggerEventsLimitModal.usage}
-            total={triggerEventsLimitModal.total}
-            resetInDays={triggerEventsLimitModal.resetInDays}
+            quota={triggerEventsLimitModal}
             onClose={dismissTriggerEventsLimitModal}
           />
         )}

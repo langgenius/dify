@@ -4,7 +4,7 @@ import type { WorkflowAppMode } from '@/app/components/apps/app-type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { renderWorkflowFlowHook as renderHookWithConsoleQuery } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
@@ -274,7 +274,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     })
     expect(previewInputs).toHaveProperty('ignored', undefined)
 
-    expect(result.current.showGeneratedForm).toBe(true)
+    await waitFor(() => expect(result.current.showGeneratedForm).toBe(true))
     expect(previewForm).toHaveBeenCalledWith(
       '/console/api/apps/app-1/workflows/draft/human-input/nodes/node-1/form/preview',
       {
@@ -331,7 +331,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       result.current.handleHideGeneratedForm()
     })
 
-    expect(result.current.showGeneratedForm).toBe(false)
+    await waitFor(() => expect(result.current.showGeneratedForm).toBe(false))
   })
 
   it('should use the advanced-chat endpoint for chatflow form previews', async () => {
@@ -362,6 +362,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     )
 
     expect(previewForm).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(result.current.formData).not.toBeNull())
     await act(async () => {
       await result.current.handleSubmitHumanInputForm({
         inputs: undefined,
@@ -420,6 +421,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       await result.current.handleFetchFormContent({})
     })
 
+    await waitFor(() => expect(result.current.formData).not.toBeNull())
     expect(result.current.formData).toMatchObject({
       inputs: [
         { type: 'paragraph', default: { type: 'constant', selector: [], value: '' } },

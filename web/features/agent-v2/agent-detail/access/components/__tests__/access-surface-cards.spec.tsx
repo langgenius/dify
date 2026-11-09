@@ -32,27 +32,8 @@ const mocks = vi.hoisted(() => ({
   apiEnableMutation: vi.fn(),
   createApiKeyMutation: vi.fn(),
   deleteApiKeyMutation: vi.fn(),
-  accessControlRender: vi.fn(),
+  updateAccessMutation: vi.fn(),
   accessSubjectsQueryFn: vi.fn(),
-}))
-
-vi.mock('@/app/components/app/app-access-control', () => ({
-  default: ({
-    app,
-    onConfirm,
-  }: {
-    app: { id: string; access_mode: string }
-    onConfirm: () => Promise<void>
-  }) => {
-    mocks.accessControlRender(app)
-    return (
-      <div role="dialog" aria-label="access-control">
-        <button type="button" onClick={() => void onConfirm()}>
-          Save access control
-        </button>
-      </div>
-    )
-  },
 }))
 
 vi.mock('@/service/share', () => ({
@@ -113,6 +94,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'enterprise.webAppAuth.getWebAppWhitelistSubjects': mocks.accessSubjectsQueryFn,
+      'enterprise.webAppAuth.updateWebAppWhitelistSubjects': mocks.updateAccessMutation,
       'apps.byAppId.siteEnable.post': mocks.siteEnableMutation,
       'apps.byAppId.site.post': mocks.siteMutation,
       'apps.byAppId.site.accessTokenReset.post': mocks.siteAccessTokenResetMutation,
@@ -197,16 +179,22 @@ function createAccessCardWrapper(queryClient: QueryClient) {
 
 function renderWithQueryClient(
   ui: React.ReactElement,
-  { webAppAuthEnabled = true }: { webAppAuthEnabled?: boolean } = {},
+  {
+    webAppAuthEnabled = true,
+    agent,
+  }: { webAppAuthEnabled?: boolean; agent?: AgentAppDetailWithSite } = {},
 ) {
-  const queryClient = createConsoleQueryClient(webAppAuthEnabled)
+  const queryClient = createConsoleQueryClient(webAppAuthEnabled, agent)
 
   render(ui, { wrapper: createAccessCardWrapper(queryClient) })
 
   return queryClient
 }
 
-function createConsoleQueryClient(webAppAuthEnabled = true) {
+function createConsoleQueryClient(
+  webAppAuthEnabled = true,
+  agent: AgentAppDetailWithSite = createAgent(),
+) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -227,7 +215,7 @@ function createConsoleQueryClient(webAppAuthEnabled = true) {
   queryClient.setQueryData<AgentAppDetailWithSite>(
     consoleQuery.agent.byAgentId.get.queryOptions({ input: { params: { agent_id: 'agent-1' } } })
       .queryKey,
-    createAgent(),
+    agent,
   )
   seedFeatures(queryClient)
   return queryClient
@@ -262,6 +250,7 @@ describe('Agent access surface cards', () => {
     mocks.agentDetailQueryFn.mockResolvedValue(createAgent())
     mocks.getUserCanAccess.mockResolvedValue({ result: true })
     mocks.accessSubjectsQueryFn.mockResolvedValue({ groups: [], members: [] })
+    mocks.updateAccessMutation.mockResolvedValue({ result: 'success' })
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -364,19 +353,29 @@ describe('Agent access surface cards', () => {
       await user.click(
         screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),
       )
-      const dialog = await screen.findByRole('dialog', { name: 'access-control' })
-      expect(screen.getByRole('button', { name: /webApp\.actions\.open/ })).toHaveAttribute(
-        'aria-disabled',
-        'true',
+      const dialog = await screen.findByRole('dialog', { name: 'app.accessControlDialog.title' })
+      expect(
+        screen.getByRole('button', { name: /webApp\.actions\.open/, hidden: true }),
+      ).toHaveAttribute('aria-disabled', 'true')
+
+      await user.click(
+        within(dialog).getByRole('radio', {
+          name: 'app.accessControlDialog.accessItems.organization',
+        }),
       )
-
       mocks.getUserCanAccess.mockResolvedValue({ result: true })
-      await user.click(within(dialog).getByRole('button', { name: 'Save access control' }))
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
 
+      await waitFor(() =>
+        expect(mocks.updateAccessMutation).toHaveBeenCalledExactlyOnceWith({
+          body: { appId: 'app-1', accessMode: AccessMode.ORGANIZATION },
+        }),
+      )
       expect(await screen.findByRole('link', { name: /webApp\.actions\.open/ })).toHaveAttribute(
         'href',
         'https://chat.example.test/agent/site-token',
       )
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('should serialize Web App toggles and cache each confirmed response', async () => {
@@ -390,10 +389,7 @@ describe('Agent access surface cards', () => {
       const agent = createAgent()
       const queryClient = renderWithQueryClient(
         <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />,
-      )
-      queryClient.setQueryData(
-        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
-        agent,
+        { agent },
       )
 
       expect(screen.getByText('https://chat.example.test/agent/site-token')).toBeInTheDocument()
@@ -525,7 +521,7 @@ describe('Agent access surface cards', () => {
         expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
       })
       expect(openButton).toBeDisabled()
-      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(toast.error).toHaveBeenCalledWith('request failed')
     })
 
     it('should replace the Web App URL token without discarding the cached site settings', async () => {
@@ -533,10 +529,7 @@ describe('Agent access surface cards', () => {
       const agent = createAgent()
       const queryClient = renderWithQueryClient(
         <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />,
-      )
-      queryClient.setQueryData(
-        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
-        agent,
+        { agent },
       )
       mocks.siteAccessTokenResetMutation.mockResolvedValueOnce(
         createAppSiteFixture({ code: 'new-site-token' }),
@@ -652,10 +645,7 @@ describe('Agent access surface cards', () => {
 
       const queryClient = renderWithQueryClient(
         <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />,
-      )
-      queryClient.setQueryData(
-        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
-        agent,
+        { agent },
       )
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
@@ -1008,7 +998,7 @@ describe('Agent access surface cards', () => {
       await waitFor(() => {
         expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
       })
-      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(toast.error).toHaveBeenCalledWith('request failed')
       expect(toast.success).not.toHaveBeenCalled()
     })
 
@@ -1020,11 +1010,9 @@ describe('Agent access surface cards', () => {
       mocks.apiEnableMutation.mockResolvedValueOnce(updatedApiAccess)
 
       const agent = createAgent({ enable_api: false })
-      const queryClient = renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
-      queryClient.setQueryData(
-        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      const queryClient = renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />, {
         agent,
-      )
+      })
 
       await screen.findByText(initialApiAccess.service_api_base_url)
       await user.click(
@@ -1277,11 +1265,18 @@ describe('Agent access surface cards', () => {
 
       await user.click(screen.getByRole('button', { name: organizationAccessLabel }))
 
-      expect(await screen.findByRole('dialog', { name: 'access-control' })).toBeInTheDocument()
-      expect(mocks.accessControlRender).toHaveBeenCalledWith({
-        id: 'backing-app-1',
-        access_mode: 'private_all',
-      })
+      const dialog = await screen.findByRole('dialog', { name: 'app.accessControlDialog.title' })
+      expect(within(dialog).getByRole('radio', { name: organizationAccessLabel })).toBeChecked()
+      await user.click(
+        within(dialog).getByRole('radio', { name: 'app.accessControlDialog.accessItems.external' }),
+      )
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+      await waitFor(() =>
+        expect(mocks.updateAccessMutation).toHaveBeenCalledExactlyOnceWith({
+          body: { appId: 'backing-app-1', accessMode: AccessMode.EXTERNAL_MEMBERS },
+        }),
+      )
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
   })
   it('allows viewers to copy and open WebApp addresses while disabling management actions', async () => {

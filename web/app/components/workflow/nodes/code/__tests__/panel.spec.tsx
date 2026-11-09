@@ -1,17 +1,14 @@
 import type { ReactNode } from 'react'
 import type { CodeNodeType } from '../types'
-import type useConfig from '../use-config'
-import type { NodePanelProps } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { createEdge, createNode } from '../../../__tests__/fixtures'
+import { renderNodePanel } from '../../__tests__/render-node-panel'
 import Panel from '../panel'
 import { CodeLanguage } from '../types'
 
-const mockUseConfig = vi.hoisted(() => vi.fn())
 const generatedCode = 'function main(foo, newParam) { return { result: foo } }'
-
-vi.mock('../use-config', () => ({ default: (...args: unknown[]) => mockUseConfig(...args) }))
 
 // The editor owns Monaco and code generation; the panel owns parsing generated code.
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
@@ -57,52 +54,15 @@ const createData = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
   ...overrides,
 })
 
-const createConfig = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  outputKeyOrders: ['result'],
-  handleCodeAndVarsChange: vi.fn(),
-  handleVarListChange: vi.fn(),
-  handleAddVariable: vi.fn(),
-  handleRemoveVariable: vi.fn(),
-  handleSyncFunctionSignature: vi.fn(),
-  handleCodeChange: vi.fn(),
-  handleCodeLanguageChange: vi.fn(),
-  handleVarsChange: vi.fn(),
-  handleAddOutputVariable: vi.fn(),
-  filterVar: vi.fn(() => true),
-  isShowRemoveVarConfirm: false,
-  hideRemoveVarConfirm: vi.fn(),
-  onRemoveVarConfirm: vi.fn(),
-  ...overrides,
-})
-
-const renderPanel = (config = createConfig()) => {
-  mockUseConfig.mockReturnValue(config)
-  const props: NodePanelProps<CodeNodeType> = {
-    id: 'code-node',
-    data: config.inputs,
-    panelProps: {
-      getInputVars: vi.fn(() => []),
-      toVarInputs: vi.fn(() => []),
-      runInputData: {},
-      runInputDataRef: { current: {} },
-      setRunInputData: vi.fn(),
-      runResult: null,
-    },
-  }
-  render(<Panel {...props} />)
-  return config
-}
+const renderPanel = (data = createData(), readOnly = false) =>
+  renderNodePanel(Panel, data, {
+    initialStoreState: { canvasReadOnly: readOnly },
+  })
 
 describe('code panel', () => {
-  beforeEach(() => vi.clearAllMocks())
-
   it('adds inputs and outputs, synchronizes the signature, and removes outputs by row index', async () => {
     const user = userEvent.setup()
-    const config = renderPanel()
+    const { data } = renderPanel()
     await user.click(
       screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.inputVars' }),
     )
@@ -112,52 +72,55 @@ describe('code panel', () => {
     await user.click(
       screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.outputVars' }),
     )
-    const removeButtons = screen.getAllByRole('button', { name: /operation.remove/ })
-    await user.click(removeButtons[0]!)
-    await user.click(removeButtons[1]!)
-    expect(config.handleAddVariable).toHaveBeenCalledOnce()
-    expect(config.handleSyncFunctionSignature).toHaveBeenCalledOnce()
-    expect(config.handleAddOutputVariable).toHaveBeenCalledOnce()
-    expect(config.handleVarListChange).toHaveBeenCalledWith([])
-    expect(config.handleRemoveVariable).toHaveBeenCalledWith(0)
+    expect(data().variables).toEqual([
+      createData().variables[0],
+      { variable: '', value_selector: [] },
+    ])
+    expect(data().code).toBe('function main({foo, }) { return { result: foo } }')
+    expect(data().outputs).toEqual({
+      result: { type: VarType.string, children: null },
+      var_2: { type: VarType.string, children: null },
+    })
+    await user.click(screen.getAllByRole('button', { name: /operation.remove/ })[0]!)
+    await user.click(screen.getAllByRole('button', { name: /operation.remove/ })[1]!)
+    expect(data().variables).toEqual([{ variable: '', value_selector: [] }])
+    expect(data().outputs).toEqual({ var_2: { type: VarType.string, children: null } })
   })
 
   it('changes the output type through the real type picker', async () => {
     const user = userEvent.setup()
-    const config = renderPanel()
+    const { data } = renderPanel()
     await user.click(screen.getByRole('combobox'))
     await user.click(screen.getByRole('option', { name: 'number' }))
-    expect(config.handleVarsChange).toHaveBeenCalledWith({
+    expect(data().outputs).toEqual({
       result: { type: VarType.number, children: null },
     })
   })
 
   it('parses generated code while retaining bindings for surviving parameters', async () => {
     const user = userEvent.setup()
-    const config = renderPanel(
-      createConfig({
-        inputs: createData({
-          variables: [
-            { variable: 'foo', value_selector: ['start', 'foo'], value_type: VarType.string },
-            { variable: 'removed', value_selector: ['start', 'removed'] },
-          ],
-        }),
+    const { data } = renderPanel(
+      createData({
+        variables: [
+          { variable: 'foo', value_selector: ['start', 'foo'], value_type: VarType.string },
+          { variable: 'removed', value_selector: ['start', 'removed'] },
+        ],
       }),
     )
     await user.click(screen.getByRole('button', { name: 'Generate code' }))
-    expect(config.handleCodeAndVarsChange).toHaveBeenCalledExactlyOnceWith(
-      generatedCode,
-      [
+    expect(data()).toMatchObject({
+      code: generatedCode,
+      variables: [
         { variable: 'foo', value_selector: ['start', 'foo'], value_type: VarType.string },
         { variable: 'newParam', value_selector: [] },
       ],
-      { result: { type: VarType.string, children: null } },
-    )
+      outputs: { result: { type: VarType.string, children: null } },
+    })
   })
 
   it('prevents adding outputs or changing the language and variable names while readonly', async () => {
     const user = userEvent.setup()
-    const config = renderPanel(createConfig({ readOnly: true }))
+    const { data } = renderPanel(createData(), true)
     expect(screen.queryByRole('button', { name: /operation.add/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /syncFunctionSignature/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /operation.remove/ })).not.toBeInTheDocument()
@@ -166,21 +129,36 @@ describe('code panel', () => {
     await user.type(screen.getByDisplayValue('result'), 'changed')
     await user.click(screen.getByText('JavaScript'))
     expect(screen.queryByText('Python3')).not.toBeInTheDocument()
-    expect(config.handleVarsChange).not.toHaveBeenCalled()
-    expect(config.handleCodeLanguageChange).not.toHaveBeenCalled()
+    expect(data()).toMatchObject(createData())
   })
 
   it.each(['confirm', 'cancel'] as const)(
     'handles removal %s through the real confirmation dialog',
     async (action) => {
       const user = userEvent.setup()
-      const config = renderPanel(createConfig({ isShowRemoveVarConfirm: true }))
+      const initial = createData()
+      const consumer = createNode({
+        id: 'consumer',
+        data: {
+          type: BlockEnum.TemplateTransform,
+          variables: [{ variable: 'value', value_selector: ['node', 'result'] }],
+          template: '{{ value }}',
+        },
+      })
+      const { data, getNode } = renderNodePanel(Panel, initial, {
+        nodes: [createNode({ id: 'node', data: initial }), consumer],
+        edges: [createEdge({ source: 'node', target: 'consumer' })],
+      })
+      await user.click(screen.getAllByRole('button', { name: /operation.remove/ })[1]!)
+      expect(data().outputs).toEqual(initial.outputs)
       await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
-      if (action === 'confirm') expect(config.onRemoveVarConfirm).toHaveBeenCalledOnce()
-      else {
-        expect(config.hideRemoveVarConfirm).toHaveBeenCalledOnce()
-        expect(config.onRemoveVarConfirm).not.toHaveBeenCalled()
-      }
+      expect(data().outputs).toEqual(action === 'confirm' ? {} : initial.outputs)
+      expect(getNode('consumer')?.data.variables).toEqual([
+        { variable: 'value', value_selector: action === 'confirm' ? [] : ['node', 'result'] },
+      ])
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.confirm' }),
+      ).not.toBeInTheDocument()
     },
   )
 })

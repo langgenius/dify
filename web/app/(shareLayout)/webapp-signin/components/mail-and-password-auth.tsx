@@ -2,9 +2,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -32,7 +35,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [isLoading, setIsLoading] = useState(false)
   const redirectUrl = searchParams.get('redirect_url')
@@ -115,7 +117,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             inputMode="email"
             autoComplete="email"
             spellCheck={false}
-            placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+            placeholder={t(($) => $.emailPlaceholder, { ns: 'login' })}
           />
         </div>
         <FieldError />
@@ -134,37 +136,27 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           <FieldLabel className="py-0 text-sm leading-5 font-semibold text-text-secondary">
             {t(($) => $.password, { ns: 'login' })}
           </FieldLabel>
-          <Link
-            href={`/webapp-reset-password?${searchParams.toString()}`}
-            className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
-            tabIndex={isEmailSetup ? 0 : -1}
-            aria-disabled={!isEmailSetup}
-          >
-            {t(($) => $.forget, { ns: 'login' })}
-          </Link>
-        </div>
-        <InputGroup className="mt-1">
-          <InputGroupInput
-            id="password"
-            type={showPassword ? 'text' : 'password'}
-            autoComplete="current-password"
-            spellCheck={false}
-            placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-          />
-          <InputGroupAddon align="inline-end">
-            <IconButton
-              type="button"
-              size="lg"
-              variant="ghost"
-              aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                ns: 'login',
-              })}
-              onClick={() => setShowPassword(!showPassword)}
+          {isEmailSetup ? (
+            <Link
+              href={`/webapp-reset-password?${searchParams.toString()}`}
+              className="system-xs-regular text-text-accent hover:underline"
             >
-              <span aria-hidden="true">{showPassword ? '👀' : '😝'}</span>
-            </IconButton>
-          </InputGroupAddon>
-        </InputGroup>
+              {t(($) => $.forget, { ns: 'login' })}
+            </Link>
+          ) : (
+            <span className="system-xs-regular text-components-button-secondary-accent-text-disabled">
+              {t(($) => $.forget, { ns: 'login' })}
+            </span>
+          )}
+        </div>
+        <PasswordField className="mt-1">
+          <PasswordFieldInput
+            id="password"
+            autoComplete="current-password"
+            placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
+          />
+          <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+        </PasswordField>
         <FieldError />
       </Field>
 

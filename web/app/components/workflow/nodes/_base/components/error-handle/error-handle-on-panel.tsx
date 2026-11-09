@@ -56,7 +56,7 @@ const ErrorHandle = ({ id, data }: ErrorHandleProps) => {
             </InfotipContent>
           </Infotip>
           <CollapseActions>
-            <div className="pr-4">
+            <div className="pe-4">
               <ErrorHandleTypeSelector
                 value={error_strategy || ErrorHandleTypeEnum.none}
                 onSelected={handleTypeChange}

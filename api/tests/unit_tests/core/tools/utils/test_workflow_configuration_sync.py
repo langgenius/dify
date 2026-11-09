@@ -5,7 +5,7 @@ from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurati
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 
-def test_get_workflow_graph_variables_and_outputs():
+def test_get_workflow_graph_variables_and_outputs() -> None:
     graph = {
         "nodes": [
             {
@@ -58,7 +58,7 @@ def test_get_workflow_graph_variables_and_outputs():
     assert no_start == []
 
 
-def test_check_is_synced_validation():
+def test_check_is_synced_validation() -> None:
     variables = [
         VariableEntity(
             variable="query",

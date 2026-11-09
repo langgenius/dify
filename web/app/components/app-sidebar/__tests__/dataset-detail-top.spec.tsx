@@ -1,7 +1,7 @@
 import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { DatasetDetailTop } from '../dataset-detail-top'
 
 function TestGotoAnythingDialog() {

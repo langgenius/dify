@@ -1,0 +1,175 @@
+"""Persistence contract for frozen form delivery and access information."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Annotated, Literal, Protocol
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, NaiveDatetime
+
+from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
+from core.human_input_v2.shared.values import IMBindingId, RecipientId, TenantId
+
+
+class SubmissionAuthType(StrEnum):
+    # CONSOLE means that this delivery is authenticated with
+    # console session. It requires an assoiciated Dify `Account`.
+    CONSOLE = "console"
+
+    # WEB_APP means that this delivery is authenticated with web app
+    # session. It requires an assoiciated `Enduser`.
+    #
+    # Please note that service API also uses `WEB_APP` auth type.
+    WEB_APP = "web_app"
+
+    # IM means that this delivery should be authenticated by correponding
+    # IM events. For example, the deliveried card should generate an IM callback /
+    # streaming event. The Dify instance consumes the event and determines
+    # whether it is a valid submission. It requires an associated IM user.
+    IM = "im"
+
+    # IM means that this delivery must be authenticated by send an OTP email
+    # to the corresponding email address. This auth type has no assoicated Dify or IM
+    # identity.
+    EMAIL_OTP = "email_otp"
+
+
+class DeliveryTargetType(StrEnum):
+    IM_USER = "im_user"
+    EMAIL = "email"
+    INITIATOR = "initiator"
+
+
+class IMMessageType(StrEnum):
+    CARD = "card"
+    LINK = "link"
+
+
+class IMUserTargetSnapshot(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
+
+    type: Literal[DeliveryTargetType.IM_USER] = DeliveryTargetType.IM_USER
+
+    im_provider: IMProvider
+    im_tenant_id: str
+    im_provider_user_id: str
+    im_binding_id: IMBindingId
+    # Records the assessed presentation; auth_type governs submission.
+    message_type: IMMessageType = Field(strict=False)
+    # None until the provider confirms acceptance. Preserve the opaque value.
+    message_locator: MessageLocator | None = None
+
+
+class EmailTargetSnapshot(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
+
+    type: Literal[DeliveryTargetType.EMAIL] = DeliveryTargetType.EMAIL
+
+    email_address: EmailStr
+
+
+class InitiatorSnapshot(BaseModel):
+    """Delivery through the already-established initiator interaction surface."""
+
+    model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
+
+    type: Literal[DeliveryTargetType.INITIATOR] = DeliveryTargetType.INITIATOR
+    # Store tenant-encrypted ciphertext, never plaintext.
+    protected_form_token: str = Field(repr=False)
+
+
+type TargetSnapshot = Annotated[
+    IMUserTargetSnapshot | EmailTargetSnapshot | InitiatorSnapshot,
+    Field(discriminator="type"),
+]
+
+
+@dataclass(frozen=True, slots=True)
+class DeliveryCreateParams:
+    """Resolved, validated access data; raw tokens and credentials stay with callers."""
+
+    recipient_id: RecipientId
+    token_hash: str
+    auth_type: SubmissionAuthType
+    target_snapshot: TargetSnapshot
+
+
+@dataclass(frozen=True, slots=True)
+class Delivery:
+    """Delivery snapshot with frozen access facts and its accepted message identity."""
+
+    id: str
+    tenant_id: TenantId
+    form_id: str
+    recipient_id: RecipientId
+    token_hash: str
+    auth_type: SubmissionAuthType
+    target_snapshot: TargetSnapshot
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
+
+
+class DeliveryRepository(Protocol):
+    """Delivery creation, frozen access lookup, and accepted IM message identities.
+
+    The caller owns the transaction; implementations never commit or roll it
+    back. Callers guarantee that the recipient exists and belongs to the supplied
+    tenant and form; creation does not recheck membership. Token lookup establishes
+    the candidate delivery's owner context from storage. Targets and authentication
+    facts are frozen at creation; an accepted message's locator is added to its IM
+    snapshot after sending. This repository does not resolve recipients,
+    select endpoints, authenticate actors, generate tokens, or send messages.
+    All timestamps are naive UTC.
+    """
+
+    def list_deliveries(self, *, tenant_id: TenantId, form_id: str) -> tuple[Delivery, ...]:
+        """Read the form's owner-scoped deliveries, ordered by ID."""
+        ...
+
+    def get_delivery(self, *, tenant_id: TenantId, form_id: str, delivery_id: str) -> Delivery | None:
+        """Read one owner-scoped delivery; missing or foreign-owned returns None."""
+        ...
+
+    def set_im_message_locator(
+        self, *, tenant_id: TenantId, form_id: str, delivery_id: str, message_locator: MessageLocator
+    ) -> Delivery | None:
+        """Save the exact accepted IM message identity in the caller's transaction.
+
+        Return None for an absent or foreign-owned delivery. The same locator
+        is idempotent. A different locator or a non-IM target raises ValueError.
+        Subsequent failed attempts never clear the accepted message identity.
+        """
+        ...
+
+    def create_delivery(self, *, tenant_id: TenantId, form_id: str, params: DeliveryCreateParams) -> Delivery:
+        """Create one delivery with generated ID and timestamps.
+
+        The caller guarantees recipient existence and tenant/form membership.
+        Each call creates a separate delivery. Different recipients may share an
+        endpoint; that does not suppress creation. Callers reuse persisted
+        deliveries for subsequent send attempts.
+        """
+        ...
+
+    def get_delivery_by_token_hash(self, token_hash: str) -> Delivery | None:
+        """Locate a candidate delivery by its exact hash without prior owner context.
+
+        Missing hashes return None. Return the persisted tenant and form with
+        the candidate so callers can perform subsequent owner-scoped checks.
+        Ambiguous hashes, including matches across different owners, must fail
+        instead of selecting an arbitrary recipient. Lookup alone does not
+        authenticate an actor or check whether the form may still be submitted.
+        """
+        ...
+
+    def get_initiator_delivery(self, *, tenant_id: TenantId, form_id: str) -> Delivery | None:
+        """Read the original interaction entry when a waiting form is revisited.
+
+        Scope by tenant/form and the persisted Initiator target type. Missing
+        returns None; multiple entries for the form fail rather than selecting
+        a token. The caller establishes app ownership before this lookup.
+        This read neither creates another delivery nor authenticates an actor.
+        """
+        ...

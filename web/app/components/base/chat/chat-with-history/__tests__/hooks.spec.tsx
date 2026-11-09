@@ -4,7 +4,7 @@ import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { useWebAppStore } from '@/context/web-app-context'
 import { httpErrorFromResponse } from '@/service/http-error'
 import {
@@ -83,7 +83,7 @@ const createQueryClient = () => {
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <AppToastHost />
+      <AppToaster />
       {children}
     </QueryClientProvider>
   )
@@ -1453,6 +1453,7 @@ describe('useChatWithHistory', () => {
   describe('handleNewConversation with inputsForms', () => {
     it('should reset new conversation inputs to form defaults', async () => {
       // Arrange
+      setConversationIdInfo('app-1', '')
       initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
@@ -1487,6 +1488,7 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result.current.newConversationInputs.my_var).toBe('default_val')
       })
+      expect(result.current.currentConversationId).toBe('')
     })
   })
 

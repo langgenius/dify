@@ -53,7 +53,7 @@ class PluginTriggerSubscriptionGateway:
         user_id: str,
         endpoint: str,
         parameters: Mapping[str, Any],
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription:
         provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)
@@ -72,7 +72,7 @@ class PluginTriggerSubscriptionGateway:
         provider_id: TriggerProviderID,
         user_id: str,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> UnsubscribeResult:
         provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)
@@ -89,7 +89,7 @@ class PluginTriggerSubscriptionGateway:
         tenant_id: str,
         provider_id: TriggerProviderID,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription:
         provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)

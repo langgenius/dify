@@ -1,4 +1,5 @@
 {
+  "activateFailed": "Izobraževalnega popusta ni bilo mogoče aktivirati. Vaša trenutna izobraževalna verifikacija je morda še aktivna ali ta e-poštni naslov ni več upravičen.",
   "applied.activeSubscription.description": "Imate aktivno naročnino. Izobraževalni popust lahko uporabite po poteku naročnine. Potrdite naročnino v <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "V tem delovnem prostoru nimate dovoljenja za plačilo. Preklopite na delovni prostor, kjer lahko upravljate obračunavanje, da uporabite izobraževalni popust.",
   "applied.noPaymentPermission.returnHome": "Nazaj na Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "izključno 100% kupon",
   "toVerifiedTip.end": "za profesionalni načrt Dify.",
   "toVerifiedTip.front": "Zdaj ste upravičeni do statusa Preverjeno izobraževanje. Prosimo, vnesite svoje izobraževalne podatke spodaj, da zaključite postopek in prejmete",
-  "useEducationDiscount": "Uporabi izobraževalni popust"
+  "tooManyAttempts": "Preveč poskusov. Poskusite znova pozneje.",
+  "useEducationDiscount": "Uporabi izobraževalni popust",
+  "verifyFailed": "Vašega izobraževalnega statusa ni bilo mogoče preveriti. Če ste se nedavno verificirali, je vaša trenutna izobraževalna verifikacija morda še aktivna. V nasprotnem primeru poskusite znova pozneje."
 }

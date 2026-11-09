@@ -1,11 +1,11 @@
 import type { CommandContext } from './types'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
+import { useThemePreference } from '@/features/theme/hooks'
 import { setLocaleOnClient } from '@/i18n/client'
 import { useParams, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -22,8 +22,8 @@ export function useCommandContext(
   isWorkflowPage: boolean,
 ): CommandContext {
   const { t, i18n } = useTranslation(['app', 'common', 'modelProvider', 'accountSettings'])
-  const { setTheme } = useTheme()
-  const { push } = useRouter()
+  const { setPreference: setThemePreference } = useThemePreference()
+  const { push, refresh } = useRouter()
   const getDocsHomeUrl = useDocLink()
   const { appId: routeAppId } = useParams<{ appId?: string }>()
   // Only the app workflow page has an app id param that names an app; other routes reuse the
@@ -47,8 +47,11 @@ export function useCommandContext(
         isWorkflowPage && appId && (appMode === 'workflow' || appMode === 'advanced-chat')
           ? { id: appId, mode: appMode }
           : null,
-      setTheme,
-      setLocale: setLocaleOnClient,
+      setThemePreference,
+      setLocale: async (locale) => {
+        await setLocaleOnClient(locale)
+        refresh()
+      },
       getDocsHomeUrl,
       navigate: push,
       onError: (error) => {
@@ -66,9 +69,10 @@ export function useCommandContext(
       isWorkflowPage,
       appId,
       appMode,
-      setTheme,
+      setThemePreference,
       getDocsHomeUrl,
       push,
+      refresh,
     ],
   )
 }

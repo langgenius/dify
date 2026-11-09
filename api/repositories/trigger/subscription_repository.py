@@ -5,12 +5,14 @@ import sqlite3
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, contextmanager
 from copy import deepcopy
+from threading import Event, Thread
 from typing import Any, override
 from uuid import uuid4
 
 from psycopg2.errors import UniqueViolation
 from pymysql.err import IntegrityError as MySQLIntegrityError
 from redis.exceptions import LockError, RedisError
+from redis.lock import Lock
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -24,6 +26,8 @@ from services.trigger.subscription_binding_service import TriggerSubscriber, Tri
 from services.trigger.subscription_refresh_service import TriggerSubscriptionRefreshJob, TriggerSubscriptionRefreshRef
 from services.trigger.subscription_service import (
     TriggerSubscriptionChangedError,
+    TriggerSubscriptionLease,
+    TriggerSubscriptionLeaseLostError,
     TriggerSubscriptionLimitError,
     TriggerSubscriptionLocks,
     TriggerSubscriptionNameConflictError,
@@ -242,7 +246,7 @@ class TriggerSubscriptionRepository(TriggerSubscriptionStore):
         self,
         *,
         expected: TriggerSubscriptionSnapshot,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_expires_at: int,
     ) -> None:
         with self._session_factory.begin() as session:
@@ -359,6 +363,28 @@ class TriggerSubscriptionRepository(TriggerSubscriptionStore):
         )
 
 
+class _SubscriptionLease:
+    """Renew a Redis lease, failing closed when ownership can no longer be confirmed."""
+
+    def __init__(self, lock: Lock, lost: Event) -> None:
+        self._lock = lock
+        self._lost = lost
+
+    def ensure_owned(self) -> None:
+        """Reset the lease TTL if owned; raise before further work if ownership is lost."""
+        if self._lost.is_set():
+            raise TriggerSubscriptionLeaseLostError(
+                "Trigger subscription lock was lost; check the provider state before retrying."
+            )
+        try:
+            self._lock.reacquire()
+        except RedisError as error:
+            self._lost.set()
+            raise TriggerSubscriptionLeaseLostError(
+                "Trigger subscription lock was lost; check the provider state before retrying."
+            ) from error
+
+
 class RedisTriggerSubscriptionLocks(TriggerSubscriptionLocks):
     def __init__(self, *, redis: RedisClientWrapper) -> None:
         self._redis = redis
@@ -368,8 +394,41 @@ class RedisTriggerSubscriptionLocks(TriggerSubscriptionLocks):
         return self._hold(f"trigger_provider_create_lock:{tenant_id}_{provider_id}")
 
     @override
-    def for_subscription(self, *, tenant_id: str, subscription_id: str) -> AbstractContextManager[None]:
-        return self._hold(f"trigger_subscription_update_lock:{tenant_id}_{subscription_id}")
+    @contextmanager
+    def for_subscription(self, *, tenant_id: str, subscription_id: str) -> Generator[TriggerSubscriptionLease]:
+        """Serialize the subscription mutation and renew its lease during provider I/O.
+
+        The caller must check ownership between remote operations and before the SQL write.
+        Release errors cannot replace the outcome of a completed or failed mutation.
+        """
+        key = f"trigger_subscription_update_lock:{tenant_id}_{subscription_id}"
+        lock: Lock = self._redis.lock(key, timeout=60, thread_local=False)
+        if not lock.acquire():
+            raise LockError(f"Unable to acquire trigger subscription lock {key}")
+        stopped, lost = Event(), Event()
+        lease = _SubscriptionLease(lock, lost)
+
+        def renew() -> None:
+            while not stopped.wait(20):
+                try:
+                    lease.ensure_owned()
+                except Exception:
+                    lost.set()
+                    logger.warning("Lost trigger subscription lock %s", key, exc_info=True)
+                    return
+
+        heartbeat = Thread(target=renew, name=f"TriggerSubscriptionLock({subscription_id})", daemon=True)
+        try:
+            heartbeat.start()
+            yield lease
+        finally:
+            stopped.set()
+            if heartbeat.ident is not None:
+                heartbeat.join(timeout=2)
+            try:
+                lock.release()
+            except RedisError:
+                logger.exception("Failed to release trigger subscription lock %s", key)
 
     @contextmanager
     def _hold(self, key: str) -> Generator[None]:

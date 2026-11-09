@@ -1,22 +1,27 @@
 import type { AgentStrategyParameter } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentNodeType } from '../types'
-import type useConfig from '../use-config'
-import type { NodePanelProps } from '@/app/components/workflow/types'
-import { zAgentStrategyParameter } from '@dify/contracts/api/console/workspaces/zod.gen'
+import {
+  zAgentProviderResponse,
+  zAgentStrategyParameter,
+} from '@dify/contracts/api/console/workspaces/zod.gen'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { renderWorkflowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { renderNodePanel } from '../../__tests__/render-node-panel'
+import { VarKindType } from '../../_base/types'
 import Panel from '../panel'
+import { createProvider, createStrategy } from './strategy-fixture'
 
-const mockUseConfig = vi.hoisted(() => vi.fn())
-
-vi.mock('../use-config', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseConfig(...args),
+// Plugin metadata is an external service; the configuration and strategy owners stay real.
+vi.mock('@/service/use-plugins', () => ({
+  useFetchPluginsInMarketPlaceByIds: () => ({ isLoading: false, data: { data: { plugins: [] } } }),
+  useCheckInstalled: () => ({ data: { plugins: [] } }),
 }))
 
+// The strategy picker/form has its own interaction suite; drive its public callbacks here.
 vi.mock('../../_base/components/agent-strategy', () => ({
   AgentStrategy: (props: {
     strategy?: {
@@ -79,7 +84,7 @@ vi.mock('../../_base/components/agent-strategy', () => ({
 const createStrategyParam = (overrides: Partial<AgentStrategyParameter> = {}) =>
   zAgentStrategyParameter.parse({
     name: 'instruction',
-    type: FormTypeEnum.any,
+    type: 'string',
     required: true,
     label: { en_US: 'Instruction' },
     help: { en_US: 'Instruction help' },
@@ -93,6 +98,8 @@ const createStrategyParam = (overrides: Partial<AgentStrategyParameter> = {}) =>
   })
 
 const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
+  agent_parameters: { instruction: { type: VarKindType.constant, value: 'Plan and answer' } },
+  tool_node_version: '2',
   title: 'Agent',
   desc: '',
   type: BlockEnum.Agent,
@@ -119,158 +126,105 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   ...overrides,
 })
 
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  setInputs: vi.fn(),
-  handleVarListChange: vi.fn(),
-  handleAddVariable: vi.fn(),
-  currentStrategy: {
-    identity: {
-      author: 'provider',
-      name: 'react',
-      icon: 'icon',
-      label: { en_US: 'React Agent' },
-      provider: 'provider/agent',
-    },
-    parameters: [
-      createStrategyParam(),
-      createStrategyParam({
-        name: 'modelParam',
-        type: FormTypeEnum.modelSelector,
-        required: false,
+const renderPanel = (
+  data = createData(),
+  {
+    readOnly = false,
+    isChatflow = true,
+    features = ['history-messages'] as 'history-messages'[],
+  } = {},
+) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  for (const [provider, name] of [
+    ['provider/agent', 'react'],
+    ['provider/updated', 'updated'],
+  ]) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.agentProvider.byProviderName.get.queryKey({
+        input: { params: { provider_name: provider! } },
       }),
-    ],
-    description: { en_US: 'agent description' },
-    output_schema: {},
-    features: ['history-messages' as const],
-  },
-  formData: {
-    instruction: 'Plan and answer',
-  },
-  onFormChange: vi.fn(),
-  currentStrategyStatus: {
-    plugin: { source: 'marketplace', installed: true },
-    isExistInPlugin: true,
-  },
-  strategyProvider: undefined,
-  pluginDetail: undefined,
-  availableVars: [],
-  availableNodesWithParent: [],
-  outputSchema: [
-    {
-      name: 'summary',
-      type: 'String',
-      description: 'summary output',
-    },
-  ],
-  handleMemoryChange: vi.fn(),
-  isChatflow: true,
-  ...overrides,
-})
-
-const panelProps = {} as NodePanelProps<AgentNodeType>['panelProps']
+      zAgentProviderResponse.parse(
+        createProvider([
+          createStrategy({
+            identity: {
+              author: 'provider',
+              name: name!,
+              provider: provider!,
+              label: { en_US: name! },
+            },
+            parameters: [createStrategyParam()],
+            features,
+          }),
+        ]),
+      ),
+    )
+  }
+  return renderNodePanel(Panel, data, {
+    queryClient,
+    initialStoreState: { canvasReadOnly: readOnly },
+    resource: { kind: 'app', appId: 'app-1', mode: isChatflow ? 'advanced-chat' : 'workflow' },
+  })
+}
 
 describe('agent/panel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseConfig.mockReturnValue(createConfigResult())
-  })
-
-  it('renders strategy data, forwards strategy and form updates, and exposes output vars', async () => {
+  it('saves strategy, form and memory updates and exposes output variables', async () => {
     const user = userEvent.setup()
-    const setInputs = vi.fn()
-    const onFormChange = vi.fn()
-    const handleMemoryChange = vi.fn()
-
-    mockUseConfig.mockReturnValue(
-      createConfigResult({
-        setInputs,
-        onFormChange,
-        handleMemoryChange,
-      }),
-    )
-
-    render(<Panel id="agent-node" data={createData()} panelProps={panelProps} />)
-
-    await user.click(screen.getByText('workflow.nodes.common.outputVars'))
+    const { data } = renderPanel()
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
     expect(screen.getByText('summary output')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.getByText('React Agent')).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Instruction' })).toHaveValue('Plan and answer')
-
     await user.click(screen.getByRole('button', { name: 'change-strategy' }))
-    const instruction = screen.getByRole('textbox', { name: 'Instruction' }) as HTMLInputElement
+    const instruction = screen.getByRole<HTMLInputElement>('textbox', { name: 'Instruction' })
     await user.click(instruction)
     instruction.select()
     await user.paste('Use the tool')
     await user.click(screen.getAllByRole('switch')[1]!)
-
-    expect(setInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        agent_strategy_provider_name: 'provider/updated',
-        agent_strategy_name: 'updated',
-        agent_strategy_label: 'Updated Strategy',
-        plugin_unique_identifier: 'provider/updated:1.0.0',
-        output_schema: expect.objectContaining({
-          properties: expect.objectContaining({
-            structured: expect.any(Object),
-          }),
-        }),
-      }),
-    )
-    expect(onFormChange).toHaveBeenCalledWith({ instruction: 'Use the tool' })
-    expect(handleMemoryChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        window: { enabled: true, size: 3 },
-        query_prompt_template: '',
-      }),
-    )
+    expect(data()).toMatchObject({
+      agent_strategy_provider_name: 'provider/updated',
+      agent_strategy_name: 'updated',
+      agent_strategy_label: 'Updated Strategy',
+      plugin_unique_identifier: 'provider/updated:1.0.0',
+      output_schema: {
+        properties: { structured: { type: 'string', description: 'structured output' } },
+      },
+      agent_parameters: { instruction: { type: VarKindType.constant, value: 'Use the tool' } },
+      memory: { window: { enabled: true, size: 3 }, query_prompt_template: '' },
+    })
+    expect(screen.getByText('Updated Strategy')).toBeInTheDocument()
+    expect(screen.getByText('structured output')).toBeInTheDocument()
   })
 
   it('keeps a saved strategy selected without optional plugin installation metadata', () => {
-    const inputs = createData({ plugin_unique_identifier: undefined })
-    mockUseConfig.mockReturnValue(createConfigResult({ inputs }))
-    render(<Panel id="agent-node" data={inputs} panelProps={panelProps} />)
+    renderPanel(createData({ plugin_unique_identifier: undefined }))
     expect(screen.getByText('React Agent')).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Instruction' })).toHaveValue('Plan and answer')
   })
 
   it('prevents editing memory in readonly mode', async () => {
     const user = userEvent.setup()
-    const handleMemoryChange = vi.fn()
-    mockUseConfig.mockReturnValue(createConfigResult({ readOnly: true, handleMemoryChange }))
-    render(<Panel id="agent-node" data={createData()} panelProps={panelProps} />)
-
+    const { data } = renderPanel(createData(), { readOnly: true })
     for (const toggle of screen.getAllByRole('switch')) {
       expect(toggle).toHaveAttribute('aria-disabled', 'true')
       await user.click(toggle)
     }
-    expect(handleMemoryChange).not.toHaveBeenCalled()
+    expect(data().memory).toEqual(createData().memory)
   })
 
   it.each([
     { isChatflow: false, features: ['history-messages' as const] },
     { isChatflow: true, features: [] },
-  ])(
-    'hides memory without chat mode or history support ($isChatflow/$features)',
-    ({ isChatflow, features }) => {
-      mockUseConfig.mockReturnValue(
-        createConfigResult({
-          isChatflow,
-          currentStrategy: {
-            ...createConfigResult().currentStrategy!,
-            features,
-          },
-        }),
-      )
-
-      render(<Panel id="agent-node" data={createData()} panelProps={panelProps} />)
-
-      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-      expect(screen.queryByText('workflow.nodes.common.memory.memory')).not.toBeInTheDocument()
-    },
-  )
+  ])('hides memory without chat mode or history support ($isChatflow/$features)', (options) => {
+    renderPanel(createData(), options)
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.common.memory.memory')).not.toBeInTheDocument()
+  })
 })

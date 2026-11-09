@@ -179,6 +179,11 @@ export function IpPolicyDialog({
                   entries={entries}
                   currentIp={resolvedCurrentIp}
                   currentIpStatus={currentIpStatus}
+                  isRetryingCurrentIp={
+                    currentIpStatus !== undefined &&
+                    currentIpQuery.isFetched &&
+                    (currentIpQuery.isFetching || currentIpQuery.isPaused)
+                  }
                   onRetryCurrentIp={() => {
                     void currentIpQuery.refetch()
                   }}

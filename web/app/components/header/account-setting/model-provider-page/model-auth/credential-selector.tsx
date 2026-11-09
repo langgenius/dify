@@ -46,13 +46,13 @@ const CredentialSelector = ({
         render={
           <button
             type="button"
-            className="flex h-8 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-2 text-left system-sm-regular"
+            className="flex h-8 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-2 text-start system-sm-regular"
           />
         }
       >
         {selectedCredential && (
           <span className="flex items-center">
-            {!selectedCredential.addNewCredential && <StatusDot className="mr-2 ml-1 shrink-0" />}
+            {!selectedCredential.addNewCredential && <StatusDot className="ms-1 me-2 shrink-0" />}
             <span
               className="truncate system-sm-regular text-components-input-text-filled"
               title={selectedCredential.credential_name}
@@ -97,10 +97,10 @@ const CredentialSelector = ({
         {!notAllowAddNewCredential && (
           <button
             type="button"
-            className="flex h-10 w-full cursor-pointer items-center border-t border-t-divider-subtle px-7 text-left system-xs-medium text-text-accent-light-mode-only focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+            className="flex h-10 w-full cursor-pointer items-center border-t border-t-divider-subtle px-7 text-start system-xs-medium text-text-accent-light-mode-only focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
             onClick={handleAddNewCredential}
           >
-            <RiAddLine className="mr-1 size-4" />
+            <RiAddLine className="me-1 size-4" />
             {t(($) => $['modelProvider.auth.addNewModelCredential'], { ns: 'modelProvider' })}
           </button>
         )}

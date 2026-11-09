@@ -315,14 +315,27 @@ describe('SkillDetailPage publishing', () => {
   })
 
   it('uses the references query count when the cached sidebar reference count is stale', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Infinity },
+        mutations: { retry: false },
+      },
+    })
+    const references = [
+      createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' }),
+    ]
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
     mocks.skillReferencesQueryOptions.mockImplementation(() => ({
-      queryFn: async () => ({
-        data: [createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' })],
-      }),
+      queryFn: async () => ({ data: references }),
     }))
+    queryClient.setQueryData(
+      consoleQueryKey('workspaces.current.skills.bySkillId.references.get', {
+        params: { skill_id: 'skill-1' },
+      }),
+      { data: references },
+    )
 
-    renderSkillDetailPage()
+    renderSkillDetailPage({ queryClient })
 
     expect(
       await screen.findByRole('button', {

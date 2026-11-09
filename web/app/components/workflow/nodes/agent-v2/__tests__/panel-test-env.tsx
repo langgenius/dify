@@ -26,7 +26,7 @@ export const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2Nod
 
 export function createPanelEnvironment({
   data = createData(),
-  resource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
+  resource = { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' },
 }: { data?: AgentV2NodeType; resource?: EditorResource } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['agent.create'],

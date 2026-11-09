@@ -1,18 +1,14 @@
 import type { HumanInputFilledFormData } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { SubmittedHumanInputContent } from '../submitted'
 
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div>{content}</div>,
-}))
-
 describe('SubmittedHumanInputContent Integration', () => {
   const mockFormData: HumanInputFilledFormData = {
     form_id: 'form-1',
-    rendered_content: 'Rendered **Markdown** content',
+    rendered_content: 'Rendered [Markdown](https://example.com/submitted) content',
     action_id: 'btn_1',
     action_text: 'Submit Action',
     node_id: 'node_1',
@@ -40,7 +36,7 @@ describe('SubmittedHumanInputContent Integration', () => {
     )
 
     expect(screen.getByText('approved')).toBeInTheDocument()
-    expect(screen.queryByText('Rendered **Markdown** content')).not.toBeInTheDocument()
+    expect(screen.queryByText('Markdown')).not.toBeInTheDocument()
   })
 
   it('should render submitted select and file fields with the original form layout', () => {
@@ -89,7 +85,7 @@ describe('SubmittedHumanInputContent Integration', () => {
 
   it.each([undefined, {}])(
     'falls back to rendered markdown without submitted values: %j',
-    (submittedData) => {
+    async (submittedData) => {
       render(
         <SubmittedHumanInputContent
           formData={{
@@ -99,7 +95,10 @@ describe('SubmittedHumanInputContent Integration', () => {
         />,
       )
 
-      expect(screen.getByText('Rendered **Markdown** content')).toBeInTheDocument()
+      expect(await screen.findByRole('link', { name: 'Markdown' })).toHaveAttribute(
+        'href',
+        'https://example.com/submitted',
+      )
       expect(
         screen.getByText('workflowHumanInput.nodes.humanInput.userActions.triggered'),
       ).toBeInTheDocument()
@@ -119,6 +118,6 @@ describe('SubmittedHumanInputContent Integration', () => {
     )
 
     expect(screen.getByText('approved')).toBeInTheDocument()
-    expect(screen.queryByText('Rendered **Markdown** content')).not.toBeInTheDocument()
+    expect(screen.queryByText('Markdown')).not.toBeInTheDocument()
   })
 })

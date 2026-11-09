@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "{{title}} tamamlanmadı olarak işaretle",
   "stepByStepTour.minimize": "Küçült",
   "stepByStepTour.progressAriaValueText": "{{total}} adımdan {{completed}} tamamlandı",
-  "stepByStepTour.restore": "Adım adım turu aç",
   "stepByStepTour.skip": "Turu atla",
   "stepByStepTour.skipRecovery.dismiss": "Anladım",
   "stepByStepTour.skipRecovery.label": "Step-by-step Tour kurtarma ipucu",

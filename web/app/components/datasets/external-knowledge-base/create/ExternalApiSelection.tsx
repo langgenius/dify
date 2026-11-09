@@ -110,7 +110,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
           onValueChange={(value) =>
             onChange({ external_knowledge_id: value, external_knowledge_api_id })
           }
-          placeholder={t(($) => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' }) ?? ''}
+          placeholder={t(($) => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' })}
         />
       </div>
     </form>

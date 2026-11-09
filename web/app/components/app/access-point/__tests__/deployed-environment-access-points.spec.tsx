@@ -1,31 +1,23 @@
 import { screen, within } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
 import { DeployedEnvironmentAccessPoints } from '../deployed-environment-access-points'
+import { seedAccessPointQueries } from './access-point-query-fixtures'
 
-const mocks = vi.hoisted(() => ({
-  serviceApiCard: vi.fn(),
-  webAppCard: vi.fn(),
-}))
-
-vi.mock('../deployed-environment-access-points/environment-service-api-card', () => ({
-  EnvironmentServiceApiCard: (props: Record<string, unknown>) => {
-    mocks.serviceApiCard(props)
-    return null
-  },
-}))
-
-vi.mock('../deployed-environment-access-points/environment-web-app-card', () => ({
-  EnvironmentWebAppCard: (props: Record<string, unknown>) => {
-    mocks.webAppCard(props)
-    return null
-  },
-}))
+function render(ui: React.ReactElement) {
+  const queryClient = createTestQueryClient()
+  seedAccessPointQueries(queryClient, 'app-1', ['staging'])
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({ id: 'app-1', mode: 'workflow', site: createAppSiteFixture() }),
+  )
+  return renderWithConsoleQuery(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, { queryClient })
+}
 
 describe('DeployedEnvironmentAccessPoints', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('renders MCP and Trigger as unsupported without a permanent loading state', () => {
     render(
       <DeployedEnvironmentAccessPoints
@@ -54,7 +46,7 @@ describe('DeployedEnvironmentAccessPoints', () => {
   })
 
   it.each([false, true])(
-    'passes management permission %s to deployed environment cards',
+    'enforces management permission %s on deployed environment controls',
     (canManageAccessPoint) => {
       render(
         <DeployedEnvironmentAccessPoints
@@ -64,14 +56,15 @@ describe('DeployedEnvironmentAccessPoints', () => {
         />,
       )
 
-      expect(mocks.webAppCard).toHaveBeenCalledWith(
-        expect.objectContaining({
-          canManageAccessPoint,
-        }),
-      )
-      expect(mocks.serviceApiCard).toHaveBeenCalledWith(
-        expect.objectContaining({ canManageAccessPoint }),
-      )
+      for (const control of screen.getAllByRole('switch')) {
+        expect(control).toBeChecked()
+        if (canManageAccessPoint) expect(control).not.toHaveAttribute('aria-disabled', 'true')
+        else expect(control).toHaveAttribute('aria-disabled', 'true')
+      }
+      expect(screen.getByText('https://staging.api.example.com/v1')).toBeInTheDocument()
+      const settings = screen.getByRole('button', { name: 'navigation.settings.settings' })
+      if (canManageAccessPoint) expect(settings).toBeEnabled()
+      else expect(settings).toBeDisabled()
     },
   )
 })

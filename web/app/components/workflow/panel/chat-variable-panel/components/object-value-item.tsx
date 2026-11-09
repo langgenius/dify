@@ -108,7 +108,7 @@ const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
       <div className="w-30 border-r border-gray-200">
         <input
           className="block h-7 w-full appearance-none px-2 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
-          placeholder={t(($) => $['chatVariable.modal.objectKey'], { ns: 'workflow' }) || ''}
+          placeholder={t(($) => $['chatVariable.modal.objectKey'], { ns: 'workflow' })}
           value={list[index].key}
           onChange={handleKeyChange(index)}
         />
@@ -127,7 +127,7 @@ const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
       <div className="relative w-57.5">
         <input
           className="block h-7 w-full appearance-none px-2 pr-9 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
-          placeholder={t(($) => $['chatVariable.modal.objectValue'], { ns: 'workflow' }) || ''}
+          placeholder={t(($) => $['chatVariable.modal.objectValue'], { ns: 'workflow' })}
           value={list[index].value}
           onChange={handleValueChange(index)}
           onFocus={() => handleFocusChange()}
