@@ -55,6 +55,8 @@ export default function BuildAppLink() {
   return (
     <Link
       href={href}
+      target="_blank"
+      rel="noopener noreferrer"
       className={cn(
         className,
         'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',

@@ -1,4 +1,3 @@
-import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { GetVersionResponse } from '@dify/contracts/api/console/version/types.gen'
 import type {
   GetWorkspacesCurrentSummaryResponse,
@@ -39,13 +38,11 @@ const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 const mockConfig = vi.hoisted(() => ({ ENABLE_HITL_IM: true }))
 
-const { mockInstalledAppsRequest, mockIsAgentV2Enabled, mockSwitchWorkspace, mockUpdatePinStatus } =
-  vi.hoisted(() => ({
-    mockInstalledAppsRequest: vi.fn(),
-    mockIsAgentV2Enabled: vi.fn(() => true),
-    mockSwitchWorkspace: vi.fn(),
-    mockUpdatePinStatus: vi.fn(),
-  }))
+const { mockInstalledAppsRequest, mockIsAgentV2Enabled, mockSwitchWorkspace } = vi.hoisted(() => ({
+  mockInstalledAppsRequest: vi.fn(),
+  mockIsAgentV2Enabled: vi.fn(() => true),
+  mockSwitchWorkspace: vi.fn(),
+}))
 const mockStepByStepTour = createStepByStepTourService()
 
 type MainNavConsoleState = ConsoleStateFixture & {
@@ -125,7 +122,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'onboarding.stepByStepTour.state.get': async () => mockStepByStepTour.state,
       'onboarding.stepByStepTour.state.patch': (input) => mockStepByStepTour.patchState(input),
       'installedApps.get': mockInstalledAppsRequest,
-      'installedApps.byInstalledAppId.patch': mockUpdatePinStatus,
     }),
   }
 })
@@ -145,44 +141,7 @@ vi.mock('@/config', async (importOriginal) => {
 const mockPush = vi.fn()
 
 let mockPathname = '/apps'
-let mockInstalledApps: InstalledAppResponse[] = []
-let mockInstalledAppsPending = false
-let mockInstalledAppsHasNextPage = false
 let mockWorkspaces: TenantListItemResponse[] = []
-
-function stubScrollRootIntersectionObserver() {
-  const observers: Array<{
-    callback: IntersectionObserverCallback
-    root: Element | Document | null | undefined
-  }> = []
-  vi.stubGlobal(
-    'IntersectionObserver',
-    class MockIntersectionObserver {
-      constructor(nextCallback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-        observers.push({ callback: nextCallback, root: options?.root })
-      }
-
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  )
-
-  return async () => {
-    await waitFor(() => {
-      expect(observers.some(({ root }) => root instanceof Element)).toBe(true)
-    })
-    const observer = observers.find(({ root }) => root instanceof Element)
-    if (!observer) throw new Error('The scroll root observer was not created')
-
-    act(() => {
-      observer.callback(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
-      )
-    })
-  }
-}
 
 const ownerWorkspacePermissionKeys = [
   'workspace.member.manage',
@@ -202,27 +161,6 @@ const datasetOperatorWorkspacePermissionKeys = [
   'dataset.create_and_management',
   'dataset.external.connect',
 ]
-
-const createInstalledApp = (
-  overrides: Partial<InstalledAppResponse> = {},
-): InstalledAppResponse => ({
-  id: overrides.id ?? 'installed-1',
-  app_owner_tenant_id: overrides.app_owner_tenant_id ?? 'tenant-1',
-  editable: overrides.editable ?? true,
-  last_used_at: overrides.last_used_at ?? null,
-  is_pinned: overrides.is_pinned ?? false,
-  app: {
-    id: overrides.app?.id ?? 'app-1',
-    mode: overrides.app?.mode ?? 'chat',
-    icon_type: overrides.app?.icon_type ?? 'emoji',
-    icon: overrides.app?.icon ?? '🤖',
-    icon_background: overrides.app?.icon_background ?? '#fff',
-    icon_url: overrides.app?.icon_url ?? null,
-    name: overrides.app?.name ?? 'Alpha App',
-    description: overrides.app?.description ?? '',
-    use_icon_as_answer_icon: overrides.app?.use_icon_as_answer_icon ?? false,
-  },
-})
 
 const mainNavUserProfile = {
   id: 'user-1',
@@ -356,14 +294,10 @@ describe('MainNav', () => {
     vi.clearAllMocks()
     mockConfig.ENABLE_HITL_IM = true
     mockInstalledAppsRequest.mockReset()
-    mockUpdatePinStatus.mockReset()
     mockSwitchWorkspace.mockReset()
     localStorage.clear()
     Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
     mockPathname = '/apps'
-    mockInstalledApps = []
-    mockInstalledAppsPending = false
-    mockInstalledAppsHasNextPage = false
     mockWorkspaces = [
       {
         id: 'workspace-1',
@@ -398,26 +332,11 @@ describe('MainNav', () => {
     skillEnabled = true
     educationEnabled = false
 
-    mockInstalledAppsRequest.mockImplementation(
-      async ({ query }: { query: { cursor?: string; name?: string } }) => {
-        if (mockInstalledAppsPending) return new Promise(() => {})
-        if (query.cursor) {
-          return { installed_apps: [], has_more: false, next_cursor: null }
-        }
-
-        const installedApps = query.name
-          ? mockInstalledApps.filter((installedApp) =>
-              installedApp.app.name.toLowerCase().includes(query.name!.toLowerCase()),
-            )
-          : mockInstalledApps
-        return {
-          installed_apps: installedApps,
-          has_more: mockInstalledAppsHasNextPage,
-          next_cursor: mockInstalledAppsHasNextPage ? 'next-page' : null,
-        }
-      },
-    )
-    mockUpdatePinStatus.mockResolvedValue({ result: 'success', message: 'updated' })
+    mockInstalledAppsRequest.mockResolvedValue({
+      installed_apps: [],
+      has_more: false,
+      next_cursor: null,
+    })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
   })
 
@@ -607,7 +526,7 @@ describe('MainNav', () => {
       '/marketplace',
     )
     expect(
-      screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
+      screen.queryByRole('link', { name: 'navigation.mainNav.publishedApps' }),
     ).not.toBeInTheDocument()
   })
 
@@ -1110,286 +1029,30 @@ describe('MainNav', () => {
     expect(screen.queryByText('navigation.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
-  it('searches installed web apps and renders the matching navigation link', async () => {
-    const user = userEvent.setup()
-    mockInstalledApps = [
-      createInstalledApp({
-        id: 'installed-1',
-        app: { ...createInstalledApp().app, name: 'Alpha App' },
-      }),
-      createInstalledApp({
-        id: 'installed-2',
-        app: { ...createInstalledApp().app, name: 'Beta Tool' },
-      }),
-    ]
-
+  it('links to Published apps without loading its application list in the sidebar', async () => {
     renderMainNav()
 
-    const scrollViewport = await screen.findByRole('navigation', {
-      name: 'explore.sidebar.webApps',
-    })
-    scrollViewport.scrollTop = 240
-    scrollViewport.scrollTo = (optionsOrX?: ScrollToOptions | number, y?: number) => {
-      const top = typeof optionsOrX === 'object' ? optionsOrX.top : y
-      scrollViewport.scrollTop = Number(top ?? 0)
+    expect(
+      await screen.findByRole('link', { name: 'navigation.mainNav.publishedApps' }),
+    ).toHaveAttribute('href', '/published-apps')
+    expect(
+      screen.queryByRole('dialog', { name: 'navigation.mainNav.publishedApps' }),
+    ).not.toBeInTheDocument()
+    expect(mockInstalledAppsRequest).not.toHaveBeenCalled()
+  })
+
+  it('hides Published apps without app library access', () => {
+    mockConsoleState.current = {
+      ...consoleState,
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(
+        (key) => key !== 'app_library.access',
+      ),
     }
-    const searchButton = await screen.findByRole('button', { name: 'common.operation.search' })
-    expect(searchButton).toHaveAttribute('aria-expanded', 'false')
+    renderMainNav()
 
-    await user.click(searchButton)
-    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
-
-    const searchInput = screen.getByRole('searchbox', {
-      name: 'navigation.mainNav.webApps.searchPlaceholder',
-    })
-    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
-    const listPanel = document.getElementById(webAppsButton.getAttribute('aria-controls')!)
-    const searchPanel = document.getElementById(searchButton.getAttribute('aria-controls')!)
-    expect(listPanel).toContainElement(scrollViewport)
-    expect(searchPanel).toContainElement(searchInput)
-    expect(listPanel).not.toContainElement(searchInput)
-    await user.type(searchInput, 'beta')
-
-    await waitFor(() => {
-      expect(scrollViewport.scrollTop).toBe(0)
-      expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
-      expect(screen.getByText('Beta Tool')).toBeInTheDocument()
-    })
-    expect(searchInput).toHaveFocus()
-    expect(screen.getByRole('link', { name: 'Beta Tool' })).toHaveAttribute(
-      'href',
-      '/installed/installed-2',
-    )
-
-    await user.click(webAppsButton)
-    expect(webAppsButton).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('link', { name: 'Beta Tool' })).not.toBeInTheDocument()
-    expect(searchButton).toHaveAttribute('aria-expanded', 'false')
     expect(
-      screen.queryByPlaceholderText('navigation.mainNav.webApps.searchPlaceholder'),
+      screen.queryByRole('link', { name: 'navigation.mainNav.publishedApps' }),
     ).not.toBeInTheDocument()
-
-    await user.click(webAppsButton)
-    expect(webAppsButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('link', { name: 'Beta Tool' })).toBeInTheDocument()
-    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByPlaceholderText('navigation.mainNav.webApps.searchPlaceholder')).toHaveValue(
-      'beta',
-    )
-    expect(webAppsButton).toHaveFocus()
-    await user.click(searchButton)
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
-    expect(searchButton).toHaveFocus()
-  })
-
-  it('announces no installed web app results only after the search settles', async () => {
-    const user = userEvent.setup()
-    let resolveSearch: (() => void) | undefined
-    const searchPending = new Promise<void>((resolve) => {
-      resolveSearch = resolve
-    })
-    mockInstalledApps = [createInstalledApp()]
-    mockInstalledAppsRequest.mockImplementation(async ({ query }: { query: { name?: string } }) => {
-      if (!query.name) {
-        return {
-          installed_apps: mockInstalledApps,
-          has_more: false,
-          next_cursor: null,
-        }
-      }
-
-      await searchPending
-      return {
-        installed_apps: [],
-        has_more: false,
-        next_cursor: null,
-      }
-    })
-
-    renderMainNav()
-
-    const webAppsRegion = await screen.findByRole('navigation', {
-      name: 'explore.sidebar.webApps',
-    })
-    await user.click(screen.getByRole('button', { name: 'common.operation.search' }))
-    const resultStatus = within(webAppsRegion).getByRole('status')
-    expect(resultStatus).toBeEmptyDOMElement()
-
-    await user.type(
-      screen.getByPlaceholderText('navigation.mainNav.webApps.searchPlaceholder'),
-      'z',
-    )
-
-    await waitFor(() => {
-      expect(webAppsRegion).toHaveAttribute('aria-busy', 'true')
-    })
-    expect(resultStatus).toBeEmptyDOMElement()
-
-    act(() => {
-      resolveSearch?.()
-    })
-
-    await waitFor(() => {
-      expect(webAppsRegion).toHaveAttribute('aria-busy', 'false')
-      expect(resultStatus).toHaveTextContent('navigation.mainNav.webApps.noResults')
-    })
-    expect(within(webAppsRegion).getByRole('status')).toBe(resultStatus)
-  })
-
-  it('hides the installed web apps section while installed apps are loading', () => {
-    mockInstalledAppsPending = true
-
-    renderMainNav()
-
-    expect(
-      screen.queryByRole('navigation', { name: 'explore.sidebar.webApps' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'common.operation.search' }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
-    expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
-  })
-
-  it('hides the installed web apps section when no web apps are available', async () => {
-    renderMainNav()
-    await waitFor(() => expect(mockInstalledAppsRequest).toHaveResolved())
-
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
-      ).not.toBeInTheDocument()
-      expect(
-        screen.queryByRole('navigation', { name: 'explore.sidebar.webApps' }),
-      ).not.toBeInTheDocument()
-    })
-    expect(
-      screen.queryByRole('button', { name: 'common.operation.search' }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('keeps pinned and unpinned installed web apps in one accessible list', async () => {
-    mockInstalledApps = [
-      createInstalledApp({
-        id: 'installed-1',
-        is_pinned: true,
-        app: { ...createInstalledApp().app, name: 'Pinned App' },
-      }),
-      createInstalledApp({
-        id: 'installed-2',
-        is_pinned: false,
-        app: { ...createInstalledApp().app, name: 'Unpinned App' },
-      }),
-    ]
-
-    renderMainNav()
-
-    expect(await screen.findByText('Pinned App')).toBeInTheDocument()
-    expect(screen.getByText('Unpinned App')).toBeInTheDocument()
-
-    const rows = within(
-      screen.getByRole('navigation', { name: 'explore.sidebar.webApps' }),
-    ).getAllByRole('listitem')
-    expect(rows).toHaveLength(2)
-    expect(rows[0]).toHaveAttribute('aria-posinset', '1')
-    expect(rows[1]).toHaveAttribute('aria-posinset', '2')
-    for (const row of rows) expect(row).toHaveAttribute('aria-setsize', '2')
-  })
-
-  it('shows next-page errors at the pagination boundary and retries from there', async () => {
-    const user = userEvent.setup()
-    let nextPageAttempts = 0
-    let resolveNextPage: (() => void) | undefined
-    const nextPagePending = new Promise<void>((resolve) => {
-      resolveNextPage = resolve
-    })
-    const triggerIntersection = stubScrollRootIntersectionObserver()
-    mockInstalledApps = [createInstalledApp()]
-    mockInstalledAppsRequest.mockImplementation(
-      async ({ query }: { query: { cursor?: string; name?: string } }) => {
-        if (!query.cursor) {
-          return {
-            installed_apps: mockInstalledApps,
-            has_more: true,
-            next_cursor: 'next-page',
-          }
-        }
-
-        nextPageAttempts += 1
-        if (nextPageAttempts === 1) throw new Error('Failed to load the next page')
-
-        await nextPagePending
-
-        return {
-          installed_apps: [
-            createInstalledApp({
-              id: 'installed-2',
-              app: { ...createInstalledApp().app, name: 'Beta Tool' },
-            }),
-          ],
-          has_more: false,
-          next_cursor: null,
-        }
-      },
-    )
-    renderMainNav()
-    const firstAppLink = await screen.findByRole('link', {
-      name: 'Alpha App',
-    })
-
-    await triggerIntersection()
-
-    const paginationError = await screen.findByRole('alert')
-    expect(
-      firstAppLink.compareDocumentPosition(paginationError) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-
-    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
-    const webAppsRegion = screen.getByRole('navigation', { name: 'explore.sidebar.webApps' })
-    retryButton.focus()
-    expect(retryButton).toHaveFocus()
-
-    await user.keyboard('{Enter}')
-
-    await waitFor(() => {
-      expect(webAppsRegion).toHaveAttribute('aria-busy', 'true')
-      expect(retryButton).toBeInTheDocument()
-      expect(retryButton).toHaveFocus()
-      expect(retryButton).toHaveAttribute('aria-disabled', 'true')
-    })
-
-    await user.keyboard('{Enter}')
-    expect(nextPageAttempts).toBe(2)
-
-    act(() => {
-      resolveNextPage?.()
-    })
-
-    expect(await screen.findByText('Beta Tool')).toBeInTheDocument()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-  })
-
-  it('updates pin status for installed web apps', async () => {
-    const user = userEvent.setup()
-    mockInstalledApps = [createInstalledApp()]
-    mockUpdatePinStatus.mockResolvedValue(undefined)
-
-    renderMainNav()
-
-    await user.hover(await screen.findByText('Alpha App'))
-    await user.click(
-      screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*Alpha App/ }),
-    )
-    await user.click(await screen.findByText('explore.sidebar.action.pin'))
-
-    await waitFor(() => {
-      expect(mockUpdatePinStatus).toHaveBeenCalledWith({
-        params: { installed_app_id: 'installed-1' },
-        body: { is_pinned: true },
-      })
-    })
+    expect(mockInstalledAppsRequest).not.toHaveBeenCalled()
   })
 })

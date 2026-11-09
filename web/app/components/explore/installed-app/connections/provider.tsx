@@ -182,6 +182,7 @@ function useConnectionData({
     status === 'inactive' || (canConfirm && !configuration.data?.reauthorization_required)
   return {
     installedAppId,
+    isCurrentSession: () => activeScopeRef.current === scope,
     status,
     error,
     canRun,

@@ -194,10 +194,11 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/workflow/workflow-connections')
 })
 
-it('sends checked workspace selections through the installed app Console run without a Webapp identity', async () => {
-  window.history.replaceState({}, '', '/installed/installed-app')
+it('sends checked workspace selections from an installed app modal on the homepage without a Webapp identity', async () => {
+  window.history.replaceState({}, '', '/')
   installedConnections.mockReturnValue({
     installedAppId: 'installed-app',
+    isCurrentSession: () => true,
     canRun: true,
     runConfiguration: {
       connection_revision: checkedRevision,
