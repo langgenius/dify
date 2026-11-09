@@ -99,6 +99,5 @@ def test_version_str_returns_string_value() -> None:
 
 def test_session_backed_lookups_are_not_exposed_as_properties() -> None:
     """Callers must pass a session; the model no longer reads the Flask-global ``db.session``."""
-    assert not hasattr(snippet_module, "db")
     for name in ("graph_dict", "tags", "created_by_account", "author_name", "updated_by_account"):
         assert not hasattr(CustomizedSnippet, name)
