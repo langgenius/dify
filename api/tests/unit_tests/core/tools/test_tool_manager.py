@@ -1188,6 +1188,35 @@ def test_user_get_api_provider_masks_credentials_and_adds_labels(
     assert user_payload["labels"] == ["search"]
 
 
+def test_user_get_api_provider_warns_when_stored_credentials_cannot_be_parsed(
+    monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase, caplog: pytest.LogCaptureFixture
+):
+    tenant_id = "00000000-0000-0000-0000-000000000001"
+    provider = _api_provider(provider_id="00000000-0000-0000-0000-000000000002", tenant_id=tenant_id)
+    provider.credentials_str = "not-json"
+    tool_database.session.add(provider)
+    tool_database.session.commit()
+    monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
+    cache = NoOpProviderCredentialCache()
+    encrypter = ProviderConfigEncrypter(
+        tenant_id=tenant_id,
+        config=[BasicProviderConfig(name="api_key_value", type=ProviderConfigType.SECRET_INPUT)],
+        provider_config_cache=cache,
+    )
+
+    with (
+        caplog.at_level("WARNING", logger="core.tools.tool_manager"),
+        patch("core.tools.tool_manager.create_tool_provider_encrypter", return_value=(encrypter, cache)),
+        patch("core.tools.tool_manager.ToolLabelManager.get_tool_labels", return_value=["search"]),
+    ):
+        user_payload = ToolManager.user_get_api_provider(provider.name, tenant_id)
+
+    assert user_payload["credentials"] == {}
+    assert "Could not parse credentials for API tool provider" in caplog.text
+    # The stored credential payload must never reach the log.
+    assert "not-json" not in caplog.text
+
+
 def test_get_api_provider_controller_not_found_raises(monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase):
     provider_id = "00000000-0000-0000-0000-000000000002"
     tool_database.session.add(

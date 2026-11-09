@@ -133,6 +133,11 @@ class OutputModeration(BaseModel):
             result: ModerationOutputsResult = moderation_factory.moderation_for_outputs(moderation_buffer)
             return result
         except Exception:
-            logger.exception("Moderation Output error, app_id: %s", app_id)
+            # Output moderation is intentionally fail-open: a provider outage must not
+            # discard the user's answer. Say so, so the log does not read like a crash.
+            logger.exception(
+                "Output moderation failed; allowing the response (fail-open), app_id: %s",
+                app_id,
+            )
 
         return None
