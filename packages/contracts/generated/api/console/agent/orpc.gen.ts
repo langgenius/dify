@@ -169,6 +169,7 @@ import {
   zPostAgentByAgentIdAudioToTextBody,
   zPostAgentByAgentIdAudioToTextPath,
   zPostAgentByAgentIdAudioToTextResponse,
+  zPostAgentByAgentIdBuildChatFinalizeBody,
   zPostAgentByAgentIdBuildChatFinalizePath,
   zPostAgentByAgentIdBuildChatFinalizeResponse,
   zPostAgentByAgentIdBuildDraftApplyPath,
@@ -391,7 +392,12 @@ export const post4 = oc
     path: '/agent/{agent_id}/build-chat/finalize',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostAgentByAgentIdBuildChatFinalizePath }))
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdBuildChatFinalizeBody,
+      params: zPostAgentByAgentIdBuildChatFinalizePath,
+    }),
+  )
   .output(zPostAgentByAgentIdBuildChatFinalizeResponse)
   .errors({
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },

@@ -1,10 +1,13 @@
 import type { ReactElement } from 'react'
 import type { AgentChatRuntimeProps } from '../chat-runtime'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
+import { createModelCatalogFixture, seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderConsole } from '@/test/console/render'
 import { createAgentFixture } from '@/test/fixtures/agent'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentBuildChat } from '../build-chat'
 import { AgentPreviewChat } from '../preview-chat'
 
@@ -35,9 +38,15 @@ function render(ui: ReactElement) {
     }),
     createAgentFixture({ name: 'Research Agent' }),
   )
+  // Build chat renders the real Build model selector above the mocked runtime.
+  seedModelProviderQueries(queryClient, [createModelCatalogFixture()])
+  const { wrapper: QueryProvider } = createConsoleQueryWrapper({ queryClient })
+  const { wrapper: UrlState } = createNuqsTestWrapper()
   return renderConsole(ui, {
     wrapper: ({ children }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <UrlState>
+        <QueryProvider>{children}</QueryProvider>
+      </UrlState>
     ),
   })
 }

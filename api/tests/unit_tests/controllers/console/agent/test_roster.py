@@ -52,7 +52,12 @@ from controllers.console.agent.roster import (
     AgentStatisticsSummaryApi,
 )
 from controllers.console.app import completion as completion_controller
-from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
+from controllers.console.app.completion import (
+    AgentBuildChatFinalizeApi,
+    AgentBuildChatFinalizePayload,
+    AgentChatMessageApi,
+    AgentChatMessageStopApi,
+)
 from controllers.console.app.error import CompletionRequestError
 from enums import CloudPlan, DeploymentEdition
 from models.account import Account, TenantAccountRole
@@ -1736,7 +1741,12 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
     monkeypatch.setattr(completion_controller, "_create_build_chat_finalization_message", create_finalization_message)
     with app.test_request_context():
         assert unwrap(AgentBuildChatFinalizeApi.post)(
-            AgentBuildChatFinalizeApi(), unbound_session, "tenant-1", _account(account_id=account_id), agent_id
+            AgentBuildChatFinalizeApi(),
+            AgentBuildChatFinalizePayload(),
+            unbound_session,
+            "tenant-1",
+            _account(account_id=account_id),
+            agent_id,
         ) == {"result": "generated"}
     assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
     finalize_call = cast(dict[str, object], captured["finalize"])
@@ -1745,6 +1755,7 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
     assert finalize_call["current_tenant_id"] == "tenant-1"
     assert finalize_call["agent_id"] == agent_id
     assert cast(Account, finalize_call["current_user"]).id == account_id
+    assert finalize_call["build_model"] is None
 
 
 def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
@@ -1774,6 +1785,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
             app_model=app_model,
             agent_id="agent-1",
             session=unbound_session,
+            build_model=None,
         )
     assert result == ({"result": "success"}, 200)
     resolve_call = cast(dict[str, object], captured["resolve_debug_conversation"])

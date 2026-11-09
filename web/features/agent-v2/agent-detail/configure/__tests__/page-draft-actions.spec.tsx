@@ -33,7 +33,10 @@ describe('Build draft actions', () => {
     expect(promptEditor()).toHaveTextContent('Built instructions')
     expect(applyButton()).toHaveAttribute('aria-disabled', 'true')
     expect(api.success).not.toHaveBeenCalled()
-    expect(api.finalize).toHaveBeenCalledExactlyOnceWith({ params: { agent_id: 'agent-1' } })
+    expect(api.finalize).toHaveBeenCalledExactlyOnceWith({
+      params: { agent_id: 'agent-1' },
+      body: {},
+    })
     expect(api.apply).toHaveBeenCalledExactlyOnceWith({ params: { agent_id: 'agent-1' } })
     expect(api.finalize.mock.invocationCallOrder[0]).toBeLessThan(
       api.apply.mock.invocationCallOrder[0]!,
