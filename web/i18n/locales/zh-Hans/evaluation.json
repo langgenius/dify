@@ -138,6 +138,7 @@
   "metrics.nodesAll": "全部节点",
   "metrics.nodesLabel": "节点范围",
   "metrics.nodesSelected": "已选节点",
+  "metrics.nodesSelectedCount": "{{selected}} / {{total}} 个节点",
   "metrics.remove": "删除指标",
   "metrics.searchNodeOrMetrics": "搜索节点或指标",
   "metrics.searchPlaceholder": "搜索指标",
