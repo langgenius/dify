@@ -76,6 +76,7 @@
   "history.actions.retry": "重试任务",
   "history.cancelFailed": "取消评测任务失败。",
   "history.cancelSuccess": "评测任务已取消。",
+  "history.columns.actions": "操作",
   "history.columns.creator": "创建人",
   "history.columns.status": "状态",
   "history.columns.time": "时间",
