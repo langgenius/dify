@@ -122,8 +122,12 @@ describe('useDifyBuilderSessionController trace capture', () => {
 
     expect(result.current.getTrace().entries).toMatchObject([
       { dir: 'out', kind: 'session_restore', payload: { session_id: processing.session_id } },
-      { dir: 'in', kind: 'session_snapshot', version: 2, payload: processing },
-      { dir: 'out', kind: 'session_reconnect', payload: { session_id: processing.session_id } },
+      {
+        dir: 'in',
+        kind: 'session_ready',
+        version: 2,
+        payload: { ...processing, command_pending: true },
+      },
     ])
 
     await act(async () => {
@@ -171,7 +175,11 @@ describe('useDifyBuilderSessionController trace capture', () => {
     })
 
     const { entries } = result.current.getTrace()
-    expect(entries).toHaveLength(2)
+    expect(entries.map((entry) => entry.kind)).toEqual([
+      'session_start',
+      'session_ready',
+      'command_ack',
+    ])
     expect(entries[0]).toMatchObject({ dir: 'out', kind: 'session_start', seq: 1 })
     expect(entries[0]?.payload).toMatchObject({ goal_text: 'second goal' })
     expect(entries.some((entry) => JSON.stringify(entry.payload).includes('first goal'))).toBe(

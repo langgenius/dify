@@ -429,6 +429,7 @@ class DifyBuilderSessionStateResponse(ResponseModel):
     version: int
     canvas_read_only: bool
     run_status: RunStatus
+    command_pending: bool = False
     interrupted: bool
     conversation_last_seq: int
     phase: Phase
@@ -455,6 +456,17 @@ class DifyBuilderSessionStateResponse(ResponseModel):
 
 class DifyBuilderSessionViewResponse(DifyBuilderSessionStateResponse):
     last_command_id: str = ""
+
+
+class DifyBuilderCreatedSessionResponse(ResponseModel):
+    session: DifyBuilderSessionViewResponse
+    requires_start: bool
+
+
+class DifyBuilderCommandSubmissionResponse(ResponseModel):
+    command_id: str
+    pending: bool
+    session: DifyBuilderSessionViewResponse | None = None
 
 
 class DifyBuilderFixIntentResponse(ResponseModel):
@@ -631,6 +643,16 @@ class DifyBuilderCommandFinishedEventResponse(ResponseModel):
     data: DifyBuilderCommandFinishedEventData
 
 
+class DifyBuilderSessionReadyEventResponse(ResponseModel):
+    event: Literal["session_ready"]
+    data: DifyBuilderSessionViewResponse
+
+
+class DifyBuilderSessionStateEventResponse(ResponseModel):
+    event: Literal["session_state"]
+    data: DifyBuilderSessionViewResponse
+
+
 class DifyBuilderErrorEventData(ResponseModel):
     session_id: str | None = None
     command_id: str | None = None
@@ -668,6 +690,8 @@ class DifyBuilderStreamEventResponse(
             | DifyBuilderProgressEventResponse
             | DifyBuilderProgressSnapshotEventResponse
             | DifyBuilderCommandFinishedEventResponse
+            | DifyBuilderSessionReadyEventResponse
+            | DifyBuilderSessionStateEventResponse
             | DifyBuilderErrorEventResponse
             | DifyBuilderNativeExecutionEventResponse,
             Field(discriminator="event"),

@@ -23,6 +23,7 @@ import {
   createSessionView,
   stateEvent,
   streamOf,
+  useScriptedSessionTransport,
 } from '../session/__tests__/fixtures'
 import { difyBuilderActiveSessionIdAtom, difyBuilderSessionViewAtom } from '../session/state'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
@@ -64,6 +65,7 @@ const Harness = ({
 }: {
   repairRefresh: () => Promise<WorkflowDraftRefreshResult>
 }) => {
+  useScriptedSessionTransport()
   const store = useStore()
   const canvas = useStoreApi()
   const events = useDifyBuilderRunEvents('app-1')

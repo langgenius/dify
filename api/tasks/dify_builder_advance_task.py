@@ -71,7 +71,7 @@ from services.dify_builder.errors import HashMismatchError
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
-from services.dify_builder.service import DifyBuilderService
+from services.dify_builder.service import DifyBuilderService, _phase_for
 from services.dify_builder.session_lock import active_advance_time_limit
 from services.dify_builder.task_controls import ExecutionFence, execution_scope, generation, require_active
 from services.dify_builder.test_actions import BuilderTestActions
@@ -262,6 +262,19 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         # The per-session model choice lives on the context (stable for the session).
         # Read the head so the real agent is constructed with the user's chosen model.
         loaded_session, _fc = repo.get_session(session_id)
+        try:
+            progress_bus.publish(
+                session_id,
+                {
+                    "kind": "command_started",
+                    "session_id": session_id,
+                    "command_id": action.command_id,
+                    "version": loaded_session.version,
+                    "phase": _phase_for(loaded_session.current_state),
+                },
+            )
+        except Exception:
+            logger.warning("Builder command start notification unavailable for session %s", session_id)
         from services.dify_builder.application.cognition_policy import cognition_admission_required
 
         if not confirmed and cognition_admission_required(action.kind):

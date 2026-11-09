@@ -7500,7 +7500,7 @@ Delete an API key for a dataset
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dify Builder event stream | **text/event-stream**: [DifyBuilderStreamEventResponse](#difybuilderstreameventresponse)<br> |
+| 200 | Dify Builder session created | **application/json**: [DifyBuilderCreatedSessionResponse](#difybuildercreatedsessionresponse)<br> |
 | 400 | Invalid request | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7556,7 +7556,7 @@ Delete an API key for a dataset
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dify Builder event stream | **text/event-stream**: [DifyBuilderStreamEventResponse](#difybuilderstreameventresponse)<br> |
+| 200 | Dify Builder action submitted | **application/json**: [DifyBuilderCommandSubmissionResponse](#difybuildercommandsubmissionresponse)<br> |
 | 400 | Invalid request | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Session not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Session conflict | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
@@ -7660,7 +7660,7 @@ Delete an API key for a dataset
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dify Builder event stream | **text/event-stream**: [DifyBuilderStreamEventResponse](#difybuilderstreameventresponse)<br> |
+| 200 | Dify Builder message submitted | **application/json**: [DifyBuilderCommandSubmissionResponse](#difybuildercommandsubmissionresponse)<br> |
 | 400 | Invalid request | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Session not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Session conflict | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
@@ -7945,15 +7945,13 @@ Compatibility endpoint. Builder clients should use the existing /actions and ses
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| Last-Event-ID | header | Last observed native execution cursor; reconnect never repeats execution | No | string |
-| native_tests | query | Observe durable native execution changes until settlement, with reconnect cursors | No | string, <br>**Available values:** "builder-native-test-v1" |
 | session_id | path |  | Yes | string |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dify Builder reconnect event stream | **text/event-stream**: [DifyBuilderStreamEventResponse](#difybuilderstreameventresponse)<br> |
+| 200 | Dify Builder session event stream | **text/event-stream**: [DifyBuilderStreamEventResponse](#difybuilderstreameventresponse)<br> |
 | 404 | Session not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -25942,6 +25940,7 @@ The same safe availability projection after App-scoped admission.
 | attachments | [ [DifyBuilderMaterialReceiptResponse](#difybuildermaterialreceiptresponse) ] |  | No |
 | canvas_read_only | boolean |  | Yes |
 | command_id | string |  | Yes |
+| command_pending | boolean |  | No |
 | conversation_cleared | boolean |  | No |
 | conversation_last_seq | integer |  | Yes |
 | decision | [Decision](#decision) |  | No |
@@ -25985,6 +25984,14 @@ The same safe availability projection after App-scoped admission.
 | ---- | ---- | ----------- | -------- |
 | data | [DifyBuilderCommandStartedEventData](#difybuildercommandstartedeventdata) |  | Yes |
 | event | string |  | Yes |
+
+#### DifyBuilderCommandSubmissionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| command_id | string |  | Yes |
+| pending | boolean |  | Yes |
+| session | [DifyBuilderSessionViewResponse](#difybuildersessionviewresponse) |  | No |
 
 #### DifyBuilderConfirmRealCallPayload
 
@@ -26113,6 +26120,13 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | DifyBuilderCreateSessionPayload | [DifyBuilderCreateBuildSessionPayload](#difybuildercreatebuildsessionpayload)<br>[DifyBuilderCreateEditSessionPayload](#difybuildercreateeditsessionpayload)<br>[DifyBuilderCreateFixSessionPayload](#difybuildercreatefixsessionpayload)<br>[DifyBuilderCreateChecklistFixSessionPayload](#difybuildercreatechecklistfixsessionpayload) | Create a Build, Edit, failed-run Fix, or checklist Fix session. |  |
+
+#### DifyBuilderCreatedSessionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| requires_start | boolean |  | Yes |
+| session | [DifyBuilderSessionViewResponse](#difybuildersessionviewresponse) |  | Yes |
 
 #### DifyBuilderDecisionConversationItemResponse
 
@@ -26553,6 +26567,20 @@ Localized display only; submitted values remain in action.payload.
 | payload | [RunContextCard](#runcontextcard) |  | Yes |
 | seq | integer |  | Yes |
 
+#### DifyBuilderSessionReadyEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderSessionViewResponse](#difybuildersessionviewresponse) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderSessionStateEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderSessionViewResponse](#difybuildersessionviewresponse) |  | Yes |
+| event | string |  | Yes |
+
 #### DifyBuilderSessionViewResponse
 
 | Name | Type | Description | Required |
@@ -26562,6 +26590,7 @@ Localized display only; submitted values remain in action.payload.
 | app_revision | [DifyBuilderAppRevisionResponse](#difybuilderapprevisionresponse) |  | No |
 | attachments | [ [DifyBuilderMaterialReceiptResponse](#difybuildermaterialreceiptresponse) ] |  | No |
 | canvas_read_only | boolean |  | Yes |
+| command_pending | boolean |  | No |
 | conversation_cleared | boolean |  | No |
 | conversation_last_seq | integer |  | Yes |
 | decision | [Decision](#decision) |  | No |
@@ -26588,7 +26617,7 @@ One JSON object carried by an SSE ``data:`` frame.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| DifyBuilderStreamEventResponse | [DifyBuilderCommandStartedEventResponse](#difybuildercommandstartedeventresponse)<br>[DifyBuilderWorkflowEventResponse](#difybuilderworkfloweventresponse)<br>[DifyBuilderCanvasEventResponse](#difybuildercanvaseventresponse)<br>[DifyBuilderAgentMessageEventResponse](#difybuilderagentmessageeventresponse)<br>[DifyBuilderConversationItemAppendedEventResponse](#difybuilderconversationitemappendedeventresponse)<br>[DifyBuilderReasoningEventResponse](#difybuilderreasoningeventresponse)<br>[DifyBuilderProgressEventResponse](#difybuilderprogresseventresponse)<br>[DifyBuilderProgressSnapshotEventResponse](#difybuilderprogresssnapshoteventresponse)<br>[DifyBuilderCommandFinishedEventResponse](#difybuildercommandfinishedeventresponse)<br>[DifyBuilderErrorEventResponse](#difybuildererroreventresponse)<br>[DifyBuilderNativeExecutionEventResponse](#difybuildernativeexecutioneventresponse) | One JSON object carried by an SSE ``data:`` frame. |  |
+| DifyBuilderStreamEventResponse | [DifyBuilderCommandStartedEventResponse](#difybuildercommandstartedeventresponse)<br>[DifyBuilderWorkflowEventResponse](#difybuilderworkfloweventresponse)<br>[DifyBuilderCanvasEventResponse](#difybuildercanvaseventresponse)<br>[DifyBuilderAgentMessageEventResponse](#difybuilderagentmessageeventresponse)<br>[DifyBuilderConversationItemAppendedEventResponse](#difybuilderconversationitemappendedeventresponse)<br>[DifyBuilderReasoningEventResponse](#difybuilderreasoningeventresponse)<br>[DifyBuilderProgressEventResponse](#difybuilderprogresseventresponse)<br>[DifyBuilderProgressSnapshotEventResponse](#difybuilderprogresssnapshoteventresponse)<br>[DifyBuilderCommandFinishedEventResponse](#difybuildercommandfinishedeventresponse)<br>[DifyBuilderSessionReadyEventResponse](#difybuildersessionreadyeventresponse)<br>[DifyBuilderSessionStateEventResponse](#difybuildersessionstateeventresponse)<br>[DifyBuilderErrorEventResponse](#difybuildererroreventresponse)<br>[DifyBuilderNativeExecutionEventResponse](#difybuildernativeexecutioneventresponse) | One JSON object carried by an SSE ``data:`` frame. |  |
 
 #### DifyBuilderSubmitActionPayload
 

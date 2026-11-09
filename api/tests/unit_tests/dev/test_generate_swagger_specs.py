@@ -539,29 +539,21 @@ def test_generate_specs_document_dify_builder_json_reads_and_typed_sse_operation
     console_path = next(path for path in generated_specs if path.name == "console-openapi.json")
     payload = json.loads(console_path.read_text(encoding="utf-8"))
     paths = payload["paths"]
-    sse_operations = {
-        ("post", "/dify-builder/sessions"),
-        ("post", "/dify-builder/sessions/{session_id}/actions"),
-        ("post", "/dify-builder/sessions/{session_id}/messages"),
-        ("get", "/dify-builder/sessions/{session_id}/stream"),
+    operation = paths["/dify-builder/sessions/{session_id}/stream"]["get"]
+    assert operation["responses"]["200"]["content"] == {
+        "text/event-stream": {"schema": {"$ref": "#/components/schemas/DifyBuilderStreamEventResponse"}}
     }
-
-    for method, path in sse_operations:
-        operation = paths[path][method]
-        assert operation["responses"]["200"]["content"] == {
-            "text/event-stream": {"schema": {"$ref": "#/components/schemas/DifyBuilderStreamEventResponse"}}
-        }
-        assert operation["x-dify-typed-event-stream-response"] == "DifyBuilderStreamEventResponse"
-        for status, response in operation["responses"].items():
-            if status != "200":
-                assert set(response["content"]) == {"application/json"}
+    assert operation["x-dify-typed-event-stream-response"] == "DifyBuilderStreamEventResponse"
 
     json_operations = {
-        "/dify-builder/sessions/{session_id}": "DifyBuilderSessionViewResponse",
-        "/dify-builder/sessions/{session_id}/conversation": "DifyBuilderConversationPageResponse",
+        ("post", "/dify-builder/sessions"): "DifyBuilderCreatedSessionResponse",
+        ("post", "/dify-builder/sessions/{session_id}/actions"): "DifyBuilderCommandSubmissionResponse",
+        ("post", "/dify-builder/sessions/{session_id}/messages"): "DifyBuilderCommandSubmissionResponse",
+        ("get", "/dify-builder/sessions/{session_id}"): "DifyBuilderSessionViewResponse",
+        ("get", "/dify-builder/sessions/{session_id}/conversation"): "DifyBuilderConversationPageResponse",
     }
-    for path, response_schema in json_operations.items():
-        operation = paths[path]["get"]
+    for (method, path), response_schema in json_operations.items():
+        operation = paths[path][method]
         assert operation["responses"]["200"]["content"] == {
             "application/json": {"schema": {"$ref": f"#/components/schemas/{response_schema}"}}
         }
@@ -572,7 +564,7 @@ def test_generate_specs_document_dify_builder_json_reads_and_typed_sse_operation
     assert {"active_interaction", "conversation_last_seq"} <= session_schema["properties"].keys()
     stream_schema = payload["components"]["schemas"]["DifyBuilderStreamEventResponse"]
     stream_events = stream_schema["discriminator"]["mapping"]
-    assert "command_started" in stream_events
+    assert {"session_ready", "session_state", "command_started"} <= stream_events.keys()
     assert stream_events["progress_snapshot"] == "#/components/schemas/DifyBuilderProgressSnapshotEventResponse"
     assert "snapshot" not in stream_events
     progress_snapshot_schema = payload["components"]["schemas"]["DifyBuilderProgressSnapshotEventData"]

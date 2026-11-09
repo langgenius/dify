@@ -20,40 +20,10 @@ export type DifyBuilderCreateSessionPayload =
   | DifyBuilderCreateFixSessionPayload
   | DifyBuilderCreateChecklistFixSessionPayload
 
-export type DifyBuilderStreamEventResponse =
-  | ({
-      event: 'command_started'
-    } & DifyBuilderCommandStartedEventResponse)
-  | ({
-      event: 'workflow'
-    } & DifyBuilderWorkflowEventResponse)
-  | ({
-      event: 'canvas'
-    } & DifyBuilderCanvasEventResponse)
-  | ({
-      event: 'agent_message'
-    } & DifyBuilderAgentMessageEventResponse)
-  | ({
-      event: 'conversation_item_appended'
-    } & DifyBuilderConversationItemAppendedEventResponse)
-  | ({
-      event: 'reasoning'
-    } & DifyBuilderReasoningEventResponse)
-  | ({
-      event: 'progress'
-    } & DifyBuilderProgressEventResponse)
-  | ({
-      event: 'progress_snapshot'
-    } & DifyBuilderProgressSnapshotEventResponse)
-  | ({
-      event: 'command_finished'
-    } & DifyBuilderCommandFinishedEventResponse)
-  | ({
-      event: 'error'
-    } & DifyBuilderErrorEventResponse)
-  | ({
-      event: 'native_execution'
-    } & DifyBuilderNativeExecutionEventResponse)
+export type DifyBuilderCreatedSessionResponse = {
+  requires_start: boolean
+  session: DifyBuilderSessionViewResponse
+}
 
 export type DifyBuilderErrorResponse = {
   code: BuilderErrorCode
@@ -68,6 +38,7 @@ export type DifyBuilderSessionViewResponse = {
   app_revision?: DifyBuilderAppRevisionResponse | null
   attachments?: Array<DifyBuilderMaterialReceiptResponse>
   canvas_read_only: boolean
+  command_pending?: boolean
   conversation_cleared?: boolean
   conversation_last_seq: number
   decision?: Decision | null
@@ -117,6 +88,12 @@ export type DifyBuilderSubmitActionPayload = {
     [key: string]: unknown
   }
   receipt_snapshot?: DifyBuilderReceiptSnapshot | null
+}
+
+export type DifyBuilderCommandSubmissionResponse = {
+  command_id: string
+  pending: boolean
+  session?: DifyBuilderSessionViewResponse | null
 }
 
 export type DifyBuilderClearConversationPayload = {
@@ -337,6 +314,47 @@ export type DifyBuilderTaskControlPayload = {
   client_action_id: string
 }
 
+export type DifyBuilderStreamEventResponse =
+  | ({
+      event: 'command_started'
+    } & DifyBuilderCommandStartedEventResponse)
+  | ({
+      event: 'workflow'
+    } & DifyBuilderWorkflowEventResponse)
+  | ({
+      event: 'canvas'
+    } & DifyBuilderCanvasEventResponse)
+  | ({
+      event: 'agent_message'
+    } & DifyBuilderAgentMessageEventResponse)
+  | ({
+      event: 'conversation_item_appended'
+    } & DifyBuilderConversationItemAppendedEventResponse)
+  | ({
+      event: 'reasoning'
+    } & DifyBuilderReasoningEventResponse)
+  | ({
+      event: 'progress'
+    } & DifyBuilderProgressEventResponse)
+  | ({
+      event: 'progress_snapshot'
+    } & DifyBuilderProgressSnapshotEventResponse)
+  | ({
+      event: 'command_finished'
+    } & DifyBuilderCommandFinishedEventResponse)
+  | ({
+      event: 'session_ready'
+    } & DifyBuilderSessionReadyEventResponse)
+  | ({
+      event: 'session_state'
+    } & DifyBuilderSessionStateEventResponse)
+  | ({
+      event: 'error'
+    } & DifyBuilderErrorEventResponse)
+  | ({
+      event: 'native_execution'
+    } & DifyBuilderNativeExecutionEventResponse)
+
 export type DifyBuilderCreateBuildSessionPayload = {
   app_id: string
   attachments?: Array<DifyBuilderAttachmentPayload>
@@ -373,70 +391,6 @@ export type DifyBuilderCreateChecklistFixSessionPayload = {
   model_config?: SessionModel | null
   scenario: 'fix'
   session_id?: string | null
-}
-
-export type DifyBuilderCommandStartedEventResponse = {
-  data: DifyBuilderCommandStartedEventData
-  event: 'command_started'
-}
-
-export type DifyBuilderWorkflowEventResponse = {
-  data: DifyBuilderWorkflowEventData
-  event: 'workflow'
-}
-
-export type DifyBuilderCanvasEventResponse = {
-  data:
-    | ({
-        event: 'graph_changed'
-      } & DifyBuilderGraphChangedEventData)
-    | ({
-        event: 'edit_targets_changed'
-      } & DifyBuilderEditTargetsChangedEventData)
-    | ({
-        event: 'publish_workflow'
-      } & DifyBuilderPublishedEventData)
-  event: 'canvas'
-}
-
-export type DifyBuilderAgentMessageEventResponse = {
-  data: DifyBuilderAgentMessageEventData
-  event: 'agent_message'
-}
-
-export type DifyBuilderConversationItemAppendedEventResponse = {
-  data: DifyBuilderConversationItemAppendedEventData
-  event: 'conversation_item_appended'
-}
-
-export type DifyBuilderReasoningEventResponse = {
-  data: DifyBuilderReasoningEventData
-  event: 'reasoning'
-}
-
-export type DifyBuilderProgressEventResponse = {
-  data: DifyBuilderProgressEventData
-  event: 'progress'
-}
-
-export type DifyBuilderProgressSnapshotEventResponse = {
-  data: DifyBuilderProgressSnapshotEventData
-  event: 'progress_snapshot'
-}
-
-export type DifyBuilderCommandFinishedEventResponse = {
-  data: DifyBuilderCommandFinishedEventData
-  event: 'command_finished'
-}
-
-export type DifyBuilderErrorEventResponse = {
-  data: DifyBuilderErrorEventData
-  event: 'error'
-}
-
-export type DifyBuilderNativeExecutionEventResponse = {
-  data: DifyBuilderNativeExecutionEventData
-  event: 'native_execution'
 }
 
 export type BuilderErrorCode =
@@ -729,238 +683,78 @@ export type DifyBuilderConsoleForbiddenResponse = {
   status: 403
 }
 
-export type DifyBuilderCommandStartedEventData = {
-  command_id: string
-  phase: Phase
-  run_status: RunStatus
-  session_id: string
-  version: number
+export type DifyBuilderCommandStartedEventResponse = {
+  data: DifyBuilderCommandStartedEventData
+  event: 'command_started'
 }
 
-export type DifyBuilderWorkflowEventData = {
-  at_version: number
-  operation_id: string
-  payload:
-    | ({
-        event: 'workflow_started'
-      } & WorkflowStreamEventLiteralWorkflowStartedData)
-    | ({
-        event: 'workflow_finished'
-      } & WorkflowStreamEventLiteralWorkflowFinishedData)
-    | ({
-        event: 'workflow_paused'
-      } & WorkflowStreamEventLiteralWorkflowPausedData)
-    | ({
-        event: 'node_started'
-      } & WorkflowStreamEventLiteralNodeStartedData)
-    | ({
-        event: 'node_finished'
-      } & WorkflowStreamEventLiteralNodeFinishedData)
-    | ({
-        event: 'node_retry'
-      } & WorkflowStreamEventLiteralNodeRetryData)
-    | ({
-        event: 'iteration_started'
-      } & WorkflowStreamEventLiteralIterationStartedData)
-    | ({
-        event: 'iteration_next'
-      } & WorkflowStreamEventLiteralIterationNextData)
-    | ({
-        event: 'iteration_completed'
-      } & WorkflowStreamEventLiteralIterationCompletedData)
-    | ({
-        event: 'loop_started'
-      } & WorkflowStreamEventLiteralLoopStartedData)
-    | ({
-        event: 'loop_next'
-      } & WorkflowStreamEventLiteralLoopNextData)
-    | ({
-        event: 'loop_completed'
-      } & WorkflowStreamEventLiteralLoopCompletedData)
-    | ({
-        event: 'text_chunk'
-      } & WorkflowStreamDataEventLiteralTextChunkData)
-    | ({
-        event: 'text_replace'
-      } & WorkflowStreamDataEventLiteralTextReplaceData)
-    | ({
-        event: 'reasoning_chunk'
-      } & WorkflowStreamDataEventLiteralReasoningChunkData)
-    | ({
-        event: 'agent_log'
-      } & WorkflowStreamDataEventLiteralAgentLogData)
-    | ({
-        event: 'human_input_required'
-      } & WorkflowStreamEventLiteralHumanInputRequiredData)
-    | ({
-        event: 'human_input_form_filled'
-      } & WorkflowStreamEventLiteralHumanInputFormFilledData)
-    | ({
-        event: 'human_input_form_timeout'
-      } & WorkflowStreamEventLiteralHumanInputFormTimeoutData)
-    | ({
-        event: 'message'
-      } & WorkflowStreamMessage)
-    | ({
-        event: 'message_replace'
-      } & WorkflowStreamMessageReplace)
-    | ({
-        event: 'error'
-      } & WorkflowStreamError)
-  revision: number
-  session_id: string
+export type DifyBuilderWorkflowEventResponse = {
+  data: DifyBuilderWorkflowEventData
+  event: 'workflow'
 }
 
-export type DifyBuilderGraphChangedEventData = {
-  at_version: number
-  cause: 'apply' | 'restore'
-  event: 'graph_changed'
-  operation_id: string
-  revision: number
-  session_id: string
+export type DifyBuilderCanvasEventResponse = {
+  data:
+    | ({
+        event: 'graph_changed'
+      } & DifyBuilderGraphChangedEventData)
+    | ({
+        event: 'edit_targets_changed'
+      } & DifyBuilderEditTargetsChangedEventData)
+    | ({
+        event: 'publish_workflow'
+      } & DifyBuilderPublishedEventData)
+  event: 'canvas'
 }
 
-export type DifyBuilderEditTargetsChangedEventData = {
-  at_version: number
-  event: 'edit_targets_changed'
-  node_ids: Array<string>
-  operation_id: string
-  revision: number
-  session_id: string
+export type DifyBuilderAgentMessageEventResponse = {
+  data: DifyBuilderAgentMessageEventData
+  event: 'agent_message'
 }
 
-export type DifyBuilderPublishedEventData = {
-  at_version: number
-  event: 'publish_workflow'
-  operation_id: string
-  revision: number
-  session_id: string
+export type DifyBuilderConversationItemAppendedEventResponse = {
+  data: DifyBuilderConversationItemAppendedEventData
+  event: 'conversation_item_appended'
 }
 
-export type DifyBuilderAgentMessageEventData = {
-  at_version: number
-  cards?: Array<string>
-  command_id: string
-  delta: string
-  done: boolean
-  execution?: DifyBuilderExecutionProgressResponse | null
-  operation_id: string
-  revision: number
-  seq: number
-  session_id: string
-  text_bytes: number
-  turn_id: string
+export type DifyBuilderReasoningEventResponse = {
+  data: DifyBuilderReasoningEventData
+  event: 'reasoning'
 }
 
-export type DifyBuilderConversationItemAppendedEventData = {
-  command_id: string
-  item:
-    | ({
-        kind: 'user'
-      } & DifyBuilderUserConversationItemResponse)
-    | ({
-        kind: 'decision'
-      } & DifyBuilderDecisionConversationItemResponse)
-    | ({
-        kind: 'interaction_response'
-      } & DifyBuilderInteractionResponseConversationItemResponse)
-    | ({
-        kind: 'notice'
-      } & DifyBuilderNoticeConversationItemResponse)
-    | ({
-        kind: 'run_context'
-      } & DifyBuilderRunContextConversationItemResponse)
-    | ({
-        kind: 'preflight_context'
-      } & DifyBuilderPreflightContextConversationItemResponse)
-    | ({
-        kind: 'assistant_turn'
-      } & DifyBuilderAssistantTurnConversationItemResponse)
-    | ({
-        kind: 'plan'
-      } & DifyBuilderPlanConversationItemResponse)
-    | ({
-        kind: 'form'
-      } & DifyBuilderFormConversationItemResponse)
-    | ({
-        kind: 'resource_select'
-      } & DifyBuilderResourceSelectConversationItemResponse)
-    | ({
-        kind: 'test_result'
-      } & DifyBuilderTestResultConversationItemResponse)
-  session_id: string
+export type DifyBuilderProgressEventResponse = {
+  data: DifyBuilderProgressEventData
+  event: 'progress'
 }
 
-export type DifyBuilderReasoningEventData = {
-  at_version: number
-  delta: string
-  operation_id: string
-  revision: number
-  session_id: string
+export type DifyBuilderProgressSnapshotEventResponse = {
+  data: DifyBuilderProgressSnapshotEventData
+  event: 'progress_snapshot'
 }
 
-export type DifyBuilderProgressEventData = {
-  activity: DifyBuilderExecutionActivityResponse | null
-  at_version: number
-  operation_id: string
-  reply_language?: string
-  revision: number
-  session_id: string
-  status: 'completed' | 'error' | 'running' | 'stopped'
+export type DifyBuilderCommandFinishedEventResponse = {
+  data: DifyBuilderCommandFinishedEventData
+  event: 'command_finished'
 }
 
-export type DifyBuilderProgressSnapshotEventData = {
-  at_version: number
-  execution: DifyBuilderExecutionProgressResponse
-  operation_id: string
-  reply_language: string
-  revision: number
-  session_id: string
+export type DifyBuilderSessionReadyEventResponse = {
+  data: DifyBuilderSessionViewResponse
+  event: 'session_ready'
 }
 
-export type DifyBuilderCommandFinishedEventData = {
-  actions?: Array<DifyBuilderActionResponse>
-  active_interaction?: DifyBuilderActiveInteractionResponse | null
-  app_revision?: DifyBuilderAppRevisionResponse | null
-  attachments?: Array<DifyBuilderMaterialReceiptResponse>
-  canvas_read_only: boolean
-  command_id: string
-  conversation_cleared?: boolean
-  conversation_last_seq: number
-  decision?: Decision | null
-  diagnostics?: Array<{
-    [key: string]: unknown
-  }>
-  interrupted: boolean
-  lifecycle_settlement?: 'pending' | 'settled' | 'unknown' | null
-  model?: SessionModel | null
-  pending_fix_context?: RunContextCard | PreflightContextCard | null
-  phase: Phase
-  post_canvas_action_id?: string | null
-  recovery?: RecoveryRef | null
-  reply_language: string
-  run_status: RunStatus
-  session_id: string
-  task_id?: string
-  task_status?: 'abandoned' | 'active' | 'completed' | 'paused'
-  task_summaries?: Array<TaskSummary>
-  test_execution?: NativeTestPublicReceipt | null
-  version: number
+export type DifyBuilderSessionStateEventResponse = {
+  data: DifyBuilderSessionViewResponse
+  event: 'session_state'
 }
 
-export type DifyBuilderErrorEventData = {
-  code?: string | null
-  command_id?: string | null
-  message: string
-  reason_code?: string | null
-  recoverable?: boolean | null
-  session_id?: string | null
+export type DifyBuilderErrorEventResponse = {
+  data: DifyBuilderErrorEventData
+  event: 'error'
 }
 
-export type DifyBuilderNativeExecutionEventData = {
-  cursor: string
-  receipt: NativeTestPublicReceipt
-  session_id: string
+export type DifyBuilderNativeExecutionEventResponse = {
+  data: DifyBuilderNativeExecutionEventData
+  event: 'native_execution'
 }
 
 export type ActionKind = 'automatic' | 'destructive' | 'primary' | 'secondary'
@@ -1193,174 +987,239 @@ export type TestResultCard = {
   } | null
 }
 
-export type WorkflowStreamEventLiteralWorkflowStartedData = {
-  data: WorkflowStartStreamResponseData
-  event: 'workflow_started'
-  task_id: string
-  workflow_run_id: string
+export type DifyBuilderCommandStartedEventData = {
+  command_id: string
+  phase: Phase
+  run_status: RunStatus
+  session_id: string
+  version: number
 }
 
-export type WorkflowStreamEventLiteralWorkflowFinishedData = {
-  data: WorkflowFinishStreamResponseData
-  event: 'workflow_finished'
-  task_id: string
-  workflow_run_id: string
+export type DifyBuilderWorkflowEventData = {
+  at_version: number
+  operation_id: string
+  payload:
+    | ({
+        event: 'workflow_started'
+      } & WorkflowStreamEventLiteralWorkflowStartedData)
+    | ({
+        event: 'workflow_finished'
+      } & WorkflowStreamEventLiteralWorkflowFinishedData)
+    | ({
+        event: 'workflow_paused'
+      } & WorkflowStreamEventLiteralWorkflowPausedData)
+    | ({
+        event: 'node_started'
+      } & WorkflowStreamEventLiteralNodeStartedData)
+    | ({
+        event: 'node_finished'
+      } & WorkflowStreamEventLiteralNodeFinishedData)
+    | ({
+        event: 'node_retry'
+      } & WorkflowStreamEventLiteralNodeRetryData)
+    | ({
+        event: 'iteration_started'
+      } & WorkflowStreamEventLiteralIterationStartedData)
+    | ({
+        event: 'iteration_next'
+      } & WorkflowStreamEventLiteralIterationNextData)
+    | ({
+        event: 'iteration_completed'
+      } & WorkflowStreamEventLiteralIterationCompletedData)
+    | ({
+        event: 'loop_started'
+      } & WorkflowStreamEventLiteralLoopStartedData)
+    | ({
+        event: 'loop_next'
+      } & WorkflowStreamEventLiteralLoopNextData)
+    | ({
+        event: 'loop_completed'
+      } & WorkflowStreamEventLiteralLoopCompletedData)
+    | ({
+        event: 'text_chunk'
+      } & WorkflowStreamDataEventLiteralTextChunkData)
+    | ({
+        event: 'text_replace'
+      } & WorkflowStreamDataEventLiteralTextReplaceData)
+    | ({
+        event: 'reasoning_chunk'
+      } & WorkflowStreamDataEventLiteralReasoningChunkData)
+    | ({
+        event: 'agent_log'
+      } & WorkflowStreamDataEventLiteralAgentLogData)
+    | ({
+        event: 'human_input_required'
+      } & WorkflowStreamEventLiteralHumanInputRequiredData)
+    | ({
+        event: 'human_input_form_filled'
+      } & WorkflowStreamEventLiteralHumanInputFormFilledData)
+    | ({
+        event: 'human_input_form_timeout'
+      } & WorkflowStreamEventLiteralHumanInputFormTimeoutData)
+    | ({
+        event: 'message'
+      } & WorkflowStreamMessage)
+    | ({
+        event: 'message_replace'
+      } & WorkflowStreamMessageReplace)
+    | ({
+        event: 'error'
+      } & WorkflowStreamError)
+  revision: number
+  session_id: string
 }
 
-export type WorkflowStreamEventLiteralWorkflowPausedData = {
-  data: WorkflowPauseStreamResponseData
-  event: 'workflow_paused'
-  task_id: string
-  workflow_run_id: string
+export type DifyBuilderGraphChangedEventData = {
+  at_version: number
+  cause: 'apply' | 'restore'
+  event: 'graph_changed'
+  operation_id: string
+  revision: number
+  session_id: string
 }
 
-export type WorkflowStreamEventLiteralNodeStartedData = {
-  data: NodeStartStreamResponseData
-  event: 'node_started'
-  task_id: string
-  workflow_run_id: string
+export type DifyBuilderEditTargetsChangedEventData = {
+  at_version: number
+  event: 'edit_targets_changed'
+  node_ids: Array<string>
+  operation_id: string
+  revision: number
+  session_id: string
 }
 
-export type WorkflowStreamEventLiteralNodeFinishedData = {
-  data: NodeFinishStreamResponseData
-  event: 'node_finished'
-  task_id: string
-  workflow_run_id: string
+export type DifyBuilderPublishedEventData = {
+  at_version: number
+  event: 'publish_workflow'
+  operation_id: string
+  revision: number
+  session_id: string
 }
 
-export type WorkflowStreamEventLiteralNodeRetryData = {
-  data: NodeRetryStreamResponseData
-  event: 'node_retry'
-  task_id: string
-  workflow_run_id: string
+export type DifyBuilderAgentMessageEventData = {
+  at_version: number
+  cards?: Array<string>
+  command_id: string
+  delta: string
+  done: boolean
+  execution?: DifyBuilderExecutionProgressResponse | null
+  operation_id: string
+  revision: number
+  seq: number
+  session_id: string
+  text_bytes: number
+  turn_id: string
 }
 
-export type WorkflowStreamEventLiteralIterationStartedData = {
-  data: IterationNodeStartStreamResponseData
-  event: 'iteration_started'
-  task_id: string
-  workflow_run_id: string
+export type DifyBuilderConversationItemAppendedEventData = {
+  command_id: string
+  item:
+    | ({
+        kind: 'user'
+      } & DifyBuilderUserConversationItemResponse)
+    | ({
+        kind: 'decision'
+      } & DifyBuilderDecisionConversationItemResponse)
+    | ({
+        kind: 'interaction_response'
+      } & DifyBuilderInteractionResponseConversationItemResponse)
+    | ({
+        kind: 'notice'
+      } & DifyBuilderNoticeConversationItemResponse)
+    | ({
+        kind: 'run_context'
+      } & DifyBuilderRunContextConversationItemResponse)
+    | ({
+        kind: 'preflight_context'
+      } & DifyBuilderPreflightContextConversationItemResponse)
+    | ({
+        kind: 'assistant_turn'
+      } & DifyBuilderAssistantTurnConversationItemResponse)
+    | ({
+        kind: 'plan'
+      } & DifyBuilderPlanConversationItemResponse)
+    | ({
+        kind: 'form'
+      } & DifyBuilderFormConversationItemResponse)
+    | ({
+        kind: 'resource_select'
+      } & DifyBuilderResourceSelectConversationItemResponse)
+    | ({
+        kind: 'test_result'
+      } & DifyBuilderTestResultConversationItemResponse)
+  session_id: string
 }
 
-export type WorkflowStreamEventLiteralIterationNextData = {
-  data: IterationNodeNextStreamResponseData
-  event: 'iteration_next'
-  task_id: string
-  workflow_run_id: string
+export type DifyBuilderReasoningEventData = {
+  at_version: number
+  delta: string
+  operation_id: string
+  revision: number
+  session_id: string
 }
 
-export type WorkflowStreamEventLiteralIterationCompletedData = {
-  data: IterationNodeCompletedStreamResponseData
-  event: 'iteration_completed'
-  task_id: string
-  workflow_run_id: string
-}
-
-export type WorkflowStreamEventLiteralLoopStartedData = {
-  data: LoopNodeStartStreamResponseData
-  event: 'loop_started'
-  task_id: string
-  workflow_run_id: string
-}
-
-export type WorkflowStreamEventLiteralLoopNextData = {
-  data: LoopNodeNextStreamResponseData
-  event: 'loop_next'
-  task_id: string
-  workflow_run_id: string
-}
-
-export type WorkflowStreamEventLiteralLoopCompletedData = {
-  data: LoopNodeCompletedStreamResponseData
-  event: 'loop_completed'
-  task_id: string
-  workflow_run_id: string
-}
-
-export type WorkflowStreamDataEventLiteralTextChunkData = {
-  data: TextChunkStreamResponseData
-  event: 'text_chunk'
-  task_id: string
-  workflow_run_id?: string | null
-}
-
-export type WorkflowStreamDataEventLiteralTextReplaceData = {
-  data: TextReplaceStreamResponseData
-  event: 'text_replace'
-  task_id: string
-  workflow_run_id?: string | null
-}
-
-export type WorkflowStreamDataEventLiteralReasoningChunkData = {
-  data: ReasoningChunkStreamResponseData
-  event: 'reasoning_chunk'
-  task_id: string
-  workflow_run_id?: string | null
-}
-
-export type WorkflowStreamDataEventLiteralAgentLogData = {
-  data: AgentLogStreamResponseData
-  event: 'agent_log'
-  task_id: string
-  workflow_run_id?: string | null
-}
-
-export type WorkflowStreamEventLiteralHumanInputRequiredData = {
-  data: HumanInputRequiredResponseData
-  event: 'human_input_required'
-  task_id: string
-  workflow_run_id: string
-}
-
-export type WorkflowStreamEventLiteralHumanInputFormFilledData = {
-  data: HumanInputFormFilledResponseData
-  event: 'human_input_form_filled'
-  task_id: string
-  workflow_run_id: string
-}
-
-export type WorkflowStreamEventLiteralHumanInputFormTimeoutData = {
-  data: HumanInputFormTimeoutResponseData
-  event: 'human_input_form_timeout'
-  task_id: string
-  workflow_run_id: string
-}
-
-export type WorkflowStreamMessage = {
-  answer: string
-  event: 'message'
-  from_variable_selector?: Array<string>
-  id: string
-  task_id: string
-  workflow_run_id?: string | null
-}
-
-export type WorkflowStreamMessageReplace = {
-  answer: string
-  event: 'message_replace'
-  reason: string
-  task_id: string
-  workflow_run_id?: string | null
-}
-
-export type WorkflowStreamError = {
-  code: string
-  event: 'error'
-  message: string
-  status: number
-  workflow_run_id?: string | null
-}
-
-export type DifyBuilderExecutionProgressResponse = {
-  activities?: Array<DifyBuilderExecutionActivityResponse>
+export type DifyBuilderProgressEventData = {
+  activity: DifyBuilderExecutionActivityResponse | null
+  at_version: number
+  operation_id: string
+  reply_language?: string
+  revision: number
+  session_id: string
   status: 'completed' | 'error' | 'running' | 'stopped'
 }
 
-export type DifyBuilderExecutionActivityResponse = {
-  id: string
-  label: string | BuilderCopy | BuilderTextParts
-  parent_id?: string | null
-  state: 'active' | 'done' | 'failed' | 'stopped'
+export type DifyBuilderProgressSnapshotEventData = {
+  at_version: number
+  execution: DifyBuilderExecutionProgressResponse
+  operation_id: string
+  reply_language: string
+  revision: number
+  session_id: string
+}
+
+export type DifyBuilderCommandFinishedEventData = {
+  actions?: Array<DifyBuilderActionResponse>
+  active_interaction?: DifyBuilderActiveInteractionResponse | null
+  app_revision?: DifyBuilderAppRevisionResponse | null
+  attachments?: Array<DifyBuilderMaterialReceiptResponse>
+  canvas_read_only: boolean
+  command_id: string
+  command_pending?: boolean
+  conversation_cleared?: boolean
+  conversation_last_seq: number
+  decision?: Decision | null
+  diagnostics?: Array<{
+    [key: string]: unknown
+  }>
+  interrupted: boolean
+  lifecycle_settlement?: 'pending' | 'settled' | 'unknown' | null
+  model?: SessionModel | null
+  pending_fix_context?: RunContextCard | PreflightContextCard | null
+  phase: Phase
+  post_canvas_action_id?: string | null
+  recovery?: RecoveryRef | null
+  reply_language: string
+  run_status: RunStatus
+  session_id: string
+  task_id?: string
+  task_status?: 'abandoned' | 'active' | 'completed' | 'paused'
+  task_summaries?: Array<TaskSummary>
+  test_execution?: NativeTestPublicReceipt | null
+  version: number
+}
+
+export type DifyBuilderErrorEventData = {
+  code?: string | null
+  command_id?: string | null
+  message: string
+  reason_code?: string | null
+  recoverable?: boolean | null
+  session_id?: string | null
+}
+
+export type DifyBuilderNativeExecutionEventData = {
+  cursor: string
+  receipt: NativeTestPublicReceipt
+  session_id: string
 }
 
 export type BuilderCopyId =
@@ -1684,6 +1543,184 @@ export type ResourceOption = {
   label: string
   meta: string
   readiness: string
+}
+
+export type WorkflowStreamEventLiteralWorkflowStartedData = {
+  data: WorkflowStartStreamResponseData
+  event: 'workflow_started'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralWorkflowFinishedData = {
+  data: WorkflowFinishStreamResponseData
+  event: 'workflow_finished'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralWorkflowPausedData = {
+  data: WorkflowPauseStreamResponseData
+  event: 'workflow_paused'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralNodeStartedData = {
+  data: NodeStartStreamResponseData
+  event: 'node_started'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralNodeFinishedData = {
+  data: NodeFinishStreamResponseData
+  event: 'node_finished'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralNodeRetryData = {
+  data: NodeRetryStreamResponseData
+  event: 'node_retry'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralIterationStartedData = {
+  data: IterationNodeStartStreamResponseData
+  event: 'iteration_started'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralIterationNextData = {
+  data: IterationNodeNextStreamResponseData
+  event: 'iteration_next'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralIterationCompletedData = {
+  data: IterationNodeCompletedStreamResponseData
+  event: 'iteration_completed'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralLoopStartedData = {
+  data: LoopNodeStartStreamResponseData
+  event: 'loop_started'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralLoopNextData = {
+  data: LoopNodeNextStreamResponseData
+  event: 'loop_next'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralLoopCompletedData = {
+  data: LoopNodeCompletedStreamResponseData
+  event: 'loop_completed'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamDataEventLiteralTextChunkData = {
+  data: TextChunkStreamResponseData
+  event: 'text_chunk'
+  task_id: string
+  workflow_run_id?: string | null
+}
+
+export type WorkflowStreamDataEventLiteralTextReplaceData = {
+  data: TextReplaceStreamResponseData
+  event: 'text_replace'
+  task_id: string
+  workflow_run_id?: string | null
+}
+
+export type WorkflowStreamDataEventLiteralReasoningChunkData = {
+  data: ReasoningChunkStreamResponseData
+  event: 'reasoning_chunk'
+  task_id: string
+  workflow_run_id?: string | null
+}
+
+export type WorkflowStreamDataEventLiteralAgentLogData = {
+  data: AgentLogStreamResponseData
+  event: 'agent_log'
+  task_id: string
+  workflow_run_id?: string | null
+}
+
+export type WorkflowStreamEventLiteralHumanInputRequiredData = {
+  data: HumanInputRequiredResponseData
+  event: 'human_input_required'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralHumanInputFormFilledData = {
+  data: HumanInputFormFilledResponseData
+  event: 'human_input_form_filled'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamEventLiteralHumanInputFormTimeoutData = {
+  data: HumanInputFormTimeoutResponseData
+  event: 'human_input_form_timeout'
+  task_id: string
+  workflow_run_id: string
+}
+
+export type WorkflowStreamMessage = {
+  answer: string
+  event: 'message'
+  from_variable_selector?: Array<string>
+  id: string
+  task_id: string
+  workflow_run_id?: string | null
+}
+
+export type WorkflowStreamMessageReplace = {
+  answer: string
+  event: 'message_replace'
+  reason: string
+  task_id: string
+  workflow_run_id?: string | null
+}
+
+export type WorkflowStreamError = {
+  code: string
+  event: 'error'
+  message: string
+  status: number
+  workflow_run_id?: string | null
+}
+
+export type DifyBuilderExecutionProgressResponse = {
+  activities?: Array<DifyBuilderExecutionActivityResponse>
+  status: 'completed' | 'error' | 'running' | 'stopped'
+}
+
+export type DifyBuilderExecutionActivityResponse = {
+  id: string
+  label: string | BuilderCopy | BuilderTextParts
+  parent_id?: string | null
+  state: 'active' | 'done' | 'failed' | 'stopped'
+}
+
+export type ExecutionActivity = {
+  id: string
+  kind?: 'node' | 'stage'
+  label: string | BuilderCopy | BuilderTextParts
+  parent_id?: string | null
+  state: 'active' | 'done' | 'failed' | 'stopped'
 }
 
 export type WorkflowStartStreamResponseData = {
@@ -2012,14 +2049,6 @@ export type HumanInputFormTimeoutResponseData = {
   node_title: string
 }
 
-export type ExecutionActivity = {
-  id: string
-  kind?: 'node' | 'stage'
-  label: string | BuilderCopy | BuilderTextParts
-  parent_id?: string | null
-  state: 'active' | 'done' | 'failed' | 'stopped'
-}
-
 export type WorkflowStartReason = 'initial' | 'resumption'
 
 export type WorkflowExecutionStatus =
@@ -2177,7 +2206,7 @@ export type PostDifyBuilderSessionsError =
   PostDifyBuilderSessionsErrors[keyof PostDifyBuilderSessionsErrors]
 
 export type PostDifyBuilderSessionsResponses = {
-  200: DifyBuilderStreamEventResponse
+  200: DifyBuilderCreatedSessionResponse
 }
 
 export type PostDifyBuilderSessionsResponse =
@@ -2250,7 +2279,7 @@ export type PostDifyBuilderSessionsBySessionIdActionsError =
   PostDifyBuilderSessionsBySessionIdActionsErrors[keyof PostDifyBuilderSessionsBySessionIdActionsErrors]
 
 export type PostDifyBuilderSessionsBySessionIdActionsResponses = {
-  200: DifyBuilderStreamEventResponse
+  200: DifyBuilderCommandSubmissionResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdActionsResponse =
@@ -2383,7 +2412,7 @@ export type PostDifyBuilderSessionsBySessionIdMessagesError =
   PostDifyBuilderSessionsBySessionIdMessagesErrors[keyof PostDifyBuilderSessionsBySessionIdMessagesErrors]
 
 export type PostDifyBuilderSessionsBySessionIdMessagesResponses = {
-  200: DifyBuilderStreamEventResponse
+  200: DifyBuilderCommandSubmissionResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdMessagesResponse =
@@ -2689,15 +2718,10 @@ export type PostDifyBuilderSessionsBySessionIdStopResponse =
 
 export type GetDifyBuilderSessionsBySessionIdStreamData = {
   body?: never
-  headers?: {
-    'Last-Event-ID'?: string
-  }
   path: {
     session_id: string
   }
-  query?: {
-    native_tests?: 'builder-native-test-v1'
-  }
+  query?: never
   url: '/dify-builder/sessions/{session_id}/stream'
 }
 

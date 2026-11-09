@@ -624,9 +624,22 @@ describe('useDifyBuilderSessionController streaming', () => {
     const retryTerminal = createSessionView({
       ...reconciled,
       version: 4,
+      last_command_id: 'command-retry',
     })
     clientMocks.message.mockResolvedValueOnce(
-      streamOf(commandStartedEvent(reconciled), stateEvent(retryTerminal)),
+      streamOf(
+        {
+          event: 'command_started',
+          data: {
+            session_id: reconciled.session_id,
+            version: reconciled.version,
+            phase: reconciled.phase,
+            run_status: 'processing',
+            command_id: 'command-retry',
+          },
+        },
+        stateEvent(retryTerminal),
+      ),
     )
 
     await act(async () => {

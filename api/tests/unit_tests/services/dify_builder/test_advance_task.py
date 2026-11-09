@@ -378,7 +378,8 @@ def test_revision_bound_commands_reject_draft_changes_while_queued(
     assert context.test_input_ref == ""
     assert context.verify_run_id == ""
     assert port.run_draft_inputs == {}
-    assert events == [
+    assert [event["kind"] for _, event in events] == ["command_started", "error"]
+    assert events[1:] == [
         (
             session.id,
             {
@@ -935,12 +936,14 @@ def test_message_advance_publishes_assistant_delta_before_durable_reply(
     payloads = [event for _session_id, event in events]
     kinds = [event["kind"] for event in payloads]
     assert kinds == [
+        "command_started",
         "conversation_item_appended",
         "agent_message",
         "agent_message",
         "command_finished",
     ]
-    user_event, delta, finished, _terminal = payloads
+    started, user_event, delta, finished, terminal = payloads
+    assert started["command_id"] == terminal["command_id"]
     assert user_event["item"]["kind"] == "user"
     assert user_event["item"]["seq"] == 0
     assert delta["turn_id"] == "turn-1"

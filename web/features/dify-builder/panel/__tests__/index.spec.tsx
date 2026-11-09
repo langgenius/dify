@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => ({
   runAction: vi.fn(async () => true),
   sendMessage: vi.fn(async () => true),
   startBuild: vi.fn(async () => true),
+  stopTask: vi.fn(async () => true),
 }))
 
 const sessionView: SessionView = {
@@ -157,7 +158,7 @@ const renderPanel = (
       getTrace: vi.fn(() => ({ entries: [], truncated: false })),
       loadOlderConversation: vi.fn(async () => true),
       restore: vi.fn(async () => true),
-      stopTask: vi.fn(async () => true),
+      stopTask: mocks.stopTask,
       resumeTask: vi.fn(async () => true),
       reset: mocks.reset,
       clearConversation: mocks.clearConversation,
@@ -197,7 +198,7 @@ describe('DifyBuilderPanel', () => {
     }
   })
 
-  it('explains a native configuration wait while keeping cancel available and the session immutable', async () => {
+  it('explains a native configuration wait while allowing Stop and blocking new messages', async () => {
     const user = userEvent.setup()
     renderPanel({
       ...sessionView,
@@ -212,14 +213,24 @@ describe('DifyBuilderPanel', () => {
           payload: { request_id: 'request-1' },
         },
       ],
+      decision: {
+        title: 'Test blocked',
+        description: 'The test is waiting for configuration.',
+        options: [{ id: 'cancel_test', label: 'Cancel test' }],
+        submit: { id: 'confirm', label: 'Submit', kind: 'primary' },
+      },
     })
     expect(screen.getByText('difyBuilder.testResult.configurationRequired')).toBeVisible()
     expect(screen.getByRole('button', { name: 'difyBuilder.reset' })).toBeDisabled()
-    expect(screen.getByRole('textbox', { name: 'difyBuilder.messagePlaceholder' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'Cancel test' }))
-    expect(mocks.runAction).toHaveBeenCalledExactlyOnceWith('cancel_test', {
-      request_id: 'request-1',
-    })
+    expect(screen.getByRole('region', { name: 'Test blocked' })).toHaveTextContent(
+      'The test is waiting for configuration.',
+    )
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cancel test' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.taskControl.stop' }))
+    expect(mocks.stopTask).toHaveBeenCalledOnce()
+    expect(mocks.runAction).not.toHaveBeenCalled()
     expect(mocks.reset).not.toHaveBeenCalled()
     expect(mocks.sendMessage).not.toHaveBeenCalled()
   })

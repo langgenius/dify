@@ -8,8 +8,8 @@ import pytest
 from werkzeug.test import TestResponse
 
 from controllers.console.dify_builder_fields import (
-    DifyBuilderCommandFinishedEventData,
-    DifyBuilderCommandFinishedEventResponse,
+    DifyBuilderCommandSubmissionResponse,
+    DifyBuilderSessionReadyEventResponse,
     DifyBuilderSessionViewResponse,
     DifyBuilderStreamEventResponse,
     DifyBuilderSubmitActionPayload,
@@ -102,13 +102,22 @@ def _view(c: ConsoleCase, base: str) -> DifyBuilderSessionViewResponse:
     return DifyBuilderSessionViewResponse.model_validate(response.get_json())
 
 
-def _finished(response: TestResponse) -> DifyBuilderCommandFinishedEventData:
-    for line in response.get_data(as_text=True).splitlines():
-        if line.startswith("data: "):
-            event = DifyBuilderStreamEventResponse.model_validate_json(line.removeprefix("data: ")).root
-            if isinstance(event, DifyBuilderCommandFinishedEventResponse):
-                return event.data
-    pytest.fail("Existing action transport did not finish its command")
+def _settled(response: TestResponse) -> DifyBuilderSessionViewResponse:
+    receipt = DifyBuilderCommandSubmissionResponse.model_validate(response.get_json())
+    assert not receipt.pending
+    assert receipt.command_id
+    assert receipt.session is not None
+    return receipt.session
+
+
+def _ready(response: TestResponse) -> DifyBuilderSessionViewResponse:
+    try:
+        frame = next(iter(response.response)).decode()
+        event = DifyBuilderStreamEventResponse.model_validate_json(frame.splitlines()[1].removeprefix("data: ")).root
+        assert isinstance(event, DifyBuilderSessionReadyEventResponse)
+        return event.data
+    finally:
+        response.close()
 
 
 def _evidence(name: str, value: object) -> None:
@@ -124,7 +133,7 @@ def _evidence(name: str, value: object) -> None:
 
 def _control(
     c: ConsoleCase, base: str, kind: str, identity: str
-) -> tuple[DifyBuilderSubmitActionPayload, DifyBuilderCommandFinishedEventData]:
+) -> tuple[DifyBuilderSubmitActionPayload, DifyBuilderSessionViewResponse]:
     current = _view(c, base)
     action = next(a for a in current.actions if a.id == kind)
     body = DifyBuilderSubmitActionPayload(
@@ -136,13 +145,13 @@ def _control(
     )
     response = c.client.post(base + "/actions", json=body.model_dump())
     assert response.status_code == 200, response.get_data(as_text=True)
-    result = _finished(response)
+    result = _settled(response)
     _evidence(
         identity,
         {
             "request": body.model_dump(mode="json"),
             "http_status": response.status_code,
-            "command_finished": result.model_dump(mode="json"),
+            "session": result.model_dump(mode="json"),
             "business_calls": c.ledger.dispatched_attempt_count(),
         },
     )
@@ -258,7 +267,7 @@ def test_expired_current_test_remains_readonly_and_cannot_continue(
         assert c.client.get(base + "/conversation").status_code == 200
         stream = c.client.get(base + "/stream")
         assert stream.status_code == 200
-        assert _finished(stream).test_execution == receipt
+        assert _ready(stream).test_execution == receipt
         assert statements == []
     finally:
         event.remove(engine, "before_cursor_execute", observe_sql)
@@ -317,13 +326,42 @@ def test_action_transport_still_requires_console_login_and_csrf(action_console: 
     )
 
 
-def test_native_resume_through_choice_reuses_one_durable_dispatch(action_console: ActionConsole) -> None:
+def test_native_resume_through_choice_reuses_one_durable_dispatch(
+    action_console: ActionConsole, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from sqlalchemy import func, select
 
+    from controllers.console import dify_builder as controller
     from models.dify_builder_native_tests import NativeDispatch
+    from services.entities.feature_entities import FeatureModel
 
     c, _, _, base = action_console
-    _control(c, base, "confirm_test_operation", "confirm-1")
+    first = _ready(c.client.get(base + "/stream"))
+    assert first.test_execution is not None
+    enabled = False
+    monkeypatch.setattr(
+        controller.FeatureService, "get_features", lambda _tenant: FeatureModel(dify_builder_enabled=enabled)
+    )
+    assert c.client.get(base + "/stream").status_code == 403
+    enabled = True
+    stream = c.client.get(base + "/stream", buffered=False)
+    try:
+        chunks = iter(stream.response)
+        ready = DifyBuilderStreamEventResponse.model_validate_json(
+            next(chunks).decode().splitlines()[1].removeprefix("data: ")
+        ).root
+        assert isinstance(ready, DifyBuilderSessionReadyEventResponse)
+        assert ready.data.test_execution == first.test_execution
+        _control(c, base, "confirm_test_operation", "confirm-1")
+        event = DifyBuilderStreamEventResponse.model_validate_json(
+            next(chunks).decode().splitlines()[1].removeprefix("data: ")
+        ).root
+        assert event.event == "session_state"
+        assert event.data.test_execution is not None
+        assert event.data.test_execution.request_id == first.test_execution.request_id
+        assert event.data.test_execution.pending[0].decision == "confirm"
+    finally:
+        stream.close()
     body, result = _control(c, base, "resume_test", "resume-1")
     assert result.test_execution is not None
     assert result.test_execution.request_id == c.ref.request_id
@@ -451,7 +489,7 @@ def test_action_controls_complete_real_graphon_run_without_repeated_http(
             }
             command = client.post(base + "/actions", json=body)
             assert command.status_code == 200, command.get_data(as_text=True)
-            settled = _finished(command)
+            settled = _settled(command)
             before_replay = len(c.sends)
             assert client.post(base + "/actions", json=body).status_code == 200
             assert len(c.sends) == before_replay

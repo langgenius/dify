@@ -1,9 +1,8 @@
 """Session progress bus over the Redis broadcast channel.
 
-The Celery advance task publishes progress events here and the POST-SSE
-endpoints subscribe to the same topic. A streaming request must establish its
-delivery boundary before dispatching the task; merely constructing the Redis
-subscription is not sufficient because subscriptions activate lazily.
+The session SSE endpoint subscribes here before reading the session snapshot.
+Merely constructing the Redis subscription is not sufficient because
+subscriptions activate lazily.
 
 Uses ``extensions.ext_redis.get_pubsub_broadcast_channel()`` rather than
 constructing ``StreamsBroadcastChannel`` directly: that helper builds the
@@ -48,6 +47,14 @@ def publish_native_change(session_id: str) -> None:
         publish(session_id, {"kind": "native_state_changed", "session_id": session_id})
     except Exception:
         logger.warning("Builder native observation notification unavailable")
+
+
+def publish_session_change(session_id: str) -> None:
+    """Invalidate the read model after a synchronous command has committed."""
+    try:
+        publish(session_id, {"kind": "session_state_changed", "session_id": session_id})
+    except Exception:
+        logger.warning("Builder session observation notification unavailable")
 
 
 def subscribe(session_id: str) -> Subscription:

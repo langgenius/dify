@@ -199,7 +199,7 @@ def test_existing_waiting_or_paused_session_does_not_block_new_command(harness: 
     owner = harness.create_actor(tenant)
     other_editor = harness.create_actor(tenant)
     app = harness.create_app(owner)
-    sid, _action = harness.service._prepare_build_session(app, owner, "First synthetic goal")
+    sid, _action = harness.service.prepare_build_session(app, owner, "First synthetic goal")
     existing, context = harness.repo.get_session(sid)
     context.paused = paused
     harness.repo.compare_and_advance(sid, existing.version, PcState.BUILD_PLAN_APPROVAL, context, [])
@@ -220,7 +220,7 @@ def test_unknown_enqueue_ack_keeps_writer_until_explicit_stop(harness: Harness) 
         raise RuntimeError("synthetic enqueue rejected")
 
     harness.service._enqueue_fn = fail_enqueue
-    sid, action = harness.service._prepare_build_session(app, owner, "First synthetic goal")
+    sid, action = harness.service.prepare_build_session(app, owner, "First synthetic goal")
     assert action is not None
     with pytest.raises(RuntimeError, match="synthetic enqueue rejected"):
         harness.service.dispatch(sid, action, owner)

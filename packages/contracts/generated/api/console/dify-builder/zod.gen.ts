@@ -574,114 +574,6 @@ export const zDifyBuilderRealCallForbiddenResponse = z.discriminatedUnion('code'
 ])
 
 /**
- * DifyBuilderCommandStartedEventData
- */
-export const zDifyBuilderCommandStartedEventData = z.object({
-  command_id: z.string(),
-  phase: zPhase,
-  run_status: zRunStatus,
-  session_id: z.string(),
-  version: z.int(),
-})
-
-/**
- * DifyBuilderCommandStartedEventResponse
- */
-export const zDifyBuilderCommandStartedEventResponse = z.object({
-  data: zDifyBuilderCommandStartedEventData,
-  event: z.literal('command_started'),
-})
-
-/**
- * DifyBuilderGraphChangedEventData
- */
-export const zDifyBuilderGraphChangedEventData = z.object({
-  at_version: z.int(),
-  cause: z.enum(['apply', 'restore']),
-  event: z.literal('graph_changed'),
-  operation_id: z.string(),
-  revision: z.int(),
-  session_id: z.string(),
-})
-
-/**
- * DifyBuilderEditTargetsChangedEventData
- */
-export const zDifyBuilderEditTargetsChangedEventData = z.object({
-  at_version: z.int(),
-  event: z.literal('edit_targets_changed'),
-  node_ids: z.array(z.string()),
-  operation_id: z.string(),
-  revision: z.int(),
-  session_id: z.string(),
-})
-
-/**
- * DifyBuilderPublishedEventData
- */
-export const zDifyBuilderPublishedEventData = z.object({
-  at_version: z.int(),
-  event: z.literal('publish_workflow'),
-  operation_id: z.string(),
-  revision: z.int(),
-  session_id: z.string(),
-})
-
-/**
- * DifyBuilderCanvasEventResponse
- */
-export const zDifyBuilderCanvasEventResponse = z.object({
-  data: z.discriminatedUnion('event', [
-    zDifyBuilderGraphChangedEventData,
-    zDifyBuilderEditTargetsChangedEventData,
-    zDifyBuilderPublishedEventData,
-  ]),
-  event: z.literal('canvas'),
-})
-
-/**
- * DifyBuilderReasoningEventData
- */
-export const zDifyBuilderReasoningEventData = z.object({
-  at_version: z.int(),
-  delta: z.string(),
-  operation_id: z.string(),
-  revision: z.int(),
-  session_id: z.string(),
-})
-
-/**
- * DifyBuilderReasoningEventResponse
- */
-export const zDifyBuilderReasoningEventResponse = z.object({
-  data: zDifyBuilderReasoningEventData,
-  event: z.literal('reasoning'),
-})
-
-/**
- * DifyBuilderErrorEventData
- */
-export const zDifyBuilderErrorEventData = z.object({
-  code: z.string().nullish(),
-  command_id: z.string().nullish(),
-  message: z.string(),
-  reason_code: z
-    .string()
-    .regex(/^[a-z][a-z0-9_]{0,127}$/)
-    .nullish(),
-  recoverable: z.boolean().nullish(),
-  session_id: z.string().nullish(),
-})
-
-/**
- * DifyBuilderErrorEventResponse
- */
-export const zDifyBuilderErrorEventResponse = z.object({
-  data: zDifyBuilderErrorEventData,
-  event: z.literal('error'),
-})
-
-/**
  * ActionKind
  *
  * Action button styling / semantics (spec §2, §5).
@@ -865,37 +757,111 @@ export const zDifyBuilderUserConversationItemResponse = z.object({
 })
 
 /**
- * WorkflowStreamMessage
+ * DifyBuilderCommandStartedEventData
  */
-export const zWorkflowStreamMessage = z.object({
-  answer: z.string(),
-  event: z.literal('message'),
-  from_variable_selector: z.array(z.string()).optional(),
-  id: z.string(),
-  task_id: z.string(),
-  workflow_run_id: z.string().nullish(),
+export const zDifyBuilderCommandStartedEventData = z.object({
+  command_id: z.string(),
+  phase: zPhase,
+  run_status: zRunStatus,
+  session_id: z.string(),
+  version: z.int(),
 })
 
 /**
- * WorkflowStreamMessageReplace
+ * DifyBuilderCommandStartedEventResponse
  */
-export const zWorkflowStreamMessageReplace = z.object({
-  answer: z.string(),
-  event: z.literal('message_replace'),
-  reason: z.string(),
-  task_id: z.string(),
-  workflow_run_id: z.string().nullish(),
+export const zDifyBuilderCommandStartedEventResponse = z.object({
+  data: zDifyBuilderCommandStartedEventData,
+  event: z.literal('command_started'),
 })
 
 /**
- * WorkflowStreamError
+ * DifyBuilderGraphChangedEventData
  */
-export const zWorkflowStreamError = z.object({
-  code: z.string(),
-  event: z.literal('error'),
+export const zDifyBuilderGraphChangedEventData = z.object({
+  at_version: z.int(),
+  cause: z.enum(['apply', 'restore']),
+  event: z.literal('graph_changed'),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderEditTargetsChangedEventData
+ */
+export const zDifyBuilderEditTargetsChangedEventData = z.object({
+  at_version: z.int(),
+  event: z.literal('edit_targets_changed'),
+  node_ids: z.array(z.string()),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderPublishedEventData
+ */
+export const zDifyBuilderPublishedEventData = z.object({
+  at_version: z.int(),
+  event: z.literal('publish_workflow'),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderCanvasEventResponse
+ */
+export const zDifyBuilderCanvasEventResponse = z.object({
+  data: z.discriminatedUnion('event', [
+    zDifyBuilderGraphChangedEventData,
+    zDifyBuilderEditTargetsChangedEventData,
+    zDifyBuilderPublishedEventData,
+  ]),
+  event: z.literal('canvas'),
+})
+
+/**
+ * DifyBuilderReasoningEventData
+ */
+export const zDifyBuilderReasoningEventData = z.object({
+  at_version: z.int(),
+  delta: z.string(),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderReasoningEventResponse
+ */
+export const zDifyBuilderReasoningEventResponse = z.object({
+  data: zDifyBuilderReasoningEventData,
+  event: z.literal('reasoning'),
+})
+
+/**
+ * DifyBuilderErrorEventData
+ */
+export const zDifyBuilderErrorEventData = z.object({
+  code: z.string().nullish(),
+  command_id: z.string().nullish(),
   message: z.string(),
-  status: z.int(),
-  workflow_run_id: z.string().nullish(),
+  reason_code: z
+    .string()
+    .regex(/^[a-z][a-z0-9_]{0,127}$/)
+    .nullish(),
+  recoverable: z.boolean().nullish(),
+  session_id: z.string().nullish(),
+})
+
+/**
+ * DifyBuilderErrorEventResponse
+ */
+export const zDifyBuilderErrorEventResponse = z.object({
+  data: zDifyBuilderErrorEventData,
+  event: z.literal('error'),
 })
 
 /**
@@ -1340,93 +1306,6 @@ export const zDifyBuilderTestResultConversationItemResponse = z.object({
 })
 
 /**
- * DifyBuilderExecutionActivityResponse
- */
-export const zDifyBuilderExecutionActivityResponse = z.object({
-  id: z.string(),
-  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
-  parent_id: z.string().nullish(),
-  state: z.enum(['active', 'done', 'failed', 'stopped']),
-})
-
-/**
- * DifyBuilderProgressEventData
- */
-export const zDifyBuilderProgressEventData = z.object({
-  activity: zDifyBuilderExecutionActivityResponse.nullable(),
-  at_version: z.int(),
-  operation_id: z.string(),
-  reply_language: z.string().optional().default(''),
-  revision: z.int(),
-  session_id: z.string(),
-  status: z.enum(['completed', 'error', 'running', 'stopped']),
-})
-
-/**
- * DifyBuilderProgressEventResponse
- */
-export const zDifyBuilderProgressEventResponse = z.object({
-  data: zDifyBuilderProgressEventData,
-  event: z.literal('progress'),
-})
-
-/**
- * DifyBuilderExecutionProgressResponse
- */
-export const zDifyBuilderExecutionProgressResponse = z.object({
-  activities: z.array(zDifyBuilderExecutionActivityResponse).optional(),
-  status: z.enum(['completed', 'error', 'running', 'stopped']),
-})
-
-/**
- * DifyBuilderAgentMessageEventData
- */
-export const zDifyBuilderAgentMessageEventData = z.object({
-  at_version: z.int(),
-  cards: z.array(z.string()).optional(),
-  command_id: z.string(),
-  delta: z.string(),
-  done: z.boolean(),
-  execution: zDifyBuilderExecutionProgressResponse.nullish(),
-  operation_id: z.string(),
-  revision: z.int(),
-  seq: z.int(),
-  session_id: z.string(),
-  text_bytes: z.int(),
-  turn_id: z.string(),
-})
-
-/**
- * DifyBuilderAgentMessageEventResponse
- */
-export const zDifyBuilderAgentMessageEventResponse = z.object({
-  data: zDifyBuilderAgentMessageEventData,
-  event: z.literal('agent_message'),
-})
-
-/**
- * DifyBuilderProgressSnapshotEventData
- *
- * Complete observed activity state before subsequent live progress deltas.
- */
-export const zDifyBuilderProgressSnapshotEventData = z.object({
-  at_version: z.int(),
-  execution: zDifyBuilderExecutionProgressResponse,
-  operation_id: z.string(),
-  reply_language: z.string(),
-  revision: z.int(),
-  session_id: z.string(),
-})
-
-/**
- * DifyBuilderProgressSnapshotEventResponse
- */
-export const zDifyBuilderProgressSnapshotEventResponse = z.object({
-  data: zDifyBuilderProgressSnapshotEventData,
-  event: z.literal('progress_snapshot'),
-})
-
-/**
  * OptionInput
  */
 export const zOptionInput = z.object({
@@ -1538,6 +1417,7 @@ export const zDifyBuilderSessionViewResponse = z.object({
   app_revision: zDifyBuilderAppRevisionResponse.nullish(),
   attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
   canvas_read_only: z.boolean(),
+  command_pending: z.boolean().optional().default(false),
   conversation_cleared: z.boolean().optional().default(false),
   conversation_last_seq: z.int(),
   decision: zDecision.nullish(),
@@ -1560,6 +1440,23 @@ export const zDifyBuilderSessionViewResponse = z.object({
 })
 
 /**
+ * DifyBuilderCreatedSessionResponse
+ */
+export const zDifyBuilderCreatedSessionResponse = z.object({
+  requires_start: z.boolean(),
+  session: zDifyBuilderSessionViewResponse,
+})
+
+/**
+ * DifyBuilderCommandSubmissionResponse
+ */
+export const zDifyBuilderCommandSubmissionResponse = z.object({
+  command_id: z.string(),
+  pending: z.boolean(),
+  session: zDifyBuilderSessionViewResponse.nullish(),
+})
+
+/**
  * DifyBuilderFixIntentResponse
  */
 export const zDifyBuilderFixIntentResponse = z.object({
@@ -1578,6 +1475,22 @@ export const zDifyBuilderNativeTestResponse = z.object({
 })
 
 /**
+ * DifyBuilderSessionReadyEventResponse
+ */
+export const zDifyBuilderSessionReadyEventResponse = z.object({
+  data: zDifyBuilderSessionViewResponse,
+  event: z.literal('session_ready'),
+})
+
+/**
+ * DifyBuilderSessionStateEventResponse
+ */
+export const zDifyBuilderSessionStateEventResponse = z.object({
+  data: zDifyBuilderSessionViewResponse,
+  event: z.literal('session_state'),
+})
+
+/**
  * DifyBuilderCommandFinishedEventData
  */
 export const zDifyBuilderCommandFinishedEventData = z.object({
@@ -1587,6 +1500,7 @@ export const zDifyBuilderCommandFinishedEventData = z.object({
   attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
   canvas_read_only: z.boolean(),
   command_id: z.string(),
+  command_pending: z.boolean().optional().default(false),
   conversation_cleared: z.boolean().optional().default(false),
   conversation_last_seq: z.int(),
   decision: zDecision.nullish(),
@@ -1738,6 +1652,225 @@ export const zDifyBuilderResourceSelectConversationItemResponse = z.object({
   kind: z.literal('resource_select'),
   payload: zResourceSelectCard,
   seq: z.int(),
+})
+
+/**
+ * WorkflowStreamMessage
+ */
+export const zWorkflowStreamMessage = z.object({
+  answer: z.string(),
+  event: z.literal('message'),
+  from_variable_selector: z.array(z.string()).optional(),
+  id: z.string(),
+  task_id: z.string(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * WorkflowStreamMessageReplace
+ */
+export const zWorkflowStreamMessageReplace = z.object({
+  answer: z.string(),
+  event: z.literal('message_replace'),
+  reason: z.string(),
+  task_id: z.string(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * WorkflowStreamError
+ */
+export const zWorkflowStreamError = z.object({
+  code: z.string(),
+  event: z.literal('error'),
+  message: z.string(),
+  status: z.int(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * DifyBuilderExecutionActivityResponse
+ */
+export const zDifyBuilderExecutionActivityResponse = z.object({
+  id: z.string(),
+  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
+  parent_id: z.string().nullish(),
+  state: z.enum(['active', 'done', 'failed', 'stopped']),
+})
+
+/**
+ * DifyBuilderProgressEventData
+ */
+export const zDifyBuilderProgressEventData = z.object({
+  activity: zDifyBuilderExecutionActivityResponse.nullable(),
+  at_version: z.int(),
+  operation_id: z.string(),
+  reply_language: z.string().optional().default(''),
+  revision: z.int(),
+  session_id: z.string(),
+  status: z.enum(['completed', 'error', 'running', 'stopped']),
+})
+
+/**
+ * DifyBuilderProgressEventResponse
+ */
+export const zDifyBuilderProgressEventResponse = z.object({
+  data: zDifyBuilderProgressEventData,
+  event: z.literal('progress'),
+})
+
+/**
+ * DifyBuilderExecutionProgressResponse
+ */
+export const zDifyBuilderExecutionProgressResponse = z.object({
+  activities: z.array(zDifyBuilderExecutionActivityResponse).optional(),
+  status: z.enum(['completed', 'error', 'running', 'stopped']),
+})
+
+/**
+ * DifyBuilderAgentMessageEventData
+ */
+export const zDifyBuilderAgentMessageEventData = z.object({
+  at_version: z.int(),
+  cards: z.array(z.string()).optional(),
+  command_id: z.string(),
+  delta: z.string(),
+  done: z.boolean(),
+  execution: zDifyBuilderExecutionProgressResponse.nullish(),
+  operation_id: z.string(),
+  revision: z.int(),
+  seq: z.int(),
+  session_id: z.string(),
+  text_bytes: z.int(),
+  turn_id: z.string(),
+})
+
+/**
+ * DifyBuilderAgentMessageEventResponse
+ */
+export const zDifyBuilderAgentMessageEventResponse = z.object({
+  data: zDifyBuilderAgentMessageEventData,
+  event: z.literal('agent_message'),
+})
+
+/**
+ * DifyBuilderProgressSnapshotEventData
+ *
+ * Complete observed activity state before subsequent live progress deltas.
+ */
+export const zDifyBuilderProgressSnapshotEventData = z.object({
+  at_version: z.int(),
+  execution: zDifyBuilderExecutionProgressResponse,
+  operation_id: z.string(),
+  reply_language: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderProgressSnapshotEventResponse
+ */
+export const zDifyBuilderProgressSnapshotEventResponse = z.object({
+  data: zDifyBuilderProgressSnapshotEventData,
+  event: z.literal('progress_snapshot'),
+})
+
+/**
+ * ExecutionActivity
+ */
+export const zExecutionActivity = z.object({
+  id: z.string(),
+  kind: z.enum(['node', 'stage']).optional().default('stage'),
+  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
+  parent_id: z.string().nullish(),
+  state: z.enum(['active', 'done', 'failed', 'stopped']),
+})
+
+/**
+ * ExecutionProgress
+ */
+export const zExecutionProgress = z.object({
+  activities: z.array(zExecutionActivity).optional(),
+  status: z.enum(['completed', 'error', 'running', 'stopped']),
+})
+
+/**
+ * AssistantTurnItem
+ */
+export const zAssistantTurnItem = z.object({
+  card_state: z.string().nullish(),
+  cards: z.array(z.string()).optional(),
+  diagnostics: z.array(z.record(z.string(), z.unknown())).optional(),
+  execution: zExecutionProgress,
+  reasoning_text: z.string().nullish(),
+  reply_language: z.string().optional().default(''),
+  reply_mode: z.enum(['complete', 'stream']).optional().default('stream'),
+  reply_text: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
+  stage_id: z.string(),
+  turn_id: z.string(),
+})
+
+/**
+ * DifyBuilderAssistantTurnConversationItemResponse
+ */
+export const zDifyBuilderAssistantTurnConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('assistant_turn'),
+  payload: zAssistantTurnItem,
+  seq: z.int(),
+})
+
+/**
+ * DifyBuilderConversationPageResponse
+ */
+export const zDifyBuilderConversationPageResponse = z.object({
+  data: z.array(
+    z.union([
+      zDifyBuilderUserConversationItemResponse,
+      zDifyBuilderDecisionConversationItemResponse,
+      zDifyBuilderInteractionResponseConversationItemResponse,
+      zDifyBuilderNoticeConversationItemResponse,
+      zDifyBuilderRunContextConversationItemResponse,
+      zDifyBuilderPreflightContextConversationItemResponse,
+      zDifyBuilderAssistantTurnConversationItemResponse,
+      zDifyBuilderPlanConversationItemResponse,
+      zDifyBuilderFormConversationItemResponse,
+      zDifyBuilderResourceSelectConversationItemResponse,
+      zDifyBuilderTestResultConversationItemResponse,
+    ]),
+  ),
+  first_seq: z.int().nullable(),
+  has_more: z.boolean(),
+  last_seq: z.int().nullable(),
+})
+
+/**
+ * DifyBuilderConversationItemAppendedEventData
+ */
+export const zDifyBuilderConversationItemAppendedEventData = z.object({
+  command_id: z.string(),
+  item: z.discriminatedUnion('kind', [
+    zDifyBuilderUserConversationItemResponse,
+    zDifyBuilderDecisionConversationItemResponse,
+    zDifyBuilderInteractionResponseConversationItemResponse,
+    zDifyBuilderNoticeConversationItemResponse,
+    zDifyBuilderRunContextConversationItemResponse,
+    zDifyBuilderPreflightContextConversationItemResponse,
+    zDifyBuilderAssistantTurnConversationItemResponse,
+    zDifyBuilderPlanConversationItemResponse,
+    zDifyBuilderFormConversationItemResponse,
+    zDifyBuilderResourceSelectConversationItemResponse,
+    zDifyBuilderTestResultConversationItemResponse,
+  ]),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderConversationItemAppendedEventResponse
+ */
+export const zDifyBuilderConversationItemAppendedEventResponse = z.object({
+  data: zDifyBuilderConversationItemAppendedEventData,
+  event: z.literal('conversation_item_appended'),
 })
 
 /**
@@ -1978,104 +2111,6 @@ export const zWorkflowStreamEventLiteralHumanInputFormTimeoutData = z.object({
   event: z.literal('human_input_form_timeout'),
   task_id: z.string(),
   workflow_run_id: z.string(),
-})
-
-/**
- * ExecutionActivity
- */
-export const zExecutionActivity = z.object({
-  id: z.string(),
-  kind: z.enum(['node', 'stage']).optional().default('stage'),
-  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
-  parent_id: z.string().nullish(),
-  state: z.enum(['active', 'done', 'failed', 'stopped']),
-})
-
-/**
- * ExecutionProgress
- */
-export const zExecutionProgress = z.object({
-  activities: z.array(zExecutionActivity).optional(),
-  status: z.enum(['completed', 'error', 'running', 'stopped']),
-})
-
-/**
- * AssistantTurnItem
- */
-export const zAssistantTurnItem = z.object({
-  card_state: z.string().nullish(),
-  cards: z.array(z.string()).optional(),
-  diagnostics: z.array(z.record(z.string(), z.unknown())).optional(),
-  execution: zExecutionProgress,
-  reasoning_text: z.string().nullish(),
-  reply_language: z.string().optional().default(''),
-  reply_mode: z.enum(['complete', 'stream']).optional().default('stream'),
-  reply_text: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
-  stage_id: z.string(),
-  turn_id: z.string(),
-})
-
-/**
- * DifyBuilderAssistantTurnConversationItemResponse
- */
-export const zDifyBuilderAssistantTurnConversationItemResponse = z.object({
-  at_version: z.int(),
-  kind: z.literal('assistant_turn'),
-  payload: zAssistantTurnItem,
-  seq: z.int(),
-})
-
-/**
- * DifyBuilderConversationPageResponse
- */
-export const zDifyBuilderConversationPageResponse = z.object({
-  data: z.array(
-    z.union([
-      zDifyBuilderUserConversationItemResponse,
-      zDifyBuilderDecisionConversationItemResponse,
-      zDifyBuilderInteractionResponseConversationItemResponse,
-      zDifyBuilderNoticeConversationItemResponse,
-      zDifyBuilderRunContextConversationItemResponse,
-      zDifyBuilderPreflightContextConversationItemResponse,
-      zDifyBuilderAssistantTurnConversationItemResponse,
-      zDifyBuilderPlanConversationItemResponse,
-      zDifyBuilderFormConversationItemResponse,
-      zDifyBuilderResourceSelectConversationItemResponse,
-      zDifyBuilderTestResultConversationItemResponse,
-    ]),
-  ),
-  first_seq: z.int().nullable(),
-  has_more: z.boolean(),
-  last_seq: z.int().nullable(),
-})
-
-/**
- * DifyBuilderConversationItemAppendedEventData
- */
-export const zDifyBuilderConversationItemAppendedEventData = z.object({
-  command_id: z.string(),
-  item: z.discriminatedUnion('kind', [
-    zDifyBuilderUserConversationItemResponse,
-    zDifyBuilderDecisionConversationItemResponse,
-    zDifyBuilderInteractionResponseConversationItemResponse,
-    zDifyBuilderNoticeConversationItemResponse,
-    zDifyBuilderRunContextConversationItemResponse,
-    zDifyBuilderPreflightContextConversationItemResponse,
-    zDifyBuilderAssistantTurnConversationItemResponse,
-    zDifyBuilderPlanConversationItemResponse,
-    zDifyBuilderFormConversationItemResponse,
-    zDifyBuilderResourceSelectConversationItemResponse,
-    zDifyBuilderTestResultConversationItemResponse,
-  ]),
-  session_id: z.string(),
-})
-
-/**
- * DifyBuilderConversationItemAppendedEventResponse
- */
-export const zDifyBuilderConversationItemAppendedEventResponse = z.object({
-  data: zDifyBuilderConversationItemAppendedEventData,
-  event: z.literal('conversation_item_appended'),
 })
 
 /**
@@ -2614,6 +2649,8 @@ export const zDifyBuilderStreamEventResponse = z.discriminatedUnion('event', [
   zDifyBuilderProgressEventResponse,
   zDifyBuilderProgressSnapshotEventResponse,
   zDifyBuilderCommandFinishedEventResponse,
+  zDifyBuilderSessionReadyEventResponse,
+  zDifyBuilderSessionStateEventResponse,
   zDifyBuilderErrorEventResponse,
   zDifyBuilderNativeExecutionEventResponse,
 ])
@@ -2626,9 +2663,9 @@ export const zPostDifyBuilderAgentPingResponse = z.record(z.string(), z.unknown(
 export const zPostDifyBuilderSessionsBody = zDifyBuilderCreateSessionPayload
 
 /**
- * Dify Builder event stream
+ * Dify Builder session created
  */
-export const zPostDifyBuilderSessionsResponse = zDifyBuilderStreamEventResponse
+export const zPostDifyBuilderSessionsResponse = zDifyBuilderCreatedSessionResponse
 
 export const zGetDifyBuilderSessionsBySessionIdPath = z.object({
   session_id: z.string(),
@@ -2659,9 +2696,10 @@ export const zPostDifyBuilderSessionsBySessionIdActionsPath = z.object({
 })
 
 /**
- * Dify Builder event stream
+ * Dify Builder action submitted
  */
-export const zPostDifyBuilderSessionsBySessionIdActionsResponse = zDifyBuilderStreamEventResponse
+export const zPostDifyBuilderSessionsBySessionIdActionsResponse =
+  zDifyBuilderCommandSubmissionResponse
 
 export const zPostDifyBuilderSessionsBySessionIdClearBody = zDifyBuilderClearConversationPayload
 
@@ -2726,9 +2764,10 @@ export const zPostDifyBuilderSessionsBySessionIdMessagesPath = z.object({
 })
 
 /**
- * Dify Builder event stream
+ * Dify Builder message submitted
  */
-export const zPostDifyBuilderSessionsBySessionIdMessagesResponse = zDifyBuilderStreamEventResponse
+export const zPostDifyBuilderSessionsBySessionIdMessagesResponse =
+  zDifyBuilderCommandSubmissionResponse
 
 export const zGetDifyBuilderSessionsBySessionIdNativeTestInputPath = z.object({
   session_id: z.string(),
@@ -2878,19 +2917,11 @@ export const zPostDifyBuilderSessionsBySessionIdStopPath = z.object({
  */
 export const zPostDifyBuilderSessionsBySessionIdStopResponse = zDifyBuilderSessionViewResponse
 
-export const zGetDifyBuilderSessionsBySessionIdStreamHeaders = z.object({
-  'Last-Event-ID': z.string().optional(),
-})
-
 export const zGetDifyBuilderSessionsBySessionIdStreamPath = z.object({
   session_id: z.string(),
 })
 
-export const zGetDifyBuilderSessionsBySessionIdStreamQuery = z.object({
-  native_tests: z.enum(['builder-native-test-v1']).optional(),
-})
-
 /**
- * Dify Builder reconnect event stream
+ * Dify Builder session event stream
  */
 export const zGetDifyBuilderSessionsBySessionIdStreamResponse = zDifyBuilderStreamEventResponse

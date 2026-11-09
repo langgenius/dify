@@ -69,7 +69,7 @@ from services.dify_builder import wiring
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
-from services.dify_builder.service import DifyBuilderService, SessionView
+from services.dify_builder.service import CommandSubmission, DifyBuilderService, SessionView
 from services.enterprise.rbac_service import RBACService
 from services.entities.feature_entities import FeatureModel
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -227,9 +227,7 @@ def test_session_stream_delegates_to_reconnect_stream(mocker: pytest_mock.Mocker
         response = unwrap(mod.DifyBuilderSessionStreamApi.get)(object(), "ten-1", _account(), "s1")
 
     _assert_event_stream(response)
-    stream.assert_called_once_with(
-        "s1", Actor(account_id="acc-1", tenant_id="ten-1"), native_version=None, native_cursor=""
-    )
+    stream.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
 
 
 def test_conversation_get_validates_query_and_returns_json_page(
@@ -291,20 +289,22 @@ def test_conversation_get_rejects_competing_cursors(
     [
         (
             {"scenario": "build", "app_id": "a1", "goal_text": "Build it"},
-            "create_build_session_stream",
+            "prepare_build_session",
             {"app_id": "a1", "goal_text": "Build it", "model_config": None, "derive_app_name": False},
         ),
         (
             {"scenario": "edit", "app_id": "a1", "goal_text": "Tighten risk"},
-            "create_edit_session_stream",
+            "prepare_edit_session",
             {"app_id": "a1", "goal_text": "Tighten risk", "model_config": None},
         ),
         (
             {"scenario": "fix", "app_id": "a1", "failed_run_id": "TR-1"},
-            "create_fix_session_stream",
+            "prepare_fix_session",
             {
                 "app_id": "a1",
                 "failed_run_id": "TR-1",
+                "checklist_errors": None,
+                "defer_existing": True,
                 "model_config": None,
             },
         ),
@@ -323,10 +323,11 @@ def test_conversation_get_rejects_competing_cursors(
                     }
                 ],
             },
-            "create_fix_session_stream",
+            "prepare_fix_session",
             {
                 "app_id": "a1",
                 "failed_run_id": None,
+                "defer_existing": True,
                 "checklist_errors": [
                     {
                         "node_id": "node-1",
@@ -342,7 +343,7 @@ def test_conversation_get_rejects_competing_cursors(
         ),
     ],
 )
-def test_create_always_calls_streaming_service(
+def test_create_persists_session_without_dispatching(
     mocker: pytest_mock.MockerFixture,
     monkeypatch: pytest.MonkeyPatch,
     payload: object,
@@ -353,14 +354,17 @@ def test_create_always_calls_streaming_service(
     mocker.patch.object(service, "create_build_session")
     mocker.patch.object(service, "create_edit_session")
     mocker.patch.object(service, "create_fix_session")
-    streaming_method = mocker.patch.object(service, method_name, return_value=_frames())
+    prepare = mocker.patch.object(service, method_name, return_value=("s1", Action()))
+    mocker.patch.object(service, "get_session_view", return_value=_session_view())
     monkeypatch.setattr(mod, "build_service", lambda: service)
     actor = _actor()
 
-    response = _assert_event_stream(mod._create(payload, actor))
+    response = mod._create(payload, actor)
 
-    assert b'"event": "command_started"' in response.get_data()
-    called = streaming_method.call_args
+    assert isinstance(response, dict)
+    assert response["session"]["session_id"] == "s1"
+    assert response["requires_start"] is True
+    called = prepare.call_args
     assert called.kwargs == {**expected_kwargs, "actor": actor}
     _installed_spy_6 = installed_mock(service.create_build_session)
     _installed_spy_6.assert_not_called()
@@ -374,9 +378,10 @@ def test_create_serializes_model_config_for_service(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service = _route_service()
-    mocker.patch.object(service, "create_build_session_stream")
-    _installed_spy_9 = installed_mock(service.create_build_session_stream)
-    _installed_spy_9.return_value = _frames()
+    mocker.patch.object(service, "prepare_build_session")
+    _installed_spy_9 = installed_mock(service.prepare_build_session)
+    _installed_spy_9.return_value = ("s1", Action())
+    mocker.patch.object(service, "get_session_view", return_value=_session_view())
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     response = mod._create(
@@ -394,8 +399,9 @@ def test_create_serializes_model_config_for_service(
         _actor(),
     )
 
-    _assert_event_stream(response)
-    _installed_spy_10 = installed_mock(service.create_build_session_stream)
+    assert isinstance(response, dict)
+    assert response["requires_start"]
+    _installed_spy_10 = installed_mock(service.prepare_build_session)
     assert _installed_spy_10.call_args.kwargs["model_config"] == {
         "provider": "langgenius/openai/openai",
         "name": "gpt-4o-mini",
@@ -427,30 +433,30 @@ def test_create_rejects_malformed_or_legacy_payload_before_service(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, payload: object
 ) -> None:
     service = _route_service()
-    mocker.patch.object(service, "create_build_session_stream")
-    mocker.patch.object(service, "create_edit_session_stream")
-    mocker.patch.object(service, "create_fix_session_stream")
-    mocker.patch.object(service, "submit_message_stream")
-    mocker.patch.object(service, "submit_action_stream")
+    mocker.patch.object(service, "prepare_build_session")
+    mocker.patch.object(service, "prepare_edit_session")
+    mocker.patch.object(service, "prepare_fix_session")
+    mocker.patch.object(service, "submit_message_command")
+    mocker.patch.object(service, "submit_action_command")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     assert mod._create(payload, _actor()) == ({"code": "bad_request"}, 400)
     assert not any(
         installed_mock(method).called
         for method in (
-            service.create_build_session_stream,
-            service.create_edit_session_stream,
-            service.create_fix_session_stream,
-            service.submit_message_stream,
-            service.submit_action_stream,
+            service.prepare_build_session,
+            service.prepare_edit_session,
+            service.prepare_fix_session,
+            service.submit_message_command,
+            service.submit_action_command,
         )
     )
 
 
-def test_create_maps_pre_stream_error(mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_maps_admission_error(mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     service = _route_service()
-    mocker.patch.object(service, "create_fix_session_stream")
-    _installed_spy_11 = installed_mock(service.create_fix_session_stream)
+    mocker.patch.object(service, "prepare_fix_session")
+    _installed_spy_11 = installed_mock(service.prepare_fix_session)
     _installed_spy_11.side_effect = ConflictError("stale")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -459,12 +465,12 @@ def test_create_maps_pre_stream_error(mocker: pytest_mock.MockerFixture, monkeyp
     assert result == ({"code": "conflict"}, 409)
 
 
-def test_create_returns_recoverable_model_error_before_starting_stream(
+def test_create_returns_recoverable_model_error(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service = _route_service()
-    mocker.patch.object(service, "create_build_session_stream")
-    _installed_spy_12 = installed_mock(service.create_build_session_stream)
+    mocker.patch.object(service, "prepare_build_session")
+    _installed_spy_12 = installed_mock(service.prepare_build_session)
     _installed_spy_12.side_effect = ModelUnavailableError("provider credential detail")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -476,14 +482,14 @@ def test_create_returns_recoverable_model_error_before_starting_stream(
     )
 
 
-def test_action_always_returns_event_stream_and_resolves_action_id(
+def test_action_returns_admission_receipt_and_resolves_action_id(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service = _route_service()
     mocker.patch.object(service, "submit_action")
-    mocker.patch.object(service, "submit_action_stream")
-    _installed_spy_13 = installed_mock(service.submit_action_stream)
-    _installed_spy_13.return_value = _frames()
+    mocker.patch.object(service, "submit_action_command")
+    _installed_spy_13 = installed_mock(service.submit_action_command)
+    _installed_spy_13.return_value = CommandSubmission("command-1", pending=True)
     monkeypatch.setattr(mod, "build_service", lambda: service)
     actor = _actor()
 
@@ -498,8 +504,8 @@ def test_action_always_returns_event_stream_and_resolves_action_id(
         actor,
     )
 
-    _assert_event_stream(response)
-    _installed_spy_14 = installed_mock(service.submit_action_stream)
+    assert response == {"command_id": "command-1", "pending": True, "session": None}
+    _installed_spy_14 = installed_mock(service.submit_action_command)
     called_session_id, called_actor, action = _installed_spy_14.call_args.args
     assert (called_session_id, called_actor) == ("s1", actor)
     assert action.kind == "run_verify"
@@ -514,9 +520,9 @@ def test_action_keeps_receipt_snapshot_separate_from_raw_submission(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service = _route_service()
-    mocker.patch.object(service, "submit_action_stream")
-    _installed_spy_16 = installed_mock(service.submit_action_stream)
-    _installed_spy_16.return_value = _frames()
+    mocker.patch.object(service, "submit_action_command")
+    _installed_spy_16 = installed_mock(service.submit_action_command)
+    _installed_spy_16.return_value = CommandSubmission("command-1", pending=True)
     monkeypatch.setattr(mod, "build_service", lambda: service)
     raw = {"goal": "Goal {{name}} <tag>", "enabled": True}
     snapshot = {
@@ -542,8 +548,8 @@ def test_action_keeps_receipt_snapshot_separate_from_raw_submission(
         _actor(),
     )
 
-    _assert_event_stream(response)
-    _installed_spy_17 = installed_mock(service.submit_action_stream)
+    assert response == {"command_id": "command-1", "pending": True, "session": None}
+    _installed_spy_17 = installed_mock(service.submit_action_command)
     action: Action = _installed_spy_17.call_args.args[2]
     assert action.payload == raw
     assert action.receipt_snapshot == snapshot
@@ -578,30 +584,30 @@ def test_action_rejects_malformed_or_legacy_payload_before_service(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, payload: object
 ) -> None:
     service = _route_service()
-    mocker.patch.object(service, "create_build_session_stream")
-    mocker.patch.object(service, "create_edit_session_stream")
-    mocker.patch.object(service, "create_fix_session_stream")
-    mocker.patch.object(service, "submit_message_stream")
-    mocker.patch.object(service, "submit_action_stream")
+    mocker.patch.object(service, "prepare_build_session")
+    mocker.patch.object(service, "prepare_edit_session")
+    mocker.patch.object(service, "prepare_fix_session")
+    mocker.patch.object(service, "submit_message_command")
+    mocker.patch.object(service, "submit_action_command")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     assert mod._action("s1", payload, _actor()) == ({"code": "bad_request"}, 400)
     assert not any(
         installed_mock(method).called
         for method in (
-            service.create_build_session_stream,
-            service.create_edit_session_stream,
-            service.create_fix_session_stream,
-            service.submit_message_stream,
-            service.submit_action_stream,
+            service.prepare_build_session,
+            service.prepare_edit_session,
+            service.prepare_fix_session,
+            service.submit_message_command,
+            service.submit_action_command,
         )
     )
 
 
-def test_action_maps_pre_stream_conflict(mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_action_maps_admission_conflict(mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     service = _route_service()
-    mocker.patch.object(service, "submit_action_stream")
-    _installed_spy_18 = installed_mock(service.submit_action_stream)
+    mocker.patch.object(service, "submit_action_command")
+    _installed_spy_18 = installed_mock(service.submit_action_command)
     _installed_spy_18.side_effect = ConflictError("stale")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -619,14 +625,12 @@ def test_action_maps_pre_stream_conflict(mocker: pytest_mock.MockerFixture, monk
     assert result == ({"code": "conflict"}, 409)
 
 
-def test_message_always_returns_event_stream(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_message_returns_admission_receipt(mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     service = _route_service()
     mocker.patch.object(service, "submit_message")
-    mocker.patch.object(service, "submit_message_stream")
-    _installed_spy_19 = installed_mock(service.submit_message_stream)
-    _installed_spy_19.return_value = _frames()
+    mocker.patch.object(service, "submit_message_command")
+    _installed_spy_19 = installed_mock(service.submit_message_command)
+    _installed_spy_19.return_value = CommandSubmission("command-1", pending=True)
     monkeypatch.setattr(mod, "build_service", lambda: service)
     actor = _actor()
 
@@ -636,8 +640,8 @@ def test_message_always_returns_event_stream(
         actor,
     )
 
-    _assert_event_stream(response)
-    _installed_spy_20 = installed_mock(service.submit_message_stream)
+    assert response == {"command_id": "command-1", "pending": True, "session": None}
+    _installed_spy_20 = installed_mock(service.submit_message_command)
     _installed_spy_20.assert_called_once_with("s1", actor, "hi", 2, "turn-1")
     _installed_spy_21 = installed_mock(service.submit_message)
     _installed_spy_21.assert_not_called()
@@ -663,22 +667,22 @@ def test_message_rejects_malformed_or_legacy_payload_before_service(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, payload: object
 ) -> None:
     service = _route_service()
-    mocker.patch.object(service, "create_build_session_stream")
-    mocker.patch.object(service, "create_edit_session_stream")
-    mocker.patch.object(service, "create_fix_session_stream")
-    mocker.patch.object(service, "submit_message_stream")
-    mocker.patch.object(service, "submit_action_stream")
+    mocker.patch.object(service, "prepare_build_session")
+    mocker.patch.object(service, "prepare_edit_session")
+    mocker.patch.object(service, "prepare_fix_session")
+    mocker.patch.object(service, "submit_message_command")
+    mocker.patch.object(service, "submit_action_command")
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     assert mod._message("s1", payload, _actor()) == ({"code": "bad_request"}, 400)
     assert not any(
         installed_mock(method).called
         for method in (
-            service.create_build_session_stream,
-            service.create_edit_session_stream,
-            service.create_fix_session_stream,
-            service.submit_message_stream,
-            service.submit_action_stream,
+            service.prepare_build_session,
+            service.prepare_edit_session,
+            service.prepare_fix_session,
+            service.submit_message_command,
+            service.submit_action_command,
         )
     )
 
@@ -696,7 +700,9 @@ def test_stream_authorizes_then_subscribes_before_reading_state(
     _installed_spy_22 = installed_mock(service.authorize_session)
     _installed_spy_22.side_effect = lambda *_args: calls.append("authorize")
     _installed_spy_23 = installed_mock(service.get_session_view)
-    _installed_spy_23.side_effect = lambda *_args: (calls.append("view"), _session_view())[1]
+    processing = _session_view()
+    processing.command_pending = True
+    _installed_spy_23.side_effect = lambda *_args: (calls.append("view"), processing)[1]
 
     def read_snapshot(*, tenant_id: str, session_id: str) -> None:
         assert (tenant_id, session_id) == ("ten-1", "s1")
@@ -706,7 +712,7 @@ def test_stream_authorizes_then_subscribes_before_reading_state(
         calls.append("subscribe")
         return subscription
 
-    stream = mocker.patch.object(mod, "stream_advance_frames", return_value=iter(["data: {}\n\n"]))
+    stream = mocker.patch.object(mod, "stream_session_frames", return_value=iter(["data: {}\n\n"]))
     monkeypatch.setattr(mod, "build_service", lambda: service)
     monkeypatch.setattr(mod.progress_bus, "subscribe", subscribe)
     monkeypatch.setattr(mod.progress_snapshot, "read", read_snapshot)
@@ -716,13 +722,11 @@ def test_stream_authorizes_then_subscribes_before_reading_state(
 
     _assert_event_stream(response)
     assert calls == ["authorize", "subscribe", "view", "snapshot"]
-    assert stream.call_args.kwargs["expect_advance"] is True
-    assert stream.call_args.kwargs["emit_command_started"] is False
-    assert stream.call_args.kwargs["emit_command_finished_when_settled"] is True
-    assert stream.call_args.kwargs["command_id"] == ""
+    assert stream.call_args.args[0]["command_pending"] is True
+    assert stream.call_args.args[1] is subscription
 
 
-def test_stream_settled_state_does_not_watch_for_progress(
+def test_stream_observes_even_a_settled_session(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service = _route_service()
@@ -732,7 +736,7 @@ def test_stream_settled_state_does_not_watch_for_progress(
     _installed_spy_24.return_value = _session_view(run_status=RunStatus.COMPLETE)
     subscription = _ProgressSubscription()
     mocker.spy(subscription, "close")
-    stream = mocker.patch.object(mod, "stream_advance_frames", return_value=iter(["data: {}\n\n"]))
+    stream = mocker.patch.object(mod, "stream_session_frames", return_value=iter(["data: {}\n\n"]))
     monkeypatch.setattr(mod, "build_service", lambda: service)
     monkeypatch.setattr(mod.progress_bus, "subscribe", lambda _session_id: subscription)
 
@@ -740,9 +744,8 @@ def test_stream_settled_state_does_not_watch_for_progress(
         response = mod._stream("s1", _actor())
 
     _assert_event_stream(response)
-    assert stream.call_args.kwargs["expect_advance"] is False
-    assert stream.call_args.kwargs["emit_command_started"] is False
-    assert stream.call_args.kwargs["emit_command_finished_when_settled"] is True
+    assert stream.call_args.args[0]["command_pending"] is False
+    assert stream.call_args.args[1] is subscription
 
 
 def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(
@@ -750,6 +753,7 @@ def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(
 ) -> None:
     app = Flask(__name__)
     processing = _session_view()
+    processing.command_pending = True
     settled = _session_view(run_status=RunStatus.WAITING_INPUT)
     settled.last_command_id = "command-1"
     service = _route_service()
@@ -787,15 +791,17 @@ def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(
     with app.test_request_context():
         response = _assert_event_stream(mod._stream("s1", _actor()))
 
-    body = response.get_data(as_text=True)
-    event = json.loads(body.splitlines()[1].removeprefix("data: "))
-    assert event["event"] == "command_finished"
+    chunks = iter(response.response)
+    assert json.loads(next(chunks).splitlines()[1].removeprefix("data: "))["event"] == "session_ready"
+    event = json.loads(next(chunks).splitlines()[1].removeprefix("data: "))
+    assert event["event"] == "session_state"
     assert event["data"]["run_status"] == "waiting_input"
-    assert event["data"]["command_id"] == "command-1"
+    assert event["data"]["last_command_id"] == "command-1"
+    response.close()
     _installed_spy_26 = installed_mock(service.get_session_view)
     assert _installed_spy_26.call_count == 2
     _installed_spy_27 = installed_mock(subscription.close)
-    _installed_spy_27.assert_called_once_with()
+    assert subscription.closed
 
 
 def test_stream_closes_subscription_when_state_is_unavailable(
@@ -832,24 +838,12 @@ def test_stream_authorizes_before_opening_subscription(
     subscribe.assert_not_called()
 
 
-def test_stream_response_returns_event_stream_on_success() -> None:
-    response = _assert_event_stream(mod._stream_response(_frames))
-    assert b'"event": "command_started"' in response.get_data()
-
-
-def test_stream_response_maps_known_error_to_http_tuple() -> None:
-    def make_generator() -> NoReturn:
-        raise ConflictError("stale")
-
-    assert mod._stream_response(make_generator) == ({"code": "conflict"}, 409)
-
-
-def test_stream_response_reraises_unmapped_exception() -> None:
-    def make_generator() -> NoReturn:
+def test_command_response_reraises_unmapped_exception() -> None:
+    def submit() -> NoReturn:
         raise RuntimeError("boom")
 
     with pytest.raises(RuntimeError):
-        mod._stream_response(make_generator)
+        mod._command_response("s1", submit)
 
 
 def test_dify_builder_required_blocks_when_feature_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -932,14 +926,15 @@ def test_create_build_defaults_to_not_renaming_the_app(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service = _route_service()
-    mocker.patch.object(service, "create_build_session_stream")
-    _installed_spy_31 = installed_mock(service.create_build_session_stream)
-    _installed_spy_31.return_value = _frames()
+    mocker.patch.object(service, "prepare_build_session")
+    _installed_spy_31 = installed_mock(service.prepare_build_session)
+    _installed_spy_31.return_value = ("s1", Action())
+    mocker.patch.object(service, "get_session_view", return_value=_session_view())
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     mod._create({"scenario": "build", "app_id": "a1", "goal_text": "Build it"}, _actor())
 
-    _installed_spy_32 = installed_mock(service.create_build_session_stream)
+    _installed_spy_32 = installed_mock(service.prepare_build_session)
     assert _installed_spy_32.call_args.kwargs["derive_app_name"] is False
 
 
@@ -947,9 +942,10 @@ def test_create_build_forwards_the_rename_opt_in(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service = _route_service()
-    mocker.patch.object(service, "create_build_session_stream")
-    _installed_spy_33 = installed_mock(service.create_build_session_stream)
-    _installed_spy_33.return_value = _frames()
+    mocker.patch.object(service, "prepare_build_session")
+    _installed_spy_33 = installed_mock(service.prepare_build_session)
+    _installed_spy_33.return_value = ("s1", Action())
+    mocker.patch.object(service, "get_session_view", return_value=_session_view())
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     mod._create(
@@ -957,7 +953,7 @@ def test_create_build_forwards_the_rename_opt_in(
         _actor(),
     )
 
-    _installed_spy_34 = installed_mock(service.create_build_session_stream)
+    _installed_spy_34 = installed_mock(service.prepare_build_session)
     assert _installed_spy_34.call_args.kwargs["derive_app_name"] is True
 
 
@@ -965,9 +961,9 @@ def test_action_resolves_confirm_through_the_option_the_client_chose(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service = _route_service()
-    mocker.patch.object(service, "submit_action_stream")
-    _installed_spy_35 = installed_mock(service.submit_action_stream)
-    _installed_spy_35.return_value = _frames()
+    mocker.patch.object(service, "submit_action_command")
+    _installed_spy_35 = installed_mock(service.submit_action_command)
+    _installed_spy_35.return_value = CommandSubmission("command-1", pending=True)
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     response = mod._action(
@@ -981,9 +977,9 @@ def test_action_resolves_confirm_through_the_option_the_client_chose(
         _actor(),
     )
 
-    _assert_event_stream(response)
+    assert response == {"command_id": "command-1", "pending": True, "session": None}
 
-    _installed_spy_36 = installed_mock(service.submit_action_stream)
+    _installed_spy_36 = installed_mock(service.submit_action_command)
     action = _installed_spy_36.call_args.args[2]
     assert action.kind == "run_verify"
     # The chosen option and any free text travel on to the handler untouched.
@@ -994,9 +990,9 @@ def test_action_still_accepts_a_client_posting_the_bare_action_id(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service = _route_service()
-    mocker.patch.object(service, "submit_action_stream")
-    _installed_spy_37 = installed_mock(service.submit_action_stream)
-    _installed_spy_37.return_value = _frames()
+    mocker.patch.object(service, "submit_action_command")
+    _installed_spy_37 = installed_mock(service.submit_action_command)
+    _installed_spy_37.return_value = CommandSubmission("command-1", pending=True)
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     mod._action(
@@ -1005,7 +1001,7 @@ def test_action_still_accepts_a_client_posting_the_bare_action_id(
         _actor(),
     )
 
-    _installed_spy_38 = installed_mock(service.submit_action_stream)
+    _installed_spy_38 = installed_mock(service.submit_action_command)
     assert _installed_spy_38.call_args.args[2].kind == "run_verify"
 
 

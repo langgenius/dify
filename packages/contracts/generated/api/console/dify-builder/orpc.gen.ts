@@ -17,9 +17,7 @@ import {
   zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdPath,
   zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse,
   zGetDifyBuilderSessionsBySessionIdResponse,
-  zGetDifyBuilderSessionsBySessionIdStreamHeaders,
   zGetDifyBuilderSessionsBySessionIdStreamPath,
-  zGetDifyBuilderSessionsBySessionIdStreamQuery,
   zGetDifyBuilderSessionsBySessionIdStreamResponse,
   zPostDifyBuilderAgentPingResponse,
   zPostDifyBuilderSessionsBody,
@@ -120,7 +118,7 @@ export const post3 = oc
       params: zPostDifyBuilderSessionsBySessionIdActionsPath,
     }),
   )
-  .output(eventIterator(zPostDifyBuilderSessionsBySessionIdActionsResponse))
+  .output(zPostDifyBuilderSessionsBySessionIdActionsResponse)
 
 export const actions = {
   post: post3,
@@ -217,7 +215,7 @@ export const post6 = oc
       params: zPostDifyBuilderSessionsBySessionIdMessagesPath,
     }),
   )
-  .output(eventIterator(zPostDifyBuilderSessionsBySessionIdMessagesResponse))
+  .output(zPostDifyBuilderSessionsBySessionIdMessagesResponse)
 
 export const messages = {
   post: post6,
@@ -513,13 +511,7 @@ export const get6 = oc
     path: '/dify-builder/sessions/{session_id}/stream',
     tags: ['console'],
   })
-  .input(
-    z.object({
-      headers: zGetDifyBuilderSessionsBySessionIdStreamHeaders.optional(),
-      params: zGetDifyBuilderSessionsBySessionIdStreamPath,
-      query: zGetDifyBuilderSessionsBySessionIdStreamQuery.optional(),
-    }),
-  )
+  .input(z.object({ params: zGetDifyBuilderSessionsBySessionIdStreamPath }))
   .output(eventIterator(zGetDifyBuilderSessionsBySessionIdStreamResponse))
 
 export const stream = {
@@ -562,7 +554,7 @@ export const post16 = oc
     tags: ['console'],
   })
   .input(z.object({ body: zPostDifyBuilderSessionsBody }))
-  .output(eventIterator(zPostDifyBuilderSessionsResponse))
+  .output(zPostDifyBuilderSessionsResponse)
 
 export const sessions = {
   post: post16,

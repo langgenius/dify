@@ -506,8 +506,8 @@ class _LocalInspectionEvidence(NativeDTO):
 
 
 # Fixed read-only program. No request can supply code or alter the selected paths.
-# Roots and every existing ancestor must be real accessible directories; only
-# exact lstat ENOENT/ENOTDIR below validated roots counts as absence.
+# Ancestors need only be traversable; the configured roots must be readable.
+# Only exact lstat ENOENT/ENOTDIR below validated roots counts as absence.
 _LOCAL_INSPECTION_PROBE = r"""
 import errno
 import json
@@ -520,15 +520,19 @@ value = json.loads(sys.argv[1])
 def open_root(path):
     if not path.startswith("/") or os.path.normpath(path) != path or path == "/":
         raise ValueError("ambiguous configured root")
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-    fd = os.open("/", flags)
+    directory_flags = os.O_DIRECTORY | os.O_NOFOLLOW
+    read_flags = directory_flags | os.O_RDONLY
+    search_flags = directory_flags | getattr(os, "O_PATH", os.O_RDONLY)
+    parts = path.split("/")[1:]
+    fd = os.open("/", search_flags)
     try:
-        for part in path.split("/")[1:]:
-            next_fd = os.open(part, flags, dir_fd=fd)
+        for index, part in enumerate(parts, start=1):
+            is_root = index == len(parts)
+            next_fd = os.open(part, read_flags if is_root else search_flags, dir_fd=fd)
             os.close(fd)
             fd = next_fd
             info = os.fstat(fd)
-            if not info.st_mode & 0o444 or not info.st_mode & 0o111:
+            if not info.st_mode & 0o111 or (is_root and not info.st_mode & 0o444):
                 raise PermissionError("inaccessible root")
         with os.scandir(fd) as entries:
             next(entries, None)

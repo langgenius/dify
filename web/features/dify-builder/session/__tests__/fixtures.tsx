@@ -10,8 +10,11 @@ import type {
 import type { ReactNode } from 'react'
 import type { ConversationItem, SessionView } from '../../types'
 import { renderHook } from '@testing-library/react'
-import { createStore, Provider } from 'jotai'
+import { createStore, Provider, useStore } from 'jotai'
+import { useLayoutEffect } from 'react'
+import { consoleClient } from '@/service/console'
 import { useDifyBuilderSessionController } from '../use-session-controller'
+import { installSessionTransport } from './session-transport'
 
 export const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
   session_id: 'session-1',
@@ -179,16 +182,43 @@ export const createControlledEventStream = () => {
   }
 }
 
+export function useScriptedSessionTransport(view = createSessionView) {
+  const store = useStore()
+  useLayoutEffect(
+    () =>
+      installSessionTransport(consoleClient.difyBuilder.sessions, store, {
+        view,
+        stream: createControlledEventStream,
+      }),
+    [store, view],
+  )
+}
+
 export const renderSessionHook = (
   prepareCommand?: Parameters<typeof useDifyBuilderSessionController>[0],
   runEvents?: Parameters<typeof useDifyBuilderSessionController>[1],
+  options: { scripted?: boolean } = {},
 ) => {
   const store = createStore()
-  const rendered = renderHook(() => useDifyBuilderSessionController(prepareCommand, runEvents), {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <Provider store={store}>{children}</Provider>
-    ),
-  })
+  function ScriptedSessionTransport() {
+    useScriptedSessionTransport()
+    return null
+  }
+  function SessionProvider({ children }: { children: ReactNode }) {
+    return (
+      <Provider store={store}>
+        {options.scripted !== false && <ScriptedSessionTransport />}
+        {children}
+      </Provider>
+    )
+  }
+  const rendered = renderHook(
+    ({ enabled }) => useDifyBuilderSessionController(prepareCommand, runEvents, enabled),
+    {
+      initialProps: { enabled: true },
+      wrapper: SessionProvider,
+    },
+  )
   return { ...rendered, store }
 }
 

@@ -177,7 +177,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     await act(async () => {
       stream.push(commandStartedEvent(createSessionView({ phase: 'test' })))
     })
-    expect(events.onSessionStateChanged).toHaveBeenCalledExactlyOnceWith(
+    expect(events.onSessionStateChanged).toHaveBeenLastCalledWith(
       expect.objectContaining({ phase: 'test', run_status: 'processing' }),
     )
 
@@ -186,7 +186,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       stream.push(stateEvent(complete))
       expect(await command).toBe(true)
     })
-    expect(events.onSessionStateChanged).toHaveBeenCalledTimes(2)
+    expect(events.onSessionStateChanged).toHaveBeenCalledTimes(3)
     expect(events.onSessionStateChanged).toHaveBeenLastCalledWith(complete)
   })
 
@@ -630,7 +630,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(store.get(difyBuilderSessionLastErrorAtom)).toContain('terminal event')
   })
 
-  it('restores JSON state and resumes an executing session through the reconnect stream', async () => {
+  it('restores state and follows an executing session through the shared stream', async () => {
     const executing = createSessionView({ session_id: 'session-restored', version: 3 })
     const terminal = createSessionView({
       ...executing,
@@ -767,7 +767,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('')
   })
 
-  it('restores an interrupted working state from JSON without opening SSE', async () => {
+  it('restores an interrupted working state through the session snapshot', async () => {
     const interrupted = createSessionView({
       actions: [{ id: 'restart', label: 'Restart from current draft', kind: 'primary' }],
       interrupted: true,

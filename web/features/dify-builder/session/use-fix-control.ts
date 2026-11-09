@@ -4,13 +4,12 @@ import type {
   DifyBuilderFixIntentPayload,
   DifyBuilderReceiptSnapshot,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
-import type { SessionView } from '../types'
 import type { SessionControllerContext } from './controller-types'
 import type { DifyBuilderLifecycleControl } from './state'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback } from 'react'
 import { prepareSessionFix, runSessionAction } from './client'
-import { streamErrorMessage, UNEXPECTED_EOF_ERROR } from './errors'
+import { UNEXPECTED_EOF_ERROR } from './errors'
 import { isActiveView } from './projection'
 import {
   difyBuilderActiveCommandAtom,
@@ -27,6 +26,8 @@ export function useDifyBuilderFixControl({
   abortRef,
   lifecycleAbortRef,
   traceRef,
+  nativeObservationRef,
+  waitForSession,
   applySessionView,
   reconcileSession,
   lifecycleError,
@@ -37,6 +38,8 @@ export function useDifyBuilderFixControl({
   | 'abortRef'
   | 'lifecycleAbortRef'
   | 'traceRef'
+  | 'nativeObservationRef'
+  | 'waitForSession'
   | 'applySessionView'
   | 'reconcileSession'
   | 'lifecycleError'
@@ -105,6 +108,8 @@ export function useDifyBuilderFixControl({
       })
       traceRef.current.append({ dir: 'out', kind: 'fix_intent', payload: body })
       try {
+        await waitForSession(sessionId, controller.signal)
+        const observedAtStart = nativeObservationRef.current
         const receipt = await prepareSessionFix(sessionId, body, controller.signal)
         if (
           controller.signal.aborted ||
@@ -113,7 +118,7 @@ export function useDifyBuilderFixControl({
         )
           return false
         traceRef.current.append({ dir: 'in', kind: 'fix_intent_ack', payload: receipt })
-        applySessionView(receipt.session)
+        applySessionView(receipt.session, observedAtStart)
         store.set(difyBuilderLifecycleControlAtom, null)
         if (receipt.status === 'activated' && isActiveView(receipt.session))
           return await watchFix(sessionId, controller)
@@ -125,7 +130,17 @@ export function useDifyBuilderFixControl({
         if (lifecycleAbortRef.current === controller) lifecycleAbortRef.current = null
       }
     },
-    [applySessionView, lifecycleError, setLastError, store, watchFix, lifecycleAbortRef, traceRef],
+    [
+      applySessionView,
+      lifecycleError,
+      nativeObservationRef,
+      setLastError,
+      store,
+      waitForSession,
+      watchFix,
+      lifecycleAbortRef,
+      traceRef,
+    ],
   )
 
   const submitFixDecision = useCallback(
@@ -176,7 +191,9 @@ export function useDifyBuilderFixControl({
         },
       })
       try {
-        const stream = await runSessionAction(
+        await waitForSession(view.session_id, controller.signal)
+        const observedAtStart = nativeObservationRef.current
+        const receipt = await runSessionAction(
           view.session_id,
           actionId,
           actionPayload,
@@ -186,22 +203,15 @@ export function useDifyBuilderFixControl({
           receiptSnapshot,
           clientActionId,
         )
-        let settled: SessionView | null = null
-        for await (const event of stream) {
-          if (
-            controller.signal.aborted ||
-            store.get(difyBuilderSessionViewAtom)?.session_id !== view.session_id
-          )
-            return false
-          traceRef.current.append({ dir: 'in', kind: event.event, payload: event.data })
-          if (event.event === 'error') throw new Error(streamErrorMessage(event.data))
-          if (event.event === 'command_finished' && event.data.session_id === view.session_id) {
-            settled = { ...event.data, last_command_id: event.data.command_id }
-            applySessionView(settled)
-            break
-          }
-        }
+        if (
+          controller.signal.aborted ||
+          store.get(difyBuilderActiveSessionIdAtom) !== view.session_id
+        )
+          return false
+        const settled = receipt.session
         if (!settled) throw new Error(UNEXPECTED_EOF_ERROR)
+        traceRef.current.append({ dir: 'in', kind: 'command_ack', payload: receipt })
+        applySessionView(settled, observedAtStart)
         if (selected === 'stop_and_switch_fix') {
           // Only an explicitly acknowledged switch retires the original response.
           abortRef.current?.abort()
@@ -228,6 +238,8 @@ export function useDifyBuilderFixControl({
     [
       applySessionView,
       lifecycleError,
+      nativeObservationRef,
+      waitForSession,
       setActiveCommand,
       setIsBusy,
       setLastError,

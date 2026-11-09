@@ -20,6 +20,7 @@ import {
   createSessionView,
   stateEvent,
   streamOf,
+  useScriptedSessionTransport,
 } from '../session/__tests__/fixtures'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
 import { difyBuilderRuntimeAtom } from '../state'
@@ -90,6 +91,7 @@ const FilePicker = () => {
   )
 }
 const SessionOwner = ({ edit }: { edit: boolean }) => {
+  useScriptedSessionTransport()
   const attachmentDraft = useDifyBuilderAttachmentDraft()
   const events = useMemo<SessionRunEvents>(
     () => ({

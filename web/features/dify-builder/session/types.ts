@@ -1,6 +1,7 @@
 import type {
   DifyBuilderAttachmentPayload,
-  DifyBuilderStreamEventResponse,
+  DifyBuilderCommandSubmissionResponse,
+  DifyBuilderCreatedSessionResponse,
   DifyBuilderWorkflowEventData,
   RunStatus,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
@@ -20,30 +21,39 @@ export type SessionRunEvents = {
   onCanvasRefreshed: () => void
 }
 
-export type SessionCommandOptions = {
-  openStream: (signal: AbortSignal) => Promise<AsyncIterable<DifyBuilderStreamEventResponse>>
-  knownSessionId?: string
-  expectTerminalEvent: boolean
-  startsSession?: boolean
+export type SessionCommandOptions = (
+  | {
+      submit: (signal: AbortSignal) => Promise<DifyBuilderCommandSubmissionResponse>
+      knownSessionId: string
+      create?: never
+      prepareExisting?: never
+    }
+  | {
+      create: (signal: AbortSignal) => Promise<DifyBuilderCreatedSessionResponse>
+      prepareExisting?: () => Promise<boolean>
+      knownSessionId?: never
+      submit?: never
+    }
+) & {
   prepareDraft?: boolean
   initialAttachments?: DifyBuilderAttachmentPayload[]
   trace?: { kind: string; payload: unknown }
 }
 
 export type SessionStreamOutcome = {
-  sessionId?: string
-  sawCommandStarted: boolean
-  terminalEvent: 'command_finished' | 'error' | null
+  terminalEvent: 'command_finished' | 'error'
   terminalError?: string
   terminalErrorCode?: string
   terminalInterrupted?: boolean
   terminalRunStatus?: RunStatus
-  transportError?: string
-  transportStatus?: number
-  observedVersion?: number
-  commandStartedVersion?: number
-  conversationStartSeq?: number
-  commandId?: string
   finishedCommandId?: string
-  stateApplied?: boolean
+  stateApplied: boolean
+  retest?: PendingRetest
+}
+
+export type PendingRetest = {
+  sessionId: string
+  version: number
+  appRevision: string
+  actionId: string
 }

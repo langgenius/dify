@@ -12,7 +12,7 @@ import json
 import logging
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, nullcontext, suppress
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 from uuid import NAMESPACE_URL, uuid4, uuid5
@@ -99,6 +99,15 @@ class AppAccess(StrEnum):
     EDIT = "edit"
     TEST_AND_RUN = "test_and_run"
     RELEASE = "release"
+
+
+@dataclass(frozen=True)
+class CommandSubmission:
+    """Admission receipt. Pending work settles on the session stream."""
+
+    command_id: str
+    pending: bool
+    session: SessionView | None = None
 
 
 class SessionLock(Protocol):
@@ -1145,7 +1154,7 @@ class DifyBuilderService:
             )
         return parsed
 
-    def _prepare_fix_session(
+    def prepare_fix_session(
         self,
         app_id: str,
         actor: Actor,
@@ -1155,10 +1164,13 @@ class DifyBuilderService:
         attachments: list[str] | None = None,
         session_id: str | None = None,
         client_action_id: str | None = None,
+        defer_existing: bool = False,
     ) -> tuple[str, Action | None]:
         """Shared setup for ``create_fix_session``/``create_fix_session_stream``:
         everything through persisting the session (and the failed-run record)
-        up to -- but not including -- the ``request_fix`` dispatch.
+        up to -- but not including -- the ``request_fix`` dispatch. When
+        ``defer_existing`` is set, return a selected conversation without
+        submitting a Fix intent before its observer is connected.
 
         ``failed_run_id`` is the id of the **Dify workflow run** that failed
         (what the frontend has). In fix mode we record it as an immutable
@@ -1178,6 +1190,8 @@ class DifyBuilderService:
         app_id = self._authorize_app(app_id, actor)
         if self._fix_intent_repo is not None:
             selected = self._fix_intent_repo.select_conversation(actor, app_id, session_id)
+            if selected is not None and defer_existing:
+                return selected, None
             if selected is not None:
                 from services.dify_builder.fix_intents import prepare_fix_intent
                 from services.dify_builder.task_lifecycle import task_identity
@@ -1273,6 +1287,8 @@ class DifyBuilderService:
         items = [context_card.to_item(seq=0, at_version=0)]
         if self._fix_intent_repo is not None:
             selected, created = self._repo.create_fix_session_or_select(s, fc, items, source_run=failed_run)
+            if not created and defer_existing:
+                return selected.id, None
             if not created:
                 from services.dify_builder.fix_intents import prepare_fix_intent
                 from services.dify_builder.task_lifecycle import task_identity
@@ -1321,7 +1337,7 @@ class DifyBuilderService:
         client_action_id: str | None = None,
     ) -> SessionView:
         """Port of Go ``CreateFixSession``, extended to record the failed run."""
-        session_id, action = self._prepare_fix_session(
+        session_id, action = self.prepare_fix_session(
             app_id, actor, failed_run_id, checklist_errors, model_config, attachments, session_id, client_action_id
         )
         if action is not None:
@@ -1344,7 +1360,7 @@ class DifyBuilderService:
         ``request_fix`` advance, so no progress frames are lost."""
         from services.dify_builder.wiring import stream_advance_frames
 
-        session_id, action = self._prepare_fix_session(
+        session_id, action = self.prepare_fix_session(
             app_id, actor, failed_run_id, checklist_errors, model_config, attachments, session_id, client_action_id
         )
         initial_items = self._repo.list_conversation(session_id) if action is not None else []
@@ -1367,7 +1383,7 @@ class DifyBuilderService:
             conversation_cleared=lambda: self.is_conversation_cleared(session_id, actor),
         )
 
-    def _prepare_build_session(
+    def prepare_build_session(
         self,
         app_id: str,
         actor: Actor,
@@ -1422,7 +1438,7 @@ class DifyBuilderService:
         initial ``start_build`` command (parallels ``create_fix_session``). The goal is
         seeded as the user's opening bubble; the first advance's
         ``handle_capability_check`` analyzes it into requirements."""
-        session_id, action = self._prepare_build_session(
+        session_id, action = self.prepare_build_session(
             app_id, actor, goal_text, model_config, derive_app_name, attachments
         )
         if action is not None:
@@ -1442,7 +1458,7 @@ class DifyBuilderService:
         dispatching the initial ``start_build`` advance."""
         from services.dify_builder.wiring import stream_advance_frames
 
-        session_id, action = self._prepare_build_session(
+        session_id, action = self.prepare_build_session(
             app_id, actor, goal_text, model_config, derive_app_name, attachments
         )
         initial_items = self._repo.list_conversation(session_id)
@@ -1464,7 +1480,7 @@ class DifyBuilderService:
             conversation_cleared=lambda: self.is_conversation_cleared(session_id, actor),
         )
 
-    def _prepare_edit_session(
+    def prepare_edit_session(
         self,
         app_id: str,
         actor: Actor,
@@ -1518,7 +1534,7 @@ class DifyBuilderService:
         The goal is seeded as the opening user bubble and the initial
         ``send_edit_goal`` advance reads the graph and analyzes impact.
         """
-        session_id, action = self._prepare_edit_session(app_id, actor, goal_text, model_config, attachments)
+        session_id, action = self.prepare_edit_session(app_id, actor, goal_text, model_config, attachments)
         self.dispatch(session_id, action, actor)
         return self.get_session_view(session_id, actor)
 
@@ -1537,7 +1553,7 @@ class DifyBuilderService:
         """
         from services.dify_builder.wiring import stream_advance_frames
 
-        session_id, action = self._prepare_edit_session(app_id, actor, goal_text, model_config, attachments)
+        session_id, action = self.prepare_edit_session(app_id, actor, goal_text, model_config, attachments)
         initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
@@ -1556,6 +1572,34 @@ class DifyBuilderService:
             read_session_view=lambda: self._read_stream_session_view(session_id, actor),
             conversation_cleared=lambda: self.is_conversation_cleared(session_id, actor),
         )
+
+    def start_session(self, session_id: str, actor: Actor, request: Action) -> CommandSubmission:
+        """Dispatch the opening command for an authorized, untouched session.
+
+        The caller opens the session stream first. Derive the command and its
+        payload from the saved opening context. The writer lease and the
+        initial version fence prevent a second start from enqueueing.
+        """
+        session, context = self._get_authorized_session(session_id, actor)
+        kind = {
+            (EntryMode.BUILD, PcState.BUILD_CAPABILITY_CHECK): "start_build",
+            (EntryMode.EDIT, PcState.EDIT_CAPABILITY_CHECK): "send_edit_goal",
+            (EntryMode.FIX, PcState.FIX_DIAGNOSE): "request_fix",
+            (EntryMode.FIX_CHECKLIST, PcState.CHECKLIST_DIAGNOSE): "request_fix",
+        }.get((session.entry_mode, session.current_state))
+        if kind is None or session.version != 1 or request.base_version != session.version:
+            raise ConflictError("opening command is no longer current")
+        revision = self._get_app_revision(session.app_id, actor)
+        if request.base_app_revision != revision or context.last_snapshot_hash != revision:
+            raise ConflictError("draft changed before starting Builder")
+        action = Action(
+            kind=kind,
+            payload={"text": context.goal_text} if kind == "send_edit_goal" else {},
+            base_version=session.version,
+            base_app_revision=revision,
+            command_id=request.command_id,
+        )
+        return CommandSubmission(self.dispatch(session_id, action, actor, opening=True), pending=True)
 
     def _read_stream_session_view(self, session_id: str, actor: Actor) -> dict[str, object] | None:
         with self._stream_read_scope_fn():
@@ -1906,6 +1950,7 @@ class DifyBuilderService:
                 conflicted=app_revision_conflicted,
             ),
             last_command_id=fc.last_command_id,
+            command_pending=lock_held or continuation_pending,
             reply_language=fc.reply_language,
         )
 
@@ -2220,11 +2265,16 @@ class DifyBuilderService:
             self._release_workflow_writer(s.id, token)
 
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
-        """Port of Go ``SubmitAction``."""
-        view, expect_advance, _settled_items = self._prepare_action(session_id, actor, action)
+        """Submit an action and return the latest bounded session view."""
+        receipt = self.submit_action_command(session_id, actor, action)
+        return receipt.session or self.get_session_view(session_id, actor)
+
+    def submit_action_command(self, session_id: str, actor: Actor, action: Action) -> CommandSubmission:
+        """Validate and admit once. Return the projection only for synchronous settlement."""
+        view, expect_advance, _ = self._prepare_action(session_id, actor, action)
         if expect_advance:
-            self.dispatch(session_id, action, actor)
-        return self.get_session_view(session_id, actor)
+            return CommandSubmission(self.dispatch(session_id, action, actor), pending=True)
+        return CommandSubmission(action.command_id, pending=False, session=view)
 
     def submit_message(
         self,
@@ -2235,16 +2285,30 @@ class DifyBuilderService:
         client_turn_id: str,
         attachments: list[str] | None = None,
     ) -> SessionView:
-        """Port of Go ``SubmitMessage``."""
+        """Submit a message and return the latest bounded session view."""
+        receipt = self.submit_message_command(session_id, actor, text, base_version, client_turn_id, attachments)
+        return receipt.session or self.get_session_view(session_id, actor)
+
+    def submit_message_command(
+        self,
+        session_id: str,
+        actor: Actor,
+        text: str,
+        base_version: int,
+        client_turn_id: str,
+        attachments: list[str] | None = None,
+    ) -> CommandSubmission:
+        """Admit a chat turn or material. Material intake returns its durable receipt immediately."""
         queued = self._prepare_material_message(session_id, actor, text, base_version, client_turn_id, attachments)
         if queued is not None:
             session, action = queued
-            if action is not None:
-                self._dispatch_material_action(session.id, action, actor)
-            return self.get_session_view(session.id, actor)
+            command_id = self._dispatch_material_action(session.id, action, actor) if action is not None else ""
+            return CommandSubmission(
+                command_id, pending=bool(command_id), session=self.get_session_view(session.id, actor)
+            )
         if not isinstance(text, str) or not (text := text.strip()):
             raise BadRequestError("message text is required")
-        return self.submit_action(
+        return self.submit_action_command(
             session_id,
             actor,
             Action(
@@ -2507,7 +2571,7 @@ class DifyBuilderService:
             )
         return receipt
 
-    def dispatch(self, session_id: str, action: Action, actor: Actor) -> str:
+    def dispatch(self, session_id: str, action: Action, actor: Actor, *, opening: bool = False) -> str:
         """Reserve one workflow writer and enqueue once; uncertain ACKs retain ownership."""
         action.command_id = action.command_id or str(uuid4())
         from services.dify_builder.task_controls import generation
@@ -2534,6 +2598,8 @@ class DifyBuilderService:
             session, current = self._repo.get_session(session_id)
             if current.paused or generation(current) != action.execution_generation:
                 raise ConflictError("task dispatch stopped or superseded")
+            if opening and (session.version != action.base_version or current.last_command_id):
+                raise ConflictError("opening command is no longer current")
             if action.kind == "consume_material":
                 action.base_version = session.version
             if action.kind == "send_edit_goal" and session.current_state == PcState.EDIT_CAPABILITY_CHECK:

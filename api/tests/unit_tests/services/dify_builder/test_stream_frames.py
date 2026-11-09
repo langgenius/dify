@@ -38,6 +38,7 @@ def _view(**overrides: object) -> Graph:
         "reply_language": "",
         "version": 1,
         "canvas_read_only": False,
+        "command_pending": False,
         "run_status": "processing",
         "interrupted": False,
         "conversation_last_seq": -1,

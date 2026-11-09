@@ -784,7 +784,7 @@ def test_resume_opening_edit_goal_continues_cognition_without_resubmission(
 
     service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph()), "current")
     original_goal = "Preserve Start and End while updating the calculation"
-    session_id, opening = service._prepare_edit_session(APP_ID, _actor(), original_goal)
+    session_id, opening = service.prepare_edit_session(APP_ID, _actor(), original_goal)
     expected_goal = "Use Unicode-aware calculation and preserve bindings" if revised_goal else original_goal
     if revised_goal:
         service.submit_action(
@@ -829,7 +829,7 @@ def test_busy_edit_goal_is_not_persisted_without_dispatch_admission(
     from core.dify_builder.errors import BusyError
     from core.dify_builder.models import Action
 
-    session_id, _ = service._prepare_edit_session(APP_ID, _actor(), "accepted original goal")
+    session_id, _ = service.prepare_edit_session(APP_ID, _actor(), "accepted original goal")
     lock.acquire(session_id)
     with pytest.raises(BusyError):
         service.submit_action(
