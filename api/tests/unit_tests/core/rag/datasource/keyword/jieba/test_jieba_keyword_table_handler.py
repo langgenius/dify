@@ -126,3 +126,28 @@ def test_expand_tokens_with_subtokens_filters_stopwords_from_subtokens() -> None
     assert "alpha" in expanded
     assert "beta" in expanded
     assert "during" not in expanded
+
+
+def test_extract_keywords_explicit_zero_returns_no_keywords(
+    fake_jieba: Callable[..., types.ModuleType],
+) -> None:
+    # A real jieba extractor returns ALL keywords for topK=0; our handler must
+    # override that and honour "explicit 0 = extract no keywords".
+    fake_jieba(default_tfidf=_RecordingTFIDF(keywords=["alpha", "beta", "gamma"]))
+
+    handler = JiebaKeywordTableHandler()
+    keywords = handler.extract_keywords("input text", max_keywords_per_chunk=0)
+
+    assert keywords == set()
+
+
+def test_extract_keywords_none_defers_to_default_top_k(
+    fake_jieba: Callable[..., types.ModuleType],
+) -> None:
+    # None must NOT be treated as "no keywords"; the default behaviour applies.
+    fake_jieba(default_tfidf=_RecordingTFIDF(keywords=["alpha"]))
+
+    handler = JiebaKeywordTableHandler()
+    keywords = handler.extract_keywords("input text", max_keywords_per_chunk=None)
+
+    assert keywords == {"alpha"}

@@ -87,7 +87,7 @@ class Jieba(BaseKeyword):
             if removed:
                 table = self._delete_ids_from_keyword_table(table, removed)
             handler: JiebaKeywordTableHandler | None = None
-            keyword_number = self.dataset.keyword_number or self._config.max_keywords_per_chunk
+            keyword_number = self.dataset.keyword_number if self.dataset.keyword_number is not None else self._config.max_keywords_per_chunk
             selected: dict[str, Sequence[str]] = {}
             for position, text in enumerate(texts):
                 keywords = keywords_list[position] if keywords_list else None
