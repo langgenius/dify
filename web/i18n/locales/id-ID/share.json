@@ -60,6 +60,7 @@
   "connections.headless.security": "Kredensial dienkripsi dan disimpan oleh Dify. {{source}} tidak pernah menerimanya.",
   "connections.headless.signedInAs": "Masuk sebagai {{identity}}",
   "connections.headless.title": "Hubungkan layanan untuk melanjutkan",
+  "connections.invalid": "Koneksi tidak valid",
   "connections.required.inputPlaceholder": "Masuk dan hubungkan layanan untuk memulai",
   "connections.required.signIn": "Masuk ke Dify",
   "connections.required.signInDescription": "Masuk untuk menyiapkan koneksi ini.",

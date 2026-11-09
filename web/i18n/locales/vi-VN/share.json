@@ -60,6 +60,7 @@
   "connections.headless.security": "Thông tin xác thực được Dify mã hóa và lưu trữ. {{source}} không bao giờ nhận được thông tin này.",
   "connections.headless.signedInAs": "Đã đăng nhập với tư cách {{identity}}",
   "connections.headless.title": "Kết nối dịch vụ để tiếp tục",
+  "connections.invalid": "Kết nối không hợp lệ",
   "connections.required.inputPlaceholder": "Đăng nhập và kết nối các dịch vụ để bắt đầu",
   "connections.required.signIn": "Đăng nhập vào Dify",
   "connections.required.signInDescription": "Đăng nhập để thiết lập các kết nối này.",

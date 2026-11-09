@@ -60,6 +60,7 @@
   "connections.headless.security": "Credentials are encrypted and stored by Dify. {{source}} never receives them.",
   "connections.headless.signedInAs": "Signed in as {{identity}}",
   "connections.headless.title": "Connect services to continue",
+  "connections.invalid": "Invalid connection",
   "connections.required.inputPlaceholder": "Sign in and connect services to get started",
   "connections.required.signIn": "Sign in to Dify",
   "connections.required.signInDescription": "Sign in to set up these connections.",

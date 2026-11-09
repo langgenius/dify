@@ -60,6 +60,7 @@
   "connections.headless.security": "Kimlik bilgileri Dify tarafından şifrelenir ve saklanır. {{source}} bu bilgileri asla almaz.",
   "connections.headless.signedInAs": "{{identity}} olarak oturum açıldı",
   "connections.headless.title": "Devam etmek için hizmetleri bağlayın",
+  "connections.invalid": "Geçersiz bağlantı",
   "connections.required.inputPlaceholder": "Başlamak için oturum açın ve hizmetleri bağlayın",
   "connections.required.signIn": "Dify’da oturum aç",
   "connections.required.signInDescription": "Bu bağlantıları ayarlamak için oturum açın.",

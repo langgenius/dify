@@ -60,6 +60,7 @@
   "connections.headless.security": "اطلاعات ورود توسط Dify رمزگذاری و ذخیره می‌شود. {{source}} هرگز آن‌ها را دریافت نمی‌کند.",
   "connections.headless.signedInAs": "واردشده با هویت {{identity}}",
   "connections.headless.title": "برای ادامه، سرویس‌ها را متصل کنید",
+  "connections.invalid": "اتصال نامعتبر",
   "connections.required.inputPlaceholder": "برای شروع وارد شوید و سرویس‌ها را متصل کنید",
   "connections.required.signIn": "ورود به Dify",
   "connections.required.signInDescription": "برای راه‌اندازی این اتصال‌ها وارد شوید.",

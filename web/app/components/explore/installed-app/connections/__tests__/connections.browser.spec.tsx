@@ -2,8 +2,10 @@ import type {
   InstalledAppParametersResponse,
   InstalledConnectionPreflightPayload,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createDeferred } from '@/test/deferred'
 import { createTestQueryClient } from '@/test/query-client'
 import { InstalledConnectionSetup } from '..'
@@ -18,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   preflight: vi.fn(),
   start: vi.fn(),
   run: vi.fn(),
+  create: vi.fn(),
+  creationEnabled: false,
+  oauthEnabled: false,
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -33,7 +38,18 @@ vi.mock('@/service/console', async (importOriginal) => {
       'installedApps.byInstalledAppId.connections.preflight.post': mocks.preflight,
       'workspaces.current.tools.builtin.get': () => [],
       'workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get':
-        () => [],
+        () =>
+          mocks.creationEnabled
+            ? [
+                {
+                  name: 'api_key',
+                  label: { en_US: 'API Key' },
+                  type: 'secret-input',
+                  required: true,
+                },
+              ]
+            : [],
+      'workspaces.current.toolProvider.builtin.byProvider.add.post': mocks.create,
     }),
   }
 })
@@ -41,8 +57,8 @@ vi.mock('@/service/console', async (importOriginal) => {
 vi.mock('@/hooks/use-credential-permissions', () => ({
   useCredentialPermissions: () => ({
     canUseCredential: true,
-    canCreateCredential: false,
-    canManageCredential: false,
+    canCreateCredential: mocks.creationEnabled,
+    canManageCredential: mocks.creationEnabled,
   }),
 }))
 
@@ -50,16 +66,16 @@ vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
   usePluginAuth: () => ({
     isAuthorized: true,
     canOAuth: false,
-    canApiKey: false,
+    canApiKey: mocks.creationEnabled,
     isLoading: false,
-    notAllowCustomCredential: true,
+    notAllowCustomCredential: !mocks.creationEnabled,
     invalidPluginCredentialInfo: vi.fn(),
     credentials: [
       {
         id: 'workspace-key',
         provider: 'langgenius/github/github',
         name: 'Workspace key',
-        credential_type: 'api-key',
+        credential_type: mocks.oauthEnabled ? 'oauth2' : 'api-key',
         is_default: false,
       },
       {
@@ -90,7 +106,7 @@ const credential = {
   provider: requirement.provider,
   name: 'Workspace key',
   credential_type: 'api-key' as const,
-  credential_status: 'connected' as const,
+  credential_status: null,
   account_label: null,
   created_at: 1,
   updated_at: 1,
@@ -130,20 +146,27 @@ function RunControl() {
 }
 
 function App({ conversationId }: { conversationId?: string }) {
+  const queryClient = createTestQueryClient()
+  seedAccountProfileQuery(queryClient)
   return (
-    <QueryClientProvider client={createTestQueryClient()}>
-      <InstalledAppConnectionsProvider
-        installedAppId="installed-app"
-        conversationId={conversationId}
-      >
-        <InstalledConnectionSetup onStart={mocks.start} />
-        <RunControl />
-      </InstalledAppConnectionsProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <InstalledAppConnectionsProvider
+          installedAppId="installed-app"
+          conversationId={conversationId}
+        >
+          <InstalledConnectionSetup onStart={mocks.start} />
+          <RunControl />
+        </InstalledAppConnectionsProvider>
+      </TooltipProvider>
     </QueryClientProvider>
   )
 }
 
 beforeEach(() => {
+  mocks.creationEnabled = false
+  mocks.oauthEnabled = false
+  mocks.create.mockReset().mockResolvedValue({ result: 'success' })
   mocks.parameters.mockReset().mockResolvedValue(parameters)
   mocks.configuration
     .mockReset()
@@ -248,11 +271,97 @@ it('keeps running disabled when a saved workspace credential fails preflight', a
     ],
   })
   const screen = await render(<App />)
-  await expect.element(screen.getByText('plugin.auth.unavailable', { exact: true })).toBeVisible()
+  await expect
+    .element(screen.getByRole('status'))
+    .toHaveTextContent('share.connections.apiKeys.warning')
   await expect.element(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
   await expect
     .element(screen.getByRole('button', { name: 'share.connections.setup.startUsingApp' }))
     .toBeDisabled()
+})
+
+it('warns when the selected connection cannot be checked instead of treating its null status as healthy', async () => {
+  mocks.configuration.mockResolvedValue({
+    connections: { 'tool-node': credential },
+    reauthorization_required: false,
+  })
+  mocks.preflight.mockResolvedValue({
+    connection_revision: 'published-revision',
+    ready: false,
+    connections: [
+      { node_id: 'tool-node', connection_id: credential.id, status: null, check: null },
+    ],
+  })
+  const screen = await render(<App />)
+  await expect.element(screen.getByRole('status')).toHaveTextContent('share.connections.invalid')
+  await expect.element(screen.getByRole('button', { name: /Workspace key/ })).toBeEnabled()
+  await expect.element(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+  await expect
+    .element(screen.getByRole('button', { name: 'share.connections.setup.startUsingApp' }))
+    .toBeDisabled()
+})
+
+it('explains when a saved OAuth account has expired and lets the user choose another connection', async () => {
+  mocks.oauthEnabled = true
+  const oauthCredential = { ...credential, credential_type: 'oauth2' as const }
+  mocks.parameters.mockResolvedValue({
+    ...parameters,
+    connection_requirements: [{ ...requirement, allowed_credential_types: ['oauth2'] }],
+  })
+  mocks.configuration.mockResolvedValue({
+    connections: { 'tool-node': oauthCredential },
+    reauthorization_required: false,
+  })
+  mocks.list.mockResolvedValue({ data: [oauthCredential], has_more: false, next_cursor: null })
+  mocks.preflight.mockResolvedValue({
+    connection_revision: 'published-revision',
+    ready: false,
+    connections: [
+      {
+        node_id: 'tool-node',
+        connection_id: credential.id,
+        status: 'reconnect_required',
+        check: {
+          status: 'invalid',
+          reason_code: 'credential_expired',
+          retryable: false,
+          checked_at: 1,
+        },
+      },
+    ],
+  })
+  const screen = await render(<App />)
+  await expect
+    .element(screen.getByRole('status'))
+    .toHaveTextContent('share.connections.accounts.expired')
+  const picker = screen.getByRole('button', { name: 'Workspace key' })
+  await expect.element(picker).toBeEnabled()
+  await picker.click()
+  await expect
+    .element(screen.getByRole('button', { name: 'Workspace key', pressed: true }))
+    .toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+})
+
+it('defaults new installed-app API keys to Only me and submits that visibility', async () => {
+  mocks.creationEnabled = true
+  const screen = await render(<App />)
+  await screen.getByRole('button', { name: /share.connections.setup.selectConnection/ }).click()
+  await screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' }).click()
+  const modal = screen.getByRole('dialog', { name: 'plugin.auth.useApiAuth' })
+  await expect.element(modal.getByRole('button', { name: /permissionsOnlyMe/ })).toBeVisible()
+  await modal.getByLabelText(/API Key/).fill('private-secret')
+  await modal.getByRole('button', { name: 'common.operation.save' }).click()
+  await expect.poll(() => mocks.create.mock.calls.length).toBe(1)
+  expect(mocks.create).toHaveBeenCalledWith({
+    params: { provider: requirement.provider },
+    body: {
+      credentials: { api_key: 'private-secret' },
+      name: '',
+      type: 'api-key',
+      visibility: 'only_me',
+    },
+  })
 })
 
 it('confirms the current workspace selection before entering an app that needs reauthorization', async () => {

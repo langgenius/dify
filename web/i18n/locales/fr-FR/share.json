@@ -60,6 +60,7 @@
   "connections.headless.security": "Les identifiants sont chiffrés et stockés par Dify. {{source}} ne les reçoit jamais.",
   "connections.headless.signedInAs": "Connecté en tant que {{identity}}",
   "connections.headless.title": "Connectez des services pour continuer",
+  "connections.invalid": "Connexion non valide",
   "connections.required.inputPlaceholder": "Connectez-vous et associez les services pour commencer",
   "connections.required.signIn": "Se connecter à Dify",
   "connections.required.signInDescription": "Connectez-vous pour configurer ces connexions.",

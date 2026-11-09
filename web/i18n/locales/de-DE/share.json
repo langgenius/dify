@@ -60,6 +60,7 @@
   "connections.headless.security": "Die Zugangsdaten werden von Dify verschlüsselt und gespeichert. {{source}} erhält sie niemals.",
   "connections.headless.signedInAs": "Angemeldet als {{identity}}",
   "connections.headless.title": "Dienste verbinden, um fortzufahren",
+  "connections.invalid": "Ungültige Verbindung",
   "connections.required.inputPlaceholder": "Melde dich an und verbinde Dienste, um loszulegen",
   "connections.required.signIn": "Bei Dify anmelden",
   "connections.required.signInDescription": "Melden Sie sich an, um diese Verbindungen einzurichten.",

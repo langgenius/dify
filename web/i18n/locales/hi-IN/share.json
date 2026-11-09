@@ -60,6 +60,7 @@
   "connections.headless.security": "क्रेडेंशियल Dify द्वारा एन्क्रिप्ट करके संग्रहीत किए जाते हैं। {{source}} को वे कभी नहीं मिलते।",
   "connections.headless.signedInAs": "{{identity}} के रूप में साइन इन हैं",
   "connections.headless.title": "जारी रखने के लिए सेवाएँ कनेक्ट करें",
+  "connections.invalid": "अमान्य कनेक्शन",
   "connections.required.inputPlaceholder": "शुरू करने के लिए साइन इन करें और सेवाएँ कनेक्ट करें",
   "connections.required.signIn": "Dify में साइन इन करें",
   "connections.required.signInDescription": "इन कनेक्शन को सेट अप करने के लिए साइन इन करें।",
