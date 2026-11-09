@@ -30,7 +30,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
@@ -422,6 +422,31 @@ function ResourceList({
     allDriveContainersLoaded &&
     selectableResources.every((item) => selected.has(item.key))
   const someSelected = selectableResources.some((item) => selected.has(item.key))
+  const lastVisibleChildByParent = new Map<string, string>()
+  const branchLoadMoreAfter = new Map<string, PageResource[]>()
+  if (treePreview) {
+    // Place each branch continuation after its last visible descendant, even when nested folders are open.
+    for (const resource of resources) {
+      if (resource.kind !== 'page') continue
+      for (const ancestorKey of resource.ancestorKeys)
+        lastVisibleChildByParent.set(ancestorKey, resource.key)
+    }
+    for (const resource of resources) {
+      if (resource.kind !== 'page') continue
+      const branch = pageBranches.get(resource.key)
+      if (
+        !expandedPageKeys.has(resource.key) ||
+        branch?.loading ||
+        branch?.error ||
+        !branch?.nextCursor
+      )
+        continue
+      const lastChildKey = lastVisibleChildByParent.get(resource.key) ?? resource.key
+      const rows = branchLoadMoreAfter.get(lastChildKey) ?? []
+      rows.unshift(resource)
+      branchLoadMoreAfter.set(lastChildKey, rows)
+    }
+  }
 
   return (
     <div className="flex h-78 flex-col overflow-hidden rounded-xl border border-divider-regular">
@@ -474,87 +499,90 @@ function ResourceList({
               : expandedDriveContainers.has(resource.key)
           const rendersCheckbox = hasDriveFolderCheckbox(resource) || isSelectableResource(resource)
           return (
-            <li
-              key={resource.key}
-              className={cn('flex items-center gap-2 pe-3', expandable ? 'h-8.5' : 'h-7.5')}
-              style={{
-                paddingInlineStart: `${12 + resource.depth * 26}px`,
-              }}
-            >
-              {expandable ? (
-                <button
-                  type="button"
-                  aria-label={resourceName(resource)}
-                  aria-expanded={expanded}
-                  className="flex size-5 items-center justify-center rounded text-text-tertiary hover:bg-state-base-hover"
-                  onClick={() => onToggleExpanded(resource)}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'i-ri-arrow-right-s-line size-4 transition-transform motion-reduce:transition-none',
-                      expanded && 'rotate-90',
-                    )}
+            <Fragment key={resource.key}>
+              <li
+                className={cn('flex items-center gap-2 pe-3', expandable ? 'h-8.5' : 'h-7.5')}
+                style={{
+                  paddingInlineStart: `${12 + resource.depth * 26}px`,
+                }}
+              >
+                {expandable ? (
+                  <button
+                    type="button"
+                    aria-label={resourceName(resource)}
+                    aria-expanded={expanded}
+                    className="flex size-5 items-center justify-center rounded text-text-tertiary hover:bg-state-base-hover"
+                    onClick={() => onToggleExpanded(resource)}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'i-ri-arrow-right-s-line size-4 transition-transform motion-reduce:transition-none',
+                        expanded && 'rotate-90',
+                      )}
+                    />
+                  </button>
+                ) : (
+                  <span className="size-5" />
+                )}
+                {rendersCheckbox ? (
+                  <Checkbox
+                    aria-label={resourceName(resource)}
+                    aria-describedby={
+                      selectionLimitVisible && !checked ? selectionLimitId : undefined
+                    }
+                    checked={checked}
+                    disabled={checkboxDisabled}
+                    indeterminate={indeterminate}
+                    onCheckedChange={() => onToggle(resource)}
                   />
-                </button>
-              ) : (
-                <span className="size-5" />
-              )}
-              {rendersCheckbox ? (
-                <Checkbox
-                  aria-label={resourceName(resource)}
-                  aria-describedby={
-                    selectionLimitVisible && !checked ? selectionLimitId : undefined
-                  }
-                  checked={checked}
-                  disabled={checkboxDisabled}
-                  indeterminate={indeterminate}
-                  onCheckedChange={() => onToggle(resource)}
-                />
-              ) : (
-                <span className="size-4 shrink-0" />
-              )}
-              <span aria-hidden className={`${resourceIcon(resource)} size-4 shrink-0`} />
-              <span className="min-w-0 flex-1 truncate system-xs-regular text-text-primary">
-                {resourceName(resource)}
-              </span>
-              {expanded && pageBranch?.loading && (
-                <span
-                  role="status"
-                  aria-label={t(($) => $.loading, { ns: 'common' })}
-                  className="i-ri-loader-4-line size-4 animate-spin text-text-tertiary"
-                />
-              )}
-              {expanded && pageBranch?.error && resource.kind === 'page' && (
-                <Button
-                  type="button"
-                  size="small"
-                  variant="ghost"
-                  onClick={() => onRetryPageBranch(resource)}
-                >
-                  {t(($) => $.retryProviderLoad)}
-                </Button>
-              )}
-              {expanded &&
-                !pageBranch?.loading &&
-                !pageBranch?.error &&
-                pageBranch?.nextCursor &&
-                resource.kind === 'page' && (
+                ) : (
+                  <span className="size-4 shrink-0" />
+                )}
+                <span aria-hidden className={`${resourceIcon(resource)} size-4 shrink-0`} />
+                <span className="min-w-0 flex-1 truncate system-xs-regular text-text-primary">
+                  {resourceName(resource)}
+                </span>
+                {expanded && pageBranch?.loading && (
+                  <span
+                    role="status"
+                    aria-label={t(($) => $.loading, { ns: 'common' })}
+                    className="i-ri-loader-4-line size-4 animate-spin text-text-tertiary"
+                  />
+                )}
+                {expanded && pageBranch?.error && resource.kind === 'page' && (
                   <Button
                     type="button"
                     size="small"
                     variant="ghost"
-                    onClick={() => onLoadMorePageBranch(resource)}
+                    onClick={() => onRetryPageBranch(resource)}
+                  >
+                    {t(($) => $.retryProviderLoad)}
+                  </Button>
+                )}
+                {resource.kind === 'file' && resource.file.size != null && (
+                  <span className="system-xs-regular text-text-quaternary">
+                    {formatFileSize(resource.file.size)}
+                  </span>
+                )}
+              </li>
+              {branchLoadMoreAfter.get(resource.key)?.map((parent) => (
+                <li
+                  key={`load-more:${parent.key}`}
+                  className="flex h-8.5 items-center pe-3"
+                  style={{ paddingInlineStart: `${12 + (parent.depth + 1) * 26}px` }}
+                >
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="ghost"
+                    onClick={() => onLoadMorePageBranch(parent)}
                   >
                     {t(($) => $.loadMore)}
                   </Button>
-                )}
-              {resource.kind === 'file' && resource.file.size != null && (
-                <span className="system-xs-regular text-text-quaternary">
-                  {formatFileSize(resource.file.size)}
-                </span>
-              )}
-            </li>
+                </li>
+              ))}
+            </Fragment>
           )
         })}
       </ul>

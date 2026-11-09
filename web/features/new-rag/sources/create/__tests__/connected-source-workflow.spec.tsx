@@ -1015,7 +1015,9 @@ describe('ConnectedSourceWorkflow', () => {
     const firstPr = await screen.findByRole('checkbox', { name: 'PR #1' })
     expect(firstPr).not.toBeChecked()
     expect(repository).toBePartiallyChecked()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    const branchLoadMore = screen.getByRole('button', { name: 'knowledgeSpace.loadMore' })
+    expect(firstPr.closest('li')?.nextElementSibling).toBe(branchLoadMore.closest('li'))
+    await user.click(branchLoadMore)
     const secondPr = await screen.findByRole('checkbox', { name: 'PR #2' })
     expect(clientMock.getPages).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
