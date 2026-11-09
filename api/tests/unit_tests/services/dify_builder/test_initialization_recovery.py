@@ -3,6 +3,7 @@
 import json
 from collections.abc import Generator, Mapping
 from contextvars import copy_context
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,7 +12,7 @@ from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.native_launch_observation import begin_preparation, mark_dispatched, observe_resource
 from services.workflow_run_agg import WorkflowRunAgg
-from services.workflow_runtime.base_runner import WorkflowBasedAppRunner
+from services.workflow_runtime.base_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from tests.unit_tests.services.dify_builder.test_confirmed_full_run import FullRunCase, _run
 from tests.unit_tests.services.dify_builder.test_confirmed_full_run import harness as full_run_harness
 
@@ -46,14 +47,23 @@ def test_root_metadata_failure_is_sealed_but_other_worker_failures_remain_unknow
         with observe_resource("model", "provider", "model"):
             raise PluginDaemonInnerError(code=-500, message="private endpoint token=secret")
 
+    class PreparationRunner(WorkflowBasedAppRunner):
+        def __init__(self) -> None:
+            super().__init__(queue_manager=MagicMock(), app_id=harness.ids["app"])
+            self.fail = failure_stage.startswith("root")
+
+        @override
+        def prepare(self) -> PreparedWorkflowRun | None:
+            if self.fail:
+                metadata_failure()
+            return None
+
     def worker() -> None:
-        runner = MagicMock(spec=WorkflowBasedAppRunner)
-        runner.prepare.side_effect = metadata_failure if failure_stage.startswith("root") else None
-        runner.prepare.return_value = None
+        runner = PreparationRunner()
         if failure_stage != "unobserved":
             WorkflowRunAgg.run(runner, None, MagicMock(), MagicMock())
         if failure_stage == "nested":
-            runner.prepare.side_effect = metadata_failure
+            runner.fail = True
             WorkflowRunAgg.run(runner, None, MagicMock(), MagicMock())
         metadata_failure()
 
