@@ -76,9 +76,9 @@ describe('Pricing URL dialog', () => {
       { searchParams: '?settings=billing' },
     )
     await user.click(screen.getByRole('button', { name: 'Upgrade' }))
-    const dialog = await screen.findByRole('dialog', { name: 'billing.plansCommon.title.plans' })
+    const dialog = await screen.findByRole('dialog', { name: 'Dify Cloud' })
     await screen.findByText('Plans loaded')
-    expect(screen.getByRole('heading', { name: 'billing.plansCommon.title.plans' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Dify Cloud' })).toBeVisible()
     expect(dialog).toHaveAccessibleDescription('billing.plansCommon.title.description')
     expect(screen.queryByRole('button', { name: 'Upgrade' })).not.toBeInTheDocument()
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())

@@ -124,7 +124,7 @@ describe('Cloud plan payment flow', () => {
   })
 
   it.each([
-    { currentPlan: 'sandbox', plan: 'sandbox', label: 'currentPlan' },
+    { currentPlan: 'sandbox', plan: 'sandbox', label: 'startForFree' },
     { currentPlan: 'professional', plan: 'sandbox', label: 'startForFree' },
     { currentPlan: 'team', plan: 'sandbox', label: 'startForFree' },
     { currentPlan: 'team', plan: 'professional', label: 'startBuilding' },
@@ -147,7 +147,7 @@ describe('Cloud plan payment flow', () => {
     const request = createDeferred<{ url: string }>()
     mockGetInvoices.mockReturnValue(request.promise)
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
     expect(window.open).toHaveBeenCalledWith('about:blank', '_blank', undefined)
     expect(popup.opener).toBeNull()
     expect(popup.location.href).toBe('')
@@ -163,7 +163,7 @@ describe('Cloud plan payment flow', () => {
       new ORPCError('billing_unavailable', { defined: true, status: 503, message: 'Backend text' }),
     )
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
     expect(await screen.findByText('billing.errors.unavailable')).toBeInTheDocument()
     expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
     expect(popup.close).toHaveBeenCalledOnce()
@@ -185,7 +185,7 @@ describe('Cloud plan payment flow', () => {
 
   it.each([
     { currentPlan: 'sandbox', label: 'startBuilding' },
-    { currentPlan: 'professional', label: 'currentPlan' },
+    { currentPlan: 'professional', label: 'startBuilding' },
   ] as const)(
     'blocks the $label action without billing permission',
     async ({ currentPlan, label }) => {

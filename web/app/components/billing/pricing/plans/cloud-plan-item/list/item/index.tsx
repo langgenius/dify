@@ -1,12 +1,29 @@
-import { PlanFeatureInfotip } from './infotip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
+import styles from '../../../../pricing.module.css'
 
 export function CloudPlanFeature({ label, description }: { label: string; description?: string }) {
+  const labelId = useId()
+
   return (
-    <div className="flex min-h-4.5 items-center">
-      <span className="min-w-0 grow system-sm-regular wrap-anywhere text-text-secondary">
+    <li className={styles.feature}>
+      <span aria-hidden className={styles.featureDot} />
+      <span id={labelId} className={styles.featureLabel}>
         {label}
       </span>
-      {description && <PlanFeatureInfotip label={label} content={description} />}
-    </div>
+      {description && (
+        <Infotip>
+          <InfotipTrigger
+            aria-labelledby={labelId}
+            iconVariant="information"
+            iconSize="small"
+            className={styles.featureInfo}
+          />
+          <InfotipContent aria-labelledby={labelId} className="max-w-80 whitespace-pre-wrap">
+            {description}
+          </InfotipContent>
+        </Infotip>
+      )}
+    </li>
   )
 }
