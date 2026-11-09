@@ -241,9 +241,10 @@ class DatasourceInvokeFrom(StrEnum):
 
 class OnlineDocumentPage(BaseModel):
     """
-    Online document page
+    Online document page. Tree previews keep the optional child hint through plugin transport.
     """
 
+    has_children: bool | None = Field(None, description="Whether the preview page can be expanded")
     page_id: str = Field(..., description="The page id")
     page_name: str = Field(..., description="The page title")
     page_icon: dict[str, Any] | None = Field(None, description="The page icon")
@@ -266,9 +267,10 @@ class OnlineDocumentInfo(BaseModel):
 
 class OnlineDocumentPagesMessage(BaseModel):
     """
-    Get online document pages response
+    Get online document pages response. Optional cursors survive plugin transport for paged previews.
     """
 
+    next_cursor: str | None = Field(None, description="Cursor for the next preview page")
     result: list[OnlineDocumentInfo]
 
 

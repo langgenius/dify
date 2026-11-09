@@ -165,6 +165,38 @@ def test_invoke_online_document_uses_dify_bound_runtime_and_credential() -> None
     ]
 
 
+def test_online_document_tree_preview_metadata_survives_plugin_stream() -> None:
+    """A plugin tree page and cursor must remain intact after Dify validates and streams the response."""
+    message = OnlineDocumentPagesMessage.model_validate(
+        {
+            "next_cursor": "10",
+            "result": [
+                {
+                    "workspace_id": "github-user",
+                    "total": 11,
+                    "pages": [
+                        {
+                            "has_children": True,
+                            "page_id": "repo:FFXN/dify",
+                            "page_name": "dify",
+                            "type": "repository",
+                            "last_edited_time": "2026-11-09T00:00:00Z",
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    events = [
+        json.loads(event.decode())
+        for event in PluginDatasourceBackwardsInvocation.convert_to_event_stream(message for _ in range(1))
+    ]
+
+    assert events[0]["data"]["next_cursor"] == "10"
+    assert events[0]["data"]["result"][0]["pages"][0]["has_children"] is True
+
+
 def test_validate_credentials_uses_resolved_provider_controller() -> None:
     payload = datasource_payload(
         datasource_parameters={},
