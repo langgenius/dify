@@ -8,7 +8,7 @@ from http import HTTPStatus
 import pytest
 
 from configs import dify_config
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonInnerError
 from core.trigger.entities.entities import Subscription
 from models.provider_ids import TriggerProviderID
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
@@ -223,9 +223,12 @@ def test_remote_subscription_failures_propagate_for_service_context(
     }
     invoke = commands[operation]
 
-    with pytest.raises(ValueError, match="^plugin daemon: remote operation failed, code: 1$"):
+    with pytest.raises(PluginDaemonInnerError) as caught:
         context.run(invoke)
 
+    assert caught.value.code == 1
+    assert caught.value.message == daemon.response_message
+    assert daemon.response_message not in str(caught.value)
     assert len(daemon.requests) == 2
 
 
