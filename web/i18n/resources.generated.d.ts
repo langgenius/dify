@@ -3172,6 +3172,7 @@ export default interface Resources {
     'history.actions.retry': 'Retry run'
     'history.cancelFailed': 'Failed to cancel the evaluation run.'
     'history.cancelSuccess': 'Evaluation run cancelled.'
+    'history.columns.actions': 'Actions'
     'history.columns.creator': 'Creator'
     'history.columns.status': 'Status'
     'history.columns.time': 'Time'
