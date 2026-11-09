@@ -3908,11 +3908,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/header/view-workflow-history.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow/hooks-store/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
