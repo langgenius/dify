@@ -22,7 +22,6 @@ import pyarrow.compute as pc
 import pyarrow.csv as pa_csv
 import pyarrow.parquet as pq
 
-from core.helper.csv_sanitizer import CSVSanitizer
 from libs.archive_storage import ArchiveStorage
 from services.retention.workflow_run.archive_bundle_index import (
     ARCHIVE_BUNDLE_ROOT_PREFIX,
@@ -50,7 +49,7 @@ from services.retention.workflow_run.constants import (
 logger = logging.getLogger(__name__)
 
 ARCHIVE_DOWNLOAD_ROOT_PREFIX = "workflow-runs/downloads/v1/"
-_CSV_FORMULA_PREFIX_PATTERN = f"^[{re.escape(''.join(CSVSanitizer.FORMULA_CHARS))}]"
+_CSV_FORMULA_PREFIX_PATTERN = f"^(?:[{re.escape(chr(9) + chr(13))}]|[[:space:]]*[{re.escape('=+-@')}])"
 
 
 class WorkflowRunArchiveDownloadPreparer:

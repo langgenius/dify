@@ -11,6 +11,7 @@ from typing import cast
 from unittest.mock import MagicMock
 
 import pyarrow as pa
+import pyarrow.csv as pa_csv
 import pyarrow.parquet as pq
 import pytest
 
@@ -23,6 +24,7 @@ from services.retention.workflow_run.archive_bundle_index import (
 from services.retention.workflow_run.archive_deletion_task import WorkflowRunArchiveDeletionStatus
 from services.retention.workflow_run.archive_download_preparation import (
     WorkflowRunArchiveDownloadPreparer,
+    _parquet_payload_to_csv,
     build_archive_download_storage_key,
 )
 from services.retention.workflow_run.archive_download_task import (
@@ -289,6 +291,30 @@ assert len(ticks) >= 5, ticks
         text=True,
         timeout=30,
     )
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("  =1+1", "'  =1+1"),
+        ("\n=SUM(A1)", "'\n=SUM(A1)"),
+        ("\t  +cmd", "'\t  +cmd"),
+        ("  -1+1", "'  -1+1"),
+        ("\r@SUM(A1)", "'\r@SUM(A1)"),
+        ("=1+1", "'=1+1"),
+        ("\t  ", "'\t  "),
+        ("\n\n", "\n\n"),
+        ("ordinary text", "ordinary text"),
+    ],
+)
+def test_parquet_payload_to_csv_sanitizes_formula_prefix_after_whitespace(value: str, expected: str) -> None:
+    buffer = io.BytesIO()
+    pq.write_table(pa.Table.from_pylist([{"value": value}]), buffer)
+
+    csv_payload = _parquet_payload_to_csv(buffer.getvalue(), include_header=True)
+    exported = pa_csv.read_csv(io.BytesIO(csv_payload))
+
+    assert exported.column("value")[0].as_py() == expected
 
 
 def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready(
