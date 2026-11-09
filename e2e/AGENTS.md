@@ -30,6 +30,8 @@ Prioritize Community Edition journeys across browser actions, persistence, and e
 
 For persistence, reload and assert restored user-visible state. For publication, distinguish the mutable draft from the published version consumed by a separate visitor. For execution, assert concrete outputs in addition to a successful status. Use scenario-owned resources whenever the behavior mutates state; do not publish or edit a shared seed merely for convenience.
 
+Make dependent UI transitions explicit: after opening a dialog or menu, assert the intended surface is visible before interacting within it. Before refreshing or leaving after an edit, wait for the owned saved state; before submitting, wait for the control to be enabled when readiness depends on prior work. Use locator assertions or authoritative persistence polling, never fixed sleeps. Playwright actionability complements these business-readiness assertions rather than replacing them.
+
 When validation is CI-only, do not start local browsers, services, seed, builds, or E2E runners. Perform scoped static checks, then use CI reports as the runtime evidence. Cucumber dry-run validates bindings only; it does not prove browser behavior. Keep deferred designs in the coverage document rather than adding placeholder or permanently skipped scenarios.
 
 The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1` to force a frontend rebuild. Use `E2E_BROWSER=webkit` for focused cross-browser runs and `E2E_SLOW_MO=500` with a headed command for local action debugging.

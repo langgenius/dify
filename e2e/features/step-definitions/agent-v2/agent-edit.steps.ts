@@ -129,6 +129,22 @@ When('I duplicate the configured Agent v2 from the Agent Roster', async function
   await duplicateAgentFromRoster(this, { id: source.id, name: source.name })
 })
 
+Then(
+  'the copied Agent v2 should start with an unpublished configuration',
+  async function (this: DifyWorld) {
+    const source = this.agentBuilder.lifecycle.sourceAgent
+    if (!source) throw new Error('Duplicate an Agent before checking its publication state.')
+    const client = this.getConsoleClient()
+    const [original, copy] = await Promise.all([
+      client.agent.byAgentId.composer.get({ params: { agent_id: source.id } }),
+      client.agent.byAgentId.composer.get({ params: { agent_id: getCurrentAgentId(this) } }),
+    ])
+    expect(original.active_config_is_published).toBe(true)
+    expect(copy.active_config_is_published).toBe(false)
+    expect(copy.agent_soul?.prompt?.system_prompt).toBe(normalAgentPrompt)
+  },
+)
+
 When('I reopen the original Agent v2 configuration', async function (this: DifyWorld) {
   const source = this.agentBuilder.lifecycle.sourceAgent
   if (!source) throw new Error('Duplicate an Agent before reopening the original.')
@@ -322,6 +338,8 @@ Then('I should see the Agent v2 dual retrieval fixture settings', async function
   await dialog.getByRole('button', { name: 'Advanced Settings', exact: true }).click()
   const agentDecideSettings = dialog.getByRole('group', { name: 'Retrieval 1', exact: true })
   const customQuerySettings = dialog.getByRole('group', { name: 'Retrieval 2', exact: true })
+  await expect(agentDecideSettings).toBeVisible()
+  await expect(customQuerySettings).toBeVisible()
 
   await expect(
     agentDecideSettings.getByText(agentBuilderPreseededResources.agentKnowledgeBase, {

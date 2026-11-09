@@ -55,15 +55,21 @@ const openNewKnowledgeRetrievalDialog = async (world: DifyWorld) => {
 
 const selectPreseededKnowledgeBase = async (world: DifyWorld, dialog: Locator) => {
   const knowledgeBase = getPreseededKnowledgeBase(world)
-  await dialog.getByRole('combobox', { name: 'Search', exact: true }).fill(knowledgeBase.name)
+  const search = dialog.getByRole('combobox', { name: 'Search', exact: true })
+  await expect(search).toBeVisible()
+  await search.fill(knowledgeBase.name)
   await dialog
     .getByRole('option')
     .filter({ has: world.getPage().getByText(knowledgeBase.name, { exact: true }) })
     .click()
   await dialog.getByRole('button', { name: 'Advanced Settings', exact: true }).click()
-  await dialog
-    .getByRole('textbox', { name: 'Knowledge retrieval name', exact: true })
-    .fill('Retrieval 1')
+  const retrievalName = dialog.getByRole('textbox', {
+    name: 'Knowledge retrieval name',
+    exact: true,
+  })
+  await expect(retrievalName).toBeVisible()
+  await retrievalName.fill('Retrieval 1')
+  await expect(dialog.getByRole('group', { name: 'Retrieval 1', exact: true })).toBeVisible()
 }
 
 const openKnowledgeRetrievalSettings = async (world: DifyWorld, name: string) => {
@@ -84,6 +90,7 @@ const openKnowledgeRetrievalSettings = async (world: DifyWorld, name: string) =>
   await expect(dialog).toBeVisible()
 
   await dialog.getByRole('button', { name: 'Advanced Settings', exact: true }).click()
+  await expect(dialog.getByRole('group', { name, exact: true })).toBeVisible()
   return dialog
 }
 
@@ -166,9 +173,9 @@ When(
 
     await selectPreseededKnowledgeBase(this, dialog)
     await dialog.getByRole('radio', { name: 'Custom query' }).click()
-    await dialog
-      .getByRole('textbox', { name: 'Custom query text' })
-      .fill(agentBuilderFixedInputs.customKnowledgeQuery)
+    const customQuery = dialog.getByRole('textbox', { name: 'Custom query text' })
+    await expect(customQuery).toBeVisible()
+    await customQuery.fill(agentBuilderFixedInputs.customKnowledgeQuery)
     await expect(
       dialog
         .getByRole('group', { name: 'Retrieval 1', exact: true })

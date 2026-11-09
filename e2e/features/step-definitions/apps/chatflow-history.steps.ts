@@ -33,7 +33,9 @@ When(
     const input = page.getByPlaceholder(/^Talk to /)
     await expect(input).toBeEditable({ timeout: 30_000 })
     await input.fill(message)
-    await page.getByRole('button', { name: 'Send', exact: true }).click()
+    const send = page.getByRole('button', { name: 'Send', exact: true })
+    await expect(send).toBeEnabled()
+    await send.click()
   },
 )
 

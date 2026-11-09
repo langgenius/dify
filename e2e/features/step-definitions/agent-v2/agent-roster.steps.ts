@@ -61,6 +61,7 @@ When('I delete the configured Agent v2 from the Agent Roster', async function (t
   await page.getByRole('menuitem', { name: 'Delete', exact: true }).click()
 
   const dialog = page.getByRole('alertdialog', { name: `Delete ${name}?`, exact: true })
+  await expect(dialog).toBeVisible()
   await dialog.getByRole('textbox').fill(name)
   const deletion = page.waitForResponse(
     (response) =>

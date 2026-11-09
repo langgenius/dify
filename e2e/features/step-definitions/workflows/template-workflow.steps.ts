@@ -22,6 +22,17 @@ async function createTemplateWorkflow(world: DifyWorld, template: string) {
   return app.id
 }
 
+async function waitForTemplateWorkflowEditor(world: DifyWorld) {
+  const appId = world.createdAppIds.at(-1)
+  if (!appId) throw new Error('Create the template workflow before opening its editor.')
+  const page = world.getPage()
+  await expect(page).toHaveURL(new RegExp(`/app/${appId}/workflow(?:\\?.*)?$`), {
+    timeout: 30_000,
+  })
+  await expect(page.getByTestId(`rf__node-${templateNodeId}`)).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('button', { name: /^Test Run\b/ })).toBeEnabled()
+}
+
 Given(
   'a template workflow returning {string} has been created',
   async function (this: DifyWorld, template: string) {
@@ -46,6 +57,7 @@ When(
   'I change the workflow result template to {string}',
   async function (this: DifyWorld, template: string) {
     const page = this.getPage()
+    await waitForTemplateWorkflowEditor(this)
     await page.getByTestId(`rf__node-${templateNodeId}`).click()
     const editor = page.getByRole('textbox', { name: /^Editor content/ })
     await expect(editor).toBeVisible({ timeout: 15_000 })
@@ -63,14 +75,15 @@ Then(
     await expect
       .poll(() => getSavedWorkflowTemplate(this.getConsoleClient(), appId), { timeout: 30_000 })
       .toBe(template)
-    await expect(
-      this.getPage().getByRole('status', { name: 'Workflow save status' }),
-    ).toContainText('Auto-Saved')
+    const saveStatus = this.getPage().getByRole('status', { name: 'Workflow save status' })
+    await expect(saveStatus).toContainText('Auto-Saved')
+    await expect(saveStatus).not.toContainText('Syncing data', { timeout: 30_000 })
   },
 )
 
 When('I reload the workflow editor', async function (this: DifyWorld) {
   await this.getPage().reload()
+  await waitForTemplateWorkflowEditor(this)
 })
 
 Then(
@@ -103,7 +116,10 @@ When('I publish the workflow update', async function (this: DifyWorld) {
   const page = this.getPage()
   await page.getByRole('button', { name: 'Publish', exact: true }).click()
   const publisher = page.getByRole('dialog')
-  await publisher.getByRole('button', { name: 'Publish Update', exact: true }).click()
+  await expect(publisher).toBeVisible()
+  const publishUpdate = publisher.getByRole('button', { name: 'Publish Update', exact: true })
+  await expect(publishUpdate).toBeEnabled({ timeout: 30_000 })
+  await publishUpdate.click()
   await expect(publisher.getByRole('button', { name: 'Published', exact: true })).toBeVisible({
     timeout: 30_000,
   })
@@ -116,7 +132,10 @@ When(
     if (!page) throw new Error('Open the workflow Web App as an anonymous visitor first.')
     // A new page load removes the previous run, so its output cannot satisfy the next assertion.
     await page.reload()
-    await page.getByRole('button', { name: 'Execute', exact: true }).click()
+    const execute = page.getByRole('button', { name: 'Execute', exact: true })
+    await expect(execute).toBeVisible({ timeout: 15_000 })
+    await expect(execute).toBeEnabled()
+    await execute.click()
   },
 )
 

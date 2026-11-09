@@ -16,5 +16,5 @@ Then('I should return to the requested workflow editor', async function (this: D
   await expect(this.getPage()).toHaveURL((url) => url.pathname === workflowEditorPath(this), {
     timeout: 30_000,
   })
-  await expect(this.getPage().getByRole('button', { name: 'Test Run', exact: true })).toBeVisible()
+  await expect(this.getPage().getByRole('button', { name: /^Test Run\b/ })).toBeVisible()
 })

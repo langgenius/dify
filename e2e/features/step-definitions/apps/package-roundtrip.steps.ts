@@ -32,6 +32,17 @@ const portableGraph = z.object({
   ),
 })
 
+async function waitForImportedWorkflowEditor(world: DifyWorld) {
+  const appId = world.appPackage?.importedAppId
+  if (!appId) throw new Error('No imported workflow was recorded.')
+  const page = world.getPage()
+  await expect(page).toHaveURL(new RegExp(`/app/${appId}/workflow(?:\\?.*)?$`), {
+    timeout: 30_000,
+  })
+  await expect(page.getByTestId('rf__node-end')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('button', { name: /^Test Run\b/ })).toBeEnabled()
+}
+
 Given(
   'a runnable workflow is available for an app package round trip',
   async function (this: DifyWorld) {
@@ -60,11 +71,15 @@ When('I export that workflow from Studio', async function (this: DifyWorld) {
     .filter({
       has: page.getByRole('link', { name, exact: true }),
     })
+  await expect(card).toBeVisible({ timeout: 15_000 })
   await card.getByRole('link', { name, exact: true }).hover()
   await card.getByRole('button', { name: `More actions for ${name}`, exact: true }).click()
+  const actions = page.getByRole('menu')
+  await expect(actions).toBeVisible()
   const downloaded = page.waitForEvent('download')
-  await page.getByRole('menuitem', { name: 'Export App', exact: true }).click()
+  await actions.getByRole('menuitem', { name: 'Export App', exact: true }).click()
   const download = await downloaded
+  await expect(actions).toBeHidden()
   expect(download.suggestedFilename()).toBe(`${name}.ifpkg`)
   await expect.poll(() => this.capturedDownloads.includes(download)).toBe(true)
 })
@@ -76,8 +91,11 @@ When('I import the downloaded app package from Studio', async function (this: Di
 
   const page = this.getPage()
   await page.getByRole('button', { name: 'Create', exact: true }).click()
-  await page.getByRole('menuitem', { name: /^Import App/ }).click()
+  const createMenu = page.getByRole('menu')
+  await expect(createMenu).toBeVisible()
+  await createMenu.getByRole('menuitem', { name: /^Import App/ }).click()
   const dialog = page.getByRole('dialog', { name: 'Import App', exact: true })
+  await expect(dialog).toBeVisible()
   const choosingFile = page.waitForEvent('filechooser')
   await dialog.getByRole('button', { name: 'Browse', exact: true }).click()
   const chooser = await choosingFile
@@ -89,12 +107,14 @@ When('I import the downloaded app package from Studio', async function (this: Di
   await expect(
     dialog.getByRole('group', { name: download.suggestedFilename(), exact: true }),
   ).toBeVisible()
+  const create = dialog.getByRole('button', { name: /^Create/ })
+  await expect(create).toBeEnabled()
   const importing = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
       new URL(response.url()).pathname === '/console/api/apps/imports',
   )
-  await dialog.getByRole('button', { name: /^Create/ }).click()
+  await create.click()
   const response = await importing
   expect(response.ok()).toBe(true)
   const imported = zPostAppsImportsResponse.parse(await response.json())
@@ -105,8 +125,8 @@ When('I import the downloaded app package from Studio', async function (this: Di
   expect(imported.status).toBe('completed')
   expect(imported.app_mode).toBe('workflow')
   if (!state.importedAppId) throw new Error('The completed import did not return an app ID.')
-  await expect(page).toHaveURL(new RegExp(`/app/${state.importedAppId}/workflow(?:\\?.*)?$`))
   await expect(dialog).toBeHidden()
+  await waitForImportedWorkflowEditor(this)
 })
 
 Then(
@@ -127,10 +147,6 @@ Then(
 )
 
 When('I reload the imported workflow editor', async function (this: DifyWorld) {
-  const appId = this.appPackage?.importedAppId
-  if (!appId) throw new Error('No imported workflow was recorded.')
-  const page = this.getPage()
-  await page.reload()
-  await expect(page).toHaveURL(new RegExp(`/app/${appId}/workflow(?:\\?.*)?$`))
-  await expect(page.getByRole('button', { name: 'Test Run', exact: true })).toBeVisible()
+  await this.getPage().reload()
+  await waitForImportedWorkflowEditor(this)
 })
