@@ -25,6 +25,7 @@ from extensions.otel import AppGenerateHandler, trace_span
 from libs.datetime_utils import naive_utc_now
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from services.app_definition_query_service import require_service_api_end_user_workflow_access
 from services.consumer_service import CONSUMER_APP_MODES
 from services.end_user_connection_execution_adapters import (
     prepare_installed_connection_execution,
@@ -609,12 +610,13 @@ class AppGenerateService:
         *,
         session: Session,
     ) -> Workflow:
-        """
-        Get workflow
-        :param app_model: app model
-        :param invoke_from: invoke from
-        :param workflow_id: optional workflow id to specify a specific version
-        :return:
+        """Select an owned workflow and validate its Service API execution policy.
+
+        Use the caller's session and the requested published version, or the
+        app's draft for Debugger and current publication otherwise. Return the
+        selected workflow unchanged. Invalid/missing versions retain their
+        existing errors; Service API personal-auth graphs are rejected before
+        any graph execution or streaming task is scheduled.
         """
         workflow_service = WorkflowService()
 
@@ -629,9 +631,7 @@ class AppGenerateService:
             )
             if not workflow:
                 raise WorkflowNotFoundError(f"Workflow not found with id: {workflow_id}")
-            return workflow
-
-        if invoke_from == InvokeFrom.DEBUGGER:
+        elif invoke_from == InvokeFrom.DEBUGGER:
             # fetch draft workflow by app_model
             workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
 
@@ -643,5 +643,8 @@ class AppGenerateService:
 
             if not workflow:
                 raise ValueError("Workflow not published")
+
+        if invoke_from == InvokeFrom.SERVICE_API:
+            require_service_api_end_user_workflow_access(workflow.graph_dict)
 
         return workflow

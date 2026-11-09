@@ -12,10 +12,12 @@ from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock
 
 import pytest
+from flask import Flask
 from pydantic import BaseModel
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants import UUID_NIL
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
@@ -25,6 +27,7 @@ from core.app.entities.app_invoke_entities import (
     WorkflowAppGenerateEntity,
 )
 from core.app.layers.pause_state_persist_layer import (
+    PauseStateLayerConfig,
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
@@ -42,6 +45,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import (
     WorkflowRunNotPausedError,
     _WorkflowRunError,
 )
+from services.app_definition_query_service import ServiceApiEndUserAuthError
 from tasks import async_workflow_tasks
 from tasks.app_generate import workflow_execute_task as workflow_execute_task_module
 from tasks.app_generate.workflow_execute_task import (
@@ -148,6 +152,45 @@ def _make_workflow(*, workflow_id: str = "workflow-id", app_id: str = "app-id") 
         _conversation_variables=[],
         _rag_pipeline_variables=[],
     )
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("streaming", [False, True])
+def test_worker_rechecks_reconstructed_service_api_workflow_before_dispatch(
+    sqlite_session_factory: sessionmaker[Session], mode: AppMode, streaming: bool
+) -> None:
+    app = _make_app()
+    app.mode = mode
+    workflow = _make_workflow()
+    workflow.graph = json.dumps(
+        {"nodes": [{"id": "personal-tool", "data": {"type": "tool", "credential_source": "end_user"}}]}
+    )
+    user = _make_account()
+    with sqlite_session_factory.begin() as session:
+        session.add_all([app, workflow, user])
+    params = AppExecutionParams.new(
+        app_model=app,
+        workflow=workflow,
+        user=user,
+        args={"inputs": {}},
+        invoke_from=InvokeFrom.SERVICE_API,
+        streaming=streaming,
+    )
+    runner = _AppRunner(sqlite_session_factory, AppExecutionParams.model_validate_json(params.model_dump_json()))
+
+    with sqlite_session_factory() as session:
+        reloaded_workflow = session.get_one(Workflow, workflow.id)
+        with pytest.raises(ServiceApiEndUserAuthError, match="Service API end-user access is unavailable"):
+            runner._run_app(
+                app=session.get_one(App, app.id),
+                workflow=reloaded_workflow,
+                user=session.get_one(Account, user.id),
+                pause_state_config=PauseStateLayerConfig(
+                    session_factory=sqlite_session_factory, state_owner_user_id=workflow.created_by
+                ),
+                session=session,
+            )
+        assert session.scalar(select(WorkflowRun.id)) is None
 
 
 def _make_conversation(*, conversation_id: str = "conversation-id", app_id: str = "app-id") -> Conversation:
@@ -1508,6 +1551,73 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
         WorkflowStartReason.RESUMPTION,
     )
     workflow_run_repo.delete_workflow_pause.assert_called_once_with(pause_entity)
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_service_api_personal_auth_resume_is_failed_without_running_nodes(
+    app: Flask,
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    response_publisher: _ResponsePublisher,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+) -> None:
+    _persist_resumption_models(
+        sqlite_session_factory,
+        workflow_run_id="run-id",
+        conversation_id="conversation-id" if mode == AppMode.ADVANCED_CHAT else None,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(_make_account())
+        app_model = session.get_one(App, "app-id")
+        app_model.mode = mode
+        workflow = session.get_one(Workflow, "wf-id")
+        workflow.version = "published"
+        workflow.graph = json.dumps(
+            {"nodes": [{"id": "personal-tool", "data": {"type": "tool", "credential_source": "end_user"}}]}
+        )
+        run = session.get_one(WorkflowRun, "run-id")
+        run.status = WorkflowExecutionStatus.PAUSED
+        session.add(WorkflowPause(workflow_id="wf-id", workflow_run_id="run-id", state_object_key="state"))
+
+    entity = (
+        _build_advanced_chat_generate_entity("conversation-id")
+        if mode == AppMode.ADVANCED_CHAT
+        else _build_workflow_generate_entity(stream=True)
+    )
+    entity.invoke_from = InvokeFrom.SERVICE_API
+    if isinstance(entity, AdvancedChatAppGenerateEntity):
+        entity.parent_message_id = UUID_NIL
+    entity.user_id = "account-id"
+    entity.app_config = WorkflowUIBasedAppConfig(
+        tenant_id="tenant-id", app_id="app-id", app_mode=mode, workflow_id="wf-id"
+    )
+    wrapper = (
+        _AdvancedChatAppGenerateEntityWrapper(entity=entity)
+        if isinstance(entity, AdvancedChatAppGenerateEntity)
+        else _WorkflowGenerateEntityWrapper(entity=entity)
+    )
+    runtime_state = RuntimeState(workflow_id="wf-id", variable_pool=VariablePool(), start_at=0.0)
+    context = WorkflowResumptionContext(generate_entity=wrapper, serialized_graph_runtime_state=runtime_state.dumps())
+    monkeypatch.setitem(workflow_execute_task_module.db._app_engines, app, {None: sqlite_engine})
+    monkeypatch.setattr(
+        "repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: context.dumps().encode()
+    )
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", lambda _key: None)
+
+    _resume_app_execution({"workflow_run_id": "run-id"})
+
+    with sqlite_session_factory() as session:
+        run = session.get_one(WorkflowRun, "run-id")
+        assert run.status == WorkflowExecutionStatus.FAILED
+        assert run.finished_at is not None
+        assert run.error == "Service API end-user access is unavailable for apps that require EndUser authentication."
+        assert session.scalar(select(WorkflowPause.id)) is None
+    event = json.loads(response_publisher.get_nowait())
+    assert event["event"] == "workflow_finished"
+    assert event["data"]["status"] == "failed"
+    _resume_app_execution({"workflow_run_id": "run-id"})
+    assert response_publisher.empty()
 
 
 @pytest.mark.parametrize("stored_context", [False, True])

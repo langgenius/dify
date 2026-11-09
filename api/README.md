@@ -91,6 +91,16 @@ make type-check
 
 ## API contracts
 
+Service API requests that resolve an EndUser are forbidden when the app's current
+published workflow declares EndUser tool authentication. A caller-supplied `user`
+identifier is not proof of personal authorization. This applies to both app API
+keys and resource access tokens, before any EndUser is provisioned or logged in.
+App/account-only operations remain available, and unpublished draft requirements
+do not change access to the current publication.
+Execution also checks the selected workflow version, including explicit historical
+versions and graphs reloaded by queued or resumed tasks. These paths cannot bypass
+the restriction by selecting a different publication after app-level admission.
+
 The [API schema guide](controllers/API_SCHEMA_GUIDE.md) owns schema changes and verification. Generate the OpenAPI specifications and TypeScript/Zod contracts through the workspace script:
 
 ```bash

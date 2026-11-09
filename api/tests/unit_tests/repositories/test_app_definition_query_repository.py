@@ -175,6 +175,40 @@ def test_get_mode_returns_none_for_missing_app(sqlite_session_factory: sessionma
     assert repository.get_mode(_APP_ID) is None
 
 
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT])
+@pytest.mark.parametrize("publication", ["owned", "foreign_app", "foreign_tenant", "draft", "missing", "unset"])
+def test_get_published_workflow_graph_only_reads_the_selected_owned_publication(
+    sqlite_session_factory: sessionmaker[Session],
+    service_api_repository: AppDefinitionQueryRepository,
+    mode: AppMode,
+    publication: str,
+) -> None:
+    graph = {"nodes": [{"id": "tool", "data": {"type": "tool", "credential_source": "end_user"}}]}
+    with sqlite_session_factory.begin() as session:
+        app = _persist_app(session, mode=mode)
+        if publication != "unset":
+            app.workflow_id = _WORKFLOW_ID
+        if publication != "missing":
+            session.add(
+                Workflow(
+                    id=_WORKFLOW_ID,
+                    tenant_id=_OTHER_TENANT_ID if publication == "foreign_tenant" else _TENANT_ID,
+                    app_id=_PROVIDER_ID if publication == "foreign_app" else _APP_ID,
+                    type=WorkflowType.WORKFLOW,
+                    version=Workflow.VERSION_DRAFT if publication == "draft" else "published",
+                    graph=json.dumps(graph),
+                    _features="{}",
+                    created_by=_ACCOUNT_ID,
+                )
+            )
+
+    assert service_api_repository.get_published_workflow_graph(_TENANT_ID, _APP_ID) == (
+        graph if publication == "owned" and mode != AppMode.CHAT else None
+    )
+    assert service_api_repository.get_published_workflow_graph(_OTHER_TENANT_ID, _APP_ID) is None
+    assert service_api_repository.get_published_workflow_graph(_TENANT_ID, _MISSING_PROVIDER_ID) is None
+
+
 def test_get_mode_returns_app_mode(sqlite_session_factory: sessionmaker[Session]) -> None:
     with sqlite_session_factory.begin() as session:
         _persist_app(session, mode=AppMode.COMPLETION)
