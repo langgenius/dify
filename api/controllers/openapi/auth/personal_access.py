@@ -1,6 +1,7 @@
 """Translate personal PAT policies to the existing Account admission pipeline."""
 
 import uuid
+from typing import override
 
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, ServiceUnavailable, Unauthorized
@@ -44,13 +45,22 @@ def authenticate_personal_token(secret: str) -> AuthContext:
 class CheckPersonalAccess(Requirement):
     rank = Rank.EARLY
 
-    def __init__(self, policy: PersonalAccessTokenPolicy) -> None:
-        self._policy = policy
-
+    @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        """Skip non-PAT callers; authorize PATs only under an explicit route policy.
+
+        The router supplies the endpoint policy on the admission context. A missing
+        policy denies PAT access before this check loads resources. Successful authorization
+        binds the live resource grants; rejected requests never reach the handler.
+        """
+        if subject.auth.token_type is not TokenType.PERSONAL_ACCESS:
+            return
+        policy = ctx.pat_policy
+        if policy is None:
+            raise Forbidden("personal_access_token_not_supported")
         app_id = None
         workspace_id = None
-        if self._policy not in {
+        if policy not in {
             PersonalAccessTokenPolicy.WORKSPACE_DISCOVERY,
             PersonalAccessTokenPolicy.IDENTITY_DISCOVERY,
         }:
@@ -64,7 +74,7 @@ class CheckPersonalAccess(Requirement):
             grant = application_services().personal_access_tokens.authorize(
                 account_id=str(subject.account_id),
                 token_id=str(subject.token_id),
-                policy=self._policy,
+                policy=policy,
                 workspace_id=workspace_id,
                 app_id=app_id,
             )
