@@ -263,6 +263,43 @@ def test_trace_app_config_get_returns_configured_secrets_and_never_secret_values
     assert stored_configs.egress.requests == []
 
 
+@pytest.mark.parametrize("include_config", [False, True])
+def test_trace_config_list_returns_provider_ids_and_only_includes_configs_on_request(
+    app: Flask, tracing_configs: MagicMock, include_config: bool
+) -> None:
+    record = AppTracingConfigRecord(
+        id="config-1",
+        app_id=APP_ID,
+        tracing_provider=PROVIDER,
+        tracing_config={"host": "https://langfuse.example.com"},
+        is_active=True,
+        created_at=datetime(2026, 1, 1),
+        updated_at=datetime(2026, 1, 1),
+        configured_secrets=("secret_key",),
+    )
+    tracing_configs.list.return_value = (record,)
+    context = _request_context()
+
+    with app.test_request_context("/"):
+        result = _original(ops_trace_module.TraceAppConfigListApi.get)(
+            ops_trace_module.TraceAppConfigListApi(),
+            ops_trace_module.TraceConfigListQuery(include_config=include_config),
+            context,
+            UUID(APP_ID),
+        )
+
+    assert result["configured_providers"] == [PROVIDER]
+    assert ("configs" in result) is include_config
+    if include_config:
+        assert result["configs"][0]["tracing_provider"] == PROVIDER
+        assert result["configs"][0]["configured_secrets"] == ["secret_key"]
+    tracing_configs.list.assert_called_once_with(
+        context=context,
+        app_id=APP_ID,
+        include_config=include_config,
+    )
+
+
 @pytest.mark.parametrize(
     ("failure", "expected"),
     [

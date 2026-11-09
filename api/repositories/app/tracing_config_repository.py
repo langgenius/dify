@@ -62,6 +62,22 @@ class SQLAlchemyAppTracingConfigRepository(AppTracingConfigStore, TracingPolicyQ
             return self._to_record(config) if config is not None else None
 
     @override
+    def list_for_app(
+        self,
+        *,
+        workspace_id: str,
+        app_id: str,
+    ) -> tuple[AppTracingConfigRecord, ...]:
+        with self._session_factory() as session:
+            self._require_app(session, workspace_id, app_id)
+            configs = session.scalars(
+                select(TraceAppConfig)
+                .where(TraceAppConfig.app_id == app_id)
+                .order_by(TraceAppConfig.tracing_provider, TraceAppConfig.id)
+            ).all()
+            return tuple(self._to_record(config) for config in configs)
+
+    @override
     def create(
         self,
         *,

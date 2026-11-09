@@ -54,6 +54,13 @@ class TraceProviderQuery(BaseModel):
     tracing_provider: str = Field(..., description="Tracing provider name")
 
 
+class TraceConfigListQuery(BaseModel):
+    include_config: bool = Field(
+        default=False,
+        description="Include obfuscated provider configurations in the response",
+    )
+
+
 class TraceConfigPayload(BaseModel):
     activate: bool = Field(
         default=False,
@@ -97,8 +104,64 @@ class TraceAppConfigResponse(ResponseModel):
         )
 
 
-register_schema_models(console_ns, TraceProviderQuery, TraceConfigPayload)
-register_response_schema_models(console_ns, TraceAppConfigResponse)
+class TraceAppConfigListResponse(ResponseModel):
+    configured_providers: list[str] = Field(default_factory=list)
+    configs: list[TraceAppConfigResponse] | None = None
+
+
+register_schema_models(console_ns, TraceProviderQuery, TraceConfigListQuery, TraceConfigPayload)
+register_response_schema_models(console_ns, TraceAppConfigResponse, TraceAppConfigListResponse)
+
+
+@console_ns.route("/apps/<uuid:app_id>/trace-configs")
+class TraceAppConfigListApi(Resource):
+    """List saved tracing provider configurations for an application in one request."""
+
+    @error_responses(AppNotFoundError, TracingConfigProcessingError)
+    @console_ns.doc("list_trace_app_configs")
+    @console_ns.doc(description="List tracing configurations for an application")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(params=query_params_from_model(TraceConfigListQuery))
+    @console_ns.response(
+        200,
+        "Tracing configurations retrieved successfully",
+        console_ns.models[TraceAppConfigListResponse.__name__],
+    )
+    @console_ns.response(404, "Application not found")
+    @console_ns.response(500, "Tracing configuration processing failed")
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_TRACING_CONFIG, PlainApp())],
+    )
+    @model_validate(TraceConfigListQuery)
+    def get(
+        self,
+        req_data: TraceConfigListQuery,
+        request_context: RequestContext,
+        app_id: UUID,
+    ):
+        try:
+            records = application_services().app_tracing_configs.list(
+                context=request_context,
+                app_id=str(app_id),
+                include_config=req_data.include_config,
+            )
+        except AppTracingConfigAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        except AppTracingConfigProcessingError as error:
+            raise TracingConfigProcessingError() from error
+
+        return dump_response(
+            TraceAppConfigListResponse,
+            {
+                "configured_providers": [
+                    record.tracing_provider for record in records if record.tracing_provider is not None
+                ],
+                "configs": [TraceAppConfigResponse.from_record(record) for record in records]
+                if req_data.include_config
+                else None,
+            },
+            exclude_none=True,
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace-config")

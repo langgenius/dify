@@ -43,6 +43,13 @@ class AppTracingConfigStore(Protocol):
         tracing_provider: str,
     ) -> AppTracingConfigRecord | None: ...
 
+    def list_for_app(
+        self,
+        *,
+        workspace_id: str,
+        app_id: str,
+    ) -> tuple[AppTracingConfigRecord, ...]: ...
+
     def create(
         self,
         *,
@@ -191,6 +198,54 @@ class AppTracingConfigService:
             tracing_provider=tracing_provider,
             tracing_config=record.tracing_config,
         )
+        return replace(record, tracing_config=presented.values, configured_secrets=presented.configured_secrets)
+
+    def list(
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        include_config: bool,
+    ) -> tuple[AppTracingConfigRecord, ...]:
+        """List every saved provider configuration for an app.
+
+        Preconditions:
+            The caller may read the app's tracing configuration in the active workspace.
+
+        Postconditions:
+            Returns the store's records. When ``include_config`` is false, stored
+            (encrypted) configs are returned untouched and no provider is contacted.
+            When true, supported providers are presented with non-secret values and
+            configured-secret names; providers that are unknown or unavailable in
+            this deployment are omitted from the presented result. Secret values
+            are never returned.
+        """
+        workspace_id = context.active_workspace_id
+        records = self._configs.list_for_app(workspace_id=workspace_id, app_id=app_id)
+        if not include_config:
+            return records
+
+        presented_records: list[AppTracingConfigRecord] = []
+        for record in records:
+            presented_record = self._present_record(workspace_id, record)
+            if presented_record is not None:
+                presented_records.append(presented_record)
+        return tuple(presented_records)
+
+    def _present_record(self, workspace_id: str, record: AppTracingConfigRecord) -> AppTracingConfigRecord | None:
+        """Return the presented record, or None when its provider is unavailable here."""
+        provider = record.tracing_provider
+        if provider is None:
+            return None
+        try:
+            self._provider.validate_provider(provider)
+            presented = self._provider.present_config(
+                workspace_id=workspace_id,
+                tracing_provider=provider,
+                tracing_config=record.tracing_config,
+            )
+        except (AppTracingConfigInvalidProviderError, AppTracingConfigProviderUnavailableError):
+            return None
         return replace(record, tracing_config=presented.values, configured_secrets=presented.configured_secrets)
 
     def create(
