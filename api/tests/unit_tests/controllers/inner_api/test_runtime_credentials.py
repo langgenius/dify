@@ -16,7 +16,7 @@ from controllers.inner_api.runtime_credentials import (
 )
 from models.provider import ProviderCredential
 from models.tools import BuiltinToolProvider
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 def test_runtime_credentials_payload_accepts_items():

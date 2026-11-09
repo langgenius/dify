@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
-export type TextGenerationTranslate = TFunction<['share', 'appDebug', 'common']>
+export type TextGenerationTranslate = TFunction<['share', 'appDebug', 'common', 'workflow']>
 
 type TaskParam = {
   inputs: Record<string, string | boolean | undefined>

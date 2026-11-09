@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 2,
+  "profileId": "dify-capability-v2",
+  "testOnly": true,
+  "algorithm": "RS256",
+  "issuer": "dify-control-plane",
+  "audience": "knowledge-fs",
+  "ttlSeconds": 60,
+  "protectedHeader": {
+    "alg": "RS256",
+    "kid": "dify-capability-v2-contract-test-2026-07",
+    "typ": "JWT"
+  },
+  "publicJwk": {
+    "alg": "RS256",
+    "e": "AQAB",
+    "kid": "dify-capability-v2-contract-test-2026-07",
+    "kty": "RSA",
+    "n": "if7MMYieXYLmp9qWZJjfdHka1vgaJvzMVqN31EZjSF_3n51Cl5F6Z8G7hht91t6uSmZgP7fMCbvja99zpk4OdWbZyu-THXlXt0AMgwLoA7yLxVeYVRrx-XGVqpXKm5KBMeKskmr-KhMGmMDQIOWUehhdoXP1M_ZT3Eihc4kgSOGyV8ING1RXGxyza9NIq2NSMbKd5vkZ_puuUCPUkpJ9NnDzfEduSoHSYQzdKZf06NI10PefJpQzEKSrdR909vOZE8_n1QPs1CpvbnBT8ldE9VjTp4sU0qXfXpL1RsdtN7UJCbcYJCdWAKdh5fZXG0qR3GhNSFOxpSYckkn0W_RHjQ",
+    "use": "sig"
+  },
+  "operation": {
+    "action": "documents.read",
+    "method": "GET",
+    "operationId": "getDocument",
+    "requestPath": "/knowledge-spaces/space-contract-vector/documents/document-contract-vector"
+  },
+  "expectedClaims": {
+    "action": "documents.read",
+    "actor": "dify-account:account-contract-vector",
+    "aud": "knowledge-fs",
+    "authz_revision": {
+      "credential_revision": null,
+      "external_access_epoch": 3,
+      "membership_epoch": 5,
+      "space_acl_epoch": 7
+    },
+    "azp": "dify-console",
+    "caller_kind": "interactive",
+    "cap_ver": 2,
+    "content_policy_revision": 11,
+    "content_scope_ids": ["scope-contract-vector"],
+    "control_space_id": "control-space-contract-vector",
+    "exp": 1790000060,
+    "grant_id": "grant-contract-vector",
+    "iat": 1790000000,
+    "iss": "dify-control-plane",
+    "jti": "jti-contract-vector",
+    "namespace_id": "workspace-contract-vector",
+    "nbf": 1790000000,
+    "resource": {
+      "id": "document-contract-vector",
+      "parent_id": "space-contract-vector",
+      "type": "document"
+    },
+    "sub": "dify-account:account-contract-vector",
+    "trace_id": "trace-contract-vector"
+  },
+  "expectedPrincipal": {
+    "callerKind": "interactive",
+    "subject": {
+      "scopes": ["knowledge-spaces:read"],
+      "subjectId": "dify-account:account-contract-vector",
+      "tenantId": "workspace-contract-vector"
+    }
+  },
+  "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImRpZnktY2FwYWJpbGl0eS12Mi1jb250cmFjdC10ZXN0LTIwMjYtMDciLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJkaWZ5LWNvbnRyb2wtcGxhbmUiLCJhdWQiOiJrbm93bGVkZ2UtZnMiLCJzdWIiOiJkaWZ5LWFjY291bnQ6YWNjb3VudC1jb250cmFjdC12ZWN0b3IiLCJhY3RvciI6ImRpZnktYWNjb3VudDphY2NvdW50LWNvbnRyYWN0LXZlY3RvciIsIm5hbWVzcGFjZV9pZCI6IndvcmtzcGFjZS1jb250cmFjdC12ZWN0b3IiLCJhenAiOiJkaWZ5LWNvbnNvbGUiLCJjYWxsZXJfa2luZCI6ImludGVyYWN0aXZlIiwiY2FwX3ZlciI6MiwianRpIjoianRpLWNvbnRyYWN0LXZlY3RvciIsImlhdCI6MTc5MDAwMDAwMCwibmJmIjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDAwNjAsImFjdGlvbiI6ImRvY3VtZW50cy5yZWFkIiwiZ3JhbnRfaWQiOiJncmFudC1jb250cmFjdC12ZWN0b3IiLCJhdXRoel9yZXZpc2lvbiI6eyJtZW1iZXJzaGlwX2Vwb2NoIjo1LCJzcGFjZV9hY2xfZXBvY2giOjcsImV4dGVybmFsX2FjY2Vzc19lcG9jaCI6MywiY3JlZGVudGlhbF9yZXZpc2lvbiI6bnVsbH0sImNvbnRlbnRfc2NvcGVfaWRzIjpbInNjb3BlLWNvbnRyYWN0LXZlY3RvciJdLCJjb250ZW50X3BvbGljeV9yZXZpc2lvbiI6MTEsInJlc291cmNlIjp7InR5cGUiOiJkb2N1bWVudCIsImlkIjoiZG9jdW1lbnQtY29udHJhY3QtdmVjdG9yIiwicGFyZW50X2lkIjoic3BhY2UtY29udHJhY3QtdmVjdG9yIn0sImNvbnRyb2xfc3BhY2VfaWQiOiJjb250cm9sLXNwYWNlLWNvbnRyYWN0LXZlY3RvciIsInRyYWNlX2lkIjoidHJhY2UtY29udHJhY3QtdmVjdG9yIn0.SzcDeET-grjvRchPI9S7Eb4t_CkoQA132yKKDCdg0NnVBdxUFt3O2iVRYKZlfO82sL-gLGW_MEzbsy-r4NYYtXdJhM2wImKIRu_MZp-BQ68Jtx4pe4j4hRcpHViLolIIbJHF9TzVTR0BCOC7jbTO77hAFH1hfxI27_n5rxUyKLHjrXxG30ft2IIEJf49kYGRXrjzrthpgB-hIYrFlfR74aIZmC1iZxt8a9mmqytS6yDFqeerPd3Rb6SsLt5whd67GyCLQPkkiR7kPYD2k9gS7JS1dG2kh8UvxhQGIJ7SNZu3MjsDXwbtE0vFuT8tNm693r_EEgejEPMo6VvNS3egMg"
+}

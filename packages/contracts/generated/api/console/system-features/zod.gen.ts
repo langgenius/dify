@@ -128,6 +128,7 @@ export const zWebAppAuthModel = z.object({
  * Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
  */
 export const zSystemFeatureModel = z.object({
+  agent_tracing_api_collection_enabled: z.boolean(),
   branding: zBrandingModel.default({
     application_title: '',
     enabled: false,
@@ -138,7 +139,6 @@ export const zSystemFeatureModel = z.object({
   deployment_edition: zDeploymentEdition,
   enable_app_deploy: z.boolean().default(false),
   enable_change_email: z.boolean().default(true),
-  enable_collaboration_mode: z.boolean().default(true),
   enable_creators_platform: z.boolean().default(false),
   enable_email_code_login: z.boolean().default(false),
   enable_email_password_login: z.boolean().default(true),

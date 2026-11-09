@@ -12,6 +12,7 @@ import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { AgentApiKeyDialogContent } from './agent-api-key-dialog-content'
 
 export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
@@ -31,6 +32,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   const apiAccess = apiAccessQuery.data
   const toggleServiceApiMutation = useMutation(
     consoleQuery.agent.byAgentId.apiEnable.post.mutationOptions({
+      context: { silent: true },
       scope: {
         id: `agent-service-api-toggle:${agentId}`,
       },
@@ -47,8 +49,8 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
               : agentDetail,
         )
       },
-      onError: () => {
-        toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
+      onError: (error) => {
+        toast.error(getErrorMessage(error) ?? tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
       },
     }),
   )

@@ -117,7 +117,7 @@ function renderSnippet({
   published = false,
 }: { canEdit?: boolean; nodes?: Node[]; published?: boolean } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: false, enable_marketplace: false },
+    systemFeatures: { enable_marketplace: false },
     workspacePermissionKeys: canEdit ? ['snippets.create_and_modify'] : ['snippets.management'],
   })
   seedAppDslVersion(queryClient)
@@ -236,10 +236,13 @@ it('waits for the latest graph and fields to save before publishing', async () =
   expect(api.publish).not.toHaveBeenCalled()
   await act(async () => saved.resolve({ result: 'success', hash: 'latest', updated_at: 3 }))
   await waitFor(() =>
-    expect(api.publish).toHaveBeenCalledExactlyOnceWith({
-      params: { snippet_id: 'snippet-1' },
-      body: {},
-    }),
+    expect(api.publish).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { snippet_id: 'snippet-1' },
+        body: {},
+      },
+      { context: { silent: true } },
+    ),
   )
   expect(screen.getByText('Draft transform')).toBeInTheDocument()
 })

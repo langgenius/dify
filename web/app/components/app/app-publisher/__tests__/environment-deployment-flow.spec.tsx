@@ -610,6 +610,8 @@ describe('PublisherEnvironmentFlow', () => {
         'href',
         '/app/app-1/deploy?environment=staging',
       )
+      expect(screen.getByRole('link', { name: 'Access Point' })).toHaveAttribute('target', '_blank')
+      expect(screen.getByRole('link', { name: 'Deploy' })).toHaveAttribute('target', '_blank')
     },
   )
 

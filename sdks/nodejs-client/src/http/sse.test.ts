@@ -1,9 +1,83 @@
-import { Readable } from 'node:stream'
+import { PassThrough, Readable } from 'node:stream'
 import { describe, expect, it } from 'vite-plus/test'
 import { APIError } from '../errors/dify-error'
 import { createBinaryStream, createSseStream, parseSseStream } from './sse'
 
 describe('sse parsing', () => {
+  it.each(['\n', '\r\n', '\r'])(
+    'ignores one leading UTF-8 BOM with %j line endings across byte boundaries',
+    async (ending) => {
+      const body = Buffer.from(`\uFEFFdata: {"answer":"你好"}${ending}${ending}`)
+      const chunks = [Buffer.alloc(0), ...Array.from(body, (byte) => Buffer.from([byte]))]
+      const events = []
+      for await (const event of parseSseStream(Readable.from(chunks))) {
+        events.push(event)
+      }
+      expect(events).toEqual([
+        { event: undefined, data: { answer: '你好' }, raw: '{"answer":"你好"}' },
+      ])
+    },
+  )
+
+  it('preserves BOM characters in payloads and does not strip later field prefixes', async () => {
+    const body = 'data: {"answer":"\uFEFFkept"}\n\n\uFEFFdata: {"answer":"ignored"}\n\n'
+    const stream = createSseStream(Readable.from([body]), { status: 200, headers: {} })
+    expect(await stream.toText()).toBe('\uFEFFkept')
+  })
+
+  it.each(['\n', '\r\n', '\r'])(
+    'parses events with %j line endings across byte boundaries',
+    async (ending) => {
+      const body = Buffer.from(
+        [
+          ': keep-alive',
+          'event: message',
+          'data: {"answer":"你好"}',
+          '',
+          'data: {"delta":" world"}',
+          '',
+          '',
+        ].join(ending),
+      )
+      const chunks = Array.from(body, (byte) => Buffer.from([byte]))
+      const events = []
+      for await (const event of parseSseStream(Readable.from(chunks))) {
+        events.push(event)
+      }
+      expect(events).toEqual([
+        { event: 'message', data: { answer: '你好' }, raw: '{"answer":"你好"}' },
+        { event: undefined, data: { delta: ' world' }, raw: '{"delta":" world"}' },
+      ])
+    },
+  )
+
+  it('emits a CR-delimited event before the stream closes', async () => {
+    const stream = new PassThrough()
+    const iterator = parseSseStream(stream)[Symbol.asyncIterator]()
+    try {
+      const next = iterator.next()
+      stream.write('data: first\r\r')
+      expect(await next).toEqual({
+        done: false,
+        value: { event: undefined, data: 'first', raw: 'first' },
+      })
+    } finally {
+      stream.end()
+      await iterator.return?.()
+    }
+  })
+
+  it('toText accepts mixed SSE line endings', async () => {
+    const stream = Readable.from([
+      'event: message\rdata: {"answer":"Hello"}\r\r',
+      'data: {"delta":" world"}\r\n\r\n',
+      'data: {"delta":"!"}\n\n',
+    ])
+    expect(await createSseStream(stream, { status: 200, headers: {} }).toText()).toBe(
+      'Hello world!',
+    )
+  })
+
   it.each([
     ['data:  indented', ' indented'],
     ['data:\tindented', '\tindented'],

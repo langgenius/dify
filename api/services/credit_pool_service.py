@@ -213,9 +213,9 @@ class CreditPoolService:
             return CreditPoolBalance(
                 tenant_id=tenant_id,
                 pool_type=normalized_pool_type,
-                quota_limit=balance["quota"],
-                quota_used=balance["usage"],
-                exhausted_at=balance.get("exhausted_at"),
+                quota_limit=balance.quota,
+                quota_used=balance.usage,
+                exhausted_at=balance.exhausted_at,
             )
 
         session = cls._require_session(session)
@@ -273,7 +273,7 @@ class CreditPoolService:
                 amount=credits_required,
                 meta=reservation_meta,
             )
-            reservation_id = result.get("reservation_id", "")
+            reservation_id = result.reservation_id
             if not reservation_id:
                 raise QuotaExceededError("Insufficient credits remaining")
             return CreditPoolReservation(
@@ -376,7 +376,7 @@ class CreditPoolService:
                 amount=credits_required,
                 meta=billing_metadata,
             )
-            reservation_id = result.get("reservation_id", "")
+            reservation_id = result.reservation_id
             if not reservation_id:
                 raise QuotaExceededError("Insufficient credits remaining")
             try:
@@ -460,7 +460,7 @@ class CreditPoolService:
                 amount=credits_required,
                 meta=billing_metadata,
             )
-            return result["deducted"]
+            return result.deducted
 
         session = cls._require_session(session)
 

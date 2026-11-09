@@ -142,7 +142,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
                       <div>{fallbackPluginVersion}</div>
                       <span
                         aria-hidden
-                        className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary"
+                        className="ms-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary"
                       />
                     </>
                   }
@@ -161,9 +161,9 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
           />
         </div>
       </div>
-      <div className="flex h-4 items-center pl-3 system-xs-medium text-text-tertiary">
+      <div className="flex h-4 items-center ps-3 system-xs-medium text-text-tertiary">
         {t(($) => $['auth.connectedWorkspace'], { ns: 'plugin' })}
-        <div className="ml-3 h-px grow bg-divider-subtle"></div>
+        <div className="ms-3 h-px grow bg-divider-subtle"></div>
       </div>
       {!!credentials_list.length && (
         <div className="space-y-1 p-3 pt-2">

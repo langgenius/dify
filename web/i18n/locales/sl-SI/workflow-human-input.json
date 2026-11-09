@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "Vrednost dejanja",
   "nodes.humanInput.userActions.buttonTextTooLong": "Besedilo gumba mora biti {{maxLength}} znakov ali manj",
   "nodes.humanInput.userActions.chooseStyle": "Izberite slog gumba",
+  "nodes.humanInput.userActions.defaultTitle": "Besedilo gumba {{index}}",
   "nodes.humanInput.userActions.emptyTip": "Kliknite gumb '+' za dodajanje uporabniških dejanj",
   "nodes.humanInput.userActions.title": "Uporabniška dejanja",
   "nodes.humanInput.userActions.tooltip": "Definirajte gumbe, ki jih lahko uporabniki kliknejo, da se odzovejo na ta obrazec. ID dejanja nadzoruje razvejanje. Vrednost dejanja je izpostavljena navzdol kot izbrani vgrajeni izhod. ID dejanja se mora začeti s črko ali podčrtajem, ki mu sledijo črke, številke ali podčrtaji.",

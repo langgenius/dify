@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { DefaultModelResponse } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { omit } from 'es-toolkit'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
 import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
@@ -88,6 +89,19 @@ export function useWorkflowInlineAgentConfigureSync({
     consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
 
+  const { mutateAsync: replaceAppComposer } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const { mutateAsync: replaceSnippetComposer } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(
+      {
+        context: { silent: true },
+      },
+    ),
+  )
+
   useEffect(() => {
     baseConfigRef.current = baseConfig
     currentModelRef.current = currentModel
@@ -106,25 +120,32 @@ export function useWorkflowInlineAgentConfigureSync({
   )
 
   const saveComposer = useSerialAsyncCallback(
-    async (configSnapshot: AgentSoulConfig): Promise<WorkflowAgentComposerResponse | undefined> => {
+    async (
+      configSnapshot: AgentSoulConfig,
+      fileUpdate: 'preserve' | 'replace' = 'preserve',
+    ): Promise<WorkflowAgentComposerResponse | undefined> => {
       if (resource.kind !== 'app' && resource.kind !== 'snippet') return
 
       const savedDraftKey = JSON.stringify(configSnapshot)
       const body = {
         variant: 'workflow' as const,
         save_strategy: 'node_job_only' as const,
-        agent_soul: configSnapshot,
+        agent_soul:
+          fileUpdate === 'replace' ? configSnapshot : omit(configSnapshot, ['config_files']),
       }
+      // Full replacements report failures in the applying business flow; autosaves use request feedback.
+      const saveSnippet = fileUpdate === 'replace' ? replaceSnippetComposer : saveSnippetComposer
+      const saveApp = fileUpdate === 'replace' ? replaceAppComposer : saveAppComposer
       const composerState =
         resource.kind === 'snippet'
-          ? await saveSnippetComposer({
+          ? await saveSnippet({
               params: {
                 snippet_id: resource.snippetId,
                 node_id: nodeId,
               },
               body,
             })
-          : await saveAppComposer({
+          : await saveApp({
               params: {
                 app_id: resource.appId,
                 node_id: nodeId,
@@ -194,7 +215,7 @@ export function useWorkflowInlineAgentConfigureSync({
   const saveAgentSoulConfig = useCallback(
     async (agentSoulConfig: AgentSoulConfig) => {
       debouncedSaveDraft.cancel?.()
-      return saveComposer(agentSoulConfig)
+      return saveComposer(agentSoulConfig, 'replace')
     },
     [debouncedSaveDraft, saveComposer],
   )

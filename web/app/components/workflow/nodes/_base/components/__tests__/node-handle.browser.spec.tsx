@@ -1,22 +1,14 @@
-import type { ReactElement, RefObject } from 'react'
+import type { RefObject } from 'react'
 import type { Connection, NodeProps } from 'reactflow'
 import type { CommonNodeType, OnSelectBlock } from '../../../../types'
 import type { HumanInputNodeType } from '../../../human-input/types'
 import { useRef, useState } from 'react'
-import ReactFlow, { ReactFlowProvider, useReactFlow } from 'reactflow'
+import ReactFlow, { useReactFlow, useStoreApi } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render as renderBrowser } from 'vitest-browser-react'
-import { consoleQuery } from '@/service/console'
-import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createAppDetailFixture } from '@/test/fixtures/app'
-import { createTestQueryClient } from '@/test/query-client'
-import { WorkflowContext } from '../../../../context'
+import { CanvasNodesCatalogProbe } from '../../../../__tests__/canvas-nodes-catalog-probe'
+import { renderWorkflowBrowserComponent as render } from '../../../../__tests__/workflow-browser-test-env'
 import CustomEdge from '../../../../custom-edge'
-import { EditorResourceScope } from '../../../../editor-resource/provider'
-import { HooksStoreContext } from '../../../../hooks-store/provider'
-import { createHooksStore } from '../../../../hooks-store/store'
 import { useWorkflowControlScale } from '../../../../hooks/use-workflow-control-scale'
-import { createWorkflowStore } from '../../../../store/workflow'
 import { BlockEnum } from '../../../../types'
 import HumanInputNode from '../../../human-input/node'
 import { UserActionButtonType } from '../../../human-input/types'
@@ -24,32 +16,14 @@ import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 import 'reactflow/dist/style.css'
 import '../../../../style.css'
 
-const render = (ui: ReactElement) => {
-  const queryClient = createTestQueryClient()
-  queryClient.setQueryData(
-    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-    createAppDetailFixture({ id: 'app-1', mode: 'workflow' }),
-  )
-  return renderBrowser(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
-        {ui}
-      </EditorResourceScope>
-    </QueryClientTestProvider>,
-  )
-}
+const unexpectedFetch = vi.fn<typeof fetch>(() => new Promise(() => {}))
+beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
+afterEach(() => {
+  vi.unstubAllGlobals()
+  expect(unexpectedFetch).not.toHaveBeenCalled()
+})
+let flow: ReturnType<typeof useStoreApi>
 
-const { handleNodeAdd } = vi.hoisted(() => ({ handleNodeAdd: vi.fn() }))
-
-vi.mock('../../../../hooks/use-available-blocks', () => ({
-  useAvailableBlocks: () => ({
-    availablePrevBlocks: [BlockEnum.Code],
-    availableNextBlocks: [BlockEnum.Code],
-  }),
-}))
-vi.mock('../../../../hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({ handleNodeAdd }),
-}))
 // Search results are outside the handle's hit testing and connection contract.
 vi.mock('../../../../block-selector/tabs', () => ({
   BlockSelectorPanels: ({
@@ -67,10 +41,6 @@ vi.mock('../../../../block-selector/tabs', () => ({
     </>
   ),
 }))
-
-beforeEach(() => {
-  vi.clearAllMocks()
-})
 
 function HandleNode({ id, data }: NodeProps<CommonNodeType>) {
   return (
@@ -134,12 +104,14 @@ function Canvas({
   showEdge?: boolean
   humanInput?: boolean
 }) {
+  flow = useStoreApi()
   const containerRef = useRef<HTMLDivElement>(null)
   const { setViewport } = useReactFlow()
   const [connection, setConnection] = useState<Connection | null>(null)
   useWorkflowControlScale(containerRef)
   return (
     <>
+      <CanvasNodesCatalogProbe />
       {[1, 0.25].map((zoom) => (
         <button key={zoom} type="button" onClick={() => setViewport({ x: 0, y: 0, zoom })}>
           Zoom {zoom * 100}%
@@ -187,26 +159,12 @@ function Canvas({
   )
 }
 
-function Fixture(props: { initialZoom?: number; showEdge?: boolean; humanInput?: boolean }) {
-  const [store] = useState(() => createWorkflowStore({}))
-  const [hooksStore] = useState(() => createHooksStore({}))
-  return (
-    <WorkflowContext value={store}>
-      <HooksStoreContext.Provider value={hooksStore}>
-        <ReactFlowProvider>
-          <Canvas {...props} />
-        </ReactFlowProvider>
-      </HooksStoreContext.Provider>
-    </WorkflowContext>
-  )
-}
-
 it.each([1, 0.25])(
   'keeps real handles clickable at their edges and draggable at zoom %s',
   async (zoom) => {
     // Native hit testing under both ReactFlow and control transforms is not represented by DOM unit tests.
     await page.viewport(1100, 700)
-    const screen = await render(<Fixture />)
+    const screen = await render(<Canvas />)
     await screen.getByRole('button', { name: `Zoom ${zoom * 100}%` }).click()
     await expect.element(screen.getByRole('group', { name: 'Source node' })).toBeInTheDocument()
     await expect.element(screen.getByRole('group', { name: 'Target node' })).toBeInTheDocument()
@@ -255,7 +213,7 @@ it.each([1, 0.25])(
 
 it('keeps a saved connection anchored to the port centers when initialized at 25% zoom', async () => {
   await page.viewport(1100, 700)
-  const screen = await render(<Fixture initialZoom={0.25} showEdge />)
+  const screen = await render(<Canvas initialZoom={0.25} showEdge />)
   await expect.element(screen.getByRole('group', { name: 'Source node' })).toBeInTheDocument()
   await expect.element(screen.getByRole('group', { name: 'Target node' })).toBeInTheDocument()
   const source = screen
@@ -296,7 +254,7 @@ it('adds and connects the intended human input branch at 25% zoom', async () => 
   // The production branch rows are closer than 24 screen pixels at this zoom.
   // Native hit testing must route clicks and drags to the selected branch, not its neighbor.
   await page.viewport(1100, 700)
-  const screen = await render(<Fixture initialZoom={0.25} humanInput />)
+  const screen = await render(<Canvas initialZoom={0.25} humanInput />)
   const sourceNode = screen.getByRole('group', { name: 'Human input node' })
   await expect.element(sourceNode).toBeInTheDocument()
   await expect.element(screen.getByRole('group', { name: 'Target node' })).toBeInTheDocument()
@@ -314,10 +272,14 @@ it('adds and connects the intended human input branch at 25% zoom', async () => 
     )
     await source.click()
     await screen.getByRole('button', { name: 'Add code node' }).click()
-    expect(handleNodeAdd).toHaveBeenLastCalledWith(
-      { nodeType: BlockEnum.Code, pluginDefaultValue: undefined },
-      { prevNodeId: 'source', prevNodeSourceHandle: handleId },
-    )
+    const inserted = flow
+      .getState()
+      .getNodes()
+      .filter((node) => !['source', 'target'].includes(node.id))
+    expect(inserted).toHaveLength(['approve', 'reject', '__timeout'].indexOf(handleId) + 1)
+    const edge = flow.getState().edges.find((edge) => edge.sourceHandle === handleId)!
+    expect(edge).toMatchObject({ source: 'source', targetHandle: 'target' })
+    expect(inserted.find((node) => node.id === edge.target)?.data.type).toBe(BlockEnum.Code)
     await expect
       .element(screen.getByRole('textbox', { name: 'Find a node' }))
       .not.toBeInTheDocument()

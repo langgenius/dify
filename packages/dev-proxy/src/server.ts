@@ -7,6 +7,7 @@ import type {
   CreateDevProxyAppOptions,
   DevProxyCorsAllowedOrigins,
   DevProxyRoute,
+  DevProxySessionImportConfig,
 } from './types'
 import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
@@ -18,6 +19,7 @@ import {
   rewriteSetCookieHeadersForLocal,
   toScopedLocalCookieName,
 } from './cookies'
+import { extractSessionCookieValue, sessionImportPageResponse } from './session-import'
 
 const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
 const ALLOW_METHODS = 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS'
@@ -454,6 +456,73 @@ const registerProxyRoutes = (
   })
 }
 
+const registerSessionImportRoute = (
+  app: Hono,
+  routes: readonly DevProxyRoute[],
+  config: DevProxySessionImportConfig,
+  fetchImpl: typeof globalThis.fetch,
+) => {
+  const route = findProxyRoute(routes, config.refreshPath)
+  if (!route)
+    throw new Error(`No dev proxy route matches session import path "${config.refreshPath}".`)
+
+  const refreshUrl = buildUpstreamUrl(route.target, config.refreshPath)
+
+  app.get('/', () => sessionImportPageResponse(refreshUrl.origin))
+  app.post('/', async (context) => {
+    const requestOrigin = context.req.header('origin')
+    if (requestOrigin && requestOrigin !== new URL(context.req.url).origin)
+      return new Response('Cross-origin session import is not allowed.', { status: 403 })
+
+    const input = (await context.req.formData()).get('input')
+    const sessionCookieValue =
+      typeof input === 'string' ? extractSessionCookieValue(input, config.cookieName) : undefined
+    if (!sessionCookieValue)
+      return sessionImportPageResponse(
+        refreshUrl.origin,
+        `No ${config.cookieName} cookie found in the pasted text.`,
+        400,
+      )
+
+    const localScopeKey = route.cookieRewrite
+      ? resolveCookieRewriteLocalScopeKey(route.cookieRewrite, refreshUrl)
+      : undefined
+    const localCookieName = localScopeKey
+      ? toScopedLocalCookieName(config.cookieName, localScopeKey)
+      : config.cookieName
+    const localHeaders = new Headers({ cookie: `${localCookieName}=${sessionCookieValue}` })
+    const userAgent = context.req.header('user-agent')
+    if (userAgent) localHeaders.set('user-agent', userAgent)
+
+    const upstreamResponse = await fetchImpl(refreshUrl, {
+      method: 'POST',
+      headers: createProxyRequestHeaders(localHeaders, refreshUrl, route.cookieRewrite),
+      redirect: 'manual',
+    })
+    if (!upstreamResponse.ok)
+      return sessionImportPageResponse(
+        refreshUrl.origin,
+        `Refresh failed with ${upstreamResponse.status}: ${(await upstreamResponse.text()).slice(0, 300)}`,
+        502,
+      )
+
+    const setCookieHeaders = getSetCookieHeaders(upstreamResponse.headers)
+    if (!setCookieHeaders.length)
+      return sessionImportPageResponse(
+        refreshUrl.origin,
+        'Refresh succeeded but returned no cookies.',
+        502,
+      )
+
+    const headers = new Headers({ Location: config.redirectTo, 'Cache-Control': 'no-store' })
+    const localSetCookieHeaders = route.cookieRewrite
+      ? rewriteSetCookieHeadersForLocal(setCookieHeaders, { ...route.cookieRewrite, localScopeKey })
+      : setCookieHeaders
+    localSetCookieHeaders.forEach((cookie) => headers.append('Set-Cookie', cookie))
+    return new Response(null, { status: 303, headers })
+  })
+}
+
 export const createDevProxyApp = (options: CreateDevProxyAppOptions) => {
   const app = new HonoApp()
   const fetchImpl = options.fetchImpl || globalThis.fetch
@@ -493,6 +562,9 @@ export const createDevProxyApp = (options: CreateDevProxyAppOptions) => {
     await next()
     applyCorsHeaders(context.res.headers, context.req.header('origin'), allowedOrigins)
   })
+
+  if (options.sessionImport)
+    registerSessionImportRoute(app, options.routes, options.sessionImport, fetchImpl)
 
   registerProxyRoutes(app, options.routes, fetchImpl, allowedOrigins)
 

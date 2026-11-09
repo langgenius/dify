@@ -2,6 +2,7 @@
   "dateFormats.compact": "DD.MM.YYYY HH:mm",
   "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
   "operation.cancel": "Скасувати",
+  "operation.close": "Закрити",
   "operation.now": "Тепер",
   "operation.ok": "Добре",
   "operation.pickDate": "Виберіть дату",

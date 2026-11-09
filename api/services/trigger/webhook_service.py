@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import mimetypes
 import secrets
 from collections.abc import Callable, Mapping, Sequence
@@ -620,6 +621,11 @@ class WebhookService:
             case SegmentType.NUMBER:
                 if not cls._can_convert_to_number(value):
                     raise ValueError(f"Cannot convert '{value}' to number")
+                try:
+                    # float() rounds integers above 2**53, so parse integers exactly first.
+                    return int(value)
+                except ValueError:
+                    pass
                 numeric_value = float(value)
                 return int(numeric_value) if numeric_value.is_integer() else numeric_value
             case SegmentType.BOOLEAN:
@@ -666,12 +672,28 @@ class WebhookService:
         if param_type_enum is None:
             return value
 
-        if not param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL):
+        matches_type = param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL)
+        if not matches_type or cls._is_boolean_for_number(value, param_type_enum):
             actual_type = type(value).__name__
             expected_type = cls._expected_type_label(param_type_enum)
             raise ValueError(f"Expected {expected_type}, got {actual_type}")
 
         return value
+
+    @staticmethod
+    def _is_boolean_for_number(value: Any, param_type: SegmentType) -> bool:
+        """Return True when a JSON boolean is given for a number parameter.
+
+        JSON ``true``/``false`` decode to ``bool``, a subclass of ``int``, so
+        ``SegmentType.is_valid`` accepts them as numbers.
+        """
+        match param_type:
+            case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
+                return isinstance(value, bool)
+            case SegmentType.ARRAY_NUMBER:
+                return isinstance(value, list) and any(isinstance(item, bool) for item in value)
+            case _:
+                return False
 
     @classmethod
     def _coerce_segment_type(cls, param_type: SegmentType | str, *, param_name: str) -> SegmentType | None:
@@ -775,10 +797,9 @@ class WebhookService:
 
     @classmethod
     def _can_convert_to_number(cls, value: str) -> bool:
-        """Check if a string can be converted to a number."""
+        """Check if a string can be converted to a finite number."""
         try:
-            float(value)
-            return True
+            return math.isfinite(float(value))
         except ValueError:
             return False
 
@@ -973,6 +994,8 @@ class WebhookService:
 
                 # create new webhook records
                 for node_id in nodes_not_found:
+                    if app.created_by is None:
+                        raise RuntimeError("App is missing created_by; cannot create webhook trigger")
                     webhook_record = WorkflowWebhookTrigger(
                         app_id=app.id,
                         tenant_id=app.tenant_id,

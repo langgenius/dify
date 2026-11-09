@@ -113,6 +113,33 @@ def _notion_source(*, workspace_id: str, credential_id: str | None) -> tuple[Dat
     return dataset, document
 
 
+@pytest.mark.parametrize("source_info", ["{", "[]"])
+def test_stored_document_with_invalid_source_info_cannot_select_credential(
+    sqlite_session_factory: sessionmaker[Session], source_info: str
+) -> None:
+    repository = SQLAlchemyDatasourceCredentialRepository(session_factory=sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        credential = _provider()
+        session.add(credential)
+        session.flush()
+        credential_id = credential.id
+        dataset, document = _notion_source(workspace_id="workspace-1", credential_id=credential_id)
+        document.data_source_info = source_info
+        session.add_all([dataset, document])
+
+    assert (
+        repository.get_for_stored_document(
+            workspace_id="workspace-1",
+            dataset_id="dataset-1",
+            document_id="document-1",
+            credential_id=credential_id,
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+        )
+        is None
+    )
+
+
 def test_get_visible_scopes_workspace_provider_plugin_and_actor(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -283,8 +310,14 @@ def test_get_oauth_client_config_returns_detached_tenant_and_system_rows(
     assert record.system_credentials == {"client_secret": "system-secret"}
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("encrypted_credentials", {"integration_secret": "concurrent"}), ("expires_at", 200), ("auth_type", "api-key")],
+)
 def test_update_if_unchanged_detects_concurrent_change(
     sqlite_session_factory: sessionmaker[Session],
+    field: str,
+    value: object,
 ) -> None:
     repository = SQLAlchemyDatasourceCredentialRepository(session_factory=sqlite_session_factory)
     with sqlite_session_factory.begin() as session:
@@ -305,8 +338,7 @@ def test_update_if_unchanged_detects_concurrent_change(
     with sqlite_session_factory.begin() as session:
         stored = session.scalar(select(DatasourceProvider).where(DatasourceProvider.id == credential_id))
         assert stored is not None
-        stored.encrypted_credentials = {"integration_secret": "concurrent"}
-        stored.expires_at = 200
+        setattr(stored, field, value)
 
     assert not repository.update_if_unchanged(
         record=record,

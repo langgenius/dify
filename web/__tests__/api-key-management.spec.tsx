@@ -83,6 +83,7 @@ async function renderDialog(
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['dataset.api_key.manage'],
     currentWorkspace: { id: 'workspace-1', name: 'Test Workspace' },
+    features: {},
   })
   const user = userEvent.setup()
   render(
@@ -212,7 +213,9 @@ describe('API key management', () => {
     const result = await screen.findByRole('dialog', {
       name: 'appApi.apiKeyModal.createdTitle',
     })
-    expect(apiMocks.createDataset).toHaveBeenCalledWith({ body: { dataset_ids: [] } })
+    expect(apiMocks.createDataset).toHaveBeenCalledWith({
+      body: { dataset_ids: [], knowledge_space_ids: [] },
+    })
     expect(result).toHaveAccessibleDescription('appApi.apiKeyModal.revealOnceTips')
     const secret = within(result).getByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' })
     expect(secret).toHaveValue('new-dataset-token-123')
@@ -257,7 +260,7 @@ describe('API key management', () => {
 
     await waitFor(() => {
       expect(apiMocks.createDataset).toHaveBeenCalledWith({
-        body: { dataset_ids: ['engineering'] },
+        body: { dataset_ids: ['engineering'], knowledge_space_ids: [] },
       })
     })
     expect(

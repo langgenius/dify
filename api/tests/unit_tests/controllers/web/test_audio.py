@@ -29,8 +29,8 @@ from models.model import App, AppMode, AppModelConfig, EndUser
 from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import FILE_SIZE_LIMIT, AudioService
 from services.errors.audio import ProviderNotSupportSpeechToTextServiceError
-from tests.unit_tests.audio_runtime_fixtures import AudioRuntimeObservations, record_calls
-from tests.unit_tests.model_factories import make_app, make_end_user, make_message
+from tests.helpers.unit.audio_runtime_fixtures import AudioRuntimeObservations, record_calls
+from tests.helpers.unit.model_factories import make_app, make_end_user, make_message
 
 
 @pytest.fixture

@@ -25,7 +25,7 @@ from services.entities.account_activation_entities import (
     InvitationLookup,
     InvitationToken,
 )
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_tenant
 
 
 def _lookup(email: str | None = "invitee@example.com") -> InvitationLookup:

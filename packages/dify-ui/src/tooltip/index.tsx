@@ -1,11 +1,9 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../internal/placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '../cn'
 import { hintPopupClassName, positionerClassName } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const TooltipProvider = BaseTooltip.Provider
@@ -21,21 +19,19 @@ type TooltipProps<Payload = unknown> = BaseTooltip.Root.Props<Payload>
 type TooltipTriggerProps<Payload = unknown> = BaseTooltip.Trigger.Props<Payload>
 
 type TooltipContentProps = Omit<BaseTooltip.Popup.Props, 'children'> &
-  Pick<BaseTooltip.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
+  Pick<BaseTooltip.Positioner.Props, 'side' | 'align' | 'sideOffset' | 'alignOffset'> & {
     children: React.ReactNode
-    placement?: Placement
   }
 
 function TooltipContent({
   children,
-  placement = 'top',
+  side,
+  align,
   sideOffset = 8,
-  alignOffset = 0,
+  alignOffset,
   className,
   ...props
 }: TooltipContentProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseTooltip.Portal>
       <BaseTooltip.Positioner

@@ -8,7 +8,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_TEXT } from '@/models/datasets'
 import AppIcon from '../../base/app-icon'
-import Dropdown from './dropdown'
+import ActionsMenu from './actions-menu'
 
 type DatasetInfoProps = {
   expand: boolean
@@ -78,7 +78,7 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
               </div>
             </div>
             <div className="flex size-8 shrink-0 items-center justify-center">
-              <Dropdown expand />
+              <ActionsMenu expand />
             </div>
           </>
         )}

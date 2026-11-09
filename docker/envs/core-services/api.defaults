@@ -1,0 +1,101 @@
+# Defaults for api. Copy this file to api.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+# MODE is selected by the Compose service.
+# Optional SaaS network-policy control plane and current-IP preview trust.
+# NETWORK_ACCESS_API_URL=
+# Comma-separated proxy CIDRs; empty disables Cloud IP previews. The edge
+# must sanitize/append XFF and the trust boundary must match Gateway.
+# NETWORK_ACCESS_TRUSTED_PROXY_CIDRS=
+API_SENTRY_DSN=${API_SENTRY_DSN:-}
+API_SENTRY_TRACES_SAMPLE_RATE=${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+API_SENTRY_PROFILES_SAMPLE_RATE=${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+API_WEBSOCKET_WORKER_AMOUNT=${API_WEBSOCKET_WORKER_AMOUNT:-1}
+API_WEBSOCKET_WORKER_CLASS=${API_WEBSOCKET_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker}
+API_WEBSOCKET_WORKER_CONNECTIONS=${API_WEBSOCKET_WORKER_CONNECTIONS:-1000}
+API_WEBSOCKET_GUNICORN_TIMEOUT=${API_WEBSOCKET_GUNICORN_TIMEOUT:-360}
+# Set EXPOSE_PLUGIN_DEBUGGING_HOST and EXPOSE_PLUGIN_DEBUGGING_PORT in docker/.env
+# so the API connection and Compose port mapping use the same address.
+PLUGIN_MAX_PACKAGE_SIZE=${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+PLUGIN_DAEMON_TIMEOUT=${PLUGIN_DAEMON_TIMEOUT:-600.0}
+# Set PLUGIN_DIFY_INNER_API_KEY in docker/.env; all callers must share the API's inner credential.
+# Optional server-side secret mixed into account password hashes. Leave empty to keep the legacy hashing.
+# WARNING: setting, changing, or removing this value changes every password hash and existing passwords
+# will stop working. Do not change it casually.
+# Use a high-entropy random value, e.g. generate one with `openssl rand -base64 32`.
+# Keep it in this file rather than docker/.env, which is also loaded by plugin_daemon and agent_backend.
+# PASSWORD_PEPPER=
+# Client deadline for converting a Binding file to a ToolFile through the Agent backend.
+# AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS=240
+# KNOWLEDGE_FS_ENABLED=${KNOWLEDGE_FS_ENABLED:-false}
+# Explicitly bypass the Community edition gate for development deployments.
+# KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=${KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED:-false}
+# Production deployments require HTTPS; plain HTTP is limited to non-production or loopback.
+# KNOWLEDGE_FS_BASE_URL=
+# Optional trusted direct origin for KnowledgeFS internal requests.
+# KNOWLEDGE_FS_DIRECT_ORIGIN=
+# KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED=false
+# KNOWLEDGE_FS_INTEGRATED_PROVISION_READY=false
+# KNOWLEDGE_FS_LEGACY_ACL_FREEZE_READY=false
+# KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS=15
+# KNOWLEDGE_FS_LIFECYCLE_LEASE_SECONDS=60
+# KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE=25
+# KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=false
+# KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID=
+# KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=
+# KNOWLEDGE_FS_CAPABILITY_V2_PREVIOUS_PUBLIC_JWKS=
+# KNOWLEDGE_FS_CAPABILITY_V2_ISSUER=dify-control-plane
+# KNOWLEDGE_FS_CAPABILITY_V2_AUDIENCE=knowledge-fs
+# KNOWLEDGE_FS_CAPABILITY_V2_MAX_TTL_SECONDS=60
+# KNOWLEDGE_FS_JWKS_CACHE_MAX_AGE_SECONDS=300
+# KNOWLEDGE_FS_PRODUCT_MAX_RESPONSE_BYTES=4194304
+# KNOWLEDGE_FS_TIMEOUT_SECONDS=10
+# Retrieval tests have a 60-second KnowledgeFS execution budget and need transport headroom.
+# KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS=75
+
+# Lifetime in days of difyctl (OAuth device flow) tokens, 1-365; out-of-range values are clamped
+# OAUTH_TTL_DAYS=14
+
+# Cloudflare Turnstile server-side verification for Dify Cloud sign-in
+# TURNSTILE_SECRET_KEY=
+# TURNSTILE_ALLOWED_HOSTNAMES=
+# TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED=false
+DIFY_AGENT_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
+AGENT_BACKEND_BASE_URL=${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
+# The bundled Nginx supplies a verified client IP; keep direct API callers trusted.
+# Compose enables forwarded headers here; the bare application default is false.
+# Override in api.env or docker/.env. See docker/README.md#client-ip-and-trusted-proxies
+# before exposing the API directly.
+RESPECT_XFORWARD_HEADERS_ENABLED=${RESPECT_XFORWARD_HEADERS_ENABLED:-true}
+CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1}
+
+# API server and OpenAPI settings
+# DIFY_BIND_ADDRESS=0.0.0.0
+# DIFY_PORT=5001
+# SERVER_WORKER_AMOUNT=1
+# SERVER_WORKER_CONNECTIONS=10
+# Must stay above the idle connection reuse window of the HTTP clients that
+# pool connections to this server. Node's global fetch (undici) keeps a socket
+# idle for 4s before dropping it, so a shorter value here lets the server close
+# a connection the client still considers reusable, which surfaces as
+# intermittent ECONNRESET on server-side rendering. 0 disables keep-alive.
+# GUNICORN_KEEP_ALIVE=10
+# WEBSOCKET_MAX_HTTP_BUFFER_SIZE=10485760
+# SWAGGER_UI_ENABLED=false
+# SWAGGER_UI_PATH=/swagger-ui.html
+# OPENAPI_ENABLED=false
+# OPENAPI_CORS_ALLOW_ORIGINS=
+# OPENAPI_KNOWN_CLIENT_IDS=difyctl
+# OPENAPI_RATE_LIMIT_PER_TOKEN=60
+# DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR=10
+# ENABLE_OAUTH_BEARER=false
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+AGENT_BACKEND_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
+INNER_API_KEY_FOR_PLUGIN=${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+PLUGIN_REMOTE_INSTALL_HOST=${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+PLUGIN_REMOTE_INSTALL_PORT=${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
+SENTRY_DSN=${API_SENTRY_DSN:-}
+SENTRY_PROFILES_SAMPLE_RATE=${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+SENTRY_TRACES_SAMPLE_RATE=${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}

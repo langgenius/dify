@@ -191,13 +191,13 @@ const WebAppsSectionContent = () => {
       onOpenChange={setAppsExpanded}
       className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto_minmax(0,1fr)]"
     >
-      <CollapsibleTrigger className="group/collapsible col-start-1 row-start-1 my-1 ml-2 flex min-h-6 w-fit min-w-0 touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-left system-sm-medium text-text-tertiary select-none hover:text-text-secondary">
+      <CollapsibleTrigger className="group/collapsible col-start-1 row-start-1 my-1 ms-2 flex min-h-6 w-fit min-w-0 touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-start system-sm-medium text-text-tertiary select-none hover:text-text-secondary">
         <span id={sectionLabelId} className="system-xs-medium-uppercase">
           {t(($) => $['sidebar.webApps'], { ns: 'explore' })}
         </span>
         <span
           aria-hidden
-          className="i-ri-arrow-down-s-fill h-4 w-4 shrink-0 -rotate-90 transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none"
+          className="i-ri-arrow-down-s-fill size-4 shrink-0 -rotate-90 transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none rtl:rotate-90 rtl:group-data-panel-open/collapsible:rotate-0"
         />
       </CollapsibleTrigger>
       <Collapsible
@@ -206,7 +206,7 @@ const WebAppsSectionContent = () => {
         className="contents"
       >
         <CollapsibleTrigger
-          className="col-start-2 row-start-1 my-1 mr-2 self-center text-text-secondary data-panel-open:bg-state-base-hover"
+          className="col-start-2 row-start-1 my-1 me-2 self-center text-text-secondary data-panel-open:bg-state-base-hover"
           render={
             <IconButton aria-label={t(($) => $['operation.search'], { ns: 'common' })}>
               <span aria-hidden className="i-ri-search-line size-3.5" />
@@ -282,7 +282,7 @@ const WebAppsSectionContent = () => {
                         onFocusCapture={
                           row.kind === 'app' ? () => setLastFocusedAppId(row.app.id) : undefined
                         }
-                        className="absolute top-0 left-0 w-full"
+                        className="absolute inset-s-0 top-0 w-full"
                         style={{
                           height: `${virtualRow.size}px`,
                           transform: `translateY(${virtualRow.start}px)`,

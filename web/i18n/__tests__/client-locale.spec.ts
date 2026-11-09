@@ -9,7 +9,9 @@ vi.mock('react-i18next', () => ({ getI18n: () => ({ changeLanguage: mocks.change
 describe('client locale inputs', () => {
   beforeEach(() => {
     mocks.changeLanguage.mockResolvedValue(undefined)
+    vi.spyOn(window.location, 'reload').mockImplementation(() => {})
   })
+  afterEach(() => vi.restoreAllMocks())
 
   it.each([
     ['zh_Hans', 'zh-Hans'],
@@ -20,10 +22,11 @@ describe('client locale inputs', () => {
     ['en--US', 'en-US'],
     ['unsupported', 'en-US'],
   ])('changes and persists %s as %s', async (input, expected) => {
-    await setLocaleOnClient(input, false)
+    await setLocaleOnClient(input)
 
     expect(Cookies.set).toHaveBeenCalledWith('locale', expected, { expires: 365 })
     expect(mocks.changeLanguage).toHaveBeenCalledWith(expected)
+    expect(window.location.reload).not.toHaveBeenCalled()
   })
 
   it('normalizes a share-app override without persisting console preferences', async () => {

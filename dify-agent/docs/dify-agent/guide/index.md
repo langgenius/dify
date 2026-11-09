@@ -82,6 +82,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_OUTBOUND_HTTP_MAX_KEEPALIVE_CONNECTIONS` | `20` | Maximum idle shared outbound HTTP connections. |
 | `DIFY_AGENT_OUTBOUND_HTTP_KEEPALIVE_EXPIRY` | `30` | Idle keep-alive expiry in seconds. |
 | `DIFY_AGENT_TRAJECTORY_ENABLED` | `false` | Opt-in switch for the separate Agent trajectory export pipeline. |
+| `DIFY_AGENT_APPLICATION_TRACING_ENABLED` | `false` | Collect API-authorized application spans into the Dify inner API tracing inbox. Requires the server inner API URL and key. |
 | `DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT` | empty | Full HTTP(S) OTLP traces endpoint required when trajectory export is enabled. |
 | `DIFY_AGENT_TRAJECTORY_OTLP_HEADERS` | `{}` | JSON object of request headers sent with Agent OTLP trace exports. |
 | `DIFY_AGENT_TRAJECTORY_SERVICE_NAME` | `dify-agent-trajectory` | Resource service name attached to Agent trajectory spans. |
@@ -118,6 +119,48 @@ The two SDK instances, exporters, enable switch, and content opt-in remain
 separate. The mode is fixed at process initialization and requires a restart
 to change. No extra shared root span is added; incomplete traces may still
 appear temporarily while a run or export is in progress.
+
+Application tracing is a third, independent pipeline. When enabled, a run's
+API-issued `execution_context.tracing` supplies its durable run/invocation IDs,
+OpenTelemetry parent, session and content/sampling policy. Its spans are sent as
+JSON to `POST /inner/api/agent/tracing/batches`, authenticated with the server's
+`DIFY_AGENT_INNER_API_KEY` in `X-Inner-Api-Key`. Provider credentials and routing
+remain in the Dify API. Application spans do not inherit platform or deployment
+trajectory destinations, and one Agent is never instrumented by both application
+and deployment pipelines. Binary content is excluded.
+
+The actual model-call span also carries the Dify gateway's billed amount as
+`dify.llm.total_price` (a decimal string) and `dify.llm.currency` when a usage
+payload is returned. `gen_ai.response.time_to_first_token` is measured in seconds
+(`dify.llm.time_to_first_token_unit=s`): gateway-provided TTFT takes precedence;
+otherwise it measures request issue to the first content/tool-call chunk.
+`dify.llm.time_to_first_token_source` distinguishes those two sources. Missing
+accounting is left absent. The current Graphon LLM gateway does not expose cache
+token counters, so the Agent adapter does not manufacture them.
+
+Each batch has a stable `batch_id`. Retries reuse the same payload, and a 2xx
+response is accepted only with `{result: "success", batch_id, accepted_spans}`
+matching that batch. An invocation emits an empty `final: true` batch after its
+ended spans are flushed and acknowledged, before its normal terminal event when
+delivery completes within five seconds. Failure or cancellation still flushes.
+Collection failures do not fail the Agent run; outstanding delivery can finish
+in the background after the terminal-event deadline. A full in-memory queue or
+unacknowledged data suppresses completion instead of claiming a complete trace.
+The queue is bounded (2048 spans, batches of at most 128), with up to 128 unacknowledged
+batches retained until invocation finalization. Batches are split below 1 MiB
+of UTF-8 JSON. A single oversized span is dropped and marks its invocation
+incomplete rather than silently truncating content or sending a success marker.
+This is not a durable local
+spool: process loss can leave an incomplete trace in the API. Shutdown drains the
+collector after active runs finish.
+
+If setup fails or cancellation arrives before Pydantic AI starts its Agent span,
+the collector emits one failed `invoke_agent` span with the measured setup
+interval, then finalizes normally. It records `dify.agent.execution_state` as
+`initialization_failed` or `cancelled`. Runs that already started their native
+Agent span keep that span without an extra wrapper. Sampling-off invocations
+remain span-free; successful but unexplained empty collections are not converted
+to synthetic success.
 
 Example `.env`:
 
@@ -488,7 +531,14 @@ is presented, independently of its file `type` (`image`, `document`, `audio`,
 - `delivery: "download"` preserves the original file `type`, including `image`
   when the selected model has no Vision feature. It contains either
   `transfer_method: "remote_url"` with `url`, or a `local_file`, `tool_file`, or
-  `datasource_file` transfer method with a canonical `reference`.
+  `datasource_file` transfer method with a canonical `reference`. An optional
+  `filename` identifies the attachment in the rendered file locators.
+
+When an Agent App has KnowledgeFS spaces, each uploaded `local_file` image sent
+as multimodal content also has a named download entry. The model receives the
+image directly and can use its canonical `reference` with
+`dify-agent knowledge search --image-file-id`. Remote URLs and tool/datasource
+file references are not valid upload references for KnowledgeFS image search.
 
 The module appends sandbox file-download instructions for download attachments
 and adds multimodal attachments as structured model content. Callers keep
@@ -573,3 +623,49 @@ The repository includes simple consumers that print observed output/events:
 
 The create-run examples submit Dify plugin model modules, so they require Redis,
 the Agent server, Dify API gateway settings, and a configured model provider in Dify.
+
+### Automatic KnowledgeFS quality reporting
+
+Knowledge CLI calls now contribute bounded, server-owned investigation observations.
+The Stub records command IDs, queries/paths, outcomes, error codes, timing, small text
+snippets and receipt IDs. The runtime separately marks which observations were delivered
+to the model. This ledger survives the consumable tool-result queue and session cleanup.
+It shares the knowledge budget's two-hour retention and identity boundary. A human-input
+pause retains the investigation; a resumed run continues it. A new user turn gets a fresh
+investigation. Images and bearer capabilities are never included in these observations.
+
+After the authoritative final-answer event, the runtime submits the original question,
+final answer and observations to the private Dify API. Failed runs submit an interrupted
+report; cancellation leaves a bounded diagnostic ledger and does not create quality cases.
+A human-input pause does not submit a final report. Queue admission is retried with the same
+investigation ID, and submission failures do not change the completed Agent result.
+
+The existing `dataset` Celery workers process one job per investigated knowledge space.
+Each attempt reconstructs the Agent/app/configuration ownership and reissues a capability.
+An authorization fingerprint binds observations to the original caller, ACL/content policy
+revisions and content scopes; a changed scope rejects publication of old observations.
+Agent applications, Workflow Agent nodes and interactive previews use their actual caller
+identities and a dedicated `queries.agent_investigation.capture` action.
+
+KnowledgeFS makes one batched assessment of the space's complete investigation using its
+configured reasoning model with a 60-second model budget. The worker uses the existing
+`KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS` transport timeout for this operation.
+Query rewrites and recovered empty searches are grouped. An
+unresolved subquestion produces a failed-query record; only `retrieval-miss` produces a
+quality bad case tagged `agent`, `auto-captured`, `retrieval-miss`. Coverage gaps, unrelated
+questions and uncertain issues do not become retrieval bad cases. Tool errors, directory
+probing, unobserved results, image-only investigations and interruptions cannot by themselves
+produce a bad case. If the model is unavailable or returns an invalid assessment, the trace
+is retained as uncertain without automatic cases.
+
+The committed assessment and stable child IDs fence retries, so projection retries do not
+create duplicate failed queries/cases or repeat the committed judgment. Separate unanswered
+subquestions remain separate, with at most eight issues per space. The original question and
+bounded command history remain linked to each issue trace. The final answer is used for
+assessment but is not copied into a knowledge space's shared trace, since it may contain
+content from other spaces. Document snippets likewise remain transient classifier input;
+shared traces retain command metadata and receipt IDs without copying document text outside
+the existing evidence permission projection. Reports are best-effort: after bounded dispatch retries, an
+undelivered report remains only in the expiring runtime ledger. Deploy matching Agent,
+Dify API/worker and KnowledgeFS versions to enable the complete path; no new environment
+variable or Agent tool is required.

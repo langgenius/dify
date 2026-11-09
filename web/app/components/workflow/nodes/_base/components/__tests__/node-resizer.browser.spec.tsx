@@ -9,6 +9,13 @@ import { NoteTheme } from '@/app/components/workflow/note-node/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import 'reactflow/dist/style.css'
 
+const unexpectedFetch = vi.fn<typeof fetch>(() => new Promise(() => {}))
+beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
+afterEach(() => {
+  vi.unstubAllGlobals()
+  expect(unexpectedFetch).not.toHaveBeenCalled()
+})
+
 // Editing and persistence are independent of the Note's rendered resize affordance.
 vi.mock('../../../../note-node/note-editor', () => ({
   NoteEditorContextProvider: ({ children }: { children: ReactNode }) => children,

@@ -19,7 +19,15 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError, TracingProviderUnavailableError
+from controllers.console.app.error import (
+    AppNotFoundError,
+    InvalidTracingConfigError,
+    TracingConfigConflictError,
+    TracingConfigNotFoundError,
+    TracingConfigProcessingError,
+    TracingProviderUnavailableError,
+    UnsupportedTracingProviderError,
+)
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
@@ -64,7 +72,13 @@ from services.app.console_service import (
     InvalidAppExportError,
 )
 from services.app_tracing_config_service import (
+    AppTraceSettings,
+    AppTracingConfigAppNotFoundError,
+    AppTracingConfigConflictError,
+    AppTracingConfigInvalidConfigurationError,
     AppTracingConfigInvalidProviderError,
+    AppTracingConfigNotFoundError,
+    AppTracingConfigProcessingError,
     AppTracingConfigProviderUnavailableError,
 )
 from services.entities.app_entities import (
@@ -72,7 +86,6 @@ from services.entities.app_entities import (
     AppListParams,
     AppListSortBy,
     AppRecord,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     StarredAppListParams,
@@ -232,13 +245,14 @@ class AppApiStatusPayload(BaseModel):
 class AppTracePayload(BaseModel):
     enabled: bool = Field(..., description="Enable or disable tracing")
     tracing_provider: str | None = Field(default=None, description="Tracing provider")
+    capture_content: bool = Field(default=False, description="Include prompt, output and tool content in new traces")
+    capture_agent: bool = Field(default=True, description="Capture Agent internals when deployment support is enabled")
 
-    @field_validator("tracing_provider")
-    @classmethod
-    def validate_tracing_provider(cls, value: str | None, info) -> str | None:
-        if info.data.get("enabled") and not value:
+    @model_validator(mode="after")
+    def validate_tracing_provider(self) -> "AppTracePayload":
+        if self.enabled and not self.tracing_provider:
             raise ValueError("tracing_provider is required when enabled is True")
-        return value
+        return self
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
@@ -657,7 +671,15 @@ class AppTraceApi(AppResource):
     def get(self, context: RequestContext, app_id: uuid.UUID):
         return dump_response(AppTraceResponse, application_services().apps.console.get_trace(context, str(app_id)))
 
-    @error_responses(TracingProviderUnavailableError)
+    @error_responses(
+        AppNotFoundError,
+        TracingProviderUnavailableError,
+        TracingConfigNotFoundError,
+        TracingConfigConflictError,
+        TracingConfigProcessingError,
+        InvalidTracingConfigError,
+        UnsupportedTracingProviderError,
+    )
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -679,6 +701,18 @@ class AppTraceApi(AppResource):
                 str(app_id),
                 AppTraceSettings(**payload.model_dump()),
             )
+        except AppTracingConfigAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        except AppTracingConfigConflictError as error:
+            raise TracingConfigConflictError() from error
+        except AppTracingConfigNotFoundError as error:
+            raise TracingConfigNotFoundError() from error
+        except AppTracingConfigProcessingError as error:
+            raise TracingConfigProcessingError() from error
+        except AppTracingConfigInvalidConfigurationError as error:
+            raise InvalidTracingConfigError() from error
+        except AppTracingConfigInvalidProviderError as error:
+            raise UnsupportedTracingProviderError() from error
         except AppTracingConfigProviderUnavailableError as error:
             raise TracingProviderUnavailableError() from error
         return SimpleResultResponse(result="success").model_dump(mode="json")

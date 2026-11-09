@@ -1,4 +1,5 @@
 {
+  "activateFailed": "교육 할인을 활성화할 수 없습니다. 현재 교육 인증이 아직 유효하거나 이 이메일이 더 이상 자격 요건을 충족하지 않을 수 있습니다.",
   "applied.activeSubscription.description": "현재 활성 구독이 있습니다. 구독이 만료된 후 교육 할인을 사용할 수 있습니다. <stripeLink>Stripe</stripeLink>에서 구독을 확인하세요.",
   "applied.noPaymentPermission.description": "이 워크스페이스에서 결제 권한이 없습니다. 교육 할인을 사용하려면 청구를 관리할 수 있는 워크스페이스로 전환하세요.",
   "applied.noPaymentPermission.returnHome": "Dify로 돌아가기",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "독점 100% 쿠폰",
   "toVerifiedTip.end": "Dify 프로페셔널 플랜을 위해.",
   "toVerifiedTip.front": "당신은 이제 교육 인증 상태를 받을 자격이 있습니다. 아래에 귀하의 교육 정보를 입력하여 과정을 완료하고 인증을 받으십시오.",
-  "useEducationDiscount": "교육 할인 사용"
+  "tooManyAttempts": "시도 횟수가 너무 많습니다. 나중에 다시 시도해 주세요.",
+  "useEducationDiscount": "교육 할인 사용",
+  "verifyFailed": "교육 인증을 확인할 수 없습니다. 최근에 인증했다면 현재 교육 인증이 아직 유효할 수 있습니다. 그렇지 않다면 나중에 다시 시도해 주세요."
 }

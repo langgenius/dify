@@ -77,8 +77,7 @@ const VarPicker: FC<Props> = ({
         }
       />
       <PopoverContent
-        placement="bottom-end"
-        sideOffset={8}
+        align="end"
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         {options.length > 0 ? (

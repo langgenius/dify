@@ -1,24 +1,9 @@
-import type { ReactNode } from 'react'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent as render } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import ResultPanel from '../result-panel'
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  __esModule: true,
-  default: (props: { title: ReactNode; value: unknown; footer?: ReactNode; tip?: ReactNode }) => {
-    return (
-      <section data-testid="code-editor">
-        <div>{props.title}</div>
-        <div>{typeof props.value === 'string' ? props.value : JSON.stringify(props.value)}</div>
-        {props.tip}
-        {props.footer}
-      </section>
-    )
-  },
-}))
 
 const createNodeInfo = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
   id: 'trace-node-1',
@@ -104,7 +89,14 @@ describe('ResultPanel', () => {
     expect(screen.getByText('WORKFLOW.COMMON.INPUT')).toBeInTheDocument()
     expect(screen.getByText('WORKFLOW.COMMON.PROCESSDATA')).toBeInTheDocument()
     expect(screen.getByText('WORKFLOW.COMMON.OUTPUT')).toBeInTheDocument()
-    expect(screen.getByText('{"answer":"done"}')).toBeInTheDocument()
+    const editors = screen.getAllByRole('textbox') as HTMLTextAreaElement[]
+    const values = editors.map((editor) => {
+      const value = JSON.parse(editor.value)
+      // Accept either serialized JSON inputs or already-decoded data.
+      return typeof value === 'string' ? JSON.parse(value) : value
+    })
+    expect(values).toEqual([{ topic: 'AI' }, { step: 1 }, { answer: 'done' }])
+    editors.forEach((editor) => expect(editor).toHaveAttribute('readonly'))
     expect(
       screen.getAllByText('workflowDebug.debug.variableInspect.largeDataNoExport'),
     ).toHaveLength(3)

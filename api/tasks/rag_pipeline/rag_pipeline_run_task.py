@@ -8,7 +8,7 @@ from itertools import islice
 from typing import Any
 
 import click
-from celery import group, shared_task
+from celery import shared_task
 from flask import current_app, g
 from pydantic import TypeAdapter
 from sqlalchemy import select
@@ -114,8 +114,8 @@ def rag_pipeline_run_task(
                         )
                     )
 
-                if jobs:
-                    group(jobs).apply_async()
+                for job in jobs:
+                    job.apply_async()
         else:
             # No more waiting tasks, clear the flag
             tenant_isolated_task_queue.delete_task_key()

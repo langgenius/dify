@@ -79,6 +79,15 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         assert agent_stub_shell_env_module.build_shell_agent_stub_env is not None
         assert shell_module.DifyShellLayerConfig is not None
         assert execution_context_module.DifyExecutionContextLayerConfig is not None
+        tracing = execution_context_module.ApplicationTracingContext(
+            run_id="11111111-1111-4111-8111-111111111111",
+            invocation_id="22222222-2222-4222-8222-222222222222",
+            trace_id="1" * 32,
+            parent_span_id="2" * 16,
+            session_id="client-session",
+            capture_content=False,
+        )
+        assert execution_context_module.ApplicationTracingContext.model_validate_json(tracing.model_dump_json()) == tracing
         assert plugin_module.DifyPluginLLMLayerConfig is not None
         assert output_module.DifyOutputLayerConfig is not None
         assert user_prompt_module.DifyUserPromptLayerConfig is not None

@@ -423,7 +423,7 @@ const VarReferencePicker: FC<Props> = ({
         )}
         <PopoverContent
           initialFocus={searchInputRef}
-          placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
+          align={isAddBtnTrigger ? 'end' : 'start'}
           sideOffset={4}
           className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
         >

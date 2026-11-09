@@ -12,6 +12,7 @@ from core.agent.workflow_references import (
     workflow_previous_node_output_refs_from_selectors,
 )
 from core.workflow.graph_topology import WorkflowGraphTopology
+from domain.workflow.agent_node import is_dify_agent_node_data
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 from models.agent import (
     Agent,
@@ -32,7 +33,6 @@ from models.model import UploadFile
 from models.workflow import Workflow
 from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
 
-from .discriminator import is_dify_agent_node_data
 from .entities import DifyAgentNodeData
 
 
