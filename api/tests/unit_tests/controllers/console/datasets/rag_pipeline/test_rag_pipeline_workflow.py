@@ -68,7 +68,13 @@ from models.dataset import Dataset, Pipeline
 from models.engine import db
 from models.enums import CreatorUserRole, PermissionEnum
 from models.tools import WorkflowToolProvider
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow import (
+    Workflow,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowType,
+)
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
@@ -870,13 +876,12 @@ def make_node_execution(**overrides: Unpack[NodeExecutionOverrides]) -> Workflow
         "finished_at": datetime(2026, 1, 1, 0, 0, 1),
     }
     payload.update(overrides)
-    created_at = payload.pop("created_at")
     execution = WorkflowNodeExecutionModel(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
-        **payload,
     )
-    execution.created_at = created_at
-    execution.offload_data = []
+    for key, value in payload.items():
+        setattr(execution, key, value)
+    execution.offload_data = list[WorkflowNodeExecutionOffload]()
     return execution
 
 
@@ -921,7 +926,9 @@ def make_workflow(**overrides: Unpack[WorkflowFactoryOverrides]) -> Workflow:
         _rag_pipeline_variables=payload["rag_pipeline_variables"],
     )
     workflow.created_at = payload["created_at"]
-    workflow.updated_at = payload["updated_at"]
+    updated_at = payload["updated_at"]
+    assert updated_at is not None
+    workflow.updated_at = updated_at
     return workflow
 
 

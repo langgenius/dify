@@ -6,7 +6,7 @@ from unittest.mock import ANY, PropertyMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine
+from sqlalchemy import Engine, Table
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -80,7 +80,9 @@ def database_app() -> Iterator[Flask]:
     db.init_app(app)
 
     with app.app_context():
-        PipelineCustomizedTemplate.__table__.create(db.engine)
+        template_table = PipelineCustomizedTemplate.__table__
+        assert isinstance(template_table, Table)
+        template_table.create(db.engine)
         yield app
 
 
@@ -91,7 +93,9 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+        def get_pipeline_templates(
+            *, type: str, language: str, current_tenant_id: str, session: Session
+        ) -> dict[str, object]:
             del session
             service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": [_template_item()]}
@@ -121,7 +125,9 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+        def get_pipeline_templates(
+            *, type: str, language: str, current_tenant_id: str, session: Session
+        ) -> dict[str, object]:
             del session
             service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": []}
@@ -147,7 +153,7 @@ class TestPipelineTemplateDetailApi:
         service_calls: list[tuple[str, str, str]] = []
 
         def get_pipeline_template_detail(
-            template_id: str, current_tenant_id: str, type: str, *, session
+            template_id: str, current_tenant_id: str, type: str, *, session: Session
         ) -> dict[str, object]:
             del session
             service_calls.append((template_id, current_tenant_id, type))
@@ -174,7 +180,9 @@ class TestPipelineTemplateDetailApi:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
-        def get_pipeline_template_detail(template_id: str, current_tenant_id: str, type: str, *, session) -> None:
+        def get_pipeline_template_detail(
+            template_id: str, current_tenant_id: str, type: str, *, session: Session
+        ) -> None:
             del template_id, current_tenant_id, type, session
 
         with (
@@ -205,7 +213,7 @@ class TestCustomizedPipelineTemplateApi:
             current_user: Account,
             current_tenant_id: str,
             *,
-            session,
+            session: Session,
         ) -> None:
             assert session is unbound_session
             service_calls.append((template_id, template_info, current_user, current_tenant_id))
@@ -256,7 +264,7 @@ class TestCustomizedPipelineTemplateApi:
             current_user: Account,
             current_tenant_id: str,
             *,
-            session,
+            session: Session,
         ) -> None:
             assert session is unbound_session
             service_calls.append((template_id, template_info, current_user, current_tenant_id))
@@ -294,7 +302,7 @@ class TestCustomizedPipelineTemplateApi:
         tenant_id = "tenant-1"
         deleted_templates: list[tuple[str, str]] = []
 
-        def delete_template(template_id: str, current_tenant_id: str, *, session) -> None:
+        def delete_template(template_id: str, current_tenant_id: str, *, session: Session) -> None:
             assert session is unbound_session
             deleted_templates.append((template_id, current_tenant_id))
 
