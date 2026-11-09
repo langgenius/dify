@@ -16,7 +16,9 @@ from packaging.version import InvalidVersion, Version
 from core.entities.provider_entities import (
     HostedAudioSourceFact,
     HostedEmbeddingSourceFact,
+    HostedGeminiSourceFact,
     HostedSourceVariantFact,
+    HostedTongyiSourceFact,
     HostedXAISourceFact,
     ProviderQuotaType,
     QuotaConfiguration,
@@ -34,11 +36,25 @@ from services.entities.model_billing_embedding_mapping import EmbeddingSourceSet
 from services.entities.model_billing_embedding_mapping import (
     SelectedEmbeddingSourceVariant as SelectedEmbeddingSourceVariant,  # noqa: PLC0414
 )
+from services.entities.model_billing_gemini_mapping import (
+    GEMINI_SOURCE_UID,
+    GeminiSourceSettings,
+    SourceGeminiVariantMapping,
+    gemini_source_operations,
+)
+from services.entities.model_billing_gemini_mapping import SelectedGeminiSourceVariant as SelectedGeminiSourceVariant  # noqa: PLC0414
 from services.entities.model_billing_mapping import ModelMapping, SourceVariantSettings
 from services.entities.model_billing_mapping import SelectedSourceVariant as SelectedSourceVariant  # noqa: PLC0414
 from services.entities.model_billing_mapping import SourceParameterContract as SourceParameterContract  # noqa: PLC0414
 from services.entities.model_billing_mapping import model_schema_digest as model_schema_digest  # noqa: PLC0414
 from services.entities.model_billing_migration import StableMigrationSourceProviderOwnership
+from services.entities.model_billing_tongyi_mapping import (
+    TONGYI_SOURCE_UID,
+    SourceTongyiVariantMapping,
+    TongyiSourceSettings,
+    tongyi_source_operations,
+)
+from services.entities.model_billing_tongyi_mapping import SelectedTongyiSourceVariant as SelectedTongyiSourceVariant  # noqa: PLC0414
 from services.entities.model_billing_xai_mapping import SelectedXAISourceVariant as SelectedXAISourceVariant  # noqa: PLC0414
 from services.entities.model_billing_xai_mapping import SourceXAIVariantMapping, XAISourceSettings
 from services.model_billing_anthropic_adapter import AnthropicSourceContract as AnthropicSourceContract  # noqa: PLC0414
@@ -46,6 +62,12 @@ from services.model_billing_anthropic_adapter import anthropic_source_marker as 
 from services.model_billing_anthropic_adapter import build_anthropic_source_contract
 from services.model_billing_anthropic_adapter import (
     restore_anthropic_source_contract as restore_anthropic_source_contract,  # noqa: PLC0414
+)
+from services.model_billing_gemini_credit_source_adapter import (
+    GeminiCreditSourceContract,
+    build_gemini_credit_source_contract,
+    gemini_credit_source_marker,
+    restore_gemini_credit_source_contract,
 )
 from services.model_billing_migration_inventory import saved_dependency_inventory_policy
 from services.model_billing_openai_audio_adapter import (
@@ -111,16 +133,24 @@ from services.model_billing_source_variants import SELECTED_SOURCE_VARIANT_TYPES
 from services.model_billing_source_variants import (
     AudioSourceVariantContext,
     EmbeddingSourceVariantContext,
+    GeminiSourceVariantContext,
     MappingDeclaration,
     ModelMappingRevision,
     SelectedModelMapping,
     SelectedSourceVariantMapping,
     SourceContext,
     SourceVariantContext,
+    TongyiSourceVariantContext,
     XAISourceVariantContext,
     source_endpoint_class,
 )
 from services.model_billing_source_variants import source_mapping_revision as parse_source_mapping_revision
+from services.model_billing_tongyi_credit_source_adapter import (
+    TongyiCreditSourceContract,
+    build_tongyi_credit_source_contract,
+    restore_tongyi_credit_source_contract,
+    tongyi_credit_source_marker,
+)
 from services.model_billing_tts_adapter import TTSVoiceContract as TTSVoiceContract  # noqa: PLC0414
 from services.model_billing_tts_adapter import build_tts_voice_contract as build_tts_voice_contract  # noqa: PLC0414
 from services.model_billing_tts_adapter import normalize_tts_voice as normalize_tts_voice  # noqa: PLC0414
@@ -174,6 +204,28 @@ def build_source_adapter_contract(
         "source_plugin_unique_identifier": source_plugin_unique_identifier,
         "expected_source_schema_digest": mapping.source_schema_digest,
     }
+    if isinstance(mapping, SelectedTongyiSourceVariant):
+        tongyi_contract = build_tongyi_credit_source_contract(
+            **arguments,
+            source_schema=source_schema,
+            expected_source_runtime_schema_digest=mapping.variant.source_runtime_schema_digest,
+            target_model=mapping.target.model,
+            source_settings=mapping.variant.source_settings,
+        )
+        if tongyi_contract != restore_variant_source_contract(mapping):
+            raise ValueError("Tongyi source variant evidence changed")
+        return tongyi_contract
+    if isinstance(mapping, SelectedGeminiSourceVariant):
+        gemini_contract = build_gemini_credit_source_contract(
+            **arguments,
+            source_schema=source_schema,
+            expected_source_runtime_schema_digest=mapping.variant.source_runtime_schema_digest,
+            target_model=mapping.target.model,
+            source_settings=mapping.variant.source_settings,
+        )
+        if gemini_contract != restore_variant_source_contract(mapping):
+            raise ValueError("Gemini source variant evidence changed")
+        return gemini_contract
     if isinstance(mapping, SelectedAudioSourceVariant):
         audio_contract = build_openai_audio_source_contract(
             **arguments,
@@ -294,6 +346,10 @@ def source_parameter_marker(
         "source_model": source_model,
         "target_model": target_model,
     }
+    if isinstance(contract, TongyiCreditSourceContract):
+        return tongyi_credit_source_marker(contract, **arguments, model_type=model_type)
+    if isinstance(contract, GeminiCreditSourceContract):
+        return gemini_credit_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, OpenAIAudioSourceContract):
         return openai_audio_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, XAICreditSourceContract):
@@ -519,6 +575,8 @@ def mapped_dynamic_source_candidates(
     embedding_source_fact: HostedEmbeddingSourceFact | None = None,
     audio_source_fact: HostedAudioSourceFact | None = None,
     xai_source_fact: HostedXAISourceFact | None = None,
+    gemini_source_fact: HostedGeminiSourceFact | None = None,
+    tongyi_source_fact: HostedTongyiSourceFact | None = None,
     allow_source_variants: bool = False,
 ) -> tuple[HostedSourceSchemaCandidate, ...]:
     """Plan bounded source lookups; this policy never performs RPC or inference."""
@@ -546,6 +604,8 @@ def mapped_dynamic_source_candidates(
                 embedding_fact=embedding_source_fact,
                 audio_fact=audio_source_fact,
                 xai_fact=xai_source_fact,
+                gemini_fact=gemini_source_fact,
+                tongyi_fact=tongyi_source_fact,
             )
         except ValueError:
             continue
@@ -577,6 +637,10 @@ def mapped_dynamic_source_candidates(
 
 
 def mapping_has_required_operations(mapping: SelectedModelMapping) -> bool:
+    if isinstance(mapping, SelectedTongyiSourceVariant):
+        return set(mapping.operations) == tongyi_source_operations(mapping.source.model)
+    if isinstance(mapping, SelectedGeminiSourceVariant):
+        return set(mapping.operations) == gemini_source_operations(mapping.source.model)
     required = {"model/schema", f"{mapping.source.model_type.value}/invoke"}
     if mapping.source.model_type == ModelType.LLM:
         required.add("llm/num_tokens")
@@ -738,6 +802,8 @@ def additional_hosted_availability(
     embedding_source_fact: HostedEmbeddingSourceFact | None = None,
     audio_source_fact: HostedAudioSourceFact | None = None,
     xai_source_fact: HostedXAISourceFact | None = None,
+    gemini_source_fact: HostedGeminiSourceFact | None = None,
+    tongyi_source_fact: HostedTongyiSourceFact | None = None,
     allow_source_variants: bool = False,
 ) -> HostedCompatibilityAvailability | None:
     """Build trusted hosted availability using explicit, frozen contracts.
@@ -792,6 +858,8 @@ def additional_hosted_availability(
                             embedding_fact=embedding_source_fact,
                             audio_fact=audio_source_fact,
                             xai_fact=xai_source_fact,
+                            gemini_fact=gemini_source_fact,
+                            tongyi_fact=tongyi_source_fact,
                             schema=schema,
                         )
                         if registry is not None
@@ -1051,6 +1119,160 @@ def xai_source_variant_context(
     )
 
 
+def hosted_tongyi_source_fact(
+    *, provider: str, source_uid: str, models: Sequence[AIModelEntity], credentials: object
+) -> HostedTongyiSourceFact | None:
+    """Classify the actual SYSTEM dictionary before its shared key is cleared.
+
+    Source0226 compares only the exact string ``true`` and gives custom
+    normalized api_host precedence. No URL/key/dictionary is retained. LLM
+    metadata absent/None or exact disabled is reviewed; other model types do
+    not consume that field. None cannot become a fabricated default dict.
+    """
+    if (
+        str(ModelProviderID(provider)) != "langgenius/tongyi/tongyi"
+        or source_uid != TONGYI_SOURCE_UID
+        or type(credentials) is not dict
+    ):
+        return None
+    selector = credentials.get("use_international_endpoint")
+    host = credentials.get("api_host")
+    metadata = credentials.get("enable_request_metadata")
+    return HostedTongyiSourceFact(
+        provider=str(ModelProviderID(provider)),
+        plugin_unique_identifier=source_uid,
+        catalog_schema_digests=tuple((item.model_type, item.model, model_schema_digest(item)) for item in models),
+        endpoint_selector="string_true"
+        if type(selector) is str and selector == "true"
+        else "string_false"
+        if type(selector) is str and selector == "false"
+        else "unreviewed",
+        api_host_policy="actual_absent_or_blank"
+        if host is None or type(host) is str and not host.strip()
+        else "unreviewed",
+        llm_metadata_policy="actual_system_disabled"
+        if metadata is None or type(metadata) is str and metadata == "disabled"
+        else "unreviewed",
+    )
+
+
+def tongyi_source_variant_context(
+    fact: HostedTongyiSourceFact | None,
+    *,
+    provider: str,
+    source_uid: str,
+    model_type: ModelType,
+    schema: AIModelEntity | None = None,
+) -> TongyiSourceVariantContext | None:
+    if (
+        type(fact) is not HostedTongyiSourceFact
+        or fact.provider != str(ModelProviderID(provider))
+        or fact.plugin_unique_identifier != source_uid
+        or source_uid != TONGYI_SOURCE_UID
+        or fact.endpoint_selector != "string_true"
+        or fact.api_host_policy != "actual_absent_or_blank"
+        or model_type not in {ModelType.LLM, ModelType.TEXT_EMBEDDING, ModelType.RERANK}
+    ):
+        return None
+    if schema is not None and [
+        digest
+        for kind, model, digest in fact.catalog_schema_digests
+        if (kind, model) == (schema.model_type, schema.model)
+    ] != [model_schema_digest(schema)]:
+        return None
+    if model_type is ModelType.LLM and fact.llm_metadata_policy != "actual_system_disabled":
+        return None
+    return TongyiSourceVariantContext(
+        source_uid,
+        TongyiSourceSettings(
+            source_endpoint_policy="reviewed_shared_international_string_true",
+            api_host_policy="actual_absent_or_blank",
+            request_metadata_policy="actual_system_disabled" if model_type is ModelType.LLM else "not_used",
+        ),
+    )
+
+
+def hosted_gemini_source_fact(
+    *, provider: str, source_uid: str, models: Sequence[AIModelEntity], credentials: object
+) -> HostedGeminiSourceFact | None:
+    """Capture actual SYSTEM dictionary classifications, before substitution.
+
+    Source0912 LLMs use only the reviewed None/exact Google-root base,
+    None/disabled metadata and None/empty file prefix. Embeddings do not consume
+    these three fields. Nothing retains a key, raw URL or credential dictionary.
+    """
+    if (
+        str(ModelProviderID(provider)) != "langgenius/gemini/google"
+        or source_uid != GEMINI_SOURCE_UID
+        or type(credentials) is not dict
+    ):
+        return None
+    base = credentials.get("google_base_url")
+    metadata = credentials.get("enable_request_metadata")
+    prefix = credentials.get("file_url")
+    return HostedGeminiSourceFact(
+        provider=str(ModelProviderID(provider)),
+        plugin_unique_identifier=source_uid,
+        catalog_schema_digests=tuple((item.model_type, item.model, model_schema_digest(item)) for item in models),
+        llm_source_base_policy=(
+            "unset_or_exact_google_root"
+            if base is None or type(base) is str and base == "https://generativelanguage.googleapis.com"
+            else "unreviewed"
+        ),
+        llm_request_metadata_policy=(
+            "system_false_only"
+            if metadata is None or type(metadata) is str and metadata == "disabled"
+            else "unreviewed"
+        ),
+        llm_file_url_policy=(
+            "actual_system_absent_or_empty_only"
+            if prefix is None or type(prefix) is str and prefix == ""
+            else "unreviewed"
+        ),
+    )
+
+
+def gemini_source_variant_context(
+    fact: HostedGeminiSourceFact | None,
+    *,
+    provider: str,
+    source_uid: str,
+    model_type: ModelType,
+    schema: AIModelEntity | None = None,
+) -> GeminiSourceVariantContext | None:
+    if (
+        type(fact) is not HostedGeminiSourceFact
+        or fact.provider != str(ModelProviderID(provider))
+        or fact.plugin_unique_identifier != source_uid
+        or source_uid != GEMINI_SOURCE_UID
+        or model_type not in {ModelType.LLM, ModelType.TEXT_EMBEDDING}
+    ):
+        return None
+    if schema is not None and [
+        digest
+        for kind, model, digest in fact.catalog_schema_digests
+        if (kind, model) == (schema.model_type, schema.model)
+    ] != [model_schema_digest(schema)]:
+        return None
+    if model_type is ModelType.LLM:
+        if (fact.llm_source_base_policy, fact.llm_request_metadata_policy, fact.llm_file_url_policy) != (
+            "unset_or_exact_google_root",
+            "system_false_only",
+            "actual_system_absent_or_empty_only",
+        ):
+            return None
+        settings = GeminiSourceSettings(
+            source_base_policy="unset_or_exact_google_root",
+            request_metadata_policy="system_false_only",
+            file_url_policy="actual_system_absent_or_empty_only",
+        )
+    else:
+        settings = GeminiSourceSettings(
+            source_base_policy="not_used", request_metadata_policy="not_used", file_url_policy="not_used"
+        )
+    return GeminiSourceVariantContext(source_uid, settings)
+
+
 def hosted_source_variant_fact(
     *, provider: str, source_uid: str, models: Sequence[AIModelEntity], credentials: object
 ) -> HostedSourceVariantFact | None:
@@ -1141,6 +1363,20 @@ def restore_variant_source_contract(
         "model_type": mapping.source.model_type,
         "target_model": mapping.target.model,
     }
+    if isinstance(mapping, SelectedTongyiSourceVariant):
+        return restore_tongyi_credit_source_contract(
+            marker,
+            **arguments,
+            source_settings=mapping.variant.source_settings,
+            expected_source_runtime_schema_digest=variant.source_runtime_schema_digest,
+        )
+    if isinstance(mapping, SelectedGeminiSourceVariant):
+        return restore_gemini_credit_source_contract(
+            marker,
+            **arguments,
+            source_settings=mapping.variant.source_settings,
+            expected_source_runtime_schema_digest=variant.source_runtime_schema_digest,
+        )
     if isinstance(mapping, SelectedAudioSourceVariant):
         return restore_openai_audio_source_contract(
             marker,
@@ -1306,11 +1542,21 @@ def resolve_source_mapping(
     embedding_fact: HostedEmbeddingSourceFact | None = None,
     audio_fact: HostedAudioSourceFact | None = None,
     xai_fact: HostedXAISourceFact | None = None,
+    gemini_fact: HostedGeminiSourceFact | None = None,
+    tongyi_fact: HostedTongyiSourceFact | None = None,
     schema: AIModelEntity | None = None,
 ) -> SelectedModelMapping:
     declaration = registry.declarations.get(identity)
     context: SourceContext | None
-    if isinstance(declaration, SourceAudioVariantMapping):
+    if isinstance(declaration, SourceTongyiVariantMapping):
+        context = tongyi_source_variant_context(
+            tongyi_fact, provider=identity[0], source_uid=source_uid, model_type=identity[1], schema=schema
+        )
+    elif isinstance(declaration, SourceGeminiVariantMapping):
+        context = gemini_source_variant_context(
+            gemini_fact, provider=identity[0], source_uid=source_uid, model_type=identity[1], schema=schema
+        )
+    elif isinstance(declaration, SourceAudioVariantMapping):
         context = audio_source_variant_context(audio_fact, provider=identity[0], source_uid=source_uid, schema=schema)
     elif isinstance(declaration, SourceXAIVariantMapping):
         context = xai_source_variant_context(xai_fact, provider=identity[0], source_uid=source_uid, schema=schema)

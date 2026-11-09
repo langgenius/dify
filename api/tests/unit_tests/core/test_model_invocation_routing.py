@@ -6,7 +6,7 @@ from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast, override
+from typing import Never, cast, override
 from unittest.mock import Mock
 
 import pytest
@@ -2195,6 +2195,429 @@ def _configure_embedding_case(case: ProviderCase, model: str, version: str) -> t
             }
         ]
     )
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        "gemini-2.5-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3.1-pro-preview",
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.7-flash",
+        "gemini-3-flash-preview",
+        "gemini-embedding-001",
+        "gemini-embedding-2-preview",
+    ],
+)
+@pytest.mark.parametrize("base", [None, "https://generativelanguage.googleapis.com"])
+def test_gemini_v6_real_provider_configuration_current_admission_and_original_selector_are_preserved(
+    model: str,
+    base: str | None,
+    provider_case: ProviderCase,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from tests.helpers.unit import model_billing_gemini_profiles as gemini
+
+    case = provider_case
+    rows = gemini.profiles()
+    row = next(row for row in rows if row["source_model"] == model)
+    kind = ModelType(row["model_type"])
+    previous_provider = case.provider.provider
+    case.provider.provider = gemini.SOURCE_PROVIDER
+    case.provider.plugin_unique_identifier = gemini.SOURCE_UID
+    case.provider.models = [gemini.schema(item) for item in rows]
+    case.provider.supported_model_types = [ModelType.LLM, ModelType.TEXT_EMBEDDING]
+    hosting = case.hosting.pop(previous_provider)
+    case.hosting[gemini.SOURCE_PROVIDER] = hosting
+    original = {"google_api_key": "ORIGINAL_GEMINI_SYSTEM_NEVER_FORWARD", "google_base_url": base}
+    hosting.credentials = original
+    case.integration.plugin_unique_identifier = gemini.TARGET_UID
+    raw = gemini.registry()
+    digest = source_mapping_revision(raw, gemini.REVISION).digest
+    case.state["model_mapping_version"] = gemini.REVISION
+    case.state["source_variant_registry_digest"] = digest
+    preparation = case.state["preparation"]
+    assert isinstance(preparation, dict)
+    preparation["source_variant_registry_digest"] = digest
+    policy = json.dumps(
+        [{"schema_version": 1, "mapping_revision": gemini.REVISION, "inventory_policy": "saved_system_dependencies_v2"}]
+    )
+    before = deepcopy(case.state)
+    source_before = deepcopy(original)
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw, TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=policy
+    ):
+        configuration = case.manager.get_configurations(TENANT_ID).get(gemini.SOURCE_PROVIDER)
+        assert configuration is not None
+        assert configuration.system_configuration.credentials is None
+        fact = configuration.system_configuration._tokener_gemini_source_fact
+        assert fact is not None
+        assert fact.plugin_unique_identifier == gemini.SOURCE_UID
+        exported = json.dumps(configuration.system_configuration.model_dump(mode="json"))
+        assert "ORIGINAL_GEMINI_SYSTEM" not in exported
+        assert "llm_source_base_policy" not in exported
+        credentials = configuration.get_current_credentials(kind, model)
+        assert isinstance(credentials, RoutedModelCredentials)
+        assert not dict(credentials)
+        plan = credentials.plan
+        assert plan.logical_provider == gemini.SOURCE_PROVIDER
+        assert plan.logical_model == plan.target_model == model
+        assert plan.source_parameter_contract is not None
+        assert plan.source_parameter_contract.profile_id == "gemini0912-native-v1:" + model
+
+        def admit(value: RoutedModelCredentials = credentials) -> None:
+            validate_invocation_admission(
+                value, tenant_id=TENANT_ID, provider=gemini.SOURCE_PROVIDER, model_type=kind, model=model
+            )
+
+        admit()
+        original["google_base_url"] = "https://generativelanguage.googleapis.com" if base is None else None
+        admit()  # Exact source-wire-equivalent None/root policy, not URL normalization.
+        original["google_base_url"] = base
+        for key, value in (
+            ("google_base_url", "https://generativelanguage.googleapis.com/v1beta"),
+            ("enable_request_metadata", "enabled"),
+            ("file_url", "https://files.invalid"),
+        ):
+            original[key] = value
+            if kind is ModelType.LLM:
+                with pytest.raises(ModelInvocationReprepare):
+                    admit()
+            else:
+                admit()  # Exact source embedding ignores these settings.
+            original.clear()
+            original.update(source_before)
+        for changed in (
+            replace(plan, source_variant_binding=None),
+            replace(plan, mapping_revision_digest=None),
+            replace(plan, source_parameter_contract=None),
+        ):
+            with pytest.raises(ModelInvocationReprepare):
+                admit(RoutedModelCredentials(changed))
+        monkeypatch.setattr(
+            "core.model_invocation_routing.managed_credentials", lambda _: {"api_key": "MANAGED_GEMINI_TEST_KEY"}
+        )
+        payload = redirect_payload(plan, {"provider": "google", "model": model, "model_type": kind.value})
+        rendered = json.dumps(payload)
+        assert "ORIGINAL_GEMINI_SYSTEM_NEVER_FORWARD" not in rendered
+        assert "google_base_url" not in rendered
+        assert "file_url" not in rendered
+        assert plan.source_parameter_contract.profile_id in rendered
+        # The same installed source and model remain BYOK when the original
+        # provider selection is CUSTOM, even with an active migration receipt.
+        from core.entities.provider_entities import CustomProviderConfiguration
+
+        byok = {"google_api_key": "SYNTHETIC_GEMINI_BYOK_NEVER_MANAGED"}
+        configuration.using_provider_type = ProviderType.CUSTOM
+        configuration.custom_configuration = CustomConfiguration(provider=CustomProviderConfiguration(credentials=byok))
+        assert routed_credentials(configuration, kind, model) is None
+        selected_byok = configuration.get_current_credentials(kind, model)
+        assert selected_byok == byok
+        assert not isinstance(selected_byok, RoutedModelCredentials)
+    assert case.state == before
+    assert original == source_before
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        "qwen-flash",
+        "qwen-max",
+        "qwen-plus",
+        "qwen-plus-latest",
+        "qwen3-vl-plus",
+        "qwen3.5-flash",
+        "qwen3.5-plus",
+        "qwen3.6-flash",
+        "qwen3.6-plus",
+        "qwen3.7-max",
+        "qwen3.7-plus",
+        "text-embedding-v3",
+        "text-embedding-v4",
+        "qwen3-rerank",
+    ],
+)
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("dynamic", [False, True])
+def test_tongyi_v7_actual_provider_before_clear_current_admission_and_opaque_transport(
+    model: str,
+    existing: bool,
+    dynamic: bool,
+    provider_case: ProviderCase,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core.plugin.impl import base as plugin_base
+    from graphon.model_runtime.entities.message_entities import UserPromptMessage
+    from tests.helpers.unit import model_billing_tongyi_profiles as tongyi
+
+    case = provider_case
+    rows = tongyi.profiles()
+    row = next(item for item in rows if item["source_model"] == model)
+    kind = ModelType(row["model_type"])
+    previous = case.provider.provider
+    case.provider.provider = tongyi.SOURCE_PROVIDER
+    case.provider.plugin_unique_identifier = tongyi.SOURCE_UID
+    case.provider.models = [] if dynamic else [tongyi.schema(item) for item in rows]
+    case.provider.supported_model_types = [ModelType.LLM, ModelType.TEXT_EMBEDDING, ModelType.RERANK]
+    hosting = case.hosting.pop(previous)
+    case.hosting[tongyi.SOURCE_PROVIDER] = hosting
+    original: dict[str, object] = {
+        "dashscope_api_key": "ORIGINAL_TONGYI_SYSTEM_NEVER_FORWARD",
+        "use_international_endpoint": "true",
+    }
+    hosting.credentials = original
+    source_schema_calls = []
+    if dynamic:
+        from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
+
+        case.provider.configurate_methods.append(ConfigurateMethod.CUSTOMIZABLE_MODEL)
+
+        def source_schema(
+            *, provider: str, model_type: ModelType, model: str, credentials: dict[str, object]
+        ) -> AIModelEntity:
+            assert provider == tongyi.SOURCE_PROVIDER
+            assert credentials == original
+            source_schema_calls.append(model)
+            selected = next(item for item in rows if item["source_model"] == model)
+            result = tongyi.schema(selected)
+            assert result.model_type is model_type
+            return result
+
+        monkeypatch.setattr(case.manager._model_runtime, "get_model_schema", source_schema)
+    case.integration.plugin_unique_identifier = tongyi.TARGET_UID
+    if existing:
+        case.state["source_ownership"] = {
+            tongyi.SOURCE_PROVIDER: {"current_quota_type": "paid", "quotas": {"paid": {"unmetered": False}}}
+        }
+    raw = tongyi.registry()
+    digest = source_mapping_revision(raw, tongyi.REVISION).digest
+    case.state["model_mapping_version"] = tongyi.REVISION
+    case.state["source_variant_registry_digest"] = digest
+    preparation = case.state["preparation"]
+    assert isinstance(preparation, dict)
+    preparation["source_variant_registry_digest"] = digest
+    policy = json.dumps(
+        [{"schema_version": 1, "mapping_revision": tongyi.REVISION, "inventory_policy": "saved_system_dependencies_v2"}]
+    )
+    before, source_before = deepcopy(case.state), deepcopy(original)
+    key_lookups = []
+
+    def target_key(plan: FrozenModelInvocation) -> dict[str, str]:
+        assert plan.tenant_id == TENANT_ID
+        key_lookups.append(plan.logical_model)
+        return {"api_key": "MANAGED_TONGYI_SYNTHETIC_KEY"}
+
+    monkeypatch.setattr("core.model_invocation_routing.managed_credentials", target_key)
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw, TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=policy
+    ):
+        configuration = case.manager.get_configurations(TENANT_ID).get(tongyi.SOURCE_PROVIDER)
+        assert configuration is not None
+        assert configuration.system_configuration.credentials is None
+        fact = configuration.system_configuration._tokener_tongyi_source_fact
+        assert fact is not None
+        assert fact.endpoint_selector == "string_true"
+        assert fact.plugin_unique_identifier == tongyi.SOURCE_UID
+        assert len(fact.catalog_schema_digests) == 14
+        assert len(source_schema_calls) == (14 if dynamic else 0)
+        exported = json.dumps(configuration.system_configuration.model_dump(mode="json"))
+        assert "ORIGINAL_TONGYI_SYSTEM" not in exported
+        assert "endpoint_selector" not in exported
+        credentials = configuration.get_current_credentials(kind, model)
+        assert isinstance(credentials, RoutedModelCredentials)
+        assert not dict(credentials)
+        plan = credentials.plan
+        assert plan.logical_provider == tongyi.SOURCE_PROVIDER
+        assert plan.logical_model == plan.target_model == model
+        assert plan.source_parameter_contract is not None
+        assert plan.source_parameter_contract.profile_id == "tongyi0226-native-v1:" + model
+
+        def admit(value: RoutedModelCredentials = credentials) -> None:
+            validate_invocation_admission(
+                value, tenant_id=TENANT_ID, provider=tongyi.SOURCE_PROVIDER, model_type=kind, model=model
+            )
+
+        admit()
+        for name, value in (
+            ("use_international_endpoint", "false"),
+            ("use_international_endpoint", True),
+            ("api_host", "https://custom.invalid"),
+            ("enable_request_metadata", "enabled"),
+        ):
+            original[name] = value
+            if name != "enable_request_metadata" or kind is ModelType.LLM:
+                with pytest.raises(ModelInvocationReprepare):
+                    admit()
+            else:
+                admit()  # Exact embedding/rerank codecs do not use metadata.
+            original.clear()
+            original.update(source_before)
+        assert key_lookups == [], "current facts must fail before managed key lookup/reservation"
+
+        class Captured(BaseException):
+            pass
+
+        sent = []
+
+        class Terminal:
+            def stream(self, **kwargs: object) -> Never:
+                sent.append(kwargs)
+                raise Captured()
+
+        monkeypatch.setattr(plugin_base, "_httpx_client", Terminal())
+        client = PluginModelClient()
+
+        def dispatch() -> None:
+            if kind is ModelType.LLM:
+                list(
+                    client.invoke_llm(
+                        TENANT_ID,
+                        None,
+                        "langgenius/tongyi",
+                        "tongyi",
+                        model,
+                        credentials,
+                        [UserPromptMessage(content="original question")],
+                        model_parameters={"temperature": 0.2},
+                        stream=True,
+                        plugin_unique_identifier=tongyi.SOURCE_UID,
+                    )
+                )
+            elif kind is ModelType.TEXT_EMBEDDING:
+                client.invoke_text_embedding(
+                    TENANT_ID,
+                    None,
+                    "langgenius/tongyi",
+                    "tongyi",
+                    model,
+                    credentials,
+                    ["original document"],
+                    "query",
+                    plugin_unique_identifier=tongyi.SOURCE_UID,
+                )
+            else:
+                client.invoke_rerank(
+                    TENANT_ID,
+                    None,
+                    "langgenius/tongyi",
+                    "tongyi",
+                    model,
+                    credentials,
+                    "original query",
+                    ["first", "second"],
+                    top_n=1,
+                    plugin_unique_identifier=tongyi.SOURCE_UID,
+                )
+
+        with pytest.raises(Captured):
+            dispatch()
+        assert len(sent) == 1
+        assert key_lookups == [model]
+        content = sent[0]["content"]
+        assert isinstance(content, str | bytes)
+        payload = json.loads(content)
+        assert payload["data"]["credentials"] == {}
+        assert payload["data"]["model"] == model
+        assert payload["redirect"]["target"]["expected_unique_identifier"] == tongyi.TARGET_UID
+        marker = payload["redirect"]["target"]["credentials"]["_dify_source_contract"]
+        assert marker["profile_id"] == "tongyi0226-native-v1:" + model
+        assert len(marker) == 6
+        assert "ORIGINAL_TONGYI_SYSTEM" not in json.dumps(payload)
+        if kind is ModelType.LLM:
+            assert payload["data"]["model_parameters"] == {"temperature": 0.2}
+        elif kind is ModelType.TEXT_EMBEDDING:
+            assert payload["data"]["texts"] == ["original document"]
+            assert payload["data"]["input_type"] == "query"
+        else:
+            assert payload["data"]["query"] == "original query"
+            assert payload["data"]["docs"] == ["first", "second"]
+            assert payload["data"]["top_n"] == 1
+        from core.entities.provider_entities import CustomProviderConfiguration
+
+        byok = {"dashscope_api_key": "SYNTHETIC_TONGYI_BYOK_NEVER_MANAGED"}
+        configuration.using_provider_type = ProviderType.CUSTOM
+        configuration.custom_configuration = CustomConfiguration(provider=CustomProviderConfiguration(credentials=byok))
+        assert routed_credentials(configuration, kind, model) is None
+        assert configuration.get_current_credentials(kind, model) == byok
+        assert key_lookups == [model]
+        configuration.using_provider_type = ProviderType.SYSTEM
+        configuration.system_configuration = SystemConfiguration(
+            enabled=True,
+            current_quota_type=ProviderQuotaType.FREE,
+            quota_configurations=[
+                QuotaConfiguration(
+                    quota_type=ProviderQuotaType.FREE,
+                    quota_unit=QuotaUnit.TOKENS,
+                    quota_limit=100,
+                    quota_used=0,
+                    is_valid=True,
+                )
+            ],
+            credentials=source_before.copy(),
+        )
+        assert routed_credentials(configuration, kind, model) is None
+        assert configuration.get_current_credentials(kind, model) == source_before
+        assert key_lookups == [model]
+    assert case.state == before
+    assert original == source_before
+    case.init_records.assert_not_called()
+    case.get_pool.assert_not_called()
+
+
+def test_tongyi_before_migration_real_provider_owner_keeps_original_shared_credit_credentials(
+    provider_case: ProviderCase,
+) -> None:
+    from enums import DeploymentEdition
+    from models.enums import ProviderQuotaType as StoredQuotaType
+    from models.provider import Provider
+    from tests.helpers.unit import model_billing_tongyi_profiles as tongyi
+
+    case = provider_case
+    previous = case.provider.provider
+    case.provider.provider = tongyi.SOURCE_PROVIDER
+    case.provider.plugin_unique_identifier = tongyi.SOURCE_UID
+    rows = tongyi.profiles()
+    case.provider.models = [tongyi.schema(row) for row in rows]
+    case.provider.supported_model_types = [ModelType.LLM, ModelType.TEXT_EMBEDDING, ModelType.RERANK]
+    hosting = case.hosting.pop(previous)
+    case.hosting[tongyi.SOURCE_PROVIDER] = hosting
+    original = {"dashscope_api_key": "ORIGINAL_TONGYI_LEGACY_ONLY", "use_international_endpoint": "true"}
+    hosting.credentials = original
+    case.state["phase"] = "preparing"
+    record = Provider(
+        tenant_id=TENANT_ID,
+        provider_name=tongyi.SOURCE_PROVIDER,
+        provider_type=ProviderType.SYSTEM,
+        quota_type=StoredQuotaType.PAID,
+        quota_limit=200,
+        quota_used=0,
+        is_valid=True,
+    )
+    # The non-cloud branch keeps the existing provider-row owner; this local
+    # test does not instantiate a DB session or fabricate a shared-pool row.
+    with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY):
+        system = case.manager._to_system_configuration(TENANT_ID, case.provider, [record])
+        assert system.enabled
+        assert system.credentials == original
+        configuration = ProviderConfiguration(
+            tenant_id=TENANT_ID,
+            provider=case.provider,
+            preferred_provider_type=ProviderType.SYSTEM,
+            using_provider_type=ProviderType.SYSTEM,
+            system_configuration=system,
+            custom_configuration=CustomConfiguration(provider=None),
+            model_settings=[],
+        )
+        for row in rows:
+            kind = ModelType(row["model_type"])
+            assert routed_credentials(configuration, kind, row["source_model"]) is None
+            credentials = configuration.get_current_credentials(kind, row["source_model"])
+            assert credentials is not None
+            assert credentials["dashscope_api_key"] == original["dashscope_api_key"]
+            assert not isinstance(credentials, RoutedModelCredentials)
+    case.get_pool.assert_not_called()
 
 
 @pytest.mark.parametrize("model", EMBEDDING_MODELS)

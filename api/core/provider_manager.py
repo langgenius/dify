@@ -1578,7 +1578,9 @@ class ProviderManager:
             has_finite_hosted_credit_pool,
             hosted_audio_source_fact,
             hosted_embedding_source_fact,
+            hosted_gemini_source_fact,
             hosted_source_variant_fact,
+            hosted_tongyi_source_fact,
             hosted_xai_source_fact,
             mapped_dynamic_source_candidates,
             model_schema_digest,
@@ -1739,6 +1741,18 @@ class ProviderManager:
             models=provider_entity.models,
             credentials=provider_hosting_configuration.credentials,
         )
+        gemini_fact = hosted_gemini_source_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
+        tongyi_fact = hosted_tongyi_source_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
         if published_balance and routing_state is not None:
             for candidate in mapped_dynamic_source_candidates(
                 provider=provider_entity,
@@ -1749,6 +1763,8 @@ class ProviderManager:
                 embedding_source_fact=embedding_fact,
                 audio_source_fact=audio_fact,
                 xai_source_fact=xai_fact,
+                gemini_source_fact=gemini_fact,
+                tongyi_source_fact=tongyi_fact,
                 allow_source_variants=stable_inventory,
             ):
                 source_credentials = dict(provider_hosting_configuration.credentials or {})
@@ -1794,6 +1810,18 @@ class ProviderManager:
                 models=[*provider_entity.models, *resolved_source_schemas],
                 credentials=provider_hosting_configuration.credentials,
             )
+            gemini_fact = hosted_gemini_source_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
+            tongyi_fact = hosted_tongyi_source_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
             availability = additional_hosted_availability(
                 provider=provider_entity.provider,
                 hosting=provider_hosting_configuration,
@@ -1809,6 +1837,8 @@ class ProviderManager:
                 embedding_source_fact=embedding_fact,
                 audio_source_fact=audio_fact,
                 xai_source_fact=xai_fact,
+                gemini_source_fact=gemini_fact,
+                tongyi_source_fact=tongyi_fact,
                 allow_source_variants=stable_inventory,
             )
             if availability is None:
@@ -1908,6 +1938,8 @@ class ProviderManager:
         result._tokener_embedding_source_fact = embedding_fact
         result._tokener_audio_source_fact = audio_fact
         result._tokener_xai_source_fact = xai_fact
+        result._tokener_gemini_source_fact = gemini_fact
+        result._tokener_tongyi_source_fact = tongyi_fact
         return result
 
     @staticmethod

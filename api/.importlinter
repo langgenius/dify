@@ -1528,6 +1528,74 @@ forbidden_modules =
     tasks
     werkzeug
 
+[importlinter:contract:model-billing-gemini-credit-source-adapter-pure]
+name = Exact Gemini source factory is pure and infrastructure independent
+type = forbidden
+source_modules =
+    services.model_billing_gemini_credit_source_adapter
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-billing-gemini-v6-contract-pure]
+name = Closed Gemini V6 records are independent of runtime and transport
+type = forbidden
+source_modules =
+    services.entities.model_billing_gemini_mapping
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-billing-tongyi-credit-source-adapter-pure]
+name = Exact Tongyi source factory is pure and infrastructure independent
+type = forbidden
+source_modules =
+    services.model_billing_tongyi_credit_source_adapter
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-billing-tongyi-v7-contract-pure]
+name = Closed Tongyi V7 records are independent of runtime and transport
+type = forbidden
+source_modules =
+    services.entities.model_billing_tongyi_mapping
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
 [importlinter:contract:model-billing-free-migration-controller-boundary]
 name = Migration control transport reaches persistence through application owners
 type = forbidden

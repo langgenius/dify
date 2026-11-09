@@ -36,7 +36,9 @@ from services.model_billing_dependency_provenance import (
 from services.model_billing_mapping_service import (
     additional_hosted_availability,
     hosted_embedding_source_fact,
+    hosted_gemini_source_fact,
     hosted_source_variant_fact,
+    hosted_tongyi_source_fact,
     provider_has_prepared_ownership,
     published_original_quotas,
     retirement_policy_for_revision,
@@ -237,6 +239,18 @@ class SavedModelSelectionRuntimeQuery:
                                 credentials=hosting.credentials,
                             ),
                             embedding_source_fact=hosted_embedding_source_fact(
+                                provider=name,
+                                source_uid=declaration.plugin_unique_identifier,
+                                models=declaration.declaration.models,
+                                credentials=hosting.credentials,
+                            ),
+                            gemini_source_fact=hosted_gemini_source_fact(
+                                provider=name,
+                                source_uid=declaration.plugin_unique_identifier,
+                                models=declaration.declaration.models,
+                                credentials=hosting.credentials,
+                            ),
+                            tongyi_source_fact=hosted_tongyi_source_fact(
                                 provider=name,
                                 source_uid=declaration.plugin_unique_identifier,
                                 models=declaration.declaration.models,

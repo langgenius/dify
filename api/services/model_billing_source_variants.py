@@ -35,6 +35,12 @@ from services.entities.model_billing_embedding_mapping import (
     SourceEmbeddingVariantMapping,
     SourceEmbeddingVariantSelection,
 )
+from services.entities.model_billing_gemini_mapping import (
+    GeminiSourceSettings,
+    SelectedGeminiSourceVariant,
+    SourceGeminiVariantMapping,
+    SourceGeminiVariantSelection,
+)
 from services.entities.model_billing_mapping import (
     ModelMapping,
     SelectedSourceVariant,
@@ -42,6 +48,12 @@ from services.entities.model_billing_mapping import (
     SourceVariantSelection,
     SourceVariantSettings,
     model_schema_digest,
+)
+from services.entities.model_billing_tongyi_mapping import (
+    SelectedTongyiSourceVariant,
+    SourceTongyiVariantMapping,
+    SourceTongyiVariantSelection,
+    TongyiSourceSettings,
 )
 from services.entities.model_billing_xai_mapping import (
     SelectedXAISourceVariant,
@@ -57,13 +69,25 @@ type MappingDeclaration = (
     | SourceEmbeddingVariantMapping
     | SourceAudioVariantMapping
     | SourceXAIVariantMapping
+    | SourceGeminiVariantMapping
+    | SourceTongyiVariantMapping
 )
 type SelectedSourceVariantMapping = (
-    SelectedSourceVariant | SelectedEmbeddingSourceVariant | SelectedAudioSourceVariant | SelectedXAISourceVariant
+    SelectedSourceVariant
+    | SelectedEmbeddingSourceVariant
+    | SelectedAudioSourceVariant
+    | SelectedXAISourceVariant
+    | SelectedGeminiSourceVariant
+    | SelectedTongyiSourceVariant
 )
 type SelectedModelMapping = ModelMapping | SelectedSourceVariantMapping
 type SourceVariantSelectionPayload = (
-    SourceVariantSelection | SourceEmbeddingVariantSelection | SourceAudioVariantSelection | SourceXAIVariantSelection
+    SourceVariantSelection
+    | SourceEmbeddingVariantSelection
+    | SourceAudioVariantSelection
+    | SourceXAIVariantSelection
+    | SourceGeminiVariantSelection
+    | SourceTongyiVariantSelection
 )
 
 SOURCE_VARIANT_DECLARATION_TYPES = (
@@ -71,12 +95,16 @@ SOURCE_VARIANT_DECLARATION_TYPES = (
     SourceEmbeddingVariantMapping,
     SourceAudioVariantMapping,
     SourceXAIVariantMapping,
+    SourceGeminiVariantMapping,
+    SourceTongyiVariantMapping,
 )
 SELECTED_SOURCE_VARIANT_TYPES = (
     SelectedSourceVariant,
     SelectedEmbeddingSourceVariant,
     SelectedAudioSourceVariant,
     SelectedXAISourceVariant,
+    SelectedGeminiSourceVariant,
+    SelectedTongyiSourceVariant,
 )
 
 
@@ -128,8 +156,25 @@ class XAISourceVariantContext:
     source_endpoint_class: Literal["official_root"]
 
 
+@dataclass(frozen=True, slots=True)
+class GeminiSourceVariantContext:
+    source_plugin_uid: str
+    settings: GeminiSourceSettings
+
+
+@dataclass(frozen=True, slots=True)
+class TongyiSourceVariantContext:
+    source_plugin_uid: str
+    settings: TongyiSourceSettings
+
+
 type SourceContext = (
-    SourceVariantContext | EmbeddingSourceVariantContext | AudioSourceVariantContext | XAISourceVariantContext
+    SourceVariantContext
+    | EmbeddingSourceVariantContext
+    | AudioSourceVariantContext
+    | XAISourceVariantContext
+    | GeminiSourceVariantContext
+    | TongyiSourceVariantContext
 )
 
 
@@ -177,7 +222,29 @@ class ModelMappingRevision:
         if context is None:
             raise ValueError("Positive source variant facts required")
         selected: SelectedSourceVariantMapping
-        if isinstance(declaration, SourceAudioVariantMapping):
+        if isinstance(declaration, SourceTongyiVariantMapping):
+            if type(context) is not TongyiSourceVariantContext:
+                raise ValueError("Source Tongyi fact family changed")
+            tongyi_matches = [
+                item
+                for item in declaration.variants
+                if item.source_plugin_uid == context.source_plugin_uid and item.source_settings == context.settings
+            ]
+            if len(tongyi_matches) != 1:
+                raise ValueError("Unknown or ambiguous Tongyi source variant")
+            selected = SelectedTongyiSourceVariant(declaration, tongyi_matches[0], self.digest)
+        elif isinstance(declaration, SourceGeminiVariantMapping):
+            if type(context) is not GeminiSourceVariantContext:
+                raise ValueError("Source Gemini fact family changed")
+            gemini_matches = [
+                item
+                for item in declaration.variants
+                if item.source_plugin_uid == context.source_plugin_uid and item.source_settings == context.settings
+            ]
+            if len(gemini_matches) != 1:
+                raise ValueError("Unknown or ambiguous Gemini source variant")
+            selected = SelectedGeminiSourceVariant(declaration, gemini_matches[0], self.digest)
+        elif isinstance(declaration, SourceAudioVariantMapping):
             if not isinstance(context, AudioSourceVariantContext):
                 raise ValueError("Source audio fact family changed")
             audio_matches = [
@@ -233,7 +300,17 @@ class ModelMappingRevision:
     def selected_prospective(self) -> tuple[SelectedSourceVariantMapping, ...]:
         result: list[SelectedSourceVariantMapping] = []
         for _, declaration in sorted(self.declarations.items()):
-            if isinstance(declaration, SourceAudioVariantMapping):
+            if isinstance(declaration, SourceTongyiVariantMapping):
+                result.extend(
+                    SelectedTongyiSourceVariant(declaration, variant, self.digest)
+                    for variant in sorted(declaration.variants, key=lambda item: item.variant_id)
+                )
+            elif isinstance(declaration, SourceGeminiVariantMapping):
+                result.extend(
+                    SelectedGeminiSourceVariant(declaration, variant, self.digest)
+                    for variant in sorted(declaration.variants, key=lambda item: item.variant_id)
+                )
+            elif isinstance(declaration, SourceAudioVariantMapping):
                 result.extend(
                     SelectedAudioSourceVariant(declaration, variant, self.digest)
                     for variant in sorted(declaration.variants, key=lambda item: item.variant_id)
@@ -262,7 +339,17 @@ class ModelMappingRevision:
                 raise ValueError("V1 mapping cannot carry a source variant")
             return declaration
         record: SourceVariantSelectionPayload
-        if isinstance(declaration, SourceAudioVariantMapping):
+        if isinstance(declaration, SourceTongyiVariantMapping):
+            record = SourceTongyiVariantSelection.model_validate(payload)
+            selected = self.resolve(
+                identity, context=TongyiSourceVariantContext(record.source_plugin_uid, record.source_settings)
+            )
+        elif isinstance(declaration, SourceGeminiVariantMapping):
+            record = SourceGeminiVariantSelection.model_validate(payload)
+            selected = self.resolve(
+                identity, context=GeminiSourceVariantContext(record.source_plugin_uid, record.source_settings)
+            )
+        elif isinstance(declaration, SourceAudioVariantMapping):
             record = SourceAudioVariantSelection.model_validate(payload)
             selected = self.resolve(
                 identity, context=AudioSourceVariantContext(record.source_plugin_uid, record.source_settings)
@@ -293,6 +380,26 @@ class ModelMappingRevision:
 def selection_payload(
     selected: SelectedSourceVariantMapping,
 ) -> SourceVariantSelectionPayload:
+    if isinstance(selected, SelectedTongyiSourceVariant):
+        return SourceTongyiVariantSelection(
+            schema_version=7,
+            variant_id=selected.variant.variant_id,
+            source_plugin_uid=selected.variant.source_plugin_uid,
+            source_settings=selected.variant.source_settings,
+            source_schema_digest=selected.variant.source_schema_digest,
+            source_runtime_schema_digest=selected.variant.source_runtime_schema_digest,
+            registry_digest=selected.registry_digest,
+        )
+    if isinstance(selected, SelectedGeminiSourceVariant):
+        return SourceGeminiVariantSelection(
+            schema_version=6,
+            variant_id=selected.variant.variant_id,
+            source_plugin_uid=selected.variant.source_plugin_uid,
+            source_settings=selected.variant.source_settings,
+            source_schema_digest=selected.variant.source_schema_digest,
+            source_runtime_schema_digest=selected.variant.source_runtime_schema_digest,
+            registry_digest=selected.registry_digest,
+        )
     if isinstance(selected, SelectedAudioSourceVariant):
         return SourceAudioVariantSelection(
             schema_version=4,
@@ -347,7 +454,9 @@ def source_mapping_revision(
                 | SourceVariantMapping
                 | SourceEmbeddingVariantMapping
                 | SourceAudioVariantMapping
-                | SourceXAIVariantMapping,
+                | SourceXAIVariantMapping
+                | SourceGeminiVariantMapping
+                | SourceTongyiVariantMapping,
                 Field(discriminator="schema_version"),
             ]
         ]

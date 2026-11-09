@@ -152,6 +152,34 @@ class HostedXAISourceFact:
     protocol_selector: Literal["not_used"]
 
 
+@dataclass(frozen=True, slots=True)
+class HostedGeminiSourceFact:
+    """Private, positive SYSTEM classifications; no credential or raw URL.
+
+    LLM settings retain an explicit unreviewed state. Exact source embeddings
+    do not use those fields; services determine that separate reviewed policy.
+    """
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    llm_source_base_policy: Literal["unset_or_exact_google_root", "unreviewed"]
+    llm_request_metadata_policy: Literal["system_false_only", "unreviewed"]
+    llm_file_url_policy: Literal["actual_system_absent_or_empty_only", "unreviewed"]
+
+
+@dataclass(frozen=True, slots=True)
+class HostedTongyiSourceFact:
+    """Positive before-clear SYSTEM classifications, never source key/URL/dict."""
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    endpoint_selector: Literal["string_true", "string_false", "unreviewed"]
+    api_host_policy: Literal["actual_absent_or_blank", "unreviewed"]
+    llm_metadata_policy: Literal["actual_system_disabled", "unreviewed"]
+
+
 class SystemConfiguration(BaseModel):
     """
     Model class for provider system configuration.
@@ -170,6 +198,8 @@ class SystemConfiguration(BaseModel):
     _tokener_embedding_source_fact: HostedEmbeddingSourceFact | None = PrivateAttr(default=None)
     _tokener_audio_source_fact: HostedAudioSourceFact | None = PrivateAttr(default=None)
     _tokener_xai_source_fact: HostedXAISourceFact | None = PrivateAttr(default=None)
+    _tokener_gemini_source_fact: HostedGeminiSourceFact | None = PrivateAttr(default=None)
+    _tokener_tongyi_source_fact: HostedTongyiSourceFact | None = PrivateAttr(default=None)
 
 
 class CustomProviderConfiguration(BaseModel):

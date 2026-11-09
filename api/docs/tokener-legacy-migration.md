@@ -357,3 +357,94 @@ default (or first source voice), preserving valid explicit voices. The actual
 source runtime dispatch UID must match the contract. Legacy `identity_v1`,
 native Tokener and explicit BYOK retain their existing behavior. No daemon
 business rule or automatic model alias is added.
+
+## Closed Gemini 0.9.12 source profiles (V6)
+
+`schema_version: 6` is an additive declaration family for the exact signed
+`langgenius/gemini:0.9.12` source archive. It does not reinterpret V1–V5 records
+or change their digest algorithms. The family `gemini_credit_source_v1`, revision
+`1`, has one reviewed source profile per typed model:
+
+- LLM: `gemini-2.5-flash`, `gemini-3.1-flash-lite`,
+  `gemini-3.1-pro-preview`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`,
+  `gemini-3.7-flash`, and `gemini-3-flash-preview`.
+- Text embedding: `gemini-embedding-001` and `gemini-embedding-2-preview`.
+
+The target model must have the same exact identity and type. In particular,
+`gemini-3.1-flash-lite-preview` is not an alias of the reviewed GA model. Catalog
+and source-runtime hashes are independently pinned Core-normalized schemas;
+an SDK raw-schema hash is not interchangeable with either. The existing private
+marker remains version 1 with its six non-secret fields. It contains no original
+credential, endpoint or attachment URL.
+
+Before replacing SYSTEM credentials, the normal provider owner captures a
+request-local typed fact from the actual source dictionary and immutable plugin
+binding. LLM profiles accept only an absent/None base or the exact Google root,
+absent/None or `disabled` request metadata, and absent/None or empty `file_url`.
+Other values fail closed rather than being normalized. The exact source
+embedding implementation does not consume these three settings, so its profile
+records them as `not_used`; it does not assert that the original values are
+false. These facts are not serialized. Invocation admission checks fresh SYSTEM
+facts again, including for previously frozen credentials. CUSTOM/BYOK selection
+continues through its original credential owner without forwarding.
+
+Preparation verifies actual selected source schemas and all prospective target
+profiles. Every LLM requires `model/schema`, `llm/invoke` and `llm/num_tokens`;
+each embedding requires its schema, invocation and token-count operations.
+`gemini-embedding-2-preview` additionally requires the daemon's explicit
+`multimodal_embedding/invoke` capability. A missing operation, changed source
+setting/schema/binding, unknown target, or incomplete receipt is not a reason to
+fall back to the old billing path or another model.
+
+These declarations prove reviewed source compatibility, not deployment or
+backend readiness. Activation still requires the existing independent readiness
+publication and immutable target-package binding. A release must append a newly
+reviewed registry revision containing the actual packaged target UID; synthetic
+unit-test UIDs are never release inputs. Installing this Core code alone neither
+enables native Gemini endpoints/Files/continuation support nor supplies the
+daemon's multimodal operation. Those components and real forwarded regressions
+must pass their separate release gates before publishing a Gemini revision.
+
+## Closed Tongyi 0.2.26 local source profiles (V7)
+
+The additive V7 family `tongyi_credit_source_v1`, revision1, accepts only the
+exact signed Tongyi0.2.26 source:11 LLM identities, text-embedding-v3/v4 and
+qwen3-rerank. It does not mean14 models support all three types. The reviewed
+LLMs are qwen-flash/max/plus/plus-latest, qwen3-vl-plus, qwen3.5-flash/plus,
+qwen3.6-flash/plus and qwen3.7-max/plus. No qwen-long, preview alias, other
+source UID or same-name substitution is added. V1–V6 serialization/digest
+owners and all already published registry revisions retain their bytes.
+
+The actual SYSTEM dictionary is classified before shared credentials are
+cleared. Only exact string `true` plus absent/None/blank `api_host` selects
+the reviewed shared international policy; false, bool True, uppercase values,
+missing selector, custom hosts and unknown types cannot authorize this family.
+LLMs additionally require absent/None or exact `disabled` request metadata.
+Embedding/rerank do not use that metadata setting and record `not_used` rather
+than pretending the original value was false. Private facts retain no key,
+URL or source dictionary, and are rechecked from current protected hosting
+configuration before reservation. BYOK/CUSTOM and independent FREE owners
+remain on their original source credential path.
+
+Catalog and runtime pins come from actual ee396→Core projections, not SDK raw
+hashes. The marker remains the original six-field version1. LLMs require schema,
+invoke and num_tokens; embeddings require their schema/invoke/num_tokens;
+rerank requires only schema/invoke. The existing generic daemon operations
+already cover these types. Target unknown identities cannot be normalized into
+an apparently matching schema. No vector width is invented from the v3/v4
+names: existing selected-source dimensions checks and real KB parity gates remain.
+
+These14 pins bind the frozen0.4.3-dev15 `STAGING_PACKAGE_CANDIDATE` complete rows,
+not a released or installed plugin. Fresh actual public SDK schemas passed the
+pinned ee396 DTO and current Core hash owner; these source catalog/runtime pins
+are not raw SDK hashes. Gemini9 complete rows and V1–V6 pins remain unchanged.
+Any implementation/release_status change invalidates this derivation and requires
+independent review again. Actual dev15 package UID and native catalog revision
+remain unknown until normal P2 packaging/metadata capture; never reuse an old
+catalog annotation or a synthetic999 unit UID as a release fact. Staging may use
+the existing truthful unsigned-development policy without weakening validation;
+production signing remains its normal release owner's responsibility. This Core-only change neither
+publishes a target package nor establishes live model/parameter/media/vector/
+billing parity. Before/after original SYSTEM App and newly installed provider
+regressions, org-key isolation, normal ledger/legacy-usage checks and richer
+LLM/rerank/KB behavior remain separate release gates.

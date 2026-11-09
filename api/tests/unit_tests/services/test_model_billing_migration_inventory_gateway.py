@@ -205,6 +205,326 @@ def setup_gateway(
     return gateway, metadata, installations, selections
 
 
+@pytest.mark.parametrize("selected", [False, True])
+@pytest.mark.parametrize(
+    "source_model",
+    [
+        "gemini-2.5-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3.1-pro-preview",
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.7-flash",
+        "gemini-3-flash-preview",
+        "gemini-embedding-001",
+        "gemini-embedding-2-preview",
+    ],
+)
+def test_gemini_v6_nine_real_source_and_prospective_target_schema_boundaries(
+    selected: bool,
+    source_model: str,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from tests.helpers.unit import model_billing_gemini_profiles as gemini
+
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    rows = gemini.profiles()
+    by_name = {row["source_model"]: row for row in rows}
+    row = by_name[source_model]
+    kind = ModelType(row["model_type"])
+    metadata.bindings[0].provider = gemini.SOURCE_PROVIDER
+    metadata.bindings[0].plugin_id = "langgenius/gemini"
+    metadata.bindings[0].plugin_unique_identifier = gemini.SOURCE_UID
+    metadata.bindings[0].version = "0.9.12"
+    catalog = metadata.catalogs[0]
+    catalog.provider, catalog.plugin_id, catalog.plugin_unique_identifier = (
+        gemini.SOURCE_PROVIDER,
+        "langgenius/gemini",
+        gemini.SOURCE_UID,
+    )
+    catalog.declaration.provider = gemini.SOURCE_PROVIDER
+    catalog.declaration.models = [gemini.schema(item) for item in rows]
+    catalog.declaration.supported_model_types = [ModelType.LLM, ModelType.TEXT_EMBEDDING]
+    selections.value = replace(
+        selections.value,
+        providers=(
+            replace(
+                selections.value.providers[0],
+                provider=gemini.SOURCE_PROVIDER,
+                source_plugin_unique_identifier=gemini.SOURCE_UID,
+            ),
+        ),
+    )
+    hosting = HostingProvider(
+        enabled=True,
+        credentials={"google_api_key": "synthetic-original-source-only"},
+        quota_unit="credits",
+        quotas=[PaidHostingQuota()],
+    )
+    monkeypatch.setitem(module.ext_hosting_provider.hosting_configuration.provider_map, gemini.SOURCE_PROVIDER, hosting)
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", gemini.registry())
+    source_calls = []
+    target_calls = []
+    blocked = []
+
+    def get_schema(
+        _tenant: str,
+        _user: str | None,
+        _plugin: str,
+        _provider: str,
+        _kind: str,
+        model: str,
+        credentials: dict[str, object],
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> AIModelEntity | None:
+        if isinstance(credentials, RoutedModelCredentials):
+            assert dict(credentials) == {}, "never forward the original SYSTEM key"
+            contract = credentials.plan.source_parameter_contract
+            assert contract is not None
+            assert contract.source_model == model
+            target_calls.append(model)
+            if model in blocked:
+                return None
+        else:
+            assert credentials == {"google_api_key": "synthetic-original-source-only"}
+            assert plugin_unique_identifier == gemini.SOURCE_UID
+            source_calls.append(model)
+        return gemini.schema(by_name[model], runtime=True)
+
+    monkeypatch.setattr(metadata, "get_model_schema", get_schema)
+    required = (
+        (RequiredSavedCreditModel(gemini.SOURCE_PROVIDER, kind.value, source_model, ("paid",)),) if selected else ()
+    )
+    evidence = gateway.sources("tenant", gemini.REVISION, required, inventory_policy="saved_system_dependencies_v2")
+    assert source_calls == ([source_model] if selected else [])
+    assert len(evidence.models) == int(selected)
+    assert len(evidence.prospective_variants) == 9
+    if selected:
+        actual = evidence.models[0]
+        assert actual["source_runtime_schema_digest"] == row["source_runtime_schema_digest"]
+        assert actual["source_plugin_uid"] == gemini.SOURCE_UID
+        frozen_variant = actual["source_variant"]
+        assert isinstance(frozen_variant, dict)
+        assert frozen_variant["schema_version"] == 6
+        assert "source_parameter_settings" not in actual
+    expected = "sha256:" + "a" * 64
+    monkeypatch.setattr(
+        gateway._records,
+        "managed_target_binding",
+        lambda _: ManagedModelReadinessBinding("credential", gemini.TARGET_UID, expected),
+    )
+    monkeypatch.setattr(
+        module,
+        "migration_routing_state",
+        lambda _: {
+            "provisioned_binding": {
+                "tenant_id": "tenant",
+                "provider_name": "langgenius/tokener/tokener",
+                "provider_credential_id": "credential",
+                "credential_fingerprint": expected,
+            }
+        },
+    )
+    operations = [
+        "model/schema",
+        "llm/invoke",
+        "llm/num_tokens",
+        "text_embedding/invoke",
+        "text_embedding/num_tokens",
+        "multimodal_embedding/invoke",
+    ]
+    monkeypatch.setattr(
+        metadata,
+        "_request_with_plugin_daemon_response",
+        lambda *_a, **_k: module.RedirectCapabilities(protocols=["model-redirect/v1"], operations=operations),
+    )
+    inventory = {
+        "models": list(evidence.models),
+        "prospective_variants": list(evidence.prospective_variants),
+        "source_variant_registry_digest": evidence.source_variant_registry_digest,
+    }
+    assert gateway.validate_target("tenant", gemini.REVISION, inventory) == expected
+    assert len(target_calls) == 9 + int(selected)
+    for model in by_name:
+        blocked[:] = [model]
+        with pytest.raises(ModelRouteUnmapped):
+            gateway.validate_target("tenant", gemini.REVISION, inventory)
+    blocked.clear()
+    operations.remove("multimodal_embedding/invoke")
+    with pytest.raises(ModelRouteUnavailable):
+        gateway.validate_target("tenant", gemini.REVISION, inventory)
+
+
+@pytest.mark.parametrize("selected", [False, True])
+@pytest.mark.parametrize(
+    "source_model",
+    [
+        "qwen-flash",
+        "qwen-max",
+        "qwen-plus",
+        "qwen-plus-latest",
+        "qwen3-vl-plus",
+        "qwen3.5-flash",
+        "qwen3.5-plus",
+        "qwen3.6-flash",
+        "qwen3.6-plus",
+        "qwen3.7-max",
+        "qwen3.7-plus",
+        "text-embedding-v3",
+        "text-embedding-v4",
+        "qwen3-rerank",
+    ],
+)
+def test_tongyi_v7_fourteen_real_source_and_prospective_target_schema_boundaries(
+    selected: bool,
+    source_model: str,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from tests.helpers.unit import model_billing_tongyi_profiles as tongyi
+
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    rows = tongyi.profiles()
+    by_name = {row["source_model"]: row for row in rows}
+    row = by_name[source_model]
+    kind = ModelType(row["model_type"])
+    metadata.bindings[0].provider = tongyi.SOURCE_PROVIDER
+    metadata.bindings[0].plugin_id = "langgenius/tongyi"
+    metadata.bindings[0].plugin_unique_identifier = tongyi.SOURCE_UID
+    metadata.bindings[0].version = "0.2.26"
+    catalog = metadata.catalogs[0]
+    catalog.provider, catalog.plugin_id, catalog.plugin_unique_identifier = (
+        tongyi.SOURCE_PROVIDER,
+        "langgenius/tongyi",
+        tongyi.SOURCE_UID,
+    )
+    catalog.declaration.provider = tongyi.SOURCE_PROVIDER
+    catalog.declaration.models = [tongyi.schema(item) for item in rows]
+    catalog.declaration.supported_model_types = [ModelType.LLM, ModelType.TEXT_EMBEDDING, ModelType.RERANK]
+    selections.value = replace(
+        selections.value,
+        providers=(
+            replace(
+                selections.value.providers[0],
+                provider=tongyi.SOURCE_PROVIDER,
+                source_plugin_unique_identifier=tongyi.SOURCE_UID,
+            ),
+        ),
+    )
+    hosting = HostingProvider(
+        enabled=True,
+        credentials={"dashscope_api_key": "synthetic-original-source-only", "use_international_endpoint": "true"},
+        quota_unit="credits",
+        quotas=[PaidHostingQuota()],
+    )
+    monkeypatch.setitem(module.ext_hosting_provider.hosting_configuration.provider_map, tongyi.SOURCE_PROVIDER, hosting)
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", tongyi.registry())
+    source_calls = []
+    target_calls = []
+    blocked = []
+    wrong_target = []
+
+    def get_schema(
+        _tenant: str,
+        _user: str | None,
+        _plugin: str,
+        _provider: str,
+        _kind: str,
+        model: str,
+        credentials: dict[str, object],
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> AIModelEntity | None:
+        if isinstance(credentials, RoutedModelCredentials):
+            assert dict(credentials) == {}, "never forward the original SYSTEM key"
+            contract = credentials.plan.source_parameter_contract
+            assert contract is not None
+            assert contract.source_model == model
+            target_calls.append(model)
+            if model in blocked:
+                return None
+        else:
+            assert credentials == {
+                "dashscope_api_key": "synthetic-original-source-only",
+                "use_international_endpoint": "true",
+            }
+            assert plugin_unique_identifier == tongyi.SOURCE_UID
+            source_calls.append(model)
+        result = tongyi.schema(by_name[model], runtime=True)
+        if isinstance(credentials, RoutedModelCredentials) and wrong_target:
+            return result.model_copy(update={"model": "unreviewed-target-model"})
+        return result
+
+    monkeypatch.setattr(metadata, "get_model_schema", get_schema)
+    required = (
+        (RequiredSavedCreditModel(tongyi.SOURCE_PROVIDER, kind.value, source_model, ("paid",)),) if selected else ()
+    )
+    evidence = gateway.sources("tenant", tongyi.REVISION, required, inventory_policy="saved_system_dependencies_v2")
+    assert source_calls == ([source_model] if selected else [])
+    assert len(evidence.models) == int(selected)
+    assert len(evidence.prospective_variants) == 14
+    if selected:
+        actual = evidence.models[0]
+        assert actual["source_runtime_schema_digest"] == row["source_runtime_schema_digest"]
+        assert actual["source_plugin_uid"] == tongyi.SOURCE_UID
+        frozen_variant = actual["source_variant"]
+        assert isinstance(frozen_variant, dict)
+        assert frozen_variant["schema_version"] == 7
+        assert "source_parameter_settings" not in actual
+    expected = "sha256:" + "a" * 64
+    monkeypatch.setattr(
+        gateway._records,
+        "managed_target_binding",
+        lambda _: ManagedModelReadinessBinding("credential", tongyi.TARGET_UID, expected),
+    )
+    monkeypatch.setattr(
+        module,
+        "migration_routing_state",
+        lambda _: {
+            "provisioned_binding": {
+                "tenant_id": "tenant",
+                "provider_name": "langgenius/tokener/tokener",
+                "provider_credential_id": "credential",
+                "credential_fingerprint": expected,
+            }
+        },
+    )
+    operations = [
+        "model/schema",
+        "llm/invoke",
+        "llm/num_tokens",
+        "text_embedding/invoke",
+        "text_embedding/num_tokens",
+        "rerank/invoke",
+    ]
+    monkeypatch.setattr(
+        metadata,
+        "_request_with_plugin_daemon_response",
+        lambda *_a, **_k: module.RedirectCapabilities(protocols=["model-redirect/v1"], operations=operations),
+    )
+    inventory = {
+        "models": list(evidence.models),
+        "prospective_variants": list(evidence.prospective_variants),
+        "source_variant_registry_digest": evidence.source_variant_registry_digest,
+    }
+    assert gateway.validate_target("tenant", tongyi.REVISION, inventory) == expected
+    assert len(target_calls) == 14 + int(selected)
+    for model in by_name:
+        blocked[:] = [model]
+        with pytest.raises(ModelRouteUnmapped):
+            gateway.validate_target("tenant", tongyi.REVISION, inventory)
+    blocked.clear()
+    operations.remove("rerank/invoke")
+    with pytest.raises(ModelRouteUnavailable):
+        gateway.validate_target("tenant", tongyi.REVISION, inventory)
+    operations.append("rerank/invoke")
+    wrong_target.append(source_model)
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.validate_target("tenant", tongyi.REVISION, inventory)
+
+
 def raw_management_facade(
     monkeypatch: pytest.MonkeyPatch,
     factory: sessionmaker[Session],
@@ -1382,7 +1702,16 @@ def test_credit_llm_family_checks_selected_source_and_every_prospective_target(
     seen: list[str] = []
     invalid: list[str] = []
 
-    def target_schema(_tenant, _user, _plugin, _provider, _kind, _model, credentials, **_kwargs):
+    def target_schema(
+        _tenant: str,
+        _user: str | None,
+        _plugin: str,
+        _provider: str,
+        _kind: str,
+        _model: str,
+        credentials: dict[str, object],
+        **_kwargs: object,
+    ) -> AIModelEntity:
         assert isinstance(credentials, RoutedModelCredentials)
         assert dict(credentials) == {}
         contract = credentials.plan.source_parameter_contract

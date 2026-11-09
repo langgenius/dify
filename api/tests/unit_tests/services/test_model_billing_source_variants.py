@@ -113,6 +113,525 @@ def variants(record: dict[str, object]) -> list[dict[str, object]]:
     return value
 
 
+@pytest.mark.parametrize("base", [None, "https://generativelanguage.googleapis.com"])
+def test_new_gemini_v6_exact_nine_current_facts_factory_and_restore(base: str | None) -> None:
+    from services.entities.model_billing_gemini_mapping import (
+        SelectedGeminiSourceVariant,
+        SourceGeminiVariantSelection,
+    )
+    from services.model_billing_mapping_service import hosted_gemini_source_fact
+    from tests.helpers.unit import model_billing_gemini_profiles as gemini
+
+    rows = gemini.profiles()
+    schemas = [gemini.schema(row) for row in rows]
+    registry = source_mapping_revision(gemini.registry(), gemini.REVISION)
+    fact = hosted_gemini_source_fact(
+        provider=gemini.SOURCE_PROVIDER,
+        source_uid=gemini.SOURCE_UID,
+        models=schemas,
+        credentials={"google_api_key": "synthetic-source-not-forwarded", "google_base_url": base},
+    )
+    assert fact is not None
+    for row in rows:
+        source = gemini.schema(row)
+        selected = resolve_source_mapping(
+            registry,
+            (gemini.SOURCE_PROVIDER, source.model_type, source.model),
+            source_uid=gemini.SOURCE_UID,
+            fact=None,
+            gemini_fact=fact,
+            schema=source,
+        )
+        assert type(selected) is SelectedGeminiSourceVariant
+        contract = build_source_adapter_contract(
+            selected,
+            source_provider=gemini.SOURCE_PROVIDER,
+            source_plugin_unique_identifier=gemini.SOURCE_UID,
+            source_schema=source,
+            source_credentials=None,
+        )
+        assert isinstance(contract, SourceParameterContract)
+        assert contract == restore_variant_source_contract(selected)
+        frozen = selection_payload(selected)
+        assert isinstance(frozen, SourceGeminiVariantSelection)
+        assert frozen.schema_version == 6
+        assert (
+            registry.restore_selection(
+                (gemini.SOURCE_PROVIDER, source.model_type, source.model), frozen.model_dump(mode="json")
+            )
+            == selected
+        )
+        validate_frozen_mapping_evidence(
+            selected,
+            provider=gemini.SOURCE_PROVIDER,
+            model=source.model,
+            model_type=source.model_type,
+            target_model=source.model,
+            operations=tuple(selected.operations),
+            source_contract=contract,
+            tts_contract=None,
+        )
+    assert len(registry.selected_prospective()) == 9
+
+
+@pytest.mark.parametrize("api_host", [None, "", "   "])
+def test_tongyi_v7_exact_fourteen_current_facts_factory_and_restore(api_host: str | None) -> None:
+    from services.entities.model_billing_tongyi_mapping import SelectedTongyiSourceVariant, SourceTongyiVariantSelection
+    from services.model_billing_mapping_service import hosted_tongyi_source_fact
+    from tests.helpers.unit import model_billing_tongyi_profiles as tongyi
+
+    rows = tongyi.profiles()
+    schemas = [tongyi.schema(row) for row in rows]
+    registry = source_mapping_revision(tongyi.registry(), tongyi.REVISION)
+    original = {
+        "dashscope_api_key": "SYNTHETIC_SOURCE_KEY_NEVER_RETAIN",
+        "use_international_endpoint": "true",
+        "api_host": api_host,
+    }
+    fact = hosted_tongyi_source_fact(
+        provider=tongyi.SOURCE_PROVIDER, source_uid=tongyi.SOURCE_UID, models=schemas, credentials=original
+    )
+    assert fact is not None
+    assert fact.endpoint_selector == "string_true"
+    assert "SYNTHETIC_SOURCE_KEY" not in repr(fact)
+    for row in rows:
+        source = tongyi.schema(row)
+        selected = resolve_source_mapping(
+            registry,
+            (tongyi.SOURCE_PROVIDER, source.model_type, source.model),
+            source_uid=tongyi.SOURCE_UID,
+            fact=None,
+            tongyi_fact=fact,
+            schema=source,
+        )
+        assert type(selected) is SelectedTongyiSourceVariant
+        contract = build_source_adapter_contract(
+            selected,
+            source_provider=tongyi.SOURCE_PROVIDER,
+            source_plugin_unique_identifier=tongyi.SOURCE_UID,
+            source_schema=source,
+            source_credentials=None,
+        )
+        assert isinstance(contract, SourceParameterContract)
+        assert contract == restore_variant_source_contract(selected)
+        frozen = selection_payload(selected)
+        assert type(frozen) is SourceTongyiVariantSelection
+        assert frozen.schema_version == 7
+        assert (
+            registry.restore_selection(
+                (tongyi.SOURCE_PROVIDER, source.model_type, source.model), frozen.model_dump(mode="json")
+            )
+            == selected
+        )
+        validate_frozen_mapping_evidence(
+            selected,
+            provider=tongyi.SOURCE_PROVIDER,
+            model=source.model,
+            model_type=source.model_type,
+            target_model=source.model,
+            operations=tuple(selected.operations),
+            source_contract=contract,
+            tts_contract=None,
+        )
+    assert len(registry.selected_prospective()) == 14
+
+
+@pytest.mark.parametrize(
+    "credentials",
+    [
+        None,
+        {},
+        {"use_international_endpoint": False},
+        {"use_international_endpoint": True},
+        {"use_international_endpoint": "TRUE"},
+        {"use_international_endpoint": "false"},
+        {"use_international_endpoint": " true "},
+        {"use_international_endpoint": "true", "api_host": "https://custom.invalid"},
+        {"use_international_endpoint": "true", "api_host": True},
+    ],
+)
+def test_tongyi_v7_unreviewed_endpoint_facts_never_authorize_any_of_three_types(credentials: object) -> None:
+    from services.model_billing_mapping_service import hosted_tongyi_source_fact
+    from tests.helpers.unit import model_billing_tongyi_profiles as tongyi
+
+    schemas = [tongyi.schema(row) for row in tongyi.profiles()]
+    registry = source_mapping_revision(tongyi.registry(), tongyi.REVISION)
+    fact = hosted_tongyi_source_fact(
+        provider=tongyi.SOURCE_PROVIDER, source_uid=tongyi.SOURCE_UID, models=schemas, credentials=credentials
+    )
+    for source in schemas:
+        with pytest.raises(ValueError, match="Positive source variant facts required"):
+            resolve_source_mapping(
+                registry,
+                (tongyi.SOURCE_PROVIDER, source.model_type, source.model),
+                source_uid=tongyi.SOURCE_UID,
+                fact=None,
+                tongyi_fact=fact,
+                schema=source,
+            )
+
+
+@pytest.mark.parametrize("metadata", [None, "disabled", "enabled", "", False, True, "DISABLED"])
+def test_tongyi_v7_llm_metadata_policy_is_not_inferred_for_embedding_or_rerank(metadata: object) -> None:
+    from services.entities.model_billing_tongyi_mapping import SelectedTongyiSourceVariant
+    from services.model_billing_mapping_service import hosted_tongyi_source_fact
+    from tests.helpers.unit import model_billing_tongyi_profiles as tongyi
+
+    schemas = [tongyi.schema(row) for row in tongyi.profiles()]
+    registry = source_mapping_revision(tongyi.registry(), tongyi.REVISION)
+    fact = hosted_tongyi_source_fact(
+        provider=tongyi.SOURCE_PROVIDER,
+        source_uid=tongyi.SOURCE_UID,
+        models=schemas,
+        credentials={"use_international_endpoint": "true", "enable_request_metadata": metadata},
+    )
+    for source in schemas:
+        if source.model_type is ModelType.LLM and metadata not in (None, "disabled"):
+            with pytest.raises(ValueError, match="Positive source variant facts required"):
+                resolve_source_mapping(
+                    registry,
+                    (tongyi.SOURCE_PROVIDER, source.model_type, source.model),
+                    source_uid=tongyi.SOURCE_UID,
+                    fact=None,
+                    tongyi_fact=fact,
+                    schema=source,
+                )
+        else:
+            selected = resolve_source_mapping(
+                registry,
+                (tongyi.SOURCE_PROVIDER, source.model_type, source.model),
+                source_uid=tongyi.SOURCE_UID,
+                fact=None,
+                tongyi_fact=fact,
+                schema=source,
+            )
+            assert isinstance(selected, SelectedTongyiSourceVariant)
+            assert selected.variant.source_settings.request_metadata_policy == (
+                "actual_system_disabled" if source.model_type is ModelType.LLM else "not_used"
+            )
+
+
+@pytest.mark.parametrize(
+    "mutation", ["type", "model", "operations", "profile", "settings", "multiple", "schema", "rules", "unknown_field"]
+)
+def test_tongyi_v7_closed_declarations_and_factory_reject_widening(mutation: str) -> None:
+    from tests.helpers.unit import model_billing_tongyi_profiles as tongyi
+
+    row = next(row for row in tongyi.profiles() if row["model_type"] == "rerank")
+    record = tongyi.variant_record(row)
+    variant = record["variants"][0]
+    if mutation == "type":
+        record["source"]["model_type"] = "llm"
+    elif mutation == "model":
+        record["source"]["model"] = "qwen-long"
+    elif mutation == "operations":
+        variant["operations"].append("rerank/num_tokens")
+    elif mutation == "profile":
+        variant["source_profile_id"] = "unreviewed"
+    elif mutation == "settings":
+        variant["source_settings"]["request_metadata_policy"] = "actual_system_disabled"
+    elif mutation == "multiple":
+        record["variants"].append(deepcopy(variant))
+    elif mutation == "schema":
+        variant["source_schema_digest"] = "sha256:" + "0" * 64
+    elif mutation == "rules":
+        variant["parameter_adapter"]["rules_digest"] = "sha256:" + "0" * 64
+    else:
+        variant["source_settings"]["url"] = "https://unreviewed.invalid"
+    if mutation in {"schema", "rules"}:
+        registry = source_mapping_revision(json.dumps([record]), tongyi.REVISION)
+        with pytest.raises(ValueError, match="Tongyi source evidence is not reviewed"):
+            restore_variant_source_contract(registry.selected_prospective()[0])
+    else:
+        with pytest.raises(ValidationError):
+            source_mapping_revision(json.dumps([record]), tongyi.REVISION)
+
+
+@pytest.mark.parametrize("version", [True, False, 7.0, "7", 8])
+def test_tongyi_v7_version_is_exact_integer_not_bool_string_or_float(version: object) -> None:
+    from tests.helpers.unit import model_billing_tongyi_profiles as tongyi
+
+    records = json.loads(tongyi.registry())
+    records[0]["schema_version"] = version
+    with pytest.raises(ValidationError):
+        source_mapping_revision(json.dumps(records), tongyi.REVISION)
+
+
+def test_tongyi_v7_append_preserves_every_v1_to_v6_record_selection_and_digest() -> None:
+    from tests.helpers.unit import model_billing_gemini_profiles as gemini
+    from tests.helpers.unit import model_billing_tongyi_profiles as tongyi
+    from tests.unit_tests.services.model_billing_audio_xai_fixtures import REVISION as AUDIO_XAI_REVISION
+    from tests.unit_tests.services.model_billing_audio_xai_fixtures import audio_xai_records
+
+    prior = [
+        mapping(revision="tongyi-preserved-v1"),
+        variant_record(),
+        *full_embedding_registry(),
+        *full_daemon_registry(),
+        *audio_xai_records(),
+        *json.loads(gemini.registry()),
+    ]
+    combined = json.dumps([*prior, *json.loads(tongyi.registry())])
+    for revision in (
+        "tongyi-preserved-v1",
+        REVISION,
+        EMBEDDING_REVISION,
+        DAEMON_REVISION,
+        AUDIO_XAI_REVISION,
+        gemini.REVISION,
+    ):
+        original = source_mapping_revision(json.dumps(prior), revision)
+        restored = source_mapping_revision(combined, revision)
+        assert restored.digest == original.digest
+        assert [item.model_dump_json() for item in restored.declarations.values()] == [
+            item.model_dump_json() for item in original.declarations.values()
+        ]
+        assert [selection_payload(item).model_dump_json() for item in restored.selected_prospective()] == [
+            selection_payload(item).model_dump_json() for item in original.selected_prospective()
+        ]
+    current = source_mapping_revision(combined, tongyi.REVISION)
+    assert current.digest == source_mapping_revision(tongyi.registry(), tongyi.REVISION).digest
+
+
+@pytest.mark.parametrize(
+    "credentials",
+    [
+        None,
+        {},
+        {"google_base_url": ""},
+        {"google_base_url": "https://generativelanguage.googleapis.com/v1beta"},
+        {"google_base_url": "https://custom.invalid"},
+        {"google_base_url": False},
+        {"enable_request_metadata": "enabled"},
+        {"enable_request_metadata": False},
+        {"file_url": "https://files.invalid"},
+        {"file_url": False},
+    ],
+)
+def test_new_gemini_unreviewed_llm_fact_and_ignored_embedding_settings_are_separate(
+    credentials: object,
+) -> None:
+    from services.model_billing_mapping_service import hosted_gemini_source_fact
+    from tests.helpers.unit import model_billing_gemini_profiles as gemini
+
+    rows = gemini.profiles()
+    schemas = [gemini.schema(row) for row in rows]
+    registry = source_mapping_revision(gemini.registry(), gemini.REVISION)
+    fact = hosted_gemini_source_fact(
+        provider=gemini.SOURCE_PROVIDER, source_uid=gemini.SOURCE_UID, models=schemas, credentials=credentials
+    )
+    llm = next(item for item in schemas if item.model_type is ModelType.LLM)
+    # An existing empty SYSTEM dictionary is positive absent/None evidence.
+    if credentials == {}:
+        resolve_source_mapping(
+            registry,
+            (gemini.SOURCE_PROVIDER, llm.model_type, llm.model),
+            source_uid=gemini.SOURCE_UID,
+            fact=None,
+            gemini_fact=fact,
+            schema=llm,
+        )
+    else:
+        with pytest.raises(ValueError, match="Positive source variant facts required"):
+            resolve_source_mapping(
+                registry,
+                (gemini.SOURCE_PROVIDER, llm.model_type, llm.model),
+                source_uid=gemini.SOURCE_UID,
+                fact=None,
+                gemini_fact=fact,
+                schema=llm,
+            )
+    embedding = next(item for item in schemas if item.model_type is ModelType.TEXT_EMBEDDING)
+    if credentials is not None:
+        resolve_source_mapping(
+            registry,
+            (gemini.SOURCE_PROVIDER, embedding.model_type, embedding.model),
+            source_uid=gemini.SOURCE_UID,
+            fact=None,
+            gemini_fact=fact,
+            schema=embedding,
+        )
+
+
+@pytest.mark.parametrize(
+    "mutation", ["type", "model", "operations", "profile", "settings", "multiple", "schema", "rules"]
+)
+def test_new_gemini_v6_closed_declaration_or_factory_rejects_widening(mutation: str) -> None:
+    from tests.helpers.unit import model_billing_gemini_profiles as gemini
+
+    row = next(row for row in gemini.profiles() if row["source_model"] == "gemini-embedding-2-preview")
+    record = gemini.variant_record(row)
+    variant = record["variants"][0]
+    if mutation == "type":
+        record["source"]["model_type"] = "llm"
+    elif mutation == "model":
+        record["source"]["model"] = "gemini-3.1-flash-lite-preview"
+    elif mutation == "operations":
+        variant["operations"].remove("multimodal_embedding/invoke")
+    elif mutation == "profile":
+        variant["source_profile_id"] = "unreviewed"
+    elif mutation == "settings":
+        variant["source_settings"]["request_metadata_policy"] = "system_false_only"
+    elif mutation == "multiple":
+        record["variants"].append(deepcopy(variant))
+    elif mutation == "schema":
+        variant["source_schema_digest"] = "sha256:" + "0" * 64
+    else:
+        variant["parameter_adapter"]["rules_digest"] = "sha256:" + "0" * 64
+    if mutation in {"schema", "rules"}:
+        registry = source_mapping_revision(json.dumps([record]), gemini.REVISION)
+        with pytest.raises(ValueError, match="Gemini source evidence is not reviewed"):
+            restore_variant_source_contract(registry.selected_prospective()[0])
+    else:
+        with pytest.raises(ValueError, match="validation error"):
+            source_mapping_revision(json.dumps([record]), gemini.REVISION)
+
+
+def test_gemini_v6_append_keeps_v1_to_v5_declarations_selections_and_revision_digests() -> None:
+    from tests.helpers.unit import model_billing_gemini_profiles as gemini
+    from tests.unit_tests.services.model_billing_audio_xai_fixtures import REVISION as AUDIO_XAI_REVISION
+    from tests.unit_tests.services.model_billing_audio_xai_fixtures import audio_xai_records
+
+    prior = [
+        mapping(revision="gemini-preserved-v1"),
+        variant_record(),
+        *full_embedding_registry(),
+        *full_daemon_registry(),
+        *audio_xai_records(),
+    ]
+    revisions = ("gemini-preserved-v1", REVISION, EMBEDDING_REVISION, DAEMON_REVISION, AUDIO_XAI_REVISION)
+    combined = json.dumps([*prior, *json.loads(gemini.registry())])
+    for revision in revisions:
+        original = source_mapping_revision(json.dumps(prior), revision)
+        restored = source_mapping_revision(combined, revision)
+        assert restored.digest == original.digest
+        assert [row.model_dump_json() for row in restored.declarations.values()] == [
+            row.model_dump_json() for row in original.declarations.values()
+        ]
+        assert [selection_payload(row).model_dump_json() for row in restored.selected_prospective()] == [
+            selection_payload(row).model_dump_json() for row in original.selected_prospective()
+        ]
+    current = source_mapping_revision(combined, gemini.REVISION)
+    assert current.digest == source_mapping_revision(gemini.registry(), gemini.REVISION).digest
+    records = json.loads(gemini.registry())
+    records.reverse()
+    assert source_mapping_revision(json.dumps(records), gemini.REVISION).digest == current.digest
+    selected = current.selected_prospective()[0]
+    changed = json.loads(gemini.registry())
+    changed[-1]["variants"][0]["conformance_fixture_ids"].append("another-reviewed-fixture")
+    drifted = source_mapping_revision(json.dumps(changed), gemini.REVISION)
+    assert drifted.digest != current.digest
+    with pytest.raises(ValueError, match="Frozen source variant changed"):
+        drifted.restore_selection(
+            (gemini.SOURCE_PROVIDER, selected.source.model_type, selected.source.model),
+            selection_payload(selected).model_dump(mode="json"),
+        )
+
+
+def test_gemini_v6_discriminator_never_coerces_a_float_into_integer_six() -> None:
+    from tests.helpers.unit import model_billing_gemini_profiles as gemini
+
+    records = json.loads(gemini.registry())
+    records[0]["schema_version"] = 6.0
+    with pytest.raises(ValueError, match="Gemini schema version must be integer 6"):
+        source_mapping_revision(json.dumps(records), gemini.REVISION)
+    registry = source_mapping_revision(gemini.registry(), gemini.REVISION)
+    selected = registry.selected_prospective()[0]
+    payload = selection_payload(selected).model_dump(mode="json")
+    payload["schema_version"] = 6.0
+    with pytest.raises(ValueError, match="Gemini schema version must be integer 6"):
+        registry.restore_selection((gemini.SOURCE_PROVIDER, selected.source.model_type, selected.source.model), payload)
+
+
+@pytest.mark.parametrize("byok", [False, True])
+@pytest.mark.parametrize(
+    "model",
+    [
+        "gemini-2.5-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3.1-pro-preview",
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.7-flash",
+        "gemini-3-flash-preview",
+        "gemini-embedding-001",
+        "gemini-embedding-2-preview",
+    ],
+)
+def test_gemini_late_provider_saved_selection_reads_actual_fresh_binding_and_system_facts(
+    model: str, byok: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from core.entities.provider_entities import RestrictModel
+    from tests.helpers.unit import model_billing_gemini_profiles as gemini
+    from tests.helpers.unit.config_override import config_overrides_context
+    from tests.unit_tests.services.test_model_billing_dependency_runtime import TENANT, runtime_facts
+
+    facts = runtime_facts(monkeypatch, preferred="custom" if byok else None, custom_available=byok)
+    row = next(row for row in gemini.profiles() if row["source_model"] == model)
+    source = gemini.schema(row)
+    stored = facts.query._records.stored_selection_snapshot(TENANT)
+    stored = replace(
+        stored,
+        providers=tuple(replace(item, provider=gemini.SOURCE_PROVIDER) for item in stored.providers),
+        preferences=tuple(replace(item, provider=gemini.SOURCE_PROVIDER) for item in stored.preferences),
+        defaults=tuple(
+            replace(item, provider=gemini.SOURCE_PROVIDER, model=model, model_type=source.model_type.value)
+            for item in stored.defaults
+        ),
+    )
+    monkeypatch.setattr(facts.query._records, "stored_selection_snapshot", lambda _: stored)
+    binding = facts.bindings[0]
+    binding.provider = gemini.SOURCE_PROVIDER
+    binding.plugin_id = "langgenius/gemini"
+    binding.plugin_unique_identifier = gemini.SOURCE_UID
+    binding.version = "0.9.12"
+    declaration = facts.declarations[0]
+    declaration.provider = gemini.SOURCE_PROVIDER
+    declaration.plugin_id = "langgenius/gemini"
+    declaration.plugin_unique_identifier = gemini.SOURCE_UID
+    declaration.declaration.provider = gemini.SOURCE_PROVIDER
+    declaration.declaration.models = [source]
+    declaration.declaration.supported_model_types = [source.model_type]
+    hosting = facts.hosting.pop(SOURCE_PROVIDER)
+    facts.hosting[gemini.SOURCE_PROVIDER] = hosting
+    hosting.quotas[0].restrict_models = [RestrictModel(model=model, model_type=source.model_type)]
+    original = {"google_api_key": "synthetic-original-system-never-forward"}
+    hosting.credentials = original
+    before = deepcopy(original)
+    monkeypatch.setattr(
+        "services.model_billing_dependency_runtime.migration_routing_state",
+        lambda _: {
+            "phase": "active",
+            "persisted_model_billing_source": "tokener",
+            "model_mapping_version": gemini.REVISION,
+            "source_ownership": {},
+        },
+    )
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=gemini.registry(),
+        TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=json.dumps(
+            [
+                {
+                    "schema_version": 1,
+                    "mapping_revision": gemini.REVISION,
+                    "inventory_policy": "saved_system_dependencies_v2",
+                }
+            ]
+        ),
+    ):
+        snapshot = facts.query.selection_snapshot(TENANT)
+    provider = snapshot.providers[0]
+    assert provider.trustworthy
+    assert provider.provider == gemini.SOURCE_PROVIDER
+    assert provider.source_plugin_unique_identifier == gemini.SOURCE_UID
+    assert provider.system_enabled
+    assert provider.preferred == ("custom" if byok else None)
+    assert provider.custom_available is byok
+    assert provider.quotas[0].models == ((source.model_type.value, model),)
+    assert facts.calls == [("declarations", TENANT), ("bindings", TENANT)]
+    assert original == before
+
+
 def current_source_schemas() -> tuple[AIModelEntity, AIModelEntity]:
     document = json.loads(
         (Path(__file__).parent / "fixtures/model_billing_openai_provider110_profiles.json").read_text()

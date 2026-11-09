@@ -43,8 +43,10 @@ from services.model_billing_mapping_service import (
     build_source_adapter_contract,
     hosted_audio_source_fact,
     hosted_embedding_source_fact,
+    hosted_gemini_source_fact,
     hosted_migration_sources,
     hosted_source_variant_fact,
+    hosted_tongyi_source_fact,
     hosted_xai_source_fact,
     managed_source_schemas,
     mapping_supports_installed_plugin,
@@ -471,6 +473,18 @@ def _validate_source_variant_admission(plan: FrozenModelInvocation, state: dict[
                 models=(),
                 credentials=hosting.credentials,
             ),
+            gemini_fact=hosted_gemini_source_fact(
+                provider=plan.logical_provider,
+                source_uid=contract.source_plugin_unique_identifier,
+                models=(),
+                credentials=hosting.credentials,
+            ),
+            tongyi_fact=hosted_tongyi_source_fact(
+                provider=plan.logical_provider,
+                source_uid=contract.source_plugin_unique_identifier,
+                models=(),
+                credentials=hosting.credentials,
+            ),
         )
         if (
             not isinstance(selected, SELECTED_SOURCE_VARIANT_TYPES)
@@ -547,6 +561,8 @@ def routed_credentials(
                 embedding_fact=configuration.system_configuration._tokener_embedding_source_fact,
                 audio_fact=configuration.system_configuration._tokener_audio_source_fact,
                 xai_fact=configuration.system_configuration._tokener_xai_source_fact,
+                gemini_fact=configuration.system_configuration._tokener_gemini_source_fact,
+                tongyi_fact=configuration.system_configuration._tokener_tongyi_source_fact,
                 schema=matching_sources[0] if len(matching_sources) == 1 else None,
             )
     except (KeyError, TypeError, ValueError):

@@ -40,7 +40,9 @@ from graphon.model_runtime.entities.model_entities import ModelPropertyKey, Mode
 from models.provider_ids import ModelProviderID
 from repositories.model_billing_dependency_repository import ModelBillingDependencyRepository
 from services.entities.model_billing_embedding_mapping import SelectedEmbeddingSourceVariant
+from services.entities.model_billing_gemini_mapping import SelectedGeminiSourceVariant
 from services.entities.model_billing_mapping import SourceParameterContract
+from services.entities.model_billing_tongyi_mapping import SelectedTongyiSourceVariant
 from services.model_billing_dependency_inventory import DependencyInventoryPolicy, SavedModelReference
 from services.model_billing_dependency_provenance import (
     ModelDependencySelectionQuery,
@@ -55,7 +57,9 @@ from services.model_billing_mapping_service import (
     build_source_adapter_contract,
     hosted_audio_source_fact,
     hosted_embedding_source_fact,
+    hosted_gemini_source_fact,
     hosted_source_variant_fact,
+    hosted_tongyi_source_fact,
     hosted_xai_source_fact,
     mapping_has_required_operations,
     model_schema_digest,
@@ -336,6 +340,18 @@ class SavedDependencyMigrationEvidenceGateway:
                         models=[schema] if schema is not None else [],
                         credentials=credentials if actual_system_settings is not None else None,
                     ),
+                    gemini_fact=hosted_gemini_source_fact(
+                        provider=provider,
+                        source_uid=binding.plugin_unique_identifier,
+                        models=[schema] if schema is not None else [],
+                        credentials=credentials if actual_system_settings is not None else None,
+                    ),
+                    tongyi_fact=hosted_tongyi_source_fact(
+                        provider=provider,
+                        source_uid=binding.plugin_unique_identifier,
+                        models=[schema] if schema is not None else [],
+                        credentials=credentials if actual_system_settings is not None else None,
+                    ),
                     schema=schema,
                 )
             except ValueError:
@@ -559,7 +575,15 @@ class SavedDependencyMigrationEvidenceGateway:
             if schema is None or schema.model_type != kind:
                 raise ModelRouteUnmapped
             if (
-                isinstance(mapping, (SelectedAudioSourceVariant, SelectedXAISourceVariant))
+                isinstance(
+                    mapping,
+                    (
+                        SelectedAudioSourceVariant,
+                        SelectedXAISourceVariant,
+                        SelectedGeminiSourceVariant,
+                        SelectedTongyiSourceVariant,
+                    ),
+                )
                 and schema.model != mapping.target.model
             ):
                 # These closed families have no alias exception. Do not erase
@@ -590,7 +614,13 @@ class SavedDependencyMigrationEvidenceGateway:
             # Neither path maps or infers a vector width from a model name.
             if (
                 kind == ModelType.TEXT_EMBEDDING
-                and not (isinstance(mapping, SelectedEmbeddingSourceVariant) and prospective_only)
+                and not (
+                    isinstance(
+                        mapping,
+                        (SelectedEmbeddingSourceVariant, SelectedGeminiSourceVariant, SelectedTongyiSourceVariant),
+                    )
+                    and prospective_only
+                )
                 and source["embedding_dimensions"] != embedding_dimensions_contract(schema)
             ):
                 raise ModelRouteUnmapped
