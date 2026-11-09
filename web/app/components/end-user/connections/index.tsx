@@ -43,9 +43,6 @@ export default function Connections({ providers }: Props) {
                   </p>
                 </div>
               </div>
-              <span className="system-sm-regular text-text-tertiary">
-                {provider.connections_count}
-              </span>
               <span
                 className="flex size-6 shrink-0 items-center justify-center text-text-tertiary"
                 aria-hidden="true"
