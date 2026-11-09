@@ -46,8 +46,8 @@ const integerPattern = String.raw`\s*[0-9]+\s*`
 export const tracingProviders = {
   langfuse: {
     docUrl: 'https://docs.langfuse.com',
-    icon: 'i-custom-public-tracing-langfuse-icon w-18.5',
-    panelIcon: 'i-custom-public-tracing-langfuse-icon-big w-27.75',
+    iconWidth: 'w-18.5',
+    panelIconWidth: 'w-27.75',
     fields: [
       {
         name: 'secret_key',
@@ -77,8 +77,8 @@ export const tracingProviders = {
   },
   langsmith: {
     docUrl: 'https://docs.smith.langchain.com/',
-    icon: 'i-custom-public-tracing-langsmith-icon w-21',
-    panelIcon: 'i-custom-public-tracing-langsmith-icon-big w-31',
+    iconWidth: 'w-21',
+    panelIconWidth: 'w-31',
     fields: [
       { name: 'api_key', label: 'API Key', required: true, secret: true, destination: false },
       {
@@ -102,8 +102,8 @@ export const tracingProviders = {
   },
   opik: {
     docUrl: 'https://www.comet.com/docs/opik/integrations/dify',
-    icon: 'i-custom-public-tracing-opik-icon w-[47.133904px]',
-    panelIcon: 'i-custom-public-tracing-opik-icon-big w-[70.700851px]',
+    iconWidth: 'w-[47.133904px]',
+    panelIconWidth: 'w-[70.700851px]',
     fields: [
       { name: 'api_key', label: 'API Key', required: false, secret: true, destination: false },
       {
@@ -135,8 +135,8 @@ export const tracingProviders = {
   },
   mlflow: {
     docUrl: 'https://mlflow.org/docs/latest/genai/',
-    icon: 'i-custom-public-tracing-mlflow-icon w-11',
-    panelIcon: 'i-custom-public-tracing-mlflow-icon-big w-16.25',
+    iconWidth: 'w-11',
+    panelIconWidth: 'w-16.25',
     fields: [
       {
         name: 'tracking_uri',
@@ -175,8 +175,8 @@ export const tracingProviders = {
   },
   databricks: {
     docUrl: 'https://docs.databricks.com/aws/en/mlflow3/genai/tracing/',
-    icon: 'i-custom-public-tracing-databricks-icon w-25',
-    panelIcon: 'i-custom-public-tracing-databricks-icon-big w-37.5',
+    iconWidth: 'w-25',
+    panelIconWidth: 'w-37.5',
     fields: [
       {
         name: 'experiment_id',
@@ -221,8 +221,8 @@ export const tracingProviders = {
   },
   weave: {
     docUrl: 'https://weave-docs.wandb.ai/',
-    icon: 'i-custom-public-tracing-weave-icon w-30',
-    panelIcon: 'i-custom-public-tracing-weave-icon-big w-31',
+    iconWidth: 'w-30',
+    panelIconWidth: 'w-31',
     fields: [
       { name: 'api_key', label: 'API Key', required: true, secret: true, destination: false },
       {
@@ -257,8 +257,8 @@ export const tracingProviders = {
   },
   arize: {
     docUrl: 'https://docs.arize.com/arize',
-    icon: 'i-custom-public-tracing-arize-icon w-18.5',
-    panelIcon: 'i-custom-public-tracing-arize-icon-big w-27.75',
+    iconWidth: 'w-18.5',
+    panelIconWidth: 'w-27.75',
     fields: [
       { name: 'api_key', label: 'API Key', required: true, secret: true, destination: false },
       { name: 'space_id', label: 'Space ID', required: true, secret: true, destination: false },
@@ -283,8 +283,8 @@ export const tracingProviders = {
   },
   phoenix: {
     docUrl: 'https://docs.arize.com/phoenix',
-    icon: 'i-custom-public-tracing-phoenix-icon w-18.5',
-    panelIcon: 'i-custom-public-tracing-phoenix-icon-big w-27.75',
+    iconWidth: 'w-18.5',
+    panelIconWidth: 'w-27.75',
     fields: [
       { name: 'api_key', label: 'API Key', required: false, secret: true, destination: false },
       {
@@ -308,8 +308,8 @@ export const tracingProviders = {
   },
   aliyun: {
     docUrl: 'https://help.aliyun.com/zh/arms/tracing-analysis/untitled-document-1750672984680',
-    icon: 'i-custom-public-tracing-aliyun-icon w-16.25',
-    panelIcon: 'i-custom-public-tracing-aliyun-icon-big w-24',
+    iconWidth: 'w-16.25',
+    panelIconWidth: 'w-24',
     fields: [
       {
         name: 'license_key',
@@ -334,8 +334,8 @@ export const tracingProviders = {
   },
   tencent: {
     docUrl: 'https://cloud.tencent.com/document/product/248/116531',
-    icon: 'i-custom-public-tracing-tencent-icon w-20',
-    panelIcon: 'i-custom-public-tracing-tencent-icon-big w-30',
+    iconWidth: 'w-20',
+    panelIconWidth: 'w-30',
     fields: [
       {
         name: 'token',
@@ -374,8 +374,9 @@ export const tracingProviders = {
     TraceConfigPayload['tracing_provider'],
     {
       docUrl: string
-      icon: string
-      panelIcon: string
+      /** Width utility for the logo; the logo itself comes from `provider-icons.module.css`. */
+      iconWidth: string
+      panelIconWidth: string
       fields: readonly TracingProviderField[]
     }
   >
