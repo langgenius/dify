@@ -41,7 +41,8 @@ export default function MigrateConversationsContent() {
     resolveWebAppAccountReturn(searchParams.get('redirect_url'))?.url ||
     `${basePath}/chat/${encodeURIComponent(token)}${currentSearch ? `?${currentSearch}` : ''}`
   const { data: appInfo, error } = useGetWebAppInfo()
-  const supportsMigration = appInfo?.mode === 'workflow' || appInfo?.mode === 'advanced-chat'
+  const supportsMigration =
+    appInfo?.mode === 'workflow' || appInfo?.mode === 'advanced-chat' || appInfo?.mode === 'chat'
   const authSession = useSyncExternalStore(
     subscribeWebAppAuthSession,
     getWebAppAuthSessionSnapshot,
