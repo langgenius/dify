@@ -71,6 +71,7 @@ def test_unmarked_ordinary_run_does_not_load_native_state(monkeypatch: pytest.Mo
 def test_unknown_policy_never_reaches_owner(monkeypatch: pytest.MonkeyPatch) -> None:
     error, resolve = NativeContextUnavailable, resolve_native_context
     state, calls = stored_context_boundary(monkeypatch)
+    # pyrefly: ignore[bad-argument-type]  # unknown policy version on purpose
     ref = NativeTestContextRef.model_construct(**{**REF_DATA, "policy_version": "unknown"})
     with pytest.raises(error, match="^native_context_version$"):
         resolve(required=True, ref=ref, state=state)
@@ -605,12 +606,15 @@ def test_confirmed_snapshot_graph_still_refuses_executable_payload_tampering(own
     assert admitted_graph_matches(workflow, protected_graph, request_context) is False
 
 
+@pytest.mark.parametrize("canvas_binding", [False, True], ids=["prepared-binding", "canvas-binding"])
 def test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection(
     agent_case: AgentCase,
     sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
     monkeypatch: pytest.MonkeyPatch,
+    canvas_binding: bool,
 ) -> None:
     import json
+    from copy import deepcopy
 
     from sqlalchemy import select
 
@@ -624,7 +628,8 @@ def test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection(
         workflow = sql.get(Workflow, agent_case.workflow.id)
         assert workflow is not None
         graph = dict(workflow.graph_dict)
-        next(node["data"] for node in graph["nodes"] if node["id"] == "review").update(
+        agent_node = next(node for node in graph["nodes"] if node["id"] == "review")
+        agent_node["data"].update(
             {
                 "title": "Existing reviewer",
                 "desc": "Existing description",
@@ -635,6 +640,10 @@ def test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection(
                 "_ui_hint": "preserved",
             }
         )
+        expected_agent = deepcopy(agent_node)
+        if canvas_binding:
+            agent_node["data"]["agent_binding"].pop("current_snapshot_id")
+            agent_node["data"].pop("agent_declared_outputs")
         graph["nodes"].append(
             {
                 "id": "end",
@@ -652,7 +661,7 @@ def test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection(
         original = (row.id, row.current_snapshot_id, row.node_job_config_dict)
         sql.commit()
     port = dify_port.WorkflowServiceDifyPort()
-    before, revision = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
+    _, revision = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
     result = port.apply_repair(
         agent_case.workflow.app_id,
         agent_case.actor,
@@ -672,9 +681,7 @@ def test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection(
     assert result.changed_nodes == ["end"]
     after, _ = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
     assert next(n for n in after["nodes"] if n["id"] == "end")["data"]["outputs"][0]["variable"] == "asset_proof"
-    assert next(n for n in after["nodes"] if n["id"] == "review") == next(
-        n for n in before["nodes"] if n["id"] == "review"
-    )
+    assert next(n for n in after["nodes"] if n["id"] == "review") == expected_agent
     with sqlite_session_factory() as sql:
         row = sql.scalar(select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.node_id == "review"))
         assert row is not None
@@ -809,9 +816,8 @@ def test_final_retained_binding_check_locks_and_refreshes_rows_before_sync(
     with sqlite_session_factory() as sql:
         workflow = sql.get(Workflow, agent_case.workflow.id)
         assert workflow is not None
-        graph = dict(workflow.graph_dict)
-        retained, stamps = dify_port._retained_native_agent_selections(
-            session=sql, actor=agent_case.actor, workflow=workflow, graph=graph
+        graph, retained, stamps = dify_port._retained_native_agent_selections(
+            session=sql, actor=agent_case.actor, workflow=workflow, graph=dict(workflow.graph_dict)
         )
         authorization = AgentBindingService.authorize(
             actor=agent_case.actor,

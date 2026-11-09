@@ -387,6 +387,9 @@ class SessionView:
     # Used by reconnecting clients to correlate a terminal projection without
     # replaying the command's conversation payload in SSE.
     last_command_id: str = ""
+    # A Builder command owns the writer or has a pending continuation. A
+    # Native Test may keep running after that command releases the writer.
+    command_pending: bool = False
     # Detected user-input language. Empty until the worker detects one.
     reply_language: str = ""
     # Bounded recent safe observations for debug export after reconnect.

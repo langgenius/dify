@@ -4,13 +4,9 @@ import type { DifyBuilderAttachmentPayload } from '@dify/contracts/api/console/d
 import type { SessionControllerContext } from './controller-types'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback } from 'react'
+import { v4 as uuid4 } from 'uuid'
 import { sendSessionMessage } from './client'
-import {
-  requestErrorMessage,
-  requestErrorStatus,
-  streamErrorMessage,
-  UNEXPECTED_EOF_ERROR,
-} from './errors'
+import { requestErrorMessage, requestErrorStatus, UNEXPECTED_EOF_ERROR } from './errors'
 import {
   difyBuilderActiveCommandAtom,
   difyBuilderActiveSessionIdAtom,
@@ -26,10 +22,16 @@ export function useDifyBuilderMaterialControl({
   materialAbortRef,
   traceRef,
   applySessionView,
-  consumeStream,
+  waitForSession,
+  nativeObservationRef,
 }: Pick<
   SessionControllerContext,
-  'onAttachmentsAccepted' | 'materialAbortRef' | 'traceRef' | 'applySessionView' | 'consumeStream'
+  | 'onAttachmentsAccepted'
+  | 'materialAbortRef'
+  | 'traceRef'
+  | 'applySessionView'
+  | 'waitForSession'
+  | 'nativeObservationRef'
 >) {
   const store = useStore()
 
@@ -54,7 +56,7 @@ export function useDifyBuilderMaterialControl({
         return false
       const controller = new AbortController()
       materialAbortRef.current = controller
-      const clientTurnId = globalThis.crypto.randomUUID()
+      const clientTurnId = uuid4()
       const material = { phase: 'pending' as const, clientTurnId, text, attachments }
       store.set(difyBuilderMaterialControlAtom, material)
       setLastError('')
@@ -69,7 +71,9 @@ export function useDifyBuilderMaterialControl({
         },
       })
       try {
-        const response = await sendSessionMessage(
+        await waitForSession(sessionId, controller.signal)
+        const observedAtStart = nativeObservationRef.current
+        const receipt = await sendSessionMessage(
           sessionId,
           text,
           version,
@@ -77,37 +81,10 @@ export function useDifyBuilderMaterialControl({
           controller.signal,
           attachments,
         )
-        const iterator = response[Symbol.asyncIterator]()
-        const first = await iterator.next()
-        const events = (async function* () {
-          try {
-            if (!first.done) yield first.value
-            while (true) {
-              const next = await iterator.next()
-              if (next.done) return
-              yield next.value
-            }
-          } finally {
-            await iterator.return?.()
-          }
-        })()
-        if (!first.done && first.value.event === 'command_started' && first.value.data.command_id) {
-          // A newly admitted consume-material turn has its own stream; it never
-          // aborts an earlier response or runs the draft-save barrier.
-          await consumeStream(events, controller, sessionId)
-        } else {
-          for await (const event of events) {
-            if (controller.signal.aborted) return false
-            traceRef.current.append({ dir: 'in', kind: event.event, payload: event.data })
-            if (event.event === 'error') throw new Error(streamErrorMessage(event.data))
-            if (event.event === 'command_finished') {
-              const current = store.get(difyBuilderSessionViewAtom)
-              applySessionView({ ...event.data, last_command_id: current?.last_command_id ?? '' })
-              break
-            }
-          }
-        }
-        if (controller.signal.aborted) return false
+        if (controller.signal.aborted || store.get(difyBuilderActiveSessionIdAtom) !== sessionId)
+          return false
+        traceRef.current.append({ dir: 'in', kind: 'command_ack', payload: receipt })
+        if (receipt.session) applySessionView(receipt.session, observedAtStart)
         const admitted = store
           .get(difyBuilderSessionViewAtom)
           ?.attachments?.some((receipt) => receipt.client_turn_id === clientTurnId)
@@ -130,7 +107,8 @@ export function useDifyBuilderMaterialControl({
     },
     [
       applySessionView,
-      consumeStream,
+      waitForSession,
+      nativeObservationRef,
       onAttachmentsAccepted,
       setLastError,
       store,

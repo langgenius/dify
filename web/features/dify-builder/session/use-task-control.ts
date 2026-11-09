@@ -3,7 +3,13 @@
 import type { SessionControllerContext } from './controller-types'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback } from 'react'
-import { difyBuilderCanvasReadyAtom, difyBuilderLocalInteractionResponseAtom } from '../state'
+import { v4 as uuid4 } from 'uuid'
+import {
+  difyBuilderCanvasReadyAtom,
+  difyBuilderLocalInteractionResponseAtom,
+  difyBuilderNativeTestCancellingAtom,
+  difyBuilderTaskControlOperationAtom,
+} from '../state'
 import { controlSessionTask, getSession } from './client'
 import { requestErrorMessage, requestErrorStatus, UNEXPECTED_EOF_ERROR } from './errors'
 import { isActiveView } from './projection'
@@ -47,6 +53,7 @@ export function useDifyBuilderTaskControl({
   syncConversation,
   applySessionView,
   reconcileSession,
+  waitForSession,
   prepareCommand,
   runEvents,
 }: Pick<
@@ -65,6 +72,7 @@ export function useDifyBuilderTaskControl({
   | 'syncConversation'
   | 'applySessionView'
   | 'reconcileSession'
+  | 'waitForSession'
   | 'prepareCommand'
   | 'runEvents'
 >) {
@@ -95,7 +103,11 @@ export function useDifyBuilderTaskControl({
         return false
       if (!pending) {
         if (operation === 'stop') {
-          if ((command?.run_status ?? view?.run_status) !== 'processing') return false
+          if (
+            store.get(difyBuilderTaskControlOperationAtom) !== 'stop' ||
+            store.get(difyBuilderNativeTestCancellingAtom)
+          )
+            return false
         } else if (
           view?.run_status !== 'paused' ||
           view.canvas_read_only ||
@@ -163,7 +175,7 @@ export function useDifyBuilderTaskControl({
         const outcome = await reconcileSession(sessionId, controller)
         if (controller.signal.aborted) return false
         if (outcome?.terminalEvent !== 'command_finished' || !outcome.stateApplied) {
-          setLastError(outcome?.terminalError || outcome?.transportError || UNEXPECTED_EOF_ERROR)
+          setLastError(outcome?.terminalError || UNEXPECTED_EOF_ERROR)
           return false
         }
         return outcome.terminalRunStatus !== 'failed'
@@ -172,6 +184,7 @@ export function useDifyBuilderTaskControl({
       try {
         await preparation
         controller.signal.throwIfAborted()
+        if (operation === 'resume') await waitForSession(sessionId, controller.signal)
         let intent = pending
         if (!intent) {
           const latest = operation === 'resume' ? await readLatest() : view
@@ -185,7 +198,7 @@ export function useDifyBuilderTaskControl({
             operation,
             body: {
               base_version: Math.max(latest?.version ?? 0, command?.version ?? 0),
-              client_action_id: globalThis.crypto.randomUUID(),
+              client_action_id: uuid4(),
               ...(operation === 'resume' && latest?.app_revision
                 ? { base_app_revision: latest.app_revision.current }
                 : {}),
@@ -298,6 +311,7 @@ export function useDifyBuilderTaskControl({
       prepareCommand,
       reasoningBuffer,
       reconcileSession,
+      waitForSession,
       runEvents,
       setActiveCommand,
       setConversationLoading,

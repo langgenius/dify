@@ -44,10 +44,7 @@ export const projectSessionView = (
   return next
 }
 
-const isActiveRunStatus = (status: SessionView['run_status']) => status === 'processing'
-
-export const isActiveView = (view: SessionView) =>
-  isActiveRunStatus(view.run_status) && !view.interrupted
+export const isActiveView = (view: SessionView) => view.command_pending === true
 
 export const mergeConversationPage = (current: ConversationItem[], page: ConversationItem[]) => {
   const versions = new Map(current.map((item) => [item.seq, item.at_version]))

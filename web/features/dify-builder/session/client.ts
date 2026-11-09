@@ -7,7 +7,7 @@ import type {
   GetDifyBuilderSessionsBySessionIdFixIntentsData,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ChecklistErrorPayload, SessionModel } from '../types'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 
 export const controlSessionConversation = (
   sessionId: string,
@@ -150,15 +150,9 @@ export const getSessionConversation = (
     { context: { silent: true }, signal },
   )
 
-export const getSessionStream = (sessionId: string, signal: AbortSignal, nativeCursor?: string) =>
+export const getSessionStream = (sessionId: string, signal: AbortSignal) =>
   consoleClient.difyBuilder.sessions.bySessionId.stream.get(
-    {
-      params: { session_id: sessionId },
-      ...(nativeCursor !== undefined
-        ? { query: { native_tests: 'builder-native-test-v1' as const } }
-        : {}),
-      ...(nativeCursor ? { headers: { 'Last-Event-ID': nativeCursor } } : {}),
-    },
+    { params: { session_id: sessionId } },
     { context: { silent: true }, signal },
   )
 

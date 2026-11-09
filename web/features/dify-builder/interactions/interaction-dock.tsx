@@ -76,6 +76,13 @@ export const DifyBuilderInteractionDock = ({
   }
 
   if (decision) {
+    if (decision.options?.length === 0)
+      return (
+        <InteractionDockShell
+          title={renderText(decision.title)}
+          description={renderText(decision.description)}
+        />
+      )
     return (
       <ChoiceInteraction
         key={choiceKey}

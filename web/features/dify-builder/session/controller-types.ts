@@ -1,16 +1,13 @@
-import type {
-  DifyBuilderAttachmentPayload,
-  DifyBuilderStreamEventResponse,
-  DifyBuilderTaskControlPayload,
-} from '@dify/contracts/api/console/dify-builder/types.gen'
+import type { DifyBuilderTaskControlPayload } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { TFunction } from 'i18next'
 import type { RefObject } from 'react'
 import type { ConversationItem, SessionView } from '../types'
 import type { DifyBuilderLifecycleControl } from './state'
 import type { TraceBuffer } from './trace-buffer'
-import type { SessionRunEvents, SessionStreamOutcome } from './types'
+import type { PendingRetest, SessionRunEvents, SessionStreamOutcome } from './types'
 import type { useDifyBuilderExecutionProgress } from './use-execution-progress'
 import type { useDifyBuilderReasoningBuffer } from './use-reasoning-buffer'
+import type { useDifyBuilderSessionStream } from './use-session-stream'
 import type { useDifyBuilderStreamingTurnBuffer } from './use-streaming-turn-buffer'
 
 export type PendingTaskControl = {
@@ -30,12 +27,7 @@ export type SessionControllerContext = {
   nativeObservationRef: RefObject<number>
   pendingActionRef: RefObject<{ signature: string; id: string } | null>
   pendingMessageRef: RefObject<{ sessionId: string; text: string; turnId: string } | null>
-  pendingRetestRef: RefObject<{
-    sessionId: string
-    version: number
-    appRevision: string
-    actionId: string
-  } | null>
+  pendingRetestRef: RefObject<PendingRetest | null>
   traceRef: RefObject<TraceBuffer>
   executionProgress: ReturnType<typeof useDifyBuilderExecutionProgress>
   reasoningBuffer: ReturnType<typeof useDifyBuilderReasoningBuffer>
@@ -58,21 +50,15 @@ export type SessionControllerContext = {
   ) => Promise<boolean>
   applySessionView: (
     view: SessionView,
-    observedAtStart?: number | 'native',
+    observedAtStart?: number | 'stream',
     reading?: AbortController,
   ) => boolean
   reconcileSession: (
     sessionId: string,
     controller: AbortController,
-    replaceConversation?: boolean,
+    refresh?: boolean,
   ) => Promise<SessionStreamOutcome | undefined>
-  consumeStream: (
-    events: AsyncIterable<DifyBuilderStreamEventResponse>,
-    controller: AbortController,
-    initialSessionId?: string,
-    observedAtStart?: number,
-    initialAttachments?: DifyBuilderAttachmentPayload[],
-  ) => Promise<SessionStreamOutcome>
+  waitForSession: ReturnType<typeof useDifyBuilderSessionStream>
   isolateClearedConversation: (reading?: AbortController) => void
   lifecycleError: (
     operation: DifyBuilderLifecycleControl['operation'],

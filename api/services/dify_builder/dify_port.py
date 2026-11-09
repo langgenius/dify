@@ -19,8 +19,9 @@ the P2 plan's Global Constraints):
   reads the whole draft graph, mutates it client-side via
   ``graph_ops.apply_set_node_config``, and writes the whole mutated graph
   back with ``graph_only=True``/``sync_agent_bindings=False``. Confirmed native
-  Agent selections use one binding owner in the same graph transaction; all
-  final Agent nodes must be explicitly selected and prepared before sync. A ``WorkflowHashNotEqualError`` (the draft
+  Agent selections use one binding owner in the same graph transaction. Every
+  final Agent node must have a confirmed or retained selection prepared before
+  sync. A ``WorkflowHashNotEqualError`` (the draft
   changed since it was read) is re-mapped to the domain ``HashMismatchError``.
 - ``run_draft`` invokes ``AppGenerateService.generate`` with
   ``invoke_from=InvokeFrom.DEBUGGER`` (runs the *draft*, not the published
@@ -225,11 +226,15 @@ def _agent_binding_stamp(binding) -> str:
     )
 
 
-def _retained_native_agent_selections(*, session: Session, actor: Actor, workflow: Workflow, graph: Graph):
-    """Retain only an unchanged same-node SQL binding, never a graph-supplied pin.
+def _retained_native_agent_selections(
+    *, session: Session, actor: Actor, workflow: Workflow, graph: Graph
+) -> tuple[Graph, dict[str, "AgentBindingSelection"], dict[str, str]]:
+    """Project saved roster bindings into a candidate with unchanged Agent jobs.
 
-    Current catalog access/publication is resolved before the writer. The binding
-    stamp is rechecked under its draft lock before the normal prepare/sync owner.
+    The editor may omit the published snapshot and job projection fields. Fill
+    those from the same-node binding and reject any conflicting explicit fields.
+    Return the projected graph, verified selections and binding stamps without
+    writing to the draft. The writer rechecks the stamps under the draft lock.
     """
     from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
     from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
@@ -250,7 +255,7 @@ def _retained_native_agent_selections(*, session: Session, actor: Actor, workflo
         if node_id in baseline and execution_data(data) == execution_data(baseline[node_id])
     }
     if not unchanged:
-        return {}, {}
+        return graph, {}, {}
     rows = session.scalars(
         select(WorkflowAgentNodeBinding).where(
             WorkflowAgentNodeBinding.tenant_id == actor.tenant_id,
@@ -261,13 +266,16 @@ def _retained_native_agent_selections(*, session: Session, actor: Actor, workflo
         )
     ).all()
     by_node = {row.node_id: row for row in rows}
+    projected_nodes = {}
     for node_id, data in unchanged.items():
         row = by_node.get(node_id)
+        graph_binding = data.get("agent_binding")
         if (
             row is None
             or row.binding_type != WorkflowAgentBindingType.ROSTER_AGENT
             or row.agent_id is None
             or row.current_snapshot_id is None
+            or not isinstance(graph_binding, Mapping)
         ):
             raise BuilderExecutionPolicyError("agent_binding_not_prepared")
         expected = native_node_data(
@@ -275,8 +283,14 @@ def _retained_native_agent_selections(*, session: Session, actor: Actor, workflo
             snapshot_id=row.current_snapshot_id,
             node_job=WorkflowNodeJobConfig.model_validate(row.node_job_config_dict),
         )
-        if any(data.get(key) != value for key, value in expected.items() if key != "title"):
+        projected = {
+            **expected,
+            **data,
+            "agent_binding": {"current_snapshot_id": row.current_snapshot_id, **graph_binding},
+        }
+        if any(projected.get(key) != value for key, value in expected.items() if key != "title"):
             raise BuilderExecutionPolicyError("agent_binding_not_prepared")
+        projected_nodes[node_id] = projected
     candidates = AgentCatalogService(session).resolve_candidates(
         tenant_id=actor.tenant_id,
         actor_id=actor.account_id,
@@ -295,7 +309,14 @@ def _retained_native_agent_selections(*, session: Session, actor: Actor, workflo
             agent_id=row.agent_id, snapshot_id=row.current_snapshot_id, capability_digest=candidate.capability_digest
         )
         stamps[node_id] = _agent_binding_stamp(row)
-    return retained, stamps
+    projected_graph = {
+        **graph,
+        "nodes": [
+            {**node, "data": projected_nodes[node["id"]]} if node.get("id") in projected_nodes else node
+            for node in graph["nodes"]
+        ],
+    }
+    return projected_graph, retained, stamps
 
 
 def _prepare_native_agent_graph(
@@ -1217,7 +1238,7 @@ class WorkflowServiceDifyPort:
                 workflow = _load_draft_workflow_or_raise(app, session=session)
                 if execution_revision(workflow) != revision:
                     raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
-                retained, retained_stamps = _retained_native_agent_selections(
+                graph, retained, retained_stamps = _retained_native_agent_selections(
                     session=session, actor=actor, workflow=workflow, graph=graph
                 )
         selections = _confirmed_agent_selections(graph, confirmed_resource_ids, retained=retained)

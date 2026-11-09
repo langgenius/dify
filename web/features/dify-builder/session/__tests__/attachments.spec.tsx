@@ -153,6 +153,7 @@ it.each([
     const { result, store } = renderSessionHook()
     const view = createSessionView({ version: 4 })
     store.set(difyBuilderSessionViewAtom, view)
+    store.set(difyBuilderActiveSessionIdAtom, view.session_id)
     api.message.mockRejectedValue(
       Object.assign(new Error('Delivery failed'), status ? { status } : {}),
     )
@@ -175,7 +176,10 @@ it.each([
 it('consumes an actual material command without the draft-save barrier and resolves unknown delivery using GET only', async () => {
   const prepare = vi.fn(async () => {})
   const { result, store } = renderSessionHook(prepare)
-  act(() => store.set(difyBuilderSessionViewAtom, createSessionView({ version: 4 })))
+  act(() => {
+    store.set(difyBuilderSessionViewAtom, createSessionView({ version: 4 }))
+    store.set(difyBuilderActiveSessionIdAtom, 'session-1')
+  })
   const attachments = [{ upload_file_id: 'upload-1' }]
   const materialView = (clientTurnId: string) =>
     createSessionView({
@@ -205,12 +209,11 @@ it('consumes an actual material command without the draft-save barrier and resol
         },
       ],
     })
-  api.message.mockImplementationOnce(async ({ body }) =>
-    (async function* () {
-      yield commandStartedEvent(createSessionView({ version: 4 }))
-      yield stateEvent(materialView(body.client_turn_id))
-    })(),
-  )
+  api.message.mockImplementationOnce(async ({ body }) => ({
+    pending: false,
+    command_id: 'material-1',
+    session: materialView(body.client_turn_id),
+  }))
   await act(async () =>
     expect(await result.current.sendMessage('', undefined, attachments)).toBe(true),
   )
