@@ -6260,11 +6260,6 @@
       "count": 2
     }
   },
-  "web/features/new-rag/upload/file-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/features/skills/client.ts": {
     "dify/require-disable-directive-description": {
       "count": 2

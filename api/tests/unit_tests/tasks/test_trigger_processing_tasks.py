@@ -31,7 +31,6 @@ from models.workflow import WorkflowRun
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from tasks.async_workflow_tasks import execute_workflow_sandbox
-from tasks.trigger_processing_tasks import dispatch_triggered_workflow
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_app, make_workflow
@@ -48,28 +47,44 @@ daemon = test_trigger_subscription_builder.daemon
 class _Billing:
     requests: list[tuple[str, dict[str, object]]] = field(default_factory=list)
     exhausted: bool = False
+    open_transactions: list[bool] = field(default_factory=list)
+    plan: str = "sandbox"
 
 
 @pytest.fixture
-def billing() -> Iterator[_Billing]:
+def billing(harness: _Harness) -> Iterator[_Billing]:
     billing = _Billing()
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
+            billing.open_transactions.append(any(session.in_transaction() for session in harness.metadata.sessions))
             self.respond(
                 {
-                    "subscription": {"plan": "sandbox", "interval": "month", "education": False},
+                    "enabled": True,
+                    "subscription": {
+                        "plan": billing.plan,
+                        "interval": "month",
+                        "education": False,
+                        "status": "active",
+                        "cancel_at_period_end": False,
+                        "paid_period_end": 0,
+                    },
                     "members": {"size": 1, "limit": 10},
                     "apps": {"size": 1, "limit": 10},
+                    "vector_space": None,
+                    "knowledge_rate_limit": {"size": 0, "limit": 10},
                     "documents_upload_quota": {"size": 0, "limit": 10},
                     "annotation_quota_limit": {"size": 0, "limit": 10},
+                    "docs_processing": "standard",
                     "can_replace_logo": False,
                     "model_load_balancing_enabled": False,
                     "knowledge_pipeline_publish_enabled": False,
+                    "next_credit_reset_date": 0,
                 }
             )
 
         def do_POST(self) -> None:
+            billing.open_transactions.append(any(session.in_transaction() for session in harness.metadata.sessions))
             payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             billing.requests.append((self.path, payload))
             if self.path == "/quota/reserve":
@@ -124,15 +139,11 @@ class _Dispatch:
                 config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
             ):
                 services = application_services()
-                return dispatch_triggered_workflow(
+                return services.workspaces.trigger_workflow_dispatch.dispatch_event(
                     user_id="webhook-actor",
                     subscription=self.subscription,
                     event_name="push",
                     request_id=self.request_id,
-                    end_users=services.app_scoped_end_users.commands,
-                    events=services.workspaces.trigger_events,
-                    bindings=services.workspaces.trigger_binding_queries,
-                    trigger_status=services.apps.trigger_status,
                 )
 
         return Context().run(invoke)
@@ -302,6 +313,8 @@ def test_dispatch_commits_quota_and_publishes_actual_workflow_task(
     assert sent.headers["X-Plugin-ID"] == "langgenius/github"
     assert sent.headers["X-Plugin-Unique-Identifier"] == "langgenius/github:1.0.0@package-hash"
     assert all(not session.in_transaction() for session in harness.metadata.sessions)
+    assert billing.open_transactions
+    assert not any(billing.open_transactions)
 
 
 @pytest.mark.parametrize("outcome", ["cancelled", "invoke-error"])
@@ -339,3 +352,5 @@ def test_dispatch_refunds_quota_without_publishing_for_rejected_event(
             assert log.status == WorkflowTriggerStatus.FAILED
             assert "Repository no longer exists" in (log.error or "")
             assert run.error == log.error
+    assert billing.open_transactions
+    assert not any(billing.open_transactions)
