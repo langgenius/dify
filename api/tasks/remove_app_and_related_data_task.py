@@ -714,7 +714,11 @@ def _delete_draft_variable_offload_data(file_ids: list[str]) -> int:
                     WHERE wdvf.id IN :file_ids \
                     """
         with session_factory.create_session() as session:
-            result = session.execute(sa.text(query_sql), {"file_ids": tuple(file_ids)})
+            # expanding bindparams: one bind per id, so the statement runs on every dialect (incl. SQLite tests)
+            result = session.execute(
+                sa.text(query_sql).bindparams(sa.bindparam("file_ids", expanding=True)),
+                {"file_ids": file_ids},
+            )
             file_records = [(row[0], row[1], row[2]) for row in result]
 
         # Delete from object storage and collect upload file IDs
@@ -737,7 +741,10 @@ def _delete_draft_variable_offload_data(file_ids: list[str]) -> int:
                                           FROM upload_files
                                           WHERE id IN :upload_file_ids \
                                           """
-                session.execute(sa.text(delete_upload_files_sql), {"upload_file_ids": tuple(upload_file_ids)})
+                session.execute(
+                    sa.text(delete_upload_files_sql).bindparams(sa.bindparam("upload_file_ids", expanding=True)),
+                    {"upload_file_ids": upload_file_ids},
+                )
 
             # Delete WorkflowDraftVariableFile records
             delete_variable_files_sql = """
@@ -745,7 +752,10 @@ def _delete_draft_variable_offload_data(file_ids: list[str]) -> int:
                                         FROM workflow_draft_variable_files
                                         WHERE id IN :file_ids \
                                         """
-            session.execute(sa.text(delete_variable_files_sql), {"file_ids": tuple(file_ids)})
+            session.execute(
+                sa.text(delete_variable_files_sql).bindparams(sa.bindparam("file_ids", expanding=True)),
+                {"file_ids": file_ids},
+            )
 
     except Exception:
         logging.exception("Error deleting draft variable offload data:")

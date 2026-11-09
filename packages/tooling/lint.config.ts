@@ -70,6 +70,10 @@ const webRestrictedImports = [
         importNames: ['useLocalStorageState'],
         message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
       },
+      {
+        name: 'next-themes',
+        message: 'Use the @/features/theme module instead of next-themes.',
+      },
     ],
     patterns: [
       {
@@ -1805,6 +1809,19 @@ export const lintConfig = {
           {
             ...serviceRestrictedImports[1],
             patterns: [...serviceRestrictedImports[1].patterns, rawHttpImports],
+          },
+        ],
+      },
+    },
+    {
+      files: ['web/features/theme/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            ...webRestrictedImports[1],
+            paths: webRestrictedImports[1].paths.filter((path) => path.name !== 'next-themes'),
+            patterns: [...webRestrictedImports[1].patterns, rawHttpImports],
           },
         ],
       },

@@ -70,6 +70,7 @@ from core.workflow.llm_environment_variable import (
     LLMEnvironmentVariable,
 )
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
@@ -1353,7 +1354,7 @@ class PublishedWorkflowApi(Resource):
         """
 
         workflow_service = WorkflowService()
-        with sessionmaker(db.engine).begin() as session:
+        with session_factory.get_session_maker().begin() as session:
             try:
                 workflow = workflow_service.publish_workflow(
                     session=session,
@@ -1780,6 +1781,7 @@ class DraftWorkflowTriggerRunApi(Resource):
             user_id=current_user.id,
             app_id=app_model.id,
             node_id=node_id,
+            invoke_plugin_event=application_services().workspaces.trigger_events.invoke_debug,
         )
         event: TriggerDebugEvent | None = None
         try:
@@ -1861,6 +1863,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
                     user_id=current_user.id,
                     app_id=app_model.id,
                     node_id=node_id,
+                    invoke_plugin_event=application_services().workspaces.trigger_events.invoke_debug,
                 )
                 event = poller.poll()
             except PluginInvokeError as e:
@@ -1933,6 +1936,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
                 app_model=app_model,
                 user_id=current_user.id,
                 node_ids=node_ids,
+                invoke_plugin_event=application_services().workspaces.trigger_events.invoke_debug,
             )
         except PluginInvokeError as e:
             return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
