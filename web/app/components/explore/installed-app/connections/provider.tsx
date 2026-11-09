@@ -4,6 +4,7 @@ import type {
   InstalledAppParametersResponse,
   InstalledConnectionPreflightPayload,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { RefetchOptions } from '@tanstack/react-query'
 import type { PropsWithChildren } from 'react'
 import {
   skipToken,
@@ -237,13 +238,15 @@ function useConnectionData({
         body: { ...body, connections: { ...selections, [nodeId]: credentialId } },
       })
     },
-    retry: () => {
+    retry: (options?: RefetchOptions) => {
       save.reset()
       reloadParameters()
       if (enabled) {
-        void configuration.refetch()
-        void list.refetch()
-        void check.refetch()
+        return Promise.all([
+          configuration.refetch(options),
+          list.refetch(options),
+          check.refetch(options),
+        ])
       }
     },
   }
