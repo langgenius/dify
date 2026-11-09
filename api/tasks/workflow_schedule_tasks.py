@@ -10,12 +10,12 @@ from core.workflow.nodes.trigger_schedule.exc import (
 )
 from enums import QuotaType
 from extensions.ext_application_services import application_services
+from models.enums import CreatorUserRole
 from models.trigger import WorkflowSchedulePlan
-from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService, unlimited
 from services.trigger.schedule_service import ScheduleService
-from services.workflow.entities import ScheduleTriggerData
+from services.workflow.entities import ScheduleTriggerData, TriggerActor
 
 logger = logging.getLogger(__name__)
 
@@ -52,17 +52,15 @@ def run_schedule_trigger(schedule_id: str) -> None:
         return
 
     try:
-        with session_factory.create_session() as session:
-            response = AsyncWorkflowService.trigger_workflow_async(
-                session=session,
-                user=tenant_owner,
-                trigger_data=ScheduleTriggerData(
-                    app_id=schedule.app_id,
-                    root_node_id=schedule.node_id,
-                    inputs={},
-                    tenant_id=schedule.tenant_id,
-                ),
-            )
+        response = application_services().workspaces.workflow_dispatch.trigger_workflow_async(
+            actor=TriggerActor(id=tenant_owner.id, role=CreatorUserRole.ACCOUNT),
+            trigger_data=ScheduleTriggerData(
+                app_id=schedule.app_id,
+                root_node_id=schedule.node_id,
+                inputs={},
+                tenant_id=schedule.tenant_id,
+            ),
+        )
         quota_charge.commit()
         logger.info("Schedule %s triggered workflow: %s", schedule_id, response.workflow_trigger_log_id)
     except Exception as e:
