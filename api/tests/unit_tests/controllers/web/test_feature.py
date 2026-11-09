@@ -39,11 +39,14 @@ def test_public_system_features_exposes_web_account_login_url(
 
     assert response.status_code == console_response.status_code == 200
     payload = response.get_json()
+    console_payload = console_response.get_json()
+    console_payload.pop("webapp_url")
     assert payload == {
-        **console_response.get_json(),
+        **console_payload,
         "account_login_url": f"{console_url.rstrip('/')}/signin" if login_enabled else None,
     }
     assert "account_login_url" not in console_response.get_json()
+    assert "webapp_url" not in payload
     assert "Set-Cookie" not in response.headers
     assert client.get("/api/account/profile").status_code == 401
 

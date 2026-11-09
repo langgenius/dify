@@ -18,8 +18,7 @@ from typing import Any, Protocol, Self
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, computed_field, field_validator, model_validator
 
 from clients.plugin.auth_entities import CredentialCheckResult
-from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, NodeConnectionStatus
-from core.entities.provider_entities import ProviderConfig
+from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.revision import ConnectionRevision
 
@@ -161,34 +160,6 @@ class ConnectionCredentialChecks(Protocol):
     ) -> ConnectionCheckOutcome: ...
 
 
-class NodeConnectionState(BaseModel):
-    """Effective status for one node; only connected satisfies its connection gate.
-
-    The check result remains separate. Transient/unperformed checks on an otherwise
-    usable credential raise ConnectionCheckUnavailableError rather than fabricating
-    invalidity or claiming readiness. Scope expansion is not part of this release.
-    """
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    workflow_id: str
-    node_id: str
-    # None when no visible Connection is selected, including deleted/unowned rows.
-    connection_id: str | None
-    status: NodeConnectionStatus
-    # None when no remote check was needed to establish a blocking state.
-    check: CredentialCheckResult | None
-
-    @model_validator(mode="after")
-    def validate_selection_state(self) -> Self:
-        if self.status == NodeConnectionStatus.DISCONNECTED:
-            if self.connection_id is not None or self.check is not None:
-                raise ValueError("Disconnected nodes cannot expose Connection or check metadata.")
-        elif self.connection_id is None:
-            raise ValueError("A connected or blocked Connection state requires a selected Connection.")
-        return self
-
-
 class ConnectionOAuthStart(BaseModel):
     """The controller also sets the existing OAuth context cookie."""
 
@@ -207,82 +178,5 @@ class ConnectionTargetResolver(Protocol):
         accept several credential types on a node. Respect explicit reuse rules
         without merging independent nodes by Provider. Never accept caller-owned
         Provider capabilities, OAuth client parameters, or a draft graph here.
-        """
-        ...
-
-
-class ConnectionManagement(Protocol):
-    """Owner-scoped management with deployment-level personal Connection admission.
-
-    Web App entry admission is enforced upstream.
-
-    Missing and foreign IDs both raise ConnectionNotFoundError. Do not require
-    workspace membership or an existing default/Session selection to manage an
-    owned Connection. Status/configuration changes must not prevent its deletion
-    or repair. Database/ownership state must be revalidated after async boundaries.
-    """
-
-    def list_connections(self, context: WebConnectionContext, query: ListConnectionsInput) -> ConnectionPage: ...
-
-    def get_connection(self, context: WebConnectionContext, connection_id: str) -> ConnectionSummary: ...
-
-    def get_connection_revision(self, context: WebConnectionContext, connection_id: str) -> ConnectionRevisionView: ...
-
-    def get_api_key_schema(
-        self, context: WebConnectionContext, reference: ConnectionTargetInput
-    ) -> tuple[ProviderConfig, ...]: ...
-
-    def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
-        """Validate schema and target, check credentials, encrypt, then persist.
-
-        Definite invalidity rejects creation without storing credentials; transient
-        checks raise ConnectionCheckUnavailableError. Unsupported checking is not
-        invalidity. No remote I/O in a write transaction. Creation never selects
-        the Connection for a Session or changes App defaults.
-        """
-        ...
-
-    def update_connection(
-        self, context: WebConnectionContext, connection_id: str, command: UpdateConnectionInput
-    ) -> ConnectionSummary:
-        """Replace API-key credentials only after successful validation.
-
-        Name-only edits work for either type. Preserve old values on failure. A
-        conditional write includes owner/tenant/revision and atomically increments
-        revision; a lost race raises ConnectionConflictError, never a blind retry.
-        """
-        ...
-
-    def delete_connection(self, context: WebConnectionContext, connection_id: str) -> None:
-        """Remove the resource and live selections; retain historical Run references.
-
-        Best-effort OAuth revocation uses only the artifact recorded for the grant.
-        Remote failures never undo local Disconnect.
-        """
-        ...
-
-    def check_connection(
-        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
-    ) -> ConnectionCheckView:
-        """Refresh expired OAuth server-side before checking when possible.
-
-        Unsupported and temporarily unavailable checks never persist invalidity.
-        An expired grant with unsupported refresh is invalid; transient refresh
-        failures preserve its state. Checking, including automatic token refresh,
-        does not extend last_active_at or select a replacement Connection.
-        """
-        ...
-
-    def start_oauth(self, context: WebConnectionContext, command: StartConnectionOAuthInput) -> ConnectionOAuthStart:
-        """Use the resolved workspace/platform Client and existing short-lived context."""
-        ...
-
-    def reauthorize_oauth(
-        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
-    ) -> ConnectionOAuthStart:
-        """Keep the Connection ID; pin owner/revision/Provider/Client in server context.
-
-        A callback revalidates these references before writing. Failed authorization
-        cannot become a new Connection or overwrite existing working credentials.
         """
         ...

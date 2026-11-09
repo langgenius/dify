@@ -3,8 +3,6 @@
 from collections.abc import Mapping
 from typing import Any, Protocol
 
-from pydantic import ValidationError
-
 from constants.end_user_connections import ConnectionCredentialType, OAuthClientSource
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.provider_ids import ToolProviderID
@@ -16,7 +14,6 @@ from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionReauthorizationRequiredError,
 )
-from services.end_user_connections.preflight import ConnectionRequirement
 from services.end_user_connections.revision import ConnectionRevisionSnapshots
 from services.workflow.tool_credentials import (
     ToolCredentialConfig,
@@ -53,7 +50,14 @@ class PublishedPreflightRequirements:
         *,
         oauth_providers: frozenset[str],
         connection_revision: str,
-    ) -> tuple[str, str, tuple[ConnectionRequirement, ...]]:
+    ) -> tuple[str, str, tuple[ToolConnectionTarget, ...]]:
+        """Resolve stored graph targets under the authenticated App and submitted revision.
+
+        Return the Workflow, accepted revision and independent authorization targets.
+        Revision validation owns purpose and reuse-group changes; presentation metadata
+        is not part of credential readiness. Reject invalid graphs and propagate stale
+        contracts without modifying selections or credentials.
+        """
         workflow_id, graph = self._workflows.preflight_graph(context, workflow_id, conversation_id)
         revision = self._revisions.require(context.tenant_id, context.app_id, graph, connection_revision)
         try:
@@ -70,7 +74,7 @@ class PublishedPreflightRequirements:
             configs = {node_id: ToolCredentialConfig.model_validate(data) for node_id, data in nodes.items()}
             providers: dict[str, PluginToolProviderController] = {}
             clients: dict[tuple[str, OAuthClientSource], ConnectionOAuthClient | None] = {}
-            requirements: list[ConnectionRequirement] = []
+            targets: list[ToolConnectionTarget] = []
             for requirement in get_tool_connection_requirements(graph):
                 node_id = requirement.node_id
                 config = configs[node_id]
@@ -106,24 +110,19 @@ class PublishedPreflightRequirements:
                         ).snapshot
                     except ConnectionReauthorizationRequiredError:
                         clients[client_key] = None
-                requirements.append(
-                    ConnectionRequirement(
-                        target=ToolConnectionTarget(
-                            tenant_id=context.tenant_id,
-                            app_id=context.app_id,
-                            workflow_id=workflow_id,
-                            node_id=node_id,
-                            provider=canonical,
-                            allowed_credential_types=allowed,
-                            provider_credential_types=supported,
-                            oauth_client_source=source,
-                            oauth_client=clients.get(client_key) if client_key is not None else None,
-                        ),
-                        title=requirement.title,
-                        purpose=requirement.purpose,
-                        node_ids=requirement.node_ids,
+                targets.append(
+                    ToolConnectionTarget(
+                        tenant_id=context.tenant_id,
+                        app_id=context.app_id,
+                        workflow_id=workflow_id,
+                        node_id=node_id,
+                        provider=canonical,
+                        allowed_credential_types=allowed,
+                        provider_credential_types=supported,
+                        oauth_client_source=source,
+                        oauth_client=clients.get(client_key) if client_key is not None else None,
                     )
                 )
-            return workflow_id, revision, tuple(requirements)
-        except (KeyError, TypeError, ValueError, ValidationError):
+            return workflow_id, revision, tuple(targets)
+        except (KeyError, TypeError, ValueError):
             raise ConnectionConfigurationError() from None
