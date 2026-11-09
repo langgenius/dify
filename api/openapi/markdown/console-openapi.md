@@ -10643,6 +10643,8 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 50 |
+| parentId | query |  | No | string |
+| view | query |  | No | string |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |
 
@@ -29817,6 +29819,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
@@ -29829,6 +29832,8 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
 | limit | integer, <br>**Default:** 50 |  | No |
+| parentId | string |  | No |
+| view | string |  | No |
 
 #### KnowledgeFSSourcePagesResponse
 

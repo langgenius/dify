@@ -193,6 +193,44 @@ const notionDatasourcePluginWithParameters: DataSourceItem = {
   },
 }
 
+const githubProvider: KnowledgeFsSourceProviderResponse = {
+  ...notionProvider,
+  display_name: 'GitHub Repository',
+  id: 'github-provider',
+}
+
+const githubCredential: DatasourceCredentialResponse = {
+  ...notionCredential,
+  id: 'github-credential-1',
+  name: 'GitHub token',
+}
+
+const githubDatasourcePlugin: DataSourceItem = {
+  ...notionDatasourcePlugin,
+  declaration: {
+    ...notionDatasourcePlugin.declaration,
+    datasources: [
+      {
+        ...notionDatasourcePlugin.declaration.datasources![0]!,
+        identity: {
+          ...notionDatasourcePlugin.declaration.datasources![0]!.identity,
+          label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub 仓库' },
+          name: 'github',
+          provider: 'github_datasource',
+        },
+      },
+    ],
+    identity: {
+      ...notionDatasourcePlugin.declaration.identity,
+      label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub 仓库' },
+      name: 'github_datasource',
+    },
+  },
+  plugin_id: 'langgenius/github_datasource',
+  plugin_unique_identifier: 'langgenius/github_datasource:0.4.12@local',
+  provider: 'github_datasource',
+}
+
 const s3Provider: KnowledgeFsSourceProviderResponse = {
   auth_kinds: ['endpoint'],
   available: true,
@@ -304,6 +342,17 @@ function notionDatasourceAuth(
     plugin_id: 'langgenius/notion_datasource',
     plugin_unique_identifier: 'langgenius/notion_datasource:1.0.0@local',
     provider: 'notion',
+  }
+}
+
+function githubDatasourceAuth(): DatasourceProviderAuthResponse {
+  return {
+    ...notionDatasourceAuth([githubCredential]),
+    label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub 仓库' },
+    name: 'github_datasource',
+    plugin_id: 'langgenius/github_datasource',
+    plugin_unique_identifier: 'langgenius/github_datasource:0.4.12@local',
+    provider: 'github_datasource',
   }
 }
 
@@ -851,6 +900,131 @@ describe('ConnectedSourceWorkflow', () => {
 
     view.unmount()
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
+  })
+
+  it('loads GitHub tree branches on expansion and imports only explicitly selected pages', async () => {
+    const user = userEvent.setup()
+    const connection = connectionResponse({
+      configuration: {
+        credentialId: githubCredential.id,
+        datasource: 'github',
+        pluginId: 'langgenius/github_datasource',
+        provider: 'github_datasource',
+        providerKind: 'online-document',
+      },
+      name: 'GitHub token',
+      provider_id: githubProvider.id,
+    })
+    clientMock.listProviders.mockResolvedValue({ data: [githubProvider] })
+    clientMock.listDatasourcePlugins.mockResolvedValue([githubDatasourcePlugin])
+    clientMock.listDatasourceAuth.mockResolvedValue({ result: [githubDatasourceAuth()] })
+    clientMock.listConnections.mockResolvedValue({ data: [connection], next_cursor: null })
+    clientMock.getPages.mockImplementation(
+      ({ query }: { query: { cursor?: string; parentId?: string } }) => {
+        const pages = query.parentId
+          ? query.cursor
+            ? [
+                {
+                  has_children: false,
+                  page_id: 'issue:FFXN/dify:1',
+                  page_name: 'Issue #1',
+                  parent_id: 'repo:FFXN/dify',
+                  type: 'issue',
+                },
+              ]
+            : [
+                {
+                  has_children: false,
+                  page_id: 'file:FFXN/dify:README.md',
+                  page_name: 'README',
+                  parent_id: 'repo:FFXN/dify',
+                  type: 'file',
+                },
+              ]
+          : query.cursor
+            ? [
+                {
+                  has_children: true,
+                  page_id: 'repo:FFXN/checkin',
+                  page_name: 'checkin',
+                  parent_id: null,
+                  type: 'repository',
+                },
+              ]
+            : [
+                {
+                  has_children: true,
+                  page_id: 'repo:FFXN/dify',
+                  page_name: 'dify',
+                  parent_id: null,
+                  type: 'repository',
+                },
+              ]
+        return Promise.resolve({
+          next_cursor: !query.cursor ? (query.parentId ? 'branch-next' : 'root-next') : null,
+          workspaces: [
+            {
+              pages,
+              total: pages.length,
+              workspace_id: 'FFXN',
+              workspace_name: "FFXN's GitHub",
+            },
+          ],
+        })
+      },
+    )
+
+    const view = await renderSetup({
+      ...defaultDraft,
+      provider: 'GitHub Repository',
+      sourceName: 'GitHub docs',
+    })
+    const repository = await screen.findByRole('checkbox', { name: 'dify' })
+    expect(clientMock.getPages).toHaveBeenCalledExactlyOnceWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 10, view: 'tree' },
+    })
+    expect(screen.queryByRole('checkbox', { name: 'README' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    expect(await screen.findByRole('checkbox', { name: 'checkin' })).not.toBeChecked()
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { cursor: 'root-next', limit: 10, view: 'tree' },
+    })
+
+    await user.click(repository)
+    await user.click(screen.getByRole('button', { name: 'dify' }))
+    const readme = await screen.findByRole('checkbox', { name: 'README' })
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 200, parentId: 'repo:FFXN/dify', view: 'tree' },
+    })
+    expect(readme).not.toBeChecked()
+    expect(repository).toBePartiallyChecked()
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    const issue = await screen.findByRole('checkbox', { name: 'Issue #1' })
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { cursor: 'branch-next', limit: 200, parentId: 'repo:FFXN/dify', view: 'tree' },
+    })
+    expect(issue).not.toBeChecked()
+
+    await user.click(repository)
+    expect(readme).toBeChecked()
+    expect(issue).toBeChecked()
+    await user.click(readme)
+    await user.click(issue)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+    await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
+    expect(clientMock.createWorkflowImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          items: [expect.objectContaining({ pageId: 'repo:FFXN/dify' })],
+        }),
+      }),
+    )
   })
 
   it('stops the import and cleans up the renamed source when canceled while the rename is pending', async () => {

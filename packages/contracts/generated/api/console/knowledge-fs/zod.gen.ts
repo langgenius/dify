@@ -3322,6 +3322,7 @@ export const zKnowledgeFsSourceFilesResponse = z.object({
  * KnowledgeFSSourcePageResponse
  */
 export const zKnowledgeFsSourcePageResponse = z.object({
+  has_children: z.boolean().nullish(),
   last_edited_time: z.string().nullish(),
   page_id: z.string(),
   page_name: z.string(),
@@ -4918,6 +4919,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesPath = z
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesQuery = z.object({
   cursor: z.string().min(1).max(4096).optional(),
   limit: z.int().gte(1).lte(200).optional().default(50),
+  parentId: z.string().min(1).max(4096).optional(),
+  view: z.string().optional(),
 })
 
 /**
