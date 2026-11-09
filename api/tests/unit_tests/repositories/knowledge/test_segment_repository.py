@@ -137,21 +137,24 @@ def test_list_segments_query_count_is_bounded_for_hierarchical_documents(
         document.dataset_process_rule_id = rule.id
         session.add_all([_dataset("dataset-1", "workspace-1"), document, rule])
 
+        uploads = [_upload("workspace-1") for _ in range(20)]
+        session.add_all(uploads)
+        session.flush()
+
         rows = [
             DocumentSegment(
                 tenant_id="workspace-1",
                 dataset_id="dataset-1",
                 document_id="document-1",
                 position=index,
-                content=f"segment {index}",
+                content=f"segment {index} ![](/files/{upload.id}/image-preview)",
                 word_count=1,
                 tokens=1,
                 created_by="account-1",
             )
-            for index in range(1, 21)
+            for index, upload in enumerate(uploads, start=1)
         ]
-        uploads = [_upload("workspace-1") for _ in rows]
-        session.add_all([*rows, *uploads])
+        session.add_all(rows)
         session.flush()
 
         for row, upload in zip(rows, uploads, strict=True):
