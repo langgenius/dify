@@ -173,7 +173,7 @@ const ConditionOperatorSelect = ({
     >
       <SelectTrigger
         aria-label={tEvaluation(($) => $['conditions.operator'])}
-        className="h-8 w-auto min-w-[88px] gap-1 rounded-md bg-transparent px-1.5 py-0 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt"
+        className="h-8 w-auto min-w-14 shrink-0 gap-1 rounded-md bg-transparent px-1.5 py-0 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt"
       >
         <span className="truncate system-xs-medium text-text-secondary">
           {getComparisonOperatorLabel(operator, t)}
@@ -197,7 +197,7 @@ const ConditionValueInput = ({ metric, condition, onChange }: ConditionValueInpu
 
   if (metric.valueType === 'boolean') {
     return (
-      <div className="px-2 py-1.5">
+      <div className="py-1">
         <Select
           value={condition.value === null ? '' : String(condition.value)}
           onValueChange={(nextValue) => onChange(nextValue === 'true')}
@@ -226,7 +226,7 @@ const ConditionValueInput = ({ metric, condition, onChange }: ConditionValueInpu
       : (condition.value ?? '')
 
   return (
-    <div className="px-2 py-1.5">
+    <div className="py-1">
       <Input
         type={metric.valueType === 'number' && !isMultiValue ? 'number' : 'text'}
         value={inputValue}
@@ -337,7 +337,7 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
                         }
                       />
                     </div>
-                    <div className="h-3 w-px bg-divider-regular" />
+                    <div className="h-3 w-px shrink-0 bg-divider-regular" />
                     <ConditionOperatorSelect
                       operator={condition.comparisonOperator}
                       operators={allowedOperators}
@@ -345,18 +345,31 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
                         updateConditionOperator(resourceType, resourceId, condition.id, value)
                       }
                     />
+                    {/* Keep the value on the same line so a condition reads as one statement. */}
+                    {showValue && (
+                      <>
+                        <div className="h-3 w-px shrink-0 bg-divider-regular" />
+                        <div
+                          className={cn(
+                            'shrink-0',
+                            metric?.valueType === 'number' &&
+                              condition.comparisonOperator !== 'in' &&
+                              condition.comparisonOperator !== 'not in'
+                              ? 'w-32'
+                              : 'w-40',
+                          )}
+                        >
+                          <ConditionValueInput
+                            metric={metric}
+                            condition={condition}
+                            onChange={(value) =>
+                              updateConditionValue(resourceType, resourceId, condition.id, value)
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
-                  {showValue && (
-                    <div className="border-t border-divider-subtle">
-                      <ConditionValueInput
-                        metric={metric}
-                        condition={condition}
-                        onChange={(value) =>
-                          updateConditionValue(resourceType, resourceId, condition.id, value)
-                        }
-                      />
-                    </div>
-                  )}
                   {errorMessage && (
                     <p
                       id={errorId}
