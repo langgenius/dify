@@ -28,7 +28,9 @@ class SMTPClient:
         failures propagate; cleanup never replaces the primary outcome.
         """
         smtp: smtplib.SMTP | None = None
-        local_host = dify_config.SMTP_LOCAL_HOSTNAME
+        # A blank value must fall back to smtplib's socket.getfqdn() default;
+        # SMTP(local_hostname="") would send a bare "ehlo" with no hostname.
+        local_host = dify_config.SMTP_LOCAL_HOSTNAME or None
         try:
             if self.use_tls and not self.opportunistic_tls:
                 # SMTP with SSL (implicit TLS)

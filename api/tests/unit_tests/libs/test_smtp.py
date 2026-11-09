@@ -321,7 +321,7 @@ def _relay_client(relay: _SMTPRelay, *, username: str = "", password: str = "") 
 
 
 @pytest.mark.parametrize("mode", ["plain", "starttls", "ssl"])
-@pytest.mark.parametrize("hostname", [None, "dify.test.invalid"])
+@pytest.mark.parametrize("hostname", [None, "", "dify.test.invalid"])
 def test_real_smtp_preserves_local_hostname(
     mode: str, hostname: str | None, smtp_tls_context: ssl.SSLContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:
