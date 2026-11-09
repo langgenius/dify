@@ -361,7 +361,7 @@ def test_bound_guard_uses_configured_nonstream_and_stream_segment_sizes(
 
     config_overrides(
         MODERATION_NON_STREAM_SEGMENT_SIZE=5,
-        MODERATION_STREAM_SEGMENT_SIZE=4,
+        MODERATION_BUFFER_SIZE=4,
     )
     guard = build_llm_moderation_guard(
         AppRequestContext(tenant_id="tenant-1", app_id=""),

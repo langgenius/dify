@@ -1173,18 +1173,13 @@ class ModerationConfig(BaseSettings):
     """
 
     MODERATION_BUFFER_SIZE: PositiveInt = Field(
-        description="Size of the buffer for content moderation processing",
+        description="Characters buffered before streaming moderation checks",
         default=300,
     )
 
     MODERATION_NON_STREAM_SEGMENT_SIZE: PositiveInt = Field(
         description="Maximum characters checked per moderation request for input or non-streaming output",
         default=2000,
-    )
-
-    MODERATION_STREAM_SEGMENT_SIZE: PositiveInt = Field(
-        description="Characters buffered before checking and delivering a streaming output segment",
-        default=300,
     )
 
 

@@ -118,5 +118,5 @@ def build_llm_moderation_guard(
         check_input=inputs["enabled"],
         check_output=outputs["enabled"],
         non_stream_segment_size=dify_config.MODERATION_NON_STREAM_SEGMENT_SIZE,
-        stream_segment_size=dify_config.MODERATION_STREAM_SEGMENT_SIZE,
+        stream_segment_size=dify_config.MODERATION_BUFFER_SIZE,
     )

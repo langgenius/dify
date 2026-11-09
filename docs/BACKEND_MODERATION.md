@@ -135,7 +135,7 @@ infrastructure, not moderated business entry points.
   `MODERATION_NON_STREAM_SEGMENT_SIZE` characters. Every segment must pass before
   the original result is returned.
 - Streaming output is buffered until it reaches
-  `MODERATION_STREAM_SEGMENT_SIZE` characters, then checked before its original
+  `MODERATION_BUFFER_SIZE` characters, then checked before its original
   chunks are released. The final partial segment is also checked before release.
   Provider chunks are kept intact, so a segment can exceed the configured threshold.
   A later rejection stops the stream and preserves earlier delivered segments;
@@ -144,7 +144,7 @@ infrastructure, not moderated business entry points.
   without carrying text across segment boundaries or rechecking the full document
   at completion. Content requiring cross-segment context may not be detected.
   Defaults are 2000 characters for input and non-stream output, and a 300-character
-  buffering threshold for streaming output.
+  buffering threshold for streaming output in both app-level and model-level moderation.
 - Consumed model usage is settled before output checking, including rejected
   completions. A provider or moderation error is not an approval or a model retry.
 - Structured output automatically uses the policy of its model instance. Workflow
