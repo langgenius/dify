@@ -177,6 +177,8 @@ async function setup(
 }
 
 beforeEach(() => {
+  // Creation dialogs mark their history entry; start each test from a clean one.
+  window.history.replaceState(null, '', '/')
   api.apps.mockReset().mockResolvedValue(page())
   api.create
     .mockReset()
@@ -221,10 +223,13 @@ it('shows creation guidance only for an unfiltered empty workspace with creation
 
 it('does not offer creation to a user without workspace creation permission', async () => {
   api.apps.mockResolvedValue(page([]))
-  await setup('', { workspacePermissionKeys: [] })
+  await setup('?create=blank&mode=workflow', { workspacePermissionKeys: [] })
   expect(emptyStatus()).toHaveTextContent('app.filterEmpty.noApps')
   expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('dialog', { name: 'app.newApp.startFromBlank' }),
+  ).not.toBeInTheDocument()
 })
 
 it.each(['CLOUD', 'COMMUNITY'] as const)(
@@ -481,16 +486,14 @@ it('changes sorting without losing filters and resets catalog scroll', async () 
   )
 })
 
-it.each([
-  ['app.newApp.menu.startFromTemplate', 'app.newApp.startFromTemplate'],
-  ['app.importApp', 'app.importApp'],
-])('opens the real %s creation dialog from the menu', async (label, title) => {
-  const { user } = await setup()
+it('opens and closes the real import dialog from the menu without a URL', async () => {
+  const { user, onUrlUpdate } = await setup()
   await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
-  await user.click(await screen.findByRole('menuitem', { name: new RegExp(label) }))
-  const dialog = await screen.findByRole('dialog', { name: title })
-  await user.click(within(dialog).getByRole('button', { name: /^(Close|common.operation.close)$/ }))
+  await user.click(await screen.findByRole('menuitem', { name: /app.importApp/ }))
+  const dialog = await screen.findByRole('dialog', { name: 'app.importApp' })
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(onUrlUpdate).not.toHaveBeenCalled()
 })
 
 it('creates the selected app type directly from the first empty state', async () => {

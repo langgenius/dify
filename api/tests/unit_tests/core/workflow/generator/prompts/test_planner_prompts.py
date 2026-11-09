@@ -28,17 +28,17 @@ from services.workflow_runtime.node_factory import validate_node_config
 
 
 class TestPlannerSystemPrompt:
-    def test_documents_the_mode_output_field(self):
+    def test_documents_the_mode_output_field(self) -> None:
         """Auto-mode resolution rides on the planner echoing its mode choice."""
         assert '"mode": "workflow | advanced-chat"' in PLANNER_SYSTEM_PROMPT
         assert "When the ``# Mode`` section says auto, YOU decide" in PLANNER_SYSTEM_PROMPT
 
-    def test_prioritizes_installed_tools_and_requires_structured_selection(self):
+    def test_prioritizes_installed_tools_and_requires_structured_selection(self) -> None:
         assert "INSTALLED-TOOL-FIRST" in PLANNER_SYSTEM_PROMPT
         assert 'you MUST use a "tool" node' in PLANNER_SYSTEM_PROMPT
         assert '"tool": {"provider_id": "<provider>", "tool_name": "<tool>"}' in PLANNER_SYSTEM_PROMPT
 
-    def test_declares_each_producers_output_names(self):
+    def test_declares_each_producers_output_names(self) -> None:
         """B1 root cause: node configs are generated in isolated parallel calls
         that share the plan but not the producers' chosen output names, so a
         consumer references ``node3.deck`` against a code node that declared
@@ -58,7 +58,7 @@ class TestPlannerSystemPrompt:
             assert producer in rule
         assert "ONLY the names declared here" in rule
 
-    def test_the_declaration_is_bounded(self):
+    def test_the_declaration_is_bounded(self) -> None:
         """``node_outputs`` is an unbounded map on the stage with the known
         live truncation failure (ESQ1-300: planner output-budget exhaustion,
         masked by ``json_repair``). The ceiling must not move before the stage
@@ -72,11 +72,11 @@ class TestPlannerSystemPrompt:
 
 
 class TestFormatIdealOutputSection:
-    def test_returns_empty_string_for_blank_input(self):
+    def test_returns_empty_string_for_blank_input(self) -> None:
         assert format_ideal_output_section("") == ""
         assert format_ideal_output_section("   \n\t  ") == ""
 
-    def test_wraps_content_in_a_labelled_section(self):
+    def test_wraps_content_in_a_labelled_section(self) -> None:
         out = format_ideal_output_section("A short summary.")
 
         assert out.startswith("# Ideal output")
@@ -85,21 +85,21 @@ class TestFormatIdealOutputSection:
 
 
 class TestToolCatalogueSections:
-    def test_planner_returns_empty_when_catalogue_is_blank(self):
+    def test_planner_returns_empty_when_catalogue_is_blank(self) -> None:
         assert format_planner_tool_catalogue_section("") == ""
         assert format_planner_tool_catalogue_section("   ") == ""
 
-    def test_planner_includes_catalogue(self):
+    def test_planner_includes_catalogue(self) -> None:
         out = format_planner_tool_catalogue_section("- google/search — Search.")
 
         assert "# Relevant installed tools" in out
         assert "dynamically selected" in out.lower()
         assert "- google/search — Search." in out
 
-    def test_node_builder_returns_empty_when_catalogue_is_blank(self):
+    def test_node_builder_returns_empty_when_catalogue_is_blank(self) -> None:
         assert format_node_tool_catalogue_section("") == ""
 
-    def test_node_builder_requires_exact_provider_and_tool_ids(self):
+    def test_node_builder_requires_exact_provider_and_tool_ids(self) -> None:
         out = format_node_tool_catalogue_section("- google/search — Search.")
 
         assert "exact" in out.lower()
@@ -109,7 +109,7 @@ class TestToolCatalogueSections:
 
 
 class TestNodeBuilderPrompt:
-    def test_only_includes_target_node_schema_and_compact_output_contract(self):
+    def test_only_includes_target_node_schema_and_compact_output_contract(self) -> None:
         prompt = get_node_builder_system_prompt("llm")
 
         assert '"config"' in prompt
@@ -118,7 +118,7 @@ class TestNodeBuilderPrompt:
         assert '"viewport":' not in prompt
         assert '"positionAbsolute":' not in prompt
 
-    def test_every_builder_learns_how_an_upstream_llm_is_referenced(self):
+    def test_every_builder_learns_how_an_upstream_llm_is_referenced(self) -> None:
         """A consumer only ever sees its OWN node's schema snippet, so the llm
         snippet's structured-output rule never reaches the node referencing it.
         Since a flat ``<llm>.<schema-field>`` reference is now a hard
@@ -135,7 +135,7 @@ class TestNodeBuilderPrompt:
         assert '["node_id", "structured_output", "field"]' in prompt
         assert 'never the\n  flat ``{{#node_id.field#}}`` / ``["node_id", "field"]``' in prompt
 
-    def test_supports_main_human_input_and_assigner_contracts(self):
+    def test_supports_main_human_input_and_assigner_contracts(self) -> None:
         human_input = get_node_builder_system_prompt("human-input")
         assigner = get_node_builder_system_prompt("assigner")
 
@@ -144,12 +144,12 @@ class TestNodeBuilderPrompt:
         assert '"version": "2"' in assigner
         assert "variable_selector" in assigner
 
-    def test_common_node_prompts_stay_small(self):
+    def test_common_node_prompts_stay_small(self) -> None:
         sizes = [len(get_node_builder_system_prompt(node_type)) for node_type in ("start", "llm", "end")]
 
         assert max(sizes) < 3000
 
-    def test_unknown_node_type_gets_minimal_fallback(self):
+    def test_unknown_node_type_gets_minimal_fallback(self) -> None:
         prompt = get_node_builder_system_prompt("future-node")
 
         assert "future-node" in prompt
@@ -157,7 +157,7 @@ class TestNodeBuilderPrompt:
 
 
 class TestNodeBuilderUserSections:
-    def test_formats_start_inputs(self):
+    def test_formats_start_inputs(self) -> None:
         out = format_start_inputs_section(
             [{"variable": "url", "label": "URL", "type": "text-input"}, {"variable": "", "label": "Ignored"}]
         )
@@ -166,10 +166,10 @@ class TestNodeBuilderUserSections:
         assert "type='text-input'" in out
         assert "Ignored" not in out
 
-    def test_empty_start_inputs_are_omitted(self):
+    def test_empty_start_inputs_are_omitted(self) -> None:
         assert format_start_inputs_section([]) == ""
 
-    def test_parallel_plan_is_compact_and_preserves_topology(self):
+    def test_parallel_plan_is_compact_and_preserves_topology(self) -> None:
         rendered = format_parallel_plan(
             [{"id": "node1", "node_type": "start"}, {"id": "node2", "node_type": "end"}],
             [{"source": "node1", "target": "node2"}],
@@ -179,7 +179,7 @@ class TestNodeBuilderUserSections:
         assert json.loads(rendered)["edges"] == [{"source": "node1", "target": "node2"}]
         assert "start_inputs" not in json.loads(rendered)
 
-    def test_parallel_plan_carries_declared_start_inputs(self):
+    def test_parallel_plan_carries_declared_start_inputs(self) -> None:
         rendered = format_parallel_plan(
             [{"id": "node1", "node_type": "start"}],
             [],
@@ -188,7 +188,7 @@ class TestNodeBuilderUserSections:
 
         assert json.loads(rendered)["start_inputs"] == [{"variable": "url", "label": "URL", "type": "text-input"}]
 
-    def test_parallel_plan_never_carries_declared_node_outputs(self):
+    def test_parallel_plan_never_carries_declared_node_outputs(self) -> None:
         """The declarations must NOT ride in the shared payload.
 
         Serialising the planner's raw ``{"<id>": ["<name>"]}`` would hand every
@@ -216,19 +216,19 @@ class TestNodeOutputsSection:
     _DECLARED = {"node2": ["slides_json"], "node4": ["title", "bullets"]}
     _TYPES = {"node2": "code", "node3": "end", "node4": "llm"}
 
-    def test_producer_is_told_to_declare_exactly_its_planned_names(self):
+    def test_producer_is_told_to_declare_exactly_its_planned_names(self) -> None:
         out = format_node_outputs_section(self._DECLARED, "node2", self._TYPES)
 
         assert "'slides_json'" in out
         assert "exactly" in out
 
-    def test_consumer_may_reference_only_the_declared_names(self):
+    def test_consumer_may_reference_only_the_declared_names(self) -> None:
         out = format_node_outputs_section(self._DECLARED, "node3", self._TYPES)
 
         assert "node2: 'slides_json'" in out
         assert "no other name" in out
 
-    def test_an_llm_producers_names_are_listed_as_structured_output_fields(self):
+    def test_an_llm_producers_names_are_listed_as_structured_output_fields(self) -> None:
         """An llm's declared names are schema fields, and the engine publishes
         them under one ``structured_output`` object. Listing them flat would
         hand the consumer ``{{#node4.title#}}`` -- the one reference the engine
@@ -238,24 +238,24 @@ class TestNodeOutputsSection:
         assert "node4 (llm structured output): 'structured_output.title', 'structured_output.bullets'" in out
         assert "node4: 'title'" not in out
 
-    def test_an_unknown_node_type_is_listed_as_declared(self):
+    def test_an_unknown_node_type_is_listed_as_declared(self) -> None:
         # Fail-open: only the four declaring types reach here and three of them
         # name their outputs flat, so a missing type map degrades to that.
         out = format_node_outputs_section(self._DECLARED, "node3")
 
         assert "node4: 'title', 'bullets'" in out
 
-    def test_a_producer_does_not_see_its_own_entry_twice(self):
+    def test_a_producer_does_not_see_its_own_entry_twice(self) -> None:
         out = format_node_outputs_section(self._DECLARED, "node2", self._TYPES)
 
         assert "node2: 'slides_json'" not in out
         assert "node4 (llm structured output):" in out
 
-    def test_nothing_declared_renders_nothing(self):
+    def test_nothing_declared_renders_nothing(self) -> None:
         assert format_node_outputs_section(None, "node2", self._TYPES) == ""
         assert format_node_outputs_section({}, "node2", self._TYPES) == ""
 
-    def test_a_declaration_with_no_usable_content_renders_nothing(self):
+    def test_a_declaration_with_no_usable_content_renders_nothing(self) -> None:
         """A header with nothing under it is worse than silence -- it spends
         tokens telling the model a contract exists and then names none of it."""
         assert format_node_outputs_section({"node2": []}, "node2", self._TYPES) == ""
@@ -263,21 +263,21 @@ class TestNodeOutputsSection:
 
 
 class TestModeSection:
-    def test_advanced_chat_documents_system_variables(self):
+    def test_advanced_chat_documents_system_variables(self) -> None:
         out = format_mode_section("advanced-chat")
 
         assert "sys.query" in out
         assert '["sys", "query"]' in out
         assert "do NOT invent start-node variables" in out
 
-    def test_workflow_mode_forbids_system_variables(self):
+    def test_workflow_mode_forbids_system_variables(self) -> None:
         out = format_mode_section("workflow")
 
         assert "NO automatic system variables" in out
 
 
 class TestExistingGraphSection:
-    def test_edge_lines_surface_branch_source_handles(self):
+    def test_edge_lines_surface_branch_source_handles(self) -> None:
         out = format_existing_graph_section(
             {
                 "nodes": [{"id": "node1", "data": {"type": "if-else", "title": "Branch"}}],
@@ -292,7 +292,7 @@ class TestExistingGraphSection:
         assert "- node2 -> node3\n" in out
         assert "copy its source_handle verbatim" in out
 
-    def test_create_mode_renders_nothing(self):
+    def test_create_mode_renders_nothing(self) -> None:
         assert format_existing_graph_section(None) == ""
 
 
@@ -303,7 +303,7 @@ class TestNodeBuilderHandleContract:
     planned edges -- ``format_parallel_plan`` embeds ``edges`` with their
     ``source_handle`` -- so its snippets now make those handles the contract."""
 
-    def test_if_else_snippet_binds_case_ids_to_the_planned_source_handles(self):
+    def test_if_else_snippet_binds_case_ids_to_the_planned_source_handles(self) -> None:
         prompt = get_node_builder_system_prompt("if-else")
 
         assert "source_handle" in prompt
@@ -311,19 +311,19 @@ class TestNodeBuilderHandleContract:
         assert '"false"' in prompt  # ELSE is implicit and must never be declared as a case
         assert "never" in prompt.lower() or "must not" in prompt.lower()
 
-    def test_question_classifier_snippet_binds_class_ids_to_the_planned_source_handles(self):
+    def test_question_classifier_snippet_binds_class_ids_to_the_planned_source_handles(self) -> None:
         prompt = get_node_builder_system_prompt("question-classifier")
 
         assert "source_handle" in prompt
         assert "classes" in prompt
 
-    def test_human_input_snippet_binds_action_ids_to_the_planned_source_handles(self):
+    def test_human_input_snippet_binds_action_ids_to_the_planned_source_handles(self) -> None:
         prompt = get_node_builder_system_prompt("human-input")
 
         assert "source_handle" in prompt
         assert "user_actions" in prompt
 
-    def test_the_planned_edges_reach_the_builder_with_their_handles(self):
+    def test_the_planned_edges_reach_the_builder_with_their_handles(self) -> None:
         out = format_parallel_plan(
             [{"id": "node2", "label": "Check", "node_type": "if-else", "purpose": "x"}],
             [{"source": "node2", "target": "node3", "source_handle": "score_equals_60"}],
@@ -337,7 +337,7 @@ class TestNodeSnippetContracts:
     schemas. Each case below was live-verified against a graphon entity (see
     docs/superpowers/triage/generator-blockers-2026-09-22/FINDINGS.md Blocker A)."""
 
-    def test_parameter_extractor_query_is_one_selector_not_an_array_of_selectors(self):
+    def test_parameter_extractor_query_is_one_selector_not_an_array_of_selectors(self) -> None:
         """graphon ParameterExtractorNodeData.query: list[str] -- ONE selector,
         not an array of selector arrays."""
         prompt = get_node_builder_system_prompt("parameter-extractor")
@@ -345,7 +345,7 @@ class TestNodeSnippetContracts:
         assert '"query": ["<src>", "<var>"]' in prompt
         assert "[[" not in prompt
 
-    def test_if_else_enumerates_the_engines_comparison_operators_verbatim(self):
+    def test_if_else_enumerates_the_engines_comparison_operators_verbatim(self) -> None:
         """graphon utils.condition.entities.SupportedComparisonOperator -- the
         number comparisons are the unicode >= <= != forms only."""
         prompt = get_node_builder_system_prompt("if-else")
@@ -380,7 +380,7 @@ class TestNodeSnippetContracts:
         assert '"<="' in prompt
         assert '"!="' in prompt
 
-    def test_template_transform_marks_variables_required_with_empty_list_form(self):
+    def test_template_transform_marks_variables_required_with_empty_list_form(self) -> None:
         """graphon TemplateTransformNodeData.variables has no default -- it is
         required even for a template that references no variables."""
         prompt = get_node_builder_system_prompt("template-transform")
@@ -388,7 +388,7 @@ class TestNodeSnippetContracts:
         assert "REQUIRED" in prompt
         assert '"variables": []' in prompt
 
-    def test_llm_documents_structured_output_as_a_three_segment_reference(self):
+    def test_llm_documents_structured_output_as_a_three_segment_reference(self) -> None:
         """graphon LLM node._build_run_outputs (node.py ~719-737) ALWAYS sets
         text/reasoning_content/usage/finish_reason; only structured_output and
         files are conditional. The prompt must not tell the generator "text"
@@ -405,7 +405,7 @@ class TestNodeSnippetContracts:
         assert '"usage"' in prompt
         assert "only output" not in prompt.lower()
 
-    def test_list_operator_restates_the_same_unicode_comparison_operators(self):
+    def test_list_operator_restates_the_same_unicode_comparison_operators(self) -> None:
         """Each node build sees only its own snippet (get_node_builder_system_prompt
         embeds exactly one _NODE_SNIPPETS entry), so list-operator's
         if-else-shaped ``conditions`` never see the if-else entry's operator
@@ -417,7 +417,7 @@ class TestNodeSnippetContracts:
         assert "≠" in prompt
         assert "never" in prompt.lower()
 
-    def test_list_operator_enumerates_the_filter_operators_the_engine_has(self):
+    def test_list_operator_enumerates_the_filter_operators_the_engine_has(self) -> None:
         """A filter's ``comparison_operator`` is graphon's ``FilterOperator``
         (``nodes/list_operator/entities.py:10-28``), a SMALLER set than the
         if-else ``Condition`` operators the snippet used to point at. Pointing
@@ -567,7 +567,9 @@ def _node_config_for_snippet(node_type: str) -> dict[str, _JSONValue]:
     ``services.workflow_runtime.node_factory.validate_node_config`` (== ``Graph.init``'s
     node-data validation, == ``services/dify_builder/preflight.py``'s check)
     takes."""
-    example = _substitute_placeholders(_extract_example_json(_NODE_SNIPPETS[node_type]))
+    example = {
+        key: _substitute_placeholders(value) for key, value in _extract_example_json(_NODE_SNIPPETS[node_type]).items()
+    }
     return {"id": "n1", "data": {"type": node_type, "title": "T", **example}}
 
 
@@ -583,13 +585,13 @@ class TestNodeSnippetsValidateAgainstTheEngine:
     selector. It only passes with Task 4's fix (``"query": ["<src>", "<var>"]``)
     applied."""
 
-    def test_every_snippet_is_exercised(self):
+    def test_every_snippet_is_exercised(self) -> None:
         # Guards the parametrize below against silently collapsing to zero
         # cases (an empty _NODE_SNIPPETS would make it pass by vacuum).
         assert _NODE_SNIPPETS, "expected at least one _NODE_SNIPPETS entry to validate standalone"
 
     @pytest.mark.parametrize("node_type", sorted(_NODE_SNIPPETS))
-    def test_snippet_validates_against_the_engine(self, node_type: str):
+    def test_snippet_validates_against_the_engine(self, node_type: str) -> None:
         # Raises ValueError prefixed "node 'n1' (<type>): ..." (see
         # validate_node_config's docstring) on any schema mismatch; letting it
         # propagate here IS the test -- no try/except that could hide a

@@ -35,11 +35,12 @@ import Sidebar, { AppCategories, AppCategoryLabel } from './categories'
 const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
 
 type AppsProps = {
-  onClose: () => void
+  /** Called after a successful import, before the redirect. Without it the picker stays open. */
+  onCreated?: () => void
   templateMode?: 'agent'
 }
 
-const Apps = ({ onClose, templateMode }: AppsProps) => {
+const Apps = ({ onCreated, templateMode }: AppsProps) => {
   const { t } = useTranslation(['app', 'common'])
   const locale = useLocale()
   const queryClient = useQueryClient()
@@ -171,7 +172,7 @@ const Apps = ({ onClose, templateMode }: AppsProps) => {
               })
             }
             setIsShowCreateModal(false)
-            onClose()
+            onCreated?.()
           },
           onPending: () => {
             setIsShowCreateModal(false)
@@ -198,7 +199,7 @@ const Apps = ({ onClose, templateMode }: AppsProps) => {
         }
         setShowDSLConfirmModal(false)
         setIsShowCreateModal(false)
-        onClose()
+        onCreated?.()
       },
     })
   }
@@ -214,7 +215,7 @@ const Apps = ({ onClose, templateMode }: AppsProps) => {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
-        <div className="min-w-45 pl-5">
+        <div className="min-w-45 ps-5">
           <span className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
           </span>
@@ -269,7 +270,7 @@ const Apps = ({ onClose, templateMode }: AppsProps) => {
             />
           </div>
         )}
-        <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
+        <div className="h-full flex-1 shrink-0 grow overflow-auto border-s border-divider-burn p-6 pt-2">
           {searchFilteredList && searchFilteredList.length > 0 && (
             <>
               <div className="pt-4 pb-1">

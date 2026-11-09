@@ -6017,11 +6017,6 @@
       "count": 1
     }
   },
-  "web/features/app-creation/dialog-shell.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/app-creation/template-dialog/app-card/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -6033,11 +6028,6 @@
     },
     "react/only-export-components": {
       "count": 1
-    }
-  },
-  "web/features/app-creation/template-dialog/template-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/features/dsl-import/uploader.tsx": {

@@ -113,6 +113,8 @@ class _DifyPluginToolFileClient:
             "user_from": execution_context.user_from,
             "invoke_from": execution_context.invoke_from,
             "file": dict(file_mapping),
+            # The plugin daemon fetches this URL inside the deployment network, so ask for the internal base URL.
+            "for_external": False,
         }
         url, headers = agent_api_endpoint(
             self.http_client,

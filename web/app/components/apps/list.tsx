@@ -18,7 +18,14 @@ import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { StudioListNavigation } from './list-navigation'
-import { appListQueryParsers, serializeAppListQuery } from './query-params'
+import { appCreationQueryParsers, appListQueryParsers, serializeAppListQuery } from './query-params'
+
+// Marks a creation history entry that the list pushed over its own entry, so closing can
+// go back to it. It lives in history.state because Back and Forward restore it with the entry.
+const PUSHED_CREATION_ENTRY = 'difyPushedAppCreation'
+const isPushedCreationEntry = () => window.history.state?.[PUSHED_CREATION_ENTRY] === true
+const markPushedCreationEntry = () =>
+  window.history.replaceState({ ...window.history.state, [PUSHED_CREATION_ENTRY]: true }, '')
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
@@ -39,7 +46,12 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const scrollViewportRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
-  const [creationDialog, setCreationDialog] = useState<AppListCreationDialog>(null)
+  const [creationQuery, setCreationQuery] = useQueryStates(appCreationQueryParsers)
+  // DSL import has no URL; it holds the file dropped on the list, if any.
+  const [dslImport, setDSLImport] = useState<{ droppedFile?: File } | null>(null)
+  const creationDialog: AppListCreationDialog = dslImport
+    ? { type: 'dsl', ...dslImport }
+    : creationQuery.create && { type: creationQuery.create }
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const hasActiveFilters =
     category !== 'all' ||
@@ -52,7 +64,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     (file: File) => {
       if (!canCreateApp) return
 
-      setCreationDialog({ type: 'dsl', droppedFile: file })
+      setDSLImport({ droppedFile: file })
     },
     [canCreateApp],
   )
@@ -101,10 +113,30 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   }
 
   const openCreateTemplateDialog = useCallback(() => {
-    if (canCreateApp) setCreationDialog({ type: 'template' })
-  }, [canCreateApp])
+    if (!canCreateApp) return
+    const switching = creationQuery.create !== null
+    const pushed = !switching || isPushedCreationEntry()
+    void setCreationQuery(
+      { create: 'template', mode: null },
+      {
+        history: switching ? 'replace' : 'push',
+      },
+    ).then(() => {
+      if (pushed) markPushedCreationEntry()
+    })
+  }, [canCreateApp, creationQuery.create, setCreationQuery])
+  const closeCreationDialog = useCallback(() => {
+    if (dslImport) {
+      setDSLImport(null)
+    } else if (isPushedCreationEntry()) {
+      window.history.back()
+    } else {
+      // Opened from a link or a reload: clear the query without leaving the page.
+      void setCreationQuery(null, { history: 'replace' })
+    }
+  }, [dslImport, setCreationQuery])
   const openCreateFromDSLModal = useCallback(() => {
-    if (canCreateApp) setCreationDialog({ type: 'dsl' })
+    if (canCreateApp) setDSLImport({})
   }, [canCreateApp])
   const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
 
@@ -169,8 +201,10 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
 
       <AppListCreationModals
         canCreateApp={canCreateApp}
+        defaultMode={creationQuery.mode ?? (category === 'all' ? 'advanced-chat' : category)}
         dialog={creationDialog}
-        onClose={() => setCreationDialog(null)}
+        onClose={closeCreationDialog}
+        onOpenTemplate={openCreateTemplateDialog}
       />
     </StudioListNavigation>
   )

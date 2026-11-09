@@ -3,9 +3,11 @@
 import io
 import logging
 from collections.abc import Iterator
+from datetime import UTC, datetime
 
 import pytest
 
+from configs.feature import LoggingConfig
 from dify_app import DifyApp
 from extensions import ext_logging
 from libs.sensitive_http_telemetry import (
@@ -14,7 +16,7 @@ from libs.sensitive_http_telemetry import (
     assert_sensitive_http_telemetry_ready,
     sensitive_http_telemetry,
 )
-from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 from tests.unit_tests.logging_helpers import protect_existing_log_routes
 
 
@@ -85,3 +87,28 @@ def test_custom_unprotected_sql_sink_still_refuses_after_normal_init() -> None:
     finally:
         engine.removeHandler(custom)
         custom.close()
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected_local_time"),
+    [
+        ("utc", "2026-01-15 12:00:00"),
+        ("asia/shanghai", "2026-01-15 20:00:00"),
+    ],
+)
+def test_apply_timezone_uses_validated_logging_config(configured: str, expected_local_time: str) -> None:
+    logging_config = LoggingConfig(LOG_TZ=configured)
+    assert logging_config.LOG_TZ is not None
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s", datefmt="%Y-%m-%d %H:%M:%S"))
+    try:
+        with config_overrides_context(LOG_TZ=logging_config.LOG_TZ):
+            ext_logging._apply_timezone([handler])
+
+        record = logging.LogRecord(__name__, logging.INFO, __file__, 1, "timezone check", (), None)
+        record.created = datetime(2026, 1, 15, 12, tzinfo=UTC).timestamp()
+
+        assert handler.format(record) == expected_local_time
+    finally:
+        handler.close()

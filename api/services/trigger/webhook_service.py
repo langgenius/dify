@@ -674,12 +674,28 @@ class WebhookService:
         if param_type_enum is None:
             return value
 
-        if not param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL):
+        matches_type = param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL)
+        if not matches_type or cls._is_boolean_for_number(value, param_type_enum):
             actual_type = type(value).__name__
             expected_type = cls._expected_type_label(param_type_enum)
             raise ValueError(f"Expected {expected_type}, got {actual_type}")
 
         return value
+
+    @staticmethod
+    def _is_boolean_for_number(value: Any, param_type: SegmentType) -> bool:
+        """Return True when a JSON boolean is given for a number parameter.
+
+        JSON ``true``/``false`` decode to ``bool``, a subclass of ``int``, so
+        ``SegmentType.is_valid`` accepts them as numbers.
+        """
+        match param_type:
+            case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
+                return isinstance(value, bool)
+            case SegmentType.ARRAY_NUMBER:
+                return isinstance(value, list) and any(isinstance(item, bool) for item in value)
+            case _:
+                return False
 
     @classmethod
     def _coerce_segment_type(cls, param_type: SegmentType | str, *, param_name: str) -> SegmentType | None:

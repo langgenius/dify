@@ -37,7 +37,7 @@ export function CreateAppDialogShell({
     >
       <DialogPortal>
         <DialogBackdrop className="bg-background-overlay-backdrop backdrop-blur-[6px]" />
-        <DialogPopup className="fixed top-0 left-0 h-screen w-screen overflow-hidden overscroll-contain p-4">
+        <DialogPopup className="fixed inset-s-0 top-0 h-screen w-screen overflow-hidden overscroll-contain p-4">
           <div className="size-full overflow-hidden rounded-2xl bg-background-default-subtle inset-ring inset-ring-effects-highlight">
             <div className={cn('relative h-full overflow-hidden', contentClassName)}>
               <DialogTitle className="sr-only">{title}</DialogTitle>

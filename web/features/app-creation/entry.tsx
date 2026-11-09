@@ -26,9 +26,15 @@ import { CreateAppTypeMenu } from './type-menu'
 
 const CreateAppPromptDialog = dynamic(() => import('./prompt-dialog'), { ssr: false })
 
+type BlankAppMetadata = Pick<
+  CreateAppPayload,
+  'name' | 'description' | 'icon_type' | 'icon' | 'icon_background'
+>
+
 type AppCreationFlowProps = {
   children: (controls: {
     onSelectType: (mode: CreateAppPayload['mode']) => void
+    onCreateBlank: (mode: CreateAppPayload['mode'], metadata: BlankAppMetadata) => void
     disabled: boolean
     loading: boolean
     error: string
@@ -65,13 +71,18 @@ export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowP
   const isBuilderEnabled = !isFeaturesError && features?.dify_builder_enabled === true
   const isStarterOpen = !!(starter?.open && isBuilderEnabled && canCreateApp)
 
-  const create = async (mode: CreateAppPayload['mode'], prompt?: string) => {
+  const create = async (
+    mode: CreateAppPayload['mode'],
+    prompt?: string,
+    metadata?: BlankAppMetadata,
+  ) => {
     if (unavailable || isAppsFull || creatingRef.current) return
     const goal = prompt?.trim()
     if (prompt !== undefined && (!goal || !isBuilderEnabled)) return
     creatingRef.current = true
     setIsCreating(true)
     setError('')
+    let created = false
     try {
       const app = await createApp({
         body: {
@@ -81,10 +92,13 @@ export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowP
           icon_type: 'emoji',
           icon: '\u{1F916}',
           icon_background: '#FFEAD5',
+          ...metadata,
         },
       })
+      created = true
       try {
-        void trackCreateApp({ source: 'studio_blank', appMode: mode })
+        const tracking = trackCreateApp({ source: 'studio_blank', appMode: mode })
+        if (metadata) await tracking
       } catch {
         // Analytics must not prevent navigation after creation succeeds.
       }
@@ -100,8 +114,10 @@ export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowP
       const message = getErrorMessage(cause) || t(($) => $['newApp.appCreateFailed'], { ns: 'app' })
       setError(message)
     } finally {
-      creatingRef.current = false
-      setIsCreating(false)
+      if (!metadata || !created) {
+        creatingRef.current = false
+        setIsCreating(false)
+      }
     }
   }
 
@@ -123,6 +139,7 @@ export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowP
     <>
       {children({
         onSelectType,
+        onCreateBlank: (mode, metadata) => void create(mode, undefined, metadata),
         disabled: unavailable,
         loading: isCreating,
         error: isStarterOpen ? '' : error,

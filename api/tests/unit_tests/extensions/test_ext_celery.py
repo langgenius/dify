@@ -2,17 +2,19 @@
 
 import ssl
 from collections.abc import Iterator
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from importlib import import_module
 from queue import Empty
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from celery import Celery
 from celery.contrib.testing.app import TestApp, setup_default_app
 from celery.exceptions import Retry
 
+from configs.feature import LoggingConfig
 from dify_app import DifyApp
 from enums import DeploymentEdition
 from extensions.ext_celery import (
@@ -32,6 +34,41 @@ from tasks.workflow_draft_coordination_task import (
 from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 from tests.helpers.unit.worker_entrypoint import worker_configuration
 from tests.unit_tests.celery_fixtures import preserve_celery_apps
+
+
+@pytest.mark.parametrize(
+    ("configured", "iana_name"),
+    [
+        ("utc", "UTC"),
+        ("asia/shanghai", "Asia/Shanghai"),
+    ],
+)
+def test_init_app_uses_validated_logging_timezone(configured: str, iana_name: str) -> None:
+    logging_config = LoggingConfig(LOG_TZ=configured)
+    assert logging_config.LOG_TZ is not None
+
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="memory://",
+            CELERY_BACKEND="disabled",
+            DISABLE_TELEMETRY=True,
+            LOG_TZ=logging_config.LOG_TZ,
+        ),
+    ):
+        celery_app = init_app(DifyApp(__name__))
+        try:
+            expected_timezone = ZoneInfo(iana_name)
+            for instant in (
+                datetime(2026, 1, 15, 12, tzinfo=UTC),
+                datetime(2026, 7, 15, 12, tzinfo=UTC),
+            ):
+                assert (
+                    instant.astimezone(celery_app.conf.timezone).utcoffset()
+                    == instant.astimezone(expected_timezone).utcoffset()
+                )
+        finally:
+            celery_app.close()
 
 
 @pytest.fixture

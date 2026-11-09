@@ -34,6 +34,7 @@ from dify_agent.layers.shell import (
     DifyShellLayerConfig,
     DifyShellSecretRefConfig,
 )
+from dify_agent.layers.user_prompt import DifyUserPromptImageConfig
 from dify_agent.protocol import CreateRunRequest
 from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from dify_agent.protocol.snapshot import SessionSnapshot
@@ -49,11 +50,12 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.app.llm.model_access import resolve_model_context_window
+from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from extensions.tracing import application_tracing_hooks
-from graphon.file import File, FileTransferMethod
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template
 from libs.workflow_template_values import resolve_template_value
@@ -286,6 +288,12 @@ class WorkflowAgentRuntimeRequestBuilder:
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
+                user_images=self._build_user_images(
+                    context,
+                    agent_soul.model.model_provider,
+                    agent_soul.model.model,
+                    effective_node_job.previous_node_output_refs,
+                ),
                 output=self._build_output_config(
                     node_job.declared_outputs, node_job.output_routes, context.variable_pool
                 ),
@@ -322,6 +330,60 @@ class WorkflowAgentRuntimeRequestBuilder:
             node_job=node_job,
             metadata=metadata,
         )
+
+    @staticmethod
+    def _build_user_images(
+        context: WorkflowAgentRuntimeBuildContext,
+        provider_name: str,
+        model_name: str,
+        previous_node_output_refs: Sequence[WorkflowPreviousNodeOutputRef],
+    ) -> list[DifyUserPromptImageConfig]:
+        """Convert uploaded and explicitly referenced images for vision models.
+
+        Inputs are trusted workflow File values; serialized mappings are not rebuilt.
+        Text references remain unchanged, and each transport/reference pair is sent
+        once. Missing/invalid refs and unsupported image transports fail the run.
+        Non-vision models return no image content and perform no file conversion.
+        """
+        values: list[Any] = [get_system_value(context.variable_pool, SystemVariableKey.FILES)]
+        values.extend(
+            WorkflowAgentRuntimeRequestBuilder._resolve_previous_node_output(context.variable_pool, ref)[1]
+            for ref in previous_node_output_refs
+        )
+        images_by_reference: dict[tuple[FileTransferMethod, str | None], File] = {}
+        for value in values:
+            files = value if isinstance(value, (list, tuple)) else [value]
+            for file in files:
+                if isinstance(file, File) and file.type == FileType.IMAGE:
+                    reference = (
+                        file.remote_url if file.transfer_method == FileTransferMethod.REMOTE_URL else file.reference
+                    )
+                    images_by_reference.setdefault((file.transfer_method, reference), file)
+        images = list(images_by_reference.values())
+        if not images or not resolve_model_supports_vision(
+            run_context=context.dify_context, provider_name=provider_name, model_name=model_name
+        ):
+            return []
+        result: list[DifyUserPromptImageConfig] = []
+        for file in images:
+            content = file_manager.to_prompt_message_content(file, image_detail_config=None)
+            if not isinstance(content, ImagePromptMessageContent):
+                raise WorkflowAgentRuntimeRequestBuildError(
+                    "agent_user_file_unsupported",
+                    f"Workflow Agent cannot send file '{file.filename or 'image'}' as vision content.",
+                )
+            detail = content.detail.value
+            result.append(
+                DifyUserPromptImageConfig(
+                    filename=content.filename or file.filename or f"image.{content.format}",
+                    mime_type=content.mime_type,
+                    format=content.format,
+                    url=content.url or None,
+                    base64_data=content.base64_data or None,
+                    detail=detail if detail in {"low", "high"} else None,
+                )
+            )
+        return result
 
     def _build_tool_layers(
         self,
@@ -453,26 +515,32 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> list[dict[str, Any]]:
         resolved: list[dict[str, Any]] = []
         for ref in refs:
-            selector = normalize_previous_node_output_selector(ref)
-            if not selector:
-                raise WorkflowAgentRuntimeRequestBuildError(
-                    "invalid_previous_node_output_ref",
-                    "Workflow Agent node has invalid previous node output ref.",
-                )
-            segment = variable_pool.get(selector)
-            if segment is None:
-                raise WorkflowAgentRuntimeRequestBuildError(
-                    "missing_previous_node_output",
-                    f"Workflow Agent node cannot resolve previous node output {'.'.join(selector)}.",
-                )
-            value = getattr(segment, "value", None)
-            resolved.append(
-                {
-                    "label": ".".join(selector),
-                    "value": self._summarize_value(value),
-                }
-            )
+            label, value = self._resolve_previous_node_output(variable_pool, ref)
+            resolved.append({"label": label, "value": self._summarize_value(value)})
         return resolved
+
+    @staticmethod
+    def _resolve_previous_node_output(
+        variable_pool: VariablePoolReader, ref: WorkflowPreviousNodeOutputRef
+    ) -> tuple[str, Any]:
+        """Resolve a canonical selector to its label and unmodified workflow value.
+
+        The pool must contain the referenced segment. Invalid or missing references
+        raise the existing request-build error; no pool state is changed.
+        """
+        selector = normalize_previous_node_output_selector(ref)
+        if not selector:
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "invalid_previous_node_output_ref",
+                "Workflow Agent node has invalid previous node output ref.",
+            )
+        segment = variable_pool.get(selector)
+        if segment is None:
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "missing_previous_node_output",
+                f"Workflow Agent node cannot resolve previous node output {'.'.join(selector)}.",
+            )
+        return ".".join(selector), segment.value
 
     @staticmethod
     def _summarize_value(value: Any) -> str:
