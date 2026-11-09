@@ -13,10 +13,17 @@ const asAttachmentParamPattern = /[?&]as_attachment=/
 const withFilePreviewAttachment = (href: string) => {
   if (!filePreviewPathPattern.test(href) || asAttachmentParamPattern.test(href)) return href
 
-  const url = new URL(href, 'http://dify.local')
-  url.searchParams.set('as_attachment', 'true')
+  // The href comes from the rendered message payload, so it can be malformed (an out-of-range
+  // port, an unclosed IPv6 host). Failing to upgrade it to attachment mode must not crash the
+  // whole conversation render, so keep the original href when the URL cannot be parsed.
+  try {
+    const url = new URL(href, 'http://dify.local')
+    url.searchParams.set('as_attachment', 'true')
 
-  return href.startsWith('//') ? url.href.replace(url.protocol, '') : url.href
+    return href.startsWith('//') ? url.href.replace(url.protocol, '') : url.href
+  } catch {
+    return href
+  }
 }
 
 const Link = ({ node, children, ...props }: any) => {
