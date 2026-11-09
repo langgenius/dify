@@ -724,7 +724,7 @@ def test_squid_block_with_internal_10_x_url_mentions_allowlist(mock_get_client, 
 
 
 @pytest.mark.parametrize("sensitive", [False, True])
-def test_sensitive_request_errors_have_fixed_warnings_and_ordinary_diagnostics_are_preserved(
+def test_request_error_warnings_omit_urls_and_exception_messages(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, sensitive: bool
 ) -> None:
     """Actual SSRF owner over an explicitly synthetic lower HTTPX transport."""
@@ -736,14 +736,11 @@ def test_sensitive_request_errors_have_fixed_warnings_and_ordinary_diagnostics_a
         monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda _verify: client)
         with pytest.raises(httpx.ReadTimeout):
             make_request("POST", "https://example.com/private-canary-url", max_retries=0, sensitive_request=sensitive)
+    assert "private-canary" not in caplog.text
     if sensitive:
-        assert "private-canary" not in caplog.text
         assert "Sensitive HTTP request failed on attempt 1" in caplog.text
     else:
-        assert (
-            "Request to URL https://example.com/private-canary-url failed on attempt 1: private-canary-exception"
-            in caplog.text
-        )
+        assert "HTTP request failed on attempt 1: ReadTimeout" in caplog.text
 
 
 @pytest.mark.parametrize("sensitive", [False, True])
@@ -762,8 +759,8 @@ def test_sensitive_force_list_warnings_preserve_ordinary_retry_behavior(
         with pytest.raises(max_retries_exceeded_error):
             make_request("POST", "https://example.com/private-canary-url", max_retries=1, sensitive_request=sensitive)
     assert len(sent) == 2
+    assert "private-canary" not in caplog.text
     if sensitive:
-        assert "private-canary" not in caplog.text
         assert "Sensitive HTTP request received retryable status code 503" in caplog.text
     else:
-        assert "Received status code 503 for URL https://example.com/private-canary-url" in caplog.text
+        assert "HTTP request received retryable status code 503" in caplog.text

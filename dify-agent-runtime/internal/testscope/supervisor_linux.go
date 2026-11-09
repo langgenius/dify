@@ -447,8 +447,21 @@ func startRetainedWorker(cmd *exec.Cmd) error {
 }
 
 func (m *Manager) startBroker(s Scope) error {
-	socket := filepath.Join(m.scopeDir(s.Spec.ScopeID), "broker.sock")
-	_ = os.Remove(socket)
+	id := s.Spec.ScopeID
+	if !safeID.MatchString(id) {
+		return errors.New("invalid scope identity")
+	}
+	scopesDir := filepath.Join(m.config.StateDir, "scopes")
+	root, err := os.OpenRoot(scopesDir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	socketName := filepath.Join(id, "broker.sock")
+	if err := root.Remove(socketName); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	socket := filepath.Join(scopesDir, socketName)
 	broker, err := StartBroker(socket, s.Network, s.Spec.Deadline, func(authority string, n int64) error { return m.store.Spend(s.Spec.ScopeID, "network:"+authority, n) })
 	if err != nil {
 		return err

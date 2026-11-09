@@ -9,14 +9,9 @@ import dify_agent
 import pytest
 
 # API-installed SDK must be this checkout, with the missing server extra pinned by its own lock.
-assert (
-    Path(dify_agent.__file__).resolve().is_relative_to(Path("dify-agent/src").resolve())
-)
+assert Path(dify_agent.__file__).resolve().is_relative_to(Path("dify-agent/src").resolve())
 packages = tomllib.loads(Path("dify-agent/uv.lock").read_text())["package"]
-assert (
-    next(package["version"] for package in packages if package["name"] == "jwcrypto")
-    == "1.5.7"
-)
+assert next(package["version"] for package in packages if package["name"] == "jwcrypto") == "1.5.7"
 
 EXPECTED = {
     "tests.integration_tests.services.dify_builder.test_agent_recovery_postgres": {
@@ -103,9 +98,7 @@ else:
 for module, functions in EXPECTED.items():
     print(f"COLLECTED {module}: {sum(actual[module].values())} cases", flush=True)
     if dict(actual[module]) != functions:
-        problems.append(
-            f"recovery case inventory mismatch {module}: {dict(actual[module])!r}"
-        )
+        problems.append(f"recovery case inventory mismatch {module}: {dict(actual[module])!r}")
 for problem in problems:
     print(f"COMPLETENESS {problem}", flush=True)
 raise SystemExit(int(code) or (1 if problems else 0))
