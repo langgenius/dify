@@ -173,6 +173,7 @@ def test_online_document_tree_preview_metadata_survives_plugin_stream() -> None:
             "result": [
                 {
                     "workspace_id": "github-user",
+                    "next_cursor": "10",
                     "total": 11,
                     "pages": [
                         {
@@ -194,6 +195,7 @@ def test_online_document_tree_preview_metadata_survives_plugin_stream() -> None:
     ]
 
     assert events[0]["data"]["next_cursor"] == "10"
+    assert events[0]["data"]["result"][0]["next_cursor"] == "10"
     assert events[0]["data"]["result"][0]["pages"][0]["has_children"] is True
 
 
