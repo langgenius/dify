@@ -465,7 +465,7 @@ class ExecutionEvidenceSummary(_TrustedModel):
                     or self.failure_phase != "preparation"
                     or self.failure_reason is None
                 ):
-                    raise ValueError("preparation failure requires observed pre-dispatch evidence")
+                    raise ValueError("preparation failure requires observed pre-execution evidence")
                 return self
             if self.failure_phase == "execution":
                 if (
@@ -484,7 +484,7 @@ class ExecutionEvidenceSummary(_TrustedModel):
                 or self.failure_resource is not None
                 or self.failure_node_ids
             ):
-                raise ValueError("failure preparation metadata requires pre-dispatch evidence")
+                raise ValueError("failure preparation metadata requires pre-execution evidence")
             if self.safety_outcome != "execution_evidence_unknown" and (not self.sealed or self.native_run_id is None):
                 raise ValueError("confirmed run outcome requires sealed native proof")
             return self
