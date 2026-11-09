@@ -54,7 +54,13 @@ class AgentRuntimeSupport:
             agent_input = node_data.agent_parameters[parameter_name]
             match agent_input.type:
                 case "variable":
-                    variable = variable_pool.get(agent_input.value)  # type: ignore[arg-type]
+                    if agent_input.value is None:
+                        # Canvas saves unset optional strategy params as
+                        # {type: variable, value: null}; pass None through
+                        # instead of raising on the null selector (#45900).
+                        result[parameter_name] = None
+                        continue
+                    variable = variable_pool.get(agent_input.value)
                     if variable is None:
                         raise AgentVariableNotFoundError(str(agent_input.value))
                     parameter_value = variable.value

@@ -282,6 +282,22 @@ def test_build_parameters_preserves_nested_constant_structure():
     assert result["options"] == [{"label": raw_value, "nested": {"items": [raw_value]}}]
 
 
+def test_build_parameters_treats_null_variable_selector_as_unset():
+    """The canvas saves untouched optional params as {type: variable, value: null}.
+
+    Passing that null selector to the variable pool crashes with TypeError
+    (issue #45900); it must instead fall through as "not provided" and let
+    the strategy receive None.
+    """
+    declared = [_declared_parameter("allowed_tools", _ParameterType.TOOLS_SELECTOR)]
+    result = _build_parameters(
+        configured={"allowed_tools": {"type": "variable", "value": None}},
+        declared=declared,
+        variables={},
+    )
+    assert result["allowed_tools"] is None
+
+
 def test_build_parameters_keeps_scalar_constant_types():
     result = _build_parameters(
         configured={
