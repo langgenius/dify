@@ -488,7 +488,13 @@ def test_rbac_denies_each_observability_route_before_query(harness: Harness) -> 
             base = f"/console/api/agent/{agent_id}"
             for path in ("logs", f"logs/{uuid4()}/messages", "log-sources", "statistics/summary"):
                 assert harness.client.get(f"{base}/{path}", headers=harness.headers).status_code == HTTPStatus.FORBIDDEN
-        assert scenes == ["agent_log_manage", "agent_log_manage", "agent_log_manage", "agent_monitor"]
+        assert scenes == [
+            "agent_log_manage",
+            "agent_log_manage",
+            "agent_log_manage",
+            "agent_monitor",
+            "agent_monitor",
+        ]
     finally:
         EnterpriseRequest.rbac_base_url = previous_url
         server.shutdown()
