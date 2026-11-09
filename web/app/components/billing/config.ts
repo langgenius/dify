@@ -2,14 +2,6 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { PlanInfo } from '@/app/components/billing/type'
 
 export const contactSalesUrl = 'https://vikgc6bnu1s.typeform.com/dify-business'
-export const SELF_HOSTED_PLAN_URLS = {
-  community: 'https://github.com/langgenius/dify',
-  premium: 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6',
-  enterprise: contactSalesUrl,
-} as const
-
-export type SelfHostedPlan = keyof typeof SELF_HOSTED_PLAN_URLS
-
 export const ALL_PLANS = {
   sandbox: {
     level: 1,

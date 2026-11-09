@@ -93,7 +93,7 @@ export function PricingContent() {
           <CloudPlanItem plan="team" billingInterval={billingInterval} billing={billing} />
         </div>
       </div>
-      <PricingFooter category="cloud" />
+      <PricingFooter />
     </div>
   )
 }
