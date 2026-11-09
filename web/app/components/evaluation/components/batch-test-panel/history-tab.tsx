@@ -133,7 +133,8 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
 
   return (
     <div className="flex min-h-full flex-col">
-      <div className="min-h-0 flex-1 overflow-hidden">
+      {/* Pull the table out by its cell padding so column text lines up with the panel title. */}
+      <div className="-mx-3 min-h-0 flex-1 overflow-hidden">
         <table className="w-full table-fixed border-collapse overflow-hidden rounded-md">
           <colgroup>
             <col className="w-[140px]" />
@@ -156,7 +157,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                 {t(($) => $['history.columns.status'])}
               </th>
               {/* The row menus need a column name, but a visible icon here read as a header menu. */}
-              <th className="h-7">
+              <th className="h-7 pe-1">
                 <span className="sr-only">{t(($) => $['history.columns.actions'])}</span>
               </th>
             </tr>
@@ -232,7 +233,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                       </Tooltip>
                     </div>
                   </td>
-                  <td className="h-10 text-center">
+                  <td className="h-10 pe-1 text-end">
                     <Menu>
                       <MenuTrigger
                         render={
