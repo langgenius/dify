@@ -1989,6 +1989,7 @@ export type HumanInputContact = {
 export type HumanInputContactSummary = {
   avatar_url?: string
   created_at: number
+  email?: string | null
   id: string
   name: string
 }

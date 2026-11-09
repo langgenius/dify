@@ -134,6 +134,7 @@ class HumanInputContactSummary(BaseModel):
 
     id: ContactId = Field(description="Unique contact identifier.")
     name: str = Field(description="Display name shown in the contact directory.")
+    email: str | None = Field(default=None, description="Primary contact email if one exists.")
     avatar_url: str = Field(default="", description="URL of the contact's avatar.")
     created_at: Timestamp = Field(description="Timestamp when the contact was created.")
 

@@ -1644,6 +1644,7 @@ export const zUnchangedInput = z.object({
 export const zHumanInputContactSummary = z.object({
   avatar_url: z.string().optional().default(''),
   created_at: z.int(),
+  email: z.string().nullish(),
   id: z.string(),
   name: z.string(),
 })

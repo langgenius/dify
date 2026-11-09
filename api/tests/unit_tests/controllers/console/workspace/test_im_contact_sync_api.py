@@ -399,7 +399,7 @@ def test_write_unavailable_has_stable_retryable_http_mapping(
             contact_snapshot=SyncContactSnapshot(
                 ContactId("contact-1"),
                 "Reviewer",
-                None,
+                "snapshot@example.com",
                 None,
                 _CONTACT_CREATED_AT,
             ),
@@ -410,7 +410,7 @@ def test_write_unavailable_has_stable_retryable_http_mapping(
             contact_id=ContactId("contact-1"),
             binding_id=IMBindingId("binding-1"),
             removal_reason=IMSyncRemovalReason.NOT_PRESENT_IN_DIRECTORY,
-            contact_snapshot=SyncContactSnapshot(ContactId("contact-1"), "Reviewer", None, None),
+            contact_snapshot=SyncContactSnapshot(ContactId("contact-1"), "Reviewer", "snapshot@example.com", None),
             identity_snapshot=SyncIdentitySnapshot(
                 IMIdentityId("identity-1"),
                 IMProvider.FEISHU,
@@ -461,6 +461,8 @@ def test_latest_results_map_every_discriminated_bucket(
     assert result_payload["type"] == sync_result.result_type.value
     if sync_result.result_type in (IMSyncResultType.ADDED, IMSyncResultType.SKIPPED, IMSyncResultType.REMOVED):
         assert "type" not in result_payload["contact"]
+        assert sync_result.contact_snapshot is not None
+        assert result_payload["contact"]["email"] == sync_result.contact_snapshot.email
     if sync_result.result_type is IMSyncResultType.ADDED:
         assert result_payload["contact"]["created_at"] == 1752127200
     if sync_result.result_type is IMSyncResultType.REMOVED:
@@ -823,7 +825,7 @@ def test_contact_read_handlers_preserve_current_and_editor_safe_projections(
     assert options["data"][0]["im_providers"] == ["feishu"]
     assert batch_options["data"] == options["data"]
     assert "im_bindings" not in options["data"][0]
-    assert "email" not in batch["data"][0]
+    assert batch["data"][0]["email"] == "reviewer@example.com"
 
 
 @pytest.mark.parametrize("provider", list(IMProvider))

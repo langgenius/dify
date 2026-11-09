@@ -26751,6 +26751,7 @@ A trimmed version of `HumanInputContact` that only includes the fields needed fo
 | ---- | ---- | ----------- | -------- |
 | avatar_url | string | URL of the contact's avatar. | No |
 | created_at | integer | Timestamp when the contact was created. | Yes |
+| email | string | Primary contact email if one exists. | No |
 | id | string | Unique contact identifier. | Yes |
 | name | string | Display name shown in the contact directory. | Yes |
 
