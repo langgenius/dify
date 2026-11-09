@@ -22,7 +22,12 @@ from controllers.service_api.dataset.dataset import (
     TagUnbindingPayload,
     TagUpdatePayload,
 )
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
+from controllers.service_api.dataset.error import (
+    DatasetIndexingInProgressError,
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    InvalidActionError,
+)
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetMetadata, DatasetPermissionEnum, Document
 from models.enums import PermissionEnum, TagType
@@ -866,6 +871,29 @@ class TestDatasetApisCases:
                 api = DatasetApi()
                 with pytest.raises(DatasetInUseError):
                     unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
+
+        @patch("controllers.service_api.dataset.dataset.DatasetService")
+        def test_delete_dataset_indexing_in_progress(
+            self,
+            mock_dataset_svc: MagicMock,
+            app: Flask,
+            dataset: Dataset,
+            controller_session: Session,
+        ) -> None:
+            from controllers.service_api.dataset.dataset import DatasetApi
+
+            mock_dataset_svc.delete_dataset.side_effect = services.errors.dataset.DatasetIndexingInProgressError()
+
+            with app.test_request_context(
+                f"/datasets/{dataset.id}",
+                method="DELETE",
+            ):
+                api = DatasetApi()
+                with pytest.raises(DatasetIndexingInProgressError) as captured:
+                    unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
+
+            assert captured.value.error_code == "dataset_indexing_in_progress"
+            assert captured.value.code == 409
 
     # ---------------------------------------------------------------------------
     # API endpoint tests — DocumentStatusApi
