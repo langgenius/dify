@@ -336,5 +336,6 @@
   "types.all": "Hepsi",
   "types.chatbot": "Sohbet botu",
   "types.completion": "Tamamlama",
+  "types.evaluationWorkflow": "Değerlendirme iş akışı",
   "types.workflow": "İş Akışı"
 }

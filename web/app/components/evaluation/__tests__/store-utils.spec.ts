@@ -1,11 +1,13 @@
 import type { EvaluationResourceState } from '../types'
 import {
+  buildConditionItem,
   buildEvaluationConfigPayload,
   buildEvaluationRunRequest,
   buildEvaluationTemplateConfigPayload,
   buildStateFromEvaluationConfig,
   createBuiltinMetric,
   createCustomMetric,
+  getIncompleteConditionIds,
   isEvaluationRunnable,
   resolveMetricOption,
 } from '../store-utils'
@@ -315,5 +317,38 @@ describe('evaluation store utils', () => {
     expect(buildEvaluationConfigPayload(resource, 'apps', 'app-1')).toBeNull()
     expect(buildEvaluationRunRequest(resource, 'file-1', 'apps', 'app-1')).toBeNull()
     expect(isEvaluationRunnable({ ...resource, evaluationFramework: 'ragas' })).toBe(true)
+  })
+
+  it('starts number conditions at "≥" because scores are compared against a threshold', () => {
+    const metrics = [
+      createBuiltinMetric(resolveMetricOption('answer_correctness'), [
+        { node_id: 'llm-1', title: 'LLM', type: 'llm' },
+      ]),
+    ]
+
+    expect(buildConditionItem(metrics, 'apps', 'app-1').comparisonOperator).toBe('≥')
+  })
+
+  it('finds conditions that would be saved without a value their operator needs', () => {
+    const metrics = [
+      createBuiltinMetric(resolveMetricOption('answer_correctness'), [
+        { node_id: 'llm-1', title: 'LLM', type: 'llm' },
+      ]),
+    ]
+    const condition = buildConditionItem(metrics, 'apps', 'app-1')
+    const resource = createResource({
+      metrics,
+      judgmentConfig: {
+        logicalOperator: 'and',
+        conditions: [
+          { ...condition, id: 'complete', value: '0.7' },
+          { ...condition, id: 'empty', value: null },
+          { ...condition, id: 'no-value-needed', comparisonOperator: 'is null', value: null },
+          { ...condition, id: 'no-metric', variableSelector: null, value: '1' },
+        ],
+      },
+    })
+
+    expect(getIncompleteConditionIds(resource, 'apps', 'app-1')).toEqual(['empty', 'no-metric'])
   })
 })

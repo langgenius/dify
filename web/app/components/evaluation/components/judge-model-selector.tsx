@@ -7,7 +7,15 @@ import { ModelSelector } from '@/app/components/header/account-setting/model-pro
 import { useEvaluationResource, useEvaluationStore } from '../store'
 import { decodeModelSelection, encodeModelSelection } from '../utils'
 
-const JudgeModelSelector = ({ resourceType, resourceId }: EvaluationResourceProps) => {
+type JudgeModelSelectorProps = EvaluationResourceProps & {
+  ariaLabelledBy?: string
+}
+
+const JudgeModelSelector = ({
+  resourceType,
+  resourceId,
+  ariaLabelledBy,
+}: JudgeModelSelectorProps) => {
   const { modelList } = useModelListAndDefaultModel(ModelTypeEnum.textGeneration)
   const resource = useEvaluationResource(resourceType, resourceId)
   const setJudgeModel = useEvaluationStore((state) => state.setJudgeModel)
@@ -21,6 +29,7 @@ const JudgeModelSelector = ({ resourceType, resourceId }: EvaluationResourceProp
         setJudgeModel(resourceType, resourceId, encodeModelSelection(model.provider, model.model))
       }
       showDeprecatedWarnIcon
+      ariaLabelledBy={ariaLabelledBy}
       className="h-8 w-full rounded-lg"
     />
   )

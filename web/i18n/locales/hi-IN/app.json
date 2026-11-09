@@ -336,5 +336,6 @@
   "types.all": "सभी",
   "types.chatbot": "चैटबॉट",
   "types.completion": "समाप्ति",
+  "types.evaluationWorkflow": "मूल्यांकन वर्कफ़्लो",
   "types.workflow": "वर्कफ़्लो"
 }

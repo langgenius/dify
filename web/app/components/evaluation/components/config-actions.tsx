@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useEvaluationActions } from '../queries'
 import {
+  getIncompleteConditionIds,
   isEvaluationRunnable,
   useEvaluationResource,
   useEvaluationStore,
@@ -14,18 +15,25 @@ import {
 import { buildEvaluationConfigPayload } from '../store-utils'
 
 const EvaluationConfigActions = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['evaluation'])
+  const { t: tCommon } = useTranslation(['common'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const isDirty = useIsEvaluationConfigDirty(resourceType, resourceId)
   const resetResourceConfig = useEvaluationStore((state) => state.resetResourceConfig)
   const markResourceConfigSaved = useEvaluationStore((state) => state.markResourceConfigSaved)
+  const setConditionErrorsVisible = useEvaluationStore((state) => state.setConditionErrorsVisible)
   const evaluationActions = useEvaluationActions({ resourceType, resourceId })
   const isRunnable = isEvaluationRunnable(resource)
 
   const handleSave = async () => {
     if (!isRunnable) {
       toast.warning(t(($) => $['batch.validation']))
+      return
+    }
+
+    if (getIncompleteConditionIds(resource, resourceType, resourceId).length > 0) {
+      setConditionErrorsVisible(resourceType, resourceId, true)
+      toast.warning(t(($) => $['conditions.incomplete']))
       return
     }
 
@@ -56,7 +64,7 @@ const EvaluationConfigActions = ({ resourceType, resourceId }: EvaluationResourc
       </Button>
       <Button
         variant="primary"
-        disabled={!isRunnable}
+        disabled={!isDirty || !isRunnable}
         loading={evaluationActions.isSaving}
         onClick={handleSave}
       >

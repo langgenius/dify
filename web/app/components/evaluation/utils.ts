@@ -83,6 +83,9 @@ export const getComparisonOperators = (
 export const getDefaultComparisonOperator = (
   valueType: ConditionMetricValueType,
 ): ComparisonOperator => {
+  // Metric scores are usually compared against a threshold, so numbers start at "≥".
+  if (valueType === 'number') return '≥'
+
   return getComparisonOperators(valueType)[0] ?? 'is'
 }
 

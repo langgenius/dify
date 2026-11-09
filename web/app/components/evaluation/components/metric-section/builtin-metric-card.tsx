@@ -27,7 +27,8 @@ const BuiltinMetricCard = ({
   metric,
   availableNodeInfoList = [],
 }: BuiltinMetricCardProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
+  const { t: tCommon } = useTranslation(['common'])
   const updateBuiltinMetric = useEvaluationStore((state) => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore((state) => state.removeMetric)
   const [isExpanded, setIsExpanded] = useState(true)
@@ -61,11 +62,8 @@ const BuiltinMetricCard = ({
       >
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-center gap-2 px-1 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2 px-1 text-start"
           aria-expanded={isExpanded}
-          aria-label={
-            isExpanded ? t(($) => $['metrics.collapseNodes']) : t(($) => $['metrics.expandNodes'])
-          }
           onClick={() => setIsExpanded((current) => !current)}
         >
           <div
@@ -77,9 +75,7 @@ const BuiltinMetricCard = ({
             <span aria-hidden="true" className={cn(metricVisual.icon, 'h-3.5 w-3.5')} />
           </div>
           <div className="flex min-w-0 items-center gap-0.5">
-            <div className="truncate system-md-medium text-text-secondary uppercase">
-              {metric.label}
-            </div>
+            <div className="truncate system-md-medium text-text-secondary">{metric.label}</div>
             <span
               aria-hidden="true"
               className={cn(
@@ -94,7 +90,7 @@ const BuiltinMetricCard = ({
           size="small"
           variant="ghost"
           aria-label={t(($) => $['metrics.remove'])}
-          className="h-6 w-6 shrink-0 rounded-md p-0 text-text-quaternary opacity-0 transition-opacity group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100"
+          className="h-6 w-6 shrink-0 rounded-md p-0 text-text-quaternary opacity-0 transition-opacity group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 pointer-coarse:opacity-100"
           onClick={() => removeMetric(resourceType, resourceId, metric.id)}
         >
           <span aria-hidden="true" className="i-ri-delete-bin-line h-4 w-4" />
@@ -119,7 +115,7 @@ const BuiltinMetricCard = ({
                   <button
                     type="button"
                     className="flex h-4 w-4 items-center justify-center rounded-sm text-text-quaternary transition-colors hover:text-text-secondary"
-                    aria-label={nodeInfo.title}
+                    aria-label={`${tCommon(($) => $['operation.remove'])} ${nodeInfo.title}`}
                     onClick={() => handleRemoveNode(nodeInfo.node_id)}
                   >
                     <span
@@ -168,7 +164,7 @@ const BuiltinMetricCard = ({
                         )
                       }
                     >
-                      <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-1">
+                      <div className="flex min-w-0 flex-1 items-center gap-2.5 pe-1">
                         <BlockIcon
                           type={getEvaluationNodeBlockType(nodeInfo)}
                           size="xs"

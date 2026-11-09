@@ -637,6 +637,34 @@ export const isCustomMetricConfigured = (metric: EvaluationMetric) => {
   )
 }
 
+const isEmptyConditionValue = (value: JudgmentConditionItem['value']) =>
+  value === null || value === '' || (Array.isArray(value) && value.length === 0)
+
+/** Conditions that would be saved without a metric, or without a value their operator needs. */
+export const getIncompleteConditionIds = (
+  state: EvaluationResourceState,
+  resourceType: EvaluationResourceType,
+  resourceId: string,
+) => {
+  const metricOptions = buildConditionMetricOptions(state.metrics, resourceType, resourceId)
+
+  return state.judgmentConfig.conditions
+    .filter((condition) => {
+      const hasMetric = metricOptions.some(
+        (option) =>
+          option.variableSelector[0] === condition.variableSelector?.[0] &&
+          option.variableSelector[1] === condition.variableSelector?.[1],
+      )
+      if (!hasMetric) return true
+
+      return (
+        requiresComparisonValue(condition.comparisonOperator) &&
+        isEmptyConditionValue(condition.value)
+      )
+    })
+    .map((condition) => condition.id)
+}
+
 export const isEvaluationRunnable = (state: EvaluationResourceState) => {
   const hasBuiltinMetrics = state.metrics.some((metric) => metric.kind === 'builtin')
 

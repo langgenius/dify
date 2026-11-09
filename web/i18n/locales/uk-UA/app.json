@@ -336,5 +336,6 @@
   "types.all": "Усе",
   "types.chatbot": "Чатбот",
   "types.completion": "Завершення",
+  "types.evaluationWorkflow": "Процес оцінювання",
   "types.workflow": "Робочий процес"
 }
