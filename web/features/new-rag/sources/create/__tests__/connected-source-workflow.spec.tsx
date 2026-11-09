@@ -921,47 +921,54 @@ describe('ConnectedSourceWorkflow', () => {
     clientMock.listConnections.mockResolvedValue({ data: [connection], next_cursor: null })
     clientMock.getPages.mockImplementation(
       ({ query }: { query: { cursor?: string; parentId?: string } }) => {
-        const pages = query.parentId
+        const node = (
+          page_id: string,
+          page_name: string,
+          parent_id: string | null,
+          type: string,
+          has_children = false,
+        ) => ({
+          has_children,
+          page_id,
+          page_name,
+          parent_id,
+          type,
+        })
+        const pages = !query.parentId
           ? query.cursor
+            ? [node('repo:FFXN/checkin', 'checkin', null, 'repository', true)]
+            : [node('repo:FFXN/dify', 'dify', null, 'repository', true)]
+          : query.parentId === 'repo:FFXN/dify'
             ? [
-                {
-                  has_children: false,
-                  page_id: 'issue:FFXN/dify:1',
-                  page_name: 'Issue #1',
-                  parent_id: 'repo:FFXN/dify',
-                  type: 'issue',
-                },
+                node('contents:FFXN/dify', 'Contents', query.parentId, 'github_collection', true),
+                node('issues:FFXN/dify', 'Issues', query.parentId, 'github_collection', true),
+                node('prs:FFXN/dify', 'Pull requests', query.parentId, 'github_collection', true),
               ]
-            : [
-                {
-                  has_children: false,
-                  page_id: 'file:FFXN/dify:README.md',
-                  page_name: 'README',
-                  parent_id: 'repo:FFXN/dify',
-                  type: 'file',
-                },
-              ]
-          : query.cursor
-            ? [
-                {
-                  has_children: true,
-                  page_id: 'repo:FFXN/checkin',
-                  page_name: 'checkin',
-                  parent_id: null,
-                  type: 'repository',
-                },
-              ]
-            : [
-                {
-                  has_children: true,
-                  page_id: 'repo:FFXN/dify',
-                  page_name: 'dify',
-                  parent_id: null,
-                  type: 'repository',
-                },
-              ]
+            : query.parentId === 'contents:FFXN/dify'
+              ? [
+                  node('dir:FFXN/dify:src', 'src', query.parentId, 'github_directory', true),
+                  node('file:FFXN/dify:README.md', 'README.md', query.parentId, 'file'),
+                ]
+              : query.parentId === 'dir:FFXN/dify:src'
+                ? [node('file:FFXN/dify:src/main.py', 'main.py', query.parentId, 'file')]
+                : query.parentId === 'prs:FFXN/dify'
+                  ? [
+                      node(
+                        `pr:FFXN/dify:${query.cursor ? '2' : '1'}`,
+                        `PR #${query.cursor ? '2' : '1'}`,
+                        query.parentId,
+                        'pull_request',
+                      ),
+                    ]
+                  : []
         return Promise.resolve({
-          next_cursor: !query.cursor ? (query.parentId ? 'branch-next' : 'root-next') : null,
+          next_cursor: !query.cursor
+            ? query.parentId === 'prs:FFXN/dify'
+              ? 'pr-next'
+              : !query.parentId
+                ? 'root-next'
+                : null
+            : null,
           workspaces: [
             {
               pages,
@@ -984,7 +991,7 @@ describe('ConnectedSourceWorkflow', () => {
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
       query: { limit: 10, view: 'tree' },
     })
-    expect(screen.queryByRole('checkbox', { name: 'README' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Contents' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     expect(await screen.findByRole('checkbox', { name: 'checkin' })).not.toBeChecked()
@@ -995,33 +1002,52 @@ describe('ConnectedSourceWorkflow', () => {
 
     await user.click(repository)
     await user.click(screen.getByRole('button', { name: 'dify' }))
-    const readme = await screen.findByRole('checkbox', { name: 'README' })
+    const contents = await screen.findByRole('button', { name: 'Contents' })
     expect(clientMock.getPages).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
-      query: { limit: 200, parentId: 'repo:FFXN/dify', view: 'tree' },
+      query: { limit: 30, parentId: 'repo:FFXN/dify', view: 'tree' },
     })
-    expect(readme).not.toBeChecked()
+    expect(screen.queryByRole('checkbox', { name: 'Contents' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Pull requests' })).not.toBeInTheDocument()
+    expect(repository).toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: 'Pull requests' }))
+    const firstPr = await screen.findByRole('checkbox', { name: 'PR #1' })
+    expect(firstPr).not.toBeChecked()
     expect(repository).toBePartiallyChecked()
-
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
-    const issue = await screen.findByRole('checkbox', { name: 'Issue #1' })
+    const secondPr = await screen.findByRole('checkbox', { name: 'PR #2' })
     expect(clientMock.getPages).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
-      query: { cursor: 'branch-next', limit: 200, parentId: 'repo:FFXN/dify', view: 'tree' },
+      query: { cursor: 'pr-next', limit: 30, parentId: 'prs:FFXN/dify', view: 'tree' },
     })
-    expect(issue).not.toBeChecked()
+    expect(secondPr).not.toBeChecked()
 
+    await user.click(contents)
+    expect(await screen.findByRole('button', { name: 'src' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'src' }))
+    const codeFile = await screen.findByRole('checkbox', { name: 'main.py' })
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 30, parentId: 'dir:FFXN/dify:src', view: 'tree' },
+    })
+    expect(codeFile).not.toBeChecked()
     await user.click(repository)
-    expect(readme).toBeChecked()
-    expect(issue).toBeChecked()
-    await user.click(readme)
-    await user.click(issue)
+    expect(firstPr).toBeChecked()
+    expect(secondPr).toBeChecked()
+    expect(codeFile).toBeChecked()
+    await user.click(repository)
+    await user.click(secondPr)
+    await user.click(codeFile)
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
     await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
     expect(clientMock.createWorkflowImport).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
-          items: [expect.objectContaining({ pageId: 'repo:FFXN/dify' })],
+          items: [
+            expect.objectContaining({ pageId: 'pr:FFXN/dify:2' }),
+            expect.objectContaining({ pageId: 'file:FFXN/dify:src/main.py' }),
+          ],
         }),
       }),
     )
