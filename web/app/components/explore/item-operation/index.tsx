@@ -1,14 +1,8 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 
 type IItemOperationProps = {
@@ -17,9 +11,7 @@ type IItemOperationProps = {
   isPinned: boolean
   isShowRenameConversation?: boolean
   onRenameConversation?: () => void
-  isShowDelete: boolean
   togglePin: () => void
-  onDelete: () => void
 }
 
 function ItemOperation({
@@ -29,18 +21,16 @@ function ItemOperation({
   togglePin,
   isShowRenameConversation,
   onRenameConversation,
-  isShowDelete,
-  onDelete,
 }: IItemOperationProps) {
-  const { t } = useTranslation('explore')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['explore'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
+    <Menu modal={false}>
+      <MenuTrigger
         aria-label={tCommon(($) => $['operation.moreActionsFor'], { name: itemName })}
         className={cn(
-          'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
+          'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
           className,
         )}
         onClick={(e) => {
@@ -51,22 +41,25 @@ function ItemOperation({
           aria-hidden
           className="i-ri-more-fill size-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 group-focus-visible/operation:opacity-100 group-data-popup-open/operation:opacity-100"
         />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-30">
-        <DropdownMenuItem
+      </MenuTrigger>
+      <MenuContent align="end" className="min-w-30">
+        <MenuItem
           className={cn(s.actionItem, 'gap-2 px-3')}
           onClick={(e) => {
             e.stopPropagation()
             togglePin()
           }}
         >
-          <Pin02 className="size-4 shrink-0 text-text-secondary" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-general-pin-02 size-4 shrink-0 text-text-secondary"
+          />
           <span className={s.actionName}>
             {isPinned ? t(($) => $['sidebar.action.unpin']) : t(($) => $['sidebar.action.pin'])}
           </span>
-        </DropdownMenuItem>
+        </MenuItem>
         {isShowRenameConversation && (
-          <DropdownMenuItem
+          <MenuItem
             className={cn(s.actionItem, 'gap-2 px-3')}
             onClick={(e) => {
               e.stopPropagation()
@@ -75,34 +68,10 @@ function ItemOperation({
           >
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-secondary" />
             <span className={s.actionName}>{t(($) => $['sidebar.action.rename'])}</span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
-        {isShowDelete && (
-          <DropdownMenuItem
-            className={cn(
-              s.actionItem,
-              s.deleteActionItem,
-              'gap-2 px-3 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
-            )}
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                s.deleteActionItemChild,
-                'i-ri-delete-bin-line size-4 shrink-0 text-inherit',
-              )}
-            />
-            <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>
-              {t(($) => $['sidebar.action.delete'])}
-            </span>
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 export default React.memo(ItemOperation)

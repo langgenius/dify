@@ -65,7 +65,7 @@ const HeroDecorations = () => (
 )
 
 const HomeHero = ({ isMarketplacePlatform, subtitle, title }: HomeHeroProps) => {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
 
   return (
     <section

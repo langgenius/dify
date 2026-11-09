@@ -1,7 +1,7 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { syncRunnableWorkflowDraft } from '../../../support/api/workflows'
+import { syncRunnableWorkflowDraft } from '../../../support/api/workflows.ts'
 
 Given('a minimal runnable workflow draft has been synced', async function (this: DifyWorld) {
   const appId = this.createdAppIds.at(-1)
@@ -21,7 +21,7 @@ When('I run the workflow', async function (this: DifyWorld) {
 Then('the workflow run should succeed', async function (this: DifyWorld) {
   const page = this.getPage()
   await page.getByText('DETAIL', { exact: true }).click()
-  await expect(page.getByRole('status').getByText('SUCCESS', { exact: true })).toBeVisible({
+  await expect(page.getByRole('status').getByText('Success', { exact: true })).toBeVisible({
     timeout: 55_000,
   })
 })

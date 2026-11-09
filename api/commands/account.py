@@ -1,15 +1,11 @@
-import base64
 import secrets
 
 import click
-from sqlalchemy.orm import Session
 
 from constants.languages import languages
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from libs.helper import email as email_validate
-from libs.password import hash_password, password_pattern, valid_password
-from services.account_email import normalize_email
-from services.account_service import AccountService, RegisterService, TenantService
+from libs.password import password_pattern, valid_password
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -26,7 +22,7 @@ def reset_password(email, new_password, password_confirm):
         return
     normalized_email = email.strip().lower()
 
-    account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=db.session())
+    account = application_services().accounts.lifecycle.get_account_by_email_with_case_fallback(email.strip())
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -38,19 +34,7 @@ def reset_password(email, new_password, password_confirm):
         click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
         return
 
-    # generate password salt
-    salt = secrets.token_bytes(16)
-    base64_salt = base64.b64encode(salt).decode()
-
-    # encrypt password with salt
-    password_hashed = hash_password(new_password, salt)
-    base64_password_hashed = base64.b64encode(password_hashed).decode()
-    with Session(db.engine) as session:
-        account = session.merge(account)
-        account.password = base64_password_hashed
-        account.password_salt = base64_salt
-        session.commit()
-    AccountService.reset_login_error_rate_limit(normalized_email)
+    application_services().accounts.lifecycle.reset_password(account.id, new_password, email=normalized_email)
     click.echo(click.style("Password reset successfully.", fg="green"))
 
 
@@ -68,7 +52,7 @@ def reset_email(email, new_email, email_confirm):
         return
     normalized_new_email = new_email.strip().lower()
 
-    account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=db.session())
+    account = application_services().accounts.lifecycle.get_account_by_email_with_case_fallback(email.strip())
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -80,11 +64,7 @@ def reset_email(email, new_email, email_confirm):
         click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
         return
 
-    with Session(db.engine) as session:
-        account = session.merge(account)
-        account.email = normalized_new_email
-        account.normalized_email = normalize_email(normalized_new_email)
-        session.commit()
+    application_services().accounts.lifecycle.set_email(account.id, normalized_new_email)
     click.echo(click.style("Email updated successfully.", fg="green"))
 
 
@@ -129,15 +109,14 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
         return
 
     # register account
-    account = RegisterService.register(
+    account = application_services().accounts.lifecycle.register(
         email=email,
         name=account_name,
         password=new_password,
         language=language,
         create_workspace_required=False,
-        session=db.session(),
     )
-    TenantService.create_owner_tenant_if_not_exist(account, name, session=db.session())
+    application_services().workspaces.provisioning.create_owner_workspace(account.id, name=name, if_missing=True)
 
     click.echo(
         click.style(

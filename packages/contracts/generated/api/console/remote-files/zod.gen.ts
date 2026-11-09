@@ -24,6 +24,130 @@ export const zFileWithSignedUrl = z.object({
 })
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * FileExtensionBlockedError
+ *
+ * The file extension is blocked for security reasons.
+ */
+export const zFileExtensionBlockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_extension_blocked'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * RemoteFileAccessDeniedError
+ *
+ * The remote file cannot be accessed without authorization.
+ */
+export const zRemoteFileAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_access_denied'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * RemoteFileInvalidUrlError
+ *
+ * The remote file URL is invalid.
+ */
+export const zRemoteFileInvalidUrlError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_invalid_url'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * RemoteFileUrlBlockedError
+ *
+ * The remote file URL is not allowed.
+ */
+export const zRemoteFileUrlBlockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_url_blocked'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * RemoteFileNotFoundError
+ *
+ * The remote file could not be found.
+ */
+export const zRemoteFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * FileTooLargeError
+ *
+ * File size exceeded. {message}
+ */
+export const zFileTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * UnsupportedFileTypeError
+ *
+ * File type not allowed.
+ */
+export const zUnsupportedFileTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_file_type'),
+    status: z.literal(415),
+  }),
+)
+
+/**
+ * RemoteFileInvalidResponseError
+ *
+ * The remote file server returned an invalid response.
+ */
+export const zRemoteFileInvalidResponseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_invalid_response'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * RemoteFileUnavailableError
+ *
+ * The remote file is temporarily unavailable.
+ */
+export const zRemoteFileUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_unavailable'),
+    status: z.literal(502),
+  }),
+)
+
+/**
  * RemoteFileInfo
  */
 export const zRemoteFileInfo = z.object({

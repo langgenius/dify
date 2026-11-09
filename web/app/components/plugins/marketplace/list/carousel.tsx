@@ -1,8 +1,8 @@
 'use client'
 
-/* oxlint-disable eslint-react/set-state-in-effect */
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import Autoplay from 'embla-carousel-autoplay'
 import useEmblaCarousel from 'embla-carousel-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -22,6 +22,7 @@ type CarouselProps = {
   'aria-labelledby'?: string
   className?: string
   showNavigation?: boolean
+  showSinglePageNavigation?: boolean
   showPagination?: boolean
   autoPlay?: boolean
   autoPlayInterval?: number
@@ -30,26 +31,29 @@ type CarouselProps = {
 }
 
 type NavButtonProps = {
+  disabled: boolean
   label: string
   onClick: () => void
   iconClassName: string
 }
 
-const NavButton = ({ label, onClick, iconClassName }: NavButtonProps) => (
+const NavButton = ({ disabled, label, onClick, iconClassName }: NavButtonProps) => (
   <button
     type="button"
-    className="flex cursor-pointer items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] transition-all hover:bg-components-button-secondary-bg-hover"
+    className="flex cursor-pointer items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] transition-all enabled:hover:bg-components-button-secondary-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+    disabled={disabled}
     onClick={onClick}
     aria-label={label}
   >
     <span
       aria-hidden
-      className={cn('size-4 text-components-button-secondary-text', iconClassName)}
+      className={cn('size-4 text-components-button-secondary-text rtl:rotate-180', iconClassName)}
     />
   </button>
 )
 
 type CarouselControlsProps = {
+  showSinglePageNavigation: boolean
   showPagination: boolean
   selectedIndex: number
   scrollNext: () => void
@@ -59,6 +63,7 @@ type CarouselControlsProps = {
 }
 
 const CarouselControls = ({
+  showSinglePageNavigation,
   showPagination,
   selectedIndex,
   scrollNext,
@@ -66,24 +71,26 @@ const CarouselControls = ({
   scrollSnaps,
   scrollTo,
 }: CarouselControlsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const paginationItems = scrollSnaps.map((snap, index) => ({
     id: `${snap}-${index}`,
     snap,
   }))
   const totalPages = scrollSnaps.length
 
-  if (totalPages <= 1) return null
+  if (totalPages === 0 || (totalPages === 1 && !showSinglePageNavigation)) return null
 
   return (
-    <div className="absolute -top-10 right-0 flex items-center gap-3">
+    <div className="absolute inset-e-0 -top-10 flex items-center gap-3">
       {showPagination && (
         <div className={cn(styles.pagination, 'flex items-center gap-1')}>
           {paginationItems.map((item, index) => (
             <button
               key={item.id}
+              type="button"
+              aria-current={selectedIndex === index ? 'page' : undefined}
               className={cn(
-                'h-1.25 w-1.25 rounded-full transition-all',
+                'size-1.25 rounded-full transition-all',
                 selectedIndex === index
                   ? 'w-4 bg-components-button-primary-bg'
                   : 'bg-components-button-secondary-border hover:bg-components-button-secondary-border-hover',
@@ -99,11 +106,13 @@ const CarouselControls = ({
       )}
       <div className="flex items-center gap-1">
         <NavButton
+          disabled={totalPages <= 1}
           label={t(($) => $['marketplace.carousel.scrollPrevious'], { ns: 'plugin' })}
           onClick={scrollPrev}
           iconClassName="i-ri-arrow-left-s-line"
         />
         <NavButton
+          disabled={totalPages <= 1}
           label={t(($) => $['marketplace.carousel.scrollNext'], { ns: 'plugin' })}
           onClick={scrollNext}
           iconClassName="i-ri-arrow-right-s-line"
@@ -130,12 +139,14 @@ const Carousel = ({
   'aria-labelledby': ariaLabelledBy,
   className,
   showNavigation = true,
+  showSinglePageNavigation = false,
   showPagination = true,
   autoPlay = false,
   autoPlayInterval = 5000,
   deferMountPages = false,
   pauseWhenOffscreen = false,
 }: CarouselProps) => {
+  const direction = useDirection()
   const carouselRootRef = useRef<HTMLDivElement>(null)
   const [isFocusPaused, setIsFocusPaused] = useState(false)
   // Tracked independently of pauseWhenOffscreen so every autoplay path honors
@@ -157,7 +168,7 @@ const Carousel = ({
   }, [autoPlay, autoPlayInterval, pauseWhenOffscreen])
   const plugins = useMemo(() => (autoplay ? [autoplay] : []), [autoplay])
   const [carouselRef, api] = useEmblaCarousel(
-    { align: 'start', containScroll: 'trimSnaps', loop: true },
+    { align: 'start', containScroll: 'trimSnaps', loop: true, direction },
     plugins,
   )
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -353,6 +364,7 @@ const Carousel = ({
     >
       {showNavigation && (
         <CarouselControls
+          showSinglePageNavigation={showSinglePageNavigation}
           showPagination={showPagination}
           selectedIndex={selectedIndex}
           scrollNext={scrollNext}

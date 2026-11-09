@@ -15,10 +15,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => searchParams,
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/app/components/signin/storage', () => ({
   COUNT_DOWN_TIME_MS: 60_000,
   useSetCountdownLeftTime: () => setCountdownLeftTimeMock,
@@ -30,8 +26,9 @@ vi.mock('@/service/common', () => ({
 
 describe('MailAndCodeAuth', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    sendWebAppEMailLoginCodeMock.mockResolvedValue({ result: 'success', data: 'token-abc' })
+    sendWebAppEMailLoginCodeMock
+      .mockReset()
+      .mockResolvedValue({ result: 'success', data: 'token-abc' })
   })
 
   it('submits from the email field through the native form', async () => {
@@ -39,20 +36,18 @@ describe('MailAndCodeAuth', () => {
     render(<MailAndCodeAuth />)
 
     const emailInput = screen.getByRole('textbox', { name: 'login.email' })
-    const submitButton = screen.getByRole('button', { name: 'login.signup.verifyMail' })
 
-    expect(emailInput).toHaveAttribute('name', 'email')
-    expect(emailInput).toHaveAttribute('autocomplete', 'email')
-    expect(emailInput).toHaveAttribute('spellcheck', 'false')
-    expect(submitButton).toHaveAttribute('type', 'submit')
-
-    await user.tab()
-    expect(emailInput).toHaveFocus()
     await user.type(emailInput, 'user@example.com{Enter}')
 
     await waitFor(() => {
       expect(sendWebAppEMailLoginCodeMock).toHaveBeenCalledTimes(1)
     })
-    expect(pushMock).toHaveBeenCalledWith(expect.stringContaining('/webapp-signin/check-code?'))
+    expect(sendWebAppEMailLoginCodeMock).toHaveBeenCalledWith('user@example.com', 'en-US')
+    expect(setCountdownLeftTimeMock).toHaveBeenCalledWith('60000')
+    const destination = new URL(pushMock.mock.calls[0]![0], window.location.origin)
+    expect(destination.pathname).toBe('/webapp-signin/check-code')
+    expect(decodeURIComponent(destination.searchParams.get('email')!)).toBe('user@example.com')
+    expect(destination.searchParams.get('token')).toBe('token-abc')
+    expect(destination.searchParams.get('redirect_url')).toBe('/chatbot/test-app')
   })
 })

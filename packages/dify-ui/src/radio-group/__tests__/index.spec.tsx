@@ -1,5 +1,6 @@
-import type { RadioGroupProps } from '../index'
+import type { RadioGroupProps, RadioProps } from '../index'
 import * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Field, FieldItem, FieldLabel } from '../../field'
 import { Fieldset, FieldsetLegend } from '../../fieldset'
@@ -27,7 +28,7 @@ function TestRadioGroup<Value = string>({
   )
 }
 
-type TestRadioOptionProps = React.ComponentProps<typeof Radio> & {
+type TestRadioOptionProps = RadioProps & {
   children: React.ReactNode
 }
 
@@ -163,6 +164,28 @@ describe('Radio', () => {
     await expect.element(hdd).toHaveAttribute('aria-checked', 'false')
   })
 
+  it('should keep read-only radios unchanged on hover and click', async () => {
+    const screen = await render(
+      <TestRadioGroup readOnly defaultValue="ssd" label="Storage type">
+        <TestRadioOption value="ssd">SSD</TestRadioOption>
+        <TestRadioOption value="hdd">HDD</TestRadioOption>
+      </TestRadioGroup>,
+    )
+
+    for (const name of ['SSD', 'HDD']) {
+      const radio = screen.getByRole('radio', { name })
+      const style = getComputedStyle(radio.element())
+      const resting = [style.backgroundColor, style.borderColor]
+      await userEvent.hover(radio)
+      expect([style.backgroundColor, style.borderColor]).toEqual(resting)
+      expect(style.cursor).toBe('default')
+    }
+    await screen.getByRole('radio', { name: 'HDD' }).click()
+    await expect
+      .element(screen.getByRole('radio', { name: 'SSD' }))
+      .toHaveAttribute('aria-checked', 'true')
+  })
+
   it('should submit the selected group value through the hidden input', async () => {
     const screen = await render(
       <form>
@@ -184,21 +207,13 @@ describe('Radio', () => {
   it('should support custom items with a visual RadioControl', async () => {
     const screen = await render(
       <RadioGroup defaultValue="card" aria-label="Card choice">
-        <RadioItem
-          value="card"
-          nativeButton
-          render={<button type="button" className="custom-card" />}
-        >
+        <RadioItem value="card" nativeButton render={<button type="button" />}>
           <span>Card option</span>
-          <RadioControl className="custom-control" />
+          <RadioControl />
         </RadioItem>
       </RadioGroup>,
     )
 
-    await expect
-      .element(screen.getByRole('radio', { name: 'Card option' }))
-      .toHaveClass('custom-card')
-    expect(screen.container.querySelector('.custom-control')).toBeInTheDocument()
     await expect
       .element(screen.getByRole('radio', { name: 'Card option' }))
       .toHaveAttribute('data-checked', '')
@@ -211,4 +226,25 @@ describe('RadioSkeleton', () => {
 
     expect(screen.container.querySelector('[role="radio"]')).not.toBeInTheDocument()
   })
+})
+
+it('resolves Radio classes again when selection changes', async () => {
+  const screen = await render(
+    <RadioGroup defaultValue="a">
+      <Radio
+        value="a"
+        aria-label="Option A"
+        className={(state) => (state.checked ? 'opacity-50' : 'opacity-100')}
+      />
+      <Radio value="b" aria-label="Option B" />
+    </RadioGroup>,
+  )
+
+  await expect
+    .element(screen.getByRole('radio', { name: 'Option A' }))
+    .toHaveStyle({ opacity: '0.5' })
+  await screen.getByRole('radio', { name: 'Option B' }).click()
+  await expect
+    .element(screen.getByRole('radio', { name: 'Option A' }))
+    .toHaveStyle({ opacity: '1' })
 })

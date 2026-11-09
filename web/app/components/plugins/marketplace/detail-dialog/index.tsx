@@ -1,11 +1,12 @@
 'use client'
 
 import type { Plugin } from '@/app/components/plugins/types'
-import { useTheme } from 'next-themes'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useCallback, useEffect, useRef } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
-import { getPluginLinkInMarketplace } from '../utils'
+import { marketplaceLinks } from '@/features/marketplace/links'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import MarketplaceDetailDialogFrame from './frame'
 import { useSilentMarketplaceInstall } from './use-silent-install'
 
@@ -45,14 +46,14 @@ function OpenMarketplaceDetailDialog({
   title: string
 }) {
   const { install } = useSilentMarketplaceInstall()
-  const timeoutIdsRef = useRef(new Set<number>())
+  const timeoutIdsRef = useRefWithInit(() => new Set<number>())
 
   useEffect(
     () => () => {
       timeoutIdsRef.current.forEach((id) => window.clearTimeout(id))
       timeoutIdsRef.current.clear()
     },
-    [],
+    [timeoutIdsRef],
   )
 
   const handleMessage = useCallback(
@@ -96,7 +97,7 @@ function OpenMarketplaceDetailDialog({
         })
       })
     },
-    [canInstallPlugin, install, plugin],
+    [canInstallPlugin, install, plugin, timeoutIdsRef],
   )
 
   return (
@@ -116,22 +117,20 @@ function MarketplaceDetailDialog({
   plugin,
   onOpenChange,
 }: MarketplaceDetailDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
   const { canInstallPlugin } = useOptionalPluginInstallPermission()
-  // resolvedTheme maps the "system" preference to the concrete light/dark
-  // value the marketplace page expects.
-  const { resolvedTheme } = useTheme()
+  const theme = useResolvedTheme()
   const pluginLabel = plugin.label[locale] ?? plugin.label['en-US'] ?? plugin.name
   const detailLabel = t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })
   const installedForSrcRef = useRef(isInstalled)
   if (!open) installedForSrcRef.current = isInstalled
-  const detailURL = getPluginLinkInMarketplace(plugin, {
+  const detailURL = marketplaceLinks.plugin(plugin, {
     canInstall: String(canInstallPlugin),
     installed: String(installedForSrcRef.current),
     language: locale,
     source: globalThis.location?.origin,
-    theme: resolvedTheme,
+    theme,
     view: 'modal',
   })
   const title = `${pluginLabel} · ${detailLabel}`

@@ -4,7 +4,9 @@ import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import { APP_VERSION, IS_MARKETPLACE, MARKETPLACE_API_PREFIX } from '@/config'
+import { APP_VERSION, IS_MARKETPLACE } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
+import { reportClientError } from './client-error'
 
 // 15s deadline so a stalled Marketplace fetch can error/retry.
 const MARKETPLACE_REQUEST_TIMEOUT_MS = 15_000
@@ -38,7 +40,7 @@ const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   },
   interceptors: [
     onError((error) => {
-      console.error(error)
+      reportClientError(error)
     }),
   ],
 })

@@ -1,214 +1,105 @@
-import { act, renderHook } from '@testing-library/react'
+import { $isLinkNode } from '@lexical/link'
+import { act, waitFor } from '@testing-library/react'
+import { $getRoot, CLICK_COMMAND } from 'lexical'
+import { toast } from '@/app/notifications'
+import { renderNoteHook } from '../../../__tests__/test-helpers'
 import { useLink, useOpenLink } from '../hooks'
 
-const {
-  mockDispatchCommand,
-  mockRegisterUpdateListener,
-  mockRegisterCommand,
-  mockSetLinkAnchorElement,
-  mockSetLinkOperatorShow,
-  mockToastError,
-  mockEditor,
-  mockStoreState,
-  mockListeners,
-} = vi.hoisted(() => {
-  const listeners: {
-    update?: () => void
-    click?: (payload: {
-      metaKey?: boolean
-      ctrlKey?: boolean
-      target?: EventTarget | null
-    }) => boolean
-  } = {}
-
-  const editor = {
-    dispatchCommand: vi.fn(),
-    registerUpdateListener: vi.fn(),
-    registerCommand: vi.fn(),
-  }
-
-  return {
-    mockDispatchCommand: editor.dispatchCommand,
-    mockRegisterUpdateListener: editor.registerUpdateListener,
-    mockRegisterCommand: editor.registerCommand,
-    mockSetLinkAnchorElement: vi.fn(),
-    mockSetLinkOperatorShow: vi.fn(),
-    mockToastError: vi.fn(),
-    mockEditor: editor,
-    mockStoreState: {
-      selectedIsLink: false,
-      selectedLinkUrl: '',
-      setLinkAnchorElement: vi.fn(),
-      setLinkOperatorShow: vi.fn(),
-      setSelectedLinkUrl: vi.fn(),
-      setSelectedIsLink: vi.fn(),
-    },
-    mockListeners: listeners,
-  }
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.clearAllMocks()
+  vi.useRealTimers()
 })
 
-vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => [mockEditor],
-}))
-
-vi.mock('@lexical/utils', () => ({
-  mergeRegister:
-    (...cleanups: Array<() => void>) =>
-    () =>
-      cleanups.forEach((cleanup) => cleanup()),
-}))
-
-vi.mock('@lexical/link', () => ({
-  TOGGLE_LINK_COMMAND: 'toggle-link-command',
-}))
-
-vi.mock('lexical', () => ({
-  CLICK_COMMAND: 'click-command',
-  COMMAND_PRIORITY_LOW: 1,
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: mockToastError,
-  },
-}))
-
-vi.mock('../../../store', () => ({
-  useNoteEditorStore: () => ({
-    getState: () => mockStoreState,
-  }),
-}))
-
-describe('link editor hooks', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-    mockStoreState.selectedIsLink = false
-    mockStoreState.selectedLinkUrl = ''
-    mockStoreState.setLinkAnchorElement = mockSetLinkAnchorElement
-    mockStoreState.setLinkOperatorShow = mockSetLinkOperatorShow
-    mockStoreState.setSelectedLinkUrl = vi.fn()
-    mockStoreState.setSelectedIsLink = vi.fn()
-    mockListeners.update = undefined
-    mockListeners.click = undefined
-
-    mockRegisterUpdateListener.mockImplementation((listener) => {
-      mockListeners.update = listener
-      return vi.fn()
-    })
-    mockRegisterCommand.mockImplementation((_command, listener) => {
-      mockListeners.click = listener
-      return vi.fn()
-    })
+it('rejects invalid URLs and saves a URL verbatim before unlinking the selected text', async () => {
+  const hook = await renderNoteHook(useLink)
+  hook.update(() => hook.value.handleSaveLink('not-a-valid-url'))
+  expect(toast.error).toHaveBeenCalledWith('workflow.nodes.note.editor.invalidUrl')
+  hook.editor
+    .getEditorState()
+    .read(() => expect($isLinkNode($getRoot().getAllTextNodes()[0]!.getParent())).toBe(false))
+  const url = 'https://dify.ai/docs?first=1&second=2'
+  hook.update(() => hook.value.handleSaveLink(url))
+  hook.editor.getEditorState().read(() => {
+    const link = $getRoot().getAllTextNodes()[0]!.getParent()
+    expect($isLinkNode(link) && link.getURL()).toBe(url)
   })
-
-  afterEach(() => {
-    vi.useRealTimers()
+  hook.update(() => hook.value.handleUnlink())
+  hook.editor.getEditorState().read(() => {
+    expect($isLinkNode($getRoot().getAllTextNodes()[0]!.getParent())).toBe(false)
+    expect($getRoot().getTextContent()).toBe('Selected note')
   })
+})
 
-  // Link hover and click state should follow the selected link metadata in the editor store.
-  describe('useOpenLink', () => {
-    it('should show the link operator when the current selection is a link with a URL', () => {
-      mockStoreState.selectedIsLink = true
-      mockStoreState.selectedLinkUrl = 'https://dify.ai'
-
-      renderHook(() => useOpenLink())
-
-      act(() => {
-        mockListeners.update?.()
-        vi.runAllTimers()
-      })
-
-      expect(mockSetLinkAnchorElement).toHaveBeenCalledWith(true)
-      expect(mockSetLinkOperatorShow).toHaveBeenCalledWith(true)
-    })
-
-    it('should clear the link operator when the current selection is not a link', () => {
-      renderHook(() => useOpenLink())
-
-      act(() => {
-        mockListeners.update?.()
-        vi.runAllTimers()
-      })
-
-      expect(mockSetLinkAnchorElement).toHaveBeenCalledWith()
-      expect(mockSetLinkOperatorShow).toHaveBeenCalledWith(false)
-    })
-
-    it('should show the link operator immediately when clicking a link target', () => {
-      const target = document.createElement('a')
-      target.className = 'note-editor-theme_link'
-      target.href = 'https://dify.ai/docs'
-
-      renderHook(() => useOpenLink())
-
-      let handled = false
-      act(() => {
-        handled = mockListeners.click?.({ target }) ?? false
-        vi.runAllTimers()
-      })
-
-      expect(handled).toBe(true)
-      expect(mockStoreState.setSelectedLinkUrl).toHaveBeenCalledWith('https://dify.ai/docs')
-      expect(mockStoreState.setSelectedIsLink).toHaveBeenCalledWith(true)
-      expect(mockSetLinkAnchorElement).toHaveBeenCalledWith(target)
-      expect(mockSetLinkOperatorShow).toHaveBeenCalledWith(true)
-    })
-
-    it('should open the selected link in a new tab on meta or ctrl click', () => {
-      mockStoreState.selectedIsLink = true
-      mockStoreState.selectedLinkUrl = 'https://dify.ai'
-      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-
-      renderHook(() => useOpenLink())
-
-      let handled = false
-      act(() => {
-        handled = mockListeners.click?.({ metaKey: true }) ?? false
-        vi.runAllTimers()
-      })
-
-      expect(handled).toBe(false)
-      expect(openSpy).toHaveBeenCalledWith('https://dify.ai', '_blank')
-    })
+it('opens selected link controls, honors dismissal, and clears them when selection leaves the link', async () => {
+  const hook = await renderNoteHook(() => {
+    useOpenLink()
+    return useLink()
   })
+  hook.update(() => hook.value.handleSaveLink('https://dify.ai/docs'))
+  await waitFor(() => expect(hook.store.getState().linkOperatorShow).toBe(true))
+  act(() => hook.store.getState().dismissLinkEditor())
+  hook.update(() => $getRoot().getAllTextNodes()[0]!.setStyle('font-size: 18px'))
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+  expect(hook.store.getState().linkOperatorShow).toBe(false)
+  hook.update(() => hook.value.handleUnlink())
+  await waitFor(() =>
+    expect(hook.store.getState()).toMatchObject({
+      selectedIsLink: false,
+      linkOperatorShow: false,
+      linkAnchorElement: null,
+    }),
+  )
+})
 
-  // Saving and removing links should dispatch the lexical link command and close the operator.
-  describe('useLink', () => {
-    it('should reject invalid URLs and show an error toast', () => {
-      const { result } = renderHook(() => useLink())
-
-      act(() => {
-        result.current.handleSaveLink('not-a-valid-url')
-      })
-
-      expect(mockToastError).toHaveBeenCalledWith('workflow.nodes.note.editor.invalidUrl')
-      expect(mockDispatchCommand).not.toHaveBeenCalled()
+it.each([{}, { ctrlKey: true }, { metaKey: true }])(
+  'handles clicks on nested link content: %o',
+  async (modifiers) => {
+    const hook = await renderNoteHook(useOpenLink)
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const anchor = document.createElement('a')
+    anchor.className = 'note-editor-theme_link'
+    anchor.href = 'https://dify.ai/clicked'
+    const text = document.createElement('span')
+    anchor.append(text)
+    const event = new MouseEvent('click', { bubbles: true, ...modifiers })
+    text.dispatchEvent(event)
+    act(() => {
+      hook.editor.dispatchCommand(CLICK_COMMAND, event)
     })
-
-    it('should save a valid link and clear the anchor element', () => {
-      const { result } = renderHook(() => useLink())
-
-      act(() => {
-        result.current.handleSaveLink('https://dify.ai/docs')
-      })
-
-      expect(mockDispatchCommand).toHaveBeenCalledWith(
-        'toggle-link-command',
-        'https://dify.ai/docs',
+    if ('ctrlKey' in modifiers || 'metaKey' in modifiers) {
+      await waitFor(() => expect(open).toHaveBeenCalledWith('https://dify.ai/clicked', '_blank'))
+    } else {
+      await waitFor(() =>
+        expect(hook.store.getState()).toMatchObject({
+          selectedLinkUrl: 'https://dify.ai/clicked',
+          linkAnchorElement: anchor,
+          linkOperatorShow: true,
+        }),
       )
-      expect(mockSetLinkAnchorElement).toHaveBeenCalledWith()
-    })
+      expect(open).not.toHaveBeenCalled()
+    }
+  },
+)
 
-    it('should remove the current link and clear the anchor element', () => {
-      const { result } = renderHook(() => useLink())
-
-      act(() => {
-        result.current.handleUnlink()
-      })
-
-      expect(mockDispatchCommand).toHaveBeenCalledWith('toggle-link-command', null)
-      expect(mockSetLinkAnchorElement).toHaveBeenCalledWith()
-    })
+it('cancels queued link updates when the hook unmounts', async () => {
+  const hook = await renderNoteHook(useOpenLink)
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
   })
+  vi.useFakeTimers()
+  const anchor = document.createElement('a')
+  anchor.className = 'note-editor-theme_link'
+  anchor.href = 'https://dify.ai'
+  const event = new MouseEvent('click')
+  anchor.dispatchEvent(event)
+  act(() => {
+    hook.editor.dispatchCommand(CLICK_COMMAND, event)
+  })
+  hook.unmount()
+  act(() => vi.runAllTimers())
+  expect(hook.store.getState()).toMatchObject({ linkOperatorShow: false, linkAnchorElement: null })
 })

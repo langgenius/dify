@@ -10,11 +10,11 @@ sensitive runtime configuration.
 """
 
 from collections.abc import AsyncIterator, Awaitable
-from typing import cast
+from typing import cast, override
 
 from redis.asyncio import Redis
 
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     RUN_EVENT_ADAPTER,
@@ -31,6 +31,7 @@ from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
     RunEventSink,
     RunFinalizationResult,
+    RunStreamSealedError,
     TerminalRunEvent,
     terminal_event_status_fields,
 )
@@ -79,6 +80,25 @@ local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[9], "*", "paylo
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("SET", KEYS[1], updated_record_json, "EX", ttl)
 return {1, ARGV[1], event_id}
+"""
+
+
+_APPEND_EVENT_SCRIPT = """
+local record_json = redis.call("GET", KEYS[1])
+if not record_json then
+    return {-1, ""}
+end
+
+local record = cjson.decode(record_json)
+if record.status ~= "running" then
+    return {0, tostring(record.status), ""}
+end
+
+local ttl = tonumber(ARGV[3])
+local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[2], "*", "payload", ARGV[1])
+redis.call("EXPIRE", KEYS[2], ttl)
+redis.call("EXPIRE", KEYS[1], ttl)
+return {1, "running", event_id}
 """
 
 
@@ -198,23 +218,37 @@ class RedisRunStore(RunEventSink):
             value = value.decode()
         return RunRecord.model_validate_json(value)
 
+    @override
     async def append_event(self, event: NonTerminalRunEvent) -> str:
-        """Append a non-terminal event JSON payload with refreshed TTLs."""
-        events_key = run_events_key(self.prefix, event.run_id)
-        payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
-        async with self.redis.pipeline(transaction=True) as pipeline:
-            _ = pipeline.xadd(
-                events_key,
-                {"payload": payload},
-                maxlen=self.run_event_stream_max_length,
-                approximate=True,
-            )
-            _ = pipeline.expire(events_key, self.run_retention_seconds)
-            _ = pipeline.expire(run_record_key(self.prefix, event.run_id), self.run_retention_seconds)
-            results = cast(list[object], await pipeline.execute())
-        event_id = results[0]
-        return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
+        """Append a non-terminal event while the durable run status is still ``running``.
 
+        The status check and the write share one linearization point with
+        ``finalize_run``/``finalize_cancellation``: once a terminal transition
+        wins, late non-terminal appends are rejected without consuming a
+        cursor or refreshing retention.
+        """
+        payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
+        evaluation = cast(
+            Awaitable[object],
+            self.redis.eval(
+                _APPEND_EVENT_SCRIPT,
+                2,
+                run_record_key(self.prefix, event.run_id),
+                run_events_key(self.prefix, event.run_id),
+                payload,
+                str(self.run_event_stream_max_length),
+                str(self.run_retention_seconds),
+            ),
+        )
+        result = cast(list[object], await evaluation)
+        applied = int(cast(int | bytes | str, result[0]))
+        if applied == -1:
+            raise RunNotFoundError(event.run_id)
+        if applied == 0:
+            raise RunStreamSealedError(event.run_id, cast(RunStatus, _decode_redis_text(result[1])))
+        return _decode_redis_text(result[2])
+
+    @override
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
         """Atomically append the first success/failure event and update its run record."""
         status, error, error_type = terminal_event_status_fields(event)
@@ -297,7 +331,7 @@ class RedisRunStore(RunEventSink):
         run_id: str,
         intent: RunCancellationIntent,
         *,
-        session_snapshot: CompositorSessionSnapshot | None = None,
+        session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
     ) -> RunFinalizationResult:
         """Atomically publish cancellation after the owner runner has exited."""
@@ -340,10 +374,21 @@ class RedisRunStore(RunEventSink):
         )
 
     async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
-        """Read a bounded page of events after ``after`` cursor."""
+        """Read a nonblocking page strictly after ``after`` using Redis 6.0-compatible XREAD.
+
+        An empty page preserves the supplied cursor; a missing run raises
+        ``RunNotFoundError``.
+        """
         await self.get_run(run_id)
-        raw_events = await self.redis.xrange(run_events_key(self.prefix, run_id), min=f"({after}", count=limit)
-        events = [self._decode_event(run_id, raw_id, fields) for raw_id, fields in raw_events]
+        response = await self.redis.xread(
+            {run_events_key(self.prefix, run_id): after},
+            count=limit,
+        )
+        events = [
+            self._decode_event(run_id, raw_id, fields)
+            for _stream_name, entries in response
+            for raw_id, fields in entries
+        ]
         next_cursor = events[-1].id if events else after
         return RunEventsResponse(run_id=run_id, events=events, next_cursor=next_cursor)
 

@@ -2,10 +2,6 @@ import { render, screen } from '@testing-library/react'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import CodeEditor from '..'
 
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
-}))
-
 const jsonObjectSchema = {
   type: 'object',
   properties: {

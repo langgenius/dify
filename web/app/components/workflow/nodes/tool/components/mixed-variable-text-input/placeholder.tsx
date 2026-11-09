@@ -13,7 +13,7 @@ type PlaceholderProps = {
 }
 
 const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: PlaceholderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editor] = useLexicalComposerContext()
 
   const handleInsert = useCallback(

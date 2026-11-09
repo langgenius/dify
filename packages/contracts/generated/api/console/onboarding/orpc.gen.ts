@@ -6,7 +6,7 @@ import {
   zGetOnboardingStepByStepTourStateResponse,
   zPatchOnboardingStepByStepTourStateBody,
   zPatchOnboardingStepByStepTourStateResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get account-level Step-by-step Tour state

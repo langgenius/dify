@@ -3,11 +3,17 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zCompletionRequestError,
+  zModelCurrentlyNotSupportError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
+} from './zod.gen.ts'
+import {
   zPostInstructionGenerateBody,
   zPostInstructionGenerateResponse,
   zPostInstructionGenerateTemplateBody,
   zPostInstructionGenerateTemplateResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get instruction generation template
@@ -42,6 +48,12 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostInstructionGenerateBody }))
   .output(zPostInstructionGenerateResponse)
+  .errors({
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const instructionGenerate = {
   post: post2,

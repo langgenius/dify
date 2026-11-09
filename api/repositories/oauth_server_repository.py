@@ -72,6 +72,7 @@ class SQLAlchemyOAuthServerRepository(OAuthServerRepository):
             Account.interface_language,
             Account.timezone,
             Account.status,
+            Account.created_at,
         ).where(Account.id == account_id)
 
         with self._session_factory() as session:
@@ -86,6 +87,7 @@ class SQLAlchemyOAuthServerRepository(OAuthServerRepository):
                 interface_language=row.interface_language,
                 timezone=row.timezone,
                 status=OAuthProviderAccountStatus(row.status.value),
+                created_at=row.created_at,
             )
 
 

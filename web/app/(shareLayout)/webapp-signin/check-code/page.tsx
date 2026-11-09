@@ -1,16 +1,17 @@
 'use client'
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import {
   navigateAfterWebAppLogin,
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
+import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import Countdown from '@/app/components/signin/countdown'
-import { useLocale } from '@/context/i18n'
+import { toast } from '@/app/notifications'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
@@ -22,7 +23,7 @@ import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 
 export default function CheckCode() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
@@ -30,7 +31,6 @@ export default function CheckCode() {
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const locale = useLocale()
-  const codeInputRef = useRef<HTMLInputElement>(null)
   const redirectUrl = searchParams.get('redirect_url')
   const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
 
@@ -78,14 +78,10 @@ export default function CheckCode() {
     }
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     verify()
   }
-
-  useEffect(() => {
-    codeInputRef.current?.focus()
-  }, [])
 
   const resendCode = async () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
@@ -107,7 +103,7 @@ export default function CheckCode() {
   }
 
   return (
-    <div className="flex w-100 flex-col gap-3">
+    <div className="flex w-full max-w-100 flex-col gap-3">
       <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
         <span
           aria-hidden
@@ -133,7 +129,7 @@ export default function CheckCode() {
           {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
         </label>
         <Input
-          ref={codeInputRef}
+          ref={focusOnArrival}
           id="code"
           name="code"
           inputMode="numeric"
@@ -143,7 +139,7 @@ export default function CheckCode() {
           onValueChange={setCode}
           maxLength={6}
           className="mt-1"
-          placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) || ''}
+          placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' })}
         />
         <Button type="submit" loading={loading} className="my-3 w-full" variant="primary">
           {t(($) => $['checkCode.verify'], { ns: 'login' })}
@@ -158,10 +154,10 @@ export default function CheckCode() {
         onClick={() => router.back()}
         className="flex h-9 cursor-pointer appearance-none items-center justify-center text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
-        <span className="bg-background-default-dimm inline-block rounded-full p-1">
+        <span className="inline-block rounded-full p-1">
           <span aria-hidden className="i-ri-arrow-left-line block size-3" />
         </span>
-        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>
     </div>
   )

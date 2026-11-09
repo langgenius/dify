@@ -1,4 +1,4 @@
-import type { DataSourceCredential } from '@/types/pipeline'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useBoolean } from 'ahooks'
@@ -10,7 +10,7 @@ import Trigger from './trigger'
 export type CredentialSelectorProps = {
   currentCredentialId: string
   onCredentialChange: (credentialId: string) => void
-  credentials: Array<DataSourceCredential>
+  credentials: Array<DatasourceCredentialResponse>
 }
 
 const CredentialSelector = ({
@@ -50,7 +50,7 @@ const CredentialSelector = ({
         )}
       />
       <PopoverContent
-        placement="bottom-start"
+        align="start"
         sideOffset={4}
         className="border-none bg-transparent shadow-none"
       >

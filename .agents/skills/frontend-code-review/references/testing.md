@@ -13,7 +13,7 @@ Flag missing coverage when a change alters a reachable contract such as:
 - Accessibility-critical labels, keyboard flow, focus, disabled state, or overlay behavior.
 - A regression-prone business rule or bug fix that can be reproduced through a public boundary.
 
-Do not request tests for mechanical changes, pass-through wrappers, implementation details, or visual-only styling unless they affect behavior. Low coverage alone is not a finding.
+Do not request tests for mechanical changes, pass-through wrappers, implementation details, or incidental visual styling. Low coverage alone is not a finding.
 
 ## Flag Low-Value or Fragile Tests
 
@@ -31,6 +31,7 @@ Flag tests that:
 - Prefer semantic queries and accessible names.
 - Prefer real feature components when integration semantics matter.
 - Check mocks against the owning package's policy; allowed mocks must preserve the public contract and leave the behavior under review real.
-- Require a real-browser or visual verification plan when `happy-dom` cannot represent the risk.
+- Apply the owning package's admission policy before requesting new automation. Real-browser verification can be a one-off review; a simulator limitation alone does not justify a permanent test.
+- Check that assertions prove the claimed outcome and add evidence beyond existing tests; a browser runtime does not make weak assertions stronger.
 
 Treat test quality, determinism, and regression value as the review criteria. Do not use test count or coverage percentage as a proxy for quality.

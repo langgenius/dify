@@ -27,7 +27,7 @@ const SKIPPED_DIRECTORIES = new Set([
   '.vinext',
   'coverage',
   'dist',
-  'i18n',
+  'locales',
   'node_modules',
   'public',
 ])
@@ -920,7 +920,7 @@ function transformAnalyzedSource(
       isTranslationCall(node, checker, sourceFile) &&
       node.arguments.length
     ) {
-      const keyExpression = node.arguments[0]! as ts.Expression
+      const keyExpression = node.arguments[0]!
       if (!isSelectorCompatibleExpression(keyExpression, checker, sourceFile)) {
         edits.push({
           end: keyExpression.end,
@@ -932,7 +932,7 @@ function transformAnalyzedSource(
       const fallback = node.arguments[1]
       if (fallback && isStringExpression(fallback)) {
         const options = node.arguments[2]
-        if (options && ts.isObjectLiteralExpression(unwrapExpression(options as ts.Expression))) {
+        if (options && ts.isObjectLiteralExpression(unwrapExpression(options))) {
           const optionsText = options.getText(sourceFile)
           const properties = optionsText.slice(1, -1).trim()
           edits.push({

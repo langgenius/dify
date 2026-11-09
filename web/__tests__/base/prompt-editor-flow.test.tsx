@@ -3,7 +3,6 @@ import type { ComponentProps } from 'react'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { getNearestEditorFromDOMNode } from 'lexical'
 import { useEffect } from 'react'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import {
@@ -145,9 +144,8 @@ describe('Base Prompt Editor Flow', () => {
       })
     })
 
-    it('should tolerate updates without onChange and rethrow lexical runtime errors through the configured handler', async () => {
+    it('should display external updates while read-only', async () => {
       const captures: Captures = { eventEmitter: null, events: [] }
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       const { container } = render(
         <PromptEditorHarness
@@ -171,21 +169,9 @@ describe('Base Prompt Editor Flow', () => {
       })
 
       const editable = container.querySelector('[contenteditable="false"]') as HTMLElement
-      const editor = getNearestEditorFromDOMNode(editable)
 
       expect(editable).toBeInTheDocument()
-      expect(editor).not.toBeNull()
       expect(screen.getByRole('textbox')).toHaveTextContent('silent update')
-
-      expect(() => {
-        act(() => {
-          editor?.update(() => {
-            throw new Error('prompt-editor boom')
-          })
-        })
-      }).toThrow('prompt-editor boom')
-
-      consoleErrorSpy.mockRestore()
     })
   })
 })

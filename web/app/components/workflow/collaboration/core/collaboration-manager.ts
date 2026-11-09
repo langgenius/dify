@@ -8,6 +8,7 @@ import type {
   CollaborationUpdate,
   CursorPosition,
   GraphReloadRequest,
+  JoinFailure,
   NodePanelPresenceMap,
   NodePanelPresenceUser,
   OnlineUser,
@@ -21,7 +22,12 @@ import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
 import { EventEmitter } from './event-emitter'
-import { emitWithAuthGuard, isDefaultSocketUrl, webSocketClient } from './websocket-manager'
+import {
+  emitWithAuthGuard,
+  isDefaultSocketUrl,
+  isUnauthorizedAck,
+  webSocketClient,
+} from './websocket-manager'
 
 type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
 
@@ -178,6 +184,11 @@ export class CollaborationManager {
   private initialSyncRetryTimer: ReturnType<typeof setTimeout> | null = null
   private initialSyncRetryAttempt = 0
   private rejoinInProgress = false
+  private joinFailure: JoinFailure | null = null
+  private joinPending = false
+  private hasJoinedRoom = false
+  private joinAttempt = 0
+  private receivedConnectionStatus = false
   private pendingGraphImportEmit = false
   private pendingGraphResyncBroadcast = false
   private graphViewActive: boolean | null = null
@@ -218,30 +229,74 @@ export class CollaborationManager {
     return webSocketClient.getSocket(this.currentAppId)
   }
 
-  private handleSessionUnauthorized = (): void => {
-    if (this.rejoinInProgress) return
-    if (!this.currentAppId) return
+  private handleJoinAck = (...args: unknown[]): void => {
+    const [body, status] = args
+    const message = body && typeof body === 'object' && 'msg' in body ? body.msg : undefined
+    if (message === 'connected') {
+      this.joinPending = false
+      this.joinFailure = null
+      this.eventEmitter.emit('joinFailure', null)
+      this.emitGraphReadyState()
+      return
+    }
+    if (isUnauthorizedAck(...args) || status === 403 || body === 403 || message === 'not_entitled')
+      this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'denied'
+    else if (status === 503 || body === 503 || message === 'collaboration_unavailable')
+      this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'unavailable'
+    else return
 
-    const socket = this.getActiveSocket()
-    if (!socket) return
+    this.joinPending = false
+    this.crdtTrusted = false
+    this.eventEmitter.emit('joinFailure', this.joinFailure)
+    this.emitGraphReadyState()
+  }
 
-    this.rejoinInProgress = true
-    console.warn('Collaboration session expired, attempting to rejoin workflow.')
+  onJoinFailure(callback: (failure: JoinFailure | null) => void): () => void {
+    const unsubscribe = this.eventEmitter.on('joinFailure', callback)
+    callback(this.joinFailure)
+    return unsubscribe
+  }
+
+  private joinWorkflow(socket: Socket): void {
+    if (!this.currentAppId || !socket.connected) return
+
+    this.joinPending = true
+    const attempt = ++this.joinAttempt
+    const sid = socket.id
     emitWithAuthGuard(
       socket,
       'user_connect',
       { workflow_id: this.currentAppId },
       {
-        onAck: () => {
+        onAck: (...args) => {
+          if (
+            this.getActiveSocket() !== socket ||
+            socket.id !== sid ||
+            this.joinAttempt !== attempt
+          )
+            return
           this.rejoinInProgress = false
-        },
-        onUnauthorized: () => {
-          this.rejoinInProgress = false
-          console.error('Rejoin failed due to authorization error, forcing disconnect.')
-          this.forceDisconnect()
+          this.handleJoinAck(...args)
         },
       },
     )
+  }
+
+  private handleSessionUnauthorized = (): void => {
+    if (
+      this.joinFailure ||
+      this.rejoinInProgress ||
+      (this.joinPending && !this.receivedConnectionStatus)
+    )
+      return
+    if (!this.currentAppId) return
+
+    const socket = this.getActiveSocket()
+    if (!socket?.connected) return
+
+    this.rejoinInProgress = true
+    console.warn('Collaboration session expired, attempting to rejoin workflow.')
+    this.joinWorkflow(socket)
   }
 
   private sendCollaborationEvent(payload: CollaborationEventPayload): void {
@@ -343,7 +398,7 @@ export class CollaborationManager {
   }
 
   private populateNodeContainer(container: LoroMap<Record<string, Value>>, node: Node): void {
-    const listFields = new Set(['variables', 'prompt_template', 'parameters'])
+    const listFields = new Set(['variables', 'parameters'])
     container.set('id', node.id)
     container.set('type', node.type)
     container.set('position', toLoroValue(node.position))
@@ -392,7 +447,8 @@ export class CollaborationManager {
       if (!this.shouldSyncDataKey(key)) return
       handledKeys.add(key)
 
-      if (listFields.has(key)) this.syncList(container, key, Array.isArray(value) ? value : [])
+      if (listFields.has(key) || (key === 'prompt_template' && Array.isArray(value)))
+        this.syncList(container, key, Array.isArray(value) ? value : [])
       else dataContainer.set(key, toLoroValue(value))
     })
 
@@ -701,13 +757,7 @@ export class CollaborationManager {
     this.emitGraphReadyState()
 
     // Force user_connect if already connected
-    if (socket.connected)
-      emitWithAuthGuard(
-        socket,
-        'user_connect',
-        { workflow_id: appId },
-        { onUnauthorized: this.handleSessionUnauthorized },
-      )
+    if (socket.connected) this.joinWorkflow(socket)
 
     return connectionId
   }
@@ -731,6 +781,12 @@ export class CollaborationManager {
     preserveConnectIntent = false,
   }: { preserveConnectIntent?: boolean } = {}): void => {
     this.localDraftFallbackActive = false
+    this.joinFailure = null
+    this.eventEmitter.emit('joinFailure', null)
+    this.joinPending = false
+    this.hasJoinedRoom = false
+    this.joinAttempt += 1
+    this.receivedConnectionStatus = false
     if (this.currentAppId) webSocketClient.disconnect(this.currentAppId)
 
     this.clearInitialSyncRetry()
@@ -804,6 +860,7 @@ export class CollaborationManager {
   }
 
   canPersistLocalGraph(): boolean {
+    if (this.joinFailure) return false
     if (this.localDraftFallbackActive) return true
     return this.crdtTrusted && !this.graphReloadRequired && this.graphViewActive !== false
   }
@@ -895,6 +952,18 @@ export class CollaborationManager {
     this.graphReloadRequired = false
     this.emitGraphReadyState()
     if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
+    return true
+  }
+
+  replaceGraphFromCommittedDraft(appId: string, nodes: Node[], edges: Edge[]): boolean {
+    if (this.currentAppId !== appId || !this.doc || !this.canApplyLocalGraphMutation()) return false
+
+    // A server-side import or restore replaces the whole draft. Its graph must also replace
+    // the CRDT snapshot before a visibility refresh or page close can persist the old graph.
+    this.syncNodes(this.getNodes(), nodes)
+    this.syncEdges(this.getEdges(), edges)
+    this.doc.commit()
+    this.clearUndoStack()
     return true
   }
 
@@ -1140,7 +1209,7 @@ export class CollaborationManager {
 
     this.sendCollaborationEvent({
       type: 'workflow_restore_intent',
-      data: data as unknown as Record<string, unknown>,
+      data: data as Record<string, unknown>,
       timestamp: Date.now(),
     })
   }
@@ -1150,7 +1219,7 @@ export class CollaborationManager {
 
     this.sendCollaborationEvent({
       type: 'workflow_restore_complete',
-      data: data as unknown as Record<string, unknown>,
+      data: data as Record<string, unknown>,
       timestamp: Date.now(),
     })
   }
@@ -1187,8 +1256,8 @@ export class CollaborationManager {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
           const previousNodes = state.getNodes()
-          const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
-          const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
+          const updatedNodes = this.mergeLocalNodeState(this.getNodes())
+          const updatedEdges = this.getEdges()
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:undo-apply')
           state.setNodes(updatedNodes)
@@ -1227,8 +1296,8 @@ export class CollaborationManager {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
           const previousNodes = state.getNodes()
-          const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
-          const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
+          const updatedNodes = this.mergeLocalNodeState(this.getNodes())
+          const updatedEdges = this.getEdges()
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:redo-apply')
           state.setNodes(updatedNodes)
@@ -1436,7 +1505,7 @@ export class CollaborationManager {
         const previousNodes = state.getNodes()
         const previousEdges = state.getEdges()
         this.startImportLog('edges', { nodes: previousNodes, edges: previousEdges })
-        const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
+        const updatedEdges = this.getEdges()
 
         this.pendingInitialSync = false
 
@@ -1858,10 +1927,14 @@ export class CollaborationManager {
 
     socket.on('status', (data: { isLeader: boolean }) => {
       try {
+        if (this.joinFailure && !this.joinPending) return
         if (!data || typeof data.isLeader !== 'boolean') {
           console.warn('Invalid status data:', data)
           return
         }
+
+        this.hasJoinedRoom = true
+        this.receivedConnectionStatus = true
 
         const wasLeader = this.isLeader
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
@@ -1907,6 +1980,7 @@ export class CollaborationManager {
     })
 
     socket.on('connect', () => {
+      this.receivedConnectionStatus = false
       this.hasEstablishedConnection = true
       if (this.rebuildCrdtOnNextConnect) {
         this.initializeCrdt(socket)
@@ -1915,12 +1989,17 @@ export class CollaborationManager {
         this.awaitingSnapshotImport = false
         this.crdtTrusted = false
       }
+      this.pendingInitialSync = true
+      this.joinWorkflow(socket)
       this.emitGraphReadyState()
       this.eventEmitter.emit('stateChange', { isConnected: true })
-      this.pendingInitialSync = true
     })
 
     socket.on('disconnect', (reason) => {
+      this.joinPending = false
+      this.rejoinInProgress = false
+      this.joinAttempt += 1
+      this.receivedConnectionStatus = false
       this.clearInitialSyncRetry()
       this.cursors = {}
       this.onlineUsers = []

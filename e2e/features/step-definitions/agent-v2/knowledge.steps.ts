@@ -1,18 +1,18 @@
 import type { Locator } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
 import {
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
-} from '../../agent-v2/support/agent-builder-resources'
+} from '../../agent-v2/support/agent-builder-resources.ts'
 import {
   createAgentSoulConfigWithKnowledgeDataset,
   normalAgentSoulConfig,
-} from '../../agent-v2/support/agent-soul'
-import { asArray, asRecord } from '../../agent-v2/support/fixtures/common'
-import { getCurrentAgentId } from './configure-helpers'
+} from '../../agent-v2/support/agent-soul.ts'
+import { createConfiguredTestAgent } from '../../agent-v2/support/agent.ts'
+import { asArray, asRecord } from '../../agent-v2/support/fixtures/common.ts'
+import { getCurrentAgentId } from './configure-helpers.ts'
 
 const getPreseededKnowledgeBase = (world: DifyWorld) => {
   const resource =
@@ -55,14 +55,21 @@ const openNewKnowledgeRetrievalDialog = async (world: DifyWorld) => {
 
 const selectPreseededKnowledgeBase = async (world: DifyWorld, dialog: Locator) => {
   const knowledgeBase = getPreseededKnowledgeBase(world)
-  const page = world.getPage()
-
-  await dialog.getByRole('button', { name: 'Add Knowledge' }).click()
-
-  const selectorDialog = page.getByRole('dialog', { name: 'Select reference Knowledge' })
-  await expect(selectorDialog).toBeVisible()
-  await selectorDialog.getByRole('button').filter({ hasText: knowledgeBase.name }).click()
-  await selectorDialog.getByRole('button', { name: 'Add' }).click()
+  const search = dialog.getByRole('combobox', { name: 'Search', exact: true })
+  await expect(search).toBeVisible()
+  await search.fill(knowledgeBase.name)
+  await dialog
+    .getByRole('option')
+    .filter({ has: world.getPage().getByText(knowledgeBase.name, { exact: true }) })
+    .click()
+  await dialog.getByRole('button', { name: 'Advanced Settings', exact: true }).click()
+  const retrievalName = dialog.getByRole('textbox', {
+    name: 'Knowledge retrieval name',
+    exact: true,
+  })
+  await expect(retrievalName).toBeVisible()
+  await retrievalName.fill('Retrieval 1')
+  await expect(dialog.getByRole('group', { name: 'Retrieval 1', exact: true })).toBeVisible()
 }
 
 const openKnowledgeRetrievalSettings = async (world: DifyWorld, name: string) => {
@@ -82,6 +89,8 @@ const openKnowledgeRetrievalSettings = async (world: DifyWorld, name: string) =>
   })
   await expect(dialog).toBeVisible()
 
+  await dialog.getByRole('button', { name: 'Advanced Settings', exact: true }).click()
+  await expect(dialog.getByRole('group', { name, exact: true })).toBeVisible()
   return dialog
 }
 
@@ -145,12 +154,14 @@ When(
   async function (this: DifyWorld) {
     const dialog = await openNewKnowledgeRetrievalDialog(this)
 
-    await expect(dialog.getByRole('radio', { name: 'Agent decide' })).toBeChecked()
     await selectPreseededKnowledgeBase(this, dialog)
+    await expect(dialog.getByRole('radio', { name: 'Agent decide' })).toBeChecked()
     await expect(
-      dialog.getByText(getPreseededKnowledgeBase(this).name, { exact: true }),
+      dialog
+        .getByRole('group', { name: 'Retrieval 1', exact: true })
+        .getByText(getPreseededKnowledgeBase(this).name, { exact: true }),
     ).toBeVisible()
-    await this.getPage().keyboard.press('Escape')
+    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
     await expect(dialog).toBeHidden()
   },
 )
@@ -160,15 +171,17 @@ When(
   async function (this: DifyWorld) {
     const dialog = await openNewKnowledgeRetrievalDialog(this)
 
-    await dialog.getByRole('radio', { name: 'Custom query' }).click()
-    await dialog
-      .getByRole('textbox', { name: 'Custom query text' })
-      .fill(agentBuilderFixedInputs.customKnowledgeQuery)
     await selectPreseededKnowledgeBase(this, dialog)
+    await dialog.getByRole('radio', { name: 'Custom query' }).click()
+    const customQuery = dialog.getByRole('textbox', { name: 'Custom query text' })
+    await expect(customQuery).toBeVisible()
+    await customQuery.fill(agentBuilderFixedInputs.customKnowledgeQuery)
     await expect(
-      dialog.getByText(getPreseededKnowledgeBase(this).name, { exact: true }),
+      dialog
+        .getByRole('group', { name: 'Retrieval 1', exact: true })
+        .getByText(getPreseededKnowledgeBase(this).name, { exact: true }),
     ).toBeVisible()
-    await this.getPage().keyboard.press('Escape')
+    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
     await expect(dialog).toBeHidden()
   },
 )
@@ -209,9 +222,12 @@ Then(
 
     await expect(dialog.getByRole('radio', { name: 'Agent decide' })).toBeChecked()
     await expect(
-      dialog.getByText(getPreseededKnowledgeBase(this).name, { exact: true }),
+      dialog
+        .getByRole('group', { name: 'Retrieval 1', exact: true })
+        .getByText(getPreseededKnowledgeBase(this).name, { exact: true }),
     ).toBeVisible()
-    await expect(dialog.getByRole('button', { name: 'Disabled' })).toBeVisible()
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog).toBeHidden()
   },
 )
 
@@ -225,9 +241,12 @@ Then(
       agentBuilderFixedInputs.customKnowledgeQuery,
     )
     await expect(
-      dialog.getByText(getPreseededKnowledgeBase(this).name, { exact: true }),
+      dialog
+        .getByRole('group', { name: 'Retrieval 1', exact: true })
+        .getByText(getPreseededKnowledgeBase(this).name, { exact: true }),
     ).toBeVisible()
-    await expect(dialog.getByRole('button', { name: 'Disabled' })).toBeVisible()
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog).toBeHidden()
   },
 )
 

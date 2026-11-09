@@ -1,70 +1,43 @@
-/* oxlint-disable typescript/no-explicit-any */
-import type { Mock } from 'vite-plus/test'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { render, screen } from '@testing-library/react'
-import * as React from 'react'
-import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import userEvent from '@testing-library/user-event'
+import { LanguagesSupported } from '@/i18n/language'
+import { captureDownloads } from '@/test/download'
 import CSVDownload from '../csv-downloader'
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(() => 'en-US'),
+let locale: Locale = 'en-US'
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => locale,
 }))
-
-const downloaderProps: any[] = []
-
-vi.mock('react-papaparse', () => ({
-  useCSVDownloader: vi.fn(() => ({
-    CSVDownloader: ({ children, ...props }: any) => {
-      downloaderProps.push(props)
-      return <div data-testid="mock-csv-downloader">{children}</div>
-    },
-    Type: { Link: 'link' },
-  })),
-}))
-
-const renderWithLocale = (locale: Locale) => {
-  ;(useLocale as Mock).mockReturnValue(locale)
-  return render(<CSVDownload />)
-}
 
 describe('CSVDownload', () => {
-  const englishTemplate = [
-    ['question', 'answer'],
-    ['question1', 'answer1'],
-    ['question2', 'answer2'],
-  ]
-  const chineseTemplate = [
-    ['问题', '答案'],
-    ['问题 1', '答案 1'],
-    ['问题 2', '答案 2'],
-  ]
-
-  beforeEach(() => {
-    downloaderProps.length = 0
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
-  it('should render the structure preview and pass English template data by default', () => {
-    renderWithLocale('en-US' as Locale)
+  it.each([
+    {
+      language: 'en-US' as Locale,
+      csv: 'question,answer\r\nquestion1,answer1\r\nquestion2,answer2',
+    },
+    {
+      language: LanguagesSupported[1] as Locale,
+      csv: '问题,答案\r\n问题 1,答案 1\r\n问题 2,答案 2',
+    },
+  ])('downloads the $language annotation template as CSV', async ({ language, csv }) => {
+    const user = userEvent.setup()
+    locale = language
+    const downloads = captureDownloads()
+    render(<CSVDownload />)
 
-    expect(screen.getByText('share.generation.csvStructureTitle')).toBeInTheDocument()
-    expect(screen.getByText('appAnnotation.batchModal.template')).toBeInTheDocument()
+    expect(screen.getByText('share.generation.csvStructureTitle')).toBeVisible()
+    await user.click(screen.getByText('appAnnotation.batchModal.template'))
 
-    expect(downloaderProps[0]).toMatchObject({
-      filename: 'template-en-US',
-      type: 'link',
-      bom: true,
-      data: englishTemplate,
-    })
-  })
-
-  it('should switch to the Chinese template when locale matches the secondary language', () => {
-    const locale = LanguagesSupported[1] as Locale
-    renderWithLocale(locale)
-
-    expect(downloaderProps[0]).toMatchObject({
-      filename: `template-${locale}`,
-      data: chineseTemplate,
-    })
+    expect(downloads).toHaveLength(1)
+    const { filename, blob } = downloads[0]!
+    expect(filename).toBe(`template-${language}.csv`)
+    expect(blob.type).toBe('text/csv;charset=utf-8;')
+    expect(await blob.text()).toBe(`\uFEFF${csv}`)
   })
 })

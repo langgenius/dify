@@ -21,7 +21,7 @@ function KeyValueItem({
   maskedValue,
   valueMaxWidthClassName = 'max-w-[162px]',
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [isCopied, setIsCopied] = useState(false)
   const labelId = useId()
   const handleCopy = useCallback(() => {
@@ -81,7 +81,7 @@ function KeyValueItem({
               </IconButton>
             }
           />
-          <TooltipContent placement="top">{tooltipLabel}</TooltipContent>
+          <TooltipContent>{tooltipLabel}</TooltipContent>
         </Tooltip>
       </div>
       <span role="status" aria-atomic="true" className="sr-only">

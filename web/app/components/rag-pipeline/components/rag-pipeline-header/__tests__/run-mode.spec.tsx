@@ -1,236 +1,162 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store/workflow'
+import { act, fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import {
+  baseRunningData,
+  renderWorkflowComponent,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
+import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { createRagPipelineSliceSlice } from '../../../store'
 import { RunMode } from '../run-mode'
 
+// Start and stop are provided by the pipeline hooks through the hooks store.
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockHandleStopRun = vi.fn()
-const mockSetIsPreparingDataSource = vi.fn()
-const mockSetShowDebugAndPreviewPanel = vi.fn()
-const hotkeyRegistrations = vi.hoisted(
-  () =>
-    new Map<
-      string,
-      {
-        callback: () => void
-        options?: { enabled?: boolean; ignoreInputs?: boolean; preventDefault?: boolean }
-      }
-    >(),
-)
 
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (
-      hotkey: string,
-      callback: () => void,
-      options?: { enabled?: boolean; ignoreInputs?: boolean; preventDefault?: boolean },
-    ) => {
-      hotkeyRegistrations.set(hotkey, { callback, options })
+let emitWorkflowEvent: ((event: { type: string }) => void) | undefined
+const EmitterProbe = ({ children }: { children: ReactNode }) => {
+  const { eventEmitter } = useEventEmitterContextContext()
+  emitWorkflowEvent = (event) => eventEmitter?.emit(event as never)
+  return children
+}
+
+const pressRunShortcut = () => {
+  const event = new KeyboardEvent('keydown', {
+    key: 'r',
+    code: 'KeyR',
+    altKey: true,
+    bubbles: true,
+  })
+  // Happy DOM treats Alt as AltGraph; this event represents the plain Alt key.
+  vi.spyOn(event, 'getModifierState').mockImplementation((key) => key === 'Alt')
+  fireEvent(document.body, event)
+  fireEvent.keyUp(document.body, { key: 'r', code: 'KeyR', altKey: true })
+}
+
+const renderRunMode = ({
+  initialStoreState = {},
+  canRun = true,
+}: { initialStoreState?: Record<string, unknown>; canRun?: boolean } = {}) =>
+  renderWorkflowComponent(
+    <EventEmitterContextProvider>
+      <EmitterProbe>
+        <RunMode />
+      </EmitterProbe>
+    </EventEmitterContextProvider>,
+    {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      injectWorkflowStoreSliceFn: createRagPipelineSliceSlice as InjectWorkflowStoreSliceFn,
+      initialStoreState,
+      hooksStoreProps: {
+        handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
+        handleStopRun: mockHandleStopRun,
+        accessControl: { ...fullWorkflowAccessControl, canRun },
+      },
     },
-  }
-})
-
-let mockWorkflowRunningData: { task_id: string; result: { status: string } } | undefined
-let mockIsPreparingDataSource = false
-vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({
-    handleStopRun: mockHandleStopRun,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-start-run', () => ({
-  useWorkflowStartRun: () => ({
-    handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    const state = {
-      workflowRunningData: mockWorkflowRunningData,
-      isPreparingDataSource: mockIsPreparingDataSource,
-    }
-    return selector(state)
-  },
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setIsPreparingDataSource: mockSetIsPreparingDataSource,
-      setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
-    }),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: { accessControl: { canRun: boolean } }) => unknown) =>
-    selector({
-      accessControl: { canRun: true },
-    }),
-}))
-
-vi.mock('@/app/components/workflow/types', () => ({
-  WorkflowRunningStatus: { Running: 'running' },
-}))
-
-vi.mock('@/app/components/workflow/variable-inspect/types', () => ({
-  EVENT_WORKFLOW_STOP: 'EVENT_WORKFLOW_STOP',
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: { useSubscription: vi.fn() },
-  }),
-}))
-
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: unknown[]) => args.filter((a) => typeof a === 'string').join(' '),
-}))
-
-vi.mock('@remixicon/react', () => ({
-  RiCloseLine: () => <span data-testid="close-icon" />,
-  RiDatabase2Line: () => <span data-testid="database-icon" />,
-  RiLoader2Line: () => <span data-testid="loader-icon" />,
-  RiPlayLargeLine: () => <span data-testid="play-icon" />,
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/line/mediaAndDevices', () => ({
-  StopCircle: () => <span data-testid="stop-icon" />,
-}))
+  )
 
 describe('RunMode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkflowRunningData = undefined
-    mockIsPreparingDataSource = false
-    hotkeyRegistrations.clear()
   })
 
   describe('Idle state', () => {
-    it('should render test run text when no data', () => {
-      render(<RunMode />)
+    it('starts a test run from the button', async () => {
+      const user = userEvent.setup()
+      renderRunMode()
 
-      expect(screen.getByText('pipeline.common.testRun')).toBeInTheDocument()
-    })
-
-    it('should render custom text when provided', () => {
-      render(<RunMode text="Custom Run" />)
-
-      expect(screen.getByText('Custom Run')).toBeInTheDocument()
-    })
-
-    it('should render play icon', () => {
-      render(<RunMode />)
-
-      expect(screen.getByTestId('play-icon')).toBeInTheDocument()
-    })
-
-    it('should render keyboard shortcuts', () => {
-      const { container } = render(<RunMode />)
-
-      expect(container.querySelectorAll('kbd')).toHaveLength(2)
-    })
-
-    it('should call start run when button clicked', () => {
-      render(<RunMode />)
-
-      fireEvent.click(screen.getByText('pipeline.common.testRun'))
-
-      expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalled()
-    })
-
-    it('should run through the enabled application shortcut', () => {
-      render(<RunMode />)
-
-      const registration = hotkeyRegistrations.get('Alt+R')
-      registration?.callback()
+      await user.click(screen.getByRole('button', { name: /pipeline.common.testRun/ }))
 
       expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledOnce()
-      expect(registration?.options).toEqual({
-        enabled: true,
-        ignoreInputs: true,
-        preventDefault: true,
-      })
+    })
+
+    it('starts a test run through the application shortcut', () => {
+      renderRunMode()
+
+      pressRunShortcut()
+
+      expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledOnce()
+    })
+
+    it('ignores the run shortcut for users without run access', () => {
+      renderRunMode({ canRun: false })
+
+      expect(
+        screen.queryByRole('button', { name: /pipeline.common.testRun/ }),
+      ).not.toBeInTheDocument()
+      pressRunShortcut()
+
+      expect(mockHandleWorkflowStartRunInWorkflow).not.toHaveBeenCalled()
     })
   })
 
   describe('Running state', () => {
-    beforeEach(() => {
-      mockWorkflowRunningData = {
+    const running = {
+      workflowRunningData: baseRunningData({
         task_id: 'task-1',
-        result: { status: 'running' },
-      }
+        result: { status: WorkflowRunningStatus.Running },
+      }),
+    }
+
+    it('stops the current task from the stop button', async () => {
+      const user = userEvent.setup()
+      renderRunMode({ initialStoreState: running })
+
+      await user.click(
+        screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
+      )
+
+      expect(screen.getByRole('button', { name: 'pipeline.common.processing' })).toBeDisabled()
+      expect(mockHandleWorkflowStartRunInWorkflow).not.toHaveBeenCalled()
+      expect(mockHandleStopRun).toHaveBeenCalledExactlyOnceWith('task-1')
     })
 
-    it('should show processing text', () => {
-      render(<RunMode />)
+    it('stops the current task when another panel requests a workflow stop', () => {
+      renderRunMode({ initialStoreState: running })
 
-      expect(screen.getByText('pipeline.common.processing')).toBeInTheDocument()
-    })
+      act(() => emitWorkflowEvent?.({ type: EVENT_WORKFLOW_STOP }))
 
-    it('should show stop button', () => {
-      render(<RunMode />)
-
-      expect(screen.getByTestId('stop-icon')).toBeInTheDocument()
-    })
-
-    it('should disable run button', () => {
-      render(<RunMode />)
-
-      const button = screen.getByText('pipeline.common.processing').closest('button')
-      expect(button).toBeDisabled()
-    })
-
-    it('should call handleStopRun with task_id when stop clicked', () => {
-      render(<RunMode />)
-
-      fireEvent.click(screen.getByTestId('stop-icon').closest('button')!)
-
-      expect(mockHandleStopRun).toHaveBeenCalledWith('task-1')
+      expect(mockHandleStopRun).toHaveBeenCalledExactlyOnceWith('task-1')
     })
   })
 
-  describe('After run completed', () => {
-    it('should show reRun text when previous run data exists', () => {
-      mockWorkflowRunningData = {
-        task_id: 'task-1',
-        result: { status: 'succeeded' },
-      }
-      render(<RunMode />)
-
-      expect(screen.getByText('pipeline.common.reRun')).toBeInTheDocument()
+  it('offers a rerun once a previous run has finished', async () => {
+    const user = userEvent.setup()
+    renderRunMode({
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          task_id: 'task-1',
+          result: { status: WorkflowRunningStatus.Succeeded },
+        }),
+      },
     })
+
+    await user.click(screen.getByRole('button', { name: /pipeline.common.reRun/ }))
+
+    expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledOnce()
   })
 
-  describe('Preparing data source state', () => {
-    beforeEach(() => {
-      mockIsPreparingDataSource = true
+  it('closes datasource preparation and the run panel on cancel', async () => {
+    const user = userEvent.setup()
+    const { store } = renderRunMode({
+      initialStoreState: { isPreparingDataSource: true, showDebugAndPreviewPanel: true },
     })
 
-    it('should show preparing text', () => {
-      render(<RunMode />)
+    expect(
+      screen.getByRole('button', { name: 'pipeline.common.preparingDataSource' }),
+    ).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(screen.getByText('pipeline.common.preparingDataSource')).toBeInTheDocument()
+    expect(store.getState()).toMatchObject({
+      isPreparingDataSource: false,
+      showDebugAndPreviewPanel: false,
     })
-
-    it('should show database icon', () => {
-      render(<RunMode />)
-
-      expect(screen.getByTestId('database-icon')).toBeInTheDocument()
-    })
-
-    it('should show cancel button with close icon', () => {
-      render(<RunMode />)
-
-      expect(screen.getByTestId('close-icon')).toBeInTheDocument()
-    })
-
-    it('should cancel preparing when close clicked', () => {
-      render(<RunMode />)
-
-      fireEvent.click(screen.getByTestId('close-icon').closest('button')!)
-
-      expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(false)
-      expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(false)
-    })
+    expect(screen.getByRole('button', { name: /pipeline.common.testRun/ })).toBeEnabled()
   })
 })

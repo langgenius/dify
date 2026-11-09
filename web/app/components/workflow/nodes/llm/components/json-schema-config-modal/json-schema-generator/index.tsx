@@ -1,26 +1,26 @@
-import type { FC } from 'react'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { SchemaRoot } from '../../../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAutoGenModel } from '@/app/components/app/configuration/config/auto-gen-model-storage'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import useTheme from '@/hooks/use-theme'
-import { useGenerateStructuredOutputRules } from '@/service/use-common'
-import { ModelModeType, Theme } from '@/types/app'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import { ModelModeType } from '@/types/app'
 import { useMittContext } from '../visual-editor/context'
 import { useVisualEditorStore } from '../visual-editor/store'
 import { SchemaGeneratorDark, SchemaGeneratorLight } from './assets'
 import GeneratedResult from './generated-result'
 import PromptEditor from './prompt-editor'
 
-type JsonSchemaGeneratorProps = {
+type JsonSchemaGeneratorProps = Pick<PopoverContentProps, 'alignOffset'> & {
   onApply: (schema: SchemaRoot) => void
-  crossAxisOffset?: number
 }
 
 const GENERATOR_VIEWS = {
@@ -37,13 +37,13 @@ const createEmptyModel = (): Model => ({
   completion_params: {} as CompletionParams,
 })
 
-const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisOffset }) => {
+export function JsonSchemaGenerator({ onApply, alignOffset }: JsonSchemaGeneratorProps) {
+  const { t } = useTranslation(['workflowModels'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<GeneratorView>(GENERATOR_VIEWS.promptEditor)
   const [model, setModel] = useAutoGenModel()
   const [instruction, setInstruction] = useState('')
   const [schema, setSchema] = useState<SchemaRoot | null>(null)
-  const { theme } = useTheme()
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )
@@ -61,7 +61,6 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
   const advancedEditing = useVisualEditorStore((state) => state.advancedEditing)
   const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
   const { emit } = useMittContext()
-  const SchemaGenerator = theme === Theme.light ? SchemaGeneratorLight : SchemaGeneratorDark
 
   const handleTrigger = useCallback(
     (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
@@ -99,13 +98,19 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
     [resolvedModel, setModel],
   )
 
-  const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } =
-    useGenerateStructuredOutputRules()
+  const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } = useMutation(
+    consoleQuery.ruleStructuredOutputGenerate.post.mutationOptions(),
+  )
 
   const generateSchema = useCallback(async () => {
     const { output, error } = await generateStructuredOutputRules({
-      instruction,
-      model_config: resolvedModel,
+      body: {
+        instruction,
+        model_config: {
+          ...resolvedModel,
+          mode: resolvedModel.mode === 'completion' ? 'completion' : 'chat',
+        },
+      },
     })
     if (error) {
       toast.error(error)
@@ -144,17 +149,19 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
         render={
           <button
             type="button"
+            aria-label={t(($) => $['nodes.llm.jsonSchema.generateJsonSchema'])}
             onClick={handleTrigger}
             className="flex size-6 items-center justify-center rounded-md p-0.5 hover:bg-state-accent-hover data-popup-open:bg-state-accent-active data-popup-open:hover:bg-state-accent-hover"
           >
-            <SchemaGenerator />
+            <SchemaGeneratorLight className="dark:hidden" />
+            <SchemaGeneratorDark className="not-dark:hidden" />
           </button>
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
-        alignOffset={crossAxisOffset ?? 0}
+        alignOffset={alignOffset}
         className="border-none bg-transparent shadow-none"
       >
         {view === GENERATOR_VIEWS.promptEditor && (
@@ -182,5 +189,3 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
     </Popover>
   )
 }
-
-export default JsonSchemaGenerator

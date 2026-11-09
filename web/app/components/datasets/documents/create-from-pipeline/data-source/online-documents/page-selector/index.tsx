@@ -28,7 +28,7 @@ const PageSelector = ({
   isMultipleChoice = true,
   currentCredentialId: _currentCredentialId,
 }: PageSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const selectionMode = isMultipleChoice ? 'multiple' : 'single'
   const {
     currentPreviewPageId,

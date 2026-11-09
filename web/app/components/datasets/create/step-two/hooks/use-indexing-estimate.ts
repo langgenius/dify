@@ -1,20 +1,16 @@
+import type { StepTwoFile, StepTwoNotionPage } from '../types'
 import type { IndexingType } from './use-indexing-config'
-import type { NotionPage } from '@/models/common'
-import type {
-  ChunkingMode,
-  CrawlOptions,
-  CrawlResultItem,
-  CustomFile,
-  ProcessRule,
-} from '@/models/datasets'
+import type { ChunkingMode, CrawlOptions, CrawlResultItem, ProcessRule } from '@/models/datasets'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
 import {
-  useFetchFileIndexingEstimateForFile,
-  useFetchFileIndexingEstimateForNotion,
-  useFetchFileIndexingEstimateForWeb,
-} from '@/service/knowledge/use-create-dataset'
+  getFileIndexingEstimateParamsForFile,
+  getFileIndexingEstimateParamsForNotion,
+  getFileIndexingEstimateParamsForWeb,
+} from '../creation-params'
 
 type UseIndexingEstimateOptions = {
   dataSourceType: DataSourceType
@@ -23,13 +19,13 @@ type UseIndexingEstimateOptions = {
   currentDocForm: ChunkingMode
   docLanguage: string
   // File data source
-  files: CustomFile[]
-  previewFileName?: string
+  files: StepTwoFile[]
+  previewItemId?: string
   // Notion data source
-  previewNotionPage: NotionPage
+  notionPages: StepTwoNotionPage[]
   notionCredentialId: string
   // Website data source
-  previewWebsitePage: CrawlResultItem
+  websitePages: CrawlResultItem[]
   crawlOptions?: CrawlOptions
   websiteCrawlProvider?: DataSourceProvider
   websiteCrawlJobId?: string
@@ -45,10 +41,10 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
     currentDocForm,
     docLanguage,
     files,
-    previewFileName,
-    previewNotionPage,
+    previewItemId,
+    notionPages,
     notionCredentialId,
-    previewWebsitePage,
+    websitePages,
     crawlOptions,
     websiteCrawlProvider,
     websiteCrawlJobId,
@@ -56,65 +52,80 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
     processRule,
   } = options
 
-  // File indexing estimate
-  const fileQuery = useFetchFileIndexingEstimateForFile({
-    docForm: currentDocForm,
-    docLanguage,
-    dataSourceType: DataSourceType.FILE,
-    files: previewFileName ? [files.find((file) => file.name === previewFileName)!] : files,
-    indexingTechnique,
-    processRule,
-    dataset_id: datasetId!,
-  })
+  // Step two keeps one data source, so one estimate request serves it.
+  const estimateMutation = useMutation(
+    consoleQuery.datasets.indexingEstimate.post.mutationOptions(),
+  )
 
-  // Notion indexing estimate
-  const notionQuery = useFetchFileIndexingEstimateForNotion({
-    docForm: currentDocForm,
-    docLanguage,
-    dataSourceType: DataSourceType.NOTION,
-    notionPages: [previewNotionPage],
-    indexingTechnique,
-    processRule,
-    dataset_id: datasetId || '',
-    credential_id: notionCredentialId,
-  })
+  const getEstimateParams = useCallback(
+    (selectedId?: string) => {
+      if (dataSourceType === DataSourceType.FILE) {
+        return getFileIndexingEstimateParamsForFile({
+          docForm: currentDocForm,
+          docLanguage,
+          dataSourceType: DataSourceType.FILE,
+          files: selectedId ? files.filter((file) => file.id === selectedId) : files,
+          indexingTechnique,
+          processRule,
+          dataset_id: datasetId!,
+        })
+      }
+      if (dataSourceType === DataSourceType.NOTION) {
+        return getFileIndexingEstimateParamsForNotion({
+          docForm: currentDocForm,
+          docLanguage,
+          dataSourceType: DataSourceType.NOTION,
+          notionPages: notionPages.filter((page) => page.page_id === selectedId),
+          indexingTechnique,
+          processRule,
+          dataset_id: datasetId || '',
+          credential_id: notionCredentialId,
+        })
+      }
+      return getFileIndexingEstimateParamsForWeb({
+        docForm: currentDocForm,
+        docLanguage,
+        dataSourceType: DataSourceType.WEB,
+        websitePages: websitePages.filter((page) => page.source_url === selectedId),
+        crawlOptions,
+        websiteCrawlProvider: websiteCrawlProvider ?? DataSourceProvider.jinaReader,
+        websiteCrawlJobId: websiteCrawlJobId ?? '',
+        indexingTechnique,
+        processRule,
+        dataset_id: datasetId || '',
+      })
+    },
+    [
+      dataSourceType,
+      currentDocForm,
+      docLanguage,
+      files,
+      notionPages,
+      notionCredentialId,
+      websitePages,
+      crawlOptions,
+      websiteCrawlProvider,
+      websiteCrawlJobId,
+      indexingTechnique,
+      processRule,
+      datasetId,
+    ],
+  )
 
-  // Website indexing estimate
-  const websiteQuery = useFetchFileIndexingEstimateForWeb({
-    docForm: currentDocForm,
-    docLanguage,
-    dataSourceType: DataSourceType.WEB,
-    websitePages: [previewWebsitePage],
-    crawlOptions,
-    websiteCrawlProvider: websiteCrawlProvider ?? DataSourceProvider.jinaReader,
-    websiteCrawlJobId: websiteCrawlJobId ?? '',
-    indexingTechnique,
-    processRule,
-    dataset_id: datasetId || '',
-  })
-
-  // Get current mutation based on data source type
-  const getCurrentMutation = useCallback(() => {
-    if (dataSourceType === DataSourceType.FILE) return fileQuery
-    if (dataSourceType === DataSourceType.NOTION) return notionQuery
-    return websiteQuery
-  }, [dataSourceType, fileQuery, notionQuery, websiteQuery])
-
-  const currentMutation = getCurrentMutation()
-
-  // Trigger estimate fetch
-  const fetchEstimate = useCallback(() => {
-    if (dataSourceType === DataSourceType.FILE) fileQuery.mutate()
-    else if (dataSourceType === DataSourceType.NOTION) notionQuery.mutate()
-    else websiteQuery.mutate()
-  }, [dataSourceType, fileQuery, notionQuery, websiteQuery])
+  const { mutate } = estimateMutation
+  const fetchEstimate = useCallback(
+    (selectedId = previewItemId) => {
+      mutate({ body: getEstimateParams(selectedId) })
+    },
+    [mutate, getEstimateParams, previewItemId],
+  )
 
   return {
-    currentMutation,
-    estimate: currentMutation.data,
-    isIdle: currentMutation.isIdle,
-    isPending: currentMutation.isPending,
+    currentMutation: estimateMutation,
+    estimate: estimateMutation.data,
+    isIdle: estimateMutation.isIdle,
+    isPending: estimateMutation.isPending,
     fetchEstimate,
-    reset: currentMutation.reset,
+    reset: estimateMutation.reset,
   }
 }

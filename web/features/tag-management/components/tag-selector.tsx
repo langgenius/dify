@@ -10,13 +10,14 @@ import {
   ComboboxTrigger,
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
 import { getTagManagePermissionKey } from '../utils'
@@ -56,8 +57,11 @@ export type TagSelectorProps = TagSelectorRootProps &
     type: TagType
     value: Tag[]
     canBindOrUnbindTags?: boolean
+    requiresTargetEditPermission?: boolean
+    showProvidedTagNames?: boolean
     onOpenTagManagement?: () => void
     onTagsChange?: () => void
+    onApplyTags?: (tagIds: string[]) => void
   }
 
 export const TagSelector = ({
@@ -66,22 +70,28 @@ export const TagSelector = ({
   type,
   value,
   canBindOrUnbindTags,
+  requiresTargetEditPermission = false,
+  showProvidedTagNames = false,
   className,
   onClick,
   onOpenTagManagement = () => {},
   onTagsChange,
+  onApplyTags,
   ...rootProps
 }: TagSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [draftTagIds, setDraftTagIds] = useState(() => value.map((tag) => tag.id))
   const [inputValue, setInputValue] = useState('')
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
+  const canChangeBindings = requiresTargetEditPermission
+    ? !!canBindOrUnbindTags
+    : !!canBindOrUnbindTags || canManageTags
 
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutate: createTag } = useMutation(
-    consoleQuery.tags.post.mutationOptions(),
+    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
   )
   const { data: tagList = [] } = useQuery(
     consoleQuery.tags.get.queryOptions({
@@ -99,10 +109,10 @@ export const TagSelector = ({
 
     const tagNameById = new Map(tagList.map((tag) => [tag.id, tag.name]))
     return value.flatMap((tag) => {
-      const tagName = tagNameById.get(tag.id)
+      const tagName = tagNameById.get(tag.id) ?? (showProvidedTagNames ? tag.name : undefined)
       return tagName ? [tagName] : []
     })
-  }, [tagList, value])
+  }, [showProvidedTagNames, tagList, value])
   const emptyTriggerLabel = canBindOrUnbindTags
     ? t(($) => $['tag.addTag'], { ns: 'common' })
     : t(($) => $['tag.noTag'], { ns: 'common' })
@@ -163,6 +173,11 @@ export const TagSelector = ({
 
     if (!tagSelectionChanged) return
 
+    if (onApplyTags) {
+      onApplyTags(draftTagIds)
+      return
+    }
+
     const toastId = `tag-bindings-${type}-${targetId}`
 
     applyTagBindingsMutation.mutate(
@@ -181,9 +196,10 @@ export const TagSelector = ({
             },
           )
         },
-        onError: () => {
+        onError: (error) => {
           toast.error(
-            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
             {
               id: toastId,
             },
@@ -194,7 +210,16 @@ export const TagSelector = ({
         },
       },
     )
-  }, [applyTagBindingsMutation, draftTagIds, onTagsChange, selectedTagIds, t, targetId, type])
+  }, [
+    applyTagBindingsMutation,
+    draftTagIds,
+    onApplyTags,
+    onTagsChange,
+    selectedTagIds,
+    t,
+    targetId,
+    type,
+  ])
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -225,8 +250,8 @@ export const TagSelector = ({
             toast.success(t(($) => $['tag.created'], { ns: 'common' }))
             setInputValue('')
           },
-          onError: () => {
-            toast.error(t(($) => $['tag.failed'], { ns: 'common' }))
+          onError: (error) => {
+            toast.error(getErrorMessage(error) ?? t(($) => $['tag.failed'], { ns: 'common' }))
           },
         },
       )
@@ -265,13 +290,12 @@ export const TagSelector = ({
       filter={TAG_COMBOBOX_FILTER}
     >
       <ComboboxTrigger
-        disabled={!canManageTags && !canBindOrUnbindTags}
+        disabled={!canChangeBindings}
         aria-label={accessibleTriggerLabel}
         className={cn(
-          'group/tag-area relative h-auto w-full cursor-pointer rounded-lg border-0 bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-transparent data-disabled:bg-transparent data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
+          'group/tag-area relative flex w-full min-w-0 cursor-pointer items-center gap-0.5 rounded-lg p-1 text-start transition-colors hover:bg-state-base-hover data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover motion-reduce:transition-none',
           className,
         )}
-        icon={false}
         onClick={onClick}
       >
         <TagTriggerContent tags={tagNames} emptyLabel={emptyTriggerLabel} />
@@ -281,16 +305,16 @@ export const TagSelector = ({
         />
       </ComboboxTrigger>
       <ComboboxPortal>
-        <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+        <ComboboxPositioner>
           <ComboboxPopup
+            onClick={(event) => event.stopPropagation()}
             aria-label={accessibleTriggerLabel}
             className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
           >
             <TagSearchContent
               type={type}
-              inputValue={inputValue}
-              onInputValueChange={setInputValue}
               canBindOrUnbindTags={canBindOrUnbindTags}
+              requiresTargetEditPermission={requiresTargetEditPermission}
               onOpenTagManagement={onOpenTagManagement}
               onClose={() => handleOpenChange(false)}
             />

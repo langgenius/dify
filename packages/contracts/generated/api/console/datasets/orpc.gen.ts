@@ -3,6 +3,24 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zArchivedDocumentImmutableError,
+  zChildChunkDeleteIndexError,
+  zChildChunkIndexingError,
+  zCompletionRequestError,
+  zDatasetAccessDeniedError,
+  zDatasetNameDuplicateError,
+  zDocumentAlreadyFinishedError,
+  zDocumentIndexingError,
+  zIndexingEstimateError,
+  zInvalidActionError,
+  zInvalidMetadataError,
+  zKnowledgeFsUpgradeModelsUnavailableError,
+  zMaxKeysExceededError,
+  zModelCurrentlyNotSupportError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
+} from './zod.gen.ts'
+import {
   zDeleteDatasetsApiKeysByApiKeyIdPath,
   zDeleteDatasetsApiKeysByApiKeyIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath,
@@ -15,6 +33,7 @@ import {
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zDeleteDatasetsByDatasetIdDocumentsPath,
+  zDeleteDatasetsByDatasetIdDocumentsQuery,
   zDeleteDatasetsByDatasetIdDocumentsResponse,
   zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath,
   zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse,
@@ -47,8 +66,6 @@ import {
   zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse,
-  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath,
-  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse,
@@ -66,6 +83,10 @@ import {
   zGetDatasetsByDatasetIdErrorDocsResponse,
   zGetDatasetsByDatasetIdIndexingStatusPath,
   zGetDatasetsByDatasetIdIndexingStatusResponse,
+  zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath,
+  zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse,
+  zGetDatasetsByDatasetIdKnowledgeFsUpgradesPath,
+  zGetDatasetsByDatasetIdKnowledgeFsUpgradesResponse,
   zGetDatasetsByDatasetIdMetadataPath,
   zGetDatasetsByDatasetIdMetadataResponse,
   zGetDatasetsByDatasetIdNotionSyncPath,
@@ -74,6 +95,7 @@ import {
   zGetDatasetsByDatasetIdPermissionPartUsersPath,
   zGetDatasetsByDatasetIdPermissionPartUsersResponse,
   zGetDatasetsByDatasetIdQueriesPath,
+  zGetDatasetsByDatasetIdQueriesQuery,
   zGetDatasetsByDatasetIdQueriesResponse,
   zGetDatasetsByDatasetIdRelatedAppsPath,
   zGetDatasetsByDatasetIdRelatedAppsResponse,
@@ -88,6 +110,7 @@ import {
   zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse,
   zGetDatasetsExternalKnowledgeApiQuery,
   zGetDatasetsExternalKnowledgeApiResponse,
+  zGetDatasetsKnowledgeFsUpgradeJobsResponse,
   zGetDatasetsMetadataBuiltInResponse,
   zGetDatasetsProcessRuleQuery,
   zGetDatasetsProcessRuleResponse,
@@ -116,6 +139,7 @@ import {
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
   zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath,
+  zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchQuery,
   zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse,
   zPatchDatasetsByDatasetIdMetadataByMetadataIdBody,
   zPatchDatasetsByDatasetIdMetadataByMetadataIdPath,
@@ -127,9 +151,6 @@ import {
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse,
   zPostDatasetsApiKeysBody,
   zPostDatasetsApiKeysResponse,
-  zPostDatasetsBatchImportStatusByJobIdBody,
-  zPostDatasetsBatchImportStatusByJobIdPath,
-  zPostDatasetsBatchImportStatusByJobIdResponse,
   zPostDatasetsBody,
   zPostDatasetsByDatasetIdApiKeysByStatusPath,
   zPostDatasetsByDatasetIdApiKeysByStatusResponse,
@@ -163,6 +184,12 @@ import {
   zPostDatasetsByDatasetIdHitTestingBody,
   zPostDatasetsByDatasetIdHitTestingPath,
   zPostDatasetsByDatasetIdHitTestingResponse,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesBody,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesHeaders,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse,
   zPostDatasetsByDatasetIdMetadataBody,
   zPostDatasetsByDatasetIdMetadataBuiltInByActionPath,
   zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse,
@@ -187,7 +214,7 @@ import {
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataBody,
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataPath,
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get dataset API base information
@@ -251,6 +278,7 @@ export const post = oc
   })
   .input(z.object({ body: zPostDatasetsApiKeysBody }))
   .output(zPostDatasetsApiKeysResponse)
+  .errors({ max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } })
 
 export const apiKeys = {
   get: get2,
@@ -269,25 +297,8 @@ export const get3 = oc
   .input(z.object({ params: zGetDatasetsBatchImportStatusByJobIdPath }))
   .output(zGetDatasetsBatchImportStatusByJobIdResponse)
 
-export const post2 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postDatasetsBatchImportStatusByJobId',
-    path: '/datasets/batch_import_status/{job_id}',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostDatasetsBatchImportStatusByJobIdBody,
-      params: zPostDatasetsBatchImportStatusByJobIdPath,
-    }),
-  )
-  .output(zPostDatasetsBatchImportStatusByJobIdResponse)
-
 export const byJobId = {
   get: get3,
-  post: post2,
 }
 
 export const batchImportStatus = {
@@ -297,7 +308,7 @@ export const batchImportStatus = {
 /**
  * Create external knowledge dataset
  */
-export const post3 = oc
+export const post2 = oc
   .route({
     description: 'Create external knowledge dataset',
     inputStructure: 'detailed',
@@ -309,9 +320,10 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostDatasetsExternalBody }))
   .output(zPostDatasetsExternalResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const external = {
-  post: post3,
+  post: post2,
 }
 
 /**
@@ -344,6 +356,7 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath }))
   .output(zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 /**
  * Get external knowledge API template details
@@ -359,6 +372,7 @@ export const get5 = oc
   })
   .input(z.object({ params: zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath }))
   .output(zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 /**
  * Update external knowledge API template
@@ -379,6 +393,7 @@ export const patch = oc
     }),
   )
   .output(zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const byExternalKnowledgeApiId = {
   delete: delete2,
@@ -399,13 +414,13 @@ export const get6 = oc
     path: '/datasets/external-knowledge-api',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }).optional())
   .output(zGetDatasetsExternalKnowledgeApiResponse)
 
 /**
  * Create external knowledge API template
  */
-export const post4 = oc
+export const post3 = oc
   .route({
     description: 'Create external knowledge API template',
     inputStructure: 'detailed',
@@ -417,17 +432,18 @@ export const post4 = oc
   })
   .input(z.object({ body: zPostDatasetsExternalKnowledgeApiBody }))
   .output(zPostDatasetsExternalKnowledgeApiResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const externalKnowledgeApi = {
   get: get6,
-  post: post4,
+  post: post3,
   byExternalKnowledgeApiId,
 }
 
 /**
  * Estimate dataset indexing cost
  */
-export const post5 = oc
+export const post4 = oc
   .route({
     description: 'Estimate dataset indexing cost',
     inputStructure: 'detailed',
@@ -438,15 +454,20 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostDatasetsIndexingEstimateBody }))
   .output(zPostDatasetsIndexingEstimateResponse)
+  .errors({
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const indexingEstimate = {
-  post: post5,
+  post: post4,
 }
 
 /**
  * Initialize dataset with documents
  */
-export const post6 = oc
+export const post5 = oc
   .route({
     description: 'Initialize dataset with documents',
     inputStructure: 'detailed',
@@ -457,12 +478,31 @@ export const post6 = oc
   })
   .input(z.object({ body: zPostDatasetsInitBody }))
   .output(zPostDatasetsInitResponse)
+  .errors({
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const init = {
-  post: post6,
+  post: post5,
 }
 
 export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsKnowledgeFsUpgradeJobs',
+    path: '/datasets/knowledge-fs-upgrade-jobs',
+    tags: ['console'],
+  })
+  .output(zGetDatasetsKnowledgeFsUpgradeJobsResponse)
+
+export const knowledgeFsUpgradeJobs = {
+  get: get7,
+}
+
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -473,14 +513,14 @@ export const get7 = oc
   .output(zGetDatasetsMetadataBuiltInResponse)
 
 export const builtIn = {
-  get: get7,
+  get: get8,
 }
 
 export const metadata = {
   builtIn,
 }
 
-export const post7 = oc
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -490,15 +530,19 @@ export const post7 = oc
   })
   .input(z.object({ body: zPostDatasetsNotionIndexingEstimateBody }))
   .output(zPostDatasetsNotionIndexingEstimateResponse)
+  .errors({
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const notionIndexingEstimate = {
-  post: post7,
+  post: post6,
 }
 
 /**
  * Get dataset document processing rules
  */
-export const get8 = oc
+export const get9 = oc
   .route({
     description: 'Get dataset document processing rules',
     inputStructure: 'detailed',
@@ -507,17 +551,17 @@ export const get8 = oc
     path: '/datasets/process-rule',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }).optional())
   .output(zGetDatasetsProcessRuleResponse)
 
 export const processRule = {
-  get: get8,
+  get: get9,
 }
 
 /**
  * Get mock dataset retrieval settings by vector type
  */
-export const get9 = oc
+export const get10 = oc
   .route({
     description: 'Get mock dataset retrieval settings by vector type',
     inputStructure: 'detailed',
@@ -530,13 +574,13 @@ export const get9 = oc
   .output(zGetDatasetsRetrievalSettingByVectorTypeResponse)
 
 export const byVectorType = {
-  get: get9,
+  get: get10,
 }
 
 /**
  * Get dataset retrieval settings
  */
-export const get10 = oc
+export const get11 = oc
   .route({
     description: 'Get dataset retrieval settings',
     inputStructure: 'detailed',
@@ -548,11 +592,11 @@ export const get10 = oc
   .output(zGetDatasetsRetrievalSettingResponse)
 
 export const retrievalSetting = {
-  get: get10,
+  get: get11,
   byVectorType,
 }
 
-export const post8 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -564,7 +608,7 @@ export const post8 = oc
   .output(zPostDatasetsByDatasetIdApiKeysByStatusResponse)
 
 export const byStatus = {
-  post: post8,
+  post: post7,
 }
 
 export const apiKeys2 = {
@@ -574,7 +618,7 @@ export const apiKeys2 = {
 /**
  * Get dataset auto disable logs
  */
-export const get11 = oc
+export const get12 = oc
   .route({
     description: 'Get dataset auto disable logs',
     inputStructure: 'detailed',
@@ -587,10 +631,10 @@ export const get11 = oc
   .output(zGetDatasetsByDatasetIdAutoDisableLogsResponse)
 
 export const autoDisableLogs = {
-  get: get11,
+  get: get12,
 }
 
-export const get12 = oc
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -600,12 +644,18 @@ export const get12 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdBatchByBatchIndexingEstimatePath }))
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse)
+  .errors({
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    document_already_finished: { status: 400, data: zDocumentAlreadyFinishedError },
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const indexingEstimate2 = {
-  get: get12,
+  get: get13,
 }
 
-export const get13 = oc
+export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -617,7 +667,7 @@ export const get13 = oc
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse)
 
 export const indexingStatus = {
-  get: get13,
+  get: get14,
 }
 
 export const byBatch = {
@@ -634,7 +684,7 @@ export const batch = {
  *
  * Download selected dataset documents as a single ZIP archive (upload-file only)
  */
-export const post9 = oc
+export const post8 = oc
   .route({
     description: 'Download selected dataset documents as a single ZIP archive (upload-file only)',
     inputStructure: 'detailed',
@@ -653,7 +703,7 @@ export const post9 = oc
   .output(zPostDatasetsByDatasetIdDocumentsDownloadZipResponse)
 
 export const downloadZip = {
-  post: post9,
+  post: post8,
 }
 
 /**
@@ -664,7 +714,7 @@ export const downloadZip = {
  * (indexing_technique must be 'high_quality' and summary_index_setting.enable must be true),
  * then asynchronously generates summary indexes for the provided documents.
  */
-export const post10 = oc
+export const post9 = oc
   .route({
     description:
       "Generate summary index for documents\nThis endpoint checks if the dataset configuration supports summary generation\n(indexing_technique must be 'high_quality' and summary_index_setting.enable must be true),\nthen asynchronously generates summary indexes for the provided documents.",
@@ -684,10 +734,10 @@ export const post10 = oc
   .output(zPostDatasetsByDatasetIdDocumentsGenerateSummaryResponse)
 
 export const generateSummary = {
-  post: post10,
+  post: post9,
 }
 
-export const post11 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -705,7 +755,7 @@ export const post11 = oc
   .output(zPostDatasetsByDatasetIdDocumentsMetadataResponse)
 
 export const metadata2 = {
-  post: post11,
+  post: post10,
 }
 
 export const patch2 = oc
@@ -716,8 +766,14 @@ export const patch2 = oc
     path: '/datasets/{dataset_id}/documents/status/{action}/batch',
     tags: ['console'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath }))
+  .input(
+    z.object({
+      params: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath,
+      query: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchQuery.optional(),
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse)
+  .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
 export const batch2 = {
   patch: patch2,
@@ -734,7 +790,7 @@ export const status = {
 /**
  * Get a signed download URL for a dataset document's original uploaded file
  */
-export const get14 = oc
+export const get15 = oc
   .route({
     description: "Get a signed download URL for a dataset document's original uploaded file",
     inputStructure: 'detailed',
@@ -747,13 +803,13 @@ export const get14 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse)
 
 export const download = {
-  get: get14,
+  get: get15,
 }
 
 /**
  * Estimate document indexing cost
  */
-export const get15 = oc
+export const get16 = oc
   .route({
     description: 'Estimate document indexing cost',
     inputStructure: 'detailed',
@@ -764,15 +820,21 @@ export const get15 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimatePath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse)
+  .errors({
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    document_already_finished: { status: 400, data: zDocumentAlreadyFinishedError },
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const indexingEstimate3 = {
-  get: get15,
+  get: get16,
 }
 
 /**
  * Get document indexing status
  */
-export const get16 = oc
+export const get17 = oc
   .route({
     description: 'Get document indexing status',
     inputStructure: 'detailed',
@@ -785,7 +847,7 @@ export const get16 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse)
 
 export const indexingStatus2 = {
-  get: get16,
+  get: get17,
 }
 
 /**
@@ -812,7 +874,7 @@ export const metadata3 = {
   put,
 }
 
-export const get17 = oc
+export const get18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -822,16 +884,17 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse)
+  .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
 
 export const sync = {
-  get: get17,
+  get: get18,
 }
 
 export const notion = {
   sync,
 }
 
-export const get18 = oc
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -843,7 +906,7 @@ export const get18 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse)
 
 export const pipelineExecutionLog = {
-  get: get18,
+  get: get19,
 }
 
 /**
@@ -861,6 +924,10 @@ export const patch3 = oc
   })
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPausePath }))
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse)
+  .errors({
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+  })
 
 export const pause = {
   patch: patch3,
@@ -881,6 +948,10 @@ export const patch4 = oc
   })
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath }))
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse)
+  .errors({
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+  })
 
 export const resume = {
   patch: patch4,
@@ -900,6 +971,7 @@ export const patch5 = oc
   })
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionPath }))
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse)
+  .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
 export const byAction2 = {
   patch: patch5,
@@ -911,7 +983,7 @@ export const processing = {
   byAction: byAction2,
 }
 
-export const post12 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -928,7 +1000,7 @@ export const post12 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponse)
 
 export const rename = {
-  post: post12,
+  post: post11,
 }
 
 export const patch6 = oc
@@ -946,12 +1018,16 @@ export const patch6 = oc
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse)
+  .errors({
+    invalid_action: { status: 400, data: zInvalidActionError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const byAction3 = {
   patch: patch6,
 }
 
-export const post13 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -966,24 +1042,14 @@ export const post13 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse)
+  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
 
 export const segment = {
-  post: post13,
+  post: post12,
   byAction: byAction3,
 }
 
-export const get19 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImport',
-    path: '/datasets/{dataset_id}/documents/{document_id}/segments/batch_import',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath }))
-  .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse)
-
-export const post14 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1000,8 +1066,7 @@ export const post14 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse)
 
 export const batchImport = {
-  get: get19,
-  post: post14,
+  post: post13,
 }
 
 export const delete3 = oc
@@ -1023,6 +1088,7 @@ export const delete3 = oc
   .output(
     zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
+  .errors({ child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError } })
 
 export const patch7 = oc
   .route({
@@ -1043,6 +1109,7 @@ export const patch7 = oc
   .output(
     zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
+  .errors({ child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError } })
 
 export const byChildChunkId = {
   delete: delete3,
@@ -1081,8 +1148,9 @@ export const patch8 = oc
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
+  .errors({ child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError } })
 
-export const post15 = oc
+export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1097,11 +1165,15 @@ export const post15 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
+  .errors({
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const childChunks = {
   get: get20,
   patch: patch8,
-  post: post15,
+  post: post14,
   byChildChunkId,
 }
 
@@ -1134,6 +1206,7 @@ export const patch9 = oc
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
+  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
 
 export const bySegmentId = {
   delete: delete4,
@@ -1227,6 +1300,7 @@ export const get23 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse)
+  .errors({ archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError } })
 
 export const websiteSync = {
   get: get23,
@@ -1263,6 +1337,7 @@ export const get24 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+  .errors({ invalid_metadata: { status: 400, data: zInvalidMetadataError } })
 
 export const byDocumentId = {
   delete: delete6,
@@ -1290,7 +1365,12 @@ export const delete7 = oc
     successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsPath }))
+  .input(
+    z.object({
+      params: zDeleteDatasetsByDatasetIdDocumentsPath,
+      query: zDeleteDatasetsByDatasetIdDocumentsQuery.optional(),
+    }),
+  )
   .output(zDeleteDatasetsByDatasetIdDocumentsResponse)
 
 /**
@@ -1313,7 +1393,7 @@ export const get25 = oc
   )
   .output(zGetDatasetsByDatasetIdDocumentsResponse)
 
-export const post16 = oc
+export const post15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1328,11 +1408,16 @@ export const post16 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsResponse)
+  .errors({
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const documents = {
   delete: delete7,
   get: get25,
-  post: post16,
+  post: post15,
   downloadZip,
   generateSummary,
   metadata: metadata2,
@@ -1362,7 +1447,7 @@ export const errorDocs = {
 /**
  * Test external knowledge retrieval for dataset
  */
-export const post17 = oc
+export const post16 = oc
   .route({
     description: 'Test external knowledge retrieval for dataset',
     inputStructure: 'detailed',
@@ -1378,15 +1463,16 @@ export const post17 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdExternalHitTestingResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const externalHitTesting = {
-  post: post17,
+  post: post16,
 }
 
 /**
  * Test dataset knowledge retrieval
  */
-export const post18 = oc
+export const post17 = oc
   .route({
     description: 'Test dataset knowledge retrieval',
     inputStructure: 'detailed',
@@ -1402,9 +1488,15 @@ export const post18 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
+  .errors({
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const hitTesting = {
-  post: post18,
+  post: post17,
 }
 
 /**
@@ -1426,7 +1518,76 @@ export const indexingStatus3 = {
   get: get27,
 }
 
+export const get28 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdKnowledgeFsUpgradesByJobId',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath }))
+  .output(zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse)
+
+export const post18 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdKnowledgeFsUpgradesByJobId',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath }))
+  .output(zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse)
+
+export const byJobId2 = {
+  get: get28,
+  post: post18,
+}
+
+export const get29 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdKnowledgeFsUpgrades',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdKnowledgeFsUpgradesPath }))
+  .output(zGetDatasetsByDatasetIdKnowledgeFsUpgradesResponse)
+
 export const post19 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdKnowledgeFsUpgrades',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdKnowledgeFsUpgradesBody,
+      headers: zPostDatasetsByDatasetIdKnowledgeFsUpgradesHeaders,
+      params: zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse)
+  .errors({
+    knowledge_fs_upgrade_models_unavailable: {
+      status: 422,
+      data: zKnowledgeFsUpgradeModelsUnavailableError,
+    },
+  })
+
+export const knowledgeFsUpgrades = {
+  get: get29,
+  post: post19,
+  byJobId: byJobId2,
+}
+
+export const post20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1439,7 +1600,7 @@ export const post19 = oc
   .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
 
 export const byAction4 = {
-  post: post19,
+  post: post20,
 }
 
 export const builtIn2 = {
@@ -1479,7 +1640,7 @@ export const byMetadataId = {
   patch: patch10,
 }
 
-export const get28 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1490,7 +1651,7 @@ export const get28 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdMetadataPath }))
   .output(zGetDatasetsByDatasetIdMetadataResponse)
 
-export const post20 = oc
+export const post21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1508,13 +1669,13 @@ export const post20 = oc
   .output(zPostDatasetsByDatasetIdMetadataResponse)
 
 export const metadata4 = {
-  get: get28,
-  post: post20,
+  get: get30,
+  post: post21,
   builtIn: builtIn2,
   byMetadataId,
 }
 
-export const get29 = oc
+export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1524,9 +1685,10 @@ export const get29 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdNotionSyncPath }))
   .output(zGetDatasetsByDatasetIdNotionSyncResponse)
+  .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
 
 export const sync2 = {
-  get: get29,
+  get: get31,
 }
 
 export const notion2 = {
@@ -1536,7 +1698,7 @@ export const notion2 = {
 /**
  * Get dataset permission user list
  */
-export const get30 = oc
+export const get32 = oc
   .route({
     description: 'Get dataset permission user list',
     inputStructure: 'detailed',
@@ -1549,13 +1711,13 @@ export const get30 = oc
   .output(zGetDatasetsByDatasetIdPermissionPartUsersResponse)
 
 export const permissionPartUsers = {
-  get: get30,
+  get: get32,
 }
 
 /**
  * Get dataset query history
  */
-export const get31 = oc
+export const get33 = oc
   .route({
     description: 'Get dataset query history',
     inputStructure: 'detailed',
@@ -1564,17 +1726,22 @@ export const get31 = oc
     path: '/datasets/{dataset_id}/queries',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdQueriesPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdQueriesPath,
+      query: zGetDatasetsByDatasetIdQueriesQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdQueriesResponse)
 
 export const queries = {
-  get: get31,
+  get: get33,
 }
 
 /**
  * Get applications related to dataset
  */
-export const get32 = oc
+export const get34 = oc
   .route({
     description: 'Get applications related to dataset',
     inputStructure: 'detailed',
@@ -1587,13 +1754,13 @@ export const get32 = oc
   .output(zGetDatasetsByDatasetIdRelatedAppsResponse)
 
 export const relatedApps = {
-  get: get32,
+  get: get34,
 }
 
 /**
  * retry document
  */
-export const post21 = oc
+export const post22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1612,13 +1779,13 @@ export const post21 = oc
   .output(zPostDatasetsByDatasetIdRetryResponse)
 
 export const retry = {
-  post: post21,
+  post: post22,
 }
 
 /**
  * Check if dataset is in use
  */
-export const get33 = oc
+export const get35 = oc
   .route({
     description: 'Check if dataset is in use',
     inputStructure: 'detailed',
@@ -1631,7 +1798,7 @@ export const get33 = oc
   .output(zGetDatasetsByDatasetIdUseCheckResponse)
 
 export const useCheck2 = {
-  get: get33,
+  get: get35,
 }
 
 export const delete9 = oc
@@ -1649,7 +1816,7 @@ export const delete9 = oc
 /**
  * Get dataset details
  */
-export const get34 = oc
+export const get36 = oc
   .route({
     description: 'Get dataset details',
     inputStructure: 'detailed',
@@ -1678,7 +1845,7 @@ export const patch11 = oc
 
 export const byDatasetId = {
   delete: delete9,
-  get: get34,
+  get: get36,
   patch: patch11,
   apiKeys: apiKeys2,
   autoDisableLogs,
@@ -1688,6 +1855,7 @@ export const byDatasetId = {
   externalHitTesting,
   hitTesting,
   indexingStatus: indexingStatus3,
+  knowledgeFsUpgrades,
   metadata: metadata4,
   notion: notion2,
   permissionPartUsers,
@@ -1699,8 +1867,6 @@ export const byDatasetId = {
 
 /**
  * Delete an API key for a dataset
- *
- * Delete an API key for a dataset
  */
 export const delete10 = oc
   .route({
@@ -1710,7 +1876,6 @@ export const delete10 = oc
     operationId: 'deleteDatasetsByResourceIdApiKeysByApiKeyId',
     path: '/datasets/{resource_id}/api-keys/{api_key_id}',
     successStatus: 204,
-    summary: 'Delete an API key for a dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath }))
@@ -1722,17 +1887,14 @@ export const byApiKeyId2 = {
 
 /**
  * Get all API keys for a dataset
- *
- * Get all API keys for a dataset
  */
-export const get35 = oc
+export const get37 = oc
   .route({
     description: 'Get all API keys for a dataset',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByResourceIdApiKeys',
     path: '/datasets/{resource_id}/api-keys',
-    summary: 'Get all API keys for a dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zGetDatasetsByResourceIdApiKeysPath }))
@@ -1740,10 +1902,8 @@ export const get35 = oc
 
 /**
  * Create a new API key for a dataset
- *
- * Create a new API key for a dataset
  */
-export const post22 = oc
+export const post23 = oc
   .route({
     description: 'Create a new API key for a dataset',
     inputStructure: 'detailed',
@@ -1751,15 +1911,15 @@ export const post22 = oc
     operationId: 'postDatasetsByResourceIdApiKeys',
     path: '/datasets/{resource_id}/api-keys',
     successStatus: 201,
-    summary: 'Create a new API key for a dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zPostDatasetsByResourceIdApiKeysPath }))
   .output(zPostDatasetsByResourceIdApiKeysResponse)
+  .errors({ max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } })
 
 export const apiKeys3 = {
-  get: get35,
-  post: post22,
+  get: get37,
+  post: post23,
   byApiKeyId: byApiKeyId2,
 }
 
@@ -1770,7 +1930,7 @@ export const byResourceId = {
 /**
  * Get list of datasets
  */
-export const get36 = oc
+export const get38 = oc
   .route({
     description: 'Get list of datasets',
     inputStructure: 'detailed',
@@ -1779,13 +1939,13 @@ export const get36 = oc
     path: '/datasets',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsQuery.optional() }).optional())
   .output(zGetDatasetsResponse)
 
 /**
  * Create a new dataset
  */
-export const post23 = oc
+export const post24 = oc
   .route({
     description: 'Create a new dataset',
     inputStructure: 'detailed',
@@ -1797,10 +1957,11 @@ export const post23 = oc
   })
   .input(z.object({ body: zPostDatasetsBody }))
   .output(zPostDatasetsResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const datasets = {
-  get: get36,
-  post: post23,
+  get: get38,
+  post: post24,
   apiBaseInfo,
   apiKeys,
   batchImportStatus,
@@ -1808,6 +1969,7 @@ export const datasets = {
   externalKnowledgeApi,
   indexingEstimate,
   init,
+  knowledgeFsUpgradeJobs,
   metadata,
   notionIndexingEstimate,
   processRule,

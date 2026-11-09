@@ -1,5 +1,5 @@
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ComponentProps } from 'react'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -18,7 +18,7 @@ import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
 import {
@@ -37,8 +37,6 @@ export type ModelSelectorPreviewPayload = {
   provider: ModelSelectorProvider
   modelItem: ModelSelectorModel
 }
-
-type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
 
 type PopupItemProps = {
   defaultModel?: ModelSelectorValue
@@ -61,13 +59,12 @@ function PopupItem({
   onSelect,
   onHide,
 }: PopupItemProps) {
-  const [modelsOpen, setModelsOpen] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const providerHeadingId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const language = useLanguage()
   const providerLabel = renderI18nObject(model.label, language)
-  const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'common' })
+  const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'modelProvider' })
   const { setShowModelModal } = useModalContext()
   const { data: currentProvider } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
@@ -123,15 +120,14 @@ function PopupItem({
 
   return (
     <Collapsible
-      open={modelsOpen}
-      onOpenChange={setModelsOpen}
+      defaultOpen
       className="mb-1"
       render={<section aria-labelledby={providerHeadingId} />}
     >
       <div className="sticky top-0 z-1 flex min-h-5.5 min-w-0 items-center justify-between gap-2 bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
         <CollapsibleTrigger
           id={providerHeadingId}
-          className="group/provider min-h-0 w-auto min-w-0 justify-start gap-0 rounded-none p-0 text-xs font-medium text-text-tertiary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-tertiary data-panel-open:text-text-tertiary"
+          className="group/provider flex min-h-0 min-w-0 touch-manipulation items-center justify-start gap-0 text-xs font-medium text-text-tertiary select-none"
         >
           <span className="truncate">{providerLabel}</span>
           <span
@@ -157,8 +153,8 @@ function PopupItem({
                         aria-hidden="true"
                         className="i-custom-vender-line-financeAndECommerce-credits-coin size-3"
                       />
-                      <span className="ml-1 truncate">
-                        {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'common' })}
+                      <span className="ms-1 truncate">
+                        {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'modelProvider' })}
                       </span>
                     </>
                   ) : (
@@ -167,21 +163,25 @@ function PopupItem({
                         aria-hidden="true"
                         className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary"
                       />
-                      <span className="ml-1 truncate text-text-warning">
-                        {t(($) => $['modelProvider.selector.creditsExhausted'], { ns: 'common' })}
+                      <span className="ms-1 truncate text-text-warning">
+                        {t(($) => $['modelProvider.selector.creditsExhausted'], {
+                          ns: 'modelProvider',
+                        })}
                       </span>
                     </>
                   )
                 ) : credentialName ? (
                   <>
                     <StatusDot size="small" status={isApiKeyActive ? 'success' : 'error'} />
-                    <span className="ml-1 truncate text-text-tertiary">{credentialName}</span>
+                    <span className="ms-1 truncate text-text-tertiary">{credentialName}</span>
                   </>
                 ) : (
                   <>
                     <StatusDot size="small" status="disabled" />
-                    <span className="ml-1 truncate text-text-tertiary">
-                      {t(($) => $['modelProvider.selector.configureRequired'], { ns: 'common' })}
+                    <span className="ms-1 truncate text-text-tertiary">
+                      {t(($) => $['modelProvider.selector.configureRequired'], {
+                        ns: 'modelProvider',
+                      })}
                     </span>
                   </>
                 )}
@@ -194,7 +194,7 @@ function PopupItem({
               </Button>
             }
           />
-          <PopoverContent placement="bottom-end">
+          <PopoverContent align="end">
             <PopoverTitle className="sr-only">{providerLabel}</PopoverTitle>
             {providerDetail && (
               <DropdownContent
@@ -219,7 +219,7 @@ function PopupItem({
             const needsConfiguration = modelItem.status === ModelStatusEnum.noConfigure
             const isSelectable = modelItem.status === ModelStatusEnum.active
             const rowClassName = cn(
-              'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-left',
+              'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-start',
               isSelectable
                 ? 'cursor-pointer hover:bg-state-base-hover'
                 : 'cursor-not-allowed hover:bg-state-base-hover-alt',
@@ -250,7 +250,7 @@ function PopupItem({
                             </span>
                           }
                         />
-                        <TooltipContent placement="top">{suggestionTip}</TooltipContent>
+                        <TooltipContent>{suggestionTip}</TooltipContent>
                       </Tooltip>
                     )}
                   </ModelName>
@@ -264,7 +264,7 @@ function PopupItem({
               </>
             )
             const row = needsConfiguration ? (
-              <div className={rowClassName} onPointerDown={onPreviewCardClose}>
+              <div className={rowClassName}>
                 {rowContent}
                 {canCreateCredential && (
                   <Button
@@ -284,7 +284,6 @@ function PopupItem({
                 aria-current={isSelected ? 'true' : undefined}
                 disabled={!isSelectable}
                 className={cn(rowClassName, 'w-[calc(100%-0.5rem)] justify-start')}
-                onPointerDown={onPreviewCardClose}
                 onClick={() => onSelect(model.provider, modelItem)}
               >
                 {rowContent}
@@ -294,6 +293,7 @@ function PopupItem({
             return (
               <li key={modelItem.model}>
                 <PreviewCardTrigger
+                  onPointerDown={onPreviewCardClose}
                   delay={150}
                   closeDelay={150}
                   handle={previewCardHandle}

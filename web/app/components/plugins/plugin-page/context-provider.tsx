@@ -3,10 +3,9 @@
 import type { ReactNode } from 'react'
 import type { PluginPageSelection, PluginPageTab } from './context'
 import type { FilterState } from './filter-management'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { parseAsStringEnum, useQueryState } from 'nuqs'
 import { useMemo, useRef, useState } from 'react'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
 import { PluginPageContext } from './context'
@@ -40,10 +39,7 @@ export const PluginPageContextProvider = ({
   )
   const [selectedItem, setSelectedItem] = useState<PluginPageSelection | undefined>()
 
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const enable_marketplace = useMarketplace() !== null
   const tabs = usePluginPageTabs()
   const options = useMemo(() => {
     return enable_marketplace

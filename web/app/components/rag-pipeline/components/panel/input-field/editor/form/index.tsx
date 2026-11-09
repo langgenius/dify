@@ -1,14 +1,15 @@
 import type { FormData, InputFieldFormProps } from './types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { useAppForm } from '@/app/components/base/form'
 import { ChangeType } from '@/app/components/workflow/types'
-import { useFileUploadConfig } from '@/service/use-common'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import HiddenFields from './hidden-fields'
 import InitialFields from './initial-fields'
 import { createInputFieldSchema } from './schema'
@@ -21,9 +22,9 @@ const InputFieldForm = ({
   onSubmit,
   isEditMode = true,
 }: InputFieldFormProps) => {
-  const { t } = useTranslation()
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const { maxFileUploadLimit } = useFileSizeLimit(fileUploadConfigResponse)
+  const { t } = useTranslation(['appDebug', 'common'])
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
+  const { maxFileUploadLimit } = getFileSizeLimit(fileUploadConfigResponse)
   const inputFieldForm = useAppForm({
     defaultValues: initialData,
     validators: {
@@ -78,7 +79,7 @@ const InputFieldForm = ({
     >
       <div className="flex flex-col gap-4 px-4 py-2">
         <InitialFieldsComp form={inputFieldForm} />
-        <Divider type="horizontal" />
+        <Separator className="my-2 h-[0.5px]" orientation="horizontal" />
         {!showAllSettings && <ShowAllSettingComp form={inputFieldForm} />}
         {showAllSettings && <HiddenFieldsComp form={inputFieldForm} />}
       </div>

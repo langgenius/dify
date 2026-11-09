@@ -1,24 +1,18 @@
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplacePlugin,
-  MarketplaceTemplate,
   PluginsSearchParams,
 } from '@dify/contracts/marketplace'
 import type { ActivePluginType } from './constants'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { marketplaceClient } from '@/service/marketplace'
-import { getMarketplaceUrl } from '@/utils/var'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
 type MarketplaceFetchOptions = {
   signal?: AbortSignal
 }
-
-// Matches backend warmup homepageCollectionPluginsRequests Limit: 20 so the
-// public POST hits the Redis bucket the scheduler already writes.
-export const COLLECTION_PREVIEW_PLUGIN_LIMIT = 20
 
 type MarketplacePluginListExtras = {
   agent_strategy?: unknown
@@ -68,14 +62,10 @@ type MarketplacePluginPayload = MarketplacePlugin | (Plugin & { labels?: Plugin[
 
 export const getPluginIconInMarketplace = (
   plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
-) => {
-  if (plugin.type === 'bundle')
-    return `${MARKETPLACE_API_PREFIX}/bundles/${plugin.org}/${plugin.name}/icon`
-  return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
-}
+) => getMarketplacePluginIconUrl(`${plugin.org}/${plugin.name}`, plugin.type)
 
 export const getFormattedPlugin = (payload: MarketplacePluginPayload): Plugin => {
-  const plugin = payload as unknown as Plugin
+  const plugin = payload as Plugin
 
   if (payload.type === 'bundle') {
     return {
@@ -91,59 +81,6 @@ export const getFormattedPlugin = (payload: MarketplacePluginPayload): Plugin =>
   }
 }
 
-export const getPluginLinkInMarketplace = (
-  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
-  params?: Record<string, string | undefined>,
-) => {
-  if (plugin.type === 'bundle')
-    return getMarketplaceUrl(`/bundles/${plugin.org}/${plugin.name}`, params)
-  return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
-}
-
-export const getPluginDetailLinkInMarketplace = (
-  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
-) => {
-  const org = encodeURIComponent(plugin.org)
-  const name = encodeURIComponent(plugin.name)
-
-  if (plugin.type === 'bundle') return `/bundles/${org}/${name}`
-  return `/plugin/${org}/${name}`
-}
-
-export const getTemplateDetailLinkInMarketplace = (
-  template: Pick<
-    MarketplaceTemplate,
-    'id' | 'publisher_handle' | 'publisher_unique_handle' | 'template_name'
-  >,
-) => {
-  const publisher = template.publisher_handle || template.publisher_unique_handle || 'template'
-  const search = new URLSearchParams({ templateId: template.id })
-
-  return `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.template_name)}?${search.toString()}`
-}
-
-export const getTemplateLinkInMarketplace = (
-  template: Pick<
-    MarketplaceTemplate,
-    'id' | 'publisher_handle' | 'publisher_unique_handle' | 'template_name'
-  >,
-  params?: Record<string, string | undefined>,
-) => {
-  const publisher = template.publisher_handle || template.publisher_unique_handle || 'template'
-  const path = `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.template_name)}`
-
-  return getMarketplaceUrl(path, {
-    ...params,
-    templateId: template.id,
-  })
-}
-
-export const getMarketplaceCategoryUrl = (
-  category?: string,
-  params?: Record<string, string | undefined>,
-) => {
-  return getMarketplaceUrl(category ? `/plugins/${category}` : '/plugins', params)
-}
 // One collections response lists every catalog carousel and each needs its own
 // plugins request. Firing them all at once head-of-line blocks on the browser's
 // per-origin connection cap, so the whole catalog waits on the slowest tail
@@ -160,7 +97,7 @@ export const getMarketplacePluginsByCollectionId = async (
       params: {
         collectionId,
       },
-      body: { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT, ...query },
+      body: query ?? {},
     },
     {
       signal: options?.signal,
@@ -271,15 +208,14 @@ export const getMarketplacePlugins = async (
 }
 
 export const getMarketplaceListCondition = (pluginType: string) => {
-  if (
-    [
-      PluginCategoryEnum.tool,
-      PluginCategoryEnum.agent,
-      PluginCategoryEnum.model,
-      PluginCategoryEnum.datasource,
-      PluginCategoryEnum.trigger,
-    ].includes(pluginType as PluginCategoryEnum)
-  )
+  const marketplaceCategories: PluginCategoryEnum[] = [
+    PluginCategoryEnum.tool,
+    PluginCategoryEnum.agent,
+    PluginCategoryEnum.model,
+    PluginCategoryEnum.datasource,
+    PluginCategoryEnum.trigger,
+  ]
+  if (marketplaceCategories.includes(pluginType as PluginCategoryEnum))
     return `category=${pluginType}`
 
   if (pluginType === PluginCategoryEnum.extension) return 'category=endpoint'
@@ -301,12 +237,11 @@ export function getCollectionsParams(
   category: ActivePluginType,
 ): CollectionsAndPluginsSearchParams {
   if (category === PLUGIN_TYPE_SEARCH_MAP.all) {
-    return { limit: COLLECTION_PREVIEW_PLUGIN_LIMIT }
+    return {}
   }
   return {
     category,
     condition: getMarketplaceListCondition(category),
     type: getMarketplaceListFilterType(category),
-    limit: COLLECTION_PREVIEW_PLUGIN_LIMIT,
   }
 }

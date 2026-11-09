@@ -3,7 +3,7 @@ import { getRouteMetadata } from '@/app/route-metadata'
 
 export function generateMetadata() {
   return getRouteMetadata(
-    'common',
+    'onboarding',
     ($) => $['stepByStepTour.guides.knowledge.empty.pipeline.title'],
   )
 }

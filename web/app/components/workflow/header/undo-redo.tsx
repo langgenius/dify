@@ -1,15 +1,15 @@
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
 import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-history-store'
-import Divider from '../../base/divider'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import TipPopup from '../operator/tip-popup'
 
 type UndoRedoProps = { handleUndo: () => void; handleRedo: () => void }
 function UndoRedo({ handleUndo, handleRedo }: UndoRedoProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { store } = useWorkflowHistoryStore()
   const [buttonsDisabled, setButtonsDisabled] = useState({ undo: true, redo: true })
 
@@ -53,7 +53,7 @@ function UndoRedo({ handleUndo, handleRedo }: UndoRedoProps) {
           <span aria-hidden className="i-ri-arrow-go-forward-fill size-4" />
         </IconButton>
       </TipPopup>
-      <Divider type="vertical" className="mx-0.5 h-3.5" />
+      <Separator orientation="vertical" className="mx-0.5 h-3.5" />
       <ViewWorkflowHistory />
     </div>
   )

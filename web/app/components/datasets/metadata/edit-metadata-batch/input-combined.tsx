@@ -33,7 +33,15 @@ const InputCombined: FC<Props> = ({
 }) => {
   const className = cn('h-6 grow p-0.5 text-xs')
   if (type === DataType.time) {
-    return <Datepicker label={label} className={className} value={value} onChange={onChange} />
+    return (
+      <Datepicker
+        label={label}
+        className={cn(className, 'min-w-0')}
+        value={value}
+        onChange={onChange}
+        readOnly={readOnly}
+      />
+    )
   }
 
   if (type === DataType.number) {
@@ -46,7 +54,7 @@ const InputCombined: FC<Props> = ({
           onValueChange={(value) => onChange(value ?? 0)}
         >
           <NumberFieldGroup>
-            <NumberFieldInput aria-label={label} className={cn(className, 'rounded-l-md')} />
+            <NumberFieldInput aria-label={label} className={cn(className, 'rounded-s-md')} />
             <NumberFieldControls className="overflow-hidden">
               <NumberFieldIncrement className="py-0" />
               <NumberFieldDecrement className="py-0" />

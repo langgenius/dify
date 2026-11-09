@@ -2,7 +2,7 @@
 
 import { cn } from '@langgenius/dify-ui/cn'
 import PluginTypeSwitch from './plugin-type-switch'
-import SearchBoxWrapper from './search-box/search-box-wrapper'
+import { MarketplacePluginSearch } from './search-input'
 
 type StickySearchAndSwitchWrapperProps = {
   pluginTypeSwitchClassName?: string
@@ -21,7 +21,9 @@ const StickySearchAndSwitchWrapper = ({
         pluginTypeSwitchClassName,
       )}
     >
-      <SearchBoxWrapper />
+      <div className="mx-auto w-160 max-w-full shrink-0">
+        <MarketplacePluginSearch />
+      </div>
       <PluginTypeSwitch />
     </div>
   )

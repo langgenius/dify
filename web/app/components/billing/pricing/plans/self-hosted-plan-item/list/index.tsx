@@ -3,7 +3,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { SelfHostedPlanFeature } from './item'
 
 export function SelfHostedPlanFeatures({ plan }: { plan: SelfHostedPlan }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const i18nPrefix = `plans.${plan}` as const
   const features = t(($) => $[`${i18nPrefix}.features`], {
     ns: 'billing',

@@ -2,13 +2,13 @@ import type { FC } from 'react'
 import type { Theme } from '../theme/theme'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
-import Divider from '@/app/components/base/divider'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isClient } from '@/utils/client'
@@ -16,7 +16,7 @@ import { useEmbeddedChatbotContext } from '../context'
 import { CssTransform } from '../theme/utils'
 
 type IHeaderProps = {
-  isMobile?: boolean
+  isBelowSm?: boolean
   allowResetChat?: boolean
   customerIcon?: React.ReactNode
   title: string
@@ -24,14 +24,14 @@ type IHeaderProps = {
   onCreateNewChat?: () => void
 }
 const Header: FC<IHeaderProps> = ({
-  isMobile,
+  isBelowSm,
   allowResetChat,
   customerIcon,
   title,
   theme,
   onCreateNewChat,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const { appData, currentConversationId, inputsForms, allInputsHidden } =
     useEmbeddedChatbotContext()
 
@@ -43,6 +43,13 @@ const Header: FC<IHeaderProps> = ({
 
   const handleMessageReceived = useCallback(
     (event: MessageEvent) => {
+      if (event.source !== window.parent || event.data?.type !== 'dify-chatbot-config') return
+      const payload = event.data.payload
+      if (
+        typeof payload?.isToggledByButton !== 'boolean' ||
+        typeof payload?.isDraggable !== 'boolean'
+      )
+        return
       let currentParentOrigin = parentOrigin
       if (!currentParentOrigin && event.data.type === 'dify-chatbot-config') {
         currentParentOrigin = event.origin
@@ -81,7 +88,7 @@ const Header: FC<IHeaderProps> = ({
     )
   }, [isIframe, parentOrigin, showToggleExpandButton, expanded])
 
-  if (!isMobile) {
+  if (!isBelowSm) {
     return (
       <div className="flex h-14 shrink-0 items-center justify-end p-3">
         <div className="flex items-center gap-1">
@@ -110,7 +117,9 @@ const Header: FC<IHeaderProps> = ({
               </div>
             )}
           </div>
-          {currentConversationId && <Divider type="vertical" className="h-3.5" />}
+          {currentConversationId && (
+            <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
+          )}
           {showToggleExpandButton && (
             <Tooltip>
               <TooltipTrigger

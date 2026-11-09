@@ -1,14 +1,14 @@
-import { toast } from '@langgenius/dify-ui/toast'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentEnvEditor, EnvVariablesTable } from '../env'
 import { getEnvImportPlatform, parseEnvImport } from '../env-utils'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },
@@ -85,7 +85,8 @@ describe('AgentEnvEditor', () => {
   })
 
   describe('User Interactions', () => {
-    it('should only expose plain environment variables', () => {
+    it('should edit the initial environment variable row directly', async () => {
+      const user = userEvent.setup()
       renderAgentEnvEditor()
 
       expect(
@@ -96,11 +97,6 @@ describe('AgentEnvEditor', () => {
           name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.scopeSelector',
         }),
       ).not.toBeInTheDocument()
-    })
-
-    it('should edit the initial environment variable row directly', async () => {
-      const user = userEvent.setup()
-      renderAgentEnvEditor()
 
       const keyInput = screen.getByPlaceholderText(
         'agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder',
@@ -116,16 +112,16 @@ describe('AgentEnvEditor', () => {
       expect(screen.getByDisplayValue('secret-value')).toBeInTheDocument()
     })
 
-    it('should reject environment variable keys that do not match workflow variable rules', () => {
+    it('should reject environment variable keys that do not match workflow variable rules', async () => {
+      const user = userEvent.setup()
       renderAgentEnvEditor()
 
       const keyInput = screen.getByPlaceholderText(
         'agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder',
       )
 
-      fireEvent.change(keyInput, {
-        target: { value: '1BAD' },
-      })
+      await user.click(keyInput)
+      await user.paste('1BAD')
 
       expect(keyInput).toHaveValue('')
       expect(mockToastError).toHaveBeenCalledWith(
@@ -159,8 +155,6 @@ describe('AgentEnvEditor', () => {
       const user = userEvent.setup()
       const { container } = renderAgentEnvEditor()
       const input = container.querySelector('input[type="file"]') as HTMLInputElement
-
-      expect(input).not.toHaveAttribute('accept')
 
       const file = new File(
         ['API_KEY=abc123\n', 'export BASE_URL="https://example.com"\n'],

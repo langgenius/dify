@@ -6,10 +6,8 @@ import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
 import type { ModelSelectorProvider } from '../model-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
-import useTheme from '@/hooks/use-theme'
-import { renderI18nObject } from '@/i18n-config'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
+import { renderI18nObject } from '@/i18n/metadata'
 import { useLanguage } from '../hooks'
 
 type ModelIconProps = {
@@ -30,13 +28,13 @@ const ModelIcon: FC<ModelIconProps> = ({
   iconClassName,
   isDeprecated = false,
 }) => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const language = useLanguage()
   const lightIconUrl = provider?.icon_small ? renderI18nObject(provider.icon_small, language) : ''
   const darkIconUrl = provider?.icon_small_dark
     ? renderI18nObject(provider.icon_small_dark, language)
     : ''
-  const iconUrl = theme === Theme.dark ? darkIconUrl || lightIconUrl : lightIconUrl
+  const iconUrl = theme === 'dark' ? darkIconUrl || lightIconUrl : lightIconUrl
 
   if (
     provider?.provider &&
@@ -45,7 +43,7 @@ const ModelIcon: FC<ModelIconProps> = ({
   )
     return (
       <span className="flex items-center justify-center">
-        <OpenaiYellow className={cn('size-5', className)} />
+        <span aria-hidden className={cn('i-custom-public-llm-openai-yellow size-5', className)} />
       </span>
     )
 

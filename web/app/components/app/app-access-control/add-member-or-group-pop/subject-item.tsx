@@ -8,7 +8,7 @@ import type {
   SubjectAccount,
   SubjectGroup,
 } from '@/models/access-control'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Toggle } from '@langgenius/dify-ui/toggle'
@@ -16,6 +16,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { SubjectType } from '@/models/access-control'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type SubjectItemProps = {
   subject: Subject
@@ -55,7 +56,7 @@ function GroupItem({
   onToggle: () => void
   onExpand: (group: AccessControlGroup) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <li className="flex min-w-0 items-center gap-2 rounded-lg hover:bg-state-base-hover">
@@ -102,14 +103,16 @@ function MemberItem({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <li>
       <SubjectToggleButton selected={selected} onToggle={onToggle} className="pr-3">
         <div className="mr-2 size-5 shrink-0 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
           <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
-            <Avatar size="xxs" avatar={null} name={member.name} />
+            <Avatar size="xxs" aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
+            </Avatar>
           </div>
         </div>
         <span className="mr-1 min-w-0 truncate system-sm-medium text-text-secondary">

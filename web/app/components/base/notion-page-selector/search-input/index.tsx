@@ -8,7 +8,7 @@ type SearchInputProps = {
   onChange: (v: string) => void
 }
 const SearchInput = ({ value, onChange }: SearchInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const handleClear = useCallback(() => {
     onChange('')
@@ -22,6 +22,7 @@ const SearchInput = ({ value, onChange }: SearchInputProps) => {
     <div className={cn('flex h-8 w-50 items-center rounded-lg bg-components-input-bg-normal p-2')}>
       <div className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
       <input
+        aria-label={safePlaceholderText}
         className="min-w-0 grow appearance-none border-0 bg-transparent px-1 text-[13px] leading-4 text-components-input-text-filled outline-0 placeholder:text-components-input-text-placeholder"
         value={value}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}

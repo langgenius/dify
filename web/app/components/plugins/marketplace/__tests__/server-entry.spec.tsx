@@ -2,14 +2,14 @@ import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const { mockFetchPluginBanners, mockGetLocaleOnServer } = vi.hoisted(() => ({
   mockFetchPluginBanners: vi.fn(),
   mockGetLocaleOnServer: vi.fn(),
 }))
 
-vi.mock('@/i18n-config/server', () => ({
+vi.mock('@/i18n/server', () => ({
   getLocaleOnServer: mockGetLocaleOnServer,
 }))
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { zFileResponse } from './generated/api/console/files/zod.gen'
+import { zFileResponse } from './generated/api/console/files/zod.gen.ts'
 import {
   zCompletionRequestPayloadWithUser,
   zParameters,
@@ -8,7 +8,7 @@ import {
   zPostDatasetsByDatasetIdPipelineRunResponse,
   zPostWorkflowsByWorkflowIdRunResponse,
   zPostWorkflowsRunResponse,
-} from './generated/api/service/zod.gen'
+} from './generated/api/service/zod.gen.ts'
 
 describe('generated Service API schemas', () => {
   it('keeps JSON int64 values as numbers', () => {

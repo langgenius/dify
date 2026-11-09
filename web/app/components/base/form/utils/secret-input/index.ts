@@ -4,9 +4,9 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 
 export const transformFormSchemasSecretInput = (
   isPristineSecretInputNames: string[],
-  values: Record<string, any>,
+  values: Record<string, unknown>,
 ) => {
-  const transformedValues: Record<string, any> = { ...values }
+  const transformedValues: Record<string, unknown> = { ...values }
 
   isPristineSecretInputNames.forEach((name) => {
     if (transformedValues[name]) transformedValues[name] = '[__HIDDEN__]'

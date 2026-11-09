@@ -3,13 +3,15 @@ CLI command modules extracted from `commands.py`.
 """
 
 from .account import create_tenant, reset_email, reset_password
-from .data_migrate import data_migrate, legacy_model_types
 from .data_migration import (
+    data_migrate,
     export_migration_data,
     export_migration_data_template,
     import_migration_data,
+    legacy_model_types,
     migration_data_wizard,
 )
+from .knowledge_fs import knowledge_fs_control_space
 from .plugin import (
     backfill_plugin_auto_upgrade,
     extract_plugins,
@@ -81,6 +83,7 @@ __all__ = [
     "import_migration_data",
     "install_plugins",
     "install_rag_pipeline_plugins",
+    "knowledge_fs_control_space",
     "legacy_model_types",
     "migrate_agent_permissions_to_rbac",
     "migrate_annotation_vector_database",

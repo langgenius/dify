@@ -1,17 +1,19 @@
 'use client'
+
 import type { AppMode } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { AppData } from '@/models/share'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useEffect } from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import TextGenerationApp from '@/app/components/share/text-generation'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
-import dynamic from '@/next/dynamic'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import AppUnavailable from '../../base/app-unavailable'
 import { toInstalledAppAccessMode, toInstalledAppMeta, toInstalledAppParameters } from './runtime'
 
@@ -192,7 +194,7 @@ const InstalledApp = ({ id }: { id: string }) => {
     )
   }
   if (installedAppError) {
-    const isNotFound = installedAppError instanceof Response && installedAppError.status === 404
+    const isNotFound = isNotFoundError(installedAppError)
     return (
       <InstalledAppFrame>
         <div className="flex h-full items-center justify-center">
@@ -224,7 +226,7 @@ const InstalledApp = ({ id }: { id: string }) => {
     return (
       <InstalledAppFrame>
         <div className="flex h-full items-center justify-center">
-          <Loading />
+          <LoadingPlaceholder />
         </div>
       </InstalledAppFrame>
     )

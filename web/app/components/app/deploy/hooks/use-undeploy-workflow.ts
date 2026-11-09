@@ -1,14 +1,14 @@
 'use client'
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 
 export function useUndeployWorkflow(appId: string) {
-  const { t } = useTranslation('deployments')
+  const { t } = useTranslation(['deployments'])
   const { mutateAsync } = useMutation(
     consoleQuery.enterprise.appDeploy.deploymentService.undeployWorkflow.mutationOptions(),
   )

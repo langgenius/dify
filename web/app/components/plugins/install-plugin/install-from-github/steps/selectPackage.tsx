@@ -51,7 +51,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   onFailed,
   onBack,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const isEdit = Boolean(updatePayload)
   const [isUploading, setIsUploading] = React.useState(false)
   const selectedVersionOption = versions.find((item) => item.value === selectedVersion) ?? null
@@ -68,8 +68,8 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           manifest: GitHubPackage.manifest,
         })
       })
-    } catch (e: any) {
-      if (e.response?.message) onFailed(e.response?.message)
+    } catch (e) {
+      if (e instanceof Error && e.message) onFailed(e.message)
       else onFailed(t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
     } finally {
       setIsUploading(false)

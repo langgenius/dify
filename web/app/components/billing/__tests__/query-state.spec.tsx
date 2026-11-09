@@ -30,7 +30,7 @@ it('reveals the plan and all usage together when both billing queries have data'
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
   render(<Billing />, { wrapper })
-  expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+  expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   expect(screen.queryByText('billing.plans.sandbox.name')).not.toBeInTheDocument()
   expect(
     screen.queryByRole('group', { name: 'billing.usagePage.buildApps' }),
@@ -41,7 +41,7 @@ it('reveals the plan and all usage together when both billing queries have data'
       apps: { size: 17, limit: 50 },
     })
   })
-  expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+  expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   expect(
     screen.queryByRole('group', { name: 'billing.usagePage.buildApps' }),
   ).not.toBeInTheDocument()
@@ -59,7 +59,7 @@ it('reveals the plan and all usage together when both billing queries have data'
   const storage = screen.getByRole('group', { name: 'billing.usagePage.vectorSpace' })
   expect(within(storage).getByText('256')).toBeInTheDocument()
   expect(within(storage).getByText('900MB')).toBeInTheDocument()
-  expect(screen.queryByRole('status', { name: 'appApi.loading' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('progressbar', { name: 'common.loading' })).not.toBeInTheDocument()
 })
 
 it('renders annotation usage only from returned data and preserves zero as an unlimited quota', async () => {
@@ -118,33 +118,40 @@ it.each([
 )
 
 it('shows a dismissible limit dialog when the workspace receives a zero event quota', async () => {
-  localStorage.clear()
-  const user = userEvent.setup()
-  const { queryClient, wrapper } = createConsoleQueryWrapper({
-    systemFeatures: { deployment_edition: 'CLOUD' },
-    currentWorkspace: { id: 'workspace-zero-quota' },
-  })
-  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
-  render(
-    <NuqsWrapper>
-      <ModalContextProvider>
-        <span>Workspace</span>
-      </ModalContextProvider>
-    </NuqsWrapper>,
-    { wrapper },
-  )
-
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  await act(async () => {
-    seedFeatures(queryClient, {
-      billing: { subscription: { plan: 'professional' } },
-      trigger_event: { limit: 0, usage: 0, reset_date: -1 },
+  const key = 'trigger-events-limit-dismissed-workspace-zero-quota-professional-0-none'
+  const previous = localStorage.getItem(key)
+  localStorage.removeItem(key)
+  try {
+    const user = userEvent.setup()
+    const { queryClient, wrapper } = createConsoleQueryWrapper({
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      currentWorkspace: { id: 'workspace-zero-quota' },
     })
-  })
-  const dialog = await screen.findByRole('dialog', { name: 'billing.triggerLimitModal.title' })
-  expect(within(dialog).getByTestId('billing-quota-value')).toHaveTextContent('0/0')
-  await user.click(
-    within(dialog).getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }),
-  )
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+    render(
+      <NuqsWrapper>
+        <ModalContextProvider>
+          <span>Workspace</span>
+        </ModalContextProvider>
+      </NuqsWrapper>,
+      { wrapper },
+    )
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await act(async () => {
+      seedFeatures(queryClient, {
+        billing: { subscription: { plan: 'professional' } },
+        trigger_event: { limit: 0, usage: 0, reset_date: -1 },
+      })
+    })
+    const dialog = await screen.findByRole('dialog', { name: 'billing.triggerLimitModal.title' })
+    expect(within(dialog).getByTestId('billing-quota-value')).toHaveTextContent('0/0')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  } finally {
+    if (previous === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, previous)
+  }
 })

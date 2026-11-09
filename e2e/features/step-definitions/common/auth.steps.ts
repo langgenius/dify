@@ -1,4 +1,4 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given } from '@cucumber/cucumber'
 
 Given('I am signed in as the default E2E admin', async function (this: DifyWorld) {

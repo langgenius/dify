@@ -1,6 +1,6 @@
 import type { FormType } from '../..'
 import { Button } from '@langgenius/dify-ui/button'
-import { useStore } from '@tanstack/react-form'
+import { useSelector } from '@tanstack/react-form'
 import { useTranslation } from 'react-i18next'
 import { useFormContext } from '../..'
 
@@ -15,10 +15,10 @@ type ActionsProps = {
 }
 
 const Actions = ({ CustomActions }: ActionsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const form = useFormContext()
 
-  const [isSubmitting, canSubmit] = useStore(form.store, (state) => [
+  const [isSubmitting, canSubmit] = useSelector(form.store, (state) => [
     state.isSubmitting,
     state.canSubmit,
   ])

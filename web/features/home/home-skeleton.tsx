@@ -103,7 +103,7 @@ function HomeBannerSkeleton() {
 }
 
 export function HomeSkeleton({ showBanner }: { showBanner: boolean }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="contents">

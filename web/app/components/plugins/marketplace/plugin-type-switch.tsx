@@ -4,7 +4,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useSetAtom } from 'jotai'
 import { Fragment } from 'react'
 import { useTranslation } from '#i18n'
-import PluginIcon from '@/app/components/base/icons/src/vender/plugin/Plugin'
 import { markMarketplaceSiteFilter } from '@/utils/marketplace-site-track'
 import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
@@ -15,12 +14,11 @@ type PluginTypeSwitchProps = {
   variant?: 'default' | 'hero' | 'home'
 }
 const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetAtom(searchModeAtom)
   const isHero = variant === 'hero'
   const isHome = variant === 'home'
-  const iconClassName = 'mr-1.5 size-4'
 
   const options: Array<{
     value: ActivePluginType
@@ -32,46 +30,42 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
       text: isHero
         ? t(($) => $['marketplace.allPlugins'], { ns: 'plugin' })
         : t(($) => $['category.all'], { ns: 'plugin' }),
-      icon: isHero || isHome ? <PluginIcon className={iconClassName} /> : null,
+      icon:
+        isHero || isHome ? (
+          <span aria-hidden className="i-custom-vender-plugin-plugin size-4" />
+        ) : null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
       text: t(($) => $['category.models'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-brain-2-line', iconClassName)} />,
+      icon: <span aria-hidden className="i-ri-brain-2-line size-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
       text: t(($) => $['category.tools'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-hammer-line', iconClassName)} />,
+      icon: <span aria-hidden className="i-ri-hammer-line size-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
       text: t(($) => $[isHome ? 'categorySingle.datasource' : 'category.datasources'], {
         ns: 'plugin',
       }),
-      icon: <span aria-hidden className={cn('i-ri-database-2-line', iconClassName)} />,
+      icon: <span aria-hidden className="i-ri-database-2-line size-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
       text: t(($) => $[isHome ? 'categorySingle.agent' : 'category.agents'], { ns: 'plugin' }),
-      icon: (
-        <span
-          aria-hidden
-          className={cn('i-custom-vender-integrations-agent-strategy', iconClassName)}
-        />
-      ),
+      icon: <span aria-hidden className="i-custom-vender-integrations-agent-strategy size-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
       text: t(($) => $['category.triggers'], { ns: 'plugin' }),
-      icon: (
-        <span aria-hidden className={cn('i-custom-vender-integrations-trigger', iconClassName)} />
-      ),
+      icon: <span aria-hidden className="i-custom-vender-integrations-trigger size-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
       text: t(($) => $['category.extensions'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-puzzle-2-line', iconClassName)} />,
+      icon: <span aria-hidden className="i-ri-puzzle-2-line size-4" />,
     },
   ]
 
@@ -99,7 +93,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
               type="button"
               aria-pressed={isActive}
               className={cn(
-                'flex h-8 cursor-pointer appearance-none items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                'flex h-8 cursor-pointer appearance-none items-center gap-1.5 rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                 isHero
                   ? 'text-text-primary-on-surface'
                   : isHome

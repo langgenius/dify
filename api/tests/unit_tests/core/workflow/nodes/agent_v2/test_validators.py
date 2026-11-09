@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
@@ -23,15 +22,11 @@ from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, 
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import Workflow
+from tests.helpers.unit.model_factories import make_workflow
 
 
 def _workflow(graph: dict) -> Workflow:
-    return Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        graph=json.dumps(graph),
-    )
+    return make_workflow(workflow_id="workflow-1", graph=graph)
 
 
 def _binding(node_job: WorkflowNodeJobConfig) -> WorkflowAgentNodeBinding:
@@ -142,16 +137,13 @@ def _tool_graph(tool_data: dict) -> dict:
     }
 
 
-def test_historical_agent_version_two_is_not_validated_as_dify_agent() -> None:
+def test_historical_agent_version_two_is_not_validated_as_dify_agent(unbound_session: Session) -> None:
     graph = {
         "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}],
         "edges": [],
     }
-    session = Mock()
 
-    WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=_workflow(graph))
-
-    session.scalar.assert_not_called()
+    WorkflowAgentNodeValidator.validate_published_workflow(session=unbound_session, workflow=_workflow(graph))
 
 
 def _persist_validation_scope(
@@ -692,7 +684,7 @@ def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 
@@ -739,3 +731,56 @@ def test_publish_validation_rejects_unauthorized_tool_node_agentic_config(unboun
             session=unbound_session,
             workflow=_workflow(_tool_graph({"agentic_mode": {"state": "agentic", "permission": {"allowed": False}}})),
         )
+
+
+def test_incomplete_route_conditions_can_be_saved_but_not_published(sqlite_session: Session):
+    routes = [{"id": "a", "name": ""}, {"id": "b", "name": ""}]
+    job = WorkflowNodeJobConfig.model_validate({"output_routes": {"enabled": True, "routes": routes}})
+    _persist_validation_scope(sqlite_session, node_job=job)
+    workflow = _workflow(_graph([{"source": "start", "target": "agent-node"}]))
+    WorkflowAgentNodeValidator.validate_draft_workflow(session=sqlite_session, workflow=workflow)
+    with pytest.raises(ValueError, match="route"):
+        WorkflowAgentNodeValidator.validate_published_workflow(session=sqlite_session, workflow=workflow)
+
+
+def test_route_conditions_must_reference_upstream_nodes(sqlite_session: Session):
+    job = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": True,
+                "routes": [
+                    {"id": "a", "name": "{{#later-node.text#}}"},
+                    {"id": "b", "name": "Otherwise"},
+                ],
+            }
+        }
+    )
+    _persist_validation_scope(sqlite_session, node_job=job)
+    with pytest.raises(WorkflowAgentNodeValidationError, match="non-upstream"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=sqlite_session,
+            workflow=_workflow(
+                _graph(
+                    [
+                        {"source": "start", "target": "agent-node"},
+                        {"source": "agent-node", "target": "later-node"},
+                    ]
+                )
+            ),
+        )
+
+
+def test_publishing_routes_rejects_node_level_default_values(sqlite_session: Session):
+    node_job = WorkflowNodeJobConfig.model_validate(
+        {
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
+            }
+        }
+    )
+    _persist_validation_scope(sqlite_session, node_job=node_job)
+    graph = _graph([{"source": "start", "target": "agent-node"}])
+    graph["nodes"][2]["data"]["error_strategy"] = "default-value"
+    with pytest.raises(WorkflowAgentNodeValidationError, match="default-value"):
+        WorkflowAgentNodeValidator.validate_published_workflow(session=sqlite_session, workflow=_workflow(graph))

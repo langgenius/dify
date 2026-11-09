@@ -10,7 +10,7 @@ import {
 } from '@/app/components/workflow/note-node/note-editor'
 
 const NoteNode = ({ data }: NodeProps<NoteNodeType>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const ref = useRef<HTMLDivElement | null>(null)
   const theme = data.theme
 
@@ -36,7 +36,7 @@ const NoteNode = ({ data }: NodeProps<NoteNodeType>) => {
             <div className={cn(data.selected && 'nodrag nopan nowheel cursor-text')}>
               <NoteEditor
                 containerElement={ref.current}
-                placeholder={t(($) => $['nodes.note.editor.placeholder'], { ns: 'workflow' }) || ''}
+                placeholder={t(($) => $['nodes.note.editor.placeholder'], { ns: 'workflow' })}
               />
             </div>
           </div>

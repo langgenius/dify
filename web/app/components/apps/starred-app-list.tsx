@@ -7,6 +7,7 @@ import { StarredAppCard } from './starred-app-card'
 
 type StarredAppListProps = {
   apps: AppPartial[]
+  onDelete: (app: Pick<AppPartial, 'id' | 'name'>, item: HTMLLIElement | null) => void
   stepByStepTourCardTarget?: string
   stepByStepTourCardHighlightPart?: string
   stepByStepTourHighlightedCardCount?: number
@@ -29,11 +30,12 @@ export function AppListSectionHeading({ id, label }: { id: string; label: string
 
 export function StarredAppList({
   apps,
+  onDelete,
   stepByStepTourCardTarget,
   stepByStepTourCardHighlightPart,
   stepByStepTourHighlightedCardCount = 0,
 }: StarredAppListProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   if (apps.length === 0) return null
 
@@ -54,6 +56,7 @@ export function StarredAppList({
           <StarredAppCard
             key={app.id}
             app={app}
+            onDelete={(item) => onDelete(app, item)}
             stepByStepTourCardTarget={index === 0 ? stepByStepTourCardTarget : undefined}
             stepByStepTourCardHighlightPart={
               index < stepByStepTourHighlightedCardCount

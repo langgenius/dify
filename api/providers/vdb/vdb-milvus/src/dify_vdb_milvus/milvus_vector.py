@@ -6,6 +6,7 @@ from packaging import version
 from pydantic import BaseModel, model_validator
 from pymilvus import MilvusClient, MilvusException  # type: ignore
 from pymilvus.milvus_client import IndexParams  # type: ignore
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -160,8 +161,8 @@ class MilvusVector(BaseVector):
             # Insert into the collection.
             batch_insert_list = insert_dict_list[i : i + 1000]
             try:
-                ids = self._client.insert(collection_name=self._collection_name, data=batch_insert_list)
-                pks.extend(ids)
+                result = self._client.insert(collection_name=self._collection_name, data=batch_insert_list)
+                pks.extend(result.get("ids", []))
             except MilvusException as e:
                 logger.exception("Failed to insert batch starting at entity: %s/%s", i, total_count)
                 raise e
@@ -353,12 +354,15 @@ class MilvusVector(BaseVector):
                 ):
                     content_field_kwargs["analyzer_params"] = self._client_config.analyzer_params
 
-                fields.append(FieldSchema(Field.CONTENT_KEY, DataType.VARCHAR, **content_field_kwargs))
-
-                # Create the primary key field
-                fields.append(FieldSchema(Field.PRIMARY_KEY, DataType.INT64, is_primary=True, auto_id=True))
-                # Create the vector field, supports binary or float vectors
-                fields.append(FieldSchema(Field.VECTOR, infer_dtype_bydata(embeddings[0]), dim=dim))
+                fields.extend(
+                    [
+                        FieldSchema(Field.CONTENT_KEY, DataType.VARCHAR, **content_field_kwargs),
+                        # Create the primary key field
+                        FieldSchema(Field.PRIMARY_KEY, DataType.INT64, is_primary=True, auto_id=True),
+                        # Create the vector field, supports binary or float vectors
+                        FieldSchema(Field.VECTOR, infer_dtype_bydata(embeddings[0]), dim=dim),
+                    ]
+                )
                 # Create Sparse Vector Index for the collection
                 if self._hybrid_search_enabled:
                     fields.append(FieldSchema(Field.SPARSE_VECTOR, DataType.SPARSE_FLOAT_VECTOR))
@@ -422,7 +426,9 @@ class MilvusVectorFactory(AbstractVectorFactory):
     """
 
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MilvusVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> MilvusVector:
         """
         Initialize a MilvusVector instance for the given dataset.
         """

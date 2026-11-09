@@ -7,6 +7,18 @@ class AgentBackendConfig(BaseSettings):
     Configuration settings for the Agent backend runtime integration.
     """
 
+    AGENT_SANDBOX_METERING_ENABLED: bool = Field(default=False, description="Persist independent E2B runtime usage.")
+    AGENT_SANDBOX_METERING_PROJECT_ID: str = Field(
+        default="", description="Allowed E2B project/team for this database."
+    )
+    AGENT_SANDBOX_METERING_START_AT: str = Field(
+        default="", description="Immutable UTC activation instant, aligned to a whole second; required when enabled."
+    )
+    AGENT_SANDBOX_METERING_INTERVAL_SECONDS: int | str = Field(
+        default=60,
+        description="Celery Beat interval in seconds; validated only when registering optional usage collection.",
+    )
+
     AGENT_BACKEND_BASE_URL: str | None = Field(
         description="Base URL for the Dify Agent backend service.",
         default=None,

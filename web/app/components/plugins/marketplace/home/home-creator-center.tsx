@@ -3,14 +3,13 @@
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
 import Link from '@/next/link'
 import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import { useCreatorCenterUrl } from '../creator-center-url'
 
 export default function HomeCreatorCenter() {
-  const { t } = useTranslation('plugin')
-  const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
+  const { t } = useTranslation(['plugin'])
+  const creatorCenterUrl = useCreatorCenterUrl()
   const label = t(($) => $['marketplace.home.creatorCenter'])
 
   return (
@@ -28,7 +27,7 @@ export default function HomeCreatorCenter() {
       aria-label={label}
       className={cn(
         buttonVariants({ variant: 'ghost' }),
-        'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary [html[data-theme=dark]_&]:text-text-primary [html[data-theme=dark]_&]:hover:text-text-primary',
+        'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary dark:text-text-primary dark:hover:text-text-primary',
       )}
     >
       <span aria-hidden className="i-ri-user-star-line size-4" />

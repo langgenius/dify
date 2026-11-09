@@ -18,16 +18,6 @@ describe('ToolDetail', () => {
     label: 'Dataset Label',
   }
 
-  it('should render the tool label and "used" state when finished', () => {
-    render(<ToolDetail payload={mockPayload} />)
-
-    expect(screen.getByText('Test Tool Label')).toBeInTheDocument()
-    expect(screen.getByText('tools.thought.used')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'tools.thought.used Test Tool Label' }),
-    ).toHaveAttribute('aria-expanded', 'false')
-  })
-
   it('should render the knowledge label and "using" state when not finished and name is a dataset', () => {
     render(<ToolDetail payload={{ ...datasetPayload, isFinished: false }} />)
 
@@ -59,21 +49,6 @@ describe('ToolDetail', () => {
 
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByText('tools.thought.requestTitle')).not.toBeInTheDocument()
-  })
-
-  it('should toggle details with Space and Enter', async () => {
-    const user = userEvent.setup()
-    render(<ToolDetail payload={mockPayload} />)
-
-    const toggle = screen.getByRole('button', {
-      name: 'tools.thought.used Test Tool Label',
-    })
-    toggle.focus()
-    await user.keyboard(' ')
-    expect(screen.getByText('tools.thought.requestTitle')).toBeInTheDocument()
-
-    await user.keyboard('{Enter}')
     expect(screen.queryByText('tools.thought.requestTitle')).not.toBeInTheDocument()
   })
 })

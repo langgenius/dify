@@ -1,3 +1,5 @@
+from typing import overload
+
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -21,10 +23,12 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate, with_current_user
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
 from models import Account
+from services.file_service import FileUploadActor
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
 )
@@ -48,6 +52,14 @@ register_response_schema_models(console_ns, FileWithSignedUrl, RemoteFileInfo)
 
 @console_ns.route("/remote-files/<path:url>")
 class GetRemoteFileInfo(Resource):
+    @error_responses(
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+    )
     @console_ns.doc(
         responses={
             400: "Invalid, blocked, or inaccessible remote file URL",
@@ -84,13 +96,37 @@ class GetRemoteFileInfo(Resource):
         )
 
 
+@overload
 def upload_remote_file(
     *,
     url: str,
     current_user: Account,
     resource_tenant_id: str | None = None,
+) -> RemoteFileUploadResult: ...
+
+
+@overload
+def upload_remote_file(
+    *,
+    url: str,
+    current_user: FileUploadActor,
+    resource_tenant_id: str,
+) -> RemoteFileUploadResult: ...
+
+
+def upload_remote_file(
+    *,
+    url: str,
+    current_user: Account | FileUploadActor,
+    resource_tenant_id: str | None = None,
 ) -> RemoteFileUploadResult:
-    """Fetch a remote file and persist it under the requested tenant."""
+    """Fetch a remote file and persist it under the requested tenant.
+
+    For Account, resource_tenant_id=None (including when omitted) uses the
+    current workspace; an explicit value takes precedence. FileUploadActor
+    carries no tenant, so resource_tenant_id must be provided explicitly.
+    RemoteFileService enforces this before fetching the remote file.
+    """
     try:
         return application_services().remote_files.upload_from_url(
             url=url,
@@ -119,6 +155,17 @@ def upload_remote_file(
 
 @console_ns.route("/remote-files/upload")
 class RemoteFileUpload(Resource):
+    @error_responses(
+        BlockedFileExtensionError,
+        FileTooLargeError,
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+        UnsupportedFileTypeError,
+    )
     @console_ns.doc(
         responses={
             400: "Invalid, blocked, or inaccessible remote file URL",

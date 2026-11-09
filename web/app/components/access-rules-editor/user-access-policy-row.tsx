@@ -1,7 +1,7 @@
 'use client'
 
-import type { ResourceUserAccessSetting } from '@/models/access-control'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import type { ResourceUserAccessPolicies } from '@dify/contracts/api/console/workspaces/types.gen'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -15,7 +15,9 @@ import {
 } from '@langgenius/dify-ui/select'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getAvatarInitial } from '@/utils/avatar'
 import { ACCESS_RULE_TABLE_GRID, DEFAULT_ACCESS_POLICY_ID } from './constants'
+import { isWorkspaceAdminRole } from './is-workspace-admin-role'
 
 type PolicyOption = {
   id: string
@@ -23,7 +25,7 @@ type PolicyOption = {
 }
 
 type UserAccessPolicyRowProps = {
-  setting: ResourceUserAccessSetting
+  setting: ResourceUserAccessPolicies
   policyOptions: PolicyOption[]
   disabled: boolean
   membershipChangesDisabled?: boolean
@@ -51,17 +53,19 @@ function UserAccessPolicyRow({
   onChange,
   onRemove,
 }: UserAccessPolicyRowProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const accountId = setting.account.account_id
-  const selectedPolicy = setting.access_policies[0]
+  const accountName = setting.account.account_name || setting.account.email || accountId
+  const selectedPolicy = setting.access_policies?.[0]
   const selectedPolicyId = selectedPolicy?.id ?? DEFAULT_ACCESS_POLICY_ID
   const isPolicySelectDisabled = disabled || isProtected || !onChange
   const isRemoveDisabled = disabled || membershipChangesDisabled || isProtected || !onRemove
   const isSelectionDisabled =
     disabled || membershipChangesDisabled || selectionDisabled || isProtected || !onSelectedChange
   const defaultAccessPolicyName = t(($) => $['accessRule.defaultPermission'], { ns: 'permission' })
-  const accountEmail = setting.account.email || setting.account.account_name
-  const isWorkspaceOwner = setting.roles.some((role) => role.role_tag === 'owner')
+  const accountEmail = setting.account.email || accountName
+  const isWorkspaceOwner = setting.roles?.some((role) => role.role_tag === 'owner')
+  const isWorkspaceAdmin = setting.roles?.some(isWorkspaceAdminRole)
 
   const handlePolicyChange = useCallback(
     (nextPolicyId: string | null) => {
@@ -82,22 +86,20 @@ function UserAccessPolicyRow({
     <tr className={cn('grid min-h-19 items-center gap-4 py-4', ACCESS_RULE_TABLE_GRID, className)}>
       <td className="flex min-w-0 items-center gap-3">
         <Checkbox
-          aria-label={setting.account.account_name}
+          aria-label={accountName}
           checked={selected}
           disabled={isSelectionDisabled}
           onCheckedChange={(checked) => onSelectedChange?.(accountId, checked)}
         />
-        <Avatar
-          avatar={setting.account.avatar ?? null}
-          name={setting.account.account_name}
-          size="md"
-          className="bg-components-icon-bg-blue-solid"
-        />
+        <Avatar size="md" aria-hidden="true">
+          <AvatarFallback className="bg-components-icon-bg-blue-solid">
+            {getAvatarInitial(accountName)}
+          </AvatarFallback>
+          <AvatarImage src={setting.account.avatar || undefined} alt="" />
+        </Avatar>
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate system-md-medium text-text-secondary">
-              {setting.account.account_name}
-            </span>
+            <span className="truncate system-md-medium text-text-secondary">{accountName}</span>
             {isMaintainer && (
               <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
                 {t(($) => $['accessRule.maintainer'], { ns: 'permission' })}
@@ -106,6 +108,11 @@ function UserAccessPolicyRow({
             {isWorkspaceOwner && (
               <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
                 {t(($) => $['accessRule.workspaceOwner'], { ns: 'permission' })}
+              </span>
+            )}
+            {isWorkspaceAdmin && (
+              <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
+                {t(($) => $['accessRule.workspaceAdmin'], { ns: 'permission' })}
               </span>
             )}
           </div>
@@ -117,7 +124,7 @@ function UserAccessPolicyRow({
           <SelectTrigger
             aria-label={t(($) => $['accessRule.exceptionPermissionFor'], {
               ns: 'permission',
-              name: setting.account.account_name,
+              name: accountName,
             })}
             size="small"
             disabled={isPolicySelectDisabled}
@@ -126,7 +133,7 @@ function UserAccessPolicyRow({
             <SelectValue>
               {selectedPolicyId === DEFAULT_ACCESS_POLICY_ID
                 ? defaultAccessPolicyName
-                : setting.access_policies[0]?.name}
+                : selectedPolicy?.name}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>

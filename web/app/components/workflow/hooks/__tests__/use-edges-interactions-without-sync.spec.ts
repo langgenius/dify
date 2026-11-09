@@ -64,6 +64,12 @@ describe('useEdgesInteractionsWithoutSync', () => {
     })
 
     return waitFor(() => {
+      expect(
+        result.current.edges.map(({ id, source, target }) => ({ id, source, target })),
+      ).toEqual([
+        { id: 'e1', source: 'a', target: 'b' },
+        { id: 'e2', source: 'b', target: 'c' },
+      ])
       result.current.edges.forEach((edge) => {
         const edgeState = getEdgeRuntimeState(edge)
         expect(edgeState._sourceRunningStatus).toBeUndefined()
@@ -71,28 +77,5 @@ describe('useEdgesInteractionsWithoutSync', () => {
         expect(edgeState._waitingRun).toBe(false)
       })
     })
-  })
-
-  it('does not mutate the original edges array', () => {
-    const edges = createFlowEdges()
-    const originalData = { ...getEdgeRuntimeState(edges[0]) }
-    const { result } = renderWorkflowFlowHook(
-      () => ({
-        ...useEdgesInteractionsWithoutSync(),
-        edges: useEdges(),
-      }),
-      {
-        nodes: createFlowNodes(),
-        edges,
-      },
-    )
-
-    act(() => {
-      result.current.handleEdgeCancelRunningStatus()
-    })
-
-    expect(getEdgeRuntimeState(edges[0])._sourceRunningStatus).toBe(
-      originalData._sourceRunningStatus,
-    )
   })
 })

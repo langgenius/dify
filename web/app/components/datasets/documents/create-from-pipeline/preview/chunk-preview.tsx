@@ -1,10 +1,6 @@
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { NotionPage } from '@/models/common'
-import type {
-  CrawlResultItem,
-  CustomFile,
-  DocumentItem,
-  FileIndexingEstimateResponse,
-} from '@/models/datasets'
+import type { CrawlResultItem, CustomFile, DocumentItem } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiSearchEyeLine } from '@remixicon/react'
@@ -38,7 +34,7 @@ type ChunkPreviewProps = {
   onlineDriveFiles: OnlineDriveFile[]
   isIdle: boolean
   isPending: boolean
-  estimateData: FileIndexingEstimateResponse | undefined
+  estimateData: IndexingEstimateResponse | undefined
   onPreview: () => void
   handlePreviewFileChange: (file: DocumentItem) => void
   handlePreviewOnlineDocumentChange: (page: NotionPage) => void
@@ -61,7 +57,7 @@ const ChunkPreview = ({
   handlePreviewWebsitePageChange,
   handlePreviewOnlineDriveFileChange,
 }: ChunkPreviewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const currentDocForm = useDatasetDetailContextWithSelector((s) => s.dataset?.doc_form)
 
   const [previewFile, setPreviewFile] = useState<DocumentItem>(localFiles[0] as DocumentItem)
@@ -198,7 +194,7 @@ const ChunkPreview = ({
               characterCount={item.content.length}
             >
               <FormattedText>
-                {item.child_chunks.map((child, index) => {
+                {(item.child_chunks ?? []).map((child, index) => {
                   const indexForLabel = index + 1
                   return (
                     <PreviewSlice

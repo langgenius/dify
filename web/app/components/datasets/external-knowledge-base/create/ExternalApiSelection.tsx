@@ -23,7 +23,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
   external_knowledge_id,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const externalKnowledgeApiQueryOptions =
@@ -110,7 +110,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
           onValueChange={(value) =>
             onChange({ external_knowledge_id: value, external_knowledge_api_id })
           }
-          placeholder={t(($) => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' }) ?? ''}
+          placeholder={t(($) => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' })}
         />
       </div>
     </form>

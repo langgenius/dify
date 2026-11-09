@@ -1,29 +1,8 @@
+import type { Credential } from '../../declarations'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import CredentialSelector from '../credential-selector'
-
-vi.mock('../authorized/credential-item', () => ({
-  default: ({
-    credential,
-    onItemClick,
-  }: {
-    credential: { credential_name: string }
-    onItemClick?: (c: unknown) => void
-  }) => (
-    <button type="button" onClick={() => onItemClick?.(credential)}>
-      {credential.credential_name}
-    </button>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: () => <div data-testid="indicator" />,
-}))
-
-vi.mock('@remixicon/react', () => ({
-  RiAddLine: () => <div data-testid="add-icon" />,
-  RiArrowDownSLine: () => <div data-testid="arrow-icon" />,
-}))
 
 describe('CredentialSelector', () => {
   const mockCredentials = [
@@ -36,33 +15,33 @@ describe('CredentialSelector', () => {
     vi.clearAllMocks()
   })
 
-  it('should render selected credential name when selectedCredential is provided', () => {
-    render(
-      <CredentialSelector
-        selectedCredential={mockCredentials[0]}
-        credentials={mockCredentials}
-        onSelect={mockOnSelect}
-      />,
-    )
-
-    expect(screen.getByText('Key 1')).toBeInTheDocument()
-    expect(screen.getByTestId('indicator')).toBeInTheDocument()
-  })
-
-  it('should render placeholder when selectedCredential is missing', () => {
-    render(<CredentialSelector credentials={mockCredentials} onSelect={mockOnSelect} />)
-
-    expect(screen.getByText(/modelProvider.auth.selectModelCredential/)).toBeInTheDocument()
-  })
-
-  it('should call onSelect when a credential item is clicked', async () => {
+  it('selects a real credential item, closes the popup, and marks it selected when reopened', async () => {
     const user = userEvent.setup()
-    render(<CredentialSelector credentials={mockCredentials} onSelect={mockOnSelect} />)
+    function Picker() {
+      const [selected, setSelected] = useState<Credential>()
+      return (
+        <CredentialSelector
+          selectedCredential={selected}
+          credentials={mockCredentials}
+          onSelect={(next) => {
+            setSelected(next)
+            mockOnSelect(next)
+          }}
+        />
+      )
+    }
+    render(<Picker />)
 
     await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
+    expect(
+      screen.getByRole('dialog', { name: /modelProvider.auth.selectModelCredential/ }),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Key 2' }))
 
-    expect(mockOnSelect).toHaveBeenCalledWith(mockCredentials[1])
+    expect(mockOnSelect).toHaveBeenCalledExactlyOnceWith(mockCredentials[1])
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Key 2' }))
+    expect(screen.getByRole('button', { name: 'Key 2', pressed: true })).toBeInTheDocument()
   })
 
   it('should call onSelect with add-new payload when add action is clicked', async () => {

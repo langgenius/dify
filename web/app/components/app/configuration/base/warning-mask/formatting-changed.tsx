@@ -23,7 +23,7 @@ const icon = (
 )
 
 const FormattingChanged: FC<IFormattingChangedProps> = ({ onConfirm, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
 
   return (
     <WarningMask

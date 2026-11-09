@@ -1,11 +1,13 @@
+import type { InputProps } from '@langgenius/dify-ui/input'
 import type {
   NumberFieldInputProps,
   NumberFieldProps,
   NumberFieldSize,
 } from '@langgenius/dify-ui/number-field'
 import type { FC, PropsWithChildren, ReactNode } from 'react'
-import type { InputProps } from '@/app/components/base/input'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   NumberField,
   NumberFieldControls,
@@ -17,8 +19,6 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { env } from '@/env'
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
@@ -35,13 +35,15 @@ const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
   )
 }
 
-export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
-  tooltip,
-  onChange,
-  value,
-  ...rest
-}) => {
-  const { t } = useTranslation()
+export const DelimiterInput: FC<
+  Omit<InputProps, 'onChange' | 'onValueChange'> & {
+    tooltip?: string
+    onValueChange?: (value: string) => void
+  }
+> = ({ tooltip, onValueChange, value, ...rest }) => {
+  const labelId = useId()
+
+  const { t } = useTranslation(['datasetCreation'])
   const generatedInputId = useId()
   const inputId = rest.id ?? generatedInputId
   const isComposing = useRef(false)
@@ -51,14 +53,14 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
     <FormField
       label={
         <div className="mb-1 flex items-center">
-          <label htmlFor={inputId} className="mr-0.5 system-sm-semibold">
+          <label id={labelId} htmlFor={inputId} className="mr-0.5 system-sm-semibold">
             {t(($) => $['stepTwo.separator'], { ns: 'datasetCreation' })}
           </label>
-          <Infotip
-            aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
-            popupClassName="max-w-[200px]"
-          >
-            {tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+          <Infotip>
+            <InfotipTrigger aria-labelledby={labelId} />
+            <InfotipContent aria-labelledby={labelId} className="max-w-50">
+              {tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+            </InfotipContent>
           </Infotip>
         </div>
       }
@@ -69,9 +71,9 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
         className="h-9"
         placeholder={t(($) => $['stepTwo.separatorPlaceholder'], { ns: 'datasetCreation' })!}
         value={isComposing.current ? compositionValue : value}
-        onChange={(e) => {
-          if (isComposing.current) setCompositionValue(e.target.value)
-          else onChange?.(e)
+        onValueChange={(value) => {
+          if (isComposing.current) setCompositionValue(value)
+          else onValueChange?.(value)
         }}
         onCompositionStart={() => {
           isComposing.current = true
@@ -81,10 +83,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
           const committed = e.currentTarget.value
           isComposing.current = false
           setCompositionValue('')
-          onChange?.({
-            ...e,
-            target: { ...e.target, value: committed },
-          } as unknown as React.ChangeEvent<HTMLInputElement>)
+          onValueChange?.(committed)
         }}
         {...rest}
       />
@@ -164,7 +163,7 @@ type LabeledCompoundNumberInputProps = Omit<CompoundNumberInputProps, 'label'>
 export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
   const maxValue = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const label = t(($) => $['stepTwo.maxLength'], { ns: 'datasetCreation' })
   return (
     <FormField label={<div className="mb-1 system-sm-semibold">{label}</div>}>
@@ -181,18 +180,22 @@ export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
 }
 
 export const OverlapInput: FC<LabeledCompoundNumberInputProps> = (props) => {
-  const { t } = useTranslation()
+  const labelId = useId()
+
+  const { t } = useTranslation(['datasetCreation'])
   const label = t(($) => $['stepTwo.overlap'], { ns: 'datasetCreation' })
   return (
     <FormField
       label={
         <div className="mb-1 flex items-center">
-          <span className="system-sm-semibold">{label}</span>
-          <Infotip
-            aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
-            popupClassName="max-w-[200px]"
-          >
-            {t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+          <span id={labelId} className="system-sm-semibold">
+            {label}
+          </span>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={labelId} />
+            <InfotipContent aria-labelledby={labelId} className="max-w-50">
+              {t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+            </InfotipContent>
           </Infotip>
         </div>
       }

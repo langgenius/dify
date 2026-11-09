@@ -5,7 +5,6 @@ from the enterprise_telemetry queue. It deserializes envelopes and
 dispatches them to the EnterpriseMetricHandler.
 """
 
-import json
 import logging
 
 from celery import shared_task
@@ -31,8 +30,7 @@ def process_enterprise_telemetry(envelope_json: str) -> None:
     """
     try:
         # Deserialize envelope
-        envelope_dict = json.loads(envelope_json)
-        envelope = TelemetryEnvelope.model_validate(envelope_dict)
+        envelope = TelemetryEnvelope.model_validate_json(envelope_json)
 
         # Process through handler
         handler = EnterpriseMetricHandler()

@@ -24,7 +24,7 @@ export function AgentBuildDraftChangesPanel({
   changesLabel: string
   onToggle: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const sections = getChangeSections({ changeSummary, t })
 
   return (
@@ -72,7 +72,7 @@ function AgentBuildDraftChangeSectionRow({ section }: { section: AgentBuildDraft
 }
 
 function AgentBuildDraftChangeItemRow({ item }: { item: AgentBuildDraftChangeItem }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const descriptionKey = item.descriptionKey
 
   return (
@@ -113,7 +113,7 @@ function getChangeSections({
   t,
 }: {
   changeSummary?: AgentBuildDraftChangeSummary
-  t: TFunction<'agentV2'>
+  t: TFunction<['agentV2']>
 }): AgentBuildDraftChangeSection[] {
   if (!changeSummary) return []
 

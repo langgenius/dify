@@ -1,0 +1,150 @@
+'use client'
+
+import type { KnowledgeFsOverviewInventoryResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValueRawSync } from 'jotai'
+import { useTranslation } from 'react-i18next'
+import { EmptyInline, OverviewErrorInline, Panel, Skeleton } from './overview-panel'
+import {
+  overviewInventoryDataAtom,
+  overviewInventoryErrorAtom,
+  overviewInventoryPendingAtom,
+  overviewShowEmptyModulesAtom,
+  overviewShowIndexingAtom,
+} from './state'
+
+export function InventoryPanel() {
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeOverview'])
+  const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
+  const error = useAtomValueRawSync(overviewInventoryErrorAtom)
+  const indexing = useAtomValueRawSync(overviewShowIndexingAtom)
+  const inventory: KnowledgeFsOverviewInventoryResponse | undefined =
+    useAtomValueRawSync(overviewInventoryDataAtom)
+  const loading = useAtomValueRawSync(overviewInventoryPendingAtom)
+  const categories = inventory
+    ? [
+        {
+          color: 'bg-util-colors-blue-blue-500',
+          segment: 'border-util-colors-blue-blue-500 bg-util-colors-blue-blue-100',
+          label: t(($) => $['overview.webCrawl'], { ns: 'knowledgeOverview' }),
+          value: inventory.source_categories.crawl,
+        },
+        {
+          color: 'bg-util-colors-green-green-500',
+          segment: 'border-util-colors-green-green-500 bg-util-colors-green-green-100',
+          label: t(($) => $['overview.onlineDocuments'], { ns: 'knowledgeOverview' }),
+          value: inventory.source_categories.online_documents,
+        },
+        {
+          color: 'bg-util-colors-purple-purple-500',
+          segment: 'border-util-colors-purple-purple-500 bg-util-colors-purple-purple-100',
+          label: t(($) => $['overview.onlineDrives'], { ns: 'knowledgeOverview' }),
+          value: inventory.source_categories.online_drives,
+        },
+        {
+          color: 'bg-util-colors-orange-orange-500',
+          segment: 'border-util-colors-orange-orange-500 bg-util-colors-orange-orange-50',
+          label: t(($) => $['overview.uploads'], { ns: 'knowledgeOverview' }),
+          value: inventory.source_categories.uploads,
+        },
+      ]
+    : []
+  const categoryTotal = categories.reduce((total, category) => total + category.value, 0)
+  const visibleCategories = categories.filter((category) => category.value > 0)
+
+  if (error)
+    return (
+      <section className="flex h-68.75 min-w-0 flex-col gap-2 pt-6">
+        <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
+          {t(($) => $['overview.inventory'], { ns: 'knowledgeOverview' })}
+        </h2>
+        <Panel className="flex h-54.75 border border-components-panel-border p-4 shadow-none">
+          <OverviewErrorInline />
+        </Panel>
+      </section>
+    )
+
+  if (empty)
+    return (
+      <section className={cn('flex min-w-0 flex-col gap-2 pt-6', indexing ? 'h-65' : 'h-68.75')}>
+        <h2 className="text-[15px] leading-6 font-medium text-text-secondary">
+          {t(($) => $['overview.inventory'], { ns: 'knowledgeOverview' })}
+        </h2>
+        <Panel
+          className={cn(
+            'flex border border-components-panel-border p-4 shadow-none',
+            indexing ? 'h-51' : 'h-54.75',
+          )}
+        >
+          <EmptyInline
+            icon="i-ri-file-text-line"
+            title={
+              indexing
+                ? t(($) => $['overview.indexingInProgress'], { ns: 'knowledgeOverview' })
+                : t(($) => $.documentsEmptyTitle)
+            }
+            description={
+              indexing
+                ? t(($) => $['overview.indexingInProgressDescription'], { ns: 'knowledgeOverview' })
+                : t(($) => $.documentsEmptyDescription)
+            }
+          />
+        </Panel>
+      </section>
+    )
+
+  return (
+    <section className="flex min-w-0 flex-col gap-2 pt-6">
+      <h2 className="flex h-6 items-center text-[15px] leading-6 font-medium text-text-secondary">
+        {t(($) => $['overview.inventory'], { ns: 'knowledgeOverview' })}
+      </h2>
+      <Panel className="overflow-hidden border border-divider-subtle p-4 shadow-none">
+        {loading ? (
+          <>
+            <Skeleton className="h-6 w-full" />
+            <div className="mt-2.5 h-3.75">
+              <Skeleton className="h-3.5 w-80" />
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {[0, 1, 2].map((index) => (
+                <div key={index} className="h-20 rounded-lg bg-background-section p-3">
+                  <Skeleton className="h-2.5 w-20" />
+                  <Skeleton className="mt-2 h-5 w-24" />
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div
+              className="flex h-6 gap-0.5 overflow-hidden"
+              aria-label={t(($) => $['overview.sources'], { ns: 'knowledgeOverview' })}
+            >
+              {visibleCategories.map((category) => (
+                <span
+                  key={category.label}
+                  className={cn('border-l-4', category.segment)}
+                  style={{
+                    width: categoryTotal ? `${(category.value / categoryTotal) * 100}%` : '0%',
+                  }}
+                />
+              ))}
+            </div>
+            <ul className="mt-2.5 flex min-h-3.75 flex-wrap gap-x-4 gap-y-1">
+              {categories.map((category) => (
+                <li
+                  key={category.label}
+                  className="flex items-center gap-1.5 text-[12px] leading-3.75 font-normal text-text-tertiary"
+                >
+                  <span aria-hidden className={cn('size-2 rounded-full', category.color)} />
+                  {category.label}
+                  <span className="font-semibold text-text-secondary">{category.value}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </Panel>
+    </section>
+  )
+}

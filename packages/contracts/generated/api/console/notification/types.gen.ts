@@ -9,6 +9,16 @@ export type NotificationResponse = {
   should_show: boolean
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type DismissNotificationPayload = {
   notification_id: string
 }
@@ -19,9 +29,9 @@ export type SimpleResultResponse = {
 
 export type NotificationItemResponse = {
   body: string
-  frequency?: string | null
+  frequency: 'every_page_load' | 'once'
   lang: string
-  notification_id?: string | null
+  notification_id: string
   subtitle: string
   title: string
   title_pic_url: string
@@ -37,8 +47,11 @@ export type GetNotificationData = {
 }
 
 export type GetNotificationErrors = {
-  401: unknown
+  401: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetNotificationError = GetNotificationErrors[keyof GetNotificationErrors]
 
 export type GetNotificationResponses = {
   200: NotificationResponse
@@ -54,8 +67,12 @@ export type PostNotificationDismissData = {
 }
 
 export type PostNotificationDismissErrors = {
-  401: unknown
+  401: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostNotificationDismissError =
+  PostNotificationDismissErrors[keyof PostNotificationDismissErrors]
 
 export type PostNotificationDismissResponses = {
   200: SimpleResultResponse

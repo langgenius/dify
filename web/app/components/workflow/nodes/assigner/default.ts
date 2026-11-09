@@ -20,7 +20,7 @@ const nodeDefault: NodeDefault<AssignerNodeType> = {
     version: '2',
     items: [],
   },
-  checkValid(payload: AssignerNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: AssignerNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     const { items: operationItems } = payload
 

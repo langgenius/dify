@@ -10,30 +10,34 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import type { Inputs } from '@/models/debug'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import { useCallback, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import dynamic from '@/next/dynamic'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
 import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
 const stopAgentChatMessageResponding = (agentId: string, taskId: string) => {
-  return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post({
-    params: {
-      agent_id: agentId,
-      task_id: taskId,
+  return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post(
+    {
+      params: {
+        agent_id: agentId,
+        task_id: taskId,
+      },
     },
-  })
+    { context: { silent: true } },
+  )
 }
 
 const fetchAgentSuggestedQuestions = (agentId: string, messageId: string) => {
@@ -118,7 +122,7 @@ export function AgentPreviewChatConversation({
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
   const queryClient = useQueryClient()
   const { data: userProfile } = useSuspenseQuery({
@@ -151,7 +155,7 @@ export function AgentPreviewChatConversation({
     },
     initialChatTree,
     (taskId) => {
-      void stopAgentChatMessageResponding(agentId, taskId)
+      return stopAgentChatMessageResponding(agentId, taskId)
     },
     clearChatList,
     onClearChatListChange,
@@ -207,14 +211,11 @@ export function AgentPreviewChatConversation({
             },
             onGetSuggestedQuestions: (responseItemId) =>
               fetchAgentSuggestedQuestions(agentId, responseItemId),
-            onUnhandledEvent: (event) => {
-              if (event.event !== 'error' || typeof event.message !== 'string') return
-
-              const errorCode = typeof event.code === 'string' ? event.code : undefined
+            onNotifyError: (message, errorCode) => {
               if (errorCode === 'agent_run_limit_exceeded') {
                 // The backend currently uses the same code for time and request-count limits.
                 // Pydantic AI's request-count error includes its `request_limit` field name.
-                const errorMessage = event.message.includes('request_limit')
+                const errorMessage = message.includes('request_limit')
                   ? t(
                       ($) =>
                         $['agentDetail.configure.preview.errors.agentModelRequestLimitExceeded'],
@@ -233,14 +234,6 @@ export function AgentPreviewChatConversation({
                   ),
                   timeout: 0,
                 })
-              }
-
-              return {
-                conversationId:
-                  typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
-                messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
-                errorMessage: event.message,
-                errorCode,
               }
             },
             onConversationComplete: (completedConversationId, workflowRunId) => {
@@ -283,9 +276,8 @@ export function AgentPreviewChatConversation({
     ],
   )
 
-  const doStopResponding = useCallback(() => {
-    handleStop()
-    notifySendInterrupted()
+  const doStopResponding = useCallback(async () => {
+    if (await handleStop()) notifySendInterrupted()
   }, [handleStop, notifySendInterrupted])
 
   const doRegenerate = useCallback(
@@ -340,7 +332,12 @@ export function AgentPreviewChatConversation({
       onStopResponding={doStopResponding}
       noChatInput
       showRegenerate
-      questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
+      questionIcon={
+        <Avatar size="xl" role="img" aria-label={userProfile.name}>
+          <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+        </Avatar>
+      }
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}

@@ -22,11 +22,3 @@ def apply_openapi_gate(query: Any) -> Any:
     (alias of ``.where``).
     """
     return query.filter(App.enable_api.is_(True))
-
-
-def is_openapi_visible(app: App) -> bool:
-    """Per-row counterpart for code paths that fetch an App by primary key
-    (``session.get`` / ``session.scalar``) and need the same visibility check
-    the query gate would have applied.
-    """
-    return bool(app.enable_api)

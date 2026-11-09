@@ -2,13 +2,14 @@
 
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { MarketplaceSearchSelection } from '../home/marketplace-search-autocomplete'
-import type { CreatorCreation, LoadedCreatorProfile } from './model'
+import type { CreatorCreation, CreatorCreationAction, LoadedCreatorProfile } from './model'
 import type { Plugin } from '@/app/components/plugins/types'
 import { useMemo, useState } from 'react'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { useRouter } from '@/next/navigation'
 import MarketplaceDetailDialog from '../detail-dialog'
 import TemplateDetailDialog from '../templates/template-detail-dialog'
+import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
 import { getFormattedPlugin } from '../utils'
 import CreatorProfileHeader from './header'
 import CreatorProfileView from './view'
@@ -33,6 +34,7 @@ const normalizePlugin = (plugin: Plugin): Plugin => ({
 
 export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreatorProfileProps) {
   const router = useRouter()
+  const navigation = useMarketplaceDetailNavigation()
   const [selected, setSelected] = useState<SelectedCreation | null>(null)
   const [sourceProfile, setSourceProfile] = useState(loadedProfile)
   const [pluginsByCreationId, setPluginsByCreationId] = useState(loadedProfile.pluginsByCreationId)
@@ -50,11 +52,13 @@ export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreato
     () =>
       Array.from(
         new Set([
-          ...profilePlugins.map((plugin) => plugin.plugin_id),
+          ...profilePlugins
+            .filter((plugin) => !navigation.pluginHref(plugin))
+            .map((plugin) => plugin.plugin_id),
           ...(selected?.kind === 'plugin' ? [selected.plugin.plugin_id] : []),
         ]),
       ).sort(),
-    [profilePlugins, selected],
+    [navigation, profilePlugins, selected],
   )
   const { installedInfo } = useCheckInstalled({
     pluginIds,
@@ -74,13 +78,26 @@ export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreato
 
   const selectSearchResult = (selection: MarketplaceSearchSelection) => {
     if (selection.kind === 'plugin') {
+      if (navigation.openPlugin(selection.plugin)) return { preserveQuery: true }
       setSelected({
         kind: 'plugin',
         plugin: normalizePlugin(getFormattedPlugin(selection.plugin)),
       })
       return
     }
+    if (navigation.openTemplate(selection.template)) return { preserveQuery: true }
     setSelected({ kind: 'template', template: selection.template })
+  }
+
+  const getCreationAction = (creation: CreatorCreation): CreatorCreationAction => {
+    const target = creation.target
+    const href =
+      target.type === 'plugin'
+        ? navigation.pluginHref({ org: target.org, name: target.name, type: target.pluginType })
+        : navigation.templateHref({ id: target.id, publisher_unique_handle: target.publisher })
+    return href
+      ? { type: 'link', href, target: '_blank' }
+      : { type: 'select', onSelect: () => selectCreation(creation) }
   }
 
   const closeSelected = () => setSelected(null)
@@ -102,10 +119,7 @@ export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreato
             ...records.templatesByCreationId,
           }))
         }}
-        getCreationAction={(creation) => ({
-          type: 'select',
-          onSelect: () => selectCreation(creation),
-        })}
+        getCreationAction={getCreationAction}
         header={<CreatorProfileHeader locale={locale} onSuggestionSelect={selectSearchResult} />}
       />
 

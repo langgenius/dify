@@ -9,7 +9,7 @@ import { useCreateSnippet } from '@/app/components/snippets/hooks/use-create-sni
 import ImportSnippetDSLDialog from '@/app/components/snippets/import-snippet-dsl-dialog'
 
 const SnippetCreateButton = () => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
   const {
     canCreateAndModifySnippet,
     createSnippetMutation,
@@ -36,7 +36,7 @@ const SnippetCreateButton = () => {
           }
         />
         <PopoverContent
-          placement="bottom-end"
+          align="end"
           sideOffset={6}
           className="w-57 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
         >

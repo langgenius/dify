@@ -9,7 +9,7 @@ from libs.json_in_md_parser import (
 )
 
 
-def test_parse_json_markdown_triple_backticks_json():
+def test_parse_json_markdown_triple_backticks_json() -> None:
     src = """
     ```json
     {"a": 1, "b": "x"}
@@ -18,7 +18,7 @@ def test_parse_json_markdown_triple_backticks_json():
     assert parse_json_markdown(src) == {"a": 1, "b": "x"}
 
 
-def test_parse_json_markdown_triple_backticks_generic():
+def test_parse_json_markdown_triple_backticks_generic() -> None:
     src = """
     ```
     {"k": [1, 2, 3]}
@@ -27,22 +27,22 @@ def test_parse_json_markdown_triple_backticks_generic():
     assert parse_json_markdown(src) == {"k": [1, 2, 3]}
 
 
-def test_parse_json_markdown_single_backticks():
+def test_parse_json_markdown_single_backticks() -> None:
     src = '`{"x": true}`'
     assert parse_json_markdown(src) == {"x": True}
 
 
-def test_parse_json_markdown_braces_only():
+def test_parse_json_markdown_braces_only() -> None:
     src = '  {\n  \t"ok": "yes"\n}  '
     assert parse_json_markdown(src) == {"ok": "yes"}
 
 
-def test_parse_json_markdown_not_found():
-    with pytest.raises(ValueError):
+def test_parse_json_markdown_not_found() -> None:
+    with pytest.raises(ValueError, match="could not find json block in the output\\."):
         parse_json_markdown("no json here")
 
 
-def test_parse_and_check_json_markdown_missing_key():
+def test_parse_and_check_json_markdown_missing_key() -> None:
     src = """
     ```
     {"present": 1}
@@ -53,7 +53,7 @@ def test_parse_and_check_json_markdown_missing_key():
     assert "expected key `missing`" in str(exc.value)
 
 
-def test_parse_and_check_json_markdown_invalid_json():
+def test_parse_and_check_json_markdown_invalid_json() -> None:
     src = """
     ```json
     {invalid json}
@@ -64,7 +64,7 @@ def test_parse_and_check_json_markdown_invalid_json():
     assert "got invalid json object" in str(exc.value)
 
 
-def test_parse_and_check_json_markdown_success():
+def test_parse_and_check_json_markdown_success() -> None:
     src = """
     ```json
     {"present": 1, "other": 2}
@@ -74,7 +74,7 @@ def test_parse_and_check_json_markdown_success():
     assert obj == {"present": 1, "other": 2}
 
 
-def test_parse_and_check_json_markdown_multiple_blocks_fails():
+def test_parse_and_check_json_markdown_multiple_blocks_fails() -> None:
     src = """
     ```json
     {"a": 1}
@@ -90,7 +90,7 @@ def test_parse_and_check_json_markdown_multiple_blocks_fails():
         parse_and_check_json_markdown(src, [])
 
 
-def test_parse_and_check_json_markdown_handles_think_fenced_and_raw_variants():
+def test_parse_and_check_json_markdown_handles_think_fenced_and_raw_variants() -> None:
     expected = {"keywords": ["2"], "category_id": "2", "category_name": "2"}
     cases = [
         """
@@ -111,63 +111,76 @@ def test_parse_and_check_json_markdown_handles_think_fenced_and_raw_variants():
         assert obj == expected
 
 
-def test_parse_json_markdown_backtick_inside_string_value():
+def test_parse_json_markdown_backtick_inside_string_value() -> None:
     """Backticks inside JSON string values must not be mistaken for code fences."""
     src = '{"code": "use `print` function", "n": 1}'
     assert parse_json_markdown(src) == {"code": "use `print` function", "n": 1}
 
 
-def test_parse_json_markdown_backtick_in_surrounding_prose():
+def test_parse_json_markdown_backtick_in_surrounding_prose() -> None:
     """Backticks in prose before the JSON must not break extraction."""
     src = 'Here is `the` result: {"a": 1}'
     assert parse_json_markdown(src) == {"a": 1}
 
 
-def test_parse_json_markdown_fenced_scalar_still_supported():
+def test_parse_json_markdown_fenced_scalar_still_supported() -> None:
     """Fenced content without brackets still parses via the fence fallback."""
     assert parse_json_markdown('```json\n"hello"\n```') == "hello"
 
 
-def test_parse_json_markdown_returns_first_unfenced_json_object():
+def test_parse_and_check_json_markdown_fenced_scalar_raises_output_parser_error() -> None:
+    """A valid JSON scalar (number/null/bool) must raise OutputParserError, not TypeError."""
+    for src in ("```json\n42\n```", "```json\nnull\n```", "```json\ntrue\n```"):
+        with pytest.raises(OutputParserError):
+            parse_and_check_json_markdown(src, ["answer"])
+
+
+def test_parse_and_check_json_markdown_rejects_non_dict_object() -> None:
+    """A JSON string that merely contains an expected key as a substring must not pass."""
+    with pytest.raises(OutputParserError):
+        parse_and_check_json_markdown('```json\n"the generated prompt text"\n```', ["prompt"])
+
+
+def test_parse_json_markdown_returns_first_unfenced_json_object() -> None:
     """Two unfenced objects must not be concatenated into one json.loads() call."""
     src = '{"a": 1}\n{"a": 2}'
     assert parse_json_markdown(src) == {"a": 1}
 
 
-def test_parse_json_markdown_returns_first_unfenced_json_array():
+def test_parse_json_markdown_returns_first_unfenced_json_array() -> None:
     src = "[1, 2]\n[3, 4]"
     assert parse_json_markdown(src) == [1, 2]
 
 
-def test_parse_json_markdown_first_unfenced_value_keeps_nested_objects():
+def test_parse_json_markdown_first_unfenced_value_keeps_nested_objects() -> None:
     src = '{"a": {"b": [1, {"c": 2}]}}\n{"a": 2}'
     assert parse_json_markdown(src) == {"a": {"b": [1, {"c": 2}]}}
 
 
-def test_parse_json_markdown_brackets_inside_string_values():
+def test_parse_json_markdown_brackets_inside_string_values() -> None:
     """Brackets inside string values must not terminate the value early."""
     src = '{"s": "{not json} [nor this]"}\n{"a": 2}'
     assert parse_json_markdown(src) == {"s": "{not json} [nor this]"}
 
 
-def test_parse_json_markdown_first_value_followed_by_prose():
+def test_parse_json_markdown_first_value_followed_by_prose() -> None:
     src = '{"a": 1}\nThat is the answer.'
     assert parse_json_markdown(src) == {"a": 1}
 
 
-def test_parse_json_markdown_malformed_first_value_still_fails():
+def test_parse_json_markdown_malformed_first_value_still_fails() -> None:
     with pytest.raises(json.JSONDecodeError):
         parse_json_markdown('{"a": }\n{"a": 2}')
 
 
-def test_parse_and_check_json_markdown_multiple_unfenced_objects():
+def test_parse_and_check_json_markdown_multiple_unfenced_objects() -> None:
     """The reported failure mode now resolves to the first value instead of raising."""
     src = '{"keywords": ["a"], "category_id": "1", "category_name": "x"}\n{"category_id": "2"}'
     obj = parse_and_check_json_markdown(src, ["keywords", "category_id", "category_name"])
     assert obj == {"keywords": ["a"], "category_id": "1", "category_name": "x"}
 
 
-def test_parse_json_markdown_backtick_in_string_value_followed_by_second_unfenced_value():
+def test_parse_json_markdown_backtick_in_string_value_followed_by_second_unfenced_value() -> None:
     """A backtick inside a string value must not disable the first-value-only fix.
 
     Regression case from PR review: a single stray backtick anywhere in the
@@ -179,13 +192,13 @@ def test_parse_json_markdown_backtick_in_string_value_followed_by_second_unfence
     assert parse_json_markdown(src) == {"code": "use `print` function", "n": 1}
 
 
-def test_parse_json_markdown_multiple_backticks_in_string_value():
+def test_parse_json_markdown_multiple_backticks_in_string_value() -> None:
     """Several backtick pairs inside one string value are still just data."""
     src = '{"code": "`a` and `b` and `c`", "n": 1}\n{"a": 2}'
     assert parse_json_markdown(src) == {"code": "`a` and `b` and `c`", "n": 1}
 
 
-def test_parse_json_markdown_fenced_block_with_backtick_in_string_value():
+def test_parse_json_markdown_fenced_block_with_backtick_in_string_value() -> None:
     """A real ``` fence still uses the bracket-anchored fenced path, even
     when the fenced JSON itself contains a backtick in a string value."""
     src = '```json\n{"code": "use `print` function", "n": 1}\n```'

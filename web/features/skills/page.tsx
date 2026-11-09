@@ -2,36 +2,35 @@
 
 import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import type { UIEvent } from 'react'
+import type { DragEvent, UIEvent } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
@@ -40,6 +39,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { toast } from '@/app/notifications'
 import { SkillCardTags } from '@/features/tag-management/components/skill-card-tags'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -48,9 +48,11 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
+import { formatFileSize } from '@/utils/format'
 import { fetchSkillArchiveBlob } from './client'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
-import { getSkillErrorCode, getSkillErrorDetailString, normalizeSkillError } from './error'
+import { getSkillErrorCode, getSkillErrorDetailString } from './error'
 import { useSkillPermissions } from './permissions'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
 import { SkillListTagManagementModal } from './skill-list-tag-management-modal'
@@ -113,7 +115,7 @@ function SkillCardSkeletonCards() {
 }
 
 function SkillCardSkeleton() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -147,8 +149,8 @@ function SkillPlaceholderState({
   role,
   title,
 }: SkillPlaceholderStateProps) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <section
@@ -192,7 +194,7 @@ function SkillPlaceholderState({
               <button
                 type="button"
                 disabled={actions.creating || actions.importing}
-                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={actions.onCreate}
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
@@ -216,7 +218,7 @@ function SkillPlaceholderState({
               <button
                 type="button"
                 disabled={actions.creating || actions.importing}
-                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={actions.onImport}
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
@@ -254,12 +256,14 @@ function DeleteSkillDialog({
   skill: SkillResponse
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
@@ -279,13 +283,7 @@ function DeleteSkillDialog({
     (referenceCount > 0 && confirmDeleteInput !== skill.display_name)
   const description =
     referenceCount > 0
-      ? t(
-          ($) =>
-            referenceCount === 1
-              ? $['skillManagement.deleteDialog.referencedDescription_one']
-              : $['skillManagement.deleteDialog.referencedDescription_other'],
-          { count: referenceCount },
-        )
+      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], { count: referenceCount })
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
@@ -302,12 +300,11 @@ function DeleteSkillDialog({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.deleteSuccess']))
           invalidateSkillListQueries(queryClient)
           onOpenChange(false)
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.deleteFailed']))
+        onError: (error) => {
+          toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.deleteFailed']))
         },
       },
     )
@@ -322,15 +319,21 @@ function DeleteSkillDialog({
       }}
     >
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-            {description}
-          </AlertDialogDescription>
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleDelete()
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{description}</AlertDialogDescription>
+          </AlertDialogHeader>
           {referenceCount > 0 && (
-            <div className="mt-4">
+            <AlertDialogBody className="flex flex-col gap-2">
               {referencesQuery.isPending ? (
                 <SkillReferencesListSkeleton compact />
               ) : (
@@ -342,57 +345,56 @@ function DeleteSkillDialog({
                   visibleLimit={5}
                 />
               )}
-            </div>
+              <Field name="confirm-skill-name">
+                <FieldLabel>
+                  <Trans
+                    i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
+                    ns="skill"
+                    values={{ skillName: skill.display_name }}
+                    components={{
+                      skillName: (
+                        <span className="system-sm-semibold text-text-primary" translate="no" />
+                      ),
+                    }}
+                  />
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={t(
+                      ($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'],
+                    )}
+                    value={confirmDeleteInput}
+                    onValueChange={setConfirmDeleteInput}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <Button
+                      variant="tertiary"
+                      size="small"
+                      onClick={() => setConfirmDeleteInput(skill.display_name)}
+                    >
+                      {tCommon(($) => $['operation.fill'])}
+                    </Button>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
+            </AlertDialogBody>
           )}
-          {referenceCount > 0 && (
-            <Field name="confirm-skill-name" className="mt-2">
-              <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
-                <Trans
-                  i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
-                  ns="skill"
-                  values={{ skillName: skill.display_name }}
-                  components={{
-                    skillName: (
-                      <span className="system-sm-semibold text-text-primary" translate="no" />
-                    ),
-                  }}
-                />
-              </FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder={t(($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'])}
-                  value={confirmDeleteInput}
-                  onValueChange={setConfirmDeleteInput}
-                />
-                <InputGroupAddon align="inline-end">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteInput(skill.display_name)}
-                    className="rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
-                  >
-                    {tCommon(($) => $['operation.fill'])}
-                  </button>
-                </InputGroupAddon>
-              </InputGroup>
-            </Field>
-          )}
-        </div>
-        <AlertDialogActions>
-          <AlertDialogCancelButton disabled={deleteMutation.isPending}>
-            {tCommon(($) => $['operation.cancel'])}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            tone="destructive"
-            loading={deleteMutation.isPending}
-            disabled={isDeleteUnavailable}
-            onClick={handleDelete}
-          >
-            {tCommon(($) => $['operation.delete'])}
-          </AlertDialogConfirmButton>
-        </AlertDialogActions>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton disabled={deleteMutation.isPending}>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              loading={deleteMutation.isPending}
+              disabled={isDeleteUnavailable}
+              type="submit"
+            >
+              {tCommon(($) => $['operation.delete'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </form>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -409,24 +411,27 @@ function SkillCard({
   skill: SkillResponse
   onOpenTagManagement: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
+  const router = useRouter()
   const nameId = useId()
   const descriptionId = useId()
   const draftStatusId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const exportMutation = useMutation({
     mutationFn: () => fetchSkillArchiveBlob(skill.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${skill.name}.zip` })
     },
-    onError: () => {
-      toast.error(tCommon(($) => $['operation.downloadFailed']))
+    onError: (error) => {
+      toast.error(getErrorMessage(error) ?? tCommon(($) => $['operation.downloadFailed']))
     },
   })
   const isDraft = !skill.latest_published_version_id
@@ -446,12 +451,16 @@ function SkillCard({
         },
       },
       {
-        onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.duplicateSuccess']))
+        onSuccess: (copiedSkill) => {
           invalidateSkillListQueries(queryClient)
+          router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.duplicateFailed']))
+        onError: (error) => {
+          toast.error(
+            getSkillErrorCode(error) === 'skill_limit_exceeded'
+              ? t(($) => $['skillManagement.errors.workspaceLimit'])
+              : (getErrorMessage(error) ?? t(($) => $['skillManagement.duplicateFailed'])),
+          )
         },
       },
     )
@@ -466,7 +475,7 @@ function SkillCard({
   return (
     <li
       aria-labelledby={nameId}
-      className="group relative isolate col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt"
+      className="group relative isolate col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 hover:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 has-data-popup-open:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt [@media(hover:none)]:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)]"
     >
       <Link
         href={`/skills/${skill.id}`}
@@ -493,16 +502,10 @@ function SkillCard({
           </div>
         </div>
         <div className="h-6.5 shrink-0" />
-        <div className="flex min-w-0 shrink-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
+        <div className="flex min-w-0 shrink-0 items-center ps-4 pe-3 pt-2 pb-3 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1">
             <span className="shrink-0">
-              {t(
-                ($) =>
-                  skill.reference_count === 1
-                    ? $['skillManagement.referenceCount_one']
-                    : $['skillManagement.referenceCount_other'],
-                { count: skill.reference_count ?? 0 },
-              )}
+              {t(($) => $['skillManagement.referenceCount'], { count: skill.reference_count ?? 0 })}
             </span>
             <span aria-hidden className="shrink-0 text-text-quaternary">
               ·
@@ -510,7 +513,7 @@ function SkillCard({
             <span className="min-w-0 truncate">
               {isDraft
                 ? t(($) => $['skillManagement.editedAt'], { time: updatedAt })
-                : t(($) => $['skillManagement.publishedAt'], { time: publishedAt })}
+                : t(($) => $['skillManagement.publishedAt'], { time: publishedAt ?? '-' })}
             </span>
           </div>
         </div>
@@ -518,69 +521,69 @@ function SkillCard({
       {isDraft && (
         <div
           id={draftStatusId}
-          className="pointer-events-none absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden"
+          className="pointer-events-none absolute inset-e-0 top-[-0.5px] flex h-5 items-start overflow-hidden"
         >
-          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
-          <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
+          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)] rtl:-scale-x-100" />
+          <div className="flex h-5 items-center bg-background-section-burn ps-0.5 pe-2 system-2xs-medium-uppercase text-text-tertiary">
             {t(($) => $['skillManagement.draft'])}
           </div>
         </div>
       )}
-      {(canEdit || canDelete || !!skill.latest_published_version_id) && (
-        <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
-          <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger
-                render={
-                  <IconButton
-                    aria-label={t(($) => $['skillManagement.moreActions'], {
-                      name: skill.display_name,
-                    })}
-                    size="lg"
-                    className="data-popup-open:bg-state-base-hover"
+      <div className="pointer-events-none absolute inset-e-[-0.5px] top-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 rtl:bg-[linear-gradient(293deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] [@media(hover:none)]:opacity-100">
+        <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
+          <Menu modal={false}>
+            <MenuTrigger
+              render={
+                <IconButton
+                  aria-label={t(($) => $['skillManagement.moreActions'], {
+                    name: skill.display_name,
+                  })}
+                  size="lg"
+                  className="data-popup-open:bg-state-base-hover"
+                >
+                  <span aria-hidden className="i-ri-more-fill size-4.5" />
+                </IconButton>
+              }
+            />
+            <MenuContent align="end" className="w-40">
+              {canEdit && (
+                <MenuItem className="gap-2" onClick={handleDuplicate}>
+                  <span
+                    aria-hidden
+                    className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
+                  />
+                  <span>{tCommon(($) => $['operation.duplicate'])}</span>
+                </MenuItem>
+              )}
+              <MenuItem
+                className="gap-2"
+                disabled={exportMutation.isPending}
+                onClick={handleExport}
+              >
+                <span
+                  aria-hidden
+                  className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
+                />
+                <span>{tCommon(($) => $['operation.export'])}</span>
+              </MenuItem>
+              {canDelete && (
+                <>
+                  <MenuSeparator />
+                  <MenuItem
+                    variant="destructive"
+                    className="gap-2"
+                    onClick={() => setIsDeleteOpen(true)}
                   >
-                    <span aria-hidden className="i-ri-more-fill size-4.5" />
-                  </IconButton>
-                }
-              />
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
-                {canEdit && (
-                  <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
-                    <span
-                      aria-hidden
-                      className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
-                    />
-                    <span>{tCommon(($) => $['operation.duplicate'])}</span>
-                  </DropdownMenuItem>
-                )}
-                {skill.latest_published_version_id && (
-                  <DropdownMenuItem className="gap-2" onClick={handleExport}>
-                    <span
-                      aria-hidden
-                      className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
-                    />
-                    <span>{tCommon(($) => $['operation.export'])}</span>
-                  </DropdownMenuItem>
-                )}
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      className="gap-2"
-                      onClick={() => setIsDeleteOpen(true)}
-                    >
-                      <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                      <span>{tCommon(($) => $['operation.delete'])}</span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                    <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                    <span>{tCommon(($) => $['operation.delete'])}</span>
+                  </MenuItem>
+                </>
+              )}
+            </MenuContent>
+          </Menu>
         </div>
-      )}
-      <div className="pointer-events-none absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
+      </div>
+      <div className="pointer-events-none absolute inset-s-3 inset-e-3 top-26 flex h-6.5 min-w-0 items-start">
         <div className="pointer-events-auto w-full min-w-0">
           <SkillCardTags
             skillId={skill.id}
@@ -671,7 +674,7 @@ function SkillsToolbar({
   onImport: () => void
   onOpenTagManagement: () => void
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const [keyword, setKeyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   return (
     <div className="flex min-w-0 items-center gap-2">
@@ -685,7 +688,7 @@ function SkillsToolbar({
           void setKeyword(value)
         }}
       />
-      <div className="ml-auto flex shrink-0 items-center gap-2">
+      <div className="ms-auto flex shrink-0 items-center gap-2">
         {canEdit && (
           <Button
             className="h-8 gap-1 px-3"
@@ -746,8 +749,8 @@ type SkillGridProps = {
 }
 
 function SkillGridRetryStatus({ state }: { state: SkillGridRetryState }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <div
@@ -770,7 +773,7 @@ function SkillGridPagination({
     { kind: 'list' }
   >['pagination']
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
 
   if (state.status === 'none') return null
   if (state.status === 'error') return <SkillGridRetryStatus state={state} />
@@ -786,7 +789,7 @@ function SkillGridPagination({
 }
 
 function SkillGrid({ state }: SkillGridProps) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const isBusy =
     state.status === 'pending' ||
     (state.status === 'error' && state.isRetrying) ||
@@ -844,12 +847,172 @@ function SkillGrid({ state }: SkillGridProps) {
   )
 }
 
+function ImportSkillDialogForm({
+  importing,
+  onImport,
+}: {
+  importing: boolean
+  onImport: (file: File) => void
+}) {
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
+  const inputRef = useRef<HTMLInputElement>(null)
+  const dragDepthRef = useRef(0)
+  const descriptionId = useId()
+  const errorId = useId()
+  const [file, setFile] = useState<File>()
+  const [invalidFile, setInvalidFile] = useState(false)
+  const [dragging, setDragging] = useState(false)
+
+  const selectFiles = (files: File[]) => {
+    if (importing || files.length === 0) return
+    const [selectedFile] = files
+    if (files.length !== 1 || !selectedFile || !/\.(?:zip|skill)$/iu.test(selectedFile.name)) {
+      setFile(undefined)
+      setInvalidFile(true)
+      return
+    }
+    setFile(selectedFile)
+    setInvalidFile(false)
+  }
+
+  const hasFiles = (event: DragEvent<HTMLDivElement>) =>
+    Array.from(event.dataTransfer.types).includes('Files')
+
+  return (
+    <form
+      className="contents"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (file && !importing) onImport(file)
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['skillManagement.importDialog.title'])}</DialogTitle>
+        <DialogHeaderCloseButton
+          aria-label={tCommon(($) => $['operation.close'])}
+          disabled={importing}
+        />
+      </DialogHeader>
+      <DialogBody>
+        <div
+          role="group"
+          aria-label={t(($) => $['skillManagement.importDialog.title'])}
+          className={cn(
+            'flex min-h-34 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-components-dropzone-border-alt bg-components-dropzone-bg-alt px-5 py-4',
+            dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
+          )}
+          onDragEnter={(event) => {
+            if (!hasFiles(event)) return
+            event.preventDefault()
+            event.stopPropagation()
+            if (importing) return
+            dragDepthRef.current += 1
+            setDragging(true)
+          }}
+          onDragOver={(event) => {
+            if (!hasFiles(event)) return
+            event.preventDefault()
+            event.stopPropagation()
+            event.dataTransfer.dropEffect = importing ? 'none' : 'copy'
+          }}
+          onDragLeave={(event) => {
+            if (!hasFiles(event)) return
+            event.preventDefault()
+            event.stopPropagation()
+            dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+            if (dragDepthRef.current === 0) setDragging(false)
+          }}
+          onDrop={(event) => {
+            if (!hasFiles(event)) return
+            event.preventDefault()
+            event.stopPropagation()
+            dragDepthRef.current = 0
+            setDragging(false)
+            selectFiles(Array.from(event.dataTransfer.files))
+          }}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".zip,.skill,application/zip"
+            className="hidden"
+            aria-label={t(($) => $['skillManagement.importDialog.browse'])}
+            aria-describedby={invalidFile ? `${descriptionId} ${errorId}` : descriptionId}
+            aria-invalid={invalidFile}
+            disabled={importing}
+            onChange={(event) => {
+              selectFiles(Array.from(event.currentTarget.files ?? []))
+              event.currentTarget.value = ''
+            }}
+          />
+          <span aria-hidden className="i-ri-file-zip-line size-8 shrink-0 text-text-quaternary" />
+          {file ? (
+            <div className="flex w-full items-center justify-center gap-3">
+              <div className="min-w-0 text-center">
+                <p className="system-sm-medium wrap-anywhere text-text-secondary">{file.name}</p>
+                <p className="system-xs-regular text-text-tertiary">{formatFileSize(file.size)}</p>
+              </div>
+              <IconButton
+                aria-label={tCommon(($) => $['operation.remove'])}
+                disabled={importing}
+                onClick={() => setFile(undefined)}
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            </div>
+          ) : (
+            <p className="text-center system-md-medium text-text-secondary">
+              <Trans
+                ns="skill"
+                i18nKey={($) => $['skillManagement.importDialog.dropzone']}
+                components={{
+                  browse: (
+                    <button
+                      type="button"
+                      disabled={importing}
+                      aria-describedby={invalidFile ? `${descriptionId} ${errorId}` : descriptionId}
+                      className="cursor-pointer rounded-sm text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed"
+                      onClick={() => inputRef.current?.click()}
+                    />
+                  ),
+                }}
+              />
+            </p>
+          )}
+          <DialogDescription
+            id={descriptionId}
+            // oxlint-disable-next-line shadcn/no-restyle -- Description is centred under the upload drop zone.
+            className="text-center"
+          >
+            {t(($) => $['skillManagement.importDialog.description'])}
+          </DialogDescription>
+        </div>
+        {invalidFile && (
+          <p id={errorId} role="alert" className="mt-2 system-xs-regular text-text-destructive">
+            {t(($) => $['skillManagement.importDialog.invalidFile'])}
+          </p>
+        )}
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose disabled={importing} render={<Button />}>
+          {tCommon(($) => $['operation.cancel'])}
+        </DialogClose>
+        <Button type="submit" variant="primary" disabled={!file} loading={importing}>
+          {t(($) => $['skillManagement.import'])}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
 export default function SkillsPage() {
-  const { t } = useTranslation('skill')
+  const titleId = useId()
+  const { t } = useTranslation(['skill'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const { canDelete, canEdit } = useSkillPermissions()
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const listViewportRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [keyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
@@ -894,14 +1057,12 @@ export default function SkillsPage() {
       },
       {
         onSuccess: (skill) => {
-          toast.success(t(($) => $['skillManagement.createSuccess']))
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
-        onError: async (error) => {
-          const normalizedError = await normalizeSkillError(error)
+        onError: (error) => {
           toast.error(
-            getSkillErrorCode(normalizedError) === 'skill_limit_exceeded'
+            getSkillErrorCode(error) === 'skill_limit_exceeded'
               ? t(($) => $['skillManagement.errors.workspaceLimit'])
               : t(($) => $['skillManagement.createFailed']),
           )
@@ -910,8 +1071,8 @@ export default function SkillsPage() {
     )
   }
 
-  const handleFileChange = (file: File | undefined) => {
-    if (!file || importMutation.isPending || createMutation.isPending) return
+  const handleImport = (file: File) => {
+    if (!canEdit || importMutation.isPending || createMutation.isPending) return
 
     importMutation.mutate(
       {
@@ -921,17 +1082,16 @@ export default function SkillsPage() {
       },
       {
         onSuccess: (skill) => {
-          toast.success(t(($) => $['skillManagement.importSuccess']))
+          setImportOpen(false)
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
-        onError: async (error) => {
-          const normalizedError = await normalizeSkillError(error)
-          const errorCode = getSkillErrorCode(normalizedError)
+        onError: (error) => {
+          const errorCode = getSkillErrorCode(error)
           if (errorCode === 'skill_name_conflict') {
             toast.error(
               t(($) => $['skillManagement.errors.nameConflict'], {
-                name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+                name: getSkillErrorDetailString(error, 'name') ?? '',
               }),
             )
             return
@@ -945,9 +1105,6 @@ export default function SkillsPage() {
             return
           }
           toast.error(t(($) => $['skillManagement.importFailed']))
-        },
-        onSettled: () => {
-          if (importInputRef.current) importInputRef.current.value = ''
         },
       },
     )
@@ -1010,7 +1167,7 @@ export default function SkillsPage() {
                           creating: createMutation.isPending,
                           importing: importMutation.isPending,
                           onCreate: handleCreate,
-                          onImport: () => importInputRef.current?.click(),
+                          onImport: () => setImportOpen(true),
                         }
                       : undefined,
                 }
@@ -1043,49 +1200,48 @@ export default function SkillsPage() {
         }
 
   return (
-    <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
-      <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
+    <div
+      role="region"
+      aria-labelledby={titleId}
+      ref={listViewportRef}
+      tabIndex={-1}
+      className="flex h-0 min-w-0 grow flex-col overflow-x-hidden overflow-y-auto overscroll-contain bg-background-body outline-hidden"
+      onScroll={handleListScroll}
+    >
+      <div className="sticky top-0 z-10 shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
-          <h1 className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
+          <h1
+            id={titleId}
+            className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary"
+          >
             {t(($) => $['skillManagement.title'])}
           </h1>
         </div>
         <div className="mt-3.5">
-          <input
-            ref={importInputRef}
-            type="file"
-            accept=".zip,.skill,application/zip"
-            className="hidden"
-            onChange={(event) => handleFileChange(event.currentTarget.files?.[0])}
-          />
           <SkillsToolbar
             canEdit={canEdit}
             creating={createMutation.isPending}
             importing={importMutation.isPending}
             onCreate={handleCreate}
-            onImport={() => importInputRef.current?.click()}
+            onImport={() => setImportOpen(true)}
             onOpenTagManagement={() => setShowTagManagementModal(true)}
           />
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
-        <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
-          <ScrollAreaViewport
-            ref={listViewportRef}
-            tabIndex={-1}
-            className="overscroll-contain"
-            onScroll={handleListScroll}
-          >
-            <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
-              <SkillGrid state={skillGridState} />
-            </ScrollAreaContent>
-          </ScrollAreaViewport>
-          <ScrollAreaScrollbar>
-            <ScrollAreaThumb />
-          </ScrollAreaScrollbar>
-        </ScrollArea>
+      <div className="flex-1 px-8 pt-2 pb-8">
+        <SkillGrid state={skillGridState} />
       </div>
+      <Dialog
+        open={importOpen}
+        onOpenChange={(open) => {
+          if (!importMutation.isPending) setImportOpen(open)
+        }}
+      >
+        <DialogContent>
+          <ImportSkillDialogForm importing={importMutation.isPending} onImport={handleImport} />
+        </DialogContent>
+      </Dialog>
       <SkillListTagManagementModal
         show={showTagManagementModal}
         onClose={() => setShowTagManagementModal(false)}

@@ -5,31 +5,31 @@ import MethodSelector from '../method-selector'
 
 describe('MethodSelector', () => {
   it.each([
-    ['llm', 'tools.createTool.toolInput.methodParameter'],
-    ['form', 'tools.createTool.toolInput.methodSetting'],
-  ])('shows the current %s method', (value, label) => {
-    render(<MethodSelector value={value} onChange={vi.fn()} />)
-
-    expect(screen.getByText(label)).toBeInTheDocument()
-  })
-
-  it.each([
     ['llm', 'form', 'tools.createTool.toolInput.methodSettingTip'],
     ['form', 'llm', 'tools.createTool.toolInput.methodParameterTip'],
   ])('selects %s from the open menu', async (value, nextValue, optionTip) => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
-    render(<MethodSelector value={value} onChange={onChange} />)
+    const { rerender } = render(<MethodSelector value={value} onChange={onChange} />)
 
-    await userEvent.click(
+    await user.click(
       screen.getByText(
         value === 'llm'
           ? 'tools.createTool.toolInput.methodParameter'
           : 'tools.createTool.toolInput.methodSetting',
       ),
     )
-    await userEvent.click(await screen.findByText(optionTip))
+    await user.click(await screen.findByText(optionTip))
 
     expect(onChange).toHaveBeenCalledWith(nextValue)
     await waitFor(() => expect(screen.queryByText(optionTip)).not.toBeInTheDocument())
+    rerender(<MethodSelector value={nextValue} onChange={onChange} />)
+    expect(
+      screen.getByText(
+        nextValue === 'llm'
+          ? 'tools.createTool.toolInput.methodParameter'
+          : 'tools.createTool.toolInput.methodSetting',
+      ),
+    ).toBeInTheDocument()
   })
 })

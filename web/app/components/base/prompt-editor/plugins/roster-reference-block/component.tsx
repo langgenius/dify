@@ -40,7 +40,6 @@ const RosterReferenceBlockComponent = ({ text }: RosterReferenceBlockComponentPr
       data-roster-reference-kind={token.kind}
       data-roster-reference-id={token.id}
       data-roster-reference-warning={warning ? true : undefined}
-      title={warning ?? token.label}
       className={cn(
         'inline-flex min-w-4.5 items-center gap-0.5 overflow-hidden rounded-[5px] border py-px pr-1 pl-px align-middle shadow-xs shadow-shadow-shadow-3',
         warning

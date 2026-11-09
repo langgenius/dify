@@ -1,51 +1,78 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { validateRedirectUrl } from '@/utils/urlValidation'
 
-export const useOAuthCallback = () => {
+export type OAuthCallbackState = {
+  /** True when the callback tab/popup was opened by another window via window.open. */
+  hasOpener: boolean
+  /** True after the callback has posted a message to the opener (or decided not to). */
+  finished: boolean
+  /** Provider-supplied error code, if any. */
+  error: string | null
+  /** Provider-supplied error description, if any. */
+  errorDescription: string | null
+}
+
+// OAuth redirects load a new page. The URL and opener do not change during
+// this page's lifetime, so a subscription is not needed after hydration.
+const subscribeToCallback = () => () => {}
+const getCallbackSnapshot = () => JSON.stringify([!!window.opener, window.location.search])
+const getServerCallbackSnapshot = () => null
+
+export const useOAuthCallback = (): OAuthCallbackState => {
+  const snapshot = useSyncExternalStore(
+    subscribeToCallback,
+    getCallbackSnapshot,
+    getServerCallbackSnapshot,
+  )
+  const [hasOpener, search] =
+    snapshot === null ? [false, ''] : (JSON.parse(snapshot) as [boolean, string])
+  const urlParams = new URLSearchParams(search)
+  const error = urlParams.get('error')
+  const errorDescription = urlParams.get('error_description')
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const subscriptionId = urlParams.get('subscription_id')
     const error = urlParams.get('error')
     const errorDescription = urlParams.get('error_description')
+    const opener = window.opener
 
-    if (window.opener) {
-      // Use window.opener.origin instead of '*' for security
-      const targetOrigin = window.opener?.origin || '*'
+    if (!opener) return
 
-      if (subscriptionId) {
-        window.opener.postMessage(
-          {
-            type: 'oauth_callback',
-            success: true,
-            subscriptionId,
-          },
-          targetOrigin,
-        )
-      } else if (error) {
-        window.opener.postMessage(
-          {
-            type: 'oauth_callback',
-            success: false,
-            error,
-            errorDescription,
-          },
-          targetOrigin,
-        )
-      } else {
-        window.opener.postMessage(
-          {
-            type: 'oauth_callback',
-          },
-          targetOrigin,
-        )
-      }
-      window.close()
+    // Use window.opener.origin instead of '*' for security.
+    const targetOrigin = opener.origin || '*'
+
+    if (subscriptionId) {
+      opener.postMessage({ type: 'oauth_callback', success: true, subscriptionId }, targetOrigin)
+    } else if (error) {
+      opener.postMessage(
+        { type: 'oauth_callback', success: false, error, errorDescription },
+        targetOrigin,
+      )
+    } else {
+      opener.postMessage({ type: 'oauth_callback' }, targetOrigin)
     }
+    window.close()
   }, [])
+
+  return {
+    hasOpener,
+    finished: snapshot !== null,
+    error,
+    errorDescription,
+  }
 }
 
-export const openOAuthPopup = (url: string, callback: (data?: any) => void) => {
+type OAuthCallbackMessage = {
+  type: 'oauth_callback'
+  success?: boolean
+  subscriptionId?: string
+  error?: string
+  errorDescription?: string
+}
+
+export const openOAuthPopup = (url: string, callback: (data?: OAuthCallbackMessage) => void) => {
   const width = 600
   const height = 600
   const left = window.screenX + (window.outerWidth - width) / 2

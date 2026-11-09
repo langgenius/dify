@@ -5,13 +5,12 @@ import pytest
 
 from events.event_handlers import queue_default_plugin_install_when_tenant_created as handler_module
 from models.account import Tenant
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_tenant
 
 
 def _tenant() -> Tenant:
-    tenant = Tenant(name="Test tenant")
-    tenant.id = "tenant-1"
-    return tenant
+    return make_tenant(name="Test tenant")
 
 
 def test_handle_skips_when_no_default_plugins_are_configured(monkeypatch: pytest.MonkeyPatch) -> None:

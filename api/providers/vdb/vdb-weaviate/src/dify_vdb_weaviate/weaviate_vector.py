@@ -7,6 +7,7 @@ document embeddings used in retrieval-augmented generation workflows.
 
 import atexit
 import datetime
+import importlib.metadata
 import json
 import logging
 import threading
@@ -17,6 +18,7 @@ from urllib.parse import urlparse
 import weaviate
 import weaviate.classes.config as wc
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 from weaviate.classes.data import DataObject
 from weaviate.classes.init import Auth
 from weaviate.classes.query import Filter, MetadataQuery
@@ -36,6 +38,48 @@ logger = logging.getLogger(__name__)
 
 _weaviate_client: weaviate.WeaviateClient | None = None
 _weaviate_client_lock = threading.Lock()
+
+# Identifies Dify to Weaviate's server-side telemetry via the X-Weaviate-Client-Integration
+# header, matching the identifier emitted by other official Weaviate integrations.
+_INTEGRATION_NAME = "dify"
+
+
+def _integration_version() -> str:
+    """Best-effort Dify version reported in the integration telemetry header."""
+    version = (dify_config.project.version or "").strip()
+    if version:
+        return version
+    try:
+        return importlib.metadata.version("dify-api")
+    except Exception:
+        return "unknown"
+
+
+def _register_integration(client: weaviate.WeaviateClient) -> None:
+    """
+    Registers the ``X-Weaviate-Client-Integration`` telemetry header on the client.
+
+    The header value is ``dify/<version>`` and is sent on both HTTP and gRPC requests, letting
+    Weaviate's server attribute traffic to Dify in its telemetry (alongside the built-in
+    ``X-Weaviate-Client`` header). Registration is best-effort: any failure — including older
+    weaviate-client releases that lack the ``integrations`` API — is swallowed so telemetry never
+    breaks client initialization.
+    """
+    try:
+        from pydantic import Field
+        from weaviate.connect.integrations import _IntegrationConfig
+
+        value = f"{_INTEGRATION_NAME}/{_integration_version()}"
+
+        class _DifyIntegration(_IntegrationConfig):
+            integration: str = Field(
+                default=value,
+                serialization_alias="X-Weaviate-Client-Integration",
+            )
+
+        client.integrations.configure(_DifyIntegration())
+    except Exception:
+        logger.debug("Could not register Dify Weaviate integration header", exc_info=True)
 
 
 def _shutdown_weaviate_client() -> None:
@@ -159,6 +203,9 @@ class WeaviateVector(BaseVector):
                 skip_init_checks=True,  # Skip PyPI version check to avoid unnecessary HTTP requests
             )
 
+            # Tag outgoing requests so Weaviate can attribute traffic to Dify in its telemetry.
+            _register_integration(client)
+
             if not client.is_ready():
                 raise ConnectionError("Vector database is not ready")
 
@@ -240,7 +287,7 @@ class WeaviateVector(BaseVector):
 
                 self._ensure_properties()
                 redis_client.set(cache_key, 1, ex=3600)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error creating collection %s", self._collection_name)
                 raise
 
@@ -325,7 +372,7 @@ class WeaviateVector(BaseVector):
         metadatas = [d.metadata for d in documents]
 
         col = self._client.collections.use(self._collection_name)
-        objs: list[DataObject] = []
+        objs: list[DataObject[dict[str, Any], None]] = []
         ids_out: list[str] = []
 
         for i, text in enumerate(texts):
@@ -484,10 +531,7 @@ class WeaviateVector(BaseVector):
         for obj in res.objects:
             properties = dict(obj.properties or {})
             text = properties.pop(Field.TEXT_KEY.value, "")
-            if obj.metadata and obj.metadata.distance is not None:
-                distance = obj.metadata.distance
-            else:
-                distance = 1.0
+            distance = obj.metadata.distance if obj.metadata and obj.metadata.distance is not None else 1.0
             score = 1.0 - distance
 
             if score > score_threshold:
@@ -560,7 +604,9 @@ class WeaviateVectorFactory(AbstractVectorFactory):
     """Factory class for creating WeaviateVector instances."""
 
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> WeaviateVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> WeaviateVector:
         """
         Initializes a WeaviateVector instance for the given dataset.
 

@@ -6,7 +6,8 @@ Notion extraction, index cleanup, and indexing remain mocked I/O boundaries.
 
 import json
 import uuid
-from unittest.mock import MagicMock, patch
+from collections.abc import Generator
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -124,17 +125,17 @@ def _bind_sqlite_session_factory(monkeypatch: pytest.MonkeyPatch, sqlite_session
 
 
 @pytest.fixture
-def mock_datasource_provider_service():
+def mock_datasource_provider_service() -> Generator[MagicMock]:
     """Mock datasource credential provider."""
-    with patch("tasks.document_indexing_sync_task.DatasourceProviderService", autospec=True) as mock_service_class:
+    with patch("tasks.document_indexing_sync_task.build_data_source_credentials", autospec=True) as mock_service_class:
         mock_service = MagicMock()
         mock_service.get_datasource_credentials.return_value = {"integration_secret": "test_token"}
-        mock_service_class.return_value = mock_service
+        mock_service_class.return_value.providers = mock_service
         yield mock_service
 
 
 @pytest.fixture
-def mock_notion_extractor():
+def mock_notion_extractor() -> Generator[dict[str, MagicMock]]:
     """Mock notion extractor class and instance."""
     with patch("tasks.document_indexing_sync_task.NotionExtractor", autospec=True) as mock_extractor_class:
         mock_extractor = MagicMock()
@@ -148,14 +149,14 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
 
     def test_notion_extractor_initialized_with_correct_params(
         self,
-        mock_datasource_provider_service,
-        mock_notion_extractor,
+        mock_datasource_provider_service: MagicMock,
+        mock_notion_extractor: dict[str, MagicMock],
         document: Document,
         dataset_id: str,
         document_id: str,
         notion_workspace_id: str,
         notion_page_id: str,
-    ):
+    ) -> None:
         """Test that NotionExtractor is initialized with expected arguments."""
         # Arrange
         expected_token = "test_token"
@@ -165,6 +166,7 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
 
         # Assert
         mock_notion_extractor["class"].assert_called_once_with(
+            notion_token_loader=ANY,
             notion_workspace_id=notion_workspace_id,
             notion_obj_id=notion_page_id,
             notion_page_type="page",
@@ -174,13 +176,13 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
 
     def test_datasource_credentials_requested_correctly(
         self,
-        mock_datasource_provider_service,
-        mock_notion_extractor,
+        mock_datasource_provider_service: MagicMock,
+        mock_notion_extractor: dict[str, MagicMock],
         document: Document,
         dataset_id: str,
         document_id: str,
         credential_id: str,
-    ):
+    ) -> None:
         """Test that datasource credentials are requested with expected identifiers."""
         # Arrange
         expected_tenant_id = document.tenant_id
@@ -198,13 +200,13 @@ class TestDocumentIndexingSyncTaskCollaboratorParams:
 
     def test_credential_id_missing_uses_none(
         self,
-        mock_datasource_provider_service,
-        mock_notion_extractor,
+        mock_datasource_provider_service: MagicMock,
+        mock_notion_extractor: dict[str, MagicMock],
         document: Document,
         sqlite_session: Session,
         dataset_id: str,
         document_id: str,
-    ):
+    ) -> None:
         """Test that missing credential_id is forwarded as None."""
         # Arrange
         document.data_source_info = json.dumps(
@@ -243,18 +245,18 @@ class TestDataSourceInfoSerialization:
         sqlite_session: Session,
         dataset_id: str,
         document_id: str,
-    ):
+    ) -> None:
         """data_source_info must be serialized with json.dumps before DB write."""
         with (
-            patch("tasks.document_indexing_sync_task.DatasourceProviderService") as mock_service_class,
+            patch("tasks.document_indexing_sync_task.build_data_source_credentials") as mock_service_class,
             patch("tasks.document_indexing_sync_task.NotionExtractor") as mock_extractor_class,
             patch("tasks.document_indexing_sync_task.IndexProcessorFactory") as mock_ipf,
-            patch("tasks.document_indexing_sync_task.IndexingRunner") as mock_runner_class,
+            patch("tasks.document_indexing_sync_task.build_document_indexing_service") as mock_runner_class,
         ):
             # External collaborators
             mock_service = MagicMock()
             mock_service.get_datasource_credentials.return_value = {"integration_secret": "token"}
-            mock_service_class.return_value = mock_service
+            mock_service_class.return_value.providers = mock_service
 
             mock_extractor = MagicMock()
             # Return a *different* timestamp so the task enters the sync/update branch

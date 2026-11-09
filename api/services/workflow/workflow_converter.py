@@ -224,13 +224,13 @@ class WorkflowConverter:
         workflow = Workflow(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type=WorkflowType.from_app_mode(new_app_mode).value,
+            type=WorkflowType.from_app_mode(new_app_mode),
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps(graph),
-            features=json.dumps(features),
+            _features=json.dumps(features),
             created_by=account_id,
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
 
         session.add(workflow)
@@ -476,8 +476,6 @@ class WorkflowConverter:
                 prompt_transform = SimplePromptTransform()
                 prompt_template_config = prompt_transform.get_prompt_template(
                     app_mode=original_app_mode,
-                    provider=model_config.provider,
-                    model=model_config.model,
                     pre_prompt=prompt_template.simple_prompt_template,
                     has_context=knowledge_retrieval_node is not None,
                     query_in_prompt=False,
@@ -517,8 +515,6 @@ class WorkflowConverter:
                 prompt_transform = SimplePromptTransform()
                 prompt_template_config = prompt_transform.get_prompt_template(
                     app_mode=original_app_mode,
-                    provider=model_config.provider,
-                    model=model_config.model,
                     pre_prompt=prompt_template.simple_prompt_template,
                     has_context=knowledge_retrieval_node is not None,
                     query_in_prompt=False,

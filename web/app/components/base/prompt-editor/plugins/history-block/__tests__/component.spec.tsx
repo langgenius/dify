@@ -1,211 +1,72 @@
-import type { Dispatch, RefObject, SetStateAction } from 'react'
-import type { RoleName } from '../index'
+import type { EventEmitterValue } from '@/context/event-emitter'
+import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useEventEmitter } from 'ahooks'
+import { EventEmitterContext } from '@/context/event-emitter'
 import { UPDATE_HISTORY_EVENT_EMITTER } from '../../../constants'
 import HistoryBlockComponent from '../component'
-import { DELETE_HISTORY_BLOCK_COMMAND } from '../index'
+import { HistoryBlockNode } from '../node'
 
-type HistoryEventPayload = {
-  type?: string
-  payload?: RoleName
+const setup = () => {
+  let emit: (event: EventEmitterValue) => void = () => {}
+  const onEditRole = vi.fn()
+  function Harness() {
+    const eventEmitter = useEventEmitter<EventEmitterValue>()
+    emit = (event) => eventEmitter.emit(event)
+    return (
+      <EventEmitterContext.Provider value={{ eventEmitter }}>
+        <LexicalComposer
+          initialConfig={{
+            namespace: 'history-block',
+            nodes: [HistoryBlockNode],
+            onError: (error) => {
+              throw error
+            },
+          }}
+        >
+          <HistoryBlockComponent
+            nodeKey="history-node"
+            roleName={{ user: 'user-role', assistant: 'assistant-role' }}
+            onEditRole={onEditRole}
+          />
+        </LexicalComposer>
+      </EventEmitterContext.Provider>
+    )
+  }
+  return { ...render(<Harness />), emit: (event: EventEmitterValue) => emit(event), onEditRole }
 }
 
-type HistorySubscriptionHandler = (payload: HistoryEventPayload) => void
-
-const { mockUseSelectOrDelete, mockUseTrigger, mockUseEventEmitterContextContext } = vi.hoisted(
-  () => ({
-    mockUseSelectOrDelete: vi.fn(),
-    mockUseTrigger: vi.fn(),
-    mockUseEventEmitterContextContext: vi.fn(),
-  }),
-)
-
-vi.mock('../../../hooks', () => ({
-  useSelectOrDelete: (...args: unknown[]) => mockUseSelectOrDelete(...args),
-  useTrigger: (...args: unknown[]) => mockUseTrigger(...args),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => mockUseEventEmitterContextContext(),
-}))
-
-const createRoleName = (overrides?: Partial<RoleName>): RoleName => ({
-  user: 'user-role',
-  assistant: 'assistant-role',
-  ...overrides,
+it('opens role details and invokes editing through keyboard controls', async () => {
+  const user = userEvent.setup()
+  const { onEditRole } = setup()
+  await user.tab()
+  expect(screen.getByRole('button', { name: 'common.operation.more' })).toHaveFocus()
+  await user.keyboard('{Enter}')
+  expect(screen.getByText('user-role')).toBeInTheDocument()
+  expect(screen.getByText('assistant-role')).toBeInTheDocument()
+  const edit = screen.getByRole('button', { name: 'common.promptEditor.history.modal.edit' })
+  edit.focus()
+  await user.keyboard('{Enter}')
+  expect(onEditRole).toHaveBeenCalledOnce()
 })
 
-const createSelectHookReturn = (
-  isSelected: boolean,
-): [RefObject<HTMLDivElement | null>, boolean] => {
-  return [{ current: null }, isSelected]
-}
-
-const createTriggerHookReturn = (
-  open: boolean,
-  setOpen: Dispatch<SetStateAction<boolean>> = vi.fn() as unknown as Dispatch<
-    SetStateAction<boolean>
-  >,
-): [RefObject<HTMLDivElement | null>, boolean, Dispatch<SetStateAction<boolean>>] => {
-  return [{ current: null }, open, setOpen]
-}
-
-describe('HistoryBlockComponent', () => {
-  let subscribedHandler: HistorySubscriptionHandler | null
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    subscribedHandler = null
-
-    mockUseSelectOrDelete.mockReturnValue(createSelectHookReturn(false))
-    mockUseTrigger.mockReturnValue(createTriggerHookReturn(false))
-    const subscribeToHistoryEvents = (handler: HistorySubscriptionHandler) => {
-      subscribedHandler = handler
-    }
-    mockUseEventEmitterContextContext.mockReturnValue({
-      eventEmitter: {
-        useSubscription: subscribeToHistoryEvents,
-      },
-    })
+it('applies history updates from the real emitter and ignores unrelated events', async () => {
+  const user = userEvent.setup()
+  const { emit } = setup()
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  act(() => {
+    emit('unrelated')
+    emit({ type: 'other-event', payload: { user: 'wrong', assistant: 'wrong' } })
   })
-
-  it('should render title and register select or delete hook with node key', () => {
-    render(<HistoryBlockComponent nodeKey="history-node-1" onEditRole={vi.fn()} />)
-
-    expect(mockUseSelectOrDelete).toHaveBeenCalledWith(
-      'history-node-1',
-      DELETE_HISTORY_BLOCK_COMMAND,
-    )
-    expect(screen.getByText('common.promptEditor.history.item.title')).toBeInTheDocument()
-  })
-
-  it('should render modal content when popup is open', () => {
-    mockUseTrigger.mockReturnValue(createTriggerHookReturn(true))
-
-    render(
-      <HistoryBlockComponent
-        nodeKey="history-node-3"
-        roleName={createRoleName()}
-        onEditRole={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('user-role')).toBeInTheDocument()
-    expect(screen.getByText('assistant-role')).toBeInTheDocument()
-    expect(screen.getByText('common.promptEditor.history.modal.user')).toBeInTheDocument()
-    expect(screen.getByText('common.promptEditor.history.modal.assistant')).toBeInTheDocument()
-  })
-
-  it('should call onEditRole when edit action is clicked', async () => {
-    const user = userEvent.setup()
-    const onEditRole = vi.fn()
-    mockUseTrigger.mockReturnValue(createTriggerHookReturn(true))
-
-    render(
-      <HistoryBlockComponent
-        nodeKey="history-node-4"
-        roleName={createRoleName()}
-        onEditRole={onEditRole}
-      />,
-    )
-
-    await user.click(screen.getByText('common.promptEditor.history.modal.edit'))
-
-    expect(onEditRole).toHaveBeenCalledTimes(1)
-  })
-
-  it('should update local role names when update history event is received', () => {
-    mockUseTrigger.mockReturnValue(createTriggerHookReturn(true))
-
-    render(
-      <HistoryBlockComponent
-        nodeKey="history-node-5"
-        roleName={createRoleName({
-          user: 'old-user',
-          assistant: 'old-assistant',
-        })}
-        onEditRole={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('old-user')).toBeInTheDocument()
-    expect(screen.getByText('old-assistant')).toBeInTheDocument()
-    expect(subscribedHandler).not.toBeNull()
-
-    act(() => {
-      subscribedHandler?.({
-        type: UPDATE_HISTORY_EVENT_EMITTER,
-        payload: {
-          user: 'new-user',
-          assistant: 'new-assistant',
-        },
-      })
-    })
-
-    expect(screen.getByText('new-user')).toBeInTheDocument()
-    expect(screen.getByText('new-assistant')).toBeInTheDocument()
-  })
-
-  it('should ignore non history update events from event emitter', () => {
-    mockUseTrigger.mockReturnValue(createTriggerHookReturn(true))
-
-    render(
-      <HistoryBlockComponent
-        nodeKey="history-node-6"
-        roleName={createRoleName({
-          user: 'kept-user',
-          assistant: 'kept-assistant',
-        })}
-        onEditRole={vi.fn()}
-      />,
-    )
-
-    expect(subscribedHandler).not.toBeNull()
-    act(() => {
-      subscribedHandler?.({
-        type: 'other-event',
-        payload: {
-          user: 'updated-user',
-          assistant: 'updated-assistant',
-        },
-      })
-    })
-
-    expect(screen.getByText('kept-user')).toBeInTheDocument()
-    expect(screen.getByText('kept-assistant')).toBeInTheDocument()
-  })
-
-  it('should ignore string events from the event emitter', () => {
-    mockUseTrigger.mockReturnValue(createTriggerHookReturn(true))
-
-    render(
-      <HistoryBlockComponent
-        nodeKey="history-node-6-string"
-        roleName={createRoleName({
-          user: 'kept-user',
-          assistant: 'kept-assistant',
-        })}
-        onEditRole={vi.fn()}
-      />,
-    )
-
-    expect(subscribedHandler).not.toBeNull()
-    act(() => {
-      subscribedHandler?.('ignore-me' as unknown as HistoryEventPayload)
-    })
-
-    expect(screen.getByText('kept-user')).toBeInTheDocument()
-    expect(screen.getByText('kept-assistant')).toBeInTheDocument()
-  })
-
-  it('should render when event emitter is unavailable', () => {
-    mockUseEventEmitterContextContext.mockReturnValue({
-      eventEmitter: undefined,
-    })
-
-    render(<HistoryBlockComponent nodeKey="history-node-7" onEditRole={vi.fn()} />)
-
-    expect(screen.getByText('common.promptEditor.history.item.title')).toBeInTheDocument()
-  })
+  expect(screen.getByText('user-role')).toBeInTheDocument()
+  act(() =>
+    emit({
+      type: UPDATE_HISTORY_EVENT_EMITTER,
+      payload: { user: 'new-user', assistant: 'new-assistant' },
+    }),
+  )
+  expect(screen.getByText('new-user')).toBeInTheDocument()
+  expect(screen.getByText('new-assistant')).toBeInTheDocument()
+  expect(screen.queryByText('user-role')).not.toBeInTheDocument()
 })

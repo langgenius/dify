@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { resolveE2EBrowser } from '../test-env'
+import { resolveE2EBrowser } from '../test-env.ts'
 
 describe('resolveE2EBrowser', () => {
   it('uses Chromium by default', () => {

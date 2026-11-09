@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const UrlInput: FC<Props> = ({ isRunning, onRun }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const docLink = useDocLink()
   const [url, setUrl] = useState('')
   const handleUrlChange = useCallback((url: string | number) => {

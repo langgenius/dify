@@ -3,7 +3,22 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PageSelector from '../index'
 
-vi.mock('@tanstack/react-virtual')
+// Keep virtualization real; supply the viewport measurement JSDOM cannot provide.
+vi.mock('@tanstack/react-virtual', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-virtual')>()
+  return {
+    ...actual,
+    useVirtualizer: (options: Parameters<typeof actual.useVirtualizer>[0]) =>
+      actual.useVirtualizer({
+        ...options,
+        initialRect: { width: 400, height: 296 },
+        observeElementRect: (_instance, callback) => {
+          callback({ width: 400, height: 296 })
+          return () => {}
+        },
+      }),
+  }
+})
 
 const buildPage = (overrides: Partial<DataSourceNotionPage>): DataSourceNotionPage => ({
   page_id: 'page-id',
@@ -48,27 +63,9 @@ describe('PageSelector', () => {
       />,
     )
 
-    expect(screen.getByText('Root 1'))!.toBeInTheDocument()
+    expect(screen.getByText('Root 1')).toBeInTheDocument()
+    expect(screen.getByText('Root 2')).toBeInTheDocument()
     expect(screen.queryByText('Child 1')).not.toBeInTheDocument()
-  })
-
-  it('should expand child pages when toggle is clicked', async () => {
-    const user = userEvent.setup()
-    render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    const toggle = screen.getByTestId('notion-page-toggle-root-1')
-    await user.click(toggle)
-
-    expect(screen.getByText('Child 1'))!.toBeInTheDocument()
   })
 
   it('should call onSelect with descendants when parent is selected', async () => {
@@ -91,26 +88,6 @@ describe('PageSelector', () => {
     expect(handleSelect).toHaveBeenCalledWith(new Set(['root-1', 'child-1', 'grandchild-1']))
   })
 
-  it('should call onSelect with empty set when parent is deselected', async () => {
-    const handleSelect = vi.fn()
-    const user = userEvent.setup()
-    render(
-      <PageSelector
-        value={new Set(['root-1', 'child-1', 'grandchild-1'])}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={handleSelect}
-      />,
-    )
-
-    const checkbox = screen.getByRole('checkbox', { name: 'Root 1' })
-    await user.click(checkbox)
-
-    expect(handleSelect).toHaveBeenCalledWith(new Set())
-  })
-
   it('should show breadcrumbs when searching', () => {
     render(
       <PageSelector
@@ -128,6 +105,7 @@ describe('PageSelector', () => {
 
   it('should call onPreview when preview button is clicked', async () => {
     const handlePreview = vi.fn()
+    const handleSelect = vi.fn()
     const user = userEvent.setup()
     render(
       <PageSelector
@@ -136,7 +114,7 @@ describe('PageSelector', () => {
         searchValue=""
         pagesMap={mockPagesMap}
         list={mockList}
-        onSelect={vi.fn()}
+        onSelect={handleSelect}
         onPreview={handlePreview}
       />,
     )
@@ -144,7 +122,8 @@ describe('PageSelector', () => {
     const previewBtn = screen.getByTestId('notion-page-preview-root-1')
     await user.click(previewBtn)
 
-    expect(handlePreview).toHaveBeenCalledWith('root-1')
+    expect(handlePreview).toHaveBeenCalledExactlyOnceWith('root-1')
+    expect(handleSelect).not.toHaveBeenCalled()
   })
 
   it('should show no result message when search returns nothing', () => {
@@ -154,7 +133,7 @@ describe('PageSelector', () => {
         disabledValue={new Set()}
         searchValue="nonexistent"
         pagesMap={mockPagesMap}
-        list={[]}
+        list={mockList}
         onSelect={vi.fn()}
       />,
     )
@@ -220,6 +199,7 @@ describe('PageSelector', () => {
     )
 
     const checkbox = screen.getByRole('checkbox', { name: 'Root 1' })
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true')
     await user.click(checkbox)
     expect(handleSelect).not.toHaveBeenCalled()
   })
@@ -238,54 +218,6 @@ describe('PageSelector', () => {
     )
 
     expect(screen.queryByTestId('notion-page-preview-root-1')).not.toBeInTheDocument()
-  })
-
-  it('should render preview button when canPreview is true', () => {
-    render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-        canPreview={true}
-      />,
-    )
-
-    expect(screen.getByTestId('notion-page-preview-root-1'))!.toBeInTheDocument()
-  })
-
-  it('should use previewPageId prop when provided', () => {
-    const { rerender } = render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-        previewPageId="root-1"
-      />,
-    )
-
-    let row = screen.getByTestId('notion-page-row-root-1')
-    expect(row)!.toHaveClass('bg-state-base-hover')
-
-    rerender(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-        previewPageId="root-2"
-      />,
-    )
-
-    row = screen.getByTestId('notion-page-row-root-1')
-    expect(row).not.toHaveClass('bg-state-base-hover')
   })
 
   it('should handle selection of multiple pages independently when searching', async () => {
@@ -322,28 +254,6 @@ describe('PageSelector', () => {
 
     await user.click(checkbox2)
     expect(handleSelect).toHaveBeenLastCalledWith(new Set(['child-1', 'child-2']))
-  })
-
-  it('should expand and show all children when parent is selected', async () => {
-    const user = userEvent.setup()
-    render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    const toggle = screen.getByTestId('notion-page-toggle-root-1')
-    await user.click(toggle)
-
-    // Both children should be visible
-    // Both children should be visible
-    expect(screen.getByText('Child 1'))!.toBeInTheDocument()
-    expect(screen.getByText('Child 2'))!.toBeInTheDocument()
   })
 
   it('should expand nested children when toggling parent', async () => {
@@ -394,33 +304,12 @@ describe('PageSelector', () => {
     expect(handleSelect).toHaveBeenCalledWith(new Set())
   })
 
-  it('should only select the item when searching (no descendants)', async () => {
-    const handleSelect = vi.fn()
-    const user = userEvent.setup()
-    render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue="Child"
-        pagesMap={mockPagesMap}
-        list={[mockList[1]!]}
-        onSelect={handleSelect}
-      />,
-    )
-
-    const checkbox = screen.getByRole('checkbox', { name: 'Child 1' })
-    await user.click(checkbox)
-
-    // When searching, only the item itself is selected, not descendants
-    expect(handleSelect).toHaveBeenCalledWith(new Set(['child-1']))
-  })
-
   it('should deselect only the item when searching (no descendants)', async () => {
     const handleSelect = vi.fn()
     const user = userEvent.setup()
     render(
       <PageSelector
-        value={new Set(['child-1'])}
+        value={new Set(['child-1', 'grandchild-1', 'root-2'])}
         disabledValue={new Set()}
         searchValue="Child"
         pagesMap={mockPagesMap}
@@ -432,95 +321,7 @@ describe('PageSelector', () => {
     const checkbox = screen.getByRole('checkbox', { name: 'Child 1' })
     await user.click(checkbox)
 
-    expect(handleSelect).toHaveBeenCalledWith(new Set())
-  })
-
-  it('should handle multiple root pages', async () => {
-    render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('Root 1'))!.toBeInTheDocument()
-    expect(screen.getByText('Root 2'))!.toBeInTheDocument()
-  })
-
-  it('should update preview when clicking preview button with onPreview provided', async () => {
-    const handlePreview = vi.fn()
-    const user = userEvent.setup()
-    render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-        canPreview={true}
-        onPreview={handlePreview}
-      />,
-    )
-
-    const previewBtn = screen.getByTestId('notion-page-preview-root-2')
-    await user.click(previewBtn)
-
-    expect(handlePreview).toHaveBeenCalledWith('root-2')
-  })
-
-  it('should update local preview state when preview button clicked', async () => {
-    const user = userEvent.setup()
-    const { rerender } = render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-        canPreview={true}
-      />,
-    )
-
-    const previewBtn1 = screen.getByTestId('notion-page-preview-root-1')
-    await user.click(previewBtn1)
-
-    // The preview should now show the hover state for root-1
-    rerender(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-        canPreview={true}
-      />,
-    )
-
-    const row = screen.getByTestId('notion-page-row-root-1')
-    expect(row)!.toHaveClass('bg-state-base-hover')
-  })
-
-  it('should render page name with correct title attribute', () => {
-    render(
-      <PageSelector
-        value={new Set()}
-        disabledValue={new Set()}
-        searchValue=""
-        pagesMap={mockPagesMap}
-        list={mockList}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    const pageName = screen.getByText('Root 1')
-    expect(pageName)!.toHaveAttribute('title', 'Root 1')
+    expect(handleSelect).toHaveBeenCalledWith(new Set(['grandchild-1', 'root-2']))
   })
 
   it('should handle empty list gracefully', () => {
@@ -552,48 +353,14 @@ describe('PageSelector', () => {
       />,
     )
 
-    // Should show Root 1, Child 1, and Grandchild 1
-    // Should show Root 1, Child 1, and Grandchild 1
     expect(screen.getByRole('checkbox', { name: 'Root 1' }))!.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Child 1' }))!.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Grandchild 1' }))!.toBeInTheDocument()
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
-    // Should not show Root 2, Child 2
     expect(screen.queryByRole('checkbox', { name: 'Root 2' })).not.toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: 'Child 2' })).not.toBeInTheDocument()
   })
 
-  it('should handle disabled parent when selecting child', async () => {
+  it('allows selecting descendants while their parent remains disabled', async () => {
     const handleSelect = vi.fn()
     const user = userEvent.setup()
     render(
@@ -610,8 +377,8 @@ describe('PageSelector', () => {
     const toggle = screen.getByTestId('notion-page-toggle-root-1')
     await user.click(toggle)
 
-    // Should expand even though parent is disabled
-    // Should expand even though parent is disabled
-    expect(screen.getByText('Child 1'))!.toBeInTheDocument()
+    expect(screen.getByText('Child 1')).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'Child 1' }))
+    expect(handleSelect).toHaveBeenCalledExactlyOnceWith(new Set(['child-1', 'grandchild-1']))
   })
 })

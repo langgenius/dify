@@ -1,4 +1,4 @@
-import type { AnyFormApi } from '@tanstack/react-form'
+import { FieldApi, FormApi } from '@tanstack/react-form'
 import { FormTypeEnum } from '../../../types'
 import {
   getTransformedValuesWhenSecretInputPristine,
@@ -6,128 +6,54 @@ import {
 } from '../index'
 
 describe('secret input utilities', () => {
-  it('should mask only selected truthy values in transformFormSchemasSecretInput', () => {
+  it('masks selected secrets without changing other values or the source object', () => {
+    const values = { apiKey: 'secret', token: 'token-value', empty: '', zero: 0, absent: null }
     expect(
-      transformFormSchemasSecretInput(['apiKey'], {
-        apiKey: 'secret',
-        token: 'token-value',
-        emptyValue: '',
-      }),
-    ).toEqual({
-      apiKey: '[__HIDDEN__]',
-      token: 'token-value',
-      emptyValue: '',
-    })
+      transformFormSchemasSecretInput(['apiKey', 'empty', 'zero', 'absent', 'missing'], values),
+    ).toEqual({ ...values, apiKey: '[__HIDDEN__]' })
+    expect(values.apiKey).toBe('secret')
   })
 
-  it('should mask pristine secret input fields from form state', () => {
-    const formSchemas = [
+  it('masks an untouched secret but submits its replacement after editing', () => {
+    const form = new FormApi({
+      onSubmitMeta: {},
+      defaultValues: { apiKey: 'secret', name: 'Alice' },
+    })
+    const unmountForm = form.mount()
+    const field = new FieldApi({ form, name: 'apiKey' })
+    const unmountField = field.mount()
+    const schemas = [
       { name: 'apiKey', type: FormTypeEnum.secretInput, label: 'API Key', required: true },
       { name: 'name', type: FormTypeEnum.textInput, label: 'Name', required: true },
     ]
-    const form = {
-      store: {
-        state: {
-          values: {
-            apiKey: 'secret',
-            name: 'Alice',
-          },
-        },
-      },
-      getFieldMeta: (name: string) => ({ isPristine: name === 'apiKey' }),
+    try {
+      expect(getTransformedValuesWhenSecretInputPristine(schemas, form)).toEqual({
+        apiKey: '[__HIDDEN__]',
+        name: 'Alice',
+      })
+      form.setFieldValue('apiKey', 'replacement')
+      expect(getTransformedValuesWhenSecretInputPristine(schemas, form)).toEqual({
+        apiKey: 'replacement',
+        name: 'Alice',
+      })
+    } finally {
+      unmountField()
+      unmountForm()
     }
-
-    expect(
-      getTransformedValuesWhenSecretInputPristine(formSchemas, form as unknown as AnyFormApi),
-    ).toEqual({
-      apiKey: '[__HIDDEN__]',
-      name: 'Alice',
-    })
   })
 
-  it('should keep value unchanged when secret input is not pristine', () => {
-    const formSchemas = [
-      { name: 'apiKey', type: FormTypeEnum.secretInput, label: 'API Key', required: true },
-    ]
-    const form = {
-      store: { state: { values: { apiKey: 'secret' } } },
-      getFieldMeta: () => ({ isPristine: false }),
+  it('preserves a secret whose field has not been registered', () => {
+    const form = new FormApi({ onSubmitMeta: {}, defaultValues: { apiKey: 'secret' } })
+    const unmount = form.mount()
+    try {
+      expect(
+        getTransformedValuesWhenSecretInputPristine(
+          [{ name: 'apiKey', type: FormTypeEnum.secretInput, label: 'API Key', required: true }],
+          form,
+        ),
+      ).toEqual({ apiKey: 'secret' })
+    } finally {
+      unmount()
     }
-
-    expect(
-      getTransformedValuesWhenSecretInputPristine(formSchemas, form as unknown as AnyFormApi),
-    ).toEqual({
-      apiKey: 'secret',
-    })
-  })
-
-  it('should not mask when secret name is not in the values object', () => {
-    expect(
-      transformFormSchemasSecretInput(['missing'], {
-        apiKey: 'secret',
-      }),
-    ).toEqual({
-      apiKey: 'secret',
-    })
-  })
-
-  it('should not mask falsy values like 0 or null', () => {
-    expect(
-      transformFormSchemasSecretInput(['zeroVal', 'nullVal'], {
-        zeroVal: 0,
-        nullVal: null,
-      }),
-    ).toEqual({
-      zeroVal: 0,
-      nullVal: null,
-    })
-  })
-
-  it('should return empty object when form values are undefined', () => {
-    const formSchemas = [
-      { name: 'apiKey', type: FormTypeEnum.secretInput, label: 'API Key', required: true },
-    ]
-    const form = {
-      store: { state: { values: undefined } },
-      getFieldMeta: () => ({ isPristine: true }),
-    }
-
-    expect(
-      getTransformedValuesWhenSecretInputPristine(formSchemas, form as unknown as AnyFormApi),
-    ).toEqual({})
-  })
-
-  it('should handle fieldMeta being undefined', () => {
-    const formSchemas = [
-      { name: 'apiKey', type: FormTypeEnum.secretInput, label: 'API Key', required: true },
-    ]
-    const form = {
-      store: { state: { values: { apiKey: 'secret' } } },
-      getFieldMeta: () => undefined,
-    }
-
-    expect(
-      getTransformedValuesWhenSecretInputPristine(formSchemas, form as unknown as AnyFormApi),
-    ).toEqual({
-      apiKey: 'secret',
-    })
-  })
-
-  it('should skip non-secretInput schema types entirely', () => {
-    const formSchemas = [
-      { name: 'name', type: FormTypeEnum.textInput, label: 'Name', required: true },
-      { name: 'desc', type: FormTypeEnum.textInput, label: 'Desc', required: false },
-    ]
-    const form = {
-      store: { state: { values: { name: 'Alice', desc: 'Test' } } },
-      getFieldMeta: () => ({ isPristine: true }),
-    }
-
-    expect(
-      getTransformedValuesWhenSecretInputPristine(formSchemas, form as unknown as AnyFormApi),
-    ).toEqual({
-      name: 'Alice',
-      desc: 'Test',
-    })
   })
 })

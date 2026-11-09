@@ -1,0 +1,14 @@
+# Pytest-only readiness polling. Keep the healthcheck commands from the base
+# middleware configuration, but avoid waiting for the default 30-second interval.
+services:
+  redis:
+    healthcheck:
+      interval: 1s
+      # Let Compose's existing 180-second --wait-timeout bound startup, rather
+      # than making the default three failed probes reject a slow cold start.
+      retries: 180
+
+  sandbox:
+    healthcheck:
+      interval: 1s
+      retries: 180

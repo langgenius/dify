@@ -13,12 +13,14 @@ describe('parameter-extractor/reasoning-mode-picker', () => {
     )
 
     await user.click(
-      screen.getByText('workflow.nodes.parameterExtractor.reasoningModeFunctionToolCalling'),
+      screen.getByText('workflowModels.nodes.parameterExtractor.reasoningModeFunctionToolCalling'),
     )
 
     rerender(<ReasoningModePicker type={ReasoningModeType.functionCall} onChange={handleChange} />)
 
-    await user.click(screen.getByText('workflow.nodes.parameterExtractor.reasoningModePrompt'))
+    await user.click(
+      screen.getByText('workflowModels.nodes.parameterExtractor.reasoningModePrompt'),
+    )
 
     expect(handleChange).toHaveBeenNthCalledWith(1, ReasoningModeType.functionCall)
     expect(handleChange).toHaveBeenNthCalledWith(2, ReasoningModeType.prompt)

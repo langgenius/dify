@@ -13,7 +13,7 @@ import { useLazyModelProviderDetail, useModelModalHandler } from '../hooks'
 type ProviderSummary = ModelProviderSummaryResponse | ModelProvider
 
 export default function LazyCustomModelActions({ provider }: { provider: ProviderSummary }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
   const handleOpenModelModal = useModelModalHandler()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isManageOpen, setIsManageOpen] = useState(false)
@@ -76,9 +76,9 @@ export default function LazyCustomModelActions({ provider }: { provider: Provide
           size="small"
           loading={isLoadingProviderDetail}
           onClick={handleManageClick}
-          className="mr-0.5 text-text-tertiary"
+          className="me-0.5 text-text-tertiary"
         >
-          {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'modelProvider' })}
         </Button>
       )}
       <Button
@@ -88,8 +88,8 @@ export default function LazyCustomModelActions({ provider }: { provider: Provide
         onClick={handleAddClick}
         className="text-text-tertiary"
       >
-        <span className="mr-1 i-ri-add-circle-fill size-3.5" />
-        {t(($) => $['modelProvider.addModel'], { ns: 'common' })}
+        <span className="me-1 i-ri-add-circle-fill size-3.5" />
+        {t(($) => $['modelProvider.addModel'], { ns: 'modelProvider' })}
       </Button>
     </>
   )

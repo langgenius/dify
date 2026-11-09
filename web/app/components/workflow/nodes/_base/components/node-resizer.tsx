@@ -41,7 +41,7 @@ const NodeResizer = ({
   minHeight = 152,
   maxWidth,
 }: NodeResizerProps) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const descriptionId = useId()
   const didDragRef = useRef(false)
   const { getNode, getNodes } = useReactFlow<CommonNodeType>()

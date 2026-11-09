@@ -10,6 +10,22 @@ export const zBillingInvoiceResponse = z.object({
 })
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * BillingOperationFailedErrorResponse
  */
 export const zBillingOperationFailedErrorResponse = z.object({
@@ -17,6 +33,18 @@ export const zBillingOperationFailedErrorResponse = z.object({
   message: z.string(),
   status: z.literal(502),
 })
+
+/**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * BillingUnavailableErrorResponse
@@ -28,16 +56,16 @@ export const zBillingUnavailableErrorResponse = z.object({
 })
 
 /**
- * PartnerTenantsPayload
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
  */
-export const zPartnerTenantsPayload = z.object({
-  click_id: z.string(),
-})
-
-/**
- * BillingResponse
- */
-export const zBillingResponse = z.record(z.string(), z.unknown())
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
 
 /**
  * BillingSubscriptionResponse
@@ -59,17 +87,6 @@ export const zBillingUnprocessableEntityErrorResponse = z.object({
  * Success
  */
 export const zGetBillingInvoicesResponse = zBillingInvoiceResponse
-
-export const zPutBillingPartnersByPartnerKeyTenantsBody = zPartnerTenantsPayload
-
-export const zPutBillingPartnersByPartnerKeyTenantsPath = z.object({
-  partner_key: z.string(),
-})
-
-/**
- * Tenants synced to partner successfully
- */
-export const zPutBillingPartnersByPartnerKeyTenantsResponse = zBillingResponse
 
 export const zGetBillingSubscriptionQuery = z.object({
   interval: z.enum(['month', 'year']),

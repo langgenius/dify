@@ -5,7 +5,7 @@ import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from 
 
 function SegmentedControlTypeExamples() {
   return (
-    <>
+    <React.Fragment>
       <SegmentedControl<number> value={10} onValueChange={() => {}} aria-label="Page size">
         <SegmentedControlItem<number> value={10}>10</SegmentedControlItem>
         <SegmentedControlItem<number> value={20}>20</SegmentedControlItem>
@@ -14,7 +14,7 @@ function SegmentedControlTypeExamples() {
       <SegmentedControl aria-label="Missing value">
         <SegmentedControlItem value="one">One</SegmentedControlItem>
       </SegmentedControl>
-    </>
+    </React.Fragment>
   )
 }
 

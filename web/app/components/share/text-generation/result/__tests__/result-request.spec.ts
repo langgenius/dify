@@ -1,3 +1,4 @@
+import type { TextGenerationTranslate } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -5,7 +6,8 @@ import { withSelectorKey } from '@/test/i18n-mock'
 import { Resolution, TransferMethod } from '@/types/app'
 import { buildResultRequestData, validateResultRequest } from '../result-request'
 
-const createTranslator = () => withSelectorKey(vi.fn((key: string) => key))
+const createTranslator = () =>
+  withSelectorKey(vi.fn((key: string) => key)) as TextGenerationTranslate
 
 const createFileEntity = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   id: 'file-1',
@@ -209,6 +211,84 @@ describe('result-request', () => {
     })
 
     expect(result).toEqual({ canSend: true })
+  })
+
+  describe('json_object inputs', () => {
+    const jsonPromptConfig: PromptConfig = {
+      prompt_template: 'template',
+      prompt_variables: [{ key: 'payload', name: 'Payload', type: 'json_object', required: false }],
+    }
+
+    it.each([
+      { value: '{"hello":"world"}', expected: { hello: 'world' } },
+      {
+        value: ' {"nested":{"enabled":false},"items":[1,"two",null]} ',
+        expected: { nested: { enabled: false }, items: [1, 'two', null] },
+      },
+      { value: '{}', expected: {} },
+    ])(
+      'should submit $value as an object without changing the editor input',
+      ({ value, expected }) => {
+        const inputs = { payload: value }
+
+        const result = buildResultRequestData({
+          completionFiles: [],
+          inputs,
+          promptConfig: jsonPromptConfig,
+          visionConfig,
+        })
+
+        expect(result.inputs.payload).toEqual(expected)
+        expect(inputs.payload).toBe(value)
+      },
+    )
+
+    it.each(['{invalid', '[1,2]', 'null', 'true', '0', '"text"', '', '   '])(
+      'should preserve non-object JSON or invalid text %j for backend validation',
+      (value) => {
+        const result = buildResultRequestData({
+          completionFiles: [],
+          inputs: { payload: value },
+          promptConfig: jsonPromptConfig,
+          visionConfig,
+        })
+
+        expect(result.inputs.payload).toBe(value)
+      },
+    )
+
+    it.each([{ hello: 'world' }, undefined])(
+      'should preserve an existing object or unset input %j',
+      (value) => {
+        const result = buildResultRequestData({
+          completionFiles: [],
+          inputs: { payload: value },
+          promptConfig: jsonPromptConfig,
+          visionConfig,
+        })
+
+        expect(result.inputs.payload).toEqual(value)
+      },
+    )
+
+    it('should only parse Object fields while preserving text and normalizing checkboxes', () => {
+      const value = '{"hello":"world"}'
+      const result = buildResultRequestData({
+        completionFiles: [],
+        inputs: { payload: value, name: value, enabled: undefined },
+        promptConfig: {
+          ...jsonPromptConfig,
+          prompt_variables: [
+            ...jsonPromptConfig.prompt_variables,
+            { key: 'name', name: 'Name', type: 'string', required: false },
+            { key: 'enabled', name: 'Enabled', type: 'checkbox', required: false },
+          ],
+        },
+        visionConfig,
+      })
+
+      expect(result.inputs).toEqual({ payload: { hello: 'world' }, name: value, enabled: false })
+    })
   })
 
   it('should build request data for single and list file inputs', () => {

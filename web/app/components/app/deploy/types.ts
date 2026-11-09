@@ -16,3 +16,8 @@ type ConfigurationRequest = {
 }
 
 export type DeploymentDialogRequest = ConfigurationRequest | VersionSelectionRequest
+
+export type OpenDeploymentDialog = (
+  request: DeploymentDialogRequest,
+  returnFocusElement: HTMLElement | null,
+) => void

@@ -28,8 +28,8 @@ export function AgentBuildDraftBar({
   onApply,
   onDiscard,
 }: AgentBuildDraftBarProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCustom } = useTranslation('custom')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCustom } = useTranslation(['custom'])
   const [open, setOpen] = useState(false)
   const [panelWidth, setPanelWidth] = useState<number>()
   const collapsedBarRef = useRef<HTMLDivElement>(null)

@@ -1,16 +1,17 @@
 'use client'
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
-import type { FileIndexingEstimateResponse } from '@/models/datasets'
-import type { InitialDocumentDetail } from '@/models/pipeline'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { selectPublishedPipelineNodes } from '@/app/components/rag-pipeline/utils/query-select'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
@@ -21,8 +22,6 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useFileUploadConfig } from '@/service/use-common'
-import { usePublishedPipelineInfo } from '@/service/use-pipeline'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { useDataSourceStore } from './data-source/store'
 import DataSourceProvider from './data-source/store/provider'
@@ -40,7 +39,7 @@ import { StepOneContent, StepThreeContent, StepTwoContent } from './steps'
 import { StepOnePreview, StepTwoPreview } from './steps/preview-panel'
 
 const CreateFormPipeline = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'datasetPipeline'])
   const router = useRouter()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
@@ -50,7 +49,7 @@ const CreateFormPipeline = () => {
     }),
   )
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
-  const pipelineId = dataset?.pipeline_id
+  const pipelineId = dataset?.pipeline_id ?? undefined
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -68,17 +67,19 @@ const CreateFormPipeline = () => {
 
   // Core state
   const [datasource, setDatasource] = useState<Datasource>()
-  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(
-    undefined,
-  )
+  const [estimateData, setEstimateData] = useState<IndexingEstimateResponse | undefined>(undefined)
   const [batchId, setBatchId] = useState('')
-  const [documents, setDocuments] = useState<InitialDocumentDetail[]>([])
+  const [documents, setDocuments] = useState<PipelineDocument[]>([])
 
   // Data fetching
-  const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(
-    pipelineId || '',
+  const { data: pipelineNodes, isFetching: isFetchingPipelineInfo } = useQuery(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryOptions({
+      input: { params: { pipeline_id: pipelineId || '' } },
+      enabled: !!pipelineId,
+      select: selectPublishedPipelineNodes,
+    }),
   )
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
 
   const fileUploadConfig = useMemo(
     () => ({
@@ -246,9 +247,10 @@ const CreateFormPipeline = () => {
       router.replace(`/datasets/${dataset.id}/documents`)
   }, [dataset, router, shouldRedirectToDocuments])
 
-  if (isFetchingPipelineInfo) return <Loading type="app" />
+  if (isFetchingPipelineInfo) return <LoadingPlaceholder className="h-full" />
 
-  if (isLoadingWorkspacePermissionKeys || shouldRedirectToDocuments) return <Loading type="app" />
+  if (isLoadingWorkspacePermissionKeys || shouldRedirectToDocuments)
+    return <LoadingPlaceholder className="h-full" />
 
   return (
     <div className="relative flex h-[calc(100vh-56px)] w-full min-w-5xl overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
@@ -264,7 +266,7 @@ const CreateFormPipeline = () => {
               <StepOneContent
                 datasource={datasource}
                 datasourceType={datasourceType}
-                pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
+                pipelineNodes={(pipelineNodes || []) as Node<DataSourceNodeType>[]}
                 supportBatchUpload={supportBatchUpload}
                 showBatchUploadUpgrade={deploymentEdition === 'CLOUD' && plan === 'sandbox'}
                 isShowVectorSpaceFull={isShowVectorSpaceFull}

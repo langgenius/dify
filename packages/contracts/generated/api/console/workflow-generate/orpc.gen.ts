@@ -3,13 +3,19 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zCompletionRequestError,
+  zModelCurrentlyNotSupportError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
+} from './zod.gen.ts'
+import {
   zPostWorkflowGenerateBody,
   zPostWorkflowGenerateResponse,
   zPostWorkflowGenerateStreamBody,
   zPostWorkflowGenerateStreamResponse,
   zPostWorkflowGenerateSuggestionsBody,
   zPostWorkflowGenerateSuggestionsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Stream a Dify workflow graph (plan then result) via SSE
@@ -63,6 +69,12 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostWorkflowGenerateBody }))
   .output(zPostWorkflowGenerateResponse)
+  .errors({
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const workflowGenerate = {
   post: post3,

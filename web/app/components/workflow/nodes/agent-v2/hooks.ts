@@ -1,14 +1,14 @@
 import type { AgentInlineBinding } from '../../block-selector/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import { toast } from '@/app/notifications'
 import { useInlineAgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getDefaultAgentSoul } from './agent-soul-config'
 
@@ -46,7 +46,7 @@ export function useWorkflowInlineAgentDetail(
     pollUntilReady?: boolean
   },
 ) {
-  const configsMap = useHooksStore((state) => state.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const refetchUntilReady = options?.pollUntilReady
     ? {
         retry: INLINE_AGENT_CREATION_RETRY_COUNT,
@@ -67,10 +67,10 @@ export function useWorkflowInlineAgentDetail(
   const appComposerQuery = useQuery(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions({
       input:
-        configsMap?.flowId && configsMap.flowType === FlowType.appFlow && nodeId && agentId
+        resource.kind === 'app' && nodeId && agentId
           ? {
               params: {
-                app_id: configsMap.flowId,
+                app_id: resource.appId,
                 node_id: nodeId,
               },
             }
@@ -82,10 +82,10 @@ export function useWorkflowInlineAgentDetail(
     consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions(
       {
         input:
-          configsMap?.flowId && configsMap.flowType === FlowType.snippet && nodeId && agentId
+          resource.kind === 'snippet' && nodeId && agentId
             ? {
                 params: {
-                  snippet_id: configsMap.flowId,
+                  snippet_id: resource.snippetId,
                   node_id: nodeId,
                 },
               }
@@ -95,12 +95,12 @@ export function useWorkflowInlineAgentDetail(
     ),
   )
 
-  return configsMap?.flowType === FlowType.snippet ? snippetComposerQuery : appComposerQuery
+  return resource.kind === 'snippet' ? snippetComposerQuery : appComposerQuery
 }
 
 export function useCreateInlineAgentBinding() {
-  const { t } = useTranslation('agentV2')
-  const configsMap = useHooksStore((state) => state.configsMap)
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
+  const resource = useAtomValue(editorResourceAtom)
   const agentScope = useInlineAgentScope()
   const { data: defaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
   const queryClient = useQueryClient()
@@ -114,11 +114,8 @@ export function useCreateInlineAgentBinding() {
 
   const createInlineAgentBinding = useCallback(
     async (nodeId: string, options?: CreateInlineAgentBindingOptions) => {
-      if (
-        !configsMap?.flowId ||
-        (configsMap.flowType !== FlowType.appFlow && configsMap.flowType !== FlowType.snippet)
-      ) {
-        toast.error(t(($) => $['roster.nodeSelector.createInlineFailed']))
+      if (resource.kind !== 'app' && resource.kind !== 'snippet') {
+        toast.error(t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' }))
         options?.onError?.()
         return
       }
@@ -136,17 +133,17 @@ export function useCreateInlineAgentBinding() {
           agent_soul: getDefaultAgentSoul(defaultModel),
         }
         const composerState =
-          configsMap.flowType === FlowType.snippet
+          resource.kind === 'snippet'
             ? await mutateSnippetComposerAsync({
                 params: {
-                  snippet_id: configsMap.flowId,
+                  snippet_id: resource.snippetId,
                   node_id: nodeId,
                 },
                 body,
               })
             : await mutateAppComposerAsync({
                 params: {
-                  app_id: configsMap.flowId,
+                  app_id: resource.appId,
                   node_id: nodeId,
                 },
                 body,
@@ -158,18 +155,18 @@ export function useCreateInlineAgentBinding() {
           !binding.agent_id ||
           !binding.current_snapshot_id
         ) {
-          toast.error(t(($) => $['roster.nodeSelector.createInlineFailed']))
+          toast.error(t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' }))
           options?.onError?.()
           return
         }
 
-        if (configsMap.flowType === FlowType.snippet) {
+        if (resource.kind === 'snippet') {
           queryClient.setQueryData(
             consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
               {
                 input: {
                   params: {
-                    snippet_id: configsMap.flowId,
+                    snippet_id: resource.snippetId,
                     node_id: nodeId,
                   },
                 },
@@ -182,7 +179,7 @@ export function useCreateInlineAgentBinding() {
             consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
               input: {
                 params: {
-                  app_id: configsMap.flowId,
+                  app_id: resource.appId,
                   node_id: nodeId,
                 },
               },
@@ -206,8 +203,7 @@ export function useCreateInlineAgentBinding() {
     },
     [
       agentScope,
-      configsMap?.flowId,
-      configsMap?.flowType,
+      resource,
       defaultModel,
       mutateAppComposerAsync,
       mutateSnippetComposerAsync,

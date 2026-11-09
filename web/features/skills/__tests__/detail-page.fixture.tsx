@@ -1,22 +1,24 @@
 import type {
-  GetWorkspacesCurrentModelsModelTypesByModelTypeData,
   SkillDetailResponse,
   SkillReferenceResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
 import type userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { StrictMode } from 'react'
-import { vi } from 'vite-plus/test'
+import { afterEach, vi } from 'vite-plus/test'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { SkillDetailPage } from '../detail/page'
 
 export const primaryModifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }
 
 const mocks = vi.hoisted(() => ({
+  request:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
   deleteSkillMutationFn: vi.fn(),
   copyToClipboard: vi.fn(),
   downloadBlob: vi.fn(),
@@ -27,24 +29,21 @@ const mocks = vi.hoisted(() => ({
   publishSkillMutationFn: vi.fn(),
   publishSkillMutationOptions: vi.fn(),
   routerPush: vi.fn(),
-  restoreSkillMutationFn: vi.fn(),
+  routeSkillId: 'skill-1',
   saveDraftFileMutationFn: vi.fn(),
   sendSkillAssistMessage: vi.fn(),
+  modelParameterRulesFetch: vi.fn<typeof fetch>(),
+  textGenerationModelListGet: vi.fn(),
   defaultTextGenerationModel: undefined as
     | { provider: { provider: string }; model: string }
     | undefined,
   skillDetail: undefined as SkillDetailResponse | undefined,
   skillDetailGetFn: vi.fn(),
-  skillDetailKey: vi.fn((_options: unknown): unknown[] => ['skill-detail']),
   skillDetailQueryOptions: vi.fn((_options: unknown) => ({})),
-  agentSkillBindingsKey: vi.fn((_options: unknown): unknown[] => ['agent-skill-bindings']),
-  skillListKey: vi.fn((_options: unknown): unknown[] => ['skills']),
   skillTags: [] as { count: number; tag: string }[],
   skillMetadataMutationFn: vi.fn(),
   skillReferencesQueryOptions: vi.fn((_options: unknown) => ({})),
-  skillTagsKey: vi.fn((_options: unknown): unknown[] => ['skill-tags']),
   skillTagsQueryOptions: vi.fn((_options: unknown) => ({})),
-  skillVersionsKey: vi.fn((_options: unknown): unknown[] => ['skill-versions']),
   skillVersionsQueryOptions: vi.fn((_options: unknown) => ({})),
   skillVersionDetailQueryOptions: vi.fn((_options: unknown) => ({})),
   textGenerationModelList: [] as {
@@ -56,11 +55,10 @@ const mocks = vi.hoisted(() => ({
   toastInfo: vi.fn(),
   toastSuccess: vi.fn(),
   uploadSkillFile: vi.fn(),
-  versionDeleteMutationFn: vi.fn(),
   versionPatchMutationFn: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mocks.toastError,
     info: mocks.toastInfo,
@@ -91,10 +89,6 @@ vi.mock('@/app/components/base/markdown', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
-}))
-
 vi.mock('@/app/components/main-nav/components/account-section', () => ({
   default: ({ compact = false }: { compact?: boolean }) => (
     <button type="button" aria-label={compact ? 'compact-account-section' : 'account-section'}>
@@ -112,27 +106,27 @@ vi.mock('@/app/components/main-nav/components/help-menu', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useLanguage: () => 'en_US',
   useDefaultModel: () => ({
     data: mocks.defaultTextGenerationModel,
   }),
-  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
-    currentProvider: mocks.textGenerationModelList[0],
-    currentModel: mocks.textGenerationModelList[0]?.models[0],
-    activeTextGenerationModelList: mocks.textGenerationModelList,
-  }),
+  useTextGenerationCurrentProviderAndModelAndModelList: (selectedModel?: DefaultModel) => {
+    const currentProvider = mocks.textGenerationModelList.find(
+      (provider) => provider.provider === selectedModel?.provider,
+    )
+    return {
+      currentProvider,
+      currentModel: currentProvider?.models.find((model) => model.model === selectedModel?.model),
+      activeTextGenerationModelList: mocks.textGenerationModelList.filter(
+        (provider) => provider.status === 'active',
+      ),
+    }
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: () => <button type="button">model-settings</button>,
   SplitModelSelector: () => <button type="button">model-settings</button>,
-}))
-
-vi.mock('@/service/use-common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-common')>()),
-  useModelParameterRules: () => ({
-    data: { data: [] },
-    isLoading: false,
-  }),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
@@ -174,7 +168,13 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: mocks.request,
+}))
+
 vi.mock('@/next/navigation', () => ({
+  useParams: () => ({ skillId: mocks.routeSkillId }),
   useRouter: () => ({
     push: mocks.routerPush,
   }),
@@ -186,6 +186,26 @@ vi.mock('@/utils/download', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleQueryOverrides, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const modelQuery = withConsoleResponses(actual.consoleQuery, {
+    'workspaces.current.models.modelTypes.byModelType.get': () =>
+      mocks.textGenerationModelListGet(),
+  })
+  const query = withConsoleQueryOverrides(actual.consoleQuery, {
+    'workspaces.current.skills.tags.get': { queryOptions: mocks.skillTagsQueryOptions },
+    'workspaces.current.skills.bySkillId.get': { queryOptions: mocks.skillDetailQueryOptions },
+    'workspaces.current.skills.bySkillId.references.get': {
+      queryOptions: mocks.skillReferencesQueryOptions,
+    },
+    'workspaces.current.skills.bySkillId.versions.get': {
+      queryOptions: mocks.skillVersionsQueryOptions,
+    },
+    'workspaces.current.skills.bySkillId.versions.byVersionId.get': {
+      queryOptions: mocks.skillVersionDetailQueryOptions,
+    },
+  })
+
   return {
     consoleClient: {
       workspaces: {
@@ -201,24 +221,25 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: {
       workspaces: {
         current: {
-          models: actual.consoleQuery.workspaces.current.models,
+          models: modelQuery.workspaces.current.models,
+          modelProviders: actual.consoleQuery.workspaces.current.modelProviders,
           agents: {
             byAgentId: {
               skills: {
                 get: {
-                  key: mocks.agentSkillBindingsKey,
+                  key: actual.consoleQuery.workspaces.current.agents.byAgentId.skills.get.key,
                 },
               },
             },
           },
           skills: {
             get: {
-              key: mocks.skillListKey,
+              key: actual.consoleQuery.workspaces.current.skills.get.key,
             },
             tags: {
               get: {
-                key: mocks.skillTagsKey,
-                queryOptions: mocks.skillTagsQueryOptions,
+                key: actual.consoleQuery.workspaces.current.skills.tags.get.key,
+                queryOptions: query.workspaces.current.skills.tags.get.queryOptions,
               },
             },
             bySkillId: {
@@ -231,8 +252,8 @@ vi.mock('@/service/console', async (importOriginal) => {
                 },
               },
               get: {
-                key: mocks.skillDetailKey,
-                queryOptions: mocks.skillDetailQueryOptions,
+                key: actual.consoleQuery.workspaces.current.skills.bySkillId.get.key,
+                queryOptions: query.workspaces.current.skills.bySkillId.get.queryOptions,
               },
               patch: {
                 mutationOptions: () => ({ mutationFn: mocks.skillMetadataMutationFn }),
@@ -247,14 +268,11 @@ vi.mock('@/service/console', async (importOriginal) => {
               },
               references: {
                 get: {
-                  queryOptions: mocks.skillReferencesQueryOptions,
+                  queryOptions:
+                    query.workspaces.current.skills.bySkillId.references.get.queryOptions,
                 },
               },
-              restore: {
-                post: {
-                  mutationOptions: () => ({ mutationFn: mocks.restoreSkillMutationFn }),
-                },
-              },
+              restore: actual.consoleQuery.workspaces.current.skills.bySkillId.restore,
               files: {
                 check: {
                   post: {
@@ -267,19 +285,21 @@ vi.mock('@/service/console', async (importOriginal) => {
               },
               versions: {
                 get: {
-                  key: mocks.skillVersionsKey,
-                  queryOptions: mocks.skillVersionsQueryOptions,
+                  key: actual.consoleQuery.workspaces.current.skills.bySkillId.versions.get.key,
+                  queryOptions: query.workspaces.current.skills.bySkillId.versions.get.queryOptions,
                 },
                 byVersionId: {
                   get: {
-                    queryOptions: mocks.skillVersionDetailQueryOptions,
+                    queryOptions:
+                      query.workspaces.current.skills.bySkillId.versions.byVersionId.get
+                        .queryOptions,
                   },
                   patch: {
                     mutationOptions: () => ({ mutationFn: mocks.versionPatchMutationFn }),
                   },
-                  delete: {
-                    mutationOptions: () => ({ mutationFn: mocks.versionDeleteMutationFn }),
-                  },
+                  delete:
+                    actual.consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId
+                      .delete,
                 },
               },
             },
@@ -489,11 +509,15 @@ export function renderSkillDetailPage({
       mutations: { retry: false },
     },
   }),
+  searchParams = '',
   strict = false,
 }: {
   queryClient?: QueryClient
+  searchParams?: string
   strict?: boolean
 } = {}) {
+  const { wrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
+
   return {
     ...render(
       <QueryClientProvider client={queryClient}>
@@ -505,7 +529,9 @@ export function renderSkillDetailPage({
           <SkillDetailPage skillId="skill-1" />
         )}
       </QueryClientProvider>,
+      { wrapper },
     ),
+    onUrlUpdate,
     queryClient,
   }
 }
@@ -516,16 +542,9 @@ export function getBuilderAttachmentInput(container: HTMLElement) {
 }
 
 export function getSourceEditor() {
-  const editors = screen.getAllByRole('textbox')
-  const sourceEditor = editors.find(
-    (editor): editor is HTMLTextAreaElement =>
-      editor instanceof HTMLTextAreaElement &&
-      editor.value.includes('name: github-actions-failure-debugging'),
-  )
-
-  if (!sourceEditor) throw new Error('source editor not found')
-
-  return sourceEditor
+  return screen.getByRole<HTMLTextAreaElement>('textbox', {
+    name: 'skill.skillManagement.detail.markdownSourceMode',
+  })
 }
 
 export function getLiveMarkdownEditor() {
@@ -676,6 +695,25 @@ export function getMocks() {
 export function resetDetailPageFixture() {
   vi.useRealTimers()
   vi.resetAllMocks()
+  mocks.request.mockImplementation(async (_url, _init, options) => {
+    const req = options.request
+    const pathname = new URL(req.url).pathname
+    // Model parameter rules go through the console client and land on the fetch mock.
+    if (pathname.endsWith('/models/parameter-rules')) return mocks.modelParameterRulesFetch(req)
+    if (req.method === 'POST' && /\/skills\/[^/]+\/restore$/.test(pathname))
+      return Response.json(mocks.skillDetail)
+    if (req.method === 'DELETE' && /\/skills\/[^/]+\/versions\/[^/]+$/.test(pathname))
+      return Response.json({ result: 'success' })
+    throw new Error(`Unexpected request: ${req.method} ${pathname}`)
+  })
+  mocks.modelParameterRulesFetch.mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (!url.includes('/models/parameter-rules'))
+      throw new Error(`Unexpected Skill detail request: ${url}`)
+    return Response.json({ data: [] })
+  })
+  vi.stubGlobal('fetch', mocks.modelParameterRulesFetch)
+  mocks.routeSkillId = 'skill-1'
   mocks.defaultTextGenerationModel = {
     provider: {
       provider: 'langgenius/openai/openai',
@@ -694,49 +732,43 @@ export function resetDetailPageFixture() {
       ],
     },
   ]
+  mocks.textGenerationModelListGet.mockImplementation(async () => ({
+    data: mocks.textGenerationModelList,
+  }))
   mocks.skillDetail = createSkillDetail()
   mocks.skillDetailGetFn.mockImplementation(async () => mocks.skillDetail)
-  mocks.skillDetailKey.mockImplementation((options) => ['skill-detail', options])
-  mocks.agentSkillBindingsKey.mockImplementation((options) => ['agent-skill-bindings', options])
-  mocks.skillVersionsKey.mockImplementation((options) => ['skill-versions', options])
-  mocks.skillListKey.mockImplementation((options) => ['skills', options])
+
   mocks.skillTags = [
     { count: 3, tag: 'Search' },
     { count: 2, tag: 'Productivity' },
     { count: 1, tag: 'Utilities' },
   ]
-  mocks.skillTagsKey.mockImplementation((options) => ['skill-tags', options])
+
   mocks.skillTagsQueryOptions.mockImplementation(() => ({
-    queryKey: ['skill-tags'],
     queryFn: async () => ({
       data: [],
     }),
   }))
-  mocks.skillDetailQueryOptions.mockImplementation((options) => ({
-    queryKey: ['skill-detail', options],
+  mocks.skillDetailQueryOptions.mockImplementation(() => ({
     queryFn: async () => mocks.skillDetail,
   }))
-  mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
-    queryKey: ['skill-versions', options],
+  mocks.skillVersionsQueryOptions.mockImplementation(() => ({
     queryFn: async () => ({
       data: [],
     }),
   }))
-  mocks.skillVersionDetailQueryOptions.mockImplementation((options) => ({
-    queryKey: ['skill-version-detail', options],
+  mocks.skillVersionDetailQueryOptions.mockImplementation(() => ({
     queryFn: async () => ({
       ...mocks.skillDetail,
       files: [],
     }),
   }))
-  mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-    queryKey: ['skill-references', options],
+  mocks.skillReferencesQueryOptions.mockImplementation(() => ({
     queryFn: async () => ({
       data: [],
     }),
   }))
   mocks.skillTagsQueryOptions.mockImplementation(() => ({
-    queryKey: ['skill-tags'],
     queryFn: async () => ({
       data: mocks.skillTags,
     }),
@@ -807,9 +839,7 @@ export function resetDetailPageFixture() {
       : mocks.skillDetail
     return version
   })
-  mocks.restoreSkillMutationFn.mockResolvedValue({})
   mocks.versionPatchMutationFn.mockResolvedValue({})
-  mocks.versionDeleteMutationFn.mockResolvedValue({})
   mocks.sendSkillAssistMessage.mockResolvedValue(undefined)
   mocks.checkDraftFilesMutationFn.mockImplementation(
     async (input: {
@@ -845,18 +875,6 @@ export function resetDetailPageFixture() {
   })
 }
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) =>
-      options.queryKey[0].includes('modelTypes')
-        ? { data: mocks.textGenerationModelList, isPending: false }
-        : actual.useQuery(options),
-  }
+afterEach(() => {
+  vi.unstubAllGlobals()
 })

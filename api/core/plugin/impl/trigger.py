@@ -84,7 +84,7 @@ class PluginTriggerClient(BasePluginClient):
         user_id: str,
         provider: str,
         event_name: str,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
         request: Request,
         parameters: Mapping[str, Any],
@@ -95,7 +95,7 @@ class PluginTriggerClient(BasePluginClient):
         Invoke a trigger with the given parameters.
         """
         provider_id = TriggerProviderID(provider)
-        response: Generator[TriggerInvokeEventResponse, None, None] = self._request_with_plugin_daemon_response_stream(
+        response: Generator[TriggerInvokeEventResponse] = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/trigger/invoke_event",
             type_=TriggerInvokeEventResponse,
@@ -124,13 +124,13 @@ class PluginTriggerClient(BasePluginClient):
         raise ValueError("No response received from plugin daemon for invoke trigger")
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str, provider: str, credentials: Mapping[str, str]
+        self, tenant_id: str, user_id: str, provider: str, credentials: Mapping[str, object]
     ) -> bool:
         """
         Validate the credentials of the trigger provider.
         """
         provider_id = TriggerProviderID(provider)
-        response: Generator[TriggerValidateProviderCredentialsResponse, None, None] = (
+        response: Generator[TriggerValidateProviderCredentialsResponse] = (
             self._request_with_plugin_daemon_response_stream(
                 method="POST",
                 path=f"plugin/{tenant_id}/dispatch/trigger/validate_credentials",
@@ -160,7 +160,7 @@ class PluginTriggerClient(BasePluginClient):
         provider: str,
         subscription: Mapping[str, Any],
         request: Request,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> TriggerDispatchResponse:
         """
@@ -196,7 +196,7 @@ class PluginTriggerClient(BasePluginClient):
         tenant_id: str,
         user_id: str,
         provider: str,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
         endpoint: str,
         parameters: Mapping[str, Any],
@@ -205,7 +205,7 @@ class PluginTriggerClient(BasePluginClient):
         Subscribe to a trigger.
         """
         provider_id = TriggerProviderID(provider)
-        response: Generator[TriggerSubscriptionResponse, None, None] = self._request_with_plugin_daemon_response_stream(
+        response: Generator[TriggerSubscriptionResponse] = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/trigger/subscribe",
             type_=TriggerSubscriptionResponse,
@@ -236,14 +236,14 @@ class PluginTriggerClient(BasePluginClient):
         user_id: str,
         provider: str,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> TriggerSubscriptionResponse:
         """
         Unsubscribe from a trigger.
         """
         provider_id = TriggerProviderID(provider)
-        response: Generator[TriggerSubscriptionResponse, None, None] = self._request_with_plugin_daemon_response_stream(
+        response: Generator[TriggerSubscriptionResponse] = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/trigger/unsubscribe",
             type_=TriggerSubscriptionResponse,
@@ -273,14 +273,14 @@ class PluginTriggerClient(BasePluginClient):
         user_id: str,
         provider: str,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> TriggerSubscriptionResponse:
         """
         Refresh a trigger subscription.
         """
         provider_id = TriggerProviderID(provider)
-        response: Generator[TriggerSubscriptionResponse, None, None] = self._request_with_plugin_daemon_response_stream(
+        response: Generator[TriggerSubscriptionResponse] = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/trigger/refresh",
             type_=TriggerSubscriptionResponse,

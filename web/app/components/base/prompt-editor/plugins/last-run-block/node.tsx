@@ -2,8 +2,6 @@ import type { NodeKey, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import LastRunBlockComponent from './component'
 
-type SerializedNode = SerializedLexicalNode
-
 export class LastRunBlockNode extends DecoratorNode<React.JSX.Element> {
   static override getType(): string {
     return 'last-run-block'
@@ -41,7 +39,7 @@ export class LastRunBlockNode extends DecoratorNode<React.JSX.Element> {
     return node
   }
 
-  override exportJSON(): SerializedNode {
+  override exportJSON(): SerializedLexicalNode {
     return {
       type: 'last-run-block',
       version: 1,

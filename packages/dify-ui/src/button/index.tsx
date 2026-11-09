@@ -1,19 +1,26 @@
 'use client'
 
-import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import type { VariantProps } from 'class-variance-authority'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { focusRingClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const buttonVariants = cva(
-  'inline-flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-disabled:cursor-not-allowed',
+  [
+    focusRingClassName,
+    'inline-flex items-center justify-center overflow-hidden whitespace-nowrap data-disabled:cursor-not-allowed',
+  ],
   {
     variants: {
       variant: {
         primary: [
           'bg-components-button-primary-bg text-components-button-primary-text shadow-primary-button inset-ring-[0.5px] inset-ring-components-button-primary-border',
           'hover:bg-components-button-primary-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3 hover:inset-ring-components-button-primary-border-hover',
+          // The fill is the focus ring's color, so a band of the text color separates the two.
+          // It sits inside the ring so the indicator does not grow and get clipped by a container.
+          'focus-visible:inset-ring-1 focus-visible:inset-ring-components-button-primary-text',
           'data-disabled:bg-components-button-primary-bg-disabled data-disabled:text-components-button-primary-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-primary-border-disabled',
         ],
         secondary: [
@@ -64,6 +71,7 @@ const buttonVariants = cva(
         class: [
           'bg-components-button-destructive-primary-bg text-components-button-destructive-primary-text inset-ring-components-button-destructive-primary-border',
           'hover:bg-components-button-destructive-primary-bg-hover hover:inset-ring-components-button-destructive-primary-border-hover',
+          'focus-visible:inset-ring-components-button-destructive-primary-text',
           'data-disabled:bg-components-button-destructive-primary-bg-disabled data-disabled:text-components-button-destructive-primary-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-destructive-primary-bg-disabled',
         ],
       },
@@ -73,6 +81,7 @@ const buttonVariants = cva(
         class: [
           'bg-components-button-destructive-secondary-bg text-components-button-destructive-secondary-text inset-ring-components-button-destructive-secondary-border',
           'hover:bg-components-button-destructive-secondary-bg-hover hover:inset-ring-components-button-destructive-secondary-border-hover',
+          'not-data-disabled:focus-visible:bg-components-button-destructive-secondary-bg-hover',
           'data-disabled:text-components-button-destructive-secondary-text-disabled',
         ],
       },
@@ -91,6 +100,7 @@ const buttonVariants = cva(
         class: [
           'text-components-button-destructive-ghost-text',
           'hover:bg-components-button-destructive-ghost-bg-hover',
+          'not-data-disabled:focus-visible:bg-components-button-destructive-ghost-bg-hover',
           'data-disabled:text-components-button-destructive-ghost-text-disabled',
         ],
       },
@@ -103,7 +113,7 @@ const buttonVariants = cva(
   },
 )
 
-type ButtonProps = Omit<BaseButtonNS.Props, 'className'> &
+type ButtonProps = BaseButton.Props &
   VariantProps<typeof buttonVariants> & {
     /**
      * Marks an action as pending, blocks activation, and keeps the button focusable by default.
@@ -111,7 +121,6 @@ type ButtonProps = Omit<BaseButtonNS.Props, 'className'> &
      * reference it with `aria-labelledby` so it remains the explicit accessible name.
      */
     loading?: boolean
-    className?: string
   }
 
 function Button({
@@ -129,7 +138,9 @@ function Button({
   return (
     <BaseButton
       type={type}
-      className={cn(buttonVariants({ variant, size, tone, className }))}
+      className={(state) =>
+        cn(buttonVariants({ variant, size, tone, className: resolveClassName(className, state) }))
+      }
       disabled={disabled || loading}
       focusableWhenDisabled={focusableWhenDisabled ?? loading}
       {...props}

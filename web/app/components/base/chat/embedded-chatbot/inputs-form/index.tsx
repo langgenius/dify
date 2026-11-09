@@ -1,9 +1,9 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
-import Divider from '@/app/components/base/divider'
 import { AppSourceType } from '@/service/share'
 import { useEmbeddedChatbotContext } from '../context'
 
@@ -13,10 +13,10 @@ type Props = Readonly<{
 }>
 
 const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const {
     appSourceType,
-    isMobile,
+    isBelowSm,
     currentConversationId,
     theme,
     handleStartChat,
@@ -32,7 +32,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
       data-testid="inputs-form-node"
       className={cn(
         'mb-6 flex flex-col items-center px-4 pt-6',
-        isMobile && 'mb-4 pt-4',
+        isBelowSm && 'mb-4 pt-4',
         isTryApp && 'mb-0 px-0',
       )}
     >
@@ -47,7 +47,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
           className={cn(
             'flex items-center gap-3 rounded-t-2xl px-6 py-4',
             !collapsed && 'border-b border-divider-subtle',
-            isMobile && 'px-4 py-3',
+            isBelowSm && 'px-4 py-3',
           )}
         >
           <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
@@ -76,12 +76,12 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
           )}
         </div>
         {!collapsed && (
-          <div className={cn('p-6', isMobile && 'p-4')}>
+          <div className={cn('p-6', isBelowSm && 'p-4')}>
             <InputsFormContent />
           </div>
         )}
         {!collapsed && !currentConversationId && (
-          <div className={cn('p-6', isMobile && 'p-4')}>
+          <div className={cn('p-6', isBelowSm && 'p-4')}>
             <Button
               variant="primary"
               className="w-full"
@@ -101,8 +101,8 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
       </div>
       {collapsed && (
         <div className="flex w-full max-w-180 items-center py-4">
-          <Divider bgStyle="gradient" className="h-px basis-1/2 rotate-180" />
-          <Divider bgStyle="gradient" className="h-px basis-1/2" />
+          <Separator decorative variant="gradient" className="my-2 basis-1/2 rotate-180" />
+          <Separator decorative variant="gradient" className="my-2 basis-1/2" />
         </div>
       )}
     </div>

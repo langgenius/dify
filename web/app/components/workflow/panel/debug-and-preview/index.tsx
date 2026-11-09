@@ -22,7 +22,7 @@ export type ChatWrapperRefType = {
   handleRestart: () => void
 }
 const DebugAndPreview = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const panelId = useId()
   const chatRef = useRef({ handleRestart: noop })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()

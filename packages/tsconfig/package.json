@@ -2,6 +2,7 @@
   "name": "@dify/tsconfig",
   "version": "0.0.0-private",
   "private": true,
+  "type": "module",
   "exports": {
     "./base.json": "./base.json",
     "./nextjs.json": "./nextjs.json",

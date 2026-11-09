@@ -1,7 +1,7 @@
 > [!IMPORTANT]
 >
 > 1. Make sure you have read our [contribution guidelines](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)
-> 1. Ensure there is an associated issue and you have been assigned to it
+> 1. Ensure there is an associated issue
 > 1. Use the correct syntax to link this PR: `Fixes #<issue number>`.
 
 ## Summary
@@ -19,6 +19,6 @@
 
 - [ ] This change requires a documentation update, included: [Dify Document](https://github.com/langgenius/dify-docs)
 - [ ] I understand that this PR may be closed in case there was no previous discussion or issues. (This doesn't apply to typos!)
-- [ ] I've added a test for each change that was introduced, and I tried as much as possible to make a single atomic change.
+- [ ] I've verified the change and added or updated tests where meaningful regression risk justifies coverage.
 - [ ] I've updated the documentation accordingly.
 - [ ] I ran `make lint && make type-check` (backend) and `vp staged` (frontend) to appease the lint gods

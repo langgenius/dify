@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { getDriveFileIconType, getFileIconType } from '../file-icon'
+import { getDriveFileIconType, getFileIconType } from '@/features/agent-v2/file-icon'
 
 describe('agent file icon helpers', () => {
   it('should infer supported icons for uploaded drive file pointer kinds', () => {
@@ -38,5 +38,18 @@ describe('agent file icon helpers', () => {
     expect(getFileIconType('data.csv')).toBe('table')
     expect(getFileIconType('archive.zip')).toBe('archive')
     expect(getFileIconType('script.ts')).toBe('code')
+  })
+
+  it.each([
+    ['references/notes.txt', undefined],
+    ['references/NOTES.TXT', undefined],
+    ['references/notes.txt', 'text/plain'],
+    ['references/notes.txt', 'application/octet-stream'],
+  ])('should identify %s as text regardless of MIME metadata (%s)', (fileName, mimeType) => {
+    expect(getFileIconType(fileName, mimeType)).toBe('text')
+  })
+
+  it('should keep unrecognized binary files as generic files', () => {
+    expect(getFileIconType('data.bin', 'application/octet-stream')).toBe('file')
   })
 })

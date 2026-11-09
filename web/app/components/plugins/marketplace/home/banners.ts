@@ -75,6 +75,7 @@ const blogContentSchema = z.object({
   blog_title: z.string().min(1),
   subtitle: lenientOptionalString,
   description: lenientOptionalString,
+  cover_image: lenientNonEmptyString,
   link: z.string().min(1),
   link_target_type: z.enum(['blog', 'github']),
 })

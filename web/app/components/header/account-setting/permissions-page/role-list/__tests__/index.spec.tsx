@@ -1,11 +1,8 @@
 import type { Role } from '@/models/access-control'
 import { screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import RoleList from '../index'
-
-const mockWorkspacePermissionKeys = vi.hoisted(() => ({
-  value: ['workspace.role.manage'] as string[],
-}))
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -13,28 +10,6 @@ vi.mock('@/context/workspace-state', async () => {
     currentWorkspace: { id: 'workspace-1' },
   }))
 })
-
-vi.mock('@/service/access-control/use-workspace-roles', () => ({
-  useCopyWorkspaceRole: () => ({
-    mutateAsync: vi.fn(),
-  }),
-  useDeleteWorkspaceRole: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-  }),
-  useGetMembersOfRole: () => ({
-    data: {
-      data: [],
-      pagination: {
-        total_count: 0,
-        per_page: 1,
-        current_page: 1,
-        total_pages: 1,
-      },
-    },
-    isPending: false,
-  }),
-}))
 
 const createRole = (overrides: Partial<Role> = {}): Role => ({
   id: 'role-1',
@@ -60,20 +35,22 @@ vi.mock('@/context/permission-state', async () => {
 describe('RoleList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys.value = ['workspace.role.manage']
   })
 
   describe('Rendering', () => {
     it('shows a loading status while the first page is loading', () => {
       render(<RoleList groups={[]} isLoading />)
 
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
       expect(screen.queryByText(/permission\.role\.groups/)).not.toBeInTheDocument()
     })
 
-    it('renders role groups with compact section labels', () => {
+    it('routes a built-in role view action to the selected role across grouped rows', async () => {
+      const user = userEvent.setup()
+      const onView = vi.fn()
       render(
         <RoleList
+          onView={onView}
           groups={[
             {
               id: 'builtin',
@@ -99,13 +76,11 @@ describe('RoleList', () => {
         />,
       )
 
-      const systemLabel = screen.getByText(/permission\.role\.groups\.builtin/)
-      const customLabel = screen.getByText(/permission\.role\.groups\.custom/)
-
-      expect(systemLabel).toHaveClass('min-h-6', 'system-sm-medium', 'text-text-secondary')
-      expect(customLabel).toHaveClass('min-h-6', 'system-sm-medium', 'text-text-secondary')
       expect(screen.getByText('Owner')).toBeInTheDocument()
       expect(screen.getByText('Executive')).toBeInTheDocument()
+      await user.click(screen.getAllByRole('button', { name: 'common.operation.moreActions' })[0]!)
+      await user.click(await screen.findByRole('menuitem', { name: 'common.operation.view' }))
+      expect(onView).toHaveBeenCalledWith(createRole())
     })
 
     it('shows a bottom loading status while fetching the next page', () => {
@@ -124,41 +99,7 @@ describe('RoleList', () => {
       )
 
       expect(screen.getByText('Owner')).toBeInTheDocument()
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
-    })
-  })
-
-  describe('Row Styles', () => {
-    it('renders rows as divided hoverable list items', () => {
-      render(
-        <RoleList
-          groups={[
-            {
-              id: 'builtin',
-              category: 'global_system_default',
-              title: 'System Roles',
-              items: [createRole()],
-            },
-          ]}
-        />,
-      )
-
-      const name = screen.getByText('Owner')
-      const row = name.closest('.border-b')
-
-      expect(row).toHaveClass(
-        'border-b',
-        'border-divider-regular',
-        'px-3',
-        'py-3.5',
-        'hover:bg-background-default-hover',
-      )
-      expect(name).toHaveClass('truncate', 'system-sm-semibold', 'text-text-primary')
-      expect(screen.getByText('Full access to all workspace features and settings')).toHaveClass(
-        'truncate',
-        'system-xs-regular',
-        'text-text-secondary',
-      )
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     })
   })
 })

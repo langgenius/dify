@@ -100,6 +100,9 @@ services:
           "CMD-SHELL",
           "redis-cli -a ${REDIS_PASSWORD:-difyai123456} ping | grep -q PONG",
         ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
 
   # The DifySandbox
   sandbox:
@@ -131,7 +134,7 @@ services:
   # Exposes port 5004 on the host so a locally-run agent backend can reach it
   # at http://localhost:5004 (DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT).
   local_sandbox:
-    image: langgenius/dify-agent-local-sandbox:1.17.0
+    image: langgenius/dify-agent-local-sandbox:1.19.0
     restart: always
     env_file:
       - ./middleware.env
@@ -153,7 +156,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.10-local
+    image: langgenius/dify-plugin-daemon:0.6.14-local
     restart: always
     env_file:
       - ./middleware.env
@@ -250,7 +253,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: semitechnologies/weaviate:1.27.0
+    image: cr.weaviate.io/semitechnologies/weaviate:1.39.13
     profiles:
       - ""
       - weaviate

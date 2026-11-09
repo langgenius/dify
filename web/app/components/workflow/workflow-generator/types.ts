@@ -1,7 +1,4 @@
-import type {
-  WorkflowGeneratePayload,
-  WorkflowGenerateResponse,
-} from '@dify/contracts/api/console/workflow-generate/types.gen'
+import type { WorkflowGeneratePayload } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import type { Viewport } from 'reactflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
 
@@ -20,4 +17,3 @@ export type GeneratedGraph = {
   edges: Edge[]
   viewport: Viewport
 }
-export type GenerateWorkflowResponse = WorkflowGenerateResponse

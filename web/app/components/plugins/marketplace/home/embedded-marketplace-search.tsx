@@ -10,6 +10,8 @@ import { useRouter } from '@/next/navigation'
 import { useSearchPluginText } from '../atoms'
 import MarketplaceDetailDialog from '../detail-dialog'
 import TemplateDetailDialog from '../templates/template-detail-dialog'
+import { useOptionalTemplateDetailRoute } from '../templates/use-optional-template-detail-route'
+import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
 import { getFormattedPlugin } from '../utils'
 import { MarketplaceSearchAutocomplete } from './marketplace-search-autocomplete'
 
@@ -24,9 +26,10 @@ const normalizePlugin = (plugin: Plugin): Plugin => ({
 })
 
 export default function EmbeddedMarketplaceSearch() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
   const router = useRouter()
+  const navigation = useMarketplaceDetailNavigation()
   const [query, setQuery] = useSearchPluginText()
   const [value, setValue] = useState(query ?? '')
   const [valueQuery, setValueQuery] = useState(query)
@@ -34,6 +37,7 @@ export default function EmbeddedMarketplaceSearch() {
     setValueQuery(query)
     setValue(query ?? '')
   }
+  const templateDetailRoute = useOptionalTemplateDetailRoute()
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<MarketplaceTemplate | null>(null)
   const { installedInfo } = useCheckInstalled({
@@ -41,16 +45,25 @@ export default function EmbeddedMarketplaceSearch() {
     enabled: Boolean(selectedPlugin),
   })
 
-  const handleSuggestionSelect = useCallback((selection: MarketplaceSearchSelection) => {
-    if (selection.kind === 'plugin') {
-      setSelectedTemplate(null)
-      setSelectedPlugin(normalizePlugin(getFormattedPlugin(selection.plugin)))
-      return
-    }
+  const handleSuggestionSelect = useCallback(
+    (selection: MarketplaceSearchSelection) => {
+      if (selection.kind === 'plugin') {
+        if (navigation.openPlugin(selection.plugin)) return { preserveQuery: true }
+        setSelectedTemplate(null)
+        setSelectedPlugin(normalizePlugin(getFormattedPlugin(selection.plugin)))
+        return
+      }
 
-    setSelectedPlugin(null)
-    setSelectedTemplate(selection.template)
-  }, [])
+      if (navigation.openTemplate(selection.template)) return { preserveQuery: true }
+      setSelectedPlugin(null)
+      if (templateDetailRoute) {
+        templateDetailRoute.open(selection.template)
+        return
+      }
+      setSelectedTemplate(selection.template)
+    },
+    [navigation, templateDetailRoute],
+  )
 
   return (
     <>

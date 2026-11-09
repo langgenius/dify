@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook, waitFor } from '@testing-library/react'
 import {
   CONTEXT_PLACEHOLDER_TEXT,
@@ -8,7 +7,7 @@ import {
 } from '@/app/components/base/prompt-editor/constants'
 import { PromptMode, PromptRole } from '@/models/debug'
 import { fetchPromptTemplate } from '@/service/debug'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import useAdvancedPromptConfig from '../use-advanced-prompt-config'
 
 vi.mock('@/service/debug', () => ({
@@ -26,7 +25,7 @@ describe('useAdvancedPromptConfig', () => {
     const handleUserChangedPrompt = vi.fn()
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
-        appMode: AppModeEnum.CHAT,
+        appMode: 'chat' as const,
         modelModeType: ModelModeType.chat,
         modelName: 'gpt-4o',
         promptMode: PromptMode.advanced,
@@ -56,7 +55,7 @@ describe('useAdvancedPromptConfig', () => {
   it('should derive simple prompt block status from the pre-prompt', () => {
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
-        appMode: AppModeEnum.COMPLETION,
+        appMode: 'completion' as const,
         modelModeType: ModelModeType.completion,
         modelName: 'gpt-4o',
         promptMode: PromptMode.simple,
@@ -80,7 +79,7 @@ describe('useAdvancedPromptConfig', () => {
     const handleUserChangedPrompt = vi.fn()
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
-        appMode: AppModeEnum.CHAT,
+        appMode: 'chat' as const,
         modelModeType: ModelModeType.chat,
         modelName: 'gpt-4o',
         promptMode: PromptMode.simple,
@@ -115,11 +114,11 @@ describe('useAdvancedPromptConfig', () => {
         },
       },
       stop: ['END'],
-    } as any)
+    })
 
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
-        appMode: AppModeEnum.COMPLETION,
+        appMode: 'completion' as const,
         modelModeType: ModelModeType.completion,
         modelName: 'gpt-4o',
         promptMode: PromptMode.simple,
@@ -138,7 +137,7 @@ describe('useAdvancedPromptConfig', () => {
 
     await waitFor(() => {
       expect(mockFetchPromptTemplate).toHaveBeenCalledWith({
-        appMode: AppModeEnum.COMPLETION,
+        appMode: 'completion' as const,
         mode: ModelModeType.completion,
         modelName: 'gpt-4o',
         hasSetDataSet: true,
@@ -165,11 +164,11 @@ describe('useAdvancedPromptConfig', () => {
         },
       },
       stop: [],
-    } as any)
+    })
 
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
-        appMode: AppModeEnum.CHAT,
+        appMode: 'chat' as const,
         modelModeType: ModelModeType.chat,
         modelName: 'gpt-4o',
         promptMode: PromptMode.simple,
@@ -208,11 +207,11 @@ describe('useAdvancedPromptConfig', () => {
         },
       },
       stop: ['DONE'],
-    } as any)
+    })
 
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
-        appMode: AppModeEnum.CHAT,
+        appMode: 'chat' as const,
         modelModeType: ModelModeType.completion,
         modelName: 'gpt-4o',
         promptMode: PromptMode.advanced,
@@ -265,11 +264,11 @@ describe('useAdvancedPromptConfig', () => {
         },
       },
       stop: [],
-    } as any)
+    })
 
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
-        appMode: AppModeEnum.COMPLETION,
+        appMode: 'completion' as const,
         modelModeType: ModelModeType.completion,
         modelName: 'gpt-4o',
         promptMode: PromptMode.advanced,

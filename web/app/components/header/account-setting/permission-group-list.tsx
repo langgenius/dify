@@ -28,7 +28,7 @@ const PermissionGroupList = ({
   className,
   readonly = false,
 }: PermissionGroupListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission'])
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string> | null>(null)
 
   const selectedSet = useMemo(() => new Set(value), [value])
@@ -104,7 +104,7 @@ const PermissionGroupList = ({
                       <div className="group/permission-category flex h-12 w-full items-center gap-3 px-3 hover:bg-state-base-hover">
                         <button
                           type="button"
-                          className="min-w-0 flex-1 truncate text-left system-md-medium text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active"
+                          className="min-w-0 flex-1 truncate text-start system-md-medium text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active"
                           aria-expanded={expanded}
                           onClick={() => toggleGroupExpanded(group.group_key)}
                         >
@@ -140,7 +140,7 @@ const PermissionGroupList = ({
                             aria-hidden
                             className={cn(
                               'i-ri-arrow-right-s-fill h-4 w-4 text-text-tertiary transition-transform',
-                              expanded && 'rotate-90',
+                              expanded ? 'rotate-90' : 'rtl:rotate-180',
                             )}
                           />
                         </button>
@@ -151,7 +151,7 @@ const PermissionGroupList = ({
                             const checked = selectedSet.has(permission.key)
 
                             return (
-                              <div
+                              <label
                                 key={permission.key}
                                 className={cn(
                                   'flex min-h-9 items-center gap-3 px-3 py-1.5',
@@ -161,7 +161,6 @@ const PermissionGroupList = ({
                                   checked && 'bg-state-accent-hover',
                                   checked && !readonly && 'hover:bg-state-accent-hover',
                                 )}
-                                onClick={() => togglePermission(permission.key)}
                               >
                                 <Checkbox
                                   checked={checked}
@@ -174,7 +173,7 @@ const PermissionGroupList = ({
                                 <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
                                   {permission.name}
                                 </span>
-                              </div>
+                              </label>
                             )
                           })}
                         </div>

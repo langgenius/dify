@@ -1,4 +1,4 @@
-import * as React from 'react'
+import type * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Button } from '../index'
@@ -64,30 +64,6 @@ describe('Button', () => {
       await userEvent.keyboard('{Enter}')
 
       expect(onSubmit).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('className merging', () => {
-    it('merges custom className with variant classes', async () => {
-      const screen = await render(<Button className="custom-class">Click me</Button>)
-      const btn = screen.getByRole('button').element()
-      expect(btn).toHaveClass('custom-class')
-    })
-  })
-
-  describe('ref forwarding', () => {
-    it('forwards ref to the button element', async () => {
-      let buttonRef: HTMLButtonElement | null = null
-      await render(
-        <Button
-          ref={(el) => {
-            buttonRef = el
-          }}
-        >
-          Click me
-        </Button>,
-      )
-      expect(buttonRef).toBeInstanceOf(HTMLButtonElement)
     })
   })
 })

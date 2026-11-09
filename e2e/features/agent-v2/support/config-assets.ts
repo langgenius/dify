@@ -1,10 +1,10 @@
 import type {
   AgentConfigFileRefConfig,
-  AgentConfigFileUploadResponse,
+  AgentConfigFilesUploadResponse,
   AgentConfigSkillRefConfig,
   AgentConfigSkillUploadResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { ConsoleClient } from '../../../support/api/console-client'
+import type { ConsoleClient } from '../../../support/api/console-client.ts'
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -107,12 +107,14 @@ export async function uploadAgentConfigFileToDraft(
   const uploadedFile = await client.files.upload.post({
     body: { file: createUploadFile(await readFile(filePath), fileName, 'text/plain') },
   })
-  const body: AgentConfigFileUploadResponse = await client.agent.byAgentId.config.files.post({
-    body: { upload_file_id: uploadedFile.id },
-    params: { agent_id: agentId },
-  })
-  const file = body.file
-  if (!file.file_id) throw new Error(`Agent v2 config file ${fileName} did not return a file_id.`)
+  const body: AgentConfigFilesUploadResponse = await client.agent.byAgentId.config.files.batch.post(
+    {
+      body: { upload_file_ids: [uploadedFile.id] },
+      params: { agent_id: agentId },
+    },
+  )
+  const file = body.files[0]
+  if (!file?.file_id) throw new Error(`Agent v2 config file ${fileName} did not return a file_id.`)
 
   return {
     file_id: file.file_id,

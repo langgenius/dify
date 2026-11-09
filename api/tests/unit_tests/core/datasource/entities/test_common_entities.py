@@ -1,7 +1,7 @@
 from core.datasource.entities.common_entities import I18nObject
 
 
-def test_i18n_object_fallback():
+def test_i18n_object_fallback() -> None:
     # Only en_US provided
     obj = I18nObject(en_US="Hello")
     assert obj.en_US == "Hello"
@@ -17,7 +17,7 @@ def test_i18n_object_fallback():
     assert obj.ja_JP == "Hello"
 
 
-def test_i18n_object_all_fields():
+def test_i18n_object_all_fields() -> None:
     obj = I18nObject(en_US="Hello", zh_Hans="你好", pt_BR="Olá", ja_JP="こんにちは")
     assert obj.en_US == "Hello"
     assert obj.zh_Hans == "你好"
@@ -25,7 +25,7 @@ def test_i18n_object_all_fields():
     assert obj.ja_JP == "こんにちは"
 
 
-def test_i18n_object_to_dict():
+def test_i18n_object_to_dict() -> None:
     obj = I18nObject(en_US="Hello", zh_Hans="你好", pt_BR="Olá", ja_JP="こんにちは")
     expected_dict = {"en_US": "Hello", "zh_Hans": "你好", "pt_BR": "Olá", "ja_JP": "こんにちは"}
     assert obj.to_dict() == expected_dict

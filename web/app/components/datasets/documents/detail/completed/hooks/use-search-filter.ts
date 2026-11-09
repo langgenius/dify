@@ -26,7 +26,7 @@ type UseSearchFilterOptions = {
 }
 
 export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilterReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
   const { onPageChange } = options
 
   const [inputValue, setInputValue] = useState<string>('')

@@ -44,7 +44,7 @@
 
 [data-dify-scroll-area-scrollbar][data-orientation='horizontal']::before {
   top: 50%;
-  left: 4px;
+  inset-inline-start: 4px;
   width: 12px;
   height: 4px;
   transform: translateY(-50%);
@@ -53,11 +53,19 @@
 
 [data-dify-scroll-area-scrollbar][data-orientation='horizontal']::after {
   top: 50%;
-  right: 4px;
+  inset-inline-end: 4px;
   width: 12px;
   height: 4px;
   transform: translateY(-50%);
   background: linear-gradient(to left, var(--color-components-panel-bg), transparent);
+}
+
+[data-dify-scroll-area-scrollbar][data-orientation='horizontal']:dir(rtl)::before {
+  background: linear-gradient(to left, var(--color-components-panel-bg), transparent);
+}
+
+[data-dify-scroll-area-scrollbar][data-orientation='horizontal']:dir(rtl)::after {
+  background: linear-gradient(to right, var(--color-components-panel-bg), transparent);
 }
 
 [data-dify-scroll-area-scrollbar][data-orientation='vertical']:not(
@@ -84,5 +92,43 @@
   [data-dify-scroll-area-scrollbar]::before,
   [data-dify-scroll-area-scrollbar]::after {
     transition: none;
+  }
+}
+
+[data-dify-spinner] > rect {
+  animation: dify-spinner-opacity 2s linear infinite;
+}
+
+[data-dify-spinner] > rect:nth-child(2) {
+  animation-delay: 0.5s;
+}
+[data-dify-spinner] > rect:nth-child(3) {
+  animation-delay: 1s;
+}
+[data-dify-spinner] > rect:nth-child(4) {
+  animation-delay: 1.5s;
+}
+
+@keyframes dify-spinner-opacity {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+  75% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-dify-spinner] > rect {
+    animation: none;
   }
 }

@@ -5,22 +5,25 @@ from typing import Concatenate
 
 from flask import request
 from flask_restx import Resource
-from sqlalchemy import select
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
-from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
-from core.db.session_factory import session_factory
+from controllers.web.error import (
+    WebAppAccessServiceUnavailableError,
+    WebAppAuthAccessDeniedError,
+    WebAppAuthRequiredError,
+    WebAppNotFoundError,
+)
 from core.logging.context import set_identity_context
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
-from models.model import App, EndUser, Site
-from services.app_service import AppService
+from models.model import App, EndUser
+from repositories.web_passport_repository import get_web_passport_identity
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
 from services.system_feature_service import SystemFeatureService
 from services.web_passport_gateways import resolve_web_app_auth_type
-from services.webapp_auth_service import WebAppAuthService
+from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 
 
 def validate_jwt_token[**P, R](
@@ -44,6 +47,16 @@ def validate_jwt_token[**P, R](
     return decorator
 
 
+def resolve_web_app_id(app_code: str) -> str:
+    """Translate app lookup failures at the WebApp authentication boundary."""
+    try:
+        return application_services().webapp_access.get_app_id_by_code(app_code)
+    except WebAppAccessAppNotFoundError as exc:
+        raise WebAppNotFoundError() from exc
+    except WebAppAccessUnavailableError as exc:
+        raise WebAppAccessServiceUnavailableError() from exc
+
+
 def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) -> tuple[App, EndUser]:
     webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled()
     if not app_code:
@@ -54,30 +67,24 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
             raise Unauthorized("App token is missing.")
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
+        if not isinstance(app_code, str) or not app_code:
+            raise WebAppNotFoundError()
         app_id = decoded.get("app_id")
-        with session_factory.create_session() as session:
-            app_model = session.scalar(select(App).where(App.id == app_id))
-            site = session.scalar(select(Site).where(Site.code == app_code))
-            if not app_model:
-                raise NotFound()
-            if not app_code or not site:
-                raise BadRequest("Site URL is no longer valid.")
-            if app_model.enable_site is False:
-                raise BadRequest("Site is disabled.")
-            end_user_id = decoded.get("end_user_id")
-            end_user = session.scalar(select(EndUser).where(EndUser.id == end_user_id))
-            if not end_user:
-                raise NotFound()
+        app_model, end_user = get_web_passport_identity(app_id, app_code, decoded.get("end_user_id"))
+        if app_model is None:
+            raise WebAppNotFoundError()
+        if end_user is None:
+            raise NotFound()
 
-            # Validate user_id against end_user's session_id if provided
-            if user_id is not None and end_user.session_id != user_id:
-                raise Unauthorized("Authentication has expired.")
+        # Validate user_id against end_user's session_id if provided.
+        if user_id is not None and end_user.session_id != user_id:
+            raise Unauthorized("Authentication has expired.")
 
         # for enterprise webapp auth
         app_web_auth_enabled = False
         webapp_settings = None
         if webapp_auth_enabled:
-            app_id = AppService.get_app_id_by_code(app_code, session=db.session())
+            app_id = resolve_web_app_id(app_code)
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
             if not webapp_settings:
                 raise NotFound("Web app settings not found.")
@@ -90,16 +97,16 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
     except Unauthorized as e:
         if webapp_auth_enabled:
             if not app_code:
-                raise Unauthorized("Please re-login to access the web app.")
-            app_id = AppService.get_app_id_by_code(app_code, session=db.session())
+                raise Unauthorized("Please re-login to access the web app.") from e
+            app_id = resolve_web_app_id(app_code)
             app_web_auth_enabled = (
                 EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode
                 != WebAppAccessMode.PUBLIC
             )
             if app_web_auth_enabled:
-                raise WebAppAuthRequiredError()
+                raise WebAppAuthRequiredError() from e
 
-        raise Unauthorized(e.description)
+        raise Unauthorized(e.description) from e
 
 
 def _validate_webapp_token(decoded, app_web_auth_enabled: bool, system_webapp_auth_enabled: bool):
@@ -142,10 +149,8 @@ def _validate_user_accessibility(
         if auth_type != expected_auth_type:
             raise WebAppAuthRequiredError()
 
-        if WebAppAuthService.is_app_require_permission_check(
-            access_mode=webapp_settings.access_mode, session=db.session()
-        ):
-            app_id = AppService.get_app_id_by_code(app_code, session=db.session())
+        if application_services().webapp_access.is_permission_check_required(webapp_settings.access_mode):
+            app_id = resolve_web_app_id(app_code)
             if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id):
                 raise WebAppAuthAccessDeniedError()
 

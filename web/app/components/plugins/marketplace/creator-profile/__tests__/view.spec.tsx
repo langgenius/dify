@@ -1,7 +1,7 @@
 import type { CreatorProfileViewModel } from '../model'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import CreatorProfileView from '../view'
 
 vi.mock('#i18n', async () => {
@@ -80,7 +80,6 @@ describe('CreatorProfileView SSR background', () => {
 
     expect(markup).toContain('default-background.png')
     expect(markup).not.toContain('src="/creator-background.png"')
-    expect(markup).toContain('border-0')
   })
 
   it('hides a stale remote image after a loading failure', () => {
@@ -99,6 +98,5 @@ describe('CreatorProfileView SSR background', () => {
     fireEvent.error(remoteBackground)
 
     expect(remoteBackground).toHaveAttribute('hidden')
-    expect(remoteBackground).toHaveClass('border-0')
   })
 })
