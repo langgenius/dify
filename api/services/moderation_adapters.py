@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -21,10 +22,16 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from machinery.context import AppRequestContext
 from services.api_based_extension_application_service import APIBasedExtensionSecretCipher, APIBasedExtensionStore
-from services.moderation_service import ModerationPhase, ModerationRule, ModerationVerdict
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
+from services.moderation_service import ModerationPhase, ModerationRejectedError, ModerationRule, ModerationVerdict
 
 if TYPE_CHECKING:
     from core.model_manager import LLMModerationPolicy
+
+logger = logging.getLogger(__name__)
 
 
 class HostedModerationPluginClient(Protocol):
@@ -280,13 +287,28 @@ class LLMModerationGuard:
         """Approve every non-streaming input segment before model and quota effects."""
         if self._check_input:
             for segment in self._segments(prompt_text(prompt_messages), self._non_stream_segment_size):
-                self._check(segment, "input")
+                self._check_segment(segment, "input")
 
     def check_result(self, result: LLMResult) -> None:
         """Approve every non-streaming output segment, including structured content, without mutation."""
         if self._check_output:
             for segment in self._segments(result_text(result), self._non_stream_segment_size):
-                self._check(segment, "output")
+                self._check_segment(segment, "output")
+
+    def _check_segment(self, text: str, phase: ModerationPhase) -> None:
+        """Approve one segment or raise a typed app error without exposing backend failure details.
+
+        The bound checker owns the verdict. Rejections retain their phase and
+        configured message; other checker failures are logged and chained to a
+        safe unavailable error. Neither failure permits delivery or model retry.
+        """
+        try:
+            self._check(text, phase)
+        except ModerationRejectedError as error:
+            raise ModerationRejectedInvocationError(error.phase, str(error)) from error
+        except Exception as error:
+            logger.exception("Moderation %s check failed", phase)
+            raise ModerationUnavailableInvocationError() from error
 
     def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
         """Return the original approved result or a guarded stream, propagating all failures.
@@ -340,7 +362,7 @@ class LLMModerationGuard:
                 fragment_length += len(fragment)
                 if fragment_length >= segment_size:
                     text = "".join(fragment_parts)
-                    self._check(text, "output")
+                    self._check_segment(text, "output")
                     yield from chunks
                     chunks = []
                     fragment_parts = []
@@ -349,7 +371,7 @@ class LLMModerationGuard:
             if chunks:
                 text = "".join(fragment_parts)
                 if text:
-                    self._check(text, "output")
+                    self._check_segment(text, "output")
                 yield from chunks
         finally:
             response.close()
@@ -382,7 +404,7 @@ class LLMModerationGuard:
                     *structured_parts,
                 ]
             )
-            self._check(text, "output")
+            self._check_segment(text, "output")
             yield from chunks
         finally:
             response.close()

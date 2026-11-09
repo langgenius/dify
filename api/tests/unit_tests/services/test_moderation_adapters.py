@@ -8,6 +8,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 from werkzeug.serving import make_server
 
+from core.app.apps.exc import AppGenerateError
 from core.app.llm.quota import ModelQuotaReservationState
 from enums import DeploymentEdition
 from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
@@ -31,7 +32,15 @@ from models.api_based_extension import APIBasedExtension
 from models.base import TypeBase
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from services.api_based_extension_application_service import APIBasedExtensionInput
-from services.moderation_adapters import ExtensionModerationGateway, HostedOpenAIModerationGateway, LLMModerationGuard
+from services.moderation_adapters import (
+    ExtensionModerationGateway,
+    HostedOpenAIModerationGateway,
+    LLMModerationGuard,
+)
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
 from services.moderation_service import (
     ModerationPhase,
     ModerationRejectedError,
@@ -132,6 +141,67 @@ def test_provider_stream_failure_is_not_converted_to_approval(keyword_guard: LLM
     assert isinstance(response, Generator)
     with pytest.raises(RuntimeError, match="provider unavailable"):
         next(response)
+
+
+@pytest.mark.parametrize("mode", ["input", "non_stream", "segmented_stream", "buffered_stream"])
+@pytest.mark.parametrize("failure", ["rejected", "authorization", "transport", "malformed_verdict"])
+def test_guard_maps_checker_failures_without_delivering_content(mode: str, failure: str) -> None:
+    phase: ModerationPhase = "input" if mode == "input" else "output"
+    errors: dict[str, Exception] = {
+        "rejected": ModerationRejectedError(phase, "Content violates the safety policy."),
+        "authorization": InvokeAuthorizationError("Invalid platform key: secret-key"),
+        "transport": RuntimeError("Private plugin address: internal-host"),
+        "malformed_verdict": ValueError("Invalid verdict: private-payload"),
+    }
+    original_error = errors[failure]
+    events: list[str] = []
+
+    def check(text: str, checked_phase: ModerationPhase) -> None:
+        assert text == "content"
+        assert checked_phase == phase
+        raise original_error
+
+    def response() -> Generator[LLMResultChunk]:
+        try:
+            yield _chunk("content")
+        finally:
+            events.append("closed")
+
+    guard = LLMModerationGuard(
+        tenant_id="tenant-1",
+        check=check,
+        check_input=True,
+        check_output=True,
+        stream_segment_size=4 if mode == "segmented_stream" else None,
+    )
+
+    def invoke_guard() -> None:
+        if mode == "input":
+            guard.check_inputs([UserPromptMessage(content="content")])
+        elif mode == "non_stream":
+            guard.check_output(_result("content"))
+        else:
+            stream = guard.check_output(response())
+            assert isinstance(stream, Generator)
+            next(stream)
+
+    with pytest.raises(AppGenerateError) as caught:
+        invoke_guard()
+
+    assert caught.value.__cause__ is original_error
+    if failure == "rejected":
+        assert isinstance(caught.value, ModerationRejectedInvocationError)
+        assert isinstance(caught.value, ModerationRejectedError)
+        assert caught.value.phase == phase
+        assert str(caught.value) == "Content violates the safety policy."
+        assert caught.value.error_code == "moderation_rejected"
+        assert caught.value.status_code == 400
+    else:
+        assert isinstance(caught.value, ModerationUnavailableInvocationError)
+        assert str(caught.value) == "Content moderation is temporarily unavailable. Please try again later."
+        assert caught.value.error_code == "moderation_unavailable"
+        assert caught.value.status_code == 503
+    assert events == (["closed"] if mode in {"segmented_stream", "buffered_stream"} else [])
 
 
 def test_tool_argument_fragments_are_reassembled_before_moderation(keyword_guard: LLMModerationGuard) -> None:

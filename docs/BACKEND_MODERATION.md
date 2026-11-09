@@ -45,6 +45,26 @@ output-aware policy above. Unknown legacy environment variables are ignored.
 An explicitly supplied policy supplements mandatory Cloud moderation rather
 than disabling it. Both policies must approve content.
 
+## App errors
+
+Model-bound guards adapt moderation failures to the existing `AppGenerateError`
+contract, so task error handling preserves them and response converters emit
+the usual SSE `error` event. Console clients use their existing error toast:
+
+| Condition | Code | Event status | Message |
+| --- | --- | --- | --- |
+| Content rejected | `moderation_rejected` | 400 | The configured rejection message, or the phase-specific fallback |
+| Check unavailable or failed | `moderation_unavailable` | 503 | Content moderation is temporarily unavailable. Please try again later. |
+
+These statuses describe the SSE error payload, not the HTTP status of an already
+opened stream. Non-streaming requests on Console, Service API, and Web API return
+the same codes and messages with the corresponding HTTP status. Check failures
+retain their original cause in backend logs but
+never expose platform credentials or plugin diagnostics to clients. Provider
+generation failures retain their existing classification. Approved segments
+remain visible; neither error delivers the rejected or unchecked segment or
+replaces the answer with an app-level preset response.
+
 ## Model invocation
 
 Obtain the service from the composition root and bind the policy during model
