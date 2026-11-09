@@ -23,7 +23,13 @@ const Link = ({ node, children, ...props }: any) => {
   const { onSend } = useChatContext()
   const commonClassName = 'cursor-pointer underline decoration-primary-700! decoration-dashed'
   if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
-    const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
+    const rawHiddenText = node.properties.href.toString().split('abbr:')[1]
+    let hidden_text = rawHiddenText ?? ''
+    try {
+      hidden_text = decodeURIComponent(rawHiddenText ?? '')
+    } catch {
+      // Keep the raw hidden text when the chat action payload is not valid percent-encoding.
+    }
 
     return (
       <button
