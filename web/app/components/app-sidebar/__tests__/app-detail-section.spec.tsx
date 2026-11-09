@@ -14,6 +14,7 @@ let mockAppPermissionKeys: string[] = []
 let mockIsRbacEnabled = true
 let mockHasPublishedWorkflow = true
 let mockDeploymentEdition: DeploymentEdition = 'ENTERPRISE'
+let mockCloudPlan: 'sandbox' | 'professional' = 'professional'
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(
@@ -37,6 +38,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
       rbac_enabled: mockIsRbacEnabled,
       enable_app_deploy: false,
     },
+    features: { billing: { subscription: { plan: mockCloudPlan } } },
   })
 }
 
@@ -58,6 +60,7 @@ describe('AppDetailSection', () => {
     mockIsRbacEnabled = true
     mockHasPublishedWorkflow = true
     mockDeploymentEdition = 'ENTERPRISE'
+    mockCloudPlan = 'professional'
   })
 
   // Rendering behavior for app detail navigation entries.
@@ -179,6 +182,22 @@ describe('AppDetailSection', () => {
       // The item stays focusable so it can say why it is disabled.
       await user.hover(evaluation)
       expect(await screen.findByText('evaluation.unavailableUntilPublished')).toBeInTheDocument()
+    })
+
+    it('shows disabled evaluation with an upgrade reason on a Cloud plan without evaluation', async () => {
+      const user = userEvent.setup()
+      mockAppMode = 'workflow'
+      mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+      mockDeploymentEdition = 'CLOUD'
+      mockCloudPlan = 'sandbox'
+
+      render(<AppDetailSection />)
+
+      // The page would redirect, so the entry says why instead of looking available.
+      const evaluation = await screen.findByRole('button', { name: 'evaluation.title' })
+      expect(evaluation).toHaveAttribute('aria-disabled', 'true')
+      await user.hover(evaluation)
+      expect(await screen.findByText('common.compliance.sandboxUpgradeTooltip')).toBeInTheDocument()
     })
 
     it('hides evaluation for other app modes', () => {

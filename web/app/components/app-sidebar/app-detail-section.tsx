@@ -8,6 +8,7 @@ import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
+import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -64,6 +65,7 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     ],
   })
   const systemFeatures = featuresQuery.data
+  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
   const currentUserId = profileQuery.data?.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures?.rbac_enabled
@@ -103,8 +105,10 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
               href: `/app/${appId}/evaluation`,
               icon: 'i-ri-flask-line',
               selectedIcon: 'i-ri-flask-fill',
-              disabled: !appDetail.workflow,
-              disabledReason: t(($) => $.unavailableUntilPublished, { ns: 'evaluation' }),
+              disabled: evaluationRequiresUpgrade || !appDetail.workflow,
+              disabledReason: evaluationRequiresUpgrade
+                ? t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' })
+                : t(($) => $.unavailableUntilPublished, { ns: 'evaluation' }),
             },
           ]
         : []),
@@ -169,7 +173,15 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
           ]
         : []),
     ]
-  }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled, systemFeatures])
+  }, [
+    appDetail,
+    t,
+    currentUserId,
+    workspacePermissionKeys,
+    isRbacEnabled,
+    systemFeatures,
+    evaluationRequiresUpgrade,
+  ])
 
   const failedQuery = [detailQuery, featuresQuery, profileQuery].find(
     (query) => query.isError && !query.data,

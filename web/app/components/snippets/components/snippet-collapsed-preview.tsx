@@ -12,14 +12,17 @@ export function SnippetCollapsedPreview({
   section,
   isPublished,
   evaluationEnabled,
+  evaluationRequiresUpgrade = false,
 }: {
   inputFieldCount: number
   snippetId?: string
   section: SnippetSection
   isPublished?: boolean
   evaluationEnabled: boolean
+  /** The plan excludes evaluation; the entry stays visible but says why it is disabled. */
+  evaluationRequiresUpgrade?: boolean
 }) {
-  const { t } = useTranslation(['snippet', 'evaluation'])
+  const { t } = useTranslation(['snippet', 'evaluation', 'common'])
   const orchestrateLabel = t(($) => $.sectionOrchestrate, { ns: 'snippet' })
   const evaluationLabel = t(($) => $.title, { ns: 'evaluation' })
 
@@ -45,17 +48,25 @@ export function SnippetCollapsedPreview({
               name={evaluationLabel}
               href={`/snippets/${snippetId}/evaluation`}
               active={section === 'evaluation'}
-              disabled={!isPublished}
+              disabled={evaluationRequiresUpgrade || !isPublished}
+              disabledReason={
+                evaluationRequiresUpgrade
+                  ? t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' })
+                  : t(($) => $.unavailableUntilPublished, { ns: 'evaluation' })
+              }
               iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
             />
           )}
         </nav>
       ) : (
-        <div className="flex size-8 items-center justify-center rounded-lg border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active p-1.5 text-text-accent-light-mode-only">
+        <div className="flex size-8 items-center justify-center rounded-lg border-s-[0.75px] border-e-[0.25px] border-t-[0.75px] border-b-[0.25px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active p-1.5 text-text-accent-light-mode-only">
           <div className="flex size-5 items-center justify-center">
             <span
               aria-hidden
-              className={cn('size-4.5 shrink-0', section === 'evaluation' ? 'i-ri-flask-line' : 'i-ri-node-tree')}
+              className={cn(
+                'size-4.5 shrink-0',
+                section === 'evaluation' ? 'i-ri-flask-line' : 'i-ri-node-tree',
+              )}
             />
           </div>
           <span className="sr-only">

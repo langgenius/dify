@@ -6,6 +6,7 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
 import ExtraInfo from '@/app/components/datasets/extra-info'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -74,6 +75,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     return !datasetRes.is_published
   }, [datasetRes])
 
+  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
   const navigation = useMemo(() => {
     if (!datasetId) return []
 
@@ -83,6 +85,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
       icon: string
       selectedIcon: string
       disabled: boolean
+      disabledReason?: string
     }[] = [
       {
         name: t(($) => $['datasetMenus.hitTesting'], { ns: 'common' }),
@@ -118,7 +121,13 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
           href: `/datasets/${datasetId}/evaluation`,
           icon: 'i-ri-flask-line',
           selectedIcon: 'i-ri-flask-fill',
-          disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canPipelineTest,
+          disabled:
+            evaluationRequiresUpgrade ||
+            isButtonDisabledWithPipeline ||
+            !datasetACLCapabilities.canPipelineTest,
+          disabledReason: evaluationRequiresUpgrade
+            ? t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' })
+            : undefined,
         })
       }
       baseNavigation.unshift({
@@ -145,6 +154,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     datasetRes?.provider,
     datasetACLCapabilities,
     systemFeatures.deployment_edition,
+    evaluationRequiresUpgrade,
   ])
 
   if (!datasetRes) return null
@@ -183,6 +193,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
               name={item.name}
               href={item.href}
               disabled={item.disabled}
+              disabledReason={item.disabledReason}
               pathname={pathname}
             />
           ))}

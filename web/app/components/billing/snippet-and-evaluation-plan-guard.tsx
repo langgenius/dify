@@ -2,13 +2,10 @@
 
 import type { ReactNode } from 'react'
 import { Spinner } from '@langgenius/dify-ui/spinner'
-import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
-import { canAccessSnippetsAndEvaluation } from './plan-access'
+import { useSnippetsAndEvaluationAccess } from './use-snippets-and-evaluation-access'
 
 type SnippetAndEvaluationPlanGuardProps = {
   children: ReactNode
@@ -19,22 +16,9 @@ const SnippetAndEvaluationPlanGuard = ({
   children,
   fallbackHref,
 }: SnippetAndEvaluationPlanGuardProps) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const router = useRouter()
-  const systemFeaturesQuery = useQuery(systemFeaturesQueryOptions())
-  const deploymentEdition = systemFeaturesQuery.data?.deployment_edition
-  const featuresQuery = useQuery({
-    ...consoleQuery.features.get.queryOptions(),
-    enabled: deploymentEdition === 'CLOUD',
-  })
-  const isReady =
-    systemFeaturesQuery.isSuccess && (deploymentEdition !== 'CLOUD' || featuresQuery.isSuccess)
-  const canAccess = deploymentEdition
-    ? canAccessSnippetsAndEvaluation({
-        deploymentEdition,
-        planType: featuresQuery.data?.billing.subscription.plan,
-      })
-    : false
+  const { isReady, canAccess } = useSnippetsAndEvaluationAccess()
 
   useEffect(() => {
     if (isReady && !canAccess) router.replace(fallbackHref)

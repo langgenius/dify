@@ -3552,11 +3552,6 @@
       "count": 1
     }
   },
-  "web/app/components/snippets/components/snippet-collapsed-preview.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/snippets/components/snippet-header/run-mode.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
