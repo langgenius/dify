@@ -72,9 +72,7 @@ class TestOAuthHandler:
         handler = OAuthHandler()
         captured_data: dict[str, object] = {}
 
-        def fake_stream[**P](
-            *args: P.args, **kwargs: P.kwargs
-        ) -> Iterator[PluginOAuthCredentialsResponse]:
+        def fake_stream[**P](*args: P.args, **kwargs: P.kwargs) -> Iterator[PluginOAuthCredentialsResponse]:
             data = kwargs["data"]
             assert isinstance(data, dict)
             captured_data.update(data)
