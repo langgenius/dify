@@ -158,7 +158,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
               <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['history.columns.creator'])}
               </th>
-              <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
+              <th className="h-7 px-3 text-center system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['history.columns.status'])}
               </th>
               {/* The row menus need a column name, but a visible icon here read as a header menu. */}
@@ -209,8 +209,8 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                     {memberNameById.get(record.created_by) ?? record.created_by}
                   </td>
                   <td className="h-10 px-3">
-                    {/* Start-aligned under the column header. */}
-                    <div className="flex h-10 items-center">
+                    {/* Centered under the column header. */}
+                    <div className="flex h-10 items-center justify-center">
                       {/* The tooltip names the status and, for failed runs, says why. */}
                       <Tooltip>
                         <TooltipTrigger
