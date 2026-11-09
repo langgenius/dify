@@ -31,6 +31,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 import { getBrowserTimezone, timezones } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
 import { isInvitationForAccount } from '../utils/invitation-account'
@@ -70,7 +71,7 @@ export default function InviteSettingsPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
-  const token = decodeURIComponent(searchParams.get('invite_token') as string)
+  const token = safeDecodeURIComponent(searchParams.get('invite_token'))
   const {
     data: userResp,
     isPending: isProfilePending,

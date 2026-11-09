@@ -18,12 +18,13 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation(['common', 'login', 'accountSettings'])
   const router = useRouter()
   const searchParams = useSearchParams()
-  const token = decodeURIComponent(searchParams.get('token') || '')
+  const token = safeDecodeURIComponent(searchParams.get('token'))
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')

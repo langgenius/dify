@@ -597,4 +597,16 @@ describe('CheckCode', () => {
       expect(locationReplace).not.toHaveBeenCalled()
     })
   })
+
+  it('keeps the form usable when a query parameter carries malformed percent-encoding', () => {
+    navigationMocks.searchParams = new URLSearchParams('email=%&token=email-login-token')
+    const queryClient = createQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByLabelText('login.checkCode.verificationCode')).toBeInTheDocument()
+  })
 })

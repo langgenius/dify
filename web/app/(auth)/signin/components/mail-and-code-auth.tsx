@@ -11,6 +11,7 @@ import { emailRegex, TURNSTILE_SITE_KEY } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 import Turnstile from './turnstile'
 
 type MailAndCodeAuthProps = {
@@ -22,7 +23,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
+  const emailFromLink = safeDecodeURIComponent(searchParams.get('email'))
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setLoading] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState('')

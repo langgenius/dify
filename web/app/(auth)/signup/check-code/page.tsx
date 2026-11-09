@@ -13,6 +13,7 @@ import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 
 type CheckCodeFormValues = {
   code: string
@@ -22,8 +23,8 @@ export default function CheckCode() {
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
-  const email = decodeURIComponent(searchParams.get('email') as string)
-  const [token, setToken] = useState(() => decodeURIComponent(searchParams.get('token') as string))
+  const email = safeDecodeURIComponent(searchParams.get('email'))
+  const [token, setToken] = useState(() => safeDecodeURIComponent(searchParams.get('token')))
   const [loading, setLoading] = useState(false)
   const locale = useLocale()
   const { mutateAsync: submitMail } = useMutation(

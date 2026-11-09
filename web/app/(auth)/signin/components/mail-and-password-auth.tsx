@@ -19,6 +19,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 import { basePath } from '@/utils/var'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
@@ -36,7 +37,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
-  const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
+  const emailFromLink = safeDecodeURIComponent(searchParams.get('email'))
   const [email, setEmail] = useState(emailFromLink)
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -51,7 +52,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         remember_me: true,
       }
       if (isInvite)
-        loginData.invite_token = decodeURIComponent(searchParams.get('invite_token') as string)
+        loginData.invite_token = safeDecodeURIComponent(searchParams.get('invite_token'))
       const res = await consoleClient.login.post({ body: loginData })
       if (res.result === 'success') {
         trackEvent('user_login_success', {
