@@ -2682,6 +2682,7 @@ export type KnowledgeFsSourceFileResponse = {
 }
 
 export type KnowledgeFsSourcePageResponse = {
+  has_children?: boolean | null
   last_edited_time?: string | null
   page_id: string
   page_name: string
@@ -5803,6 +5804,8 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesData = {
   query?: {
     cursor?: string
     limit?: number
+    parentId?: string
+    view?: string
   }
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages'
 }

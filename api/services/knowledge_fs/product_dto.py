@@ -2663,11 +2663,14 @@ class KnowledgeFSSourceCrawlResponse(ResponseModel):
 class KnowledgeFSSourcePagesQuery(BaseModel):
     cursor: str | None = Field(default=None, min_length=1, max_length=4_096)
     limit: int = Field(default=50, ge=1, le=200)
+    parent_id: str | None = Field(default=None, min_length=1, max_length=4_096, alias="parentId")
+    view: Literal["tree"] | None = None
 
     model_config = ConfigDict(extra="forbid")
 
 
 class KnowledgeFSSourcePageResponse(ResponseModel):
+    has_children: bool | None = Field(default=None, validation_alias=AliasChoices("has_children", "hasChildren"))
     last_edited_time: str | None = Field(
         default=None, validation_alias=AliasChoices("last_edited_time", "lastEditedTime")
     )
