@@ -45,22 +45,24 @@ const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps)
             descriptionClassName="max-w-[700px]"
             action={<EvaluationConfigActions resourceType={resourceType} resourceId={resourceId} />}
           />
-          <section className="max-w-[700px] py-4">
-            <EvaluationFrameworkSelector resourceType={resourceType} resourceId={resourceId} />
-          </section>
-          <div className="max-w-[700px] border-b border-divider-subtle" />
-          <section className="max-w-[700px] py-4">
-            <InlineSectionHeader
-              title={t(($) => $['judgeModel.title'])}
-              titleId={judgeModelTitleId}
-              tooltip={t(($) => $['judgeModel.description'])}
-            />
-            <div className="mt-1.5">
-              <JudgeModelSelector
-                resourceType={resourceType}
-                resourceId={resourceId}
-                ariaLabelledBy={judgeModelTitleId}
+          {/* Two short selects share a row, so metrics and conditions start higher on the page. */}
+          <section className="grid max-w-[700px] grid-cols-2 gap-3 py-4">
+            <div className="min-w-0">
+              <EvaluationFrameworkSelector resourceType={resourceType} resourceId={resourceId} />
+            </div>
+            <div className="min-w-0">
+              <InlineSectionHeader
+                title={t(($) => $['judgeModel.title'])}
+                titleId={judgeModelTitleId}
+                tooltip={t(($) => $['judgeModel.description'])}
               />
+              <div className="mt-1.5">
+                <JudgeModelSelector
+                  resourceType={resourceType}
+                  resourceId={resourceId}
+                  ariaLabelledBy={judgeModelTitleId}
+                />
+              </div>
             </div>
           </section>
           <div className="max-w-[700px] border-b border-divider-subtle" />

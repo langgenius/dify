@@ -31,7 +31,8 @@ const EvaluationFrameworkSelector = ({ resourceType, resourceId }: EvaluationRes
         if (framework) setEvaluationFramework(resourceType, resourceId, framework)
       }}
     >
-      <SelectLabel className="system-md-semibold text-text-primary">
+      {/* Match the judge model header height beside it. */}
+      <SelectLabel className="flex min-h-6 items-center system-md-semibold text-text-primary">
         {t(($) => $['judgeFramework.title'])}
       </SelectLabel>
       <SelectTrigger aria-label={t(($) => $['judgeFramework.title'])} className="mt-1.5 w-full">
