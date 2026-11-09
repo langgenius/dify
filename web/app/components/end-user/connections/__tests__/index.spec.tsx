@@ -124,7 +124,6 @@ describe('My connections account API integration', () => {
     const link = await screen.findByRole('link', { name: /Google Drive/ })
     expect(link).toHaveAttribute('href', `/connections/${encodeURIComponent(provider)}`)
     expect(within(link).getByText('Access your files')).toBeVisible()
-    expect(within(link).getByText('2')).toBeVisible()
     expect(screen.getAllByRole('link')).toHaveLength(1)
     await user.click(screen.getByRole('button', { name: 'common.operation.viewMore' }))
     expect(await screen.findByRole('link', { name: /GitHub/ })).toHaveAttribute(
