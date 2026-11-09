@@ -1,0 +1,160 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import { Menu, MenuContent, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
+import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
+import { mailToSupport } from '@/app/components/header/utils/util'
+import { consoleQuery } from '@/service/console'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createTestQueryClient } from '@/test/query-client'
+import SupportMenu from '../support-menu'
+
+const boundary = vi.hoisted(() => ({
+  config: {
+    supportEmailAddress: '',
+    zendeskWidgetKey: 'zendesk-key',
+  },
+  openZendesk: vi.fn(),
+  mailToSupport: vi.fn(),
+  pricingUpdates: vi.fn(),
+  toastError: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/zendesk/runtime', () => ({
+  zendeskRuntime: { open: boundary.openZendesk },
+}))
+
+vi.mock('@/app/notifications', () => ({ toast: { error: boundary.toastError } }))
+
+vi.mock('@/app/components/header/utils/util', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/header/utils/util')>()),
+  mailToSupport: boundary.mailToSupport,
+}))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  const dynamicZendeskWidgetKey = {
+    trim: () => boundary.config.zendeskWidgetKey.trim(),
+  }
+  return {
+    ...actual,
+    get SUPPORT_EMAIL_ADDRESS() {
+      return boundary.config.supportEmailAddress
+    },
+    get ZENDESK_WIDGET_KEY() {
+      return dynamicZendeskWidgetKey
+    },
+  }
+})
+
+async function renderSupportMenu({
+  edition = 'CLOUD',
+  plan = 'team',
+}: {
+  edition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
+  plan?: CloudPlan | null
+} = {}) {
+  const queryClient = createTestQueryClient(() => new Promise(() => {}))
+  seedAccountProfileQuery(queryClient, { email: 'user@example.com' }, { currentVersion: '1.0.0' })
+  seedSystemFeatures(queryClient, { deployment_edition: edition })
+  if (plan !== null) {
+    seedFeatures(queryClient, { billing: { subscription: { plan } } })
+  } else {
+    void queryClient.query({
+      ...consoleQuery.features.get.queryOptions(),
+      queryFn: () => new Promise(() => {}),
+    })
+  }
+
+  const screen = await render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <NuqsTestingAdapter onUrlUpdate={boundary.pricingUpdates}>
+        <Menu>
+          <MenuTrigger>Support</MenuTrigger>
+          <MenuContent>
+            <SupportMenu />
+          </MenuContent>
+        </Menu>
+      </NuqsTestingAdapter>
+    </QueryClientTestProvider>,
+  )
+  const trigger = screen.getByRole('button', { name: 'Support' })
+  await userEvent.click(trigger)
+  await expect.element(screen.getByRole('menu')).toBeVisible()
+  return { queryClient, screen, trigger }
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  boundary.config.supportEmailAddress = ''
+  boundary.config.zendeskWidgetKey = 'zendesk-key'
+  boundary.openZendesk.mockResolvedValue(undefined)
+  boundary.mailToSupport.mockReturnValue('mailto:support@example.com')
+})
+
+it('opens Zendesk from the real menu and leaves Discord as the following choice', async () => {
+  const { screen } = await renderSupportMenu()
+  const contact = screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' })
+  const discord = screen.getByRole('menuitem', { name: 'common.userProfile.discord' })
+  await expect.element(contact).toBeVisible()
+  await expect.element(discord).toHaveAttribute('href', 'https://discord.gg/5AEfbxcd9k')
+  expect(contact.element().compareDocumentPosition(discord.element())).toBe(
+    Node.DOCUMENT_POSITION_FOLLOWING,
+  )
+
+  await userEvent.click(contact)
+
+  expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
+})
+
+it('surfaces a failed Zendesk launch and permits a fresh retry', async () => {
+  boundary.openZendesk.mockRejectedValueOnce(new Error('load failed'))
+  const { screen, trigger } = await renderSupportMenu()
+  await userEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+  expect(boundary.toastError).toHaveBeenCalledWith('common.api.actionFailed')
+
+  await userEvent.click(trigger)
+  await userEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+  expect(boundary.openZendesk).toHaveBeenCalledTimes(2)
+})
+
+it('routes a sandbox without dedicated support to the pricing owner', async () => {
+  const { screen } = await renderSupportMenu({ plan: 'sandbox' })
+  const upgrade = screen.getByRole('menuitem', {
+    name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
+  })
+
+  await userEvent.click(upgrade)
+
+  expect(boundary.pricingUpdates.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open')
+  expect(zendeskRuntime.open).not.toHaveBeenCalled()
+})
+
+it('uses the visible mail destination when Zendesk is unavailable', async () => {
+  boundary.config.zendeskWidgetKey = ''
+  const { screen } = await renderSupportMenu()
+  const email = screen.getByRole('menuitem', { name: /common\.userProfile\.emailSupport/ })
+
+  await expect.element(email).toHaveAttribute('href', 'mailto:support@example.com')
+  expect(mailToSupport).toHaveBeenCalledWith('user@example.com', 'team', '1.0.0', '')
+})
+
+it('waits for the Cloud plan before revealing configured email support', async () => {
+  boundary.config.zendeskWidgetKey = ''
+  const { queryClient, screen } = await renderSupportMenu({ plan: null })
+  await expect
+    .element(screen.getByRole('menuitem', { name: /common\.userProfile\.emailSupport/ }))
+    .not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('menuitem', { name: 'common.userProfile.discord' }))
+    .toBeVisible()
+
+  seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
+
+  await expect
+    .element(screen.getByRole('menuitem', { name: /common\.userProfile\.emailSupport/ }))
+    .toHaveAttribute('href', 'mailto:support@example.com')
+})
