@@ -17,7 +17,7 @@ import {
   ThinkBlock,
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
-import { ALLOW_INLINE_STYLES, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
+import { ALLOW_INLINE_STYLES, ALLOW_UNSAFE_DATA_SCHEME, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
 import { customUrlTransform } from './markdown-utils'
 import 'katex/dist/katex.min.css'
 
@@ -32,6 +32,7 @@ type SanitizeSchema = {
   required?: Record<string, Record<string, unknown>>
   clobber?: string[]
   clobberPrefix?: string
+  protocols?: Record<string, string[]>
   [key: string]: unknown
 }
 
@@ -144,8 +145,25 @@ function buildRehypePlugins(extraPlugins?: PluggableList, isPlugin = false): Plu
     mergedAttributes['*'] = [...globalAttrs, 'style']
   }
 
+  // `rehype-sanitize` drops any `src` whose scheme is not listed in
+  // `protocols.src`, and it runs before `rehype-harden` ever sees the URL, so
+  // an inline `data:` image is stripped here instead of being judged by the
+  // harden stage. Admit the scheme only when the deployment opted in via
+  // ALLOW_UNSAFE_DATA_SCHEME, and only for `src` - `data:` links stay blocked.
+  // The schema is left untouched when streamdown ships no protocol list, so a
+  // fabricated one cannot accidentally lift the restrictions on other schemes.
+  const sanitizeProtocols = defaultSanitizeSchema.protocols
+  const dataImageProtocols =
+    ALLOW_UNSAFE_DATA_SCHEME && sanitizeProtocols
+      ? {
+          ...sanitizeProtocols,
+          src: [...(sanitizeProtocols.src ?? []), 'data'],
+        }
+      : undefined
+
   const customSchema: SanitizeSchema = {
     ...defaultSanitizeSchema,
+    ...(dataImageProtocols ? { protocols: dataImageProtocols } : {}),
     tagNames: [...tagNamesSet],
     attributes: mergedAttributes,
     required: requiredRest,
