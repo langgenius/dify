@@ -3234,6 +3234,7 @@ export default interface Resources {
     'metrics.nodesAll': 'All nodes'
     'metrics.nodesLabel': 'Node Scope'
     'metrics.nodesSelected': 'Selected nodes'
+    'metrics.nodesSelectedCount': '{{selected}} / {{total}} nodes'
     'metrics.remove': 'Remove metric'
     'metrics.searchNodeOrMetrics': 'Search nodes or metrics'
     'metrics.searchPlaceholder': 'Search metrics'

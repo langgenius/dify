@@ -138,6 +138,7 @@
   "metrics.nodesAll": "All nodes",
   "metrics.nodesLabel": "Node Scope",
   "metrics.nodesSelected": "Selected nodes",
+  "metrics.nodesSelectedCount": "{{selected}} / {{total}} node",
   "metrics.remove": "Remove metric",
   "metrics.searchNodeOrMetrics": "Search node or metrics",
   "metrics.searchPlaceholder": "Search metrics",

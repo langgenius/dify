@@ -42,6 +42,9 @@ const SelectorMetricSection = ({
   )
   const metricVisual = getMetricVisual(metric.id)
   const toneClasses = getToneClasses(metricVisual.tone)
+  const isNodeAdded = (nodeId: string) =>
+    addedMetric ? (addedMetric.nodeInfoList?.length ? selectedNodeIds.has(nodeId) : true) : false
+  const addedNodeCount = visibleNodes.filter((nodeInfo) => isNodeAdded(nodeInfo.node_id)).length
   const hasMoreNodes = visibleNodes.length > 3
   const shownNodes = hasMoreNodes && !isShowingAllNodes ? visibleNodes.slice(0, 3) : visibleNodes
 
@@ -82,22 +85,32 @@ const SelectorMetricSection = ({
           </div>
         </button>
 
-        {metric.description && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  className="p-px text-text-quaternary transition-colors hover:text-text-tertiary"
-                  aria-label={metric.label}
-                >
-                  <span aria-hidden="true" className="i-ri-question-line h-[14px] w-[14px]" />
-                </button>
-              }
-            />
-            <TooltipContent className="max-w-[260px]">{metric.description}</TooltipContent>
-          </Tooltip>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {addedNodeCount > 0 && (
+            <span className="system-xs-regular text-text-tertiary">
+              {t(($) => $['metrics.nodesSelectedCount'], {
+                selected: addedNodeCount,
+                total: visibleNodes.length,
+              })}
+            </span>
+          )}
+          {metric.description && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    className="p-px text-text-quaternary transition-colors hover:text-text-tertiary"
+                    aria-label={metric.label}
+                  >
+                    <span aria-hidden="true" className="i-ri-question-line h-[14px] w-[14px]" />
+                  </button>
+                }
+              />
+              <TooltipContent className="max-w-[260px]">{metric.description}</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       </div>
 
       {isExpanded && (
@@ -108,11 +121,7 @@ const SelectorMetricSection = ({
             </div>
           )}
           {shownNodes.map((nodeInfo) => {
-            const isAdded = addedMetric
-              ? addedMetric.nodeInfoList?.length
-                ? selectedNodeIds.has(nodeInfo.node_id)
-                : true
-              : false
+            const isAdded = isNodeAdded(nodeInfo.node_id)
 
             return (
               <button
@@ -121,7 +130,13 @@ const SelectorMetricSection = ({
                 type="button"
                 // Clicking an added node removes it, so expose the row as a pressed toggle.
                 aria-pressed={isAdded}
-                className="group/node flex w-full items-center gap-1 rounded-md px-3 py-1.5 text-start transition-colors hover:bg-state-base-hover-alt"
+                className={cn(
+                  'group/node flex w-full items-center gap-1 rounded-md px-3 py-1.5 text-start transition-colors',
+                  // Keep added nodes marked without needing a hover.
+                  isAdded
+                    ? 'bg-state-accent-hover hover:bg-state-accent-hover-alt'
+                    : 'hover:bg-state-base-hover-alt',
+                )}
                 onClick={() => onToggleNodeSelection(metric, nodeInfo)}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-2.5 pe-1">
