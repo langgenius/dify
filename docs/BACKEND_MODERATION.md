@@ -22,11 +22,13 @@ deployments and custom-key, non-LLM, or token-based
 quota modes do not construct or inject this automatic policy.
 
 The policy uses `langgenius/openai/openai` / `omni-moderation-latest` with the
-existing hosted OpenAI credentials. SRE must set
+existing hosted OpenAI credentials. SRE should set
 `HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER` to a usable, pinned
-`langgenius/openai:<version>@<checksum>` package. Eligible model assembly fails
-when the setting is absent or malformed; missing credentials and an unavailable
-moderation backend also fail closed, with no fallback to a user's API key.
+`langgenius/openai:<version>@<checksum>` package. When the setting is absent,
+eligible model assembly logs a warning and continues without automatic platform
+moderation; an explicitly supplied policy is still preserved. A configured but
+malformed identifier fails assembly. Missing credentials and an unavailable
+moderation backend fail closed, with no fallback to a user's API key.
 
 Moderation dispatches directly to the pinned plugin identifier with platform
 credentials. It performs no tenant provider discovery or plugin-installation

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -29,6 +30,8 @@ from services.moderation_service import ModerationPhase, ModerationRule, Moderat
 if TYPE_CHECKING:
     from core.model_manager import LLMModerationPolicy
 
+logger = logging.getLogger(__name__)
+
 
 def bind_hosted_llm_moderation(
     bundle: ProviderModelBundle, *, policy: LLMModerationPolicy | None
@@ -39,7 +42,9 @@ def bind_hosted_llm_moderation(
     require both phases. This includes CREDITS and legacy TIMES metering, which
     reserves one credit per call. Other models/deployments return the explicit policy unchanged
     without constructing a hosted gateway. Binding performs no provider I/O.
-    The SRE-pinned plugin identifier is required for eligible models. No tenant
+    A missing SRE-pinned plugin identifier logs a warning and preserves only the
+    explicit policy, allowing requests without automatic platform moderation. A
+    configured but malformed identifier still fails during assembly. No tenant
     installation, provider discovery, or user model/quota reservation is used.
     """
     if (
@@ -57,11 +62,15 @@ def bind_hosted_llm_moderation(
     )
     if quota is None or quota.quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES}:
         return policy
-    provider = hosting_configuration.provider_map.get(f"{DEFAULT_PLUGIN_ID}/openai/openai")
-    credentials = provider.credentials if provider is not None and provider.enabled else None
     plugin_unique_identifier = dify_config.HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER.strip()
     if not plugin_unique_identifier:
-        raise ValueError("HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER is required for Cloud credit-metered models.")
+        logger.warning(
+            "HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER is not configured; "
+            "Cloud credit-metered LLM calls will run without automatic platform moderation."
+        )
+        return policy
+    provider = hosting_configuration.provider_map.get(f"{DEFAULT_PLUGIN_ID}/openai/openai")
+    credentials = provider.credentials if provider is not None and provider.enabled else None
     hosted_service = ModerationService(
         gateway=HostedOpenAIModerationGateway(
             client=PluginModelClient(),

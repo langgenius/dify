@@ -394,8 +394,8 @@ def test_automatic_moderation_covers_manager_cache_and_cannot_be_replaced(
     assert isinstance(unlimited.moderation, LLMModerationGuard)
 
 
-def test_automatic_moderation_requires_sre_pinned_plugin_identifier(
-    config_overrides: Callable[..., None],
+def test_missing_sre_pinned_plugin_identifier_warns_and_preserves_explicit_policy(
+    config_overrides: Callable[..., None], caplog: pytest.LogCaptureFixture
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     config = make_model_config(provider="test-provider", model="test-model", mode="chat")
@@ -412,5 +412,14 @@ def test_automatic_moderation_requires_sre_pinned_plugin_identifier(
         )
     ]
 
-    with pytest.raises(ValueError, match="HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER"):
-        ModelInstance(bundle, "test-model", credentials={})
+    def allow(_text: str, _phase: str) -> None:
+        return None
+
+    explicit = LLMModerationGuard(tenant_id="test-tenant-id", check=allow, check_input=False, check_output=False)
+    with caplog.at_level("WARNING", logger="extensions.application_services.moderation"):
+        unguarded = ModelInstance(bundle, "test-model", credentials={})
+        explicitly_guarded = ModelInstance(bundle, "test-model", credentials={}, moderation=explicit)
+
+    assert unguarded.moderation is None
+    assert explicitly_guarded.moderation is explicit
+    assert caplog.text.count("HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER is not configured") == 2
