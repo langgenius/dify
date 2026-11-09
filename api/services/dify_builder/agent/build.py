@@ -271,7 +271,7 @@ def _scrub_invented_defaults(values: dict[str, Any], goal_text: str) -> dict[str
     scrubbed = dict(values)
     for key in blanked:
         scrubbed[key] = ""
-    logger.info("dify_builder: blanked invented default(s) for %s", ", ".join(sorted(blanked)))
+    logger.info("dify_builder: blanked %d invented defaults", len(blanked))
     return scrubbed
 
 
