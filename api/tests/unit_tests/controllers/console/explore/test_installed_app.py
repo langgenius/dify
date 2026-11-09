@@ -13,6 +13,7 @@ from sqlalchemy import Connection, delete, event, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 import controllers.console.explore.installed_app as module
+from controllers.console.app.app import AppListBaseQuery
 from enums import WebAppAccessMode
 from models import Account, App, InstalledApp, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
@@ -21,7 +22,7 @@ from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.installed_app_access_service import InstalledAppAccessService
-from services.installed_app_service import InstalledAppService
+from services.installed_app_service import InstalledAppListMode, InstalledAppService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
@@ -229,6 +230,7 @@ def _enable_visibility(management: _Management) -> None:
 
 def test_response_schema_preserves_domain_types_and_default_page_size() -> None:
     assert module.InstalledAppsListQuery().limit == 20
+    assert module.InstalledAppsListQuery().mode == "all"
     app_schema = module.InstalledAppInfoResponse.model_json_schema(mode="serialization")
     assert set(app_schema["properties"]) == {
         "id",
@@ -243,6 +245,14 @@ def test_response_schema_preserves_domain_types_and_default_page_size() -> None:
     }
     assert app_schema["properties"]["mode"]["$ref"].endswith("/AppMode")
     assert any(item.get("$ref", "").endswith("/IconType") for item in app_schema["properties"]["icon_type"]["anyOf"])
+
+
+def test_list_mode_schema_matches_studio_values_and_default() -> None:
+    installed_mode = module.InstalledAppsListQuery.model_json_schema()["properties"]["mode"]
+    studio_mode = AppListBaseQuery.model_json_schema()["properties"]["mode"]
+
+    assert installed_mode["enum"] == studio_mode["enum"]
+    assert installed_mode["default"] == studio_mode["default"] == "all"
 
 
 def test_collection_rejects_post_and_keeps_get_available(management: _Management) -> None:
@@ -410,6 +420,28 @@ def test_list_name_search_trims_and_escapes_wildcards(management: _Management) -
     assert len(management.client.get("/installed-apps", query_string={"name": "   "}).get_json()["installed_apps"]) == 3
 
 
+@pytest.mark.parametrize(
+    "mode", ["all", "completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel"]
+)
+def test_list_filters_exact_mode_and_name(management: _Management, mode: InstalledAppListMode) -> None:
+    _clear_installations(management)
+    expected: set[str] = set()
+    for app_mode in AppMode:
+        installed, _ = _installation(management, mode=app_mode, name="Matching app")
+        _installation(management, mode=app_mode, name="Other app")
+        if app_mode != AppMode.AGENT and mode in ("all", app_mode):
+            expected.add(installed.id)
+
+    response = management.client.get("/installed-apps", query_string={"mode": mode, "name": "  MATCHING  "})
+
+    assert response.status_code == 200
+    page = response.get_json()
+    assert {item["id"] for item in page["installed_apps"]} == expected
+    assert page["has_more"] is False
+    assert page["next_cursor"] is None
+    management.assert_sessions_closed()
+
+
 def test_list_pages_pin_time_null_and_id_order_without_duplicates(management: _Management) -> None:
     _clear_installations(management)
     expected: list[str] = []
@@ -442,13 +474,26 @@ def test_list_pages_pin_time_null_and_id_order_without_duplicates(management: _M
     assert cursor is None
 
 
-def test_visible_page_scans_denied_batches_and_cursor_tracks_last_consumed_candidate(management: _Management) -> None:
+@pytest.mark.parametrize("filtered", [False, True])
+def test_visible_page_scans_denied_batches_and_cursor_tracks_last_consumed_candidate(
+    management: _Management, filtered: bool
+) -> None:
     _clear_installations(management)
     _enable_visibility(management)
-    rows = [_installation(management, installed_app_id=str(UUID(int=index + 1))) for index in range(5)]
+    rows = [
+        _installation(management, installed_app_id=str(UUID(int=index + 1)), mode=AppMode.WORKFLOW, name="Matching app")
+        for index in range(5)
+    ]
     management.denied_app_ids.update(app.id for _, app in rows[1:4])
+    query = {"limit": "1"}
+    if filtered:
+        query.update({"mode": "workflow", "name": "matching"})
+        _installation(management, mode=AppMode.CHAT, name="Matching app", pinned=True)
+        _installation(management, mode=AppMode.WORKFLOW, name="Other app", pinned=True)
+        _installation(management, mode=AppMode.WORKFLOW, name="Matching app", published=False)
+        _installation(management, mode=AppMode.WORKFLOW, name="Matching app", tenant_id=str(uuid4()))
 
-    response = management.client.get("/installed-apps", query_string={"limit": 1})
+    response = management.client.get("/installed-apps", query_string=query)
 
     assert response.status_code == 200
     page = response.get_json()
@@ -460,10 +505,25 @@ def test_visible_page_scans_denied_batches_and_cursor_tracks_last_consumed_candi
     assert management.visibility_calls == [
         (management.harness.account.id, tuple(app.id for _, app in rows[start : start + 2])) for start in (0, 2, 4)
     ]
-    response = management.client.get("/installed-apps", query_string={"limit": 1, "cursor": page["next_cursor"]})
+    query["cursor"] = page["next_cursor"]
+    response = management.client.get("/installed-apps", query_string=query)
     assert [item["id"] for item in response.get_json()["installed_apps"]] == [rows[4][0].id]
     assert response.get_json()["has_more"] is False
     assert response.get_json()["next_cursor"] is None
+
+
+@pytest.mark.parametrize("mode", ["unknown", "rag-pipeline", "", "CHAT"])
+def test_list_rejects_invalid_mode_before_opening_sessions(management: _Management, mode: str) -> None:
+    response = management.client.get("/installed-apps", query_string={"mode": mode})
+
+    assert response.status_code == 422
+    payload = response.get_json()
+    assert payload["code"] == "unprocessable_entity"
+    errors = json.loads(payload["message"])
+    assert len(errors) == 1
+    assert errors[0]["loc"] == ["mode"]
+    assert errors[0]["type"] == "literal_error"
+    assert management.sessions == []
 
 
 @pytest.mark.parametrize("empty", ["database", "visibility"])

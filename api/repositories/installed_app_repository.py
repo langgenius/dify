@@ -16,6 +16,7 @@ from services.installed_app_generation_service import InstalledAppUsageRecorder
 from services.installed_app_service import (
     InstalledAppCursor,
     InstalledAppInfo,
+    InstalledAppListMode,
     InstalledAppRecord,
     InstalledAppStore,
 )
@@ -149,7 +150,14 @@ class SQLAlchemyInstalledAppRepository(InstalledAppAccessStore, InstalledAppUsag
         limit: int,
         app_id: str | None,
         name: str | None,
+        mode: InstalledAppListMode,
     ) -> tuple[InstalledAppRecord, ...]:
+        """Read tenant-scoped published candidates with validated filters and a limit.
+
+        Apply exact mode and optional app ID/literal name filters before cursor
+        pagination. Return detached records in pin/usage/ID order without writes;
+        all modes retain the existing publication restrictions.
+        """
         statement = (
             select(InstalledApp, App)
             .join(App, App.id == InstalledApp.app_id)
@@ -160,6 +168,8 @@ class SQLAlchemyInstalledAppRepository(InstalledAppAccessStore, InstalledAppUsag
         if name and (normalized_name := name.strip()):
             escaped_name = escape_like_pattern(normalized_name)
             statement = statement.where(App.name.ilike(f"%{escaped_name}%", escape="\\"))
+        if mode != "all":
+            statement = statement.where(App.mode == mode)
         if cursor is not None:
             statement = statement.where(_installed_app_cursor_filter(cursor))
         with self._session_factory() as session:

@@ -1138,6 +1138,15 @@ export type GetInstalledAppsData = {
     app_id?: string
     cursor?: string
     limit?: number
+    mode?:
+      | 'advanced-chat'
+      | 'agent'
+      | 'agent-chat'
+      | 'all'
+      | 'channel'
+      | 'chat'
+      | 'completion'
+      | 'workflow'
     name?: string
   }
   url: '/installed-apps'
