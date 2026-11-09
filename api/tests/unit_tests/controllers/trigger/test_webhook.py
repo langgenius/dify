@@ -463,13 +463,16 @@ def test_uploaded_files_use_real_tool_file_storage_and_detached_workflow_inputs(
     assert broker.qsize() == 1
     with harness.session_factory() as session:
         tool_file = session.scalar(select(ToolFile))
+        actor = session.scalar(select(EndUser).where(EndUser.app_id == webhook.app_id))
         assert tool_file is not None
+        assert actor is not None
         assert tool_file.tenant_id == harness.tenant_id
-        assert tool_file.user_id == harness.account_id
+        assert tool_file.user_id == actor.id
         assert tool_file.size == len(content)
         file_key = tool_file.file_key
         log = session.scalar(select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == webhook.app_id))
         assert log is not None
+        assert log.created_by == actor.id
         inputs = json.loads(log.inputs)
         saved_file = (
             inputs["webhook_data"]["files"]["upload"]

@@ -37,7 +37,11 @@ def _get_quota_exceeded_message(feature: str) -> str:
 def _prepare_webhook_execution(webhook_id: str, *, debug: bool) -> tuple[WebhookContext, WebhookRequestParser]:
     services = application_services().workspaces
     context = services.webhooks.prepare(webhook_id=webhook_id, debug=debug)
-    parser = WebhookRequestParser(request=request, files=services.webhook_files)
+    parser = WebhookRequestParser(
+        request=request,
+        files=services.webhook_files,
+        resolve_actor=lambda webhook_trigger: services.webhooks.resolve_actor(context=webhook_trigger),
+    )
     return context, parser
 
 
@@ -57,7 +61,7 @@ def handle_webhook(webhook_id: str) -> Response | tuple[Response, int]:
             return jsonify({"error": "Bad Request", "message": error.public_message}), HTTPStatus.BAD_REQUEST
 
         # Process webhook call (send to Celery)
-        application_services().workspaces.webhooks.execute(context=context, data=webhook_data)
+        application_services().workspaces.webhooks.execute(context=context, data=webhook_data, actor=parser.actor)
 
         # Return configured response
         response_data, status_code = parser.generate_webhook_response(context.node_config)

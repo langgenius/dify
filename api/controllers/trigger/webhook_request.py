@@ -23,6 +23,7 @@ from graphon.entities.graph_config import NodeConfigDict
 from graphon.file import File
 from graphon.variables.types import ArrayValidation, SegmentType
 from services.trigger.webhook_service import RawWebhookDataDict, WebhookContext, WebhookFiles
+from services.workflow.entities import TriggerActor
 
 try:
     import magic
@@ -46,9 +47,17 @@ class WebhookRequestValidationError(ValueError):
 
 
 class WebhookRequestParser:
-    def __init__(self, *, request: Request, files: WebhookFiles) -> None:
+    def __init__(
+        self,
+        *,
+        request: Request,
+        files: WebhookFiles,
+        resolve_actor: Callable[[WebhookContext], TriggerActor] | None = None,
+    ) -> None:
         self._request = request
         self._files = files
+        self._resolve_actor = resolve_actor
+        self.actor: TriggerActor | None = None
 
     @staticmethod
     def _sanitize_key(key: str) -> str:
@@ -295,9 +304,12 @@ class WebhookRequestParser:
         return processed_files
 
     def _create_file_from_binary(self, file_content: bytes, mimetype: str, webhook_trigger: WebhookContext) -> File:
+        if self.actor is None and self._resolve_actor is not None:
+            self.actor = self._resolve_actor(webhook_trigger)
+        user_id = self.actor.id if self.actor is not None else webhook_trigger.created_by
         return self._files.create(
             tenant_id=webhook_trigger.tenant_id,
-            user_id=webhook_trigger.created_by,
+            user_id=user_id,
             content=file_content,
             mimetype=mimetype,
         )

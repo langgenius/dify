@@ -12,7 +12,7 @@ from services.async_workflow_service import TriggerWorkflowDispatcher
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaCharge
 from services.trigger.workflow_dispatch_service import TriggerEndUserProvisioner
-from services.workflow.entities import WebhookTriggerData
+from services.workflow.entities import TriggerActor, WebhookTriggerData
 
 
 class WebhookNotFoundError(Exception):
@@ -115,8 +115,17 @@ class WebhookService:
             raise WebhookNotFoundError(f"Webhook trigger is disabled for webhook {webhook_id}")
         return context
 
-    def execute(self, *, context: WebhookContext, data: RawWebhookDataDict) -> None:
-        actor = self._end_users.get_or_create_trigger_end_user(tenant_id=context.tenant_id, app_id=context.app_id)
+    def resolve_actor(self, *, context: WebhookContext) -> TriggerActor:
+        return self._end_users.get_or_create_trigger_end_user(tenant_id=context.tenant_id, app_id=context.app_id)
+
+    def execute(
+        self,
+        *,
+        context: WebhookContext,
+        data: RawWebhookDataDict,
+        actor: TriggerActor | None = None,
+    ) -> None:
+        resolved_actor = actor or self.resolve_actor(context=context)
         try:
             charge = self._reserve_quota(QuotaType.TRIGGER, context.tenant_id)
         except QuotaExceededError:
@@ -124,7 +133,7 @@ class WebhookService:
             raise
         try:
             self._dispatch.trigger_workflow_async(
-                actor=actor,
+                actor=resolved_actor,
                 trigger_data=WebhookTriggerData(
                     tenant_id=context.tenant_id,
                     app_id=context.app_id,
