@@ -8,8 +8,13 @@ import { formatTime } from '@/utils/time'
 const PREFERRED_QUERY_INPUT_KEYS = ['query', 'question', 'input']
 
 export type MetricColumn = {
+  /** Unique column key: the metric name, plus the node id when the metric covers several nodes. */
   id: string
+  metricName: string
   label: string
+  /** Set only when the run scores this metric on several nodes, so each node gets its own column. */
+  nodeId?: string
+  nodeLabel?: string
 }
 
 const normalizeMetricKey = (value: string) => value.toLowerCase().replace(/[\s_-]/g, '')
@@ -91,15 +96,11 @@ export const getQueryContent = (item: EvaluationRunItem) => {
 }
 
 export const getMetricValue = (metrics: EvaluationRunMetric[], column: MetricColumn) => {
-  const normalizedColumnId = normalizeMetricKey(column.id)
-  const normalizedColumnLabel = normalizeMetricKey(column.label)
+  const normalizedColumnName = normalizeMetricKey(column.metricName)
   const metric = metrics.find((item) => {
-    if (!item.name) return false
+    if (!item.name || normalizeMetricKey(item.name) !== normalizedColumnName) return false
 
-    const normalizedMetricName = normalizeMetricKey(item.name)
-    return (
-      normalizedMetricName === normalizedColumnId || normalizedMetricName === normalizedColumnLabel
-    )
+    return !column.nodeId || item.node_info?.node_id === column.nodeId
   })
 
   return metric?.value
@@ -134,27 +135,41 @@ export const getIsItemPassed = (item: EvaluationRunItem) => {
 
 // Columns come from the run's own results: metrics added to the config after the run would
 // otherwise show as columns of empty cells. The config only supplies friendlier labels.
-export const getMetricColumns = (resource: EvaluationResourceState, items: EvaluationRunItem[]) => {
+// A metric scored on several nodes gets one column per node, so no node's score is hidden.
+export const getMetricColumns = (
+  resource: EvaluationResourceState,
+  items: EvaluationRunItem[],
+): MetricColumn[] => {
   const configLabels = new Map(
     resource.metrics.map((metric) => [normalizeMetricKey(metric.optionId), metric.label] as const),
   )
-  const columns = new Map<string, MetricColumn>()
+  const metricsByName = new Map<string, { name: string; nodes: Map<string, string> }>()
 
   items.forEach((item) => {
     item.metrics?.forEach((metric) => {
       if (!metric.name) return
 
       const normalizedName = normalizeMetricKey(metric.name)
-      if (!columns.has(normalizedName)) {
-        columns.set(normalizedName, {
-          id: metric.name,
-          label: configLabels.get(normalizedName) ?? humanizeMetricName(metric.name),
-        })
-      }
+      const entry = metricsByName.get(normalizedName) ?? { name: metric.name, nodes: new Map() }
+      const nodeId = metric.node_info?.node_id
+      if (nodeId && !entry.nodes.has(nodeId))
+        entry.nodes.set(nodeId, metric.node_info?.title || nodeId)
+      metricsByName.set(normalizedName, entry)
     })
   })
 
-  return Array.from(columns.values())
+  return Array.from(metricsByName.entries()).flatMap(([normalizedName, { name, nodes }]) => {
+    const label = configLabels.get(normalizedName) ?? humanizeMetricName(name)
+    if (nodes.size < 2) return [{ id: name, metricName: name, label }]
+
+    return Array.from(nodes.entries()).map(([nodeId, nodeLabel]) => ({
+      id: `${name}:${nodeId}`,
+      metricName: name,
+      label,
+      nodeId,
+      nodeLabel,
+    }))
+  })
 }
 
 export const getRunDate = (timestamp: number | null) => {

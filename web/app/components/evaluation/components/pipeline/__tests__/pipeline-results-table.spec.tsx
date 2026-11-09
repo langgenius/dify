@@ -36,7 +36,7 @@ describe('evaluation result cell disclosure', () => {
           <DialogBody>
             <PipelineResultsTable
               items={[item]}
-              metricColumns={[{ id: 'accuracy', label: 'Accuracy' }]}
+              metricColumns={[{ id: 'accuracy', metricName: 'accuracy', label: 'Accuracy' }]}
               isLoading={false}
             />
           </DialogBody>
