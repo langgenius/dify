@@ -11,6 +11,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
@@ -36,10 +37,9 @@ import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DifyBuilderProvider } from '@/features/dify-builder/editor'
 import { DifyBuilderNodeDecoration } from '@/features/dify-builder/editor/node-decoration'
+import { useWorkflowDifyBuilderEnabled } from '@/features/dify-builder/editor/use-enabled'
 import { useDifyBuilderViewportInteraction } from '@/features/dify-builder/editor/use-viewport-interaction'
 import { consoleQuery } from '@/service/console'
-import dynamic from '@/next/dynamic'
-import { useStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowDraftConflict from '../draft/conflict-dialog'
@@ -75,6 +75,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const isWorkflowDataLoaded = useStore((s) => s.isWorkflowDataLoaded)
+  const difyBuilderEnabled = useWorkflowDifyBuilderEnabled()
+  const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel) && difyBuilderEnabled
+  const hasWorkflowDraftConflict = useStore((s) => s.hasWorkflowDraftConflict)
   const onDraftChange = useCallback(() => {
     workflowStore.getState().markWorkflowDraftDirty()
   }, [workflowStore])
@@ -93,9 +97,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
-  const isWorkflowDataLoaded = useStore((s) => s.isWorkflowDataLoaded)
-  const hasWorkflowDraftConflict = useStore((s) => s.hasWorkflowDraftConflict)
-  const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const containerRef = useRef<HTMLDivElement>(null)
   const [collaborationGraphState, setCollaborationGraphState] = useState({
@@ -234,8 +235,18 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     [featuresStore, workflowStore],
   )
 
-  const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose, prepareWorkflowDraftForBuilder } =
-    useWorkflowDraftSaveByCanEdit(appACLCapabilities.canEdit)
+  const {
+    doSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose,
+    prepareWorkflowDraftForBuilder,
+    releaseWorkflowDraftFromBuilder,
+  } = useWorkflowDraftSaveByCanEdit(appACLCapabilities.canEdit)
+  useEffect(() => {
+    if (difyBuilderEnabled) return
+    const state = workflowStore.getState()
+    if (state.showDifyBuilderPanel) state.setShowDifyBuilderPanel(false)
+    releaseWorkflowDraftFromBuilder()
+  }, [difyBuilderEnabled, releaseWorkflowDraftFromBuilder, workflowStore])
   const varsUpdateGenerationRef = useRef(0)
   const varsUpdateAppliedGenerationRef = useRef(0)
   const varsUpdateFailedGenerationRef = useRef(0)
@@ -243,7 +254,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const varsUpdateSyncRequestRef = useRef(0)
   const varsUpdateCompletedSyncRef = useRef(0)
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
   const {
     handleBackupDraft,
     handleLoadBackupDraft,
