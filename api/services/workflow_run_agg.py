@@ -216,7 +216,10 @@ class WorkflowRunAgg:
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
-        prepared = runner.prepare()
+        from services.dify_builder.native_launch_observation import observe_initialization
+
+        with observe_initialization():
+            prepared = runner.prepare()
         if prepared is None:
             return
         try:
