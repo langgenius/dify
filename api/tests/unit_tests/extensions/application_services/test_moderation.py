@@ -11,7 +11,11 @@ from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelIns
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_model_manager
 from core.workflow.node_runtime import DifyPreparedPollingLLM
 from enums import DeploymentEdition
-from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
+from extensions.application_services.moderation import (
+    build_llm_moderation_guard,
+    build_moderation_service,
+    platform_moderation_credentials,
+)
 from extensions.ext_code_based_extension import code_based_extension
 from graphon.model_runtime.entities.llm_entities import (
     LLMPollingResult,
@@ -324,15 +328,18 @@ def test_polling_checks_input_before_submission_and_output_before_delivery(
 @pytest.mark.parametrize("provider_type", [ProviderType.SYSTEM, ProviderType.CUSTOM])
 @pytest.mark.parametrize("quota_type", [ProviderQuotaType.TRIAL, ProviderQuotaType.PAID, ProviderQuotaType.FREE])
 @pytest.mark.parametrize("quota_unit", [QuotaUnit.CREDITS, QuotaUnit.TIMES, QuotaUnit.TOKENS])
-def test_automatic_moderation_only_binds_cloud_credit_models(
+@pytest.mark.parametrize("enabled", [False, True])
+def test_platform_binding_respects_switch_and_edition_eligibility(
     config_overrides: Callable[..., None],
     edition: DeploymentEdition,
     provider_type: ProviderType,
     quota_type: ProviderQuotaType,
     quota_unit: QuotaUnit,
+    enabled: bool,
 ) -> None:
     config_overrides(
         DEPLOYMENT_EDITION=edition,
+        HOSTED_MODERATION_ENABLED=enabled,
         HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER="langgenius/openai:1.0.0@checksum",
     )
     config = make_model_config(provider="test-provider", model="test-model", mode="chat")
@@ -345,7 +352,8 @@ def test_automatic_moderation_only_binds_cloud_credit_models(
     instance = ModelInstance(bundle, "test-model", credentials={"api_key": "user-key"})
 
     expected = (
-        edition == DeploymentEdition.CLOUD
+        enabled
+        and edition == DeploymentEdition.CLOUD
         and provider_type == ProviderType.SYSTEM
         and quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}
         and quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
@@ -353,11 +361,18 @@ def test_automatic_moderation_only_binds_cloud_credit_models(
     assert isinstance(instance.moderation, LLMModerationGuard) is expected
 
 
-def test_automatic_moderation_covers_manager_cache_and_cannot_be_replaced(
+@pytest.mark.parametrize(
+    "edition", [DeploymentEdition.CLOUD, DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE]
+)
+@pytest.mark.parametrize("enabled", [False, True])
+def test_platform_switch_applies_to_manager_cache_and_preserves_explicit_policy(
     config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    enabled: bool,
 ) -> None:
     config_overrides(
-        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        DEPLOYMENT_EDITION=edition,
+        HOSTED_MODERATION_ENABLED=enabled,
         HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER="langgenius/openai:1.0.0@checksum",
     )
     config = make_model_config(provider="test-provider", model="test-model", mode="chat")
@@ -373,10 +388,11 @@ def test_automatic_moderation_covers_manager_cache_and_cannot_be_replaced(
             is_valid=True,
         )
     ]
+    expected = enabled and edition == DeploymentEdition.CLOUD
     manager = ModelManager(RecordingProviderManager(bundle), enable_credentials_cache=True)
     for _attempt in range(2):
         instance = manager.get_model_instance("test-tenant-id", "test-provider", ModelType.LLM, "test-model")
-        assert isinstance(instance.moderation, LLMModerationGuard)
+        assert isinstance(instance.moderation, LLMModerationGuard) is expected
     moderation_model = manager.get_model_instance(
         "test-tenant-id", "test-provider", ModelType.MODERATION, "omni-moderation-latest"
     )
@@ -387,17 +403,20 @@ def test_automatic_moderation_covers_manager_cache_and_cannot_be_replaced(
 
     disabled = LLMModerationGuard(tenant_id="test-tenant-id", check=allow, check_input=False, check_output=False)
     explicit = ModelInstance(bundle, "test-model", credentials={}, moderation=disabled)
-    assert isinstance(explicit.moderation, ChainedLLMModerationPolicy)
+    if expected:
+        assert isinstance(explicit.moderation, ChainedLLMModerationPolicy)
+    else:
+        assert explicit.moderation is disabled
 
     bundle.configuration.system_configuration.quota_configurations[0].quota_limit = -1
     unlimited = ModelInstance(bundle, "test-model", credentials={})
-    assert isinstance(unlimited.moderation, LLMModerationGuard)
+    assert isinstance(unlimited.moderation, LLMModerationGuard) is expected
 
 
-def test_missing_sre_pinned_plugin_identifier_warns_and_preserves_explicit_policy(
-    config_overrides: Callable[..., None], caplog: pytest.LogCaptureFixture
+def test_missing_sre_pinned_plugin_identifier_still_binds_tenant_first_policy(
+    config_overrides: Callable[..., None],
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODERATION_ENABLED=True)
     config = make_model_config(provider="test-provider", model="test-model", mode="chat")
     bundle = config.provider_model_bundle
     bundle.configuration.using_provider_type = ProviderType.SYSTEM
@@ -416,10 +435,26 @@ def test_missing_sre_pinned_plugin_identifier_warns_and_preserves_explicit_polic
         return None
 
     explicit = LLMModerationGuard(tenant_id="test-tenant-id", check=allow, check_input=False, check_output=False)
-    with caplog.at_level("WARNING", logger="extensions.application_services.moderation"):
-        unguarded = ModelInstance(bundle, "test-model", credentials={})
-        explicitly_guarded = ModelInstance(bundle, "test-model", credentials={}, moderation=explicit)
+    guarded = ModelInstance(bundle, "test-model", credentials={})
+    explicitly_guarded = ModelInstance(bundle, "test-model", credentials={}, moderation=explicit)
 
-    assert unguarded.moderation is None
-    assert explicitly_guarded.moderation is explicit
-    assert caplog.text.count("HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER is not configured") == 2
+    assert isinstance(guarded.moderation, LLMModerationGuard)
+    assert isinstance(explicitly_guarded.moderation, ChainedLLMModerationPolicy)
+
+
+def test_platform_credentials_do_not_depend_on_cloud_provider_enablement(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        HOSTED_OPENAI_TRIAL_ENABLED=False,
+        HOSTED_OPENAI_PAID_ENABLED=False,
+        HOSTED_OPENAI_API_KEY="server-key",
+        HOSTED_OPENAI_API_BASE="https://example.com/v1",
+        HOSTED_OPENAI_API_ORGANIZATION="server-org",
+    )
+    assert platform_moderation_credentials() == {
+        "openai_api_key": "server-key",
+        "openai_api_base": "https://example.com/v1",
+        "openai_organization": "server-org",
+    }

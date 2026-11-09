@@ -80,9 +80,9 @@ class ModelInstance:
     ) -> None:
         """Assemble a model with an optional tenant-matched LLM policy.
 
-        None selects automatic Cloud credit moderation where applicable and
+        None selects automatic platform moderation where enabled and
         leaves other instances unmoderated. Explicit policies supplement rather
-        than replace mandatory hosted moderation. A bound policy is immutable
+        than replace enabled automatic platform moderation. A bound policy is immutable
         through the public invocation API and cannot be bound across tenants or
         to non-LLM capabilities. Invalid bindings fail before credential lookup.
         """
@@ -913,7 +913,7 @@ class ModelManager:
         """Construct a tenant runtime with an optional assembly-bound LLM policy.
 
         A policy from another tenant is rejected before runtime construction.
-        None permits automatic Cloud credit moderation during model assembly.
+        None permits automatic platform moderation during model assembly.
         Credit metadata behavior is unchanged.
         """
         if moderation is not None and moderation.tenant_id != tenant_id:

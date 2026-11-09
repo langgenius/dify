@@ -2,9 +2,48 @@ from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import wraps
-from typing import Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 from core.credit_usage import CreditUsageCreatedByInput, normalize_credit_usage_created_by
+
+if TYPE_CHECKING:
+    from core.app.app_config.entities import AppConfig
+    from core.app.entities.app_invoke_entities import AppGenerateEntity
+
+
+class AppModerationRuntime(Protocol):
+    """Injected invocation-local coordination; the kernel does not choose moderation backends or policies."""
+
+    def configure(self, entity: "AppGenerateEntity") -> None: ...
+
+    def check_openai(
+        self, tenant_id: str, app_id: str, inputs: Mapping[str, object], phase: Literal["input", "output"]
+    ) -> bool | None: ...
+
+    def output_checker(self, app_config: "AppConfig") -> Callable[[str], bool | None] | None: ...
+
+    def replacement(self, app_config: "AppConfig", error: Exception) -> tuple[str, str] | None: ...
+
+    def workflow_replacement(self, app_config: "AppConfig") -> Callable[[str], tuple[str, str] | None]: ...
+
+
+_app_moderation_runtime: ContextVar[AppModerationRuntime | None] = ContextVar("app_moderation_runtime", default=None)
+
+
+def get_app_moderation_runtime() -> AppModerationRuntime | None:
+    """Return the injected coordinator, or None for independent app/model invocation."""
+    return _app_moderation_runtime.get()
+
+
+@contextmanager
+def use_app_moderation_runtime(runtime: AppModerationRuntime) -> Generator[None]:
+    """Bind a trusted runtime for worker context copies and restore the caller context on every exit."""
+    token = _app_moderation_runtime.set(runtime)
+    try:
+        yield
+    finally:
+        _app_moderation_runtime.reset(token)
+
 
 _credit_usage_metadata: ContextVar[dict[str, object] | None] = ContextVar(
     "credit_usage_metadata",

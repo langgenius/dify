@@ -37,15 +37,10 @@ def bind_model_moderation_policy(
 ) -> LLMModerationPolicy | None:
     """Delegate policy composition while keeping application dependencies out of model invocation.
 
-    The composition root supplies mandatory Cloud credit moderation. Ineligible
-    models and non-Cloud deployments retain only an explicitly supplied policy.
+    The composition root gates automatic moderation on the Cloud edition and its
+    switch, then selects AI-credit LLMs. Other models retain the explicit policy.
     Binding never invokes a provider or reserves user credits.
     """
-    from configs import dify_config
-    from enums import DeploymentEdition
-
-    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-        return policy
     from extensions.application_services.moderation import bind_hosted_llm_moderation
 
     return bind_hosted_llm_moderation(bundle, policy=policy)
@@ -85,7 +80,7 @@ class PluginModelAssembly:
     ) -> None:
         """Bind runtime identity and an optional LLM policy; reject cross-tenant policies before I/O.
 
-        None permits automatic Cloud credit moderation during model construction.
+        None permits automatic platform moderation during model construction.
         Every manager-created LLM inherits the explicit policy when supplied;
         raw runtime capabilities remain infrastructure.
         """
@@ -146,8 +141,8 @@ def create_plugin_model_assembly(
 ) -> PluginModelAssembly:
     """Create a request-scoped runtime assembly with an optional tenant-matched LLM policy.
 
-    All manager-created LLMs inherit the explicit policy in addition to mandatory
-    Cloud credit moderation. Tenant mismatches fail before runtime construction.
+    All manager-created LLMs inherit the explicit policy in addition to enabled
+    platform moderation. Tenant mismatches fail before runtime construction.
     """
     return PluginModelAssembly(tenant_id=tenant_id, user_id=user_id, moderation=moderation)
 
@@ -179,7 +174,7 @@ def create_plugin_model_manager(
 ) -> ModelManager:
     """Create a tenant-bound manager whose LLM instances inherit the supplied policy.
 
-    None permits automatic Cloud credit moderation; cross-tenant explicit
+    None permits automatic platform moderation; cross-tenant explicit
     policies fail before runtime I/O.
     """
     return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id, moderation=moderation).model_manager

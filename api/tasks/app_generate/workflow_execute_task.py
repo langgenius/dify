@@ -24,6 +24,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
+from extensions.application_services.app_moderation import app_moderation_scope, with_app_moderation_scope
 from extensions.ext_database import db
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
@@ -175,7 +176,11 @@ class _AppRunner:
 
         user = self._resolve_user()
 
-        with self._setup_flask_context(user), self._session_factory(expire_on_commit=False) as session:
+        with (
+            self._setup_flask_context(user),
+            self._session_factory(expire_on_commit=False) as session,
+            app_moderation_scope(app.tenant_id, app.id),
+        ):
             try:
                 response = self._run_app(
                     app=app,
@@ -644,6 +649,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             )
 
 
+@with_app_moderation_scope
 def _resume_advanced_chat(
     *,
     app_model: App,

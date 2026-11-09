@@ -8,44 +8,94 @@ It does not depend on Flask, persistence models, or app queue managers.
 An enabled phase returns only after approval. Any flagged verdict raises
 `ModerationRejectedError`, including API verdicts requesting replacement rather
 than rejection. Backend failures propagate instead of silently approving text.
-Disabled phases perform no moderation I/O. Existing app-level replacement behavior
-is unchanged; strict policies are selected when assembling models.
+Disabled phases perform no moderation I/O. Strict policies are selected when
+assembling models; matching app OpenAI rules reuse their verdicts and retain
+configured replacement behavior.
 
-## Automatic Cloud moderation
+## Automatic platform moderation
 
+`HOSTED_MODERATION_ENABLED` controls automatic platform moderation in Cloud and
+defaults to false. It takes effect only when `DEPLOYMENT_EDITION=CLOUD`, matching
+the edition boundary used to assemble AI Credits quotas. Non-Cloud deployments
+ignore the switch. When disabled or outside Cloud, no automatic policy is
+constructed or injected. Explicit model policies and independent app-level
+moderation remain available in every edition.
+
+When enabled,
 Cloud LLMs using a system provider with a current `TRIAL` or `PAID`
 credit-pool quota automatically receive input and output moderation.
 This includes `CREDITS` and legacy `TIMES` quotas, which reserve one credit per call.
 This applies to manager-created models, credential-cache hits, and direct `ModelInstance`
-construction, including exhausted or unlimited credit quotas. Non-Cloud
-deployments and custom-key, non-LLM, or token-based
-quota modes do not construct or inject this automatic policy.
+construction, including exhausted or unlimited credit quotas. Cloud custom-key,
+non-LLM, and token-based quota modes do not receive this automatic policy.
+Merely configuring a fallback identifier does not enable moderation.
+
+For example, an operator can enable moderation and pin an optional fallback:
+
+```dotenv
+DEPLOYMENT_EDITION=CLOUD
+HOSTED_MODERATION_ENABLED=true
+HOSTED_OPENAI_API_KEY=<server-owned-api-key>
+HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER=langgenius/openai:<version>@<checksum>
+```
 
 The policy uses `langgenius/openai/openai` / `omni-moderation-latest` with the
-existing hosted OpenAI credentials. SRE should set
-`HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER` to a usable, pinned
-`langgenius/openai:<version>@<checksum>` package. When the setting is absent,
-eligible model assembly logs a warning and continues without automatic platform
-moderation; an explicitly supplied policy is still preserved. A configured but
-malformed identifier fails assembly. Missing credentials and an unavailable
-moderation backend fail closed, with no fallback to a user's API key.
+server-owned `HOSTED_OPENAI_API_KEY` and optional OpenAI base/organization settings.
+These credentials do not require enabling an OpenAI LLM trial/paid provider or
+initializing Cloud hosting quotas. It first discovers the tenant's
+`langgenius/openai/openai` provider and requires a Marketplace installation,
+moderation capability, the official package identity, and a verified manifest.
+If that route is absent, untrusted, or fails, it uses
+`HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER`, a pinned
+`langgenius/openai:<version>@<checksum>` fallback supplied by SRE. A positive
+violation verdict is final: it never triggers fallback to obtain another verdict.
+The fallback identifier is validated only if needed; a working trusted tenant
+plugin does not require it. Missing both routes, platform credentials, or a
+working backend fails closed. A user's API key is never substituted.
 
-Moderation dispatches directly to the pinned plugin identifier with platform
-credentials. It performs no tenant provider discovery or plugin-installation
-lookup, so business tenants do not need to install the OpenAI plugin. The plugin
+Moderation dispatches directly to the selected plugin identifier with platform
+credentials. Tenants without a trusted OpenAI installation can use the SRE
+fallback package. The plugin
 runtime must already be installed and loaded in plugin daemon; identifier
 dispatch does not bootstrap a missing package. Moderation does not construct a
 tenant model instance or enter `CreditPoolService`, so it neither reserves nor
 deducts user credits. The target LLM retains its normal accounting, including
 charging consumed usage when output is rejected.
 
-The former `HostingModerationFeature` and its
-`HOSTED_MODERATION_ENABLED` / `HOSTED_MODERATION_PROVIDERS` settings have been
-removed. Its random input-fragment check is replaced by the complete,
-output-aware policy above. Unknown legacy environment variables are ignored.
+The former `HostingModerationFeature` and `HOSTED_MODERATION_PROVIDERS` allowlist
+have been removed. `HOSTED_MODERATION_ENABLED` controls the Cloud platform policy.
+The old
+random input-fragment check is replaced by complete segmented checks.
 
-An explicitly supplied policy supplements mandatory Cloud moderation rather
-than disabling it. Both policies must approve content.
+An explicitly supplied policy supplements enabled platform moderation rather
+than disabling it. When the switch is off, only the explicit policy applies.
+
+## App-level sharing and replacement
+
+App generations create isolated tenant/app moderation sessions, shared only with
+their worker contexts and response pipelines. App OpenAI checks and the platform
+guard reuse exact same-phase input-segment verdicts. An app output prefix already
+approved by one model stream does not cause another OpenAI request. Arbitrary
+substrings, modified outputs, and concatenations from unrelated streams are not
+treated as approved. Other app backends keep their independent checks, and no
+verdicts are reused across app invocations or tenants.
+
+Sharing is process-local. Remote Agent LLM gateway calls do not inherit the app
+session, so their outputs retain independent app checks unless trusted delivery
+provenance is available locally. A client-provided approval flag must never be
+used to skip platform or app checks across that boundary.
+
+An enabled app OpenAI rule uses its phase-specific preset when the platform
+rejects content. Chat responses use the existing reply/replacement events and finish
+the message without exposing the rejected segment. A failed chatflow retains its
+failed workflow status while rendering a matching invocation-local rejection
+with the app preset. Unavailable checks are errors, not content verdicts, and
+never become preset replies. If the app rule or phase is disabled, the platform
+rejection retains its normal error response.
+
+Platform rejections emit warning logs containing tenant, app, and phase.
+Tenant-route failures also log fallback warnings. Moderated content and API keys
+are never included in these log messages.
 
 ## App errors
 
@@ -64,8 +114,8 @@ the same codes and messages with the corresponding HTTP status. Check failures
 retain their original cause in backend logs but
 never expose platform credentials or plugin diagnostics to clients. Provider
 generation failures retain their existing classification. Approved segments
-remain visible; neither error delivers the rejected or unchecked segment or
-replaces the answer with an app-level preset response.
+remain visible; neither error delivers the rejected or unchecked segment.
+An enabled matching app rule may render a rejection as described above.
 
 ## Model invocation
 
@@ -127,7 +177,9 @@ infrastructure, not moderated business entry points.
 - Input checks precede model invocation and quota reservation. All prompt roles,
   text parts of multimodal messages, and assistant tool arguments are inspected
   as independent non-stream segments, so long prompts are fully covered without
-  sending one oversized moderation request.
+  sending one oversized moderation request. Each platform-checked prompt message has its own
+  segment sequence; an identical app input can share a verdict without treating
+  a substring of a different, composed prompt as approved.
 - Opaque Agent gateway dictionaries are inspected through validated copies. The
   original payload and provider-specific extension fields are forwarded unchanged.
 - Output checks inspect completion text, tool arguments, and native structured
@@ -155,7 +207,7 @@ infrastructure, not moderated business entry points.
   model quota; rejected successful outputs do not refund consumed quota.
 - The guard protects returned results, not provider-level observer callbacks.
   Callbacks must not independently publish unmoderated model content.
-- Models outside automatic Cloud moderation retain their existing invocation and
+- Models outside enabled automatic platform moderation retain their existing invocation and
   streaming behavior unless an explicit policy is supplied.
 
 The API adapter loads tenant-scoped extension records in a short repository

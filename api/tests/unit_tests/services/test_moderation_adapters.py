@@ -10,6 +10,8 @@ from werkzeug.serving import make_server
 
 from core.app.apps.exc import AppGenerateError
 from core.app.llm.quota import ModelQuotaReservationState
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from enums import DeploymentEdition
 from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
 from extensions.ext_code_based_extension import code_based_extension
@@ -26,6 +28,7 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from machinery.context import AppRequestContext
 from models.api_based_extension import APIBasedExtension
@@ -36,6 +39,7 @@ from services.moderation_adapters import (
     ExtensionModerationGateway,
     HostedOpenAIModerationGateway,
     LLMModerationGuard,
+    VerifiedTenantModerationPluginResolver,
 )
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
@@ -48,6 +52,7 @@ from services.moderation_service import (
     ModerationService,
     ModerationVerdict,
 )
+from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.core.model_moderation_fixtures import (
     RecordingHostedModerationClient,
     RecordingQuotaModelInstance,
@@ -57,6 +62,149 @@ from tests.helpers.unit.core.model_moderation_fixtures import (
 type APIModerationFixture = tuple[
     ModerationService, ModerationRule, AppRequestContext, dict[str, object], list[dict[str, object]]
 ]
+
+
+class RecordingTenantPlugins:
+    def __init__(self, identifier: str | None) -> None:
+        self.identifier = identifier
+        self.tenants: list[str] = []
+
+    def resolve(self, tenant_id: str) -> str | None:
+        self.tenants.append(tenant_id)
+        return self.identifier
+
+
+class RecordingPluginCatalogue:
+    def __init__(self, declarations: list[PluginModelProviderDeclaration], *, verified: bool) -> None:
+        self.declarations = declarations
+        self.verified = verified
+        self.verified_identifiers: list[tuple[str, str]] = []
+
+    def fetch_plugin_model_providers(self, tenant_id: str) -> list[PluginModelProviderDeclaration]:
+        assert tenant_id == "tenant-1"
+        return self.declarations
+
+    def is_plugin_verified(self, tenant_id: str, plugin_unique_identifier: str) -> bool:
+        self.verified_identifiers.append((tenant_id, plugin_unique_identifier))
+        return self.verified
+
+
+@pytest.mark.parametrize("verified", [False, True])
+@pytest.mark.parametrize("source", [PluginInstallationSource.Marketplace, PluginInstallationSource.Github])
+@pytest.mark.parametrize("provider", ["langgenius/openai/openai", "untrusted/openai/openai"])
+@pytest.mark.parametrize("supports_moderation", [False, True])
+def test_tenant_resolver_only_accepts_official_verified_marketplace_plugins(
+    verified: bool, source: PluginInstallationSource, provider: str, supports_moderation: bool
+) -> None:
+    schema = make_model_config(
+        provider=provider, model="model", mode="chat"
+    ).provider_model_bundle.configuration.provider
+    declaration = PluginModelProviderDeclaration.model_validate(
+        {
+            **schema.model_dump(),
+            "supported_model_types": [ModelType.MODERATION] if supports_moderation else [ModelType.LLM],
+            "plugin_unique_identifier": provider.rsplit("/", 1)[0] + ":1.0.0@checksum",
+            "installation_source": source,
+        }
+    )
+    catalogue = RecordingPluginCatalogue([declaration], verified=verified)
+    result = VerifiedTenantModerationPluginResolver(catalogue).resolve("tenant-1")
+
+    expected = (
+        supports_moderation
+        and verified
+        and source == PluginInstallationSource.Marketplace
+        and provider == "langgenius/openai/openai"
+    )
+    assert result == (declaration.plugin_unique_identifier if expected else None)
+    if (
+        not supports_moderation
+        or provider != "langgenius/openai/openai"
+        or source != PluginInstallationSource.Marketplace
+    ):
+        assert not catalogue.verified_identifiers
+
+
+@pytest.mark.parametrize("identifier", [None, "langgenius/openai:tenant@checksum"])
+@pytest.mark.parametrize("flagged", [False, True])
+def test_platform_prefers_tenant_plugin_and_logs_rejection_without_content(
+    identifier: str | None, flagged: bool, caplog: pytest.LogCaptureFixture
+) -> None:
+    client = RecordingHostedModerationClient()
+    plugins = RecordingTenantPlugins(identifier)
+    fallback = "langgenius/openai:fallback@checksum"
+    gateway = HostedOpenAIModerationGateway(
+        client=client,
+        credentials={"api_key": "platform-key"},
+        plugin_unique_identifier=fallback,
+        tenant_plugins=plugins,
+    )
+    rule = ModerationRule(type="openai_moderation", config={"outputs_config": {"enabled": True}})
+    text = "private blocked content" if flagged else "private safe content"
+    with caplog.at_level("WARNING", logger="services.moderation_adapters"):
+        verdict = gateway.check(
+            AppRequestContext(tenant_id="tenant-1", app_id="app-1"), rule=rule, text=text, phase="output"
+        )
+
+    assert verdict.flagged is flagged
+    assert len(client.calls) == 1
+    assert client.calls[0][6] == (identifier or fallback)
+    assert client.calls[0][4] == {"api_key": "platform-key"}
+    assert ("Platform moderation rejected content" in caplog.text) is flagged
+    assert text not in caplog.text
+    assert "platform-key" not in caplog.text
+
+
+@pytest.mark.parametrize("text", ["", "safe"])
+def test_missing_tenant_plugin_and_fallback_fail_closed(text: str) -> None:
+    client = RecordingHostedModerationClient()
+    gateway = HostedOpenAIModerationGateway(
+        client=client,
+        credentials={"api_key": "platform-key"},
+        plugin_unique_identifier="",
+        tenant_plugins=RecordingTenantPlugins(None),
+    )
+    rule = ModerationRule(type="openai_moderation", config={"inputs_config": {"enabled": True}})
+    with pytest.raises(InvokeAuthorizationError, match="No trusted tenant"):
+        gateway.check(AppRequestContext(tenant_id="tenant-1", app_id=""), rule=rule, text=text, phase="input")
+    assert not client.calls
+
+
+def test_tenant_invoke_failure_switches_to_configured_fallback_for_remaining_checks() -> None:
+    client = RecordingHostedModerationClient()
+    tenant_identifier = "langgenius/openai:tenant@checksum"
+    fallback = "langgenius/openai:fallback@checksum"
+    client.identifier_errors[tenant_identifier] = RuntimeError("Tenant runtime unavailable")
+    plugins = RecordingTenantPlugins(tenant_identifier)
+    gateway = HostedOpenAIModerationGateway(
+        client=client,
+        credentials={"api_key": "platform-key"},
+        plugin_unique_identifier=fallback,
+        tenant_plugins=plugins,
+    )
+    rule = ModerationRule(type="openai_moderation", config={"inputs_config": {"enabled": True}})
+    context = AppRequestContext(tenant_id="tenant-1", app_id="app-1")
+
+    assert not gateway.check(context, rule=rule, text="safe", phase="input").flagged
+    assert not gateway.check(context, rule=rule, text="safe again", phase="input").flagged
+    assert [call[6] for call in client.calls] == [tenant_identifier, fallback, fallback]
+    assert plugins.tenants == ["tenant-1"]
+
+
+def test_trusted_tenant_plugin_does_not_require_a_valid_fallback_identifier() -> None:
+    client = RecordingHostedModerationClient()
+    tenant_identifier = "langgenius/openai:tenant@checksum"
+    gateway = HostedOpenAIModerationGateway(
+        client=client,
+        credentials={"api_key": "platform-key"},
+        plugin_unique_identifier="invalid-fallback",
+        tenant_plugins=RecordingTenantPlugins(tenant_identifier),
+    )
+    rule = ModerationRule(type="openai_moderation", config={"inputs_config": {"enabled": True}})
+    assert not gateway.check(
+        AppRequestContext(tenant_id="tenant-1", app_id=""), rule=rule, text="safe", phase="input"
+    ).flagged
+    assert client.calls[0][6] == tenant_identifier
 
 
 @pytest.fixture
@@ -252,6 +400,25 @@ def test_non_stream_checks_independent_segments(phase: ModerationPhase) -> None:
         result = _result("abcdefghijk")
         assert guard.check_output(result) is result
     assert checked == ["abcde", "fghij", "k"]
+
+
+@pytest.mark.parametrize("platform", [False, True])
+def test_only_platform_checks_preserve_message_boundaries_for_sharing(platform: bool) -> None:
+    checked: list[str] = []
+
+    def check(text: str, phase: ModerationPhase) -> None:
+        assert phase == "input"
+        checked.append(text)
+
+    guard = LLMModerationGuard(
+        tenant_id="tenant-1",
+        check=check,
+        check_input=True,
+        check_output=False,
+        platform=platform,
+    )
+    guard.check_inputs([UserPromptMessage(content="first"), UserPromptMessage(content="second")])
+    assert checked == (["first", "second"] if platform else ["first\nsecond"])
 
 
 def test_streaming_releases_only_checked_segments() -> None:
@@ -541,12 +708,17 @@ def test_platform_moderation_fails_closed_without_credential_fallback(failure: s
         "untrusted/plugin:1.0.0@checksum" if failure == "invalid_identifier" else "langgenius/openai:1.0.0@checksum"
     )
     if failure == "invalid_identifier":
+        gateway = HostedOpenAIModerationGateway(
+            client=client,
+            credentials={"api_key": "platform-key"},
+            plugin_unique_identifier=identifier,
+        )
+        rule = ModerationRule(
+            type="openai_moderation",
+            config={"inputs_config": {"enabled": True, "preset_response": "Rejected"}},
+        )
         with pytest.raises(ValueError, match="pinned langgenius/openai"):
-            HostedOpenAIModerationGateway(
-                client=client,
-                credentials={"api_key": "platform-key"},
-                plugin_unique_identifier=identifier,
-            )
+            gateway.check(AppRequestContext(tenant_id="tenant-1", app_id=""), rule=rule, text="safe", phase="input")
         assert not client.calls
         return
     gateway = HostedOpenAIModerationGateway(

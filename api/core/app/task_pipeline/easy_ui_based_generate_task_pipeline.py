@@ -278,6 +278,24 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 publisher.publish(message)
             event = message.event
 
+            if isinstance(event, QueueErrorEvent):
+                replacement = self.moderation_replacement(event.error)
+                if replacement is not None:
+                    answer, phase = replacement
+                    had_answer = bool(self._task_state.llm_result.message.get_text_content())
+                    self._task_state.llm_result.message.content = answer
+                    if had_answer:
+                        yield self._message_cycle_manager.message_replace_to_stream_response(answer=answer)
+                    else:
+                        yield self._message_cycle_manager.message_to_stream_response(
+                            answer=answer, message_id=self._message_id
+                        )
+                    event = QueueStopEvent(
+                        stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION
+                        if phase == "input"
+                        else QueueStopEvent.StopBy.OUTPUT_MODERATION
+                    )
+
             match event:
                 case QueueErrorEvent():
                     with session_factory.create_session() as session:

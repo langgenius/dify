@@ -234,6 +234,7 @@ class RecordingHostedModerationClient(PluginModelClient):
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, str, str, dict[str, Any], str, str | None]] = []
         self.error: Exception | None = None
+        self.identifier_errors: dict[str, Exception] = {}
 
     @override
     def invoke_moderation(
@@ -258,6 +259,8 @@ class RecordingHostedModerationClient(PluginModelClient):
                 plugin_unique_identifier,
             )
         )
+        if plugin_unique_identifier is not None and plugin_unique_identifier in self.identifier_errors:
+            raise self.identifier_errors[plugin_unique_identifier]
         if self.error is not None:
             raise self.error
         return "blocked" in text

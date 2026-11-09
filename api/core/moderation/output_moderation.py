@@ -1,10 +1,11 @@
 import logging
 import threading
 import time
+from collections.abc import Callable
 from typing import Any
 
 from flask import Flask, current_app
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -32,6 +33,12 @@ class OutputModeration(BaseModel):
     buffer: str = ""
     is_final_chunk: bool = False
     final_output: str | None = None
+    shared_openai_check: Callable[[str], bool | None] | None = Field(
+        default=None,
+        exclude=True,
+        repr=False,
+        description="Process-local platform checker; None or a None verdict preserves independent app checks",
+    )
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def should_direct_output(self) -> bool:
@@ -126,6 +133,18 @@ class OutputModeration(BaseModel):
 
     def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> ModerationOutputsResult | None:
         try:
+            if self.rule.type == "openai_moderation" and self.shared_openai_check is not None:
+                outputs = self.rule.config.get("outputs_config", {})
+                if outputs.get("enabled") is True:
+                    flagged = self.shared_openai_check(moderation_buffer)
+                    if flagged is not None:
+                        return ModerationOutputsResult(
+                            flagged=flagged,
+                            action=ModerationAction.DIRECT_OUTPUT,
+                            preset_response=outputs.get("preset_response", ""),
+                        )
+                else:
+                    return ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
             moderation_factory = ModerationFactory(
                 name=self.rule.type, app_id=app_id, tenant_id=tenant_id, config=self.rule.config
             )

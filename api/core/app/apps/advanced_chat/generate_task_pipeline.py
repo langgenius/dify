@@ -424,8 +424,22 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle ping events."""
         yield self._base_task_pipeline.ping_stream_response()
 
-    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse]:
+    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle error events."""
+        replacement = self._base_task_pipeline.moderation_replacement(event.error)
+        if replacement is not None:
+            had_answer = bool(self._task_state.answer)
+            self._task_state.answer = replacement[0]
+            with self._database_session() as session:
+                self._save_message(session=session)
+            if had_answer:
+                yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement[0])
+            else:
+                yield self._message_cycle_manager.message_to_stream_response(
+                    answer=replacement[0], message_id=self._message_id
+                )
+            yield self._message_end_to_stream_response()
+            return
         with self._database_session() as session:
             err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
         yield self._base_task_pipeline.error_to_stream_response(err)
@@ -743,6 +757,22 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             error=event.error,
             exceptions_count=event.exceptions_count,
         )
+
+        replacement = self._base_task_pipeline.workflow_moderation_replacement(event.error)
+        if replacement is not None:
+            had_answer = bool(self._task_state.answer)
+            self._task_state.answer = replacement[0]
+            with self._database_session() as session:
+                self._save_message(session=session, graph_runtime_state=validated_state)
+            yield workflow_finish_resp
+            if had_answer:
+                yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement[0])
+            else:
+                yield self._message_cycle_manager.message_to_stream_response(
+                    answer=replacement[0], message_id=self._message_id
+                )
+            yield self._message_end_to_stream_response()
+            return
 
         with self._database_session() as session:
             err_event = QueueErrorEvent(error=ValueError(f"Run failed: {event.error}"))

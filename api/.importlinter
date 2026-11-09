@@ -43,6 +43,7 @@ name = Strict moderation use cases depend only on plain contracts and injected g
 type = forbidden
 source_modules =
     services.moderation_service
+    services.moderation_session
 forbidden_modules =
     celery
     configs
