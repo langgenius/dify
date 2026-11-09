@@ -1129,7 +1129,7 @@ def test_web_parameters_derive_connection_requirements_from_selected_published_g
             type=WorkflowType.WORKFLOW if mode == AppMode.WORKFLOW else WorkflowType.CHAT,
             version="published",
             graph=json.dumps({"nodes": nodes}),
-            features='{"opening_statement":"Published"}',
+            _features='{"opening_statement":"Published"}',
             created_by=_ACCOUNT_ID,
         )
         draft = Workflow(
@@ -1150,7 +1150,7 @@ def test_web_parameters_derive_connection_requirements_from_selected_published_g
                     ]
                 }
             ),
-            features='{"opening_statement":"Draft"}',
+            _features='{"opening_statement":"Draft"}',
             created_by=_ACCOUNT_ID,
         )
         session.add_all([published, draft])
@@ -1182,7 +1182,7 @@ def test_web_parameters_do_not_treat_unavailable_workflow_as_connection_free(
                     type=WorkflowType.WORKFLOW,
                     version="draft" if reference == "draft" else "published",
                     graph='{"nodes":[]}',
-                    features="{}",
+                    _features="{}",
                     created_by=_ACCOUNT_ID,
                 )
             )
@@ -1206,7 +1206,7 @@ def test_publish_during_parameter_mapping_does_not_mix_versions(
                     graph=json.dumps(
                         {"nodes": [{"id": "tool", "data": {"type": "tool", "credential_source": source}}]}
                     ),
-                    features=json.dumps({"opening_statement": title}),
+                    _features=json.dumps({"opening_statement": title}),
                     created_by=_ACCOUNT_ID,
                 )
             )
@@ -1295,7 +1295,7 @@ def test_test_preflight_graph_uses_saved_draft_and_scopes_both_owners(
                     type=WorkflowType.WORKFLOW,
                     version=version,
                     graph=json.dumps({"nodes": [{"id": version}]}),
-                    features="{}",
+                    _features="{}",
                     created_by=_ACCOUNT_ID,
                 )
             )

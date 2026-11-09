@@ -45,6 +45,14 @@ def web_workflow_launch(
     conversation_id: str | None,
     resume: bool,
 ) -> Generator[None]:
+    """Admit the authenticated Web execution before its worker starts.
+
+    The entity must retain its original EndUser identity and server-selected
+    Workflow. Register or resume the Run atomically against current resource
+    ownership, then release admission locks before yielding. Admission failures
+    never start the worker; failed launches settle their unfinished Run. Other
+    invocation surfaces and disabled Account Passport deployments pass through.
+    """
     if entity.invoke_from != InvokeFrom.WEB_APP or not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
         yield
         return
@@ -74,8 +82,8 @@ def web_workflow_launch(
         total_steps=0,
         created_by_role=CreatorUserRole.END_USER,
         created_by=user.id,
-        created_at=naive_utc_now(),
     )
+    run.created_at = naive_utc_now()
     repository = WebWorkflowAdmissionRepository(session_factory.get_session_maker())
     try:
         repository.admit(

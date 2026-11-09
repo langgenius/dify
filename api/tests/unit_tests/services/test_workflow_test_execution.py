@@ -24,7 +24,7 @@ def execution(monkeypatch: pytest.MonkeyPatch) -> tuple[App, Account, Workflow, 
         type=WorkflowType.WORKFLOW,
         version="draft",
         graph=json.dumps(graph),
-        features="{}",
+        _features="{}",
         created_by=user.id,
     )
     harness = BuilderCredentialHarness(graph)

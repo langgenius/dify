@@ -11,9 +11,11 @@ from enums import DeploymentEdition
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
+from services.billing_client.billing import GetSubscriptionInfoReply
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from services.workflow.tool_credentials import WorkflowToolEndUserAuthError, first_end_user_tool_node
 from services.workflow_service import WorkflowService
+from tests.helpers import billing_builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
 
@@ -55,11 +57,11 @@ def _app_and_workflow(session: Session, source: str | None, *, draft: bool = Fal
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT if draft else "1",
         graph=json.dumps(_graph(source)),
-        features="{}",
+        _features="{}",
         created_by="user",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     session.add_all([app, workflow])
     session.commit()
@@ -247,9 +249,9 @@ def test_publish_checks_tool_after_external_validation(
     def validate_before_lock(*_args: object, **_kwargs: object) -> None:
         assert not locks
 
-    def billing_before_lock(*_args: object, **_kwargs: object) -> dict[str, dict[str, str]]:
+    def billing_before_lock(*_args: object, **_kwargs: object) -> GetSubscriptionInfoReply:
         assert not locks
-        return {"subscription": {"plan": "professional"}}
+        return billing_builders.subscription_info("professional")
 
     event.listen(sqlite_session, "do_orm_execute", record_lock)
     try:

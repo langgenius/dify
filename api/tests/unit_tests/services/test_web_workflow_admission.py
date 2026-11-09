@@ -1,6 +1,7 @@
 """Real resource validation and durable admission around the worker handoff."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -11,7 +12,7 @@ from configs import dify_config
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType
 from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.workflow.file_reference import build_file_reference
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
@@ -60,7 +61,7 @@ def admission(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest
             type=WorkflowType.WORKFLOW,
             version="published",
             graph='{"nodes": [], "edges": []}',
-            features="{}",
+            _features="{}",
             created_by=account.id,
         )
         guest = EndUser(tenant_id=app.tenant_id, app_id=app.id, type=EndUserType.BROWSER, session_id=str(uuid4()))
@@ -113,6 +114,7 @@ def admission(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest
             workflow_id=workflow.id,
         ),
         user_id=guest.id,
+        user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
         stream=False,
         inputs={},
@@ -179,7 +181,11 @@ def test_prepared_guest_resources_are_rechecked_after_migration(admission: Admis
         )
 
 
-def test_committed_admission_blocks_migration_before_worker_start(admission: Admission) -> None:
+def test_committed_admission_blocks_migration_before_worker_start(
+    admission: Admission, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started_at = datetime(2026, 11, 9, 8, 30, 0, 123456)
+    monkeypatch.setattr("services.web_workflow_admission.naive_utc_now", lambda: started_at)
     with web_workflow_launch(
         admission.entity,
         workflow=admission.workflow,
@@ -192,6 +198,7 @@ def test_committed_admission_blocks_migration_before_worker_start(admission: Adm
             assert run is not None
             assert run.status == WorkflowExecutionStatus.RUNNING
             assert run.task_id == admission.entity.task_id
+            assert run.created_at == started_at
         with pytest.raises(GuestMigrationNotReadyError):
             admission.claim()
     with web_workflow_worker(admission.entity):
