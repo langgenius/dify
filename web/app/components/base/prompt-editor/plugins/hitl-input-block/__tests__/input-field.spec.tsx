@@ -1,5 +1,5 @@
 import type { ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   createEdge,
@@ -43,6 +43,26 @@ vi.mock('react-i18next', async (importOriginal) => {
     ),
   }
 })
+
+let firstVarReferencePickerOnChange: ((value: string[]) => void) | undefined
+
+vi.mock(
+  '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker')
+      >()
+    const VarReferencePicker = actual.default
+    return {
+      ...actual,
+      default: (props: React.ComponentProps<typeof VarReferencePicker>) => {
+        firstVarReferencePickerOnChange ||= props.onChange as (value: string[]) => void
+        return <VarReferencePicker {...props} />
+      },
+    }
+  },
+)
 
 const render = (ui: React.ReactElement) => {
   const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
@@ -119,6 +139,7 @@ const createPayload = (overrides?: Partial<ParagraphFormInput>): ParagraphFormIn
 describe('InputField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    firstVarReferencePickerOnChange = undefined
   })
 
   it('saves only from the field surface and ignores composition', () => {
@@ -464,6 +485,52 @@ describe('InputField', () => {
       type: 'variable',
       selector: ['code', 'text'],
       value: '',
+    })
+  })
+
+  it('should keep the typed variable name when a stale pre-populate selector callback updates later', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="human"
+        isEdit={false}
+        payload={createPayload({
+          output_variable_name: '',
+          default: {
+            type: 'variable',
+            selector: ['code', 'old_text'],
+            value: '',
+          },
+        })}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    const staleSelectorCallback = firstVarReferencePickerOnChange
+    expect(staleSelectorCallback).toBeDefined()
+
+    await user.type(screen.getByRole('textbox', { name: /saveResponseAs/ }), 'reviewed_markdown')
+    act(() => {
+      staleSelectorCallback?.(['code', 'text'])
+    })
+    await user.click(
+      screen.getByRole('button', {
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
+      }),
+    )
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).toEqual({
+      type: InputVarType.paragraph,
+      output_variable_name: 'reviewed_markdown',
+      default: {
+        type: 'variable',
+        selector: ['code', 'text'],
+        value: '',
+      },
     })
   })
 
