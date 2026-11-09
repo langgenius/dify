@@ -51,8 +51,7 @@ def test_weighted_hybrid_keeps_bm25_only_hit():
 def test_document_with_score_still_uses_its_score():
     runner = WeightRerankRunner(tenant_id="tenant", weights=SimpleNamespace())
     scored = Document(page_content="vector hit", metadata={"doc_id": "d2", "score": 0.9})
-    vector = Document(page_content="vector hit", metadata={"doc_id": "d3"},
-                      vector=[1.0, 0.0])
+    vector = Document(page_content="vector hit", metadata={"doc_id": "d3"}, vector=[1.0, 0.0])
     with patch("core.rag.rerank.weight_rerank.CacheEmbedding") as cache:
         cache.get_cached_query_embedding.return_value = [1.0, 0.0]
         scores = runner._calculate_cosine("tenant", "tls", [scored, vector], _setting())
