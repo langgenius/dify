@@ -32,7 +32,7 @@ const AppInfoTrigger = ({
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const modeLabel = getAppModeLabel(appDetail.mode, t)
+  const modeLabel = getAppModeLabel(appDetail.mode, t, appDetail.workflow_kind)
   const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail.maintainer,

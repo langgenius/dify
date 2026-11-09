@@ -151,33 +151,36 @@ export const SnippetSidebarContent = ({
             href={`/snippets/${snippet.id}/evaluation`}
             active={section === 'evaluation'}
             disabled={!snippet.is_published}
+            disabledReason={t(($) => $.unavailableUntilPublished, { ns: 'evaluation' })}
             iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
           />
         )}
       </nav>
 
-      {section === 'orchestrate' && <div className="flex min-h-0 grow flex-col px-3 pt-6">
-        <Field
-          title={t(($) => $.inputVariables, { ns: 'snippet' })}
-          operations={
-            !readonly ? (
-              <button
-                type="button"
-                aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $.inputVariables, { ns: 'snippet' })}`}
-                className={cn(
-                  'rounded-md border-none bg-transparent p-1 select-none focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-                  'cursor-pointer hover:bg-state-base-hover',
-                )}
-                onClick={showAddVarModal}
-              >
-                <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-              </button>
-            ) : undefined
-          }
-        >
-          <VarList readonly={readonly} list={workflowInputVars} onChange={handleVarListChange} />
-        </Field>
-      </div>}
+      {section === 'orchestrate' && (
+        <div className="flex min-h-0 grow flex-col px-3 pt-6">
+          <Field
+            title={t(($) => $.inputVariables, { ns: 'snippet' })}
+            operations={
+              !readonly ? (
+                <button
+                  type="button"
+                  aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $.inputVariables, { ns: 'snippet' })}`}
+                  className={cn(
+                    'rounded-md border-none bg-transparent p-1 select-none focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                    'cursor-pointer hover:bg-state-base-hover',
+                  )}
+                  onClick={showAddVarModal}
+                >
+                  <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+                </button>
+              ) : undefined
+            }
+          >
+            <VarList readonly={readonly} list={workflowInputVars} onChange={handleVarListChange} />
+          </Field>
+        </div>
+      )}
 
       {section === 'orchestrate' && isShowAddVarModal && (
         <ConfigVarModal

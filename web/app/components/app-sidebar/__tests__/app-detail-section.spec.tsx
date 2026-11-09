@@ -1,6 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -163,15 +164,21 @@ describe('AppDetailSection', () => {
       )
     })
 
-    it('shows disabled evaluation before the workflow is published', () => {
+    it('shows disabled evaluation with the reason before the workflow is published', async () => {
+      const user = userEvent.setup()
       mockAppMode = 'workflow'
       mockAppPermissionKeys = [AppACLPermission.ViewLayout]
       mockHasPublishedWorkflow = false
 
       render(<AppDetailSection />)
 
-      expect(screen.getByRole('button', { name: 'evaluation.title' })).toBeDisabled()
+      const evaluation = screen.getByRole('button', { name: 'evaluation.title' })
+      expect(evaluation).toHaveAttribute('aria-disabled', 'true')
       expect(screen.queryByRole('link', { name: 'evaluation.title' })).not.toBeInTheDocument()
+
+      // The item stays focusable so it can say why it is disabled.
+      await user.hover(evaluation)
+      expect(await screen.findByText('evaluation.unavailableUntilPublished')).toBeInTheDocument()
     })
 
     it('hides evaluation for other app modes', () => {

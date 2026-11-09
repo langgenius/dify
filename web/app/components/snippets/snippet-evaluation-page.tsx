@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import SnippetAndEvaluationPlanGuard from '@/app/components/billing/snippet-and-evaluation-plan-guard'
 import Evaluation from '@/app/components/evaluation'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { buildSnippetDetailPayload, useSnippetApiDetail } from '@/service/use-snippets'
 import SnippetLayout from './components/snippet-layout'
@@ -15,6 +17,7 @@ type SnippetEvaluationPageProps = {
 }
 
 const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
+  const { t } = useTranslation(['evaluation'])
   const router = useRouter()
   const { data, isLoading } = useSnippetApiDetail(snippetId)
   const { reset, setNavigationState } = useSnippetDetailStore(
@@ -39,6 +42,8 @@ const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
     if (!snippet) return
 
     if (!snippet.is_published) {
+      // Say why the evaluation link went to the editor instead.
+      toast.info(t(($) => $.unavailableUntilPublished))
       router.replace(`/snippets/${snippetId}/orchestrate`)
       return
     }
@@ -49,7 +54,7 @@ const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
       readonly: true,
       onFieldsChange: undefined,
     })
-  }, [router, setNavigationState, snippet, snippetId])
+  }, [router, setNavigationState, snippet, snippetId, t])
 
   if (isLoading || !snippet || !snippet.is_published) {
     return (

@@ -192,9 +192,10 @@ const FeaturesTrigger = () => {
             marked_comment: publishParams?.releaseNotes || '',
           },
         }
-        const res = publishKind === 'evaluation'
-          ? await publishEvaluationWorkflow(input)
-          : await publishWorkflow(input)
+        const res =
+          publishKind === 'evaluation'
+            ? await publishEvaluationWorkflow(input)
+            : await publishWorkflow(input)
         if (res) {
           // One toast per publish: a warning from the server replaces the success message.
           if (res.warning) toast.warning(res.warning)
@@ -204,31 +205,39 @@ const FeaturesTrigger = () => {
             void Promise.all([
               invalidateAppWorkflow(appID),
               queryClient.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appID } } }),
+                queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                  input: { params: { app_id: appID } },
+                }),
               }),
               queryClient.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.triggers.get.key({ input: { params: { app_id: appID } } }),
+                queryKey: consoleQuery.apps.byAppId.triggers.get.key({
+                  input: { params: { app_id: appID } },
+                }),
               }),
             ]).catch((error) => console.warn('[evaluation] refresh after publish failed', error))
           }
-          void queryClient.invalidateQueries({
-            queryKey:
-              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key(
-                {
-                  type: 'query',
-                  input: {
-                    params: {
-                      evaluate_target_id: appID,
-                      evaluate_target_type: 'apps',
+          void queryClient
+            .invalidateQueries({
+              queryKey:
+                consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key(
+                  {
+                    type: 'query',
+                    input: {
+                      params: {
+                        evaluate_target_id: appID,
+                        evaluate_target_type: 'apps',
+                      },
                     },
                   },
-                },
-              ),
-          }).catch((error) => console.warn('[evaluation] refresh default metrics failed', error))
+                ),
+            })
+            .catch((error) => console.warn('[evaluation] refresh default metrics failed', error))
           if (publishKind === 'evaluation' || appDetail?.workflow_kind === 'evaluation') {
-            void queryClient.invalidateQueries({
-              queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
-            }).catch((error) => console.warn('[evaluation] refresh workflow list failed', error))
+            void queryClient
+              .invalidateQueries({
+                queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+              })
+              .catch((error) => console.warn('[evaluation] refresh workflow list failed', error))
           }
           if (rosterAgentIds.length > 0) {
             void queryClient.invalidateQueries({
@@ -295,13 +304,19 @@ const FeaturesTrigger = () => {
       await Promise.all([
         invalidateAppWorkflow(appID),
         queryClient.invalidateQueries({
-          queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appID } } }),
+          queryKey: consoleQuery.apps.byAppId.get.queryKey({
+            input: { params: { app_id: appID } },
+          }),
         }),
         queryClient.invalidateQueries({
           queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
         }),
       ])
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+      toast.success(
+        targetKind === 'standard'
+          ? t(($) => $['common.switchedToStandardWorkflow'], { ns: 'workflow' })
+          : t(($) => $['common.switchedToEvaluationWorkflow'], { ns: 'workflow' }),
+      )
     },
     [appID, convertWorkflowKind, invalidateAppWorkflow, queryClient, t],
   )
