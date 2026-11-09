@@ -75,32 +75,24 @@ const ConditionMetricLabel = ({ metric, placeholder }: ConditionMetricLabelProps
 
   if (metric.kind === 'builtin' && metric.nodeInfo) {
     return (
-      <div className="flex min-w-0 items-center px-1">
-        <div className="inline-flex h-6 min-w-0 items-center gap-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark py-1 ps-[5px] pe-1.5 shadow-xs">
-          <span className="truncate system-xs-medium text-text-secondary">{metric.groupLabel}</span>
-          <span className="system-xs-regular text-divider-deep">/</span>
-          <span className="flex min-w-0 shrink-0 items-center gap-0.5">
-            <BlockIcon
-              type={getEvaluationNodeBlockType(metric.nodeInfo)}
-              size="xs"
-              className="size-3 rounded-[5px]"
-            />
-            <span className="max-w-[96px] truncate system-xs-medium text-text-secondary">
-              {metric.itemLabel}
-            </span>
-          </span>
-          <span className="shrink-0 system-xs-regular text-text-tertiary">{metric.valueType}</span>
-        </div>
+      <div className="flex min-w-0 items-center gap-0.5 px-1">
+        <span className="truncate system-xs-medium text-text-secondary">{metric.groupLabel}</span>
+        <span className="shrink-0 system-xs-regular text-text-quaternary">/</span>
+        <BlockIcon
+          type={getEvaluationNodeBlockType(metric.nodeInfo)}
+          size="xs"
+          className="size-3 shrink-0 rounded-[5px]"
+        />
+        <span className="max-w-24 shrink-0 truncate system-xs-medium text-text-secondary">
+          {metric.itemLabel}
+        </span>
       </div>
     )
   }
 
   return (
-    <div className="flex min-w-0 items-center px-1">
-      <div className="inline-flex h-6 min-w-0 items-center gap-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark py-1 ps-[5px] pe-1.5 shadow-xs">
-        <span className="truncate system-xs-medium text-text-secondary">{metric.itemLabel}</span>
-        <span className="shrink-0 system-xs-regular text-text-tertiary">{metric.valueType}</span>
-      </div>
+    <div className="flex min-w-0 items-center gap-0.5 px-1">
+      <span className="truncate system-xs-medium text-text-secondary">{metric.itemLabel}</span>
     </div>
   )
 }
@@ -280,12 +272,12 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
   }
 
   return (
-    <div className="rounded-2xl border border-divider-subtle bg-components-card-bg p-4">
+    <div>
       <div className={cn('relative', hasMultipleConditions && 'ps-[48px]')}>
         {hasMultipleConditions && (
           <div className="absolute inset-s-0 top-0 bottom-0 w-[48px]">
             <div className="absolute inset-s-[34px] top-4 bottom-4 w-2.5 rounded-s-[8px] border border-e-0 border-divider-deep" />
-            <div className="absolute inset-e-0 top-1/2 h-[29px] w-4 -translate-y-1/2 bg-components-card-bg" />
+            <div className="absolute inset-e-0 top-1/2 h-[29px] w-4 -translate-y-1/2 bg-background-default" />
             <button
               type="button"
               aria-label={logicalLabels[logicalOperator]}
