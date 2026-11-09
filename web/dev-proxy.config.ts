@@ -14,17 +14,13 @@ if (Boolean(DEV_PROXY_CF_ACCESS_CLIENT_ID) !== Boolean(DEV_PROXY_CF_ACCESS_CLIEN
     'Configure both DEV_PROXY_CF_ACCESS_CLIENT_ID and DEV_PROXY_CF_ACCESS_CLIENT_SECRET.',
   )
 
-const getRequestHeaders = (target: string) => {
-  const origin = new URL(target).origin
-  if (origin !== 'https://saas.dify.dev' && origin !== 'https://saas-app.dify.dev') return undefined
-
-  return DEV_PROXY_CF_ACCESS_CLIENT_ID && DEV_PROXY_CF_ACCESS_CLIENT_SECRET
+const cloudflareAccessHeaders =
+  DEV_PROXY_CF_ACCESS_CLIENT_ID && DEV_PROXY_CF_ACCESS_CLIENT_SECRET
     ? {
         'CF-Access-Client-Id': DEV_PROXY_CF_ACCESS_CLIENT_ID,
         'CF-Access-Client-Secret': DEV_PROXY_CF_ACCESS_CLIENT_SECRET,
       }
     : undefined
-}
 
 const difyCookieRewrite: CookieRewriteOptions = {
   hostPrefixCookies: [
@@ -61,19 +57,19 @@ export default {
         '/v1/plugin-manager',
       ],
       target: DEV_PROXY_ENTERPRISE_TARGET,
-      requestHeaders: getRequestHeaders(DEV_PROXY_ENTERPRISE_TARGET),
+      requestHeaders: cloudflareAccessHeaders,
       cookieRewrite: difyCookieRewrite,
     },
     {
       paths: ['/console/api', '/socket.io'],
       target: DEV_PROXY_TARGET,
-      requestHeaders: getRequestHeaders(DEV_PROXY_TARGET),
+      requestHeaders: cloudflareAccessHeaders,
       cookieRewrite: difyCookieRewrite,
     },
     {
       paths: ['/api'],
       target: DEV_PROXY_PUBLIC_TARGET,
-      requestHeaders: getRequestHeaders(DEV_PROXY_PUBLIC_TARGET),
+      requestHeaders: cloudflareAccessHeaders,
       cookieRewrite: difyCookieRewrite,
     },
   ],
