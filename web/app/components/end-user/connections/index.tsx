@@ -38,7 +38,7 @@ export default function Connections({ providers }: Props) {
                   <h2 className="system-xl-semibold leading-5 wrap-anywhere text-text-secondary">
                     {getConnectionProviderLabel(provider, language)}
                   </h2>
-                  <p className="mt-1 system-sm-regular wrap-anywhere text-text-tertiary">
+                  <p className="mt-1 truncate system-sm-regular text-text-tertiary">
                     {provider.description[language] ?? provider.description.en_US}
                   </p>
                 </div>

@@ -9,13 +9,16 @@ import type {
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { startWebAppAccountSession } from '@/service/webapp-auth'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createTestQueryClient } from '@/test/query-client'
 import ConnectionsPage from '../connections-page'
 import ProviderConnectionsPage from '../provider-connections-page'
 
-vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn(), info: vi.fn() } }))
+const navigation = vi.hoisted(() => ({ replace: vi.fn() }))
+vi.mock('@/next/navigation', () => ({ useRouter: () => navigation }))
 const locale = vi.hoisted(() => ({ language: 'en_US' }))
 vi.mock('@/context/i18n', () => ({ useGetLanguage: () => locale.language }))
 
@@ -86,6 +89,7 @@ function row(name: string) {
 }
 
 beforeEach(() => {
+  navigation.replace.mockReset()
   locale.language = 'en_US'
   window.history.replaceState({}, '', '/connections')
 })
@@ -302,9 +306,8 @@ describe('My connections account API integration', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Try again later.')
     expect(screen.queryByText('app.endUser.noProviderConnections')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(
-      await screen.findByRole('heading', { name: 'app.endUser.noProviderConnections' }),
-    ).toBeVisible()
+    await waitFor(() => expect(navigation.replace).toHaveBeenCalledExactlyOnceWith('/connections'))
+    expect(toast.info).toHaveBeenCalledExactlyOnceWith('app.endUser.noProviderConnections')
   })
 
   it('paginates the connections of one provider without losing the first page', async () => {
