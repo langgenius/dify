@@ -64,10 +64,14 @@ export const useWorkspaceConnectionOperations = ({
           body: { credentials, credential_id: credentialId, name },
         })
       } else {
-        await addCredential.mutateAsync({
+        const result = await addCredential.mutateAsync({
           params,
           body: { credentials, type: CredentialTypeEnum.API_KEY, name, visibility },
         })
+        onUpdate()
+        if ('id' in result && typeof result.id === 'string' && result.id)
+          return { credentialId: result.id }
+        return
       }
       onUpdate()
     },

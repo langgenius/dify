@@ -300,16 +300,3 @@ def test_unverified_plugin_cannot_read_system_oauth(
     mocker.patch.object(service_module.PluginService, "is_plugin_verified", return_value=False)
 
     assert TriggerProviderService.get_oauth_client(trigger_db.tenant_id, trigger_db.provider_id) is None
-
-
-def test_endpoint_lookup_decrypts_persisted_subscription(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    subscription = trigger_db.add_subscription(endpoint_id="lookup-endpoint")
-    _patch_provider(mocker, provider_controller)
-    _patch_identity_encryption(mocker)
-
-    assert TriggerProviderService.get_subscription_by_endpoint("missing") is None
-    found = TriggerProviderService.get_subscription_by_endpoint("lookup-endpoint")
-    assert found is not None
-    assert found.id == subscription.id

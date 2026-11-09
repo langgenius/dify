@@ -7,7 +7,7 @@ from sqlalchemy import Engine, create_engine, event, select
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
@@ -15,9 +15,9 @@ from services.billing_client import billing
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from services.workflow.tool_credentials import WorkflowToolEndUserAuthError, first_end_user_tool_node
 from services.workflow_service import WorkflowService
-from tests.helpers.billing_builders import subscription_info
+from tests.helpers import billing_builders
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account, make_workflow
 
 
 def _graph(source: str | None) -> dict[str, object]:
@@ -50,19 +50,19 @@ def _app_and_workflow(session: Session, source: str | None, *, draft: bool = Fal
         enable_api=True,
         max_active_requests=0,
     )
-    workflow = Workflow(
-        id="draft" if draft else "published",
+    workflow = make_workflow(
+        workflow_id="draft" if draft else "published",
         tenant_id="tenant",
         app_id="app",
-        type=WorkflowType.WORKFLOW,
+        workflow_type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT if draft else "1",
         graph=json.dumps(_graph(source)),
         created_by="user",
+        features="{}",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
     )
-    workflow.features = "{}"
-    workflow.environment_variables = []
-    workflow.conversation_variables = []
-    workflow.rag_pipeline_variables = []
     session.add_all([app, workflow])
     session.commit()
     return app
@@ -251,7 +251,7 @@ def test_publish_checks_tool_after_external_validation(
 
     def billing_before_lock(*_args: object, **_kwargs: object) -> billing.GetSubscriptionInfoReply:
         assert not locks
-        return subscription_info("professional")
+        return billing_builders.subscription_info(CloudPlan.PROFESSIONAL)
 
     event.listen(sqlite_session, "do_orm_execute", record_lock)
     try:
@@ -259,7 +259,9 @@ def test_publish_checks_tool_after_external_validation(
             patch.object(service, "_validate_publish_tool_credentials", side_effect=validate_before_lock) as auth,
             patch.object(service, "_validate_workflow_credentials", side_effect=validate_before_lock) as policy,
             patch("services.workflow_service.SystemFeatureService.is_plugin_manager_enabled", return_value=True),
-            patch("services.workflow_service.BillingService.get_info", side_effect=billing_before_lock) as billing_call,
+            patch(
+                "services.workflow_service.BillingService.get_info", side_effect=billing_before_lock
+            ) as billing_request,
             patch("services.workflow_service.app_published_workflow_was_updated") as published,
         ):
             if existing_tool:
@@ -271,7 +273,7 @@ def test_publish_checks_tool_after_external_validation(
                 assert result.version != Workflow.VERSION_DRAFT
             auth.assert_called_once()
             policy.assert_called_once()
-            billing_call.assert_called_once()
+            billing_request.assert_called_once()
             assert len(locks) == 2
     finally:
         event.remove(sqlite_session, "do_orm_execute", record_lock)

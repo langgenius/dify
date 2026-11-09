@@ -99,12 +99,12 @@ describe('TextGenerationMenu', () => {
     const user = userEvent.setup()
     renderMenu({ data: siteInfo })
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    expect(screen.getByRole('menuitemradio', { name: 'common.theme.auto' })).toHaveAttribute(
+    expect(screen.getByRole('menuitemradio', { name: 'common.theme.system' })).toHaveAttribute(
       'aria-checked',
       'true',
     )
     await user.click(screen.getByRole('menuitemradio', { name: 'common.theme.light' }))
-    expect(mockSetTheme).toHaveBeenCalledWith('light', expect.anything())
+    expect(mockSetTheme).toHaveBeenCalledWith('light')
     expect(screen.getByRole('menu')).toBeInTheDocument()
   })
 

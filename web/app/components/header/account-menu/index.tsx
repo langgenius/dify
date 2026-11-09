@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactElement, ReactNode } from 'react'
-import type { Theme } from '@/app/components/base/theme-selector'
+import type { ThemePreference } from '@/features/theme/theme'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -19,7 +19,6 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { useQueryState } from 'nuqs'
 import { useRef, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,13 +27,14 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { APP_WEB_URL } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useThemePreference } from '@/features/theme/hooks'
+import { themeOptions } from '@/features/theme/theme'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
-import { basePath } from '@/utils/var'
 import LogoutMenuItem from './logout-menu-item'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
@@ -73,42 +73,31 @@ function MainNavRadioItemContent({ iconClassName, label }: MainNavRadioItemConte
 }
 
 function AppearanceSubmenu() {
-  const { t } = useTranslation(['accountSettings'])
-  const { theme, setTheme } = useTheme()
-  const currentTheme: Theme =
-    theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
+  const { t } = useTranslation(['common'])
+  const { preference, setPreference } = useThemePreference()
 
   return (
     <MenuSubmenu>
       <MenuSubmenuTrigger className="px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-sun-line"
-          label={t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
+          label={t(($) => $['theme.label'], { ns: 'common' })}
         />
       </MenuSubmenuTrigger>
       <MenuContent className="max-h-90 w-34.75">
-        <MenuRadioGroup<Theme>
-          value={currentTheme}
-          onValueChange={(nextTheme) => setTheme(nextTheme)}
-        >
-          <MenuRadioItem<Theme> value="light" className="py-1">
-            <MainNavRadioItemContent
-              iconClassName="i-ri-sun-line"
-              label={t(($) => $['account.appearanceLight'], { ns: 'accountSettings' })}
-            />
-          </MenuRadioItem>
-          <MenuRadioItem<Theme> value="dark" className="py-1">
-            <MainNavRadioItemContent
-              iconClassName="i-ri-moon-line"
-              label={t(($) => $['account.appearanceDark'], { ns: 'accountSettings' })}
-            />
-          </MenuRadioItem>
-          <MenuRadioItem<Theme> value="system" className="py-1">
-            <MainNavRadioItemContent
-              iconClassName="i-ri-computer-line"
-              label={t(($) => $['account.appearanceSystem'], { ns: 'accountSettings' })}
-            />
-          </MenuRadioItem>
+        <MenuRadioGroup<ThemePreference> value={preference} onValueChange={setPreference}>
+          {themeOptions.map((option) => (
+            <MenuRadioItem<ThemePreference>
+              key={option.value}
+              value={option.value}
+              className="py-1"
+            >
+              <MainNavRadioItemContent
+                iconClassName={option.iconClassName}
+                label={t(($) => $[option.labelKey], { ns: 'common' })}
+              />
+            </MenuRadioItem>
+          ))}
         </MenuRadioGroup>
       </MenuContent>
     </MenuSubmenu>
@@ -125,6 +114,7 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: enableEducationPlan } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.education.enabled,
@@ -194,7 +184,7 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
       <MenuGroup className="py-1">
         <MenuLinkItem
           className="justify-between px-3 py-1"
-          href={`${APP_WEB_URL.replace(/\/+$/, '')}${basePath}/my-apps`}
+          href={`${systemFeatures.webapp_url}/my-apps`}
         >
           <MenuItemContent
             iconClassName="i-ri-apps-2-line"

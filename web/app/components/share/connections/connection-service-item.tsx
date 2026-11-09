@@ -5,8 +5,7 @@ import type { AppIconProps } from '@/app/components/base/app-icon'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
 
 type Props = Pick<AppIconProps, 'icon'> & {
   ref?: Ref<HTMLLIElement>
@@ -28,7 +27,7 @@ export default function ConnectionServiceItem({
   warning,
   renderControls,
 }: Props) {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const nameId = useId()
   const descriptionId = useId()
   const warningId = useId()
@@ -42,7 +41,7 @@ export default function ConnectionServiceItem({
     >
       <AppIcon
         size="small"
-        icon={theme === Theme.dark && iconDark ? iconDark : icon}
+        icon={theme === 'dark' && iconDark ? iconDark : icon}
         fallback={{
           content: (
             <span className={cn('size-6 text-text-secondary', iconClassName ?? 'i-ri-plug-line')} />

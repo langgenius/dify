@@ -6,6 +6,20 @@ const DEV_PROXY_ENTERPRISE_TARGET = process.env.DEV_PROXY_ENTERPRISE_TARGET || D
 const DEV_PROXY_PUBLIC_TARGET = process.env.DEV_PROXY_PUBLIC_TARGET || DEV_PROXY_TARGET
 const DEV_PROXY_HOST = process.env.DEV_PROXY_HOST || '127.0.0.1'
 const DEV_PROXY_PORT = Number(process.env.DEV_PROXY_PORT || 5001)
+const DEV_PROXY_CF_AUTHORIZATION = process.env.DEV_PROXY_CF_AUTHORIZATION
+const DEV_PROXY_PUBLIC_CF_AUTHORIZATION = process.env.DEV_PROXY_PUBLIC_CF_AUTHORIZATION
+
+const getRequestCookies = (target: string) => {
+  const origin = new URL(target).origin
+  const authorization =
+    origin === 'https://saas.dify.dev'
+      ? DEV_PROXY_CF_AUTHORIZATION
+      : origin === 'https://saas-app.dify.dev'
+        ? DEV_PROXY_PUBLIC_CF_AUTHORIZATION
+        : undefined
+
+  return authorization ? { CF_Authorization: authorization } : undefined
+}
 
 const difyCookieRewrite: CookieRewriteOptions = {
   hostPrefixCookies: [
@@ -42,16 +56,19 @@ export default {
         '/v1/plugin-manager',
       ],
       target: DEV_PROXY_ENTERPRISE_TARGET,
+      requestCookies: getRequestCookies(DEV_PROXY_ENTERPRISE_TARGET),
       cookieRewrite: difyCookieRewrite,
     },
     {
       paths: ['/console/api', '/socket.io'],
       target: DEV_PROXY_TARGET,
+      requestCookies: getRequestCookies(DEV_PROXY_TARGET),
       cookieRewrite: difyCookieRewrite,
     },
     {
       paths: ['/api'],
       target: DEV_PROXY_PUBLIC_TARGET,
+      requestCookies: getRequestCookies(DEV_PROXY_PUBLIC_TARGET),
       cookieRewrite: difyCookieRewrite,
     },
   ],

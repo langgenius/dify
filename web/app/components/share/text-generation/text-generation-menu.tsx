@@ -1,5 +1,6 @@
 'use client'
 import type { MenuContentProps } from '@langgenius/dify-ui/menu'
+import type { ThemePreference } from '@/features/theme/theme'
 import type { SiteInfo } from '@/models/share'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
@@ -16,11 +17,12 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { useQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWebAppStore } from '@/context/web-app-context'
+import { useThemePreference } from '@/features/theme/hooks'
+import { themeOptions } from '@/features/theme/theme'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { webAppQuery } from '@/service/webapp'
@@ -73,7 +75,7 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
     else router.replace(`/webapp-signin?redirect_url=${pathname}`)
   }
 
-  const { theme, setTheme } = useTheme()
+  const { preference, setPreference } = useThemePreference()
   const [show, setShow] = useState(false)
   const handleOpenInfoModal = () => {
     queueMicrotask(() => {
@@ -128,53 +130,34 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
               <MenuSeparator />
             </>
           )}
-          <MenuRadioGroup
-            value={theme ?? 'system'}
-            onValueChange={setTheme}
+          <MenuRadioGroup<ThemePreference>
+            value={preference}
+            onValueChange={setPreference}
             className="flex items-center gap-2 px-3 system-md-regular text-text-secondary"
           >
             <MenuGroupLabel className="grow px-0 py-0 system-md-regular text-text-secondary normal-case">
-              {t(($) => $['theme.theme'], { ns: 'common' })}
+              {t(($) => $['theme.label'], { ns: 'common' })}
             </MenuGroupLabel>
             <div className="flex items-center rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
-              {(['system', 'light', 'dark'] as const).map((value, index) => (
-                <React.Fragment key={value}>
+              {themeOptions.map((option, index) => (
+                <React.Fragment key={option.value}>
                   {index > 0 && (
                     <div
                       aria-hidden
                       className={
-                        (index === 1 && theme === 'dark') ||
-                        (index === 2 && (theme ?? 'system') === 'system')
+                        preference !== option.value && preference !== themeOptions[index - 1]?.value
                           ? 'h-3.5 w-px bg-divider-regular'
                           : 'h-3.5 w-px bg-transparent'
                       }
                     />
                   )}
-                  <MenuRadioItem
-                    value={value}
-                    aria-label={t(
-                      ($) =>
-                        $[
-                          value === 'system'
-                            ? 'theme.auto'
-                            : value === 'light'
-                              ? 'theme.light'
-                              : 'theme.dark'
-                        ],
-                      { ns: 'common' },
-                    )}
+                  <MenuRadioItem<ThemePreference>
+                    value={option.value}
+                    aria-label={t(($) => $[option.labelKey], { ns: 'common' })}
                     className="mx-0 h-auto py-1 text-text-tertiary data-checked:bg-components-segmented-control-item-active-bg data-checked:text-text-accent-light-mode-only data-checked:shadow-sm data-highlighted:text-text-secondary data-checked:data-highlighted:bg-components-segmented-control-item-active-bg data-checked:data-highlighted:text-text-accent-light-mode-only"
                   >
                     <span aria-hidden className="p-0.5">
-                      <span
-                        className={
-                          value === 'system'
-                            ? 'i-ri-computer-line size-4'
-                            : value === 'light'
-                              ? 'i-ri-sun-line size-4'
-                              : 'i-ri-moon-line size-4'
-                        }
-                      />
+                      <span className={`${option.iconClassName} size-4`} />
                     </span>
                   </MenuRadioItem>
                 </React.Fragment>

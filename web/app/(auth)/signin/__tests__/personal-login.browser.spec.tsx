@@ -1,5 +1,8 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { DeepPartial } from '@/test/console/system-features'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { toast } from '@/app/notifications'
 import {
   getAnonymousWebAppPassport,
   getAuthenticatedWebAppPassport,
@@ -36,13 +39,27 @@ vi.mock('#i18n', () => ({ useLocale: () => 'en-US' }))
 
 const address = { kind: 'default', code: 'personal-login-test' } as const
 const destination = '/portal/my-apps?search=hello%20world&tag=workflow#recent'
+const appLoginTarget = {
+  is_end_user: '1',
+  app_code: 'my-app',
+  code_challenge: 'a'.repeat(43),
+  code_challenge_method: 'S256',
+  redirect_url: 'https://apps.example/web/chat/my-app?input=hello%20world#turn-2',
+}
 let requests: Request[]
 let authenticated: boolean
 
-async function showSignin(code = false) {
+async function showSignin(
+  code = false,
+  systemFeatures: DeepPartial<GetSystemFeaturesResponse> = {},
+) {
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     accountProfile: null,
-    systemFeatures: { enable_email_code_login: true, enable_social_oauth_login: true },
+    systemFeatures: {
+      enable_email_code_login: true,
+      enable_social_oauth_login: true,
+      ...systemFeatures,
+    },
   })
   return render(<Wrapper>{code ? <CheckCode /> : <NormalForm />}</Wrapper>)
 }
@@ -80,11 +97,13 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   window.localStorage.clear()
 })
 
 it('signs in with password then establishes a cookie account session before returning to My Apps', async () => {
+  mocks.searchParams.set('mode', 'console')
   setWebAppAccessToken('legacy-bearer')
   setWebAppPassport(address, 'anonymous-history', 'anonymous')
   setWebAppPassport(address, 'previous-account-passport', 'authenticated')
@@ -93,9 +112,11 @@ it('signs in with password then establishes a cookie account session before retu
   await screen.getByLabelText('login.password').fill('Password123!')
   await userEvent.keyboard('{Enter}')
   await expect.poll(() => mocks.redirect.mock.calls.length).toBe(1)
-  expect(await requests[1]!.json()).toMatchObject({
+  expect(await requests[1]!.json()).toEqual({
     mode: 'end_user',
     email: 'personal@example.com',
+    password: expect.any(String),
+    remember_me: true,
   })
   const resume = new URL(mocks.redirect.mock.calls[0]![0].href)
   expect(resume.pathname).toBe('/portal/signin')
@@ -162,18 +183,12 @@ it('preserves personal mode and the complete return URL across OAuth', async () 
 })
 
 it('preserves the App PKCE handoff without starting a personal session early', async () => {
-  const returnUrl = 'https://apps.example/web/chat/my-app?input=hello%20world#turn-2'
-  mocks.searchParams = new URLSearchParams({
-    is_end_user: '1',
-    app_code: 'my-app',
-    code_challenge: 'a'.repeat(43),
-    redirect_url: returnUrl,
-  })
+  mocks.searchParams = new URLSearchParams(appLoginTarget)
   const callback = new URL('https://apps.example/web/webapp-signin')
   callback.search = new URLSearchParams({
     mode: 'end_user',
     login_code: 'single-use',
-    redirect_url: returnUrl,
+    redirect_url: appLoginTarget.redirect_url,
   }).toString()
   vi.mocked(fetch).mockImplementation(async (input, init) => {
     requests.push(new Request(input, init))
@@ -187,9 +202,160 @@ it('preserves the App PKCE handoff without starting a personal session early', a
   expect(target.pathname).toBe('/web/chat/my-app')
   expect(target.searchParams.get('login_code')).toBe('single-use')
   expect(target.hash).toBe('#turn-2')
-  expect(new URL(requests[0]!.url).searchParams.get('code_challenge')).toBe('a'.repeat(43))
+  expect(Object.fromEntries(new URL(requests[0]!.url).searchParams)).toEqual({
+    mode: 'end_user',
+    app_code: appLoginTarget.app_code,
+    code_challenge: appLoginTarget.code_challenge,
+    redirect_url: appLoginTarget.redirect_url,
+  })
+  expect(requests).toHaveLength(1)
   expect(getWebAppAccessToken()).toBe('legacy-app-session')
 })
+
+it('returns password login through Account sign-in with the complete App PKCE handoff intact', async () => {
+  mocks.searchParams = new URLSearchParams(appLoginTarget)
+  const callback = new URL('https://apps.example/web/webapp-signin')
+  callback.search = new URLSearchParams({
+    mode: 'end_user',
+    redirect_url: appLoginTarget.redirect_url,
+    login_code: 'one-use-code',
+  }).toString()
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const request = new Request(input, init)
+    requests.push(request)
+    if (request.method === 'POST') {
+      authenticated = true
+      return Response.json({ result: 'success' })
+    }
+    return Response.json({
+      logged_in: authenticated,
+      redirect_url: authenticated ? callback.href : null,
+    })
+  })
+  const screen = await showSignin()
+  await screen.getByLabelText('login.email').fill('personal@example.com')
+  await screen.getByLabelText('login.password').fill('Password123!')
+  await screen.getByRole('button', { name: 'login.signBtn' }).click()
+
+  await expect.poll(() => mocks.redirect.mock.calls.length).toBe(1)
+  const resume = new URL(mocks.redirect.mock.calls[0]![0].href)
+  expect(resume.pathname).toBe('/portal/signin')
+  expect(Object.fromEntries(resume.searchParams)).toEqual(appLoginTarget)
+  await screen.unmount()
+  mocks.searchParams = resume.searchParams
+  await showSignin()
+
+  await expect.poll(() => mocks.redirect.mock.calls.length).toBe(2)
+  const target = new URL(mocks.redirect.mock.calls[1]![0].href)
+  expect(target.origin).toBe('https://apps.example')
+  expect(target.pathname).toBe('/web/chat/my-app')
+  expect(target.hash).toBe('#turn-2')
+  expect(Object.fromEntries(target.searchParams)).toEqual({
+    input: 'hello world',
+    mode: 'end_user',
+    login_code: 'one-use-code',
+    redirect_url: appLoginTarget.redirect_url,
+  })
+  expect(requests.map((request) => request.method)).toEqual(['GET', 'POST', 'GET'])
+  expect(mocks.replace).not.toHaveBeenCalled()
+})
+
+it('shows the Account handoff error without a duplicate toast', async () => {
+  mocks.searchParams = new URLSearchParams(appLoginTarget)
+  const errorToast = vi.spyOn(toast, 'error')
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    requests.push(new Request(input, init))
+    return Response.json(
+      { code: 'web_login_unavailable', status: 503, message: 'Account sign-in is unavailable.' },
+      { status: 503 },
+    )
+  })
+  const screen = await showSignin()
+
+  await expect.element(screen.getByText('share.common.appUnknownError')).toBeVisible()
+  await expect
+    .element(screen.getByRole('button', { name: 'login.signBtn' }))
+    .not.toBeInTheDocument()
+  expect(requests).toHaveLength(1)
+  expect(requests[0]!.method).toBe('GET')
+  expect(errorToast).not.toHaveBeenCalled()
+  expect(mocks.redirect).not.toHaveBeenCalled()
+})
+
+it.each(['return URL', 'origin'] as const)(
+  'rejects an App Account callback with a mismatched %s',
+  async (mismatch) => {
+    mocks.searchParams = new URLSearchParams(appLoginTarget)
+    const callback = new URL('https://apps.example/web/webapp-signin')
+    callback.search = new URLSearchParams({
+      mode: 'end_user',
+      redirect_url:
+        mismatch === 'return URL'
+          ? 'https://apps.example/web/chat/another-app'
+          : appLoginTarget.redirect_url,
+      login_code: 'unexpected-code',
+    }).toString()
+    if (mismatch === 'origin') callback.hostname = 'untrusted.example'
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ logged_in: true, redirect_url: callback.href }),
+    )
+    const screen = await showSignin()
+
+    await expect.element(screen.getByText('share.common.appUnknownError')).toBeVisible()
+    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(mocks.replace).not.toHaveBeenCalled()
+  },
+)
+
+it('only offers supported End User methods without workspace admission or sign-up', async () => {
+  const screen = await showSignin(false, {
+    sso_enforced_for_signin: true,
+    sso_enforced_for_signin_protocol: 'oidc',
+    is_allow_register: true,
+  })
+
+  await expect.element(screen.getByRole('button', { name: 'login.signBtn' })).toBeVisible()
+  await expect
+    .element(screen.getByRole('button', { name: 'login.withSSO' }))
+    .not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('link', { name: 'login.signup.signUp' }))
+    .not.toBeInTheDocument()
+  expect(fetch).toHaveBeenCalledOnce()
+  expect(mocks.replace).not.toHaveBeenCalled()
+})
+
+it('shows unavailable login methods when only unsupported enterprise SSO is configured', async () => {
+  const screen = await showSignin(false, {
+    sso_enforced_for_signin: true,
+    sso_enforced_for_signin_protocol: 'saml',
+    enable_email_code_login: false,
+    enable_email_password_login: false,
+    enable_social_oauth_login: false,
+  })
+
+  await expect.element(screen.getByText('login.noLoginMethod')).toBeVisible()
+  await expect
+    .element(screen.getByRole('button', { name: 'login.withSSO' }))
+    .not.toBeInTheDocument()
+  expect(mocks.replace).not.toHaveBeenCalled()
+})
+
+it.each(['redirect_url', 'code_challenge'])(
+  'does not fall back to Console sign-in when the App handoff is missing %s',
+  async (missing) => {
+    mocks.searchParams = new URLSearchParams(appLoginTarget)
+    mocks.searchParams.delete(missing)
+    const screen = await showSignin()
+
+    await expect.element(screen.getByText('share.common.appUnknownError')).toBeVisible()
+    await expect
+      .element(screen.getByRole('button', { name: 'login.signBtn' }))
+      .not.toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(mocks.replace).not.toHaveBeenCalled()
+  },
+)
 
 it.each([
   'https://evil.example/portal/my-apps',

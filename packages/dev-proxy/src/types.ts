@@ -25,6 +25,7 @@ export type CookieRewriteOptions = {
 export type DevProxyRoute = {
   paths: string | readonly string[]
   target: string
+  requestCookies?: Readonly<Record<string, string>>
   cookieRewrite?: CookieRewriteOptions | false
 }
 

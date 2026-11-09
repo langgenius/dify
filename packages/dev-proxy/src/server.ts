@@ -124,6 +124,7 @@ const createProxyRequestHeaders = (
   headers: Headers,
   targetUrl: URL,
   cookieRewrite: CookieRewriteOptions | false | undefined,
+  requestCookies?: DevProxyRoute['requestCookies'],
 ) => {
   const upstreamHeaders = new Headers(headers)
   removeHopByHopHeaders(upstreamHeaders)
@@ -155,6 +156,20 @@ const createProxyRequestHeaders = (
       if (scopedCsrfToken) upstreamHeaders.set(cookieRewrite.csrfHeader.headerName, scopedCsrfToken)
       else upstreamHeaders.delete(cookieRewrite.csrfHeader.headerName)
     }
+  }
+
+  if (requestCookies && Object.keys(requestCookies).length) {
+    const cookies = (upstreamHeaders.get('cookie') || '')
+      .split(';')
+      .map((cookie) => cookie.trim())
+      .filter(Boolean)
+      .filter((cookie) => {
+        const separatorIndex = cookie.indexOf('=')
+        const name = separatorIndex === -1 ? cookie : cookie.slice(0, separatorIndex).trim()
+        return !Object.hasOwn(requestCookies, name)
+      })
+    cookies.push(...Object.entries(requestCookies).map(([name, value]) => `${name}=${value}`))
+    upstreamHeaders.set('cookie', cookies.join('; '))
   }
 
   return upstreamHeaders
@@ -212,6 +227,7 @@ const proxyRequest = async (
     context.req.raw.headers,
     targetUrl,
     route.cookieRewrite,
+    route.requestCookies,
   )
   const requestInit: RequestInit & { duplex?: 'half' } = {
     method: context.req.method,
@@ -345,6 +361,7 @@ export const createWebSocketUpgradeHandler = (
       createHeadersFromIncomingMessage(request),
       targetUrl,
       route.cookieRewrite,
+      route.requestCookies,
     )
     requestHeaders.set('connection', 'Upgrade')
     requestHeaders.set('upgrade', upgradeProtocol)
@@ -496,7 +513,12 @@ const registerSessionImportRoute = (
 
     const upstreamResponse = await fetchImpl(refreshUrl, {
       method: 'POST',
-      headers: createProxyRequestHeaders(localHeaders, refreshUrl, route.cookieRewrite),
+      headers: createProxyRequestHeaders(
+        localHeaders,
+        refreshUrl,
+        route.cookieRewrite,
+        route.requestCookies,
+      ),
       redirect: 'manual',
     })
     if (!upstreamResponse.ok)
