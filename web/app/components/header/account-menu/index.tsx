@@ -27,15 +27,14 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { APP_WEB_URL } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useThemePreference } from '@/features/theme/hooks'
 import { themeOptions } from '@/features/theme/theme'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
-import { basePath } from '@/utils/var'
 import LogoutMenuItem from './logout-menu-item'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
@@ -115,6 +114,7 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: enableEducationPlan } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.education.enabled,
@@ -184,7 +184,7 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
       <MenuGroup className="py-1">
         <MenuLinkItem
           className="justify-between px-3 py-1"
-          href={`${APP_WEB_URL.replace(/\/+$/, '')}${basePath}/my-apps`}
+          href={`${systemFeatures.webapp_url}/my-apps`}
         >
           <MenuItemContent
             iconClassName="i-ri-apps-2-line"
