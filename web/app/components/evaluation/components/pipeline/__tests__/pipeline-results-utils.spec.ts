@@ -53,6 +53,18 @@ describe('result cell values', () => {
     expect(formatExpectedOutput('{not json')).toBe('{not json')
   })
 
+  it('lists agent success criteria as text', () => {
+    expect(
+      formatExpectedOutput('{"success_criteria": ["States 59 USD per month", "Is polite"]}'),
+    ).toBe('States 59 USD per month\nIs polite')
+    expect(
+      formatExpectedOutput({
+        LLM: 'Paris',
+        'Agent : success_criteria': ['Names Paris', 'Is brief'],
+      }),
+    ).toBe('LLM: Paris\nAgent : success_criteria: Names Paris; Is brief')
+  })
+
   it('previews Markdown model output as plain text', () => {
     expect(toPlainTextPreview('The capital of France is **Paris**.')).toBe(
       'The capital of France is Paris.',

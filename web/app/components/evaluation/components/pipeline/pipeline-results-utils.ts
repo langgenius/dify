@@ -60,15 +60,21 @@ const parseJsonObject = (value: string) => {
   }
 }
 
+// Agent success criteria arrive as a list of strings; show them as text, not JSON.
+const formatExpectedEntry = (value: unknown, listSeparator: string) =>
+  Array.isArray(value) ? value.map(formatValue).join(listSeparator) : formatValue(value)
+
 export const formatExpectedOutput = (value: unknown) => {
   // The API may send the keyed object itself or its JSON text.
   const keyedValue = typeof value === 'string' ? (parseJsonObject(value) ?? value) : value
   if (!isPlainObject(keyedValue)) return formatValue(keyedValue)
 
   const entries = Object.entries(keyedValue)
-  if (entries.length === 1) return formatValue(entries[0]![1])
+  if (entries.length === 1) return formatExpectedEntry(entries[0]![1], '\n')
 
-  return entries.map(([key, entryValue]) => `${key}: ${formatValue(entryValue)}`).join('\n')
+  return entries
+    .map(([key, entryValue]) => `${key}: ${formatExpectedEntry(entryValue, '; ')}`)
+    .join('\n')
 }
 
 /** A plain-text preview of Markdown for clamped table cells; the full value renders Markdown. */
