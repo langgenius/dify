@@ -331,6 +331,41 @@ describe('Agent conversation history', () => {
     },
   )
 
+  it.each([false, true])(
+    'uses the configured show thoughts setting (%s) in preview',
+    async (enabled) => {
+      messages.set('conversation-1', [
+        createMessage({
+          agent_thoughts: [
+            {
+              id: 'thought-setting',
+              tool_labels: {},
+              files: [],
+              message_id: 'message-0',
+              thought: 'Model reasoning from history',
+              answer: 'Public progress',
+              tool: '',
+              tool_input: '',
+              observation: '',
+              position: 1,
+            },
+          ],
+        }),
+      ])
+      renderChat({
+        conversationId: 'conversation-1',
+        agentSoulConfig: { schema_version: 1, app_features: { show_thoughts: { enabled } } },
+      })
+      const toggle = await screen.findByRole('button', {
+        name: new RegExp(`${prefix}.answer.thinking`),
+      })
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await userEvent.setup().click(toggle)
+      if (enabled) expect(await screen.findByText('Model reasoning from history')).toBeVisible()
+      else expect(screen.queryByText('Model reasoning from history')).not.toBeInTheDocument()
+    },
+  )
+
   it('shows historical thought answers and localized tool activity', async () => {
     const user = userEvent.setup()
     messages.set('conversation-1', [

@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "आवश्यक केवल मॉडल अनुमान के लिए एक संदर्भ के रूप में उपयोग किया जाता है, और पैरामीटर आउटपुट के अनिवार्य मान्यता के लिए नहीं।",
   "nodes.parameterExtractor.addExtractParameterContent.type": "प्रकार",
   "nodes.parameterExtractor.advancedSetting": "उन्नत सेटिंग",
-  "nodes.parameterExtractor.extractParametersNotSet": "एक्सट्रेक्ट पैरामीटर्स सेटअप नहीं किए गए हैं",
+  "nodes.parameterExtractor.extractParametersNotSet": "कोई एक्सट्रेक्शन पैरामीटर कॉन्फ़िगर नहीं किया गया है",
   "nodes.parameterExtractor.importFromTool": "उपकरणों से आयात करें",
   "nodes.parameterExtractor.instruction": "निर्देश",
   "nodes.parameterExtractor.instructionTip": "पैरामीटर निकालने वाले को समझने में मदद करने के लिए अतिरिक्त निर्देश दें कि कैसे पैरामीटर्स निकालें।",

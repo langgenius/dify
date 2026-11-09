@@ -1500,6 +1500,11 @@ export const zParameters = z.object({
   sensitive_word_avoidance: z.object({
     enabled: z.boolean().optional(),
   }),
+  show_thoughts: z
+    .object({
+      enabled: z.boolean().optional(),
+    })
+    .optional(),
   speech_to_text: z.object({
     enabled: z.boolean().optional(),
   }),
@@ -2056,7 +2061,6 @@ export const zSystemFeatureModel = z.object({
   deployment_edition: zDeploymentEdition,
   enable_app_deploy: z.boolean().default(false),
   enable_change_email: z.boolean().default(true),
-  enable_collaboration_mode: z.boolean().default(true),
   enable_creators_platform: z.boolean().default(false),
   enable_email_code_login: z.boolean().default(false),
   enable_email_password_login: z.boolean().default(true),

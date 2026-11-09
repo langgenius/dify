@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Mehrere Texte gleichzeitig generieren und dann bearbeiten und weiter generieren",
   "feature.moreLikeThis.tip": "Die Verwendung dieser Funktion verursacht zusätzliche Token-Kosten",
   "feature.moreLikeThis.title": "Mehr davon",
+  "feature.showThoughts.description": "Zeigt den Gedankengang des Modells in Gesprächen an.",
+  "feature.showThoughts.title": "Gedankengang anzeigen",
   "feature.speechToText.description": "Einmal aktiviert, können Sie Spracheingabe verwenden.",
   "feature.speechToText.title": "Sprache zu Text",
   "feature.suggestedQuestionsAfterAnswer.description": "Das Einrichten von Vorschlägen für nächste Fragen kann den Chat für Benutzer verbessern.",

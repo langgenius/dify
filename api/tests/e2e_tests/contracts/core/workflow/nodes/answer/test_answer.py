@@ -1,5 +1,6 @@
 import time
 import uuid
+from typing import Any
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.system_variables import build_system_variables
@@ -18,7 +19,7 @@ def _build_variable_pool() -> VariablePool:
 
 
 def _build_answer_node(*, answer: str, variable_pool: VariablePool) -> AnswerNode:
-    graph_config = {
+    graph_config: dict[str, Any] = {
         "edges": [],
         "nodes": [
             {

@@ -6,6 +6,8 @@ import json
 import re
 import uuid
 from collections import defaultdict
+from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from hashlib import sha256
@@ -15,6 +17,7 @@ import sqlalchemy as sa
 from pydantic import TypeAdapter
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from extensions.ext_storage import storage
@@ -63,6 +66,12 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSUpgradeDiscoveryResponse,
     KnowledgeFSUpgradeJobResponse,
+    KnowledgeFSUpgradeModelChoice,
+    KnowledgeFSUpgradeModelIssueResponse,
+    KnowledgeFSUpgradeModelRecommendationResponse,
+    KnowledgeFSUpgradeModelRecommendationsResponse,
+    KnowledgeFSUpgradeModelsPayload,
+    KnowledgeFSUpgradeModelUnavailableReason,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
@@ -98,6 +107,209 @@ class KnowledgeFSUpgradeBusyError(KnowledgeFSUpgradeError):
     """Another delivery still owns this checkpoint's bounded execution window."""
 
 
+class KnowledgeFSUpgradeModelsUnavailableError(KnowledgeFSUpgradeError):
+    """At least one chosen model cannot be used for this upgrade right now."""
+
+    def __init__(self, issues: list[KnowledgeFSUpgradeModelIssueResponse]) -> None:
+        super().__init__("One or more upgrade models are unavailable")
+        self.issues = issues
+
+
+@dataclass(frozen=True)
+class KnowledgeFSUpgradeModelPreferences:
+    """Legacy choices and saved workspace defaults read before model-provider I/O."""
+
+    embedding: KnowledgeFSUpgradeModelChoice | None
+    rerank: KnowledgeFSUpgradeModelChoice | None
+    defaults: Mapping[ModelType, KnowledgeFSUpgradeModelChoice]
+
+
+@dataclass(frozen=True)
+class KnowledgeFSUpgradeResolvedModels:
+    """Validated model identities; never reselect them after a job is accepted."""
+
+    embedding: KnowledgeFSModelIntent
+    rerank: KnowledgeFSModelIntent
+    reasoning: KnowledgeFSModelIntent
+
+
+class KnowledgeFSUpgradeModelResolver:
+    """Use the same workspace model statuses for suggestions and start admission."""
+
+    def __init__(self, *, tenant_id: str) -> None:
+        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
+        configurations = provider_manager.get_configurations(tenant_id)
+        self._models = {
+            model_type: configurations.get_models(model_type=model_type, only_active=False)
+            for model_type in (ModelType.TEXT_EMBEDDING, ModelType.RERANK, ModelType.LLM)
+        }
+
+    @staticmethod
+    def _provider_id(provider: str) -> str | None:
+        try:
+            return str(ModelProviderID(provider))
+        except ValueError:
+            return None
+
+    def _match(self, model_type: ModelType, choice: KnowledgeFSUpgradeModelChoice) -> ModelWithProviderEntity | None:
+        provider_id = self._provider_id(choice.provider)
+        if provider_id is None:
+            return None
+        return next(
+            (
+                item
+                for item in self._models[model_type]
+                if item.model == choice.model and self._provider_id(item.provider.provider) == provider_id
+            ),
+            None,
+        )
+
+    def _unavailable_reason(
+        self, model_type: ModelType, choice: KnowledgeFSUpgradeModelChoice
+    ) -> KnowledgeFSUpgradeModelUnavailableReason | None:
+        """Map a configured model to its unavailable reason without changing provider state."""
+        model = self._match(model_type, choice)
+        if model is None:
+            return "not_found"
+        match model.status:
+            case ModelStatus.ACTIVE:
+                return "deprecated" if model.deprecated else None
+            case ModelStatus.NO_CONFIGURE:
+                return "no-configure"
+            case ModelStatus.QUOTA_EXCEEDED:
+                return "quota-exceeded"
+            case ModelStatus.NO_PERMISSION:
+                return "no-permission"
+            case ModelStatus.CREDENTIAL_REMOVED:
+                return "credential-removed"
+            case _:
+                return "disabled"
+
+    def _recommend(
+        self,
+        model_type: ModelType,
+        *,
+        legacy: KnowledgeFSUpgradeModelChoice | None,
+        default: KnowledgeFSUpgradeModelChoice | None,
+    ) -> KnowledgeFSUpgradeModelRecommendationResponse:
+        if legacy is not None and self._unavailable_reason(model_type, legacy) is None:
+            return KnowledgeFSUpgradeModelRecommendationResponse(value=legacy, source="legacy", available=True)
+        if default is not None and self._unavailable_reason(model_type, default) is None:
+            return KnowledgeFSUpgradeModelRecommendationResponse(
+                value=default, source="workspace_default", available=True
+            )
+        value = default or legacy
+        source = "workspace_default" if default is not None else "legacy" if legacy is not None else None
+        reason = self._unavailable_reason(model_type, value) if value is not None else "missing"
+        return KnowledgeFSUpgradeModelRecommendationResponse(
+            value=value, source=source, available=False, unavailable_reason=reason
+        )
+
+    def recommend(
+        self, preferences: KnowledgeFSUpgradeModelPreferences
+    ) -> KnowledgeFSUpgradeModelRecommendationsResponse:
+        return KnowledgeFSUpgradeModelRecommendationsResponse(
+            embedding=self._recommend(
+                ModelType.TEXT_EMBEDDING,
+                legacy=preferences.embedding,
+                default=preferences.defaults.get(ModelType.TEXT_EMBEDDING),
+            ),
+            rerank=self._recommend(
+                ModelType.RERANK,
+                legacy=preferences.rerank,
+                default=preferences.defaults.get(ModelType.RERANK),
+            ),
+            reasoning=self._recommend(ModelType.LLM, legacy=None, default=preferences.defaults.get(ModelType.LLM)),
+        )
+
+    def validate(self, models: KnowledgeFSUpgradeModelsPayload) -> KnowledgeFSUpgradeResolvedModels:
+        """Resolve all three choices or report each unusable field without creating a job."""
+        selected: dict[str, KnowledgeFSModelIntent] = {}
+        issues: list[KnowledgeFSUpgradeModelIssueResponse] = []
+        for field, model_type, choice in (
+            ("embedding", ModelType.TEXT_EMBEDDING, models.embedding),
+            ("rerank", ModelType.RERANK, models.rerank),
+            ("reasoning", ModelType.LLM, models.reasoning),
+        ):
+            reason = self._unavailable_reason(model_type, choice)
+            if reason is not None:
+                issues.append(
+                    KnowledgeFSUpgradeModelIssueResponse(
+                        field=field, reason=reason, provider=choice.provider, model=choice.model
+                    )
+                )
+            else:
+                matched = self._match(model_type, choice)
+                assert matched is not None
+                selected[field] = _model_intent(matched.provider.provider, matched.model)
+        if issues:
+            raise KnowledgeFSUpgradeModelsUnavailableError(issues)
+        return KnowledgeFSUpgradeResolvedModels(
+            embedding=selected["embedding"], rerank=selected["rerank"], reasoning=selected["reasoning"]
+        )
+
+    def resolve_recommendations(
+        self, preferences: KnowledgeFSUpgradeModelPreferences
+    ) -> KnowledgeFSUpgradeResolvedModels:
+        recommendations = self.recommend(preferences)
+        issues = [
+            KnowledgeFSUpgradeModelIssueResponse(
+                field=field,
+                reason=recommendation.unavailable_reason or "missing",
+                provider=recommendation.value.provider if recommendation.value else None,
+                model=recommendation.value.model if recommendation.value else None,
+            )
+            for field, recommendation in (
+                ("embedding", recommendations.embedding),
+                ("rerank", recommendations.rerank),
+                ("reasoning", recommendations.reasoning),
+            )
+            if not recommendation.available
+        ]
+        if issues:
+            raise KnowledgeFSUpgradeModelsUnavailableError(issues)
+        assert recommendations.embedding.value is not None
+        assert recommendations.rerank.value is not None
+        assert recommendations.reasoning.value is not None
+        return self.validate(
+            KnowledgeFSUpgradeModelsPayload(
+                embedding=recommendations.embedding.value,
+                rerank=recommendations.rerank.value,
+                reasoning=recommendations.reasoning.value,
+            )
+        )
+
+
+def upgrade_job_matches_models(job: KnowledgeFSUpgradeJob, models: KnowledgeFSUpgradeResolvedModels) -> bool:
+    """A replay may reuse a job only when its persisted model identities match."""
+    if job.resolved_configuration is None:
+        return False
+    try:
+        resolved = job.resolved_configuration
+        embedding = KnowledgeFSModelIntent.model_validate(resolved["embedding"])
+        retrieval = KnowledgeFSRetrievalProfileIntent.model_validate(resolved["retrieval"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    return (
+        embedding == models.embedding
+        and retrieval.rerank.model == models.rerank
+        and retrieval.reasoning_model == models.reasoning
+    )
+
+
+def upgrade_job_matches_model_choices(job: KnowledgeFSUpgradeJob, choices: KnowledgeFSUpgradeModelsPayload) -> bool:
+    """Compare an idempotent replay without querying provider status again."""
+    try:
+        models = KnowledgeFSUpgradeResolvedModels(
+            embedding=_model_intent(choices.embedding.provider, choices.embedding.model),
+            rerank=_model_intent(choices.rerank.provider, choices.rerank.model),
+            reasoning=_model_intent(choices.reasoning.provider, choices.reasoning.model),
+        )
+    except ValueError:
+        return False
+    return upgrade_job_matches_models(job, models)
+
+
 class KnowledgeFSUpgradeSnapshotService:
     """Persist the exact click-time Dataset manifest without external I/O."""
 
@@ -111,6 +323,7 @@ class KnowledgeFSUpgradeSnapshotService:
         dataset_id: str,
         requested_by_account_id: str,
         idempotency_key: str | None = None,
+        models: KnowledgeFSUpgradeResolvedModels | None = None,
     ) -> KnowledgeFSUpgradeJob:
         snapshot_at = naive_utc_now()
         with self._session_maker(expire_on_commit=False) as session, session.begin():
@@ -132,6 +345,8 @@ class KnowledgeFSUpgradeSnapshotService:
                 if idempotent is not None:
                     if idempotent.old_dataset_id != dataset_id:
                         raise KnowledgeFSUpgradeConflictError("Idempotency key belongs to another Dataset upgrade")
+                    if models is not None and not upgrade_job_matches_models(idempotent, models):
+                        raise KnowledgeFSUpgradeConflictError("Idempotency key belongs to another model selection")
                     return idempotent
 
             existing = session.scalar(
@@ -145,6 +360,8 @@ class KnowledgeFSUpgradeSnapshotService:
                 .limit(1)
             )
             if existing is not None:
+                if models is not None and not upgrade_job_matches_models(existing, models):
+                    raise KnowledgeFSUpgradeConflictError("Another Dataset upgrade is already in progress")
                 return existing
 
             owner_account_id = str(dataset.maintainer or dataset.created_by)
@@ -194,6 +411,11 @@ class KnowledgeFSUpgradeSnapshotService:
                     )
                 )
             )
+            config_snapshot = _config_snapshot(session, dataset)
+            try:
+                resolved_configuration = _build_resolved_configuration(config_snapshot, models) if models else None
+            except (ValueError, TypeError) as error:
+                raise KnowledgeFSUpgradeConflictError("Legacy retrieval settings cannot be upgraded") from error
             job = KnowledgeFSUpgradeJob(
                 tenant_id=tenant_id,
                 old_dataset_id=dataset_id,
@@ -201,13 +423,14 @@ class KnowledgeFSUpgradeSnapshotService:
                 owner_account_id=owner_account_id,
                 idempotency_key=idempotency_key or str(uuid.uuid4()),
                 snapshot_at=snapshot_at,
-                config_snapshot=_config_snapshot(session, dataset),
+                config_snapshot=config_snapshot,
                 permission_snapshot={
                     "visibility": _enum_value(dataset.permission),
                     "member_account_ids": permission_members,
                 },
                 app_binding_snapshot=app_bindings,
                 tag_ids_snapshot=[str(tag_id) for tag_id in tag_ids if tag_id is not None],
+                resolved_configuration=resolved_configuration,
             )
             session.add(job)
             session.flush()
@@ -288,6 +511,18 @@ class KnowledgeFSUpgradeSnapshotService:
             job.total_documents = len(documents)
             job.total_sources = source_count
             session.flush()
+            return job
+
+    def get_by_idempotency_key(self, *, tenant_id: str, idempotency_key: str) -> KnowledgeFSUpgradeJob | None:
+        with self._session_maker() as session:
+            job = session.scalar(
+                sa.select(KnowledgeFSUpgradeJob).where(
+                    KnowledgeFSUpgradeJob.tenant_id == tenant_id,
+                    KnowledgeFSUpgradeJob.idempotency_key == idempotency_key,
+                )
+            )
+            if job is not None:
+                session.expunge(job)
             return job
 
     def get(self, *, tenant_id: str, job_id: str) -> KnowledgeFSUpgradeJob:
@@ -600,7 +835,7 @@ class KnowledgeFSUpgradeRunner:
             return job
 
     def _create_space(self, job: KnowledgeFSUpgradeJob) -> None:
-        resolved = _resolve_configuration(job)
+        resolved = job.resolved_configuration or _resolve_configuration(job)
         runtime = get_knowledge_fs_runtime(self._session_maker)
         response = runtime.application.create_space(
             tenant_id=job.tenant_id,
@@ -621,7 +856,8 @@ class KnowledgeFSUpgradeRunner:
             if persisted is None:
                 raise KnowledgeFSUpgradeNotFoundError("Upgrade job disappeared")
             persisted.new_control_space_id = response.control_space_id
-            persisted.resolved_configuration = resolved
+            if persisted.resolved_configuration is None:
+                persisted.resolved_configuration = resolved
             persisted.stage = KnowledgeFSUpgradeStage.WAITING_FOR_SPACE
 
     def _advance_when_space_is_active(self, job: KnowledgeFSUpgradeJob) -> None:
@@ -1413,12 +1649,24 @@ def _resolve_configuration(job: KnowledgeFSUpgradeJob) -> dict[str, object]:
         preferred_provider=None,
         preferred_model=None,
     )
+    return _build_resolved_configuration(
+        job.config_snapshot,
+        KnowledgeFSUpgradeResolvedModels(embedding=embedding, rerank=rerank, reasoning=reasoning),
+    )
+
+
+def _build_resolved_configuration(
+    config_snapshot: Mapping[str, object], models: KnowledgeFSUpgradeResolvedModels
+) -> dict[str, object]:
+    """Build a new-space profile from validated models without changing the click-time snapshot."""
+    retrieval_value = config_snapshot.get("retrieval_model")
+    retrieval = retrieval_value if isinstance(retrieval_value, dict) else {}
     threshold_enabled = bool(retrieval.get("score_threshold_enabled"))
     threshold_value = retrieval.get("score_threshold")
     profile = KnowledgeFSRetrievalProfileIntent(
         default_mode="fast",
-        reasoning_model=reasoning,
-        rerank=KnowledgeFSRerankIntent(enabled=True, model=rerank),
+        reasoning_model=models.reasoning,
+        rerank=KnowledgeFSRerankIntent(enabled=True, model=models.rerank),
         score_threshold=KnowledgeFSScoreThresholdIntent(
             enabled=threshold_enabled,
             stage="mode-final",
@@ -1427,7 +1675,7 @@ def _resolve_configuration(job: KnowledgeFSUpgradeJob) -> dict[str, object]:
         top_k=max(1, min(100, int(retrieval.get("top_k") or 4))),
     )
     return {
-        "embedding": embedding.model_dump(mode="json", by_alias=True),
+        "embedding": models.embedding.model_dump(mode="json", by_alias=True),
         "retrieval": profile.model_dump(mode="json", by_alias=True),
     }
 

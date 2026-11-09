@@ -68,7 +68,7 @@ export function RenameDocumentForm({
             <Input
               className="h-10"
               value={newName}
-              placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
+              placeholder={t(($) => $['placeholder.input'], { ns: 'common' })}
               onValueChange={setNewName}
             />
           </Field>

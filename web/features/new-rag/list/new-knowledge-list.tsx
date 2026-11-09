@@ -23,10 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { CreatorFilter } from '@/app/components/datasets/creator-filter'
 import { creatorIdsParser } from '@/app/components/datasets/creator-filter-query'
-import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
-import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
-import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
@@ -41,7 +38,6 @@ import { KnowledgeUpgradeCard } from '../upgrade/knowledge-upgrade-card'
 import { useKnowledgeUpgrade } from '../upgrade/knowledge-upgrade-context-value'
 import { matchesKnowledgeUpgradeFilters } from '../upgrade/knowledge-upgrade-filters'
 import { KnowledgeSpaceCard } from './knowledge-space-card'
-import { KnowledgeViewSwitcher } from './knowledge-view-switcher'
 import { NewKnowledgeEmptyState, NewKnowledgeLoadingState, NewKnowledgePageState } from './states'
 
 const PAGE_SIZE = 30
@@ -95,13 +91,7 @@ function isUnavailableError(error: unknown) {
   return status === 404 || status === 503
 }
 
-export function NewKnowledgeList({
-  view,
-  onViewChange,
-}: {
-  view: 'classic' | 'agent'
-  onViewChange: (value: 'classic' | 'agent') => void
-}) {
+export function NewKnowledgeList() {
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
@@ -119,9 +109,6 @@ export function NewKnowledgeList({
       context: { silent: true },
     }),
   )
-  const docLink = useDocLink()
-  const { data: apiBaseInfo } = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
-  const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [highlightedControlSpaceId, setHighlightedControlSpaceId] = useState<string>()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -269,72 +256,40 @@ export function NewKnowledgeList({
       aria-label={t(($) => $.new)}
       className="relative flex grow flex-col overflow-y-auto bg-background-body focus-visible:outline-2 focus-visible:outline-state-accent-solid"
     >
-      <header className="sticky top-0 z-10 flex flex-col gap-3.5 bg-background-body px-4 pt-4 pb-2 sm:px-8">
-        <div className="flex min-h-6 flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">
-              {t(($) => $.knowledge, { ns: 'dataset' })}
-            </h1>
-            <KnowledgeViewSwitcher value={view} onChange={onViewChange} />
-          </div>
-          <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
-            {canConnect && (
-              <Button
-                variant="ghost"
-                size="small"
-                className="overflow-hidden text-text-tertiary"
-                onClick={() => setShowExternalApiPanel(true)}
-              >
-                <span
-                  aria-hidden
-                  className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0"
-                />
-                <span className="system-xs-medium">
-                  {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
-                </span>
-              </Button>
-            )}
-            <ServiceApi
-              apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
-              apiReferenceUrl={docLink('/api-reference/guides/knowledge-base')}
-            />
-          </div>
+      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 bg-background-body px-4 pt-3.5 pb-2 sm:px-8">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <TagFilter
+            type="knowledge"
+            value={tagIds}
+            onChange={(nextTagIds) => void setTagIds(nextTagIds)}
+            onOpenTagManagement={() => setShowTagManagementModal(true)}
+            showLeadingIcon={false}
+            triggerClassName="min-w-0"
+          />
+          <CreatorFilter
+            value={creatorIds}
+            onChange={(nextCreatorIds) => void setCreatorIds(nextCreatorIds)}
+          />
+          <SearchInput
+            className="w-full min-w-0 sm:w-50"
+            value={searchValue}
+            onValueChange={(value) => void setSearchValue(value || null)}
+          />
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <TagFilter
-              type="knowledge"
-              value={tagIds}
-              onChange={(nextTagIds) => void setTagIds(nextTagIds)}
-              onOpenTagManagement={() => setShowTagManagementModal(true)}
-              showLeadingIcon={false}
-              triggerClassName="min-w-0"
-            />
-            <CreatorFilter
-              value={creatorIds}
-              onChange={(nextCreatorIds) => void setCreatorIds(nextCreatorIds)}
-            />
-            <SearchInput
-              className="w-full min-w-0 sm:w-50"
-              value={searchValue}
-              onValueChange={(value) => void setSearchValue(value || null)}
-            />
+        {canCreate && (
+          <div className="flex items-center gap-1">
+            <Link
+              href="/datasets/new/create"
+              className={cn(
+                buttonVariants({ variant: 'primary', size: 'medium' }),
+                'w-24 gap-0.5 overflow-hidden p-2!',
+              )}
+            >
+              <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
+              <span className="pl-1">{createLabel}</span>
+            </Link>
           </div>
-          {canCreate && (
-            <div className="flex items-center gap-1">
-              <Link
-                href="/datasets/new/create"
-                className={cn(
-                  buttonVariants({ variant: 'primary', size: 'medium' }),
-                  'w-24 gap-0.5 overflow-hidden p-2!',
-                )}
-              >
-                <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                <span className="pl-1">{createLabel}</span>
-              </Link>
-            </div>
-          )}
-        </div>
+        )}
       </header>
       <div className="flex min-h-0 flex-1 flex-col">
         {knowledgeSpacesQuery.isPending || (upgradeRecoveryPending && !hasVisibleKnowledge) ? (
@@ -523,12 +478,6 @@ export function NewKnowledgeList({
           })
         }}
       />
-      {showExternalApiPanel && canConnect && (
-        <ExternalAPIPanel
-          canManageExternalKnowledgeApi={canConnect}
-          onClose={() => setShowExternalApiPanel(false)}
-        />
-      )}
     </section>
   )
 }

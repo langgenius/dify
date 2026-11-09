@@ -607,6 +607,8 @@ class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
     speech_to_text: AgentFeatureToggleConfig | None = None
     text_to_speech: AgentTextToSpeechFeatureConfig | None = None
     retriever_resource: AgentFeatureToggleConfig | None = None
+    # Missing or null preserves the default of hiding model thoughts in chat.
+    show_thoughts: AgentFeatureToggleConfig | None = None
     sensitive_word_avoidance: AgentSensitiveWordAvoidanceFeatureConfig | None = None
     file_upload: AgentFileUploadFeatureConfig = Field(default_factory=AgentFileUploadFeatureConfig)
 

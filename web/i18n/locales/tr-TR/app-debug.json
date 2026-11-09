@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Birden fazla metni bir kerede üretin, ardından düzenleyin ve üretmeye devam edin",
   "feature.moreLikeThis.tip": "Bu özelliği kullanmak ek token maliyetine yol açacaktır",
   "feature.moreLikeThis.title": "Bunun gibi daha fazlası",
+  "feature.showThoughts.description": "Sohbetlerde modelin düşünme içeriğini gösterir.",
+  "feature.showThoughts.title": "Düşünme sürecini göster",
   "feature.speechToText.description": "Etkinleştirildiğinde, sesli giriş kullanabilirsiniz.",
   "feature.speechToText.title": "Sesten Metne",
   "feature.suggestedQuestionsAfterAnswer.description": "Sonraki soru önerilerini ayarlamak, kullanıcılara daha iyi bir sohbet deneyimi sunabilir.",

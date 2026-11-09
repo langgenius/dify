@@ -71,6 +71,26 @@ describe('OpenUI SSE transport', () => {
     },
   )
 
+  it('decodes uppercase Unicode escapes in streams without an ordered UI consumer', async () => {
+    const event = { event: 'message', answer: '\\u597D', id: 'message-1' }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(`data: ${JSON.stringify(event)}\n\n`)),
+    )
+    const onData = vi.fn()
+    const onCompleted = vi.fn()
+
+    // oxlint-disable-next-line typescript/no-deprecated -- Verify the existing SSE entry point without an ordered UI consumer.
+    await ssePost('/chat-messages', {}, { onData, onCompleted })
+    await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledExactlyOnceWith())
+
+    expect(onData).toHaveBeenCalledExactlyOnceWith(
+      '好',
+      true,
+      expect.objectContaining({ messageId: 'message-1' }),
+    )
+  })
+
   it.each([
     { event: 'message', bytewise: false },
     { event: 'message', bytewise: true },
@@ -79,7 +99,7 @@ describe('OpenUI SSE transport', () => {
   ])(
     'preserves UI text offsets for $event with bytewise transport=$bytewise',
     async ({ event, bytewise }) => {
-      const beforeChunks = ['Before \\u0041. \\u0', '042 中文 \u{1F4CA}.\n\n']
+      const beforeChunks = ['Before \\u0041. \\u597D. \\u0', '042 中文 \u{1F4CA}.\n\n']
       const before = beforeChunks.join('')
       const after = 'After the UI.'
       const textEvent = (answer: string) => ({

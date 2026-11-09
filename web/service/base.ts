@@ -273,6 +273,7 @@ export type IOtherOptions = {
   onThought?: IOnThought
   onFile?: IOnFile
   onMessageEnd?: IOnMessageEnd
+  /** Enables ordered UI events and keeps answer text aligned with their offsets. */
   onMessageContent?: IOnMessageContent
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
@@ -349,6 +350,14 @@ export const buildSigninUrlWithRedirect = (): string => {
   if (!currentTarget || currentTarget.kind !== 'internal') return loginUrl
 
   return `${loginUrl}?redirect_url=${encodeURIComponent(currentTarget.href)}`
+}
+
+function unicodeToChar(text: string) {
+  if (!text) return ''
+
+  return text.replace(/\\u([0-9a-f]{4})/gi, (_match, p1) => {
+    return String.fromCharCode(Number.parseInt(p1, 16))
+  })
 }
 
 const WBB_APP_LOGIN_PATH = '/webapp-signin'
@@ -506,7 +515,8 @@ export const handleStream = (
               }
               if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
                 // can not use format here. Because message is splitted.
-                onData(bufferObj.answer, isFirstMessage, {
+                const answer = onMessageContent ? bufferObj.answer : unicodeToChar(bufferObj.answer)
+                onData(answer, isFirstMessage, {
                   event: bufferObj.event,
                   conversationId: bufferObj.conversation_id,
                   taskId: bufferObj.task_id,

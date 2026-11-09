@@ -676,6 +676,12 @@ class TestWebhookServiceCases:
             with pytest.raises(ValueError, match="Expected number, got str"):
                 WebhookService._validate_json_value("count", "42", "number")
 
+            # JSON true/false are bools, which Python treats as ints: still not a number
+            with pytest.raises(ValueError, match="Expected number, got bool"):
+                WebhookService._validate_json_value("count", True, "number")
+            with pytest.raises(ValueError, match="Expected number, got bool"):
+                WebhookService._validate_json_value("count", False, "number")
+
         def test_validate_json_value_bool(self):
             """Test JSON value validation for boolean type."""
             # Valid boolean
@@ -722,6 +728,10 @@ class TestWebhookServiceCases:
             # Invalid - array with non-numbers
             with pytest.raises(ValueError, match="Expected array of numbers, got list"):
                 WebhookService._validate_json_value("scores", [1, "2", 3], "array[number]")
+
+            # Invalid - array with a boolean
+            with pytest.raises(ValueError, match="Expected array of numbers, got list"):
+                WebhookService._validate_json_value("scores", [1, True, 3], "array[number]")
 
         def test_validate_json_value_array_bool(self):
             """Test JSON value validation for array[boolean] type."""
@@ -930,6 +940,25 @@ class TestWebhookServiceCases:
                 }
 
                 with pytest.raises(ValueError, match="Required body parameter missing: message"):
+                    WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+        def test_extract_and_validate_webhook_request_rejects_boolean_for_number_body_param(self) -> None:
+            app = Flask(__name__)
+            with app.test_request_context(
+                "/webhook",
+                method="POST",
+                headers={"Content-Type": "application/json"},
+                json={"amount": True},
+            ):
+                node_config = {
+                    "data": {
+                        "method": "post",
+                        "content_type": "application/json",
+                        "body": [{"name": "amount", "type": "number", "required": True}],
+                    }
+                }
+
+                with pytest.raises(ValueError, match="Parameter 'amount' validation failed: Expected number, got bool"):
                     WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
 
         def test_extract_and_validate_webhook_request_missing_required_file(self) -> None:

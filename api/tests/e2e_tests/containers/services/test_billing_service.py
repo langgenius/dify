@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 from unittest.mock import patch
 
 import pytest
@@ -23,7 +24,7 @@ class TestBillingServiceGetPlanBulkWithCache:
     """
 
     @pytest.fixture(autouse=True)
-    def setup_redis_cleanup(self, flask_app_with_containers: Flask):
+    def setup_redis_cleanup(self, flask_app_with_containers: Flask) -> Iterator[None]:
         """Clean up Redis cache before and after each test."""
         with flask_app_with_containers.app_context():
             # Clean up before test
@@ -40,12 +41,12 @@ class TestBillingServiceGetPlanBulkWithCache:
     ) -> billing.SubscriptionPlanItem:
         return builders.plan_item(plan, expiration_date)
 
-    def _set_cache(self, tenant_id: str, plan_data: billing.SubscriptionPlanItem, ttl: int = 600):
+    def _set_cache(self, tenant_id: str, plan_data: billing.SubscriptionPlanItem, ttl: int = 600) -> None:
         """Helper to set cache data in Redis."""
         cache_key = BillingService._make_plan_cache_key(tenant_id)
         redis_client.setex(cache_key, ttl, plan_data.model_dump_json())
 
-    def _get_cache(self, tenant_id: str):
+    def _get_cache(self, tenant_id: str) -> str | None:
         """Helper to get cache data from Redis."""
         cache_key = BillingService._make_plan_cache_key(tenant_id)
         value = redis_client.get(cache_key)
@@ -55,7 +56,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             return value
         return None
 
-    def test_get_plan_bulk_with_cache_all_cache_hit(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_all_cache_hit(self, flask_app_with_containers: Flask) -> None:
         """Test bulk plan retrieval when all tenants are in cache."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -86,7 +87,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify API was not called
             mock_get_plan_bulk.assert_not_called()
 
-    def test_get_plan_bulk_with_cache_all_cache_miss(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_all_cache_miss(self, flask_app_with_containers: Flask) -> None:
         """Test bulk plan retrieval when all tenants are not in cache."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -126,7 +127,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert ttl_1 > 0
             assert ttl_1 <= 600  # Should be <= 600 seconds
 
-    def test_get_plan_bulk_with_cache_partial_cache_hit(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_partial_cache_hit(self, flask_app_with_containers: Flask) -> None:
         """Test bulk plan retrieval when some tenants are in cache, some are not."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -157,7 +158,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             cached_data_3 = billing.SubscriptionPlanItem.model_validate_json(cached_3)
             assert cached_data_3 == missing_plan["tenant-3"]
 
-    def test_get_plan_bulk_with_cache_redis_mget_failure(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_redis_mget_failure(self, flask_app_with_containers: Flask) -> None:
         """Test fallback to API when Redis mget fails."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -188,7 +189,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert cached_1 is not None
             assert cached_2 is not None
 
-    def test_get_plan_bulk_with_cache_invalid_json_in_cache(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_invalid_json_in_cache(self, flask_app_with_containers: Flask) -> None:
         """Test fallback to API when cache contains invalid JSON."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -240,7 +241,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             cached_data_3 = billing.SubscriptionPlanItem.model_validate_json(cached_3)
             assert cached_data_3 == expected_plans["tenant-3"]
 
-    def test_get_plan_bulk_with_cache_invalid_plan_data_in_cache(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_invalid_plan_data_in_cache(self, flask_app_with_containers: Flask) -> None:
         """Test fallback to API when cache data doesn't match the plan model."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -273,7 +274,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify API was called for tenant-2 and tenant-3
             mock_get_plan_bulk.assert_called_once_with(["tenant-2", "tenant-3"])
 
-    def test_get_plan_bulk_with_cache_redis_pipeline_failure(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_redis_pipeline_failure(self, flask_app_with_containers: Flask) -> None:
         """Test that pipeline failure doesn't affect return value."""
         with flask_app_with_containers.app_context():
             # Arrange
@@ -302,7 +303,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify pipeline was attempted
             mock_pipeline.assert_called_once()
 
-    def test_get_plan_bulk_with_cache_empty_tenant_ids(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_empty_tenant_ids(self, flask_app_with_containers: Flask) -> None:
         """Test with empty tenant_ids list."""
         with flask_app_with_containers.app_context():
             # Act
@@ -320,7 +321,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             # But we should check that mget was not called at all
             # Since we can't easily verify this without more mocking, we just verify the result
 
-    def test_get_plan_bulk_with_cache_ttl_expired(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_ttl_expired(self, flask_app_with_containers: Flask) -> None:
         """Test that expired cache keys are treated as cache misses."""
         with flask_app_with_containers.app_context():
             # Arrange

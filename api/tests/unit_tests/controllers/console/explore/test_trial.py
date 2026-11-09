@@ -2490,6 +2490,7 @@ class TestTrialPreviewCases:
             "retriever_resource": {"enabled": False},
             "annotation_reply": {"enabled": False},
             "more_like_this": {"enabled": False},
+            "show_thoughts": {"enabled": False},
             "user_input_form": _INPUT_FORM,
             "sensitive_word_avoidance": {"enabled": False, "type": "", "configs": []},
             "file_upload": {"enabled": False, "number_limits": 0},

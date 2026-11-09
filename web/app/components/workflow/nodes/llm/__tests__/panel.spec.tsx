@@ -74,7 +74,7 @@ const sharedModel: EnvironmentVariable = {
 
 const renderPanel = ({
   data = createData(),
-  resource = { kind: 'app', appId: 'test-app', mode: 'workflow' },
+  resource = { kind: 'app', collaborationEnabled: false, appId: 'test-app', mode: 'workflow' },
   environmentVariables = [sharedModel],
 }: {
   data?: LLMNodeType
@@ -168,7 +168,12 @@ describe('LLM Panel', () => {
   it('enables generative UI for a Chatflow node and keeps JSON output mutually exclusive', async () => {
     const user = userEvent.setup()
     const { getNodeData } = renderPanel({
-      resource: { kind: 'app', appId: 'test-app', mode: 'advanced-chat' },
+      resource: {
+        kind: 'app',
+        appId: 'test-app',
+        mode: 'advanced-chat',
+        collaborationEnabled: false,
+      },
     })
 
     const generativeUI = screen.getByRole('switch', { name: 'appDebug.generativeUI.title' })
@@ -195,7 +200,12 @@ describe('LLM Panel', () => {
   it('explains why generative UI is unavailable while JSON output is enabled', () => {
     renderPanel({
       data: createData({ structured_output_enabled: true }),
-      resource: { kind: 'app', appId: 'test-app', mode: 'advanced-chat' },
+      resource: {
+        kind: 'app',
+        appId: 'test-app',
+        mode: 'advanced-chat',
+        collaborationEnabled: false,
+      },
     })
 
     expect(screen.getByRole('switch', { name: 'appDebug.generativeUI.title' })).toHaveAttribute(

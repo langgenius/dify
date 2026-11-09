@@ -616,7 +616,7 @@ def test_remote_head_occurs_after_conversation_and_file_lookup_transactions_clos
                 self.end_headers()
 
         server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        thread = Thread(target=server.serve_forever, daemon=True)
+        thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
         thread.start()
         try:
             with sqlite_session_factory.begin() as session:

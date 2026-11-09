@@ -71,11 +71,13 @@ describe('useInspectVarsCrud', () => {
       kind: 'app',
       appId: 'app-1',
       mode: 'workflow',
+      collaborationEnabled: false,
     })
     expect(mockUseSysVarValues).toHaveBeenCalledWith({
       kind: 'app',
       appId: 'app-1',
       mode: 'workflow',
+      collaborationEnabled: false,
     })
   })
 

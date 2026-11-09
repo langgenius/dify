@@ -4,10 +4,10 @@ import type { EChartsOption } from 'echarts'
 import type { z } from 'zod/v4'
 import type { BarChartDefinition, LineChartDefinition } from '../registry/definitions'
 import ReactECharts from 'echarts-for-react/esm/core'
-import { memo, useEffect, useId, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { echarts } from '@/app/components/base/line-chart/echarts'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 
 type LineChartProps = z.infer<typeof LineChartDefinition.props>
 type BarChartProps = z.infer<typeof BarChartDefinition.props>
@@ -25,11 +25,21 @@ function completePoints(points: ChartPoint[] | undefined) {
 function GeneratedChart({ title, points, unit, kind }: LineChartProps & { kind: 'line' | 'bar' }) {
   const { t } = useTranslation(['appDebug'])
   const locale = useLocale()
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const titleId = useId()
   const frameRef = useRef<HTMLElement>(null)
   const seriesColorRef = useRef<HTMLSpanElement>(null)
+  const chartRef = useRef<ReactECharts>(null)
   const [colors, setColors] = useState<ChartColors>()
+  const observeChartSize = useCallback((container: HTMLDivElement | null) => {
+    if (!container) return
+
+    const observer = new ResizeObserver(() => {
+      chartRef.current?.getEchartsInstance().resize({ width: 'auto', height: 'auto' })
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     // ECharts parses colors in JavaScript. Resolve theme tokens to actual RGB colors
@@ -141,15 +151,16 @@ function GeneratedChart({ title, points, unit, kind }: LineChartProps & { kind: 
         </p>
       ) : (
         <>
-          <div aria-hidden="true" className="min-h-60" dir="ltr">
+          <div ref={observeChartSize} aria-hidden="true" className="min-h-60" dir="ltr">
             {colors && (
               <ReactECharts
+                ref={chartRef}
                 echarts={echarts}
                 option={option}
                 opts={{ renderer: 'svg' }}
                 notMerge
                 lazyUpdate
-                autoResize
+                autoResize={false}
                 style={{
                   height: kind === 'bar' ? Math.max(240, data.length * 36) : 240,
                   width: '100%',

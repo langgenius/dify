@@ -100,8 +100,21 @@ class Approval:
             return json.loads(form.raw_submission_inputs) if form.raw_submission_inputs is not None else None
 
 
+@pytest.fixture(scope="module")
+def service_app() -> Flask:
+    """One app with the service API namespace, which takes a few hundred milliseconds to mount.
+
+    Each test binds its own SQLite engine to the app for the duration of that test.
+    """
+    application_http = Flask(__name__)
+    LoginManager().init_app(application_http)
+    ExternalApi(application_http, register_default_root=False).add_namespace(controller.service_api_ns, path="/v1")
+    return application_http
+
+
 @pytest.fixture(params=["1", "2"])
 def approval(
+    service_app: Flask,
     sqlite_session_factory: sessionmaker[Session],
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
@@ -270,12 +283,9 @@ def approval(
         published.append(kwargs)
 
     monkeypatch.setattr(resume_app_execution, "apply_async", publish)
-    application_http = Flask(__name__)
-    database._app_engines[application_http] = {None: sqlite_engine}
-    LoginManager().init_app(application_http)
-    ExternalApi(application_http, register_default_root=False).add_namespace(controller.service_api_ns, path="/v1")
+    monkeypatch.setitem(database._app_engines, service_app, {None: sqlite_engine})
     yield Approval(
-        application_http.test_client(),
+        service_app.test_client(),
         sqlite_session_factory,
         version,
         tenant.id,

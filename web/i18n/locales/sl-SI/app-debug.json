@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Ustvari več besedil naenkrat, nato pa jih urejaj in nadaljuj z ustvarjanjem.",
   "feature.moreLikeThis.tip": "Uporaba te funkcije povzroča dodatno porabo žetonov.",
   "feature.moreLikeThis.title": "Več takšnih",
+  "feature.showThoughts.description": "Prikaži razmišljanje modela v pogovorih.",
+  "feature.showThoughts.title": "Prikaži razmišljanje",
   "feature.speechToText.description": "Ko je omogočeno, lahko uporabljaš glasovni vnos.",
   "feature.speechToText.title": "Govor v besedilo",
   "feature.suggestedQuestionsAfterAnswer.description": "Nastavitev predlogov za naslednja vprašanja lahko uporabnikom izboljša klepet.",

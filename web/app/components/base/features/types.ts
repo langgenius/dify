@@ -84,6 +84,7 @@ export const FeatureEnum = {
   text2speech: 'text2speech',
   speech2text: 'speech2text',
   citation: 'citation',
+  showThoughts: 'showThoughts',
   moderation: 'moderation',
   file: 'file',
   annotationReply: 'annotationReply',
@@ -99,6 +100,7 @@ export type Features = {
   [FeatureEnum.text2speech]?: TextToSpeech
   [FeatureEnum.speech2text]?: EnabledOrDisabled
   [FeatureEnum.citation]?: EnabledOrDisabled
+  [FeatureEnum.showThoughts]?: EnabledOrDisabled
   [FeatureEnum.moderation]?: SensitiveWordAvoidance
   [FeatureEnum.file]?: FileUpload
   [FeatureEnum.annotationReply]?: AnnotationReplyConfig

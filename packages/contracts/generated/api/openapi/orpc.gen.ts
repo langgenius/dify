@@ -2328,20 +2328,21 @@ export const plugins2 = {
 }
 
 /**
- * Import never publishes
+ * Import an admitted editor's validated folder, returning a count of file entries only
  *
- * ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
+ * Creates a draft (201) or overwrites it (200), relaying archive and service errors.
+ * Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
  * so an edit made in the same second as the export is not detected.
  */
 export const post31 = oc
   .route({
     description:
-      "``draft_hash`` is the draft's ``updated_at`` in whole seconds,\nso an edit made in the same second as the export is not detected.",
+      "Creates a draft (201) or overwrites it (200), relaying archive and service errors.\nImport never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,\nso an edit made in the same second as the export is not detected.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesByWorkspaceIdSkillsImports',
     path: '/workspaces/{workspace_id}/skills/imports',
-    summary: 'Import never publishes',
+    summary: "Import an admitted editor's validated folder, returning a count of file entries only",
     tags: ['openapi'],
   })
   .input(

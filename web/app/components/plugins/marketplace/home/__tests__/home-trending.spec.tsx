@@ -845,11 +845,11 @@ describe('HomeTrending', () => {
   })
 
   describe('mobile swipe', () => {
-    const stubViewport = (isMobile: boolean) =>
+    const stubViewport = (isNarrow: boolean) =>
       vi.spyOn(window, 'matchMedia').mockImplementation(
         (query) =>
           ({
-            matches: isMobile && query === '(max-width: 879px)',
+            matches: isNarrow && query === '(max-width: 879px)',
             media: query,
             onchange: null,
             addEventListener: vi.fn(),
@@ -939,10 +939,18 @@ describe('HomeTrending', () => {
     })
 
     it.each([
-      { name: 'a vertical gesture on mobile', isMobile: true, end: [270, 300] as [number, number] },
-      { name: 'touch input on desktop', isMobile: false, end: [80, 160] as [number, number] },
-    ])('stays on the current slide for $name', ({ isMobile, end }) => {
-      stubViewport(isMobile)
+      {
+        name: 'a vertical gesture on a narrow viewport',
+        isNarrow: true,
+        end: [270, 300] as [number, number],
+      },
+      {
+        name: 'touch input on a wide viewport',
+        isNarrow: false,
+        end: [80, 160] as [number, number],
+      },
+    ])('stays on the current slide for $name', ({ isNarrow, end }) => {
+      stubViewport(isNarrow)
       renderCarousel()
 
       swipe(screen.getByRole('group', { name: 'Trending' }), [[300, 120], end])

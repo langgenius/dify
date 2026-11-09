@@ -6135,6 +6135,7 @@ export const zAgentSoulAppFeaturesConfig = z.object({
   opening_statement: z.string().nullish(),
   retriever_resource: zAgentFeatureToggleConfig.nullish(),
   sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
+  show_thoughts: zAgentFeatureToggleConfig.nullish(),
   speech_to_text: zAgentFeatureToggleConfig.nullish(),
   suggested_questions: z.array(z.string()).nullish(),
   suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),

@@ -12,7 +12,7 @@ from tests.unit_tests.controllers.conftest import pipeline_application as pipeli
 class TestDescriptionValidationUnit:
     """Unit tests for the centralized description validation function."""
 
-    def test_validate_description_length_valid(self):
+    def test_validate_description_length_valid(self) -> None:
         """Test validation function with valid descriptions."""
         # Empty string should be valid
         assert validate_description_length("") == ""
@@ -32,7 +32,7 @@ class TestDescriptionValidationUnit:
         just_under = "x" * 399
         assert validate_description_length(just_under) == just_under
 
-    def test_validate_description_length_invalid(self):
+    def test_validate_description_length_invalid(self) -> None:
         """Test validation function with invalid descriptions."""
         # 401 characters should fail
         just_over = "x" * 401
@@ -52,7 +52,7 @@ class TestDescriptionValidationUnit:
             validate_description_length(very_long)
         assert "Description cannot exceed 400 characters." in str(exc_info.value)
 
-    def test_boundary_values(self):
+    def test_boundary_values(self) -> None:
         """Test boundary values around the 400 character limit."""
         boundary_tests = [
             (0, True),  # Empty
@@ -75,7 +75,7 @@ class TestDescriptionValidationUnit:
                 with pytest.raises(ValueError, match="Description cannot exceed 400 characters\\."):
                     validate_description_length(test_desc)
 
-    def test_special_characters(self):
+    def test_special_characters(self) -> None:
         """Test validation with special characters, Unicode, etc."""
         # Unicode characters
         unicode_desc = "测试描述" * 100  # Chinese characters
@@ -95,7 +95,7 @@ class TestDescriptionValidationUnit:
             with pytest.raises(ValueError, match="Description cannot exceed 400 characters\\."):
                 validate_description_length(mixed_desc)
 
-    def test_whitespace_handling(self):
+    def test_whitespace_handling(self) -> None:
         """Test validation with various whitespace scenarios."""
         # Leading/trailing whitespace
         whitespace_desc = "   Description with whitespace   "

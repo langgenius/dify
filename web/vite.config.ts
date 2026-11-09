@@ -159,6 +159,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
               'echarts/core',
               'echarts/features',
               'echarts/renderers',
+              'next/script',
               'react-textarea-autosize',
               'zod/v4',
             ],

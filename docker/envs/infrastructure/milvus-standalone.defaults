@@ -1,0 +1,10 @@
+# Defaults for milvus-standalone. Copy this file to milvus-standalone.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+ETCD_ENDPOINTS=${ETCD_ENDPOINTS:-etcd:2379}
+MINIO_ADDRESS=${MINIO_ADDRESS:-minio:9000}
+MILVUS_AUTHORIZATION_ENABLED=${MILVUS_AUTHORIZATION_ENABLED:-true}
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+common.security.authorizationEnabled=${MILVUS_AUTHORIZATION_ENABLED:-true}

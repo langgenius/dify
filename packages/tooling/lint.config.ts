@@ -70,6 +70,10 @@ const webRestrictedImports = [
         importNames: ['useLocalStorageState'],
         message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
       },
+      {
+        name: 'next-themes',
+        message: 'Use the @/features/theme module instead of next-themes.',
+      },
     ],
     patterns: [
       {
@@ -336,17 +340,27 @@ export const stylingContractRules = {
           pattern: '^(Dialog|AlertDialog)Content$',
           allow: [
             'w-*',
-            'min-w-*',
-            'max-w-*',
             'h-*',
-            'min-h-*',
-            'max-h-*',
+            'max-w-[calc(100vw-*rem)]',
+            'max-h-[calc(100dvh-*rem)]',
+            'max-h-[*dvh]',
+            'max-h-[min(*,calc(100dvh-*rem))]',
+            'min-h-[min(*,calc(100dvh-*rem))]',
             'overflow-hidden',
             'transition-none',
           ],
-          deny: ['max-w-none', 'max-h-none', 'w-screen', 'h-screen'],
+          deny: [
+            'w-[*]',
+            'h-[min(*)]',
+            'h-[calc(*)]',
+            'h-[*%]',
+            'h-[*px]',
+            'h-[*rem]',
+            'w-screen',
+            'h-screen',
+          ],
           message:
-            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and its parts own spacing; callers may size it within the viewport or disable transitions. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
+            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and keeps itself within the viewport. Size it with w-* and h-* (h-dvh fills the viewport). Change the viewport margin with max-w-[calc(100vw-Nrem)] or max-h-[calc(100dvh-Nrem)], and bound a height cap or floor by the viewport, e.g. max-h-[80dvh] or min-h-[min(20rem,calc(100dvh-2rem))]. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
         },
         {
           pattern: '^DialogPopup$',
@@ -1795,6 +1809,19 @@ export const lintConfig = {
           {
             ...serviceRestrictedImports[1],
             patterns: [...serviceRestrictedImports[1].patterns, rawHttpImports],
+          },
+        ],
+      },
+    },
+    {
+      files: ['web/features/theme/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            ...webRestrictedImports[1],
+            paths: webRestrictedImports[1].paths.filter((path) => path.name !== 'next-themes'),
+            patterns: [...webRestrictedImports[1].patterns, rawHttpImports],
           },
         ],
       },

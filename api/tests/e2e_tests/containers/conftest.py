@@ -169,7 +169,7 @@ def dify_plugin_daemon_container(
     assert postgres_container_name is not None
     assert redis_container_name is not None
 
-    plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.6.11-local").with_network(
+    plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.6.14-local").with_network(
         testcontainers_network
     )
     plugin_daemon.with_exposed_ports(5002)

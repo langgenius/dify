@@ -410,10 +410,10 @@ const memory = {
   query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
 }
 const promptTemplate = [{ role: 'user', text: '{{#start.query#}}' }]
-it.each<{ target: string; resource: EditorResource; keepsGenerativeUI: boolean }>([
+it.for<{ target: string; resource: EditorResource; keepsGenerativeUI: boolean }>([
   {
     target: 'Workflow',
-    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false },
     keepsGenerativeUI: false,
   },
   {
@@ -423,7 +423,7 @@ it.each<{ target: string; resource: EditorResource; keepsGenerativeUI: boolean }
   },
   {
     target: 'Chatflow',
-    resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat', collaborationEnabled: false },
     keepsGenerativeUI: true,
   },
 ])(

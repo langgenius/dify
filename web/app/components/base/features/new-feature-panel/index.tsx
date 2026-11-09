@@ -16,6 +16,7 @@ import GenerativeUI from '@/app/components/base/features/new-feature-panel/gener
 import ImageUpload from '@/app/components/base/features/new-feature-panel/image-upload'
 import Moderation from '@/app/components/base/features/new-feature-panel/moderation'
 import MoreLikeThis from '@/app/components/base/features/new-feature-panel/more-like-this'
+import ShowThoughts from '@/app/components/base/features/new-feature-panel/show-thoughts'
 import SpeechToText from '@/app/components/base/features/new-feature-panel/speech-to-text'
 import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-to-speech'
 import {
@@ -34,6 +35,7 @@ type Props = Readonly<{
   onClose: () => void
   inWorkflow?: boolean
   showFileUpload?: boolean
+  showThoughtsToggle?: boolean
   showModeration?: boolean
   showAnnotationReply?: boolean
   showGenerativeUI?: boolean
@@ -53,6 +55,7 @@ const NewFeaturePanel = ({
   onClose,
   inWorkflow = true,
   showFileUpload = true,
+  showThoughtsToggle = false,
   showModeration = true,
   showAnnotationReply = true,
   showGenerativeUI = false,
@@ -118,6 +121,9 @@ const NewFeaturePanel = ({
           {showFileUpload && isChatMode && <FileUpload disabled={disabled} onChange={onChange} />}
           {showFileUpload && !isChatMode && <ImageUpload disabled={disabled} onChange={onChange} />}
           {isChatMode && <Citation disabled={disabled} onChange={onChange} />}
+          {isChatMode && showThoughtsToggle && (
+            <ShowThoughts disabled={disabled} onChange={onChange} />
+          )}
           {showModeration && (isChatMode || !inWorkflow) && (
             <Moderation disabled={disabled} onChange={onChange} />
           )}
