@@ -3,7 +3,7 @@ from functools import wraps
 from uuid import UUID
 
 from flask_restx import Resource
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.rbac import DatasetId, RBACCheck
@@ -28,6 +28,7 @@ from services.knowledge.entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.knowledge.metadata.validation import MetadataValueError
 
 
 def metadata_errors[**P, T](method: Callable[P, T]) -> Callable[P, T]:
@@ -39,6 +40,8 @@ def metadata_errors[**P, T](method: Callable[P, T]) -> Callable[P, T]:
             raise NotFound(str(error)) from error
         except DatasetAccessDeniedError as error:
             raise Forbidden(str(error)) from error
+        except MetadataValueError as error:
+            raise BadRequest(str(error)) from error
 
     return wrapped
 

@@ -17,6 +17,7 @@ from models.dataset import (
 from repositories.knowledge.dataset_read_repository import get_document_uploader
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.knowledge.metadata.application import MetadataList, MetadataOperation, MetadataRecord
+from services.knowledge.metadata.validation import validate_metadata_value
 from services.knowledge.resource_scope import DatasetRef
 
 
@@ -153,6 +154,11 @@ class SQLAlchemyMetadataRepository:
             dataset.built_in_field_enabled = enabled
 
     def update_documents(self, ref: DatasetRef, operations: Sequence[MetadataOperation], *, actor_id: str) -> None:
+        """Update scoped documents atomically after validating stored field types.
+
+        Requires existing fields/documents in ref. Invalid numeric values raise
+        MetadataValueError; failed batches preserve documents and bindings.
+        """
         with self._sessions.begin() as session:
             dataset = self._dataset(session, ref, write=True)
             metadata_ids = {value.id for operation in operations for value in operation.metadata_list}
@@ -168,6 +174,11 @@ class SQLAlchemyMetadataRepository:
             }
             if document_ids != set(documents):
                 raise MetadataResourceNotFoundError("Document not found.")
+            # Validate the whole batch before mutating document values or bindings.
+            for operation in operations:
+                for value in operation.metadata_list:
+                    field = fields[value.id]
+                    validate_metadata_value(field.name, field.type, value.value)
             for operation in operations:
                 document = documents[operation.document_id]
                 values = dict(document.doc_metadata or {}) if operation.partial_update else {}
