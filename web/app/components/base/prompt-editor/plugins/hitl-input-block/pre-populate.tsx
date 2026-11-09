@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { VarType } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { TEXT_VAR_TYPES } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import { VarType } from '@/app/components/workflow/types'
 import TagLabel from './tag-label'
 import TypeSwitch from './type-switch'
 
@@ -92,7 +93,7 @@ const PrePopulate: FC<Props> = ({
     onChange: onValueSelectorChange!,
     readonly: false,
     filterVar: (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+      const textVariableTypes: readonly VarType[] = TEXT_VAR_TYPES
       return textVariableTypes.includes(varPayload.type)
     },
   }
@@ -108,7 +109,7 @@ const PrePopulate: FC<Props> = ({
       <div className="relative h-20 rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2">
         <VarReferencePicker {...varPickerProps} isJustShowValue />
         <TypeSwitch
-          className="absolute bottom-1 left-1.5"
+          className="absolute inset-s-1.5 bottom-1"
           isVariable={isVariable}
           onIsVariableChange={handleTypeChange}
         />
@@ -136,7 +137,7 @@ const PrePopulate: FC<Props> = ({
         autoFocus
       />
       <TypeSwitch
-        className="absolute bottom-1 left-1.5"
+        className="absolute inset-s-1.5 bottom-1"
         isVariable={isVariable}
         onIsVariableChange={handleTypeChange}
       />

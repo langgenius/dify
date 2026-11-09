@@ -10,6 +10,7 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType } from '@/app/components/workflow/types'
 import { VarKindType } from '../types'
+import { isNumericVarType, TEXT_VAR_TYPES } from './variable/utils'
 
 export type FormInputSchema = Omit<CredentialFormSchema, 'default'> &
   Partial<{
@@ -158,7 +159,7 @@ export const getTargetVarType = (state: FormInputState) => {
 }
 
 export const getFilterVar = (state: FormInputState) => {
-  if (state.isNumber) return (varPayload: Var) => varPayload.type === VarType.number
+  if (state.isNumber) return (varPayload: Var) => isNumericVarType(varPayload.type)
   if (state.isSelect && state.isMultipleSelect)
     return (varPayload: Var) => {
       const stringArrayVariableTypes: readonly VarType[] = [VarType.array, VarType.arrayString]
@@ -166,7 +167,7 @@ export const getFilterVar = (state: FormInputState) => {
     }
   if (state.isString || state.isDate)
     return (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+      const textVariableTypes: readonly VarType[] = TEXT_VAR_TYPES
       return textVariableTypes.includes(varPayload.type)
     }
   if (state.isFile)
