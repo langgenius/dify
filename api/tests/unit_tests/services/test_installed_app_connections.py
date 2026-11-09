@@ -6,24 +6,33 @@ from types import SimpleNamespace
 from unittest.mock import create_autospec
 from uuid import uuid4
 
+import httpx
 import pytest
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from clients.plugin.auth import PluginCredentialAuthClient
+from clients.plugin.errors import PluginNotImplementedError
 from context.connection_execution import ConnectionExecutionContext, WorkspaceConnectionScope
+from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.tool_manager import ToolManager
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import ConversationFromSource, ConversationStatus, InvokeFrom, PermissionEnum
 from models.installed_app_connection import InstalledAppConnectionConfiguration
 from models.model import App, AppMode, Conversation, InstalledApp
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow, WorkflowType
+from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.installed_app_connection_repository import SQLAlchemyInstalledConnectionRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.end_user_connections.errors import (
+    ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
     ConnectionIdentityError,
+    ConnectionInvalidCredentialsError,
     ConnectionNotFoundError,
     ConnectionRequiredError,
     ConnectionRevisionChangedError,
@@ -32,9 +41,11 @@ from services.end_user_connections.selections import SaveConnectionConfiguration
 from services.errors.conversation import ConversationNotExistsError
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_connections import InstalledAppConnectionService, InstalledConnectionConfiguration
+from services.workflow_test_credential_adapters import WorkspaceTestCredentialGateway
 from services.workflow_test_credentials import ResolvedTestCredential
 from services.workflow_test_credentials import TestCredentialCheck as CredentialCheck
 from services.workflow_test_credentials import TestCredentialUnavailableError as Unavailable
+from tests.helpers.end_user_api_key import PLUGIN_UNIQUE_IDENTIFIER, plugin_provider
 from tests.helpers.workflow_test_credentials import tool_node
 
 
@@ -151,6 +162,7 @@ def harness(sqlite_session_factory: sessionmaker[Session]):
         sessions=sqlite_session_factory,
         definitions=definitions,
         gateway=gateway,
+        access=access,
     )
 
 
@@ -228,7 +240,7 @@ def test_preflight_and_run_never_use_test_credentials_or_workspace_defaults(harn
         ("valid", None, "connected"),
         ("unsupported", None, "connected"),
         ("invalid", "credential_invalid", "invalid"),
-        ("invalid", "credential_revoked", "reconnect_required"),
+        ("invalid", "credential_revoked", "invalid"),
         ("temporarily_unavailable", "provider_timeout", None),
     ],
 )
@@ -245,6 +257,139 @@ def test_preflight_uses_webapp_status_vocabulary(harness, status, reason, expect
     assert "secret" not in result.model_dump_json()
 
 
+@pytest.fixture(params=[CredentialType.API_KEY, CredentialType.OAUTH2])
+def checked_service(harness, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest):
+    credential_type = request.param
+    harness.graph["nodes"][0]["data"]["end_user_auth"]["allowed_credential_types"] = [credential_type.value]
+    harness.graph["nodes"][0]["data"]["end_user_auth"]["oauth_client_type"] = (
+        "default" if credential_type == CredentialType.OAUTH2 else None
+    )
+    with harness.sessions.begin() as session:
+        session.execute(
+            update(BuiltinToolProvider)
+            .where(BuiltinToolProvider.id == harness.credential.id)
+            .values(credential_type=credential_type)
+        )
+        session.execute(
+            update(Workflow).where(Workflow.id == harness.workflow.id).values(graph=json.dumps(harness.graph))
+        )
+    credentials = {"api_key" if credential_type == CredentialType.API_KEY else "access_token": "runtime-secret"}
+    provider = plugin_provider(harness.scope.tenant_id)
+    provider.entity.oauth_schema = OAuthSchema(
+        client_schema=provider.entity.credentials_schema, credentials_schema=provider.entity.credentials_schema
+    )
+
+    def load_runtime(**kwargs: object):
+        assert kwargs["credential_id"] == harness.credential.id
+        assert kwargs["tenant_id"] == harness.scope.tenant_id
+        assert kwargs["user_id"] == harness.scope.account_id
+        return provider.get_tool("read").fork_tool_runtime(
+            runtime=ToolRuntime(
+                tenant_id=harness.scope.tenant_id,
+                credential_id=harness.credential.id,
+                credential_type=credential_type,
+                credentials=credentials,
+            )
+        )
+
+    monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_: provider)
+    monkeypatch.setattr(ToolManager, "get_tool_runtime", load_runtime)
+    service = InstalledAppConnectionService(
+        store=harness.store,
+        access=harness.access,
+        definitions=harness.definitions,
+        credentials=WorkspaceTestCredentialGateway(
+            queries=CredentialQueryRepository(session_factory=harness.sessions),
+            auth=PluginCredentialAuthClient(),
+        ),
+    )
+    return service, credential_type, credentials
+
+
+@pytest.mark.parametrize(
+    ("status", "reason", "retryable", "expected"),
+    [
+        ("valid", None, False, "connected"),
+        ("unsupported", None, False, "connected"),
+        ("invalid", "credential_invalid", False, "invalid"),
+        ("invalid", "credential_expired", False, "invalid"),
+        ("invalid", "credential_revoked", False, "invalid"),
+        ("temporarily_unavailable", "provider_timeout", True, None),
+    ],
+)
+def test_preflight_dispatches_runtime_credentials_to_provider(
+    harness, checked_service, monkeypatch: pytest.MonkeyPatch, status, reason, retryable, expected
+):
+    service, credential_type, credentials = checked_service
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        payload = {"status": status, "reason_code": reason, "retryable": retryable}
+        return httpx.Response(200, text=f"data: {json.dumps({'code': 0, 'message': '', 'data': payload})}\n\n")
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr("core.plugin.impl.base._httpx_client", client)
+        result = service.preflight(harness.scope, command(harness))
+
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "POST"
+    assert request.url.path == f"/plugin/{harness.scope.tenant_id}/dispatch/tool/validate_credentials"
+    assert request.headers["X-Plugin-Unique-Identifier"] == PLUGIN_UNIQUE_IDENTIFIER
+    assert json.loads(request.content) == {
+        "user_id": harness.scope.account_id,
+        "data": {
+            "provider": "calendar",
+            "credentials": credentials,
+            "credential_type": "api_key" if credential_type == CredentialType.API_KEY else "oauth2",
+            "result_format": "detailed",
+        },
+    }
+    state = result.connections[0]
+    assert state.status == expected
+    assert state.check.status == status
+    assert state.check.reason_code == reason
+    assert state.check.retryable == retryable
+    assert result.ready == (status in {"valid", "unsupported"})
+    assert "runtime-secret" not in result.model_dump_json()
+    assert "encrypted" not in result.model_dump_json()
+
+
+@pytest.mark.parametrize("failure", ["timeout", "malformed", "http_error", "unimplemented"])
+def test_preflight_handles_provider_check_failures_like_end_user(
+    harness, checked_service, monkeypatch: pytest.MonkeyPatch, failure
+):
+    service, _, _ = checked_service
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if failure == "timeout":
+            raise httpx.ReadTimeout("Provider timed out")
+        if failure == "unimplemented":
+            error = json.dumps({"error_type": "NotImplementedError", "message": "Not implemented", "args": {}})
+            message = json.dumps({"error_type": "PluginInvokeError", "message": error})
+            payload = {"code": -500, "message": message, "data": None}
+            return httpx.Response(200, text=f"data: {json.dumps(payload)}\n\n")
+        return httpx.Response(503 if failure == "http_error" else 200, text="malformed-secret-response")
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr("core.plugin.impl.base._httpx_client", client)
+        result = service.preflight(harness.scope, command(harness))
+
+    assert len(requests) == 1
+    state = result.connections[0]
+    assert result.ready == (failure == "unimplemented")
+    assert state.status == ("connected" if failure == "unimplemented" else None)
+    assert state.check is not None
+    assert state.check.status == ("unsupported" if failure == "unimplemented" else "temporarily_unavailable")
+    assert state.check.reason_code == (None if failure == "unimplemented" else "provider_unavailable")
+    assert state.check.retryable == (failure != "unimplemented")
+    assert state.check.checked_at > 0
+    assert "secret" not in result.model_dump_json()
+
+
 @pytest.mark.parametrize("status", ["disconnected", "incompatible", "temporarily_unavailable"])
 def test_preflight_preserves_gateway_failures(harness, status):
     def fail(*_):
@@ -256,6 +401,106 @@ def test_preflight_preserves_gateway_failures(harness, status):
     assert result.connections[0].status == {"incompatible": "invalid", "temporarily_unavailable": None}.get(
         status, status
     )
+    if status == "temporarily_unavailable":
+        assert result.connections[0].check is not None
+        assert result.connections[0].check.status == "temporarily_unavailable"
+        assert result.connections[0].check.reason_code == "provider_unavailable"
+        assert result.connections[0].check.retryable
+    else:
+        assert result.connections[0].check is None
+
+
+def test_unsupported_check_does_not_bypass_permission_revalidation(
+    harness, checked_service, monkeypatch: pytest.MonkeyPatch
+):
+    service, _, _ = checked_service
+
+    def respond(_request: httpx.Request) -> httpx.Response:
+        with harness.sessions.begin() as session:
+            session.execute(
+                update(BuiltinToolProvider)
+                .where(BuiltinToolProvider.id == harness.credential.id)
+                .values(user_id=harness.other.id, visibility=PermissionEnum.ONLY_ME)
+            )
+        error = json.dumps({"error_type": "NotImplementedError", "message": "Not implemented", "args": {}})
+        message = json.dumps({"error_type": "PluginInvokeError", "message": error})
+        payload = {"code": -500, "message": message, "data": None}
+        return httpx.Response(200, text=f"data: {json.dumps(payload)}\n\n")
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr("core.plugin.impl.base._httpx_client", client)
+        result = service.preflight(harness.scope, command(harness))
+
+    assert not result.ready
+    assert result.connections[0].status == "disconnected"
+    assert result.connections[0].connection_id is None
+    assert result.connections[0].check is None
+
+
+def test_unimplemented_runtime_resolution_is_not_an_unsupported_check(
+    harness, checked_service, monkeypatch: pytest.MonkeyPatch
+):
+    service, _, _ = checked_service
+
+    def fail_runtime(**_kwargs: object):
+        raise PluginNotImplementedError("Runtime resolution is not implemented")
+
+    monkeypatch.setattr(ToolManager, "get_tool_runtime", fail_runtime)
+    result = service.preflight(harness.scope, command(harness))
+
+    assert not result.ready
+    assert result.connections[0].status is None
+    assert result.connections[0].check.status == "temporarily_unavailable"
+    assert result.connections[0].check.reason_code == "provider_unavailable"
+
+
+@pytest.mark.parametrize(
+    ("status", "reason", "expected_error"),
+    [
+        ("temporarily_unavailable", "provider_timeout", ConnectionCheckUnavailableError),
+        ("invalid", "credential_invalid", ConnectionInvalidCredentialsError),
+        ("invalid", "credential_expired", ConnectionInvalidCredentialsError),
+        ("invalid", "credential_revoked", ConnectionInvalidCredentialsError),
+    ],
+)
+def test_run_and_runtime_reject_failed_provider_checks_like_end_user(harness, status, reason, expected_error):
+    execution = harness.service.prepare(
+        harness.scope,
+        workflow_id=harness.workflow.id,
+        args={"connection_revision": harness.revision, "connections": {"root": harness.credential.id}},
+    )
+    harness.gateway.resolve = lambda *_: ResolvedTestCredential(
+        harness.credential.id,
+        "oauth2",
+        {"token": "secret"},
+        CredentialCheck(status=status, reason_code=reason, retryable=False),
+    )
+    with pytest.raises(expected_error):
+        harness.service.prepare(
+            harness.scope,
+            workflow_id=harness.workflow.id,
+            args={"connection_revision": harness.revision, "connections": {"root": harness.credential.id}},
+        )
+    with pytest.raises(expected_error):
+        harness.service.resolve(execution, account_id=harness.account.id, node_id="root", graph=harness.graph)
+
+
+@pytest.mark.parametrize("status", ["valid", "unsupported"])
+def test_run_and_runtime_accept_provider_checks_like_end_user(harness, status):
+    harness.gateway.resolve = lambda *_: ResolvedTestCredential(
+        harness.credential.id,
+        "oauth2",
+        {"token": "secret"},
+        CredentialCheck(status=status, reason_code=None, retryable=False),
+    )
+    execution = harness.service.prepare(
+        harness.scope,
+        workflow_id=harness.workflow.id,
+        args={"connection_revision": harness.revision, "connections": {"root": harness.credential.id}},
+    )
+    resolved = harness.service.resolve(execution, account_id=harness.account.id, node_id="root", graph=harness.graph)
+    assert resolved.check.status == status
+    assert resolved.credentials == {"token": "secret"}
 
 
 def test_revision_changes_require_confirmation_and_unknown_nodes_fail(harness):

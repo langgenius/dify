@@ -5,6 +5,8 @@ from typing import Any
 from uuid import UUID
 
 from clients.plugin.auth import PluginCredentialAuthClient
+from clients.plugin.auth_entities import CredentialCheckResponse
+from clients.plugin.errors import PluginNotImplementedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.tool_entities import ToolInvokeFrom, ToolProviderType
@@ -114,6 +116,13 @@ class WorkspaceTestCredentialGateway:
         return record
 
     def resolve(self, scope: BuilderScope, requirement: TestCredentialRequirement) -> ResolvedTestCredential:
+        """Resolve an explicit actor-visible selection through workspace refresh.
+
+        Check runtime secrets with the provider without invoking the tool. An
+        unimplemented check is unsupported, as for EndUser Connections; refresh
+        and other failures remain unavailable. Return secrets only after checking
+        current visibility, type and credential contents again.
+        """
         try:
             UUID(requirement.credential_id or "")
         except ValueError:
@@ -138,14 +147,17 @@ class WorkspaceTestCredentialGateway:
             if tool.runtime.credential_id != record.id or tool.runtime.credential_type != record.credential_type:
                 raise TestCredentialUnavailableError("incompatible")
             checked_record = self._record(scope, requirement)
-            result = self._auth.check_provider_credentials(
-                tenant_id=scope.tenant_id,
-                user_id=scope.account_id,
-                provider=requirement.provider,
-                credential_type=CredentialType(record.credential_type),
-                credentials=tool.runtime.credentials,
-                plugin_unique_identifier=provider.plugin_unique_identifier,
-            )
+            try:
+                result: CredentialCheckResponse = self._auth.check_provider_credentials(
+                    tenant_id=scope.tenant_id,
+                    user_id=scope.account_id,
+                    provider=requirement.provider,
+                    credential_type=CredentialType(record.credential_type),
+                    credentials=tool.runtime.credentials,
+                    plugin_unique_identifier=provider.plugin_unique_identifier,
+                )
+            except PluginNotImplementedError:
+                result = CredentialCheckResponse(status="unsupported", reason_code=None, retryable=False)
         except TestCredentialUnavailableError:
             raise
         except Exception:

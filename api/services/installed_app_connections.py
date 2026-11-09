@@ -208,6 +208,13 @@ class InstalledAppConnectionService:
         return self.configuration(scope, conversation_id)
 
     def preflight(self, scope: WorkspaceConnectionScope, command: ConnectionPreflightInput) -> ConnectionPreflightView:
+        """Check explicit, member-visible credentials for the admitted publication.
+
+        Match EndUser check semantics: valid and unsupported checks permit use,
+        invalid checks reject credentials, and transient failures leave availability
+        unknown. Recheck access and publication after external I/O, without saving
+        selections or exposing runtime secrets.
+        """
         conversation_id = str(command.conversation_id) if command.conversation_id else None
         graph = self._graph(scope, conversation_id=conversation_id)
         self._require_revision(graph, command.connection_revision)
@@ -225,10 +232,15 @@ class InstalledAppConnectionService:
                         {**resolved.check.model_dump(), "checked_at": int(time.time())}
                     )
                     status = "connected" if check.status in {"valid", "unsupported"} else check.status
-                    if check.status == "invalid" and check.reason_code in {"credential_expired", "credential_revoked"}:
-                        status = "reconnect_required"
                 except TestCredentialUnavailableError as error:
                     status = error.status
+                if status == "temporarily_unavailable" and check is None:
+                    check = CredentialCheckResult(
+                        status="temporarily_unavailable",
+                        reason_code="provider_unavailable",
+                        retryable=True,
+                        checked_at=int(time.time()),
+                    )
                 if status == "disconnected":
                     connection_id = None
             states.append(
@@ -354,6 +366,12 @@ class InstalledAppConnectionService:
     def resolve(
         self, context: ConnectionExecutionContext, *, account_id: str, node_id: str, graph: Mapping[str, Any]
     ) -> ResolvedTestCredential:
+        """Resolve a selected credential against the current authorized graph.
+
+        Return process-local secrets after a valid or unsupported provider check
+        and access/revision rechecks, matching EndUser readiness. Transient checks
+        fail as unavailable; invalid credentials fail without changing selections.
+        """
         current = self.validate_execution(
             context,
             app_id=context.app_id,
@@ -379,6 +397,8 @@ class InstalledAppConnectionService:
         self._require_revision(current, context.connection_revision)
         assert context.workspace is not None
         self._graph(context.workspace, workflow_id=context.workflow_id)
-        if result.check.status not in {"valid", "unsupported"}:
+        if result.check.status == "temporarily_unavailable":
+            raise ConnectionCheckUnavailableError()
+        if result.check.status == "invalid":
             raise ConnectionInvalidCredentialsError()
         return result

@@ -101,6 +101,14 @@ Execution also checks the selected workflow version, including explicit historic
 versions and graphs reloaded by queued or resumed tasks. These paths cannot bypass
 the restriction by selecting a different publication after app-level admission.
 
+Installed App connection preflight validates explicit, member-visible workspace
+credentials with the provider using resolved runtime secrets. As with EndUser
+Connections, `valid` and `unsupported` checks permit use, `invalid` checks reject
+credentials, and transient failures leave availability unknown and block execution.
+Runtime resolution repeats validation and access checks; saved selections or previous
+preflight success never authorize a run on their own. Workspace credentials retain
+their own OAuth refresh lifecycle.
+
 The [API schema guide](controllers/API_SCHEMA_GUIDE.md) owns schema changes and verification. Generate the OpenAPI specifications and TypeScript/Zod contracts through the workspace script:
 
 ```bash
