@@ -31,7 +31,7 @@ argument.
 import dataclasses
 import functools
 import logging
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from typing import Literal, TypedDict
 
 from flask import Response, request
@@ -69,7 +69,7 @@ from services.dify_builder.native_testing.public_contracts import (
     NativeTestResumePayload,
     NativeTestStartPayload,
 )
-from services.dify_builder.service import resolve_submitted_action
+from services.dify_builder.service import CommandSubmission, resolve_submitted_action
 from services.dify_builder.wiring import (
     build_native_test_api_service,
     build_native_test_input_binding_service,
@@ -78,13 +78,14 @@ from services.dify_builder.wiring import (
     dify_builder_error_response,
     real_call_error_response,
     session_view_to_dict,
-    stream_advance_frames,
+    stream_session_frames,
 )
 from services.feature_service import FeatureService
 
 from . import console_ns
 from .dify_builder_fields import (
     DifyBuilderClearConversationPayload,
+    DifyBuilderCommandSubmissionResponse,
     DifyBuilderConfirmRealCallPayload,
     DifyBuilderConversationLifecyclePayload,
     DifyBuilderConversationLifecycleResponse,
@@ -92,8 +93,8 @@ from .dify_builder_fields import (
     DifyBuilderConversationPageResponse,
     DifyBuilderCreateBuildSessionPayload,
     DifyBuilderCreateChecklistFixSessionPayload,
+    DifyBuilderCreatedSessionResponse,
     DifyBuilderCreateEditSessionPayload,
-    DifyBuilderCreateFixSessionPayload,
     DifyBuilderCreateSessionPayload,
     DifyBuilderErrorResponse,
     DifyBuilderExecuteRealCallPayload,
@@ -138,6 +139,8 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    DifyBuilderCommandSubmissionResponse,
+    DifyBuilderCreatedSessionResponse,
     DifyBuilderNativeTestInputResponse,
     DifyBuilderNativeTestResponse,
     DifyBuilderConversationPageResponse,
@@ -195,20 +198,6 @@ def _actor(current_user, current_tenant_id: str) -> Actor:
 _SSE_HEADERS = {"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
 
 
-def _stream_response(make_generator: Callable[[], Iterator[str]]) -> Response | tuple[dict, int]:
-    """Call make_generator() (which runs the service's eager validate+subscribe+dispatch
-    and returns an SSE generator); map pre-flight errors to an HTTP tuple; else return
-    the stream. Unknown exceptions propagate to Flask's error handler."""
-    try:
-        generator = make_generator()
-    except Exception as exc:  # re-raised below if not a known dify_builder error
-        mapped = dify_builder_error_response(exc)
-        if mapped is None:
-            raise
-        return mapped
-    return Response(generator, mimetype="text/event-stream", headers=_SSE_HEADERS)
-
-
 class _FixArguments(TypedDict, total=False):
     session_id: str
     client_action_id: str
@@ -218,24 +207,20 @@ class _AttachmentArguments(TypedDict, total=False):
     attachments: list[str]
 
 
-def _create(body, actor: Actor) -> Response | tuple[dict, int]:
+def _create(body, actor: Actor) -> dict | tuple[dict, int]:
+    """Persist the opening context and return the session identity before dispatch."""
     try:
         payload = DifyBuilderCreateSessionPayload.model_validate(body).root
     except ValidationError:
         return {"code": "bad_request"}, 400
 
+    service = build_service()
     model_config = dataclasses.asdict(payload.model_config_data) if payload.model_config_data else None
     attachments = [str(attachment.upload_file_id) for attachment in payload.attachments]
     attachment_arguments: _AttachmentArguments = {"attachments": attachments} if attachments else {}
-    fix_arguments: _FixArguments = {}
-    if isinstance(payload, DifyBuilderCreateFixSessionPayload | DifyBuilderCreateChecklistFixSessionPayload):
-        if payload.session_id is not None:
-            fix_arguments["session_id"] = payload.session_id
-        if payload.client_action_id is not None:
-            fix_arguments["client_action_id"] = payload.client_action_id
-    if isinstance(payload, DifyBuilderCreateBuildSessionPayload):
-        return _stream_response(
-            lambda: build_service().create_build_session_stream(
+    try:
+        if isinstance(payload, DifyBuilderCreateBuildSessionPayload):
+            session_id, opening = service.prepare_build_session(
                 app_id=payload.app_id,
                 actor=actor,
                 goal_text=payload.goal_text,
@@ -243,41 +228,44 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
                 derive_app_name=payload.derive_app_name,
                 **attachment_arguments,
             )
-        )
-    if isinstance(payload, DifyBuilderCreateEditSessionPayload):
-        return _stream_response(
-            lambda: build_service().create_edit_session_stream(
+        elif isinstance(payload, DifyBuilderCreateEditSessionPayload):
+            session_id, opening = service.prepare_edit_session(
                 app_id=payload.app_id,
                 actor=actor,
                 model_config=model_config,
                 goal_text=payload.goal_text,
                 **attachment_arguments,
             )
-        )
-    if isinstance(payload, DifyBuilderCreateChecklistFixSessionPayload):
-        return _stream_response(
-            lambda: build_service().create_fix_session_stream(
+        else:
+            fix_arguments: _FixArguments = {}
+            if payload.session_id is not None:
+                fix_arguments["session_id"] = payload.session_id
+            if payload.client_action_id is not None:
+                fix_arguments["client_action_id"] = payload.client_action_id
+            session_id, opening = service.prepare_fix_session(
                 app_id=payload.app_id,
-                **fix_arguments,
                 actor=actor,
                 failed_run_id=payload.failed_run_id,
-                checklist_errors=[error.model_dump() for error in payload.checklist_errors],
-                **attachment_arguments,
+                checklist_errors=(
+                    [error.model_dump() for error in payload.checklist_errors]
+                    if isinstance(payload, DifyBuilderCreateChecklistFixSessionPayload)
+                    else None
+                ),
                 model_config=model_config,
-            )
-        )
-    if isinstance(payload, DifyBuilderCreateFixSessionPayload):
-        return _stream_response(
-            lambda: build_service().create_fix_session_stream(
-                app_id=payload.app_id,
+                defer_existing=True,
                 **fix_arguments,
-                actor=actor,
-                failed_run_id=payload.failed_run_id,
-                model_config=model_config,
                 **attachment_arguments,
             )
-        )
-    raise AssertionError(f"Unsupported Dify Builder create payload: {type(payload)}")
+        view = service.get_session_view(session_id, actor)
+    except Exception as exc:
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(
+        DifyBuilderCreatedSessionResponse,
+        {"session": session_view_to_dict(view), "requires_start": opening is not None},
+    )
 
 
 def _action_command_id(session_id: str, actor: Actor, client_action_id: str | None) -> str:
@@ -293,30 +281,55 @@ def _action_command_id(session_id: str, actor: Actor, client_action_id: str | No
     )
 
 
-def _action(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]:
+def _command_response(session_id: str, submit: Callable[[], CommandSubmission]) -> dict | tuple[dict, int]:
+    """Return a short admission receipt and invalidate the read model after synchronous writes."""
+    try:
+        receipt = submit()
+    except Exception as exc:
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    if receipt.session is not None:
+        progress_bus.publish_session_change(session_id)
+    return dump_response(
+        DifyBuilderCommandSubmissionResponse,
+        {
+            "command_id": receipt.command_id,
+            "pending": receipt.pending,
+            "session": session_view_to_dict(receipt.session) if receipt.session is not None else None,
+        },
+    )
+
+
+def _action(session_id: str, body, actor: Actor) -> dict | tuple[dict, int]:
+    """Validate a user command and return its admission receipt."""
     try:
         payload = DifyBuilderSubmitActionPayload.model_validate(body)
     except ValidationError:
         return {"code": "bad_request"}, 400
-    command_id = _action_command_id(session_id, actor, payload.client_action_id)
     action = Action(
-        command_id=command_id,
+        command_id=_action_command_id(session_id, actor, payload.client_action_id),
         kind=resolve_submitted_action(payload.action_id, payload.payload),
         receipt_snapshot=payload.receipt_snapshot.model_dump() if payload.receipt_snapshot is not None else None,
         payload=payload.payload,
         base_version=payload.base_version,
         base_app_revision=payload.base_app_revision,
     )
-    return _stream_response(lambda: build_service().submit_action_stream(session_id, actor, action))
+    service = build_service()
+    submit = service.start_session if action.kind == "start_session" else service.submit_action_command
+    return _command_response(session_id, lambda: submit(session_id, actor, action))
 
 
-def _message(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]:
+def _message(session_id: str, body, actor: Actor) -> dict | tuple[dict, int]:
+    """Validate a user turn and return its admission receipt."""
     try:
         payload = DifyBuilderSubmitMessagePayload.model_validate(body)
     except ValidationError:
         return {"code": "bad_request"}, 400
-    return _stream_response(
-        lambda: build_service().submit_message_stream(
+    return _command_response(
+        session_id,
+        lambda: build_service().submit_message_command(
             session_id,
             actor,
             payload.text,
@@ -327,7 +340,7 @@ def _message(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]
                 if payload.attachments
                 else {}
             ),
-        )
+        ),
     )
 
 
@@ -470,9 +483,8 @@ def _conversation(session_id: str, query_args, actor: Actor) -> dict | tuple[dic
     return dump_response(DifyBuilderConversationPageResponse, page)
 
 
-def _stream(
-    session_id: str, actor: Actor, *, native_version: str | None = None, native_cursor: str = ""
-) -> Response | tuple[dict, int]:
+def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
+    """Authorize the session and subscribe before reading any reconnect state."""
     service = build_service()
     try:
         service.authorize_session(session_id, actor)
@@ -482,18 +494,13 @@ def _stream(
             raise
         return mapped
 
-    # Subscribe before reading the bounded state. This closes the race where
-    # an advance could settle between the read and subscription. Conversation
-    # rows are recovered independently through the JSON pagination endpoint.
     subscription = progress_bus.subscribe(session_id)
     try:
         view = service.get_session_view(session_id, actor)
         snapshot = (
-            progress_snapshot.read(tenant_id=actor.tenant_id, session_id=session_id)
-            if view.run_status == "processing" and not view.interrupted
-            else None
+            progress_snapshot.read(tenant_id=actor.tenant_id, session_id=session_id) if view.command_pending else None
         )
-    except Exception as exc:  # re-raised below if not a known dify_builder error
+    except Exception as exc:
         subscription.close()
         mapped = dify_builder_error_response(exc)
         if mapped is None:
@@ -501,32 +508,18 @@ def _stream(
         return mapped
 
     app = app_ctx.app
-    if native_version not in (None, "builder-native-test-v1"):
-        subscription.close()
-        raise BadRequest("Invalid native test stream version.")
-
-    def read_native_receipts():
-        with app.app_context():
-            return build_native_test_api_service(actor=actor).snapshots(actor=actor, session_id=session_id)
 
     def read_session_view() -> dict[str, object]:
-        # Each heartbeat owns a short app context; the authenticated request
-        # and its SQL session must not stay open while the stream waits.
+        """Reauthorize and project the current view in a short app context."""
         with app.app_context():
             return session_view_to_dict(service.get_session_view(session_id, actor))
 
     return Response(
-        stream_advance_frames(
+        stream_session_frames(
             session_view_to_dict(view),
             subscription,
-            expect_advance=view.run_status == "processing" and not view.interrupted,
-            emit_command_finished_when_settled=True,
-            emit_command_started=False,
-            command_id=view.last_command_id,
             read_session_view=read_session_view,
-            initial_progress=snapshot,
-            native_receipts=read_native_receipts if native_version is not None else None,
-            native_cursor=native_cursor,
+            initial_progress=snapshot if snapshot is not None and snapshot.at_version > view.version else None,
             conversation_cleared=lambda: service.is_conversation_cleared(session_id, actor),
         ),
         mimetype="text/event-stream",
@@ -646,12 +639,11 @@ def _ping(body, actor: Actor) -> tuple[dict, int]:
 
 @console_ns.route("/dify-builder/sessions")
 class DifyBuilderSessionsApi(Resource):
-    @typed_event_stream_response(console_ns, DifyBuilderStreamEventResponse)
     @console_ns.expect(console_ns.models[DifyBuilderCreateSessionPayload.__name__])
     @console_ns.response(
         200,
-        "Dify Builder event stream",
-        console_ns.models[DifyBuilderStreamEventResponse.__name__],
+        "Dify Builder session created",
+        console_ns.models[DifyBuilderCreatedSessionResponse.__name__],
     )
     @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
     @setup_required
@@ -711,24 +703,10 @@ class DifyBuilderConversationApi(Resource):
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/stream")
 class DifyBuilderSessionStreamApi(Resource):
-    @console_ns.doc(
-        params={
-            "native_tests": {
-                "in": "query",
-                "enum": ["builder-native-test-v1"],
-                "description": "Observe durable native execution changes until settlement, with reconnect cursors",
-            },
-            "Last-Event-ID": {
-                "in": "header",
-                "type": "string",
-                "description": "Last observed native execution cursor; reconnect never repeats execution",
-            },
-        }
-    )
     @typed_event_stream_response(console_ns, DifyBuilderStreamEventResponse)
     @console_ns.response(
         200,
-        "Dify Builder reconnect event stream",
+        "Dify Builder session event stream",
         console_ns.models[DifyBuilderStreamEventResponse.__name__],
     )
     @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
@@ -740,22 +718,16 @@ class DifyBuilderSessionStreamApi(Resource):
     @with_current_tenant_id
     @dify_builder_required
     def get(self, current_tenant_id, current_user, session_id):
-        return _stream(
-            session_id,
-            _actor(current_user, current_tenant_id),
-            native_version=request.args.get("native_tests"),
-            native_cursor=request.headers.get("Last-Event-ID", ""),
-        )
+        return _stream(session_id, _actor(current_user, current_tenant_id))
 
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/actions")
 class DifyBuilderActionsApi(Resource):
-    @typed_event_stream_response(console_ns, DifyBuilderStreamEventResponse)
     @console_ns.expect(console_ns.models[DifyBuilderSubmitActionPayload.__name__])
     @console_ns.response(
         200,
-        "Dify Builder event stream",
-        console_ns.models[DifyBuilderStreamEventResponse.__name__],
+        "Dify Builder action submitted",
+        console_ns.models[DifyBuilderCommandSubmissionResponse.__name__],
     )
     @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
     @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
@@ -890,12 +862,11 @@ class DifyBuilderFixIntentsApi(Resource):
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/messages")
 class DifyBuilderMessagesApi(Resource):
-    @typed_event_stream_response(console_ns, DifyBuilderStreamEventResponse)
     @console_ns.expect(console_ns.models[DifyBuilderSubmitMessagePayload.__name__])
     @console_ns.response(
         200,
-        "Dify Builder event stream",
-        console_ns.models[DifyBuilderStreamEventResponse.__name__],
+        "Dify Builder message submitted",
+        console_ns.models[DifyBuilderCommandSubmissionResponse.__name__],
     )
     @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
     @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])

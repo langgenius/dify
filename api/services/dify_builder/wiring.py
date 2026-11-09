@@ -32,6 +32,7 @@ from extensions.application_services.dify_builder_cognition_policy import select
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.workflow_stream_fields import WorkflowStreamPayload
+from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from models import App, TenantAccountJoin, TenantAccountRole
 from runtime_contracts.builder.execution import canonical_digest
@@ -75,7 +76,9 @@ _PROGRESS_KINDS = frozenset(
         "conversation_item_appended",
         "reasoning",
         "progress",
+        "command_started",
         "native_state_changed",
+        "session_state_changed",
         *_TERMINAL_KINDS,
     }
 )
@@ -276,6 +279,7 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
         "reply_language": view.get("reply_language", ""),
         "canvas_read_only": view.get("canvas_read_only", False),
         "run_status": view.get("run_status", "failed"),
+        "command_pending": view.get("command_pending", False),
         "interrupted": view.get("interrupted", False),
         "conversation_last_seq": view.get("conversation_last_seq", -1),
         "phase": view.get("phase", "understand"),
@@ -317,7 +321,9 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
 
 def session_view_to_dict(view: SessionView) -> dict[str, object]:
     """Serialize only the session fields consumed by the browser."""
-    return _public_session_view(dataclasses.asdict(view), include_last_command_id=True)
+    projected = _public_session_view(dataclasses.asdict(view), include_last_command_id=True)
+    projected.setdefault("test_execution", None)
+    return projected
 
 
 def dify_builder_error_response(exc: Exception) -> tuple[dict, int] | None:
@@ -559,10 +565,18 @@ def _progress_event(raw: bytes) -> tuple[str, object] | None:
         return "error", _error_event({}, "invalid Builder progress event")
 
     kind = data["kind"]
-    if kind == "native_state_changed":
+    if kind in {"native_state_changed", "session_state_changed"}:
         # Internal invalidation only: receipt data is reread through the
         # authenticated owner, never accepted from a broadcast payload.
         return kind, {"session_id": data.get("session_id", "")}
+    if kind == "command_started":
+        return kind, {
+            "session_id": data.get("session_id", ""),
+            "command_id": data.get("command_id", ""),
+            "version": data.get("version", 0),
+            "phase": data.get("phase", "understand"),
+            "run_status": "processing",
+        }
     if kind == "workflow":
         payload = data.get("payload")
         if isinstance(payload, dict) and payload.get("event") in _IGNORED_WORKFLOW_EVENTS:
@@ -675,6 +689,81 @@ class _ClosingFrameStream:
         finally:
             if self._subscription is not None:
                 self._subscription.close()  # idempotent; covers the never-started case
+
+
+def stream_session_frames(
+    view: dict[str, object],
+    subscription: Subscription,
+    *,
+    read_session_view: Callable[[], dict[str, object] | None],
+    initial_progress: ProgressSnapshot | None,
+    conversation_cleared: Callable[[], bool],
+) -> Iterator[str]:
+    """Relay one authorized session after the caller establishes the live boundary.
+
+    The initial view and subsequent invalidations are bounded durable snapshots.
+    A command ending, including with an error, leaves the session observable.
+    Closing the response releases the subscription even before the first frame.
+    """
+    session_id = view["session_id"]
+
+    def frames() -> Generator[str]:
+        try:
+            current = view
+            if conversation_cleared():
+                cleared_view = read_session_view()
+                if cleared_view is None:
+                    return
+                current = cleared_view
+            yield _event_frame("session_ready", current)
+            if initial_progress is not None and not current.get("conversation_cleared"):
+                yield _event_frame(
+                    "progress_snapshot",
+                    {
+                        "session_id": initial_progress.session_id,
+                        "operation_id": initial_progress.operation_id,
+                        "at_version": initial_progress.at_version,
+                        "revision": initial_progress.revision,
+                        "reply_language": initial_progress.reply_language,
+                        "execution": _public_execution(dataclasses.asdict(initial_progress.execution)),
+                    },
+                )
+            refresh_on_idle = bool(current.get("command_pending"))
+            deadline = time.monotonic() + _MAX_STREAM_SECONDS
+            while not current.get("conversation_cleared") and time.monotonic() < deadline:
+                raw = subscription.receive(timeout=_HEARTBEAT_SECONDS)
+                cleared = conversation_cleared()
+                event = _progress_event(raw) if raw is not None and not cleared else None
+                receipt = current.get("test_execution")
+                native_pending = isinstance(receipt, dict) and receipt.get("status") != "terminal"
+                if (
+                    cleared
+                    or (raw is None and (refresh_on_idle or native_pending))
+                    or (event and event[0] in {"native_state_changed", "session_state_changed"})
+                ):
+                    latest = read_session_view()
+                    if latest is not None:
+                        refresh_on_idle = bool(latest.get("command_pending"))
+                        if latest != current:
+                            current = latest
+                            yield _event_frame("session_state", current)
+                elif event:
+                    kind, data = event
+                    refresh_on_idle = refresh_on_idle or kind in {"command_started", *_TERMINAL_KINDS}
+                    yield _event_frame(kind, data)
+                if raw is None:
+                    yield ": keep-alive\n\n"
+        except (SubscriptionClosedError, Forbidden, NotFoundError):
+            return
+        except BuilderExecutionPolicyError as error:
+            yield _event_frame(
+                "error",
+                {"code": error.reason_code, "message": "Builder observation unavailable", "session_id": session_id},
+            )
+        finally:
+            subscription.close()
+
+    return _ClosingFrameStream(frames(), subscription)
 
 
 def stream_advance_frames(

@@ -29,7 +29,7 @@ import {
   difyBuilderInteractionRefAtom,
   difyBuilderInterruptedAtom,
   difyBuilderLocalInteractionResponseAtom,
-  difyBuilderNativeCancelAtom,
+  difyBuilderNativeTestCancellingAtom,
   difyBuilderPendingFixAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRetryCanvasRefreshAtom,
@@ -116,7 +116,7 @@ export const DifyBuilderPanelFooter = ({
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const testExecution = useAtomValue(difyBuilderTestExecutionAtom)
   const taskControlOperation = useAtomValue(difyBuilderTaskControlOperationAtom)
-  const nativeCancel = useAtomValue(difyBuilderNativeCancelAtom)
+  const testCancelling = useAtomValue(difyBuilderNativeTestCancellingAtom)
   const commandBusy = useAtomValue(difyBuilderSessionBusyAtom)
   const taskControl = useAtomValue(difyBuilderTaskControlAtom)
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
@@ -146,7 +146,14 @@ export const DifyBuilderPanelFooter = ({
   const interactionVisible =
     interactionPending &&
     !interactionSubmitted &&
-    (pendingFix || ((!runActive || interrupted) && taskControlOperation === null))
+    (pendingFix ||
+      ((!runActive || interrupted) &&
+        taskControl === null &&
+        taskControlOperation !== 'resume' &&
+        !testCancelling))
+  const dockBusy = pendingFix
+    ? lifecycleControl !== null || taskControl !== null
+    : interactionBusy || !canvasReady
   const interactionKey = interactionRef
     ? `${sessionId}:${interactionRef.action_id}:${interactionRef.card_seq}`
     : decision
@@ -207,30 +214,10 @@ export const DifyBuilderPanelFooter = ({
           {t(($) => $['testResult.configurationRequired'], { ns: 'difyBuilder' })}
         </p>
       )}
-      {testExecution?.cancellation?.status === 'cancelling' ? (
+      {testCancelling && (
         <p role="status" className="mx-4 mb-2 system-xs-regular text-text-secondary">
           {t(($) => $['testResult.cancelling'], { ns: 'difyBuilder' })}
         </p>
-      ) : (
-        nativeCancel && (
-          <div className="mx-4 mb-2 flex justify-end">
-            <Button
-              size="small"
-              disabled={commandBusy || taskControl !== null}
-              onClick={() => {
-                void submitInteraction('cancel_test', nativeCancel.payload ?? {}, {
-                  renderText,
-                  replyLanguage: locale,
-                  booleanTrue: '',
-                  booleanFalse: '',
-                  noResourcesSelected: '',
-                })
-              }}
-            >
-              {renderText(nativeCancel.label)}
-            </Button>
-          </div>
-        )
       )}
       {canvasRefreshFailed && (
         <div className="mx-4 mb-2 flex justify-end">
@@ -268,11 +255,7 @@ export const DifyBuilderPanelFooter = ({
             >
               <DifyBuilderInteractionDock
                 activeInteraction={activeInteraction}
-                busy={
-                  pendingFix
-                    ? lifecycleControl !== null || taskControl !== null
-                    : interactionBusy || !canvasReady
-                }
+                busy={dockBusy}
                 decision={decision}
                 interactionPending={Boolean(interactionRef)}
                 recheckReady={recheckReady}

@@ -37,7 +37,7 @@ def fix_context(h: FullRunCase, monkeypatch: pytest.MonkeyPatch, source: str) ->
     repo = SqlDifyBuilderRepository(h.factory)
     service = DifyBuilderService(repo=repo, session_lock=FakeSessionLock(), enqueue_fn=lambda *_: None)
     actor = Actor(account_id=h.ids["account"], tenant_id=h.ids["tenant"])
-    session_id, _ = service._prepare_fix_session(
+    session_id, _ = service.prepare_fix_session(
         h.ids["app"],
         actor,
         failed_run_id="original-native-failure" if source != "checklist" else None,

@@ -3,6 +3,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 import json
+import os
 import shlex
 import subprocess
 import sys
@@ -115,11 +116,19 @@ async def test_enterprise_health_is_never_authoritative_absence(state: str) -> N
         ("symlink", "path_ambiguous"),
         ("root_missing", "root_unavailable"),
         ("root_symlink", "root_unavailable"),
+        ("ancestor_symlink", "root_unavailable"),
         ("permission", "root_unavailable"),
+        pytest.param(
+            "search_only_ancestor",
+            "paths_present",
+            marks=pytest.mark.skipif(not hasattr(os, "O_PATH"), reason="requires Linux directory search handles"),
+        ),
     ],
 )
 def test_fixed_local_probe_executes_only_exact_paths(tmp_path: Path, case: str, want: str) -> None:
-    home_root, workspace_root = tmp_path / "homes", tmp_path / "workspaces"
+    home_parent = tmp_path / "parent"
+    home_parent.mkdir()
+    home_root, workspace_root = home_parent / "homes", tmp_path / "workspaces"
     home_root.mkdir()
     workspace_root.mkdir()
     (home_root / "b").mkdir()
@@ -136,8 +145,13 @@ def test_fixed_local_probe_executes_only_exact_paths(tmp_path: Path, case: str, 
         (home_root / "b").rmdir()
         home_root.rmdir()
         home_root.symlink_to(workspace_root)
+    if case == "ancestor_symlink":
+        target = home_parent.rename(tmp_path / "target")
+        home_parent.symlink_to(target)
     if case == "permission":
         home_root.chmod(0)
+    if case == "search_only_ancestor":
+        home_parent.chmod(0o100)
     args = dict(
         binding_ref="b:w",
         workspace_ref="w",
@@ -157,6 +171,8 @@ def test_fixed_local_probe_executes_only_exact_paths(tmp_path: Path, case: str, 
     finally:
         if case == "permission":
             home_root.chmod(0o700)
+        if case == "search_only_ancestor":
+            home_parent.chmod(0o700)
 
 
 @pytest.mark.anyio
