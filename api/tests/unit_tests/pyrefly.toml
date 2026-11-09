@@ -37,7 +37,6 @@ project-excludes = [
   "controllers/console/test_wraps.py",
   "controllers/console/workspace/test_account.py",
   "controllers/console/workspace/test_endpoint.py",
-  "controllers/console/workspace/test_model_providers.py",
   "controllers/console/workspace/test_plugin.py",
   "controllers/console/workspace/test_snippets.py",
   "controllers/console/workspace/test_tool_providers.py",
