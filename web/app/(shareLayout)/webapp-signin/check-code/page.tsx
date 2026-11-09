@@ -2,13 +2,14 @@
 import type { SubmitEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import {
   navigateAfterWebAppLogin,
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
+import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -30,7 +31,6 @@ export default function CheckCode() {
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const locale = useLocale()
-  const codeInputRef = useRef<HTMLInputElement>(null)
   const redirectUrl = searchParams.get('redirect_url')
   const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
 
@@ -83,10 +83,6 @@ export default function CheckCode() {
     verify()
   }
 
-  useEffect(() => {
-    codeInputRef.current?.focus()
-  }, [])
-
   const resendCode = async () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
@@ -133,7 +129,7 @@ export default function CheckCode() {
           {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
         </label>
         <Input
-          ref={codeInputRef}
+          ref={focusOnArrival}
           id="code"
           name="code"
           inputMode="numeric"

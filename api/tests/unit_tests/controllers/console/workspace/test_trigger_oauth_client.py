@@ -16,6 +16,10 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_CSRF_TOKEN, HIDDEN_VALUE, UNKNOWN_VALUE
+from controllers.console.workspace.plugin import (
+    PluginFetchDynamicSelectOptionsApi,
+    PluginFetchDynamicSelectOptionsWithCredentialsApi,
+)
 from controllers.console.workspace.trigger_providers import (
     TriggerOAuthAuthorizeApi,
     TriggerOAuthCallbackApi,
@@ -23,7 +27,16 @@ from controllers.console.workspace.trigger_providers import (
     TriggerProviderIconApi,
     TriggerProviderInfoApi,
     TriggerProviderListApi,
+    TriggerSubscriptionBuilderBuildApi,
+    TriggerSubscriptionBuilderCreateApi,
+    TriggerSubscriptionBuilderGetApi,
+    TriggerSubscriptionBuilderLogsApi,
+    TriggerSubscriptionBuilderUpdateApi,
+    TriggerSubscriptionBuilderVerifyApi,
+    TriggerSubscriptionDeleteApi,
     TriggerSubscriptionListApi,
+    TriggerSubscriptionUpdateApi,
+    TriggerSubscriptionVerifyApi,
 )
 from controllers.console.wraps import _is_setup_completed
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
@@ -137,12 +150,23 @@ class _Harness:
 
 
 @pytest.fixture
-def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]) -> Iterator[_Harness]:
+def application_redis() -> Iterator[RedisClientWrapper]:
+    with Redis() as client:
+        redis = RedisClientWrapper()
+        redis.initialize(client)
+        yield redis
+
+
+@pytest.fixture
+def harness(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    application_redis: RedisClientWrapper,
+) -> Iterator[_Harness]:
     previous_storage = storage.__dict__.copy()
     previous_key_provider = key_provider_manager._provider
     with (
         TemporaryDirectory(prefix="trigger-oauth-keys-") as storage_path,
-        Redis() as redis_client,
         config_overrides_context(
             DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
             RBAC_ENABLED=False,
@@ -198,13 +222,11 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
             tenant_id=tenant_id,
         )
         metadata = _PluginMetadata(provider, sessions)
-        redis = RedisClientWrapper()
-        redis.initialize(redis_client)
         services = build_application_services(
             database_client=sqlite_session_factory,
             deployment_edition=DeploymentEdition.COMMUNITY,
             initialization_password="",
-            redis=redis,
+            redis=application_redis,
         )
         oauth_clients = TriggerOAuthClientService(
             clients=TriggerOAuthClientRepository(session_factory=sqlite_session_factory),
@@ -219,6 +241,11 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         login_manager.init_app(app)
         blueprint = Blueprint("console", __name__, url_prefix="/console/api")
         api = ExternalApi(blueprint)
+        api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
+        api.add_resource(
+            PluginFetchDynamicSelectOptionsWithCredentialsApi,
+            "/workspaces/current/plugin/parameters/dynamic-options-with-credentials",
+        )
         api.add_resource(TriggerProviderListApi, "/workspaces/current/triggers")
         api.add_resource(TriggerProviderInfoApi, "/workspaces/current/trigger-provider/<path:provider>/info")
         api.add_resource(TriggerProviderIconApi, "/workspaces/current/trigger-provider/<path:provider>/icon")
@@ -233,6 +260,27 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
             "/workspaces/current/trigger-provider/<path:provider>/subscriptions/oauth/authorize",
         )
         api.add_resource(TriggerOAuthCallbackApi, "/oauth/plugin/<path:provider>/trigger/callback")
+        builder_path = "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder"
+        api.add_resource(TriggerSubscriptionBuilderCreateApi, f"{builder_path}/create")
+        api.add_resource(TriggerSubscriptionBuilderGetApi, f"{builder_path}/<path:subscription_builder_id>")
+        api.add_resource(TriggerSubscriptionBuilderUpdateApi, f"{builder_path}/update/<path:subscription_builder_id>")
+        api.add_resource(
+            TriggerSubscriptionBuilderVerifyApi, f"{builder_path}/verify-and-update/<path:subscription_builder_id>"
+        )
+        api.add_resource(TriggerSubscriptionBuilderLogsApi, f"{builder_path}/logs/<path:subscription_builder_id>")
+        api.add_resource(TriggerSubscriptionBuilderBuildApi, f"{builder_path}/build/<path:subscription_builder_id>")
+        api.add_resource(
+            TriggerSubscriptionUpdateApi,
+            "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/update",
+        )
+        api.add_resource(
+            TriggerSubscriptionDeleteApi,
+            "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/delete",
+        )
+        api.add_resource(
+            TriggerSubscriptionVerifyApi,
+            "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
+        )
         app.register_blueprint(blueprint)
 
         with app.app_context():

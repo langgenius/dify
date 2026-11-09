@@ -149,7 +149,7 @@ export default function DevicePage() {
             </h1>
             <p className="mt-2 text-sm text-text-secondary">{t(($) => $['codeEntry.subtitle'])}</p>
           </div>
-          <CodeInput value={typed} onChange={setTyped} autoFocus />
+          <CodeInput value={typed} onChange={setTyped} />
           <Button
             variant="primary"
             size="large"

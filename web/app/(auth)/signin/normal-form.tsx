@@ -221,44 +221,28 @@ function NormalForm() {
           )}
           {hasEmailLogin && (
             <>
-              {hasEmailCodeLogin && authType === 'code' && (
-                <>
-                  <MailAndCodeAuth isInvite={isInviteLink} />
-                  {hasEmailPasswordLogin && (
-                    <button
-                      type="button"
-                      className="w-full cursor-pointer py-1 text-center"
-                      onClick={() => {
-                        setSelectedAuthType('password')
-                      }}
-                    >
-                      <span className="system-xs-medium text-components-button-secondary-accent-text">
-                        {t(($) => $.usePassword, { ns: 'login' })}
-                      </span>
-                    </button>
-                  )}
-                </>
+              {authType === 'code' ? (
+                <MailAndCodeAuth isInvite={isInviteLink} />
+              ) : (
+                <MailAndPasswordAuth
+                  isInvite={isInviteLink}
+                  isEmailSetup={systemFeatures.is_email_setup}
+                />
               )}
-              {hasEmailPasswordLogin && authType === 'password' && (
-                <>
-                  <MailAndPasswordAuth
-                    isInvite={isInviteLink}
-                    isEmailSetup={systemFeatures.is_email_setup}
-                  />
-                  {hasEmailCodeLogin && (
-                    <button
-                      type="button"
-                      className="w-full cursor-pointer py-1 text-center"
-                      onClick={() => {
-                        setSelectedAuthType('code')
-                      }}
-                    >
-                      <span className="system-xs-medium text-components-button-secondary-accent-text">
-                        {t(($) => $.useVerificationCode, { ns: 'login' })}
-                      </span>
-                    </button>
-                  )}
-                </>
+              {hasEmailCodeLogin && hasEmailPasswordLogin && (
+                <button
+                  type="button"
+                  className="w-full cursor-pointer py-1 text-center"
+                  onClick={() => {
+                    setSelectedAuthType(authType === 'code' ? 'password' : 'code')
+                  }}
+                >
+                  <span className="system-xs-medium text-components-button-secondary-accent-text">
+                    {authType === 'code'
+                      ? t(($) => $.usePassword, { ns: 'login' })
+                      : t(($) => $.useVerificationCode, { ns: 'login' })}
+                  </span>
+                </button>
               )}
               <Split className="mt-4 mb-5" />
             </>

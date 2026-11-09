@@ -64,7 +64,7 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
     () =>
       useOneStepRun({
         id: 'if-else-node',
-        resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+        resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
 
         data: {
           type,
@@ -76,7 +76,7 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
         isPaused: false,
       }),
     {
-      resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+      resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
       nodes,
       edges,
       historyStore: { nodes, edges },
@@ -227,7 +227,7 @@ describe('useOneStepRun single-run input vars', () => {
       const { result } = renderHook(() =>
         useOneStepRun<HumanInputV2NodeType>({
           id: 'human-v2',
-          resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+          resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
 
           data: {
             type: BlockEnum.HumanInput,
