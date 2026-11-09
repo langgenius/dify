@@ -2,6 +2,7 @@ import type { Locale } from '@/i18n/locale'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Link from '@/next/link'
+import styles from './pricing.module.css'
 
 const websiteLocalePaths: Partial<Record<Locale, string>> = {
   'zh-Hans': '/zh',
@@ -16,14 +17,14 @@ export function PricingFooter({ category }: { category: 'cloud' | 'self-hosted' 
   const { t } = useTranslation(['billing'])
 
   return (
-    <div className="flex min-h-16 w-full justify-center border-t border-divider-accent px-3 xl:px-10">
+    <div className={styles.footer}>
       <div
         data-category={category}
-        className="flex max-w-[1680px] min-w-0 grow flex-col justify-end gap-6 border-x border-divider-accent p-3 data-[category=cloud]:justify-between xl:flex-row xl:p-6"
+        className="flex min-w-0 grow flex-wrap items-center justify-between gap-4"
       >
         {category === 'cloud' && (
           <div className="flex min-w-0 flex-1 flex-col text-text-tertiary">
-            <span className="system-xs-regular">
+            <span className="system-md-regular">
               {t(($) => $['plansCommon.taxTip'], { ns: 'billing' })}
             </span>
           </div>
@@ -37,7 +38,7 @@ export function PricingFooter({ category }: { category: 'cloud' | 'self-hosted' 
           >
             {t(($) => $['plansCommon.comparePlanAndFeatures'], { ns: 'billing' })}
           </Link>
-          <span aria-hidden="true" className="i-ri-arrow-right-up-line size-4" />
+          <img src="/pricing/imgArrowRightUpLine.svg" alt="" width={24} height={24} />
         </span>
       </div>
     </div>

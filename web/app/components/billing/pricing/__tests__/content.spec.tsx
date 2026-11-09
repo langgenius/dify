@@ -26,7 +26,6 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
 }))
 
-vi.mock('../plans/self-hosted-plan-item/list', () => ({ SelfHostedPlanFeatures: () => null }))
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({ isCurrentWorkspaceManager: true }))
@@ -60,29 +59,32 @@ it('shows prices and disables purchase buttons while features load', async () =>
   })
   show()
   expect(screen.getByRole('status')).toHaveTextContent('appApi.loading')
-  expect(screen.getByRole('heading', { name: 'billing.plansCommon.title.plans' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Dify Cloud' })).toBeVisible()
   expect(
     screen.getByRole('link', { name: 'billing.plansCommon.comparePlanAndFeatures' }),
   ).toBeVisible()
   expect(screen.getByRole('heading', { name: 'billing.plans.professional.name' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
-  expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  )
   expect(screen.getByText('$59')).toBeVisible()
   expect(screen.getByText('$159')).toBeVisible()
-  await user.click(screen.getByRole('switch'))
+  await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
   expect(screen.getByText('$590')).toBeVisible()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
-  await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
-  expect(await screen.findByText('billing.plans.community.name')).toBeInTheDocument()
   await act(async () => {
     resolveFeatures(
       seedFeatures(createConsoleQueryClient(), { billing: { subscription: { plan: 'team' } } }),
     )
     await request
   })
-  await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.cloud' }))
   expect(await screen.findByText('billing.plans.team.name')).toBeInTheDocument()
-  expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  )
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
@@ -94,7 +96,7 @@ it('distinguishes original and discounted annual prices in readable text', async
   expect(screen.queryByText('billing.plansCommon.originalAnnualPrice')).not.toBeInTheDocument()
   expect(screen.queryByText('billing.plansCommon.discountedAnnualPrice')).not.toBeInTheDocument()
 
-  await user.click(screen.getByRole('switch'))
+  await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
 
   for (const amount of ['$708', '$1908']) {
     expect(screen.getByText(amount)).toHaveTextContent(
@@ -126,17 +128,20 @@ it('preserves a billing interval selected before education eligibility arrives',
       }),
   })
   show()
-  expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  )
   expect(screen.getByRole('heading', { name: 'billing.plans.professional.name' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
-  await user.click(screen.getByRole('switch'))
-  await user.click(screen.getByRole('switch'))
+  await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
+  await user.click(screen.getByRole('radio', { name: 'billing.pricing.monthly' }))
   await act(async () => {
     resolveEducation({ is_student: true, allow_refresh: false, expire_at: null })
     await request
   })
   await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
-  expect(screen.getByRole('switch')).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).not.toBeChecked()
   expect(screen.getByText('$59')).toBeVisible()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeEnabled()
   act(() =>
@@ -147,7 +152,7 @@ it('preserves a billing interval selected before education eligibility arrives',
       result: true,
     }),
   )
-  expect(screen.getByRole('switch')).not.toBeChecked()
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).not.toBeChecked()
 })
 
 it('shows yearly pricing immediately for a cached eligible education account', () => {
@@ -160,9 +165,9 @@ it('shows yearly pricing immediately for a cached eligible education account', (
     expire_at: null,
   })
   show()
-  expect(screen.getByRole('switch')).toBeChecked()
+  expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).toBeChecked()
   expect(screen.getByText('$590')).toBeVisible()
-  expect(screen.getByRole('button', { name: 'education.useEducationDiscount' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeEnabled()
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
@@ -184,7 +189,8 @@ it.each(['year', 'month'] as const)(
     )
     const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
     show()
-    if (interval === 'month') await user.click(screen.getByRole('switch'))
+    if (interval === 'month')
+      await user.click(screen.getByRole('radio', { name: 'billing.pricing.monthly' }))
 
     await user.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
 
@@ -236,9 +242,7 @@ it('keeps plan information visible after a request failure and restores billing 
   expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
   expect(await screen.findByRole('heading', { name: 'billing.plans.sandbox.name' })).toBeVisible()
-  expect(
-    screen.queryByRole('button', { name: 'billing.plansCommon.currentPlan' }),
-  ).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.startForFree' })).toBeDisabled()
   expect(screen.getByText('$59')).toBeVisible()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
@@ -278,34 +282,28 @@ it('keeps the current paid plan billing action available while education loads o
       }),
   )
   show()
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeEnabled()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' })).toBeDisabled()
-  await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+  await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
   await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
   await act(async () => {
     rejectEducation(new Error('Unavailable'))
     await request
   })
   expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
-  expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })).toBeEnabled()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' })).toBeDisabled()
 })
 
-it('uses the visible billing label to name and toggle the switch', async () => {
+it('selects the billing interval using the named options', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   seedFeatures(queryClient)
   show()
-  const billingSwitch = screen.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ })
-  expect(billingSwitch).toHaveAccessibleName(
-    screen.getByText(/billing\.plansCommon\.annualBilling/).textContent!,
-  )
-  expect(billingSwitch).not.toBeChecked()
-  await user.click(screen.getByText(/billing\.plansCommon\.annualBilling/))
-  expect(billingSwitch).toBeChecked()
+  expect(screen.getByRole('radiogroup', { name: 'billing.pricing.billingInterval' })).toBeVisible()
+  await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
   expect(screen.getByText('$590')).toBeVisible()
-  await user.click(screen.getByText(/billing\.plansCommon\.annualBilling/))
-  expect(billingSwitch).not.toBeChecked()
+  await user.click(screen.getByRole('radio', { name: 'billing.pricing.monthly' }))
   expect(screen.getByText('$59')).toBeVisible()
 })
 
@@ -329,8 +327,14 @@ it.each([
       }),
     )
     show()
-    if (selectedInterval === 'year') await user.click(screen.getByRole('switch'))
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    if (selectedInterval === 'year')
+      await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
+    await user.click(
+      screen.getByRole('button', {
+        name:
+          plan === 'team' ? 'billing.plansCommon.getStarted' : 'billing.plansCommon.startBuilding',
+      }),
+    )
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('https://checkout.example.com'))
     const request = fetchCheckout.mock.calls[0]?.[0]
     const requestUrl = request instanceof Request ? request.url : String(request)
@@ -355,22 +359,9 @@ it.each(['month', 'year'] as const)(
       }),
     )
     show()
-    if (interval === 'year') await user.click(screen.getByRole('switch'))
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    if (interval === 'year')
+      await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
     await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
   },
 )
-it('includes the marketplace in the Premium purchase link name', async () => {
-  const user = userEvent.setup()
-  const { queryClient, show } = setup()
-  seedFeatures(queryClient)
-  show()
-
-  await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
-
-  expect(
-    screen.getByRole('link', {
-      name: 'billing.plans.premium.btnText billing.plans.premium.marketplaceName',
-    }),
-  ).toBeVisible()
-})
