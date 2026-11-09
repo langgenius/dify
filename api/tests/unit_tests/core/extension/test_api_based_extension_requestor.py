@@ -16,9 +16,7 @@ InstallClient = Callable[[RequestHandler], InstalledClient]
 
 
 @pytest.fixture
-def install_client(
-    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-) -> InstallClient:
+def install_client(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]) -> InstallClient:
     config_overrides(SSRF_PROXY_HTTP_URL=None, SSRF_PROXY_HTTPS_URL=None)
     client_type = httpx.Client
 
