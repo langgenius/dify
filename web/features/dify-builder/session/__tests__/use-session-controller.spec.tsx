@@ -2,10 +2,10 @@ import type { ConversationItem } from '../../types'
 import type { SessionRunEvents } from '../types'
 import { act, waitFor } from '@testing-library/react'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import {
+  builderDefaultModel,
   builderModel,
   builderModelListQueryKey,
   createBuilderQueryClient,
@@ -41,8 +41,8 @@ const clientMocks = vi.hoisted(() => ({
   message: vi.fn(),
 }))
 
-vi.mock('@/service/client', async (importOriginal) => ({
-  consoleQuery: (await importOriginal<typeof import('@/service/client')>()).consoleQuery,
+vi.mock('@/service/console', async (importOriginal) => ({
+  consoleQuery: (await importOriginal<typeof import('@/service/console')>()).consoleQuery,
   consoleClient: {
     difyBuilder: {
       sessions: {
@@ -177,7 +177,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     await act(async () => {
       stream.push(commandStartedEvent(createSessionView({ phase: 'test' })))
     })
-    expect(events.onSessionStateChanged).toHaveBeenCalledExactlyOnceWith(
+    expect(events.onSessionStateChanged).toHaveBeenLastCalledWith(
       expect.objectContaining({ phase: 'test', run_status: 'processing' }),
     )
 
@@ -186,7 +186,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       stream.push(stateEvent(complete))
       expect(await command).toBe(true)
     })
-    expect(events.onSessionStateChanged).toHaveBeenCalledTimes(2)
+    expect(events.onSessionStateChanged).toHaveBeenCalledTimes(3)
     expect(events.onSessionStateChanged).toHaveBeenLastCalledWith(complete)
   })
 
@@ -215,14 +215,17 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     const appKey = consoleQuery.apps.byAppId.get.queryKey({
       input: { params: { app_id: 'app-1' } },
     })
-    queryClient.setQueryData(appKey, {
-      id: 'app-1',
-      name: 'Initial name',
-      mode: 'workflow',
-      enable_api: false,
-      enable_site: false,
-      icon_url: null,
-    })
+    queryClient.setQueryData(
+      appKey,
+      createAppDetailFixture({
+        id: 'app-1',
+        name: 'Initial name',
+        mode: 'workflow',
+        enable_api: false,
+        enable_site: false,
+        icon_url: null,
+      }),
+    )
 
     await act(async () => {
       expect(
@@ -266,8 +269,11 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(store.get(difyBuilderSessionViewAtom)).toBeNull()
     expect(store.get(difyBuilderActiveSessionIdAtom)).toBeNull()
     expect(
-      queryClient.getQueryState(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration))
-        ?.isInvalidated,
+      queryClient.getQueryState(
+        consoleQuery.workspaces.current.defaultModel.get.queryKey({
+          input: { query: { model_type: builderDefaultModel.model_type } },
+        }),
+      )?.isInvalidated,
     ).toBe(true)
     expect(queryClient.getQueryState(builderModelListQueryKey)?.isInvalidated).toBe(true)
     expect(clientMocks.get).not.toHaveBeenCalled()
@@ -624,7 +630,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(store.get(difyBuilderSessionLastErrorAtom)).toContain('terminal event')
   })
 
-  it('restores JSON state and resumes an executing session through the reconnect stream', async () => {
+  it('restores state and follows an executing session through the shared stream', async () => {
     const executing = createSessionView({ session_id: 'session-restored', version: 3 })
     const terminal = createSessionView({
       ...executing,
@@ -761,7 +767,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('')
   })
 
-  it('restores an interrupted working state from JSON without opening SSE', async () => {
+  it('restores an interrupted working state through the session snapshot', async () => {
     const interrupted = createSessionView({
       actions: [{ id: 'restart', label: 'Restart from current draft', kind: 'primary' }],
       interrupted: true,

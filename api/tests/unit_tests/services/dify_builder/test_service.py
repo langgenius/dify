@@ -1479,6 +1479,47 @@ def test_submit_action_stream_update_model_emits_terminal_command_finished_frame
     assert data["conversation_last_seq"] == 0
 
 
+@pytest.mark.parametrize(
+    ("scenario", "command"),
+    [("build", "start_build"), ("edit", "send_edit_goal"), ("fix", "request_fix")],
+)
+def test_start_uses_saved_opening_context_and_enqueues_once(
+    service: DifyBuilderService,
+    repo: SqlDifyBuilderRepository,
+    lock: FakeSessionLock,
+    enqueued: list[Enqueued],
+    scenario: str,
+    command: str,
+) -> None:
+    actor = _actor()
+    if scenario == "build":
+        session_id, _ = service.prepare_build_session(APP_ID, actor, "Build this")
+    elif scenario == "edit":
+        session_id, _ = service.prepare_edit_session(APP_ID, actor, "Edit this")
+    else:
+        session_id, _ = service.prepare_fix_session(APP_ID, actor, failed_run_id="run-1")
+
+    assert not enqueued
+    assert not service.get_session_view(session_id, actor).command_pending
+    opening = Action(command_id="opening-command", base_version=1, payload={"text": "Unsaved input"})
+    receipt = service.start_session(session_id, actor, opening)
+    assert receipt.pending
+    assert receipt.command_id == opening.command_id
+    with pytest.raises(BusyError):
+        service.start_session(session_id, actor, opening)
+    [(queued_id, action, queued_actor, token)] = enqueued
+    assert (queued_id, queued_actor, action.kind) == (session_id, actor, command)
+    assert action.payload == ({"text": "Edit this"} if scenario == "edit" else {})
+
+    session, context = repo.get_session(session_id)
+    context.last_command_id = receipt.command_id
+    repo.compare_and_advance(session_id, session.version, session.current_state, context, [])
+    lock.release(session_id, token)
+    with pytest.raises(ConflictError):
+        service.start_session(session_id, actor, opening)
+    assert len(enqueued) == 1
+
+
 def test_submit_action_stream_subscribes_before_dispatch_and_streams(repo: SqlDifyBuilderRepository) -> None:
     lock = FakeSessionLock()
     order: list[str] = []

@@ -144,9 +144,21 @@ export const difyBuilderPendingFixAtom = atom((get) => {
 export const difyBuilderDecisionAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
   const decision = view?.decision ?? null
-  return view?.pending_fix_context && decision
-    ? { ...decision, options: decision.options?.filter((option) => isFixDecision(view, option.id)) }
-    : decision
+  if (!decision) return null
+  if (view?.pending_fix_context)
+    return {
+      ...decision,
+      options: decision.options?.filter((option) => isFixDecision(view, option.id)),
+    }
+  if (!decision.options?.some((option) => option.id === 'cancel_test')) return decision
+  const options = decision.options.filter((option) => option.id !== 'cancel_test')
+  if (!options.length && view?.test_execution?.status !== 'waiting') return null
+  return {
+    ...decision,
+    options,
+    default_option_id:
+      decision.default_option_id === 'cancel_test' ? '' : decision.default_option_id,
+  }
 })
 export const difyBuilderInterruptedAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.interrupted ?? false,
@@ -189,10 +201,12 @@ export const difyBuilderTestExecutionAtom = atom(
 const difyBuilderNativeTestUnresolvedAtom = atom((get) =>
   hasUnresolvedNativeTest(get(difyBuilderSessionViewAtom)),
 )
+export const difyBuilderNativeTestCancellingAtom = atom(
+  (get) => get(difyBuilderTestExecutionAtom)?.cancellation?.status === 'cancelling',
+)
 export const difyBuilderNativeCancelAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
-  return get(difyBuilderNativeTestUnresolvedAtom) &&
-    view?.test_execution?.cancellation?.status !== 'cancelling'
+  return get(difyBuilderNativeTestUnresolvedAtom) && !get(difyBuilderNativeTestCancellingAtom)
     ? view?.actions?.find((action) => action.id === 'cancel_test')
     : undefined
 })
@@ -210,7 +224,12 @@ export const difyBuilderInteractionBusyAtom = atom(
 export const difyBuilderTaskControlOperationAtom = atom((get) => {
   const control = get(difyBuilderTaskControlAtom)
   if (control) return control.operation
-  if (get(difyBuilderRunActiveAtom) && !get(difyBuilderInterruptedAtom)) return 'stop'
+  if (
+    get(difyBuilderNativeCancelAtom) ||
+    get(difyBuilderNativeTestCancellingAtom) ||
+    (get(difyBuilderRunActiveAtom) && !get(difyBuilderInterruptedAtom))
+  )
+    return 'stop'
   const view = get(difyBuilderSessionViewAtom)
   return view?.run_status === 'paused' && view.task_status !== 'abandoned' ? 'resume' : null
 })
@@ -223,7 +242,10 @@ export const difyBuilderCanControlTaskAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
   const command = get(difyBuilderActiveCommandAtom)
   if (get(difyBuilderTaskControlOperationAtom) === 'stop')
-    return Boolean(get(difyBuilderSessionIdAtom) && (view?.version || command?.version))
+    return (
+      !get(difyBuilderNativeTestCancellingAtom) &&
+      Boolean(get(difyBuilderSessionIdAtom) && (view?.version || command?.version))
+    )
   return (
     view?.run_status === 'paused' &&
     !view.canvas_read_only &&

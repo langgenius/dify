@@ -1,5 +1,6 @@
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
@@ -29,6 +30,9 @@ import {
   difyBuilderControlTaskAtom,
   difyBuilderDraftAtom,
   difyBuilderInteractionBusyAtom,
+  difyBuilderNativeCancelAtom,
+  difyBuilderNativeTestCancellingAtom,
+  difyBuilderRunActiveAtom,
   difyBuilderRuntimeAtom,
   difyBuilderSendDraftAtom,
   difyBuilderTaskControlOperationAtom,
@@ -111,8 +115,9 @@ const DifyBuilderComposerAction = ({
   const canControl = useAtomValue(difyBuilderCanControlTaskAtom)
   const operation = useAtomValue(difyBuilderTaskControlOperationAtom)
   const control = useAtomValue(difyBuilderTaskControlAtom)
+  const testCancelling = useAtomValue(difyBuilderNativeTestCancellingAtom)
   const controlTask = useSetAtom(difyBuilderControlTaskAtom)
-  const pending = control !== null && control.phase !== 'unknown'
+  const pending = control ? control.phase !== 'unknown' : testCancelling
   const label =
     operation === 'stop'
       ? t(($) => $['taskControl.stop'])
@@ -126,8 +131,6 @@ const DifyBuilderComposerAction = ({
       : operation === 'resume'
         ? 'i-ri-play-fill'
         : 'i-ri-send-plane-2-fill'
-
-  if (attachmentsOnly && !hasFiles) return null
 
   return (
     <div className="flex items-center gap-1">
@@ -207,6 +210,9 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
   const view = useAtomValue(difyBuilderSessionViewAtom)
   const files = view?.conversation_cleared ? [] : uploadFiles
   const canAddMaterial = useAtomValue(difyBuilderCanAddMaterialAtom)
+  const showAttachments = !attachmentsOnly || canAddMaterial || files.length > 0
+  const nativeCancel = useAtomValue(difyBuilderNativeCancelAtom)
+  const showAction = !attachmentsOnly || files.length > 0 || Boolean(nativeCancel)
   const material = useAtomValue(difyBuilderMaterialControlAtom)
   const runtime = useAtomValue(difyBuilderRuntimeAtom)
   const fileConfig = useMemo<FileUpload>(
@@ -240,9 +246,11 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
   const hasModel = model !== null
   const rejected = useAtomValue(difyBuilderSessionErrorCodeAtom) === 'model_unavailable'
   const statusId = useId()
-  const showStatus = !hasModel || rejected
+  const showStatus = showAttachments && (!hasModel || rejected)
   const control = useAtomValue(difyBuilderTaskControlAtom)
   const operation = useAtomValue(difyBuilderTaskControlOperationAtom)
+  const testCancelling = useAtomValue(difyBuilderNativeTestCancellingAtom)
+  const runActive = useAtomValue(difyBuilderRunActiveAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
   const controlStatusId = useId()
   const attachmentStatusId = useId()
@@ -263,7 +271,9 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
       control.operation === 'stop'
         ? t(($) => $['taskControl.stopping'])
         : t(($) => $['taskControl.resuming'])
-  } else if (operation === 'stop') {
+  } else if (testCancelling) {
+    controlStatus = t(($) => $['taskControl.stopping'])
+  } else if (operation === 'stop' && runActive) {
     controlStatus = t(($) => $['taskControl.running'])
   } else if (operation === 'resume') {
     controlStatus = canvasReady
@@ -279,7 +289,7 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
       .filter(Boolean)
       .join(' ') || undefined
 
-  if (attachmentsOnly && !canAddMaterial && !files.length) return null
+  if (!showAttachments && !showAction) return null
 
   return (
     <>
@@ -300,7 +310,12 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
       )}
       <form
         aria-label={t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })}
-        className="mx-4 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1"
+        className={cn(
+          'mx-4',
+          showAttachments &&
+            'overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1',
+          attachmentsOnly && 'mt-2',
+        )}
         onSubmit={(event) => {
           event.preventDefault()
           if (!model || !filesReady) return
@@ -328,7 +343,7 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
           })
         }}
       >
-        <div className="flex flex-col items-end justify-end p-1.5">
+        <div className={cn('flex flex-col items-end justify-end', showAttachments && 'p-1.5')}>
           {!!files.length && (
             <div className="max-h-36 w-full overflow-y-auto p-1">
               <DraftFileList files={files} fileConfig={fileConfig} editable={!material} />
@@ -340,17 +355,21 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
               {!attachmentsOnly && <DifyBuilderModelSelector {...modelState} />}
             </div>
             <div className="flex items-center gap-3">
-              <FileUploaderInChatInput
-                fileConfig={fileConfig}
-                readonly={!canAddMaterial || !runtime?.fileUploadConfig}
-              />
-              <DifyBuilderComposerAction
-                hasModel={hasModel}
-                filesReady={filesReady}
-                hasFiles={files.length > 0}
-                attachmentsOnly={attachmentsOnly}
-                descriptionId={descriptionId}
-              />
+              {showAttachments && (
+                <FileUploaderInChatInput
+                  fileConfig={fileConfig}
+                  readonly={!canAddMaterial || !runtime?.fileUploadConfig}
+                />
+              )}
+              {showAction && (
+                <DifyBuilderComposerAction
+                  hasModel={hasModel}
+                  filesReady={filesReady}
+                  hasFiles={files.length > 0}
+                  attachmentsOnly={attachmentsOnly}
+                  descriptionId={descriptionId}
+                />
+              )}
             </div>
           </div>
         </div>
