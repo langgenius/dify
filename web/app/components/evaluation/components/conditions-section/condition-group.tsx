@@ -175,7 +175,7 @@ const ConditionOperatorSelect = ({
         aria-label={tEvaluation(($) => $['conditions.operator'])}
         className="h-8 w-auto min-w-14 shrink-0 gap-1 rounded-md bg-transparent px-3 py-0 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt"
       >
-        <span className="truncate system-xs-medium text-text-secondary">
+        <span className="truncate system-sm-medium text-text-secondary">
           {getComparisonOperatorLabel(operator, t)}
         </span>
       </SelectTrigger>
