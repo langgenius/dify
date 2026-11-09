@@ -1,20 +1,9 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
 import type { WorkflowKind } from '@/types/workflow'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SuggestedAction from '../suggested-action'
 import WorkflowToolAction from '../workflow-tool-action'
@@ -22,7 +11,6 @@ import WorkflowToolAction from '../workflow-tool-action'
 type PublisherActionsSectionProps = Pick<
   AppPublisherProps,
   | 'hasTriggerNode'
-  | 'onConvertWorkflowKind'
   | 'onPublishEvaluation'
   | 'publishedAt'
   | 'toolPublished'
@@ -50,6 +38,8 @@ type PublisherActionsSectionProps = Pick<
   workflowKind?: string | null
   onConfigureWorkflowTool: () => void
   onPublishToMarketplace?: () => void
+  /** Asks to switch a published workflow's kind; the caller confirms it outside the popover. */
+  onRequestKindChange?: (targetKind: WorkflowKind) => void
 }
 
 export function PublisherActionsSection({
@@ -62,7 +52,6 @@ export function PublisherActionsSection({
   handleOpenRunConfig,
   hasTriggerNode = false,
   marketplaceActionDisabled = false,
-  onConvertWorkflowKind,
   onPublishEvaluation,
   publishedAt,
   published = false,
@@ -80,6 +69,7 @@ export function PublisherActionsSection({
   workflowKindChangePending = false,
   onConfigureWorkflowTool,
   onPublishToMarketplace,
+  onRequestKindChange,
 }: PublisherActionsSectionProps) {
   const { t } = useTranslation(['common', 'workflow'])
 
@@ -92,28 +82,21 @@ export function PublisherActionsSection({
   const evaluationTargetKind: WorkflowKind = isEvaluationWorkflow ? 'standard' : 'evaluation'
   const showEvaluationWorkflowAction =
     appDetail?.mode === 'workflow' &&
-    (hasPublishedVersion ? Boolean(onConvertWorkflowKind) : Boolean(onPublishEvaluation))
+    (hasPublishedVersion ? Boolean(onRequestKindChange) : Boolean(onPublishEvaluation))
   const evaluationWorkflowActionLabel = !hasPublishedVersion
     ? t(($) => $['common.publishAsEvaluationWorkflow'], { ns: 'workflow' })
     : isEvaluationWorkflow
       ? t(($) => $['common.switchToStandardWorkflow'], { ns: 'workflow' })
       : t(($) => $['common.switchToEvaluationWorkflow'], { ns: 'workflow' })
   const evaluationWorkflowInfoLabel = `${t(($) => $['operation.viewDetails'])}: ${evaluationWorkflowActionLabel}`
-  const [isKindChangeConfirmOpen, setIsKindChangeConfirmOpen] = useState(false)
-
   const handleEvaluationWorkflowAction = () => {
     if (workflowKindChangePending || isPublishing || published) return
     // Switching changes how a published workflow can be used, so confirm it first.
     if (hasPublishedVersion) {
-      setIsKindChangeConfirmOpen(true)
+      onRequestKindChange?.(evaluationTargetKind)
       return
     }
     void Promise.resolve(onPublishEvaluation?.()).catch(() => undefined)
-  }
-
-  const handleConfirmKindChange = () => {
-    setIsKindChangeConfirmOpen(false)
-    void Promise.resolve(onConvertWorkflowKind?.(evaluationTargetKind)).catch(() => undefined)
   }
 
   return (
@@ -161,30 +144,6 @@ export function PublisherActionsSection({
               </InfotipContent>
             </Infotip>
           </div>
-          {hasPublishedVersion && (
-            <AlertDialog open={isKindChangeConfirmOpen} onOpenChange={setIsKindChangeConfirmOpen}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{evaluationWorkflowActionLabel}</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {isEvaluationWorkflow
-                      ? t(($) => $['common.switchToStandardWorkflowDescription'], {
-                          ns: 'workflow',
-                        })
-                      : t(($) => $['common.evaluationWorkflowDescription'], { ns: 'workflow' })}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancelButton>
-                    {t(($) => $['operation.cancel'])}
-                  </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton tone="default" onClick={handleConfirmKindChange}>
-                    {t(($) => $['operation.confirm'])}
-                  </AlertDialogConfirmButton>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
           <div aria-hidden className="m-1 h-px bg-divider-subtle" />
         </>
       )}

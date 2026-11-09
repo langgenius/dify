@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useRef } from 'react'
@@ -593,7 +593,7 @@ describe('app-publisher sections', () => {
     'should expose $expectedLabel for a $workflowKind workflow',
     async ({ expectedLabel, expectedTarget, publishedAt, workflowKind }) => {
       const user = userEvent.setup()
-      const onConvertWorkflowKind = vi.fn()
+      const onRequestKindChange = vi.fn()
       const onPublishEvaluation = vi.fn()
 
       render(
@@ -610,35 +610,25 @@ describe('app-publisher sections', () => {
           workflowToolIsLoading={false}
           showWorkflowTool={false}
           onConfigureWorkflowTool={vi.fn()}
-          onConvertWorkflowKind={onConvertWorkflowKind}
+          onRequestKindChange={onRequestKindChange}
           onPublishEvaluation={onPublishEvaluation}
         />,
       )
 
       await user.click(screen.getByRole('button', { name: /^common\.operation\.viewDetails:/ }))
       expect(await screen.findByText(/common\.evaluationWorkflowDescription/)).toBeInTheDocument()
-      expect(onConvertWorkflowKind).not.toHaveBeenCalled()
+      expect(onRequestKindChange).not.toHaveBeenCalled()
       expect(onPublishEvaluation).not.toHaveBeenCalled()
 
       await user.click(screen.getByRole('button', { name: expectedLabel }))
 
       if (expectedTarget) {
-        // Switching a published workflow asks first; cancelling leaves it unchanged.
-        const dialog = await screen.findByRole('alertdialog', { name: expectedLabel })
-        await user.click(within(dialog).getByRole('button', { name: /operation\.cancel/ }))
-        expect(onConvertWorkflowKind).not.toHaveBeenCalled()
-
-        await user.click(screen.getByRole('button', { name: expectedLabel }))
-        await user.click(
-          within(await screen.findByRole('alertdialog')).getByRole('button', {
-            name: /operation\.confirm/,
-          }),
-        )
-        expect(onConvertWorkflowKind).toHaveBeenCalledWith(expectedTarget)
+        // Switching a published workflow is confirmed by the caller, outside the popover.
+        expect(onRequestKindChange).toHaveBeenCalledWith(expectedTarget)
         expect(onPublishEvaluation).not.toHaveBeenCalled()
       } else {
         expect(onPublishEvaluation).toHaveBeenCalledTimes(1)
-        expect(onConvertWorkflowKind).not.toHaveBeenCalled()
+        expect(onRequestKindChange).not.toHaveBeenCalled()
       }
     },
   )
