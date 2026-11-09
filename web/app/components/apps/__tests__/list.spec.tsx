@@ -496,19 +496,24 @@ it('opens and closes the real import dialog from the menu without a URL', async 
   expect(onUrlUpdate).not.toHaveBeenCalled()
 })
 
-it('creates the selected app type directly from the first empty state', async () => {
+it('opens the original form from the first empty state and creates only on submit', async () => {
   api.apps.mockResolvedValue(page([]))
   const { user } = await setup()
-  await user.click(screen.getByRole('button', { name: /app.types.workflow/ }))
+  await user.click(screen.getByRole('button', { name: /app.newApp.startFromBlank/ }))
+  const dialog = within(await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' }))
+  await user.click(dialog.getByRole('button', { name: /^app.types.workflow/ }))
+  await user.type(dialog.getByRole('textbox', { name: 'app.newApp.name' }), 'New workflow')
+  expect(api.create).not.toHaveBeenCalled()
+  await user.click(dialog.getByRole('button', { name: /^app.newApp.Create/ }))
   await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/created-app/workflow'))
   expect(api.create).toHaveBeenCalledWith({
-    body: expect.objectContaining({ mode: 'workflow', name: 'app.newApp.untitled' }),
+    body: expect.objectContaining({ mode: 'workflow', name: 'New workflow' }),
   })
 })
 
 it.each([
-  ['app.newApp.menu.startFromTemplate', 'app.newApp.startFromTemplate'],
-  ['app.firstEmpty.importTitle', 'app.importApp'],
+  ['app.newApp.startFromTemplate', 'app.newApp.startFromTemplate'],
+  ['app.importApp', 'app.importApp'],
 ])('opens %s from the first empty state', async (label, title) => {
   api.apps.mockResolvedValue(page([]))
   const { user } = await setup()
@@ -609,7 +614,9 @@ it('opens the create walkthrough after resolving the guide group without activat
   const menu = await screen.findByRole('menu', { hidden: true })
   expect(menu).toHaveAttribute('aria-hidden', 'true')
   // This is a presentation-only tour surface; a direct event must not create an app either.
-  fireEvent.click(within(menu).getByRole('menuitem', { name: /app.types.workflow/, hidden: true }))
+  fireEvent.click(
+    within(menu).getByRole('menuitem', { name: /app.newApp.startFromBlank/, hidden: true }),
+  )
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 

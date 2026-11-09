@@ -3,8 +3,8 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
+import { CreateAppMenu } from '@/app/components/app/create-app-menu'
 import { useCanCreateAgents, useCanImportAgents } from '@/features/agent-v2/permissions'
-import { RosterCreateActions } from '@/features/agent-v2/roster/components/create-menu-actions'
 import CreateFromDSLModal from '@/features/app-creation/dsl-dialog'
 import CreateAppTemplateDialog from '@/features/app-creation/template-dialog'
 import { deploymentEditionAtom } from '@/features/system-features/state'
@@ -25,7 +25,7 @@ export function RosterCreateMenu() {
 
   return (
     <>
-      <RosterCreateActions
+      <CreateAppMenu
         onCreateBlank={canCreate ? () => setCreateDialogOpen(true) : undefined}
         onImportDSL={canImport ? () => setImportDialogOpen(true) : undefined}
         onCreateTemplate={canCreateFromTemplate ? () => setTemplateDialogOpen(true) : undefined}

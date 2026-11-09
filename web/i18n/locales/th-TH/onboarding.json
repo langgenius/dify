@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "แตะที่ knowledge base ใดก็ได้เพื่อเปิดหน้าจัดการเอกสาร — อัปเดตเอกสาร การตั้งค่าการเรียกดึงข้อมูล และสิทธิ์การเข้าถึงได้จากที่นั่น",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "เปิดและจัดการแต่ละ knowledge base",
   "stepByStepTour.guides.primaryActionLabel": "เข้าใจแล้ว",
+  "stepByStepTour.guides.studio.empty.blank.description": "เริ่มจากผืนผ้าใบเปล่าเมื่อคุณรู้อยู่แล้วว่าจะสร้างอะไร",
+  "stepByStepTour.guides.studio.empty.blank.title": "สร้างจากศูนย์",
   "stepByStepTour.guides.studio.empty.dsl.description": "นำเข้าแพ็กเกจแอปหรือไฟล์ DSL เพื่อกู้คืนแอปที่แชร์หรือสำรองไว้",
   "stepByStepTour.guides.studio.empty.dsl.title": "นำเข้าแอป",
   "stepByStepTour.guides.studio.empty.learnDify.description": "เพิ่งเริ่มใช้ Dify ใช่ไหม? ลองทำตามบทเรียนแบบมีคำแนะนำก่อน — คุณจะได้เห็น Workflows, Agents และอื่น ๆ ทำงานจริง",

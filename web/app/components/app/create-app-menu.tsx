@@ -15,7 +15,7 @@ import {
   useStepByStepTourControlledMenu,
 } from '@/app/components/step-by-step-tour/menu'
 
-type RosterCreateActionsProps = {
+type CreateAppMenuProps = {
   onCreateBlank?: () => void
   onCreateTemplate?: () => void
   onImportDSL?: () => void
@@ -24,14 +24,14 @@ type RosterCreateActionsProps = {
   stepByStepTourHighlightPart?: string
 }
 
-export function RosterCreateActions({
+export function CreateAppMenu({
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
   stepByStepTourControlledOpen,
   stepByStepTourTarget,
   stepByStepTourHighlightPart,
-}: RosterCreateActionsProps) {
+}: CreateAppMenuProps) {
   const { t } = useTranslation(['app', 'common'])
   const menu = useStepByStepTourControlledMenu({
     controlledOpen: stepByStepTourControlledOpen,

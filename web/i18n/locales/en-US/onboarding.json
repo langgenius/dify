@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Tap any knowledge base to open its document management page — update documents, retrieval settings, and access from there.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Open and manage each knowledge base",
   "stepByStepTour.guides.primaryActionLabel": "Got it",
+  "stepByStepTour.guides.studio.empty.blank.description": "Start from an empty canvas when you already know what to build.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Create from blank",
   "stepByStepTour.guides.studio.empty.dsl.description": "Import an app package or DSL file to restore a shared or backed-up app.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Import App",
   "stepByStepTour.guides.studio.empty.learnDify.description": "New to Dify? Walk through a guided lesson first — you'll see Workflows, Agents, and more in action.",

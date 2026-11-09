@@ -5,7 +5,7 @@ import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
-import { renderWithConsoleQuery, seedFeatures } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { CreateAppEntry } from '../entry'
 import { mockPromptModelQueries, promptDefaultModel, promptModelProviders } from './model-fixtures'
@@ -69,7 +69,7 @@ function renderEntry(options: ConsoleQueryTestOptions = {}) {
     {
       accountProfile: { id: 'creator' },
       workspacePermissionKeys: ['app.create_and_management'],
-      features: { dify_builder_enabled: false },
+      features: {},
       ...options,
     },
   )
@@ -147,19 +147,16 @@ describe('Create app entry', () => {
   })
 
   it.each([
-    ['workflow', 'app.types.workflow', '/workflow'],
-    ['advanced-chat', 'app.types.advanced', '/workflow'],
-    ['agent-chat', 'app.types.agent', '/configuration'],
-    ['chat', 'app.types.chatbot', '/configuration'],
-    ['completion', 'app.newApp.completeApp', '/configuration'],
-  ])('creates %s directly with Builder disabled', async (mode, label, route) => {
+    ['agent-chat', 'app.types.agent'],
+    ['chat', 'app.types.chatbot'],
+    ['completion', 'app.newApp.completeApp'],
+  ])('creates %s directly from the Builder menu', async (mode, label) => {
     const user = userEvent.setup()
     renderEntry()
     await openMenu(user)
-    if (!['workflow', 'advanced-chat'].includes(mode))
-      await user.click(screen.getByRole('menuitem', { name: 'app.newApp.menu.moreTypes' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.newApp.menu.moreTypes' }))
     await user.click(screen.getByRole('menuitem', { name: label }))
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith(`/app/created-app${route}`))
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/configuration'))
     expect(mocks.createApp).toHaveBeenCalledExactlyOnceWith(
       {
         body: {
@@ -183,7 +180,7 @@ describe('Create app entry', () => {
     'opens the %s starter and derives a name from the submitted prompt',
     async (mode, label, title) => {
       const user = userEvent.setup()
-      renderEntry({ features: { dify_builder_enabled: true } })
+      renderEntry()
       await openMenu(user)
       await user.click(screen.getByRole('menuitem', { name: label }))
       const input = await screen.findByRole('textbox', { name: title })
@@ -214,7 +211,7 @@ describe('Create app entry', () => {
     ['advanced-chat', 'app.types.advanced', 'app.newApp.starter.chatflowTitle'],
   ])('optimizes a %s prompt before explicit creation', async (mode, label, title) => {
     const user = userEvent.setup()
-    renderEntry({ features: { dify_builder_enabled: true } })
+    renderEntry()
     await openMenu(user)
     await user.click(screen.getByRole('menuitem', { name: label }))
     const input = await screen.findByRole('textbox', { name: title })
@@ -245,7 +242,7 @@ describe('Create app entry', () => {
       vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
       vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(platform)
       const user = userEvent.setup()
-      renderEntry({ features: { dify_builder_enabled: true } })
+      renderEntry()
       await openMenu(user)
       await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
       const input = await screen.findByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
@@ -272,7 +269,7 @@ describe('Create app entry', () => {
     vi.spyOn(navigator, 'platform', 'get').mockReturnValue('Win32')
     vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Windows')
     const user = userEvent.setup()
-    renderEntry({ features: { dify_builder_enabled: true } })
+    renderEntry()
     await openMenu(user)
     await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
     const input = await screen.findByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
@@ -292,7 +289,6 @@ describe('Create app entry', () => {
     mocks.defaultModel.mockResolvedValue({ data: null })
     const user = userEvent.setup()
     const { queryClient } = renderEntry({
-      features: { dify_builder_enabled: true },
       workspacePermissionKeys: ['app.create_and_management', 'plugin.model_config'],
     })
     await openMenu(user)
@@ -323,16 +319,6 @@ describe('Create app entry', () => {
     expect(mocks.defaultModel).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps non-canvas app creation direct with Builder enabled', async () => {
-    const user = userEvent.setup()
-    renderEntry({ features: { dify_builder_enabled: true } })
-    await openMenu(user)
-    await user.click(screen.getByRole('menuitem', { name: 'app.newApp.menu.moreTypes' }))
-    await user.click(screen.getByRole('menuitem', { name: 'app.types.agent' }))
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/configuration'))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-
   it('navigates after creation without waiting for analytics to finish', async () => {
     const user = userEvent.setup()
     let finishTracking!: () => void
@@ -345,6 +331,7 @@ describe('Create app entry', () => {
     await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
 
     try {
+      await user.click(await screen.findByRole('button', { name: 'app.newApp.starter.openBlank' }))
       await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
       expect(mocks.trackCreateApp).toHaveBeenCalledExactlyOnceWith({
         source: 'studio_blank',
@@ -358,7 +345,7 @@ describe('Create app entry', () => {
 
   it('starts with an empty prompt after closing and reopening the starter', async () => {
     const user = userEvent.setup()
-    renderEntry({ features: { dify_builder_enabled: true } })
+    renderEntry()
     await openMenu(user)
     await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
     await user.type(
@@ -378,7 +365,7 @@ describe('Create app entry', () => {
 
   it('can start from a suggestion or create a blank canvas without submitting it', async () => {
     const user = userEvent.setup()
-    renderEntry({ features: { dify_builder_enabled: true } })
+    renderEntry()
     await openMenu(user)
     await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
     const input = await screen.findByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
@@ -397,7 +384,7 @@ describe('Create app entry', () => {
   it('retains the prompt after failure and prevents duplicate submissions while retrying', async () => {
     mocks.createApp.mockRejectedValueOnce(new Error('Create failed'))
     const user = userEvent.setup()
-    renderEntry({ features: { dify_builder_enabled: true } })
+    renderEntry()
     await openMenu(user)
     await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
     const input = await screen.findByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
@@ -419,19 +406,6 @@ describe('Create app entry', () => {
       resolveCreation({ id: 'created-app', mode: 'workflow', maintainer: 'creator' }),
     )
     await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce())
-  })
-
-  it('closes the starter if Builder is disabled while it is open', async () => {
-    const user = userEvent.setup()
-    const { queryClient } = renderEntry({ features: { dify_builder_enabled: true } })
-    await openMenu(user)
-    await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
-    await screen.findByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
-    await act(async () => {
-      seedFeatures(queryClient, { dify_builder_enabled: false })
-    })
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(mocks.createApp).not.toHaveBeenCalled()
   })
 
   it('disables creation without permission', async () => {

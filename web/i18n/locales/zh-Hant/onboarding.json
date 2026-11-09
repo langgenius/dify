@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "點選任一知識庫即可開啟其文件管理頁面 — 在那裡更新文件、檢索設定與存取權限。",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "開啟並管理每個知識庫",
   "stepByStepTour.guides.primaryActionLabel": "知道了",
+  "stepByStepTour.guides.studio.empty.blank.description": "當你已經知道要建構什麼時，從空白畫布開始。",
+  "stepByStepTour.guides.studio.empty.blank.title": "從空白建立",
   "stepByStepTour.guides.studio.empty.dsl.description": "匯入應用程式套件或 DSL 檔案，以還原已分享或備份的應用程式。",
   "stepByStepTour.guides.studio.empty.dsl.title": "匯入應用",
   "stepByStepTour.guides.studio.empty.learnDify.description": "初次使用 Dify？先跟著一節導覽課程 — 你會看到 Workflows、Agents 等功能的實際運作。",

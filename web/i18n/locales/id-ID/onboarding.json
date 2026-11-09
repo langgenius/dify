@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Ketuk knowledge base mana pun untuk membuka halaman pengelolaan dokumennya — perbarui dokumen, pengaturan retrieval, dan akses dari sana.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Buka dan kelola setiap knowledge base",
   "stepByStepTour.guides.primaryActionLabel": "Mengerti",
+  "stepByStepTour.guides.studio.empty.blank.description": "Mulai dari kanvas kosong jika Anda sudah tahu apa yang ingin dibangun.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Buat dari kosong",
   "stepByStepTour.guides.studio.empty.dsl.description": "Impor paket aplikasi atau file DSL untuk memulihkan aplikasi yang dibagikan atau dicadangkan.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Impor Aplikasi",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Baru di Dify? Ikuti dulu pelajaran berpemandu — Anda akan melihat Workflows, Agents, dan lainnya bekerja.",

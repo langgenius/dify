@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Нажмите на любую базу знаний, чтобы открыть страницу управления её документами — обновляйте документы, настройки поиска и доступ отсюда.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Открытие и управление каждой базой знаний",
   "stepByStepTour.guides.primaryActionLabel": "Понятно",
+  "stepByStepTour.guides.studio.empty.blank.description": "Начните с пустого холста, если вы уже знаете, что хотите создать.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Создать с нуля",
   "stepByStepTour.guides.studio.empty.dsl.description": "Импортируйте пакет приложения или файл DSL, чтобы восстановить приложение, которым поделились или для которого создана резервная копия.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Импортировать приложение",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Впервые в Dify? Сначала пройдите пошаговый урок — вы увидите Workflows, Agents и многое другое в действии.",

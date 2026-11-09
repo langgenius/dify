@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Tik op een knowledge base om de pagina voor documentbeheer te openen — werk daar documenten, retrieval-instellingen en toegang bij.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Open en beheer elke knowledge base",
   "stepByStepTour.guides.primaryActionLabel": "Begrepen",
+  "stepByStepTour.guides.studio.empty.blank.description": "Begin met een leeg canvas als je al weet wat je wilt bouwen.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Vanaf nul beginnen",
   "stepByStepTour.guides.studio.empty.dsl.description": "Importeer een app-pakket of DSL-bestand om een gedeelde app of back-up te herstellen.",
   "stepByStepTour.guides.studio.empty.dsl.title": "App importeren",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Nieuw bij Dify? Doorloop eerst een begeleide les — je ziet Workflows, Agents en meer in actie.",

@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "点击任意知识库打开它的文档管理页 — 在那里更新文档、检索设置和访问权限。",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "打开并管理每个知识库",
   "stepByStepTour.guides.primaryActionLabel": "知道了",
+  "stepByStepTour.guides.studio.empty.blank.description": "当你已经清楚要做什么时，从空白画布开始。",
+  "stepByStepTour.guides.studio.empty.blank.title": "从空白开始",
   "stepByStepTour.guides.studio.empty.dsl.description": "导入应用包或 DSL 文件来恢复已分享或备份的应用。",
   "stepByStepTour.guides.studio.empty.dsl.title": "导入应用",
   "stepByStepTour.guides.studio.empty.learnDify.description": "新手？先走一遍 Learn Dify 课程 — 你会实际看到 Workflow、Agent 等运行起来的样子。",

@@ -4,15 +4,19 @@ import { CreateAppDialogShell } from '../dialog-shell'
 import AppList from './template-list'
 
 type CreateAppDialogProps = {
+  legacyLayout?: boolean
   show: boolean
   onClose: () => void
+  onCreateFromBlank?: () => void
   onCreated?: () => void
   templateMode?: 'agent'
 }
 
 const CreateAppTemplateDialog = ({
+  legacyLayout,
   show,
   onClose,
+  onCreateFromBlank,
   onCreated,
   templateMode,
 }: CreateAppDialogProps) => {
@@ -20,11 +24,16 @@ const CreateAppTemplateDialog = ({
 
   return (
     <CreateAppDialogShell
+      legacyLayout={legacyLayout}
       show={show}
       title={t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
       onClose={onClose}
     >
-      <AppList onCreated={onCreated} templateMode={templateMode} />
+      <AppList
+        onCreateFromBlank={onCreateFromBlank}
+        onCreated={onCreated}
+        templateMode={templateMode}
+      />
     </CreateAppDialogShell>
   )
 }

@@ -1,10 +1,8 @@
-import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FirstEmptyState from '@/app/components/apps/first-empty-state'
 import { toast } from '@/app/notifications'
-import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
@@ -12,37 +10,34 @@ import { CreateAppEntry } from '../entry'
 import { promptDefaultModel, promptModelProviders } from './model-fixtures'
 
 const mocks = vi.hoisted(() => ({
-  create: vi.fn<() => Promise<Response>>(),
+  create: vi.fn<(request: Request) => Promise<Response>>(),
   improve: vi.fn<() => Promise<Response>>(),
-  features: vi.fn<() => Promise<Response>>(),
   push: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }))
 vi.mock('@/utils/create-app-tracking', () => ({ trackCreateApp: vi.fn() }))
 
-let builderEnabled = false
-
-function renderEntry(
-  builder = false,
-  surface: 'menu' | 'empty' = 'menu',
-  options: ConsoleQueryTestOptions = {},
-) {
-  builderEnabled = builder
+function renderEntry(surface: 'menu' | 'empty' = 'menu') {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
   return renderWithConsoleQuery(
     <NuqsWrapper>
       {surface === 'menu' ? (
         <CreateAppEntry />
       ) : (
-        <FirstEmptyState onCreateTemplate={vi.fn()} onImportDSL={vi.fn()} showLearnDify={false} />
+        <FirstEmptyState
+          isBuilderEnabled
+          onCreateBlank={vi.fn()}
+          onCreateTemplate={vi.fn()}
+          onImportDSL={vi.fn()}
+          showLearnDify={false}
+        />
       )}
     </NuqsWrapper>,
     {
       accountProfile: { id: 'creator' },
       workspacePermissionKeys: ['app.create_and_management'],
-      features: { dify_builder_enabled: builder },
-      ...options,
+      features: {},
     },
   )
 }
@@ -50,6 +45,14 @@ function renderEntry(
 async function selectWorkflow(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
   await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
+}
+
+async function selectChatbot(user: ReturnType<typeof userEvent.setup>, surface: 'menu' | 'empty') {
+  if (surface === 'menu')
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+  const role = surface === 'menu' ? 'menuitem' : 'button'
+  await user.click(screen.getByRole(role, { name: 'app.newApp.menu.moreTypes' }))
+  await user.click(screen.getByRole(role, { name: 'app.types.chatbot' }))
 }
 
 async function openStarter(user: ReturnType<typeof userEvent.setup>) {
@@ -61,22 +64,16 @@ async function openStarter(user: ReturnType<typeof userEvent.setup>) {
 
 describe('Create app feedback', () => {
   beforeEach(() => {
-    mocks.create
-      .mockReset()
-      .mockImplementation(async () =>
-        Response.json(
-          createAppDetailFixture({ id: 'created-app', mode: 'workflow', maintainer: 'creator' }),
-        ),
+    mocks.create.mockReset().mockImplementation(async (request) => {
+      const { mode } = zPostAppsBody.parse(await request.json())
+      return Response.json(
+        createAppDetailFixture({ id: 'created-app', mode, maintainer: 'creator' }),
       )
+    })
     mocks.improve
       .mockReset()
       .mockImplementation(async () =>
         Response.json({ instruction: 'Improved prompt', changed: true }),
-      )
-    mocks.features
-      .mockReset()
-      .mockImplementation(async () =>
-        Response.json(zGetFeaturesResponse.parse({ dify_builder_enabled: builderEnabled })),
       )
     vi.spyOn(toast, 'success').mockReturnValue('success-toast')
     vi.spyOn(toast, 'error').mockReturnValue('error-toast')
@@ -85,13 +82,12 @@ describe('Create app feedback', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const request = input instanceof Request ? input : new Request(input)
       const { pathname } = new URL(request.url)
-      if (pathname.endsWith('/apps') && request.method === 'POST') return mocks.create()
+      if (pathname.endsWith('/apps') && request.method === 'POST') return mocks.create(request)
       if (pathname.endsWith('/workflow-generate/improve')) return mocks.improve()
       if (pathname.endsWith('/workspaces/current/default-model'))
         return Response.json({ data: promptDefaultModel })
       if (pathname.endsWith('/workspaces/current/models/model-types/llm'))
         return Response.json({ data: promptModelProviders })
-      if (pathname.endsWith('/features')) return mocks.features()
       throw new Error(`Unexpected request: ${request.method} ${pathname}`)
     })
   })
@@ -101,69 +97,16 @@ describe('Create app feedback', () => {
   it('navigates to the created app without a success toast', async () => {
     const user = userEvent.setup()
     renderEntry()
-    await selectWorkflow(user)
+    await openStarter(user)
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
 
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
     expect(toast.success).not.toHaveBeenCalled()
   })
 
-  it.each([
-    { surface: 'menu', edition: 'COMMUNITY', state: 'pending' },
-    { surface: 'empty', edition: 'COMMUNITY', state: 'error' },
-    { surface: 'menu', edition: 'CLOUD', state: 'error' },
-    { surface: 'empty', edition: 'CLOUD', state: 'pending' },
-  ] as const)(
-    'creates directly from $surface on $edition when features are $state',
-    async ({ surface, edition, state }) => {
-      if (state === 'pending')
-        mocks.features.mockImplementation(() => new Promise<Response>(() => {}))
-      else
-        mocks.features.mockResolvedValue(
-          Response.json({ message: 'Features unavailable' }, { status: 503 }),
-        )
-      const user = userEvent.setup()
-      const { queryClient } = renderEntry(false, surface, {
-        features: undefined,
-        systemFeatures: { deployment_edition: edition },
-      })
-      await waitFor(() => expect(mocks.features).toHaveBeenCalled())
-      if (state === 'error')
-        await waitFor(() =>
-          expect(queryClient.getQueryState(consoleQuery.features.get.queryKey())?.status).toBe(
-            'error',
-          ),
-        )
-
-      if (surface === 'menu') await selectWorkflow(user)
-      else await user.click(screen.getByRole('button', { name: /app.types.workflow/ }))
-
-      await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
-      expect(mocks.create).toHaveBeenCalledOnce()
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    },
-  )
-
-  it('falls back to direct creation when refreshing cached Builder capability fails', async () => {
-    const user = userEvent.setup()
-    const { queryClient } = renderEntry(true)
-    await openStarter(user)
-    mocks.features.mockResolvedValue(
-      Response.json({ message: 'Features unavailable' }, { status: 503 }),
-    )
-
-    await act(async () => {
-      await queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
-    })
-
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    await selectWorkflow(user)
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
-    expect(mocks.create).toHaveBeenCalledOnce()
-  })
-
-  it.each([false, true])(
-    'shows one inline server error with Builder enabled=%s and clears it on retry',
-    async (builder) => {
+  it.each(['menu', 'prompt'] as const)(
+    'shows one inline server error in the %s and clears it on retry',
+    async (flow) => {
       mocks.create.mockResolvedValueOnce(
         Response.json(
           { code: 'app_creation_failed', message: 'Creation unavailable' },
@@ -171,12 +114,12 @@ describe('Create app feedback', () => {
         ),
       )
       const user = userEvent.setup()
-      renderEntry(builder)
-      if (builder) {
+      renderEntry()
+      if (flow === 'prompt') {
         await openStarter(user)
         await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
       } else {
-        await selectWorkflow(user)
+        await selectChatbot(user, 'menu')
       }
 
       expect(await screen.findByRole('alert')).toHaveTextContent('Creation unavailable')
@@ -184,15 +127,18 @@ describe('Create app feedback', () => {
       expect(toast.error).not.toHaveBeenCalled()
       expect(mocks.push).not.toHaveBeenCalled()
 
-      if (builder) {
+      if (flow === 'prompt') {
         const input = screen.getByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
         expect(input).toHaveValue('Original prompt')
         expect(input).toHaveAccessibleDescription('Creation unavailable')
         await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
       } else {
-        await selectWorkflow(user)
+        await selectChatbot(user, 'menu')
       }
-      await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
+      const destination = flow === 'prompt' ? 'workflow' : 'configuration'
+      await waitFor(() =>
+        expect(mocks.push).toHaveBeenCalledWith(`/app/created-app/${destination}`),
+      )
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
       expect(toast.error).not.toHaveBeenCalled()
     },
@@ -203,9 +149,8 @@ describe('Create app feedback', () => {
     async (surface) => {
       mocks.create.mockRejectedValueOnce(new TypeError('Network unavailable'))
       const user = userEvent.setup()
-      renderEntry(false, surface)
-      if (surface === 'menu') await selectWorkflow(user)
-      else await user.click(screen.getByRole('button', { name: /app.types.workflow/ }))
+      renderEntry(surface)
+      await selectChatbot(user, surface)
 
       expect(await screen.findByRole('alert')).toHaveTextContent('Network unavailable')
       expect(toast.error).not.toHaveBeenCalled()
@@ -218,7 +163,7 @@ describe('Create app feedback', () => {
       Response.json({ message: 'Model request failed' }, { status: 500 }),
     )
     const user = userEvent.setup()
-    renderEntry(true)
+    renderEntry()
     const input = await openStarter(user)
     const optimize = screen.getByRole('button', { name: 'app.newApp.optimizeWithAI' })
     await waitFor(() => expect(optimize).toBeEnabled())
@@ -241,7 +186,7 @@ describe('Create app feedback', () => {
       Response.json({ instruction: 'Original prompt', changed: false }),
     )
     const user = userEvent.setup()
-    renderEntry(true)
+    renderEntry()
     const input = await openStarter(user)
     const optimize = screen.getByRole('button', { name: 'app.newApp.optimizeWithAI' })
     await waitFor(() => expect(optimize).toBeEnabled())

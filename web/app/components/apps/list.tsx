@@ -4,12 +4,14 @@ import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { AppListCreationDialog } from './app-list-creation-modals'
 import type { AppListUrlQuery } from './query-params'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { throttle, useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { CheckResultToast } from '@/hooks/use-pay'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { AppListCatalog } from './app-list-catalog'
 import { AppListCreationModals } from './app-list-creation-modals'
@@ -38,6 +40,13 @@ type Props = Readonly<{
 
 export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const { data: builderEnabled, isSuccess: hasFeatures } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      retry: false,
+      select: (features) => features.dify_builder_enabled,
+    }),
+  )
+  const isBuilderEnabled = hasFeatures && builderEnabled === true
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
   const { category, keywords, creatorIDs, tagIDs, sort_by: sortBy } = urlQuery
@@ -112,19 +121,24 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     void setUrlQuery({ sort_by: nextSortBy })
   }
 
-  const openCreateTemplateDialog = useCallback(() => {
-    if (!canCreateApp) return
-    const switching = creationQuery.create !== null
-    const pushed = !switching || isPushedCreationEntry()
-    void setCreationQuery(
-      { create: 'template', mode: null },
-      {
-        history: switching ? 'replace' : 'push',
-      },
-    ).then(() => {
+  const openCreationDialog = useCallback(
+    async (create: 'blank' | 'template') => {
+      if (!canCreateApp) return
+      const switching = creationQuery.create !== null
+      const pushed = !switching || isPushedCreationEntry()
+      await setCreationQuery({ create, mode: null }, { history: switching ? 'replace' : 'push' })
       if (pushed) markPushedCreationEntry()
-    })
-  }, [canCreateApp, creationQuery.create, setCreationQuery])
+    },
+    [canCreateApp, creationQuery.create, setCreationQuery],
+  )
+  const openCreateBlankModal = useCallback(
+    () => void openCreationDialog('blank'),
+    [openCreationDialog],
+  )
+  const openCreateTemplateDialog = useCallback(
+    () => void openCreationDialog('template'),
+    [openCreationDialog],
+  )
   const closeCreationDialog = useCallback(() => {
     if (dslImport) {
       setDSLImport(null)
@@ -168,11 +182,13 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
             keywords={keywords}
             creatorIDs={creatorIDs}
             sortBy={sortBy}
+            isBuilderEnabled={isBuilderEnabled}
             onCategoryChange={changeCategory}
             onTagIDsChange={changeTagIDs}
             onKeywordsChange={changeKeywords}
             onCreatorIDsChange={changeCreatorIDs}
             onSortByChange={changeSortBy}
+            onCreateBlank={openCreateBlankModal}
             onCreateTemplate={openCreateTemplateDialog}
             onImportDSL={openCreateFromDSLModal}
             onOpenTagManagement={openTagManagement}
@@ -183,6 +199,8 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
             canCreateApp={canCreateApp}
             dragging={dragging}
             hasActiveFilters={hasActiveFilters}
+            isBuilderEnabled={isBuilderEnabled}
+            onCreateBlank={openCreateBlankModal}
             onCreateLearnDify={onCreateLearnDify}
             onCreateTemplate={openCreateTemplateDialog}
             onImportDSL={openCreateFromDSLModal}
@@ -203,7 +221,9 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
         canCreateApp={canCreateApp}
         defaultMode={creationQuery.mode ?? (category === 'all' ? 'advanced-chat' : category)}
         dialog={creationDialog}
+        isBuilderEnabled={isBuilderEnabled}
         onClose={closeCreationDialog}
+        onOpenBlank={openCreateBlankModal}
         onOpenTemplate={openCreateTemplateDialog}
       />
     </StudioListNavigation>

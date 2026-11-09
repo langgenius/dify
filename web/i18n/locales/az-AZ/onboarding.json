@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Sənədlərin idarəetmə səhifəsini açmaq üçün istənilən bilik bazasına toxunun, sənədləri, məlumatların əldə edilməsi parametrlərini və girişi oradan yeniləyin.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Bilik bazalarının açılması və idarə edilməsi",
   "stepByStepTour.guides.primaryActionLabel": "Aydındır",
+  "stepByStepTour.guides.studio.empty.blank.description": "Nə quracağınızı artıq bilirsinizsə, boş iş lövhəsindən başlayın.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Sıfırdan yaratma",
   "stepByStepTour.guides.studio.empty.dsl.description": "Paylaşılmış və ya ehtiyat nüsxəsi yaradılmış tətbiqi bərpa etmək üçün tətbiq paketi və ya DSL faylı idxal edin.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Tətbiq idxal et",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Dify ilə yeni tanış olursunuz? Əvvəlcə bələdçili dərs keçin, iş axınlarının, agentlərin və digər imkanların necə işlədiyini görəcəksiniz.",

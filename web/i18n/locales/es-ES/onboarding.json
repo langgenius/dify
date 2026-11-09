@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Toca cualquier base de conocimiento para abrir su página de gestión de documentos — actualiza documentos, ajustes de recuperación y acceso desde ahí.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Abrir y gestionar cada base de conocimiento",
   "stepByStepTour.guides.primaryActionLabel": "Entendido",
+  "stepByStepTour.guides.studio.empty.blank.description": "Empieza desde un lienzo en blanco cuando ya sabes qué quieres crear.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Crear desde cero",
   "stepByStepTour.guides.studio.empty.dsl.description": "Importa un paquete de aplicación o archivo DSL para restaurar una aplicación compartida o respaldada.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Importar App",
   "stepByStepTour.guides.studio.empty.learnDify.description": "¿Eres nuevo en Dify? Primero sigue una lección guiada — verás Workflows, Agents y más en acción.",

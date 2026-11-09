@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Торкніться будь-якої бази знань, щоб відкрити її сторінку керування документами — оновлюйте документи, налаштування пошуку та доступ звідти.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Відкривайте та керуйте кожною базою знань",
   "stepByStepTour.guides.primaryActionLabel": "Зрозуміло",
+  "stepByStepTour.guides.studio.empty.blank.description": "Почніть із порожнього полотна, коли вже знаєте, що будувати.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Створити з нуля",
   "stepByStepTour.guides.studio.empty.dsl.description": "Імпортуйте пакет застосунку або файл DSL, щоб відновити поширений застосунок або його резервну копію.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Імпортувати додаток",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Уперше в Dify? Спершу пройдіть керований урок — ви побачите Workflows, Agents та інше в дії.",

@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "Tocca una qualsiasi knowledge base per aprire la sua pagina di gestione dei documenti — aggiorna documenti, impostazioni di recupero e accessi da lì.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "Apri e gestisci ogni knowledge base",
   "stepByStepTour.guides.primaryActionLabel": "Ho capito",
+  "stepByStepTour.guides.studio.empty.blank.description": "Parti da una tela vuota quando sai già cosa creare.",
+  "stepByStepTour.guides.studio.empty.blank.title": "Crea da zero",
   "stepByStepTour.guides.studio.empty.dsl.description": "Importa un pacchetto app o un file DSL per ripristinare un’app condivisa o di cui è stato eseguito il backup.",
   "stepByStepTour.guides.studio.empty.dsl.title": "Importa App",
   "stepByStepTour.guides.studio.empty.learnDify.description": "Sei nuovo su Dify? Segui prima una lezione guidata — vedrai Workflow, Agent e altro in azione.",

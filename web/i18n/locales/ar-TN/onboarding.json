@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "اضغط على أي قاعدة معرفة لفتح صفحة إدارة مستنداتها — حدّث من هناك المستندات وإعدادات الاسترجاع والوصول.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "فتح وإدارة كل قاعدة معرفة",
   "stepByStepTour.guides.primaryActionLabel": "فهمت",
+  "stepByStepTour.guides.studio.empty.blank.description": "ابدأ بلوحة فارغة عندما تعرف مسبقًا ما تريد بناءه.",
+  "stepByStepTour.guides.studio.empty.blank.title": "الإنشاء من الصفر",
   "stepByStepTour.guides.studio.empty.dsl.description": "استورد حزمة تطبيق أو ملف DSL لاستعادة تطبيق تمت مشاركته أو نسخه احتياطيًا.",
   "stepByStepTour.guides.studio.empty.dsl.title": "استيراد التطبيق",
   "stepByStepTour.guides.studio.empty.learnDify.description": "جديد على Dify؟ ابدأ بدرس موجّه أولًا — سترى Workflows وAgents وغيرها أثناء العمل.",

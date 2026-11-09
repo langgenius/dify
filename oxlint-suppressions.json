@@ -6023,9 +6023,6 @@
     }
   },
   "web/features/app-creation/template-dialog/categories.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    },
     "react/only-export-components": {
       "count": 1
     }

@@ -36,6 +36,8 @@
   "stepByStepTour.guides.knowledge.withDatasets.manage.description": "روی هر پایگاه دانش بزنید تا صفحه مدیریت اسناد آن باز شود — از همان‌جا اسناد، تنظیمات بازیابی و دسترسی را به‌روزرسانی کنید.",
   "stepByStepTour.guides.knowledge.withDatasets.manage.title": "باز کردن و مدیریت هر پایگاه دانش",
   "stepByStepTour.guides.primaryActionLabel": "متوجه شدم",
+  "stepByStepTour.guides.studio.empty.blank.description": "وقتی می‌دانید چه می‌خواهید بسازید، از یک بوم خالی شروع کنید.",
+  "stepByStepTour.guides.studio.empty.blank.title": "ساخت از ابتدا",
   "stepByStepTour.guides.studio.empty.dsl.description": "برای بازیابی برنامهٔ به‌اشتراک‌گذاشته‌شده یا پشتیبان‌گیری‌شده، بستهٔ برنامه یا فایل DSL را وارد کنید.",
   "stepByStepTour.guides.studio.empty.dsl.title": "وارد کردن برنامه",
   "stepByStepTour.guides.studio.empty.learnDify.description": "تازه با Dify آشنا شده‌اید؟ ابتدا یک درس راهنما را طی کنید — Workflowها، Agentها و موارد دیگر را در عمل می‌بینید.",
