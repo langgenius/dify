@@ -141,7 +141,7 @@ it('uses the real compact viewport without overwriting the desktop preference', 
   expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBeUndefined()
 })
 
-// TODO(issue): the preview is painted but the following main content wins native hit testing.
+// TODO(https://github.com/langgenius/dify/issues/45933): the following main content wins native hit testing.
 it.fails('keeps the hovered preview actionable without persisting it', async () => {
   const screen = await renderSidebar({ mode: 'collapse' })
   const toggle = screen.getByRole('button', { name: 'Toggle detail' })

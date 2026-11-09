@@ -54,7 +54,7 @@ describe('AppDetailTop', () => {
     await expect.element(search).toHaveFocus()
   })
 
-  // TODO(issue): collapsing replaces the focused control and leaves focus on body.
+  // TODO(https://github.com/langgenius/dify/issues/45934): collapsing leaves focus on body.
   it.fails('collapses and expands without dropping keyboard focus', async () => {
     const screen = await render(<AppSidebarTopOwner />)
     await userEvent.click(screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }))
