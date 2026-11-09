@@ -20,6 +20,17 @@ Run commands from the repository root. Install dependencies and browsers once wi
 - Build the production Web artifact without starting services: `pnpm -C e2e e2e:web:build`
 - Middleware lifecycle: `pnpm -C e2e e2e:middleware:up` and `pnpm -C e2e e2e:middleware:down`
 - Scoped static checks: `vp check e2e`
+- Validate Gherkin and step bindings without starting services: `pnpm -C e2e check:scenarios`
+
+## Coverage Planning
+
+The capability matrix in [COVERAGE.md] distinguishes executable CI coverage from deferred work. New scenarios must identify their CI lane and required services; a capability tag such as `@core` does not itself schedule a scenario. Do not count fixture creation, page readiness, or skipped scenarios as coverage of a user operation.
+
+Prioritize Community Edition journeys across browser actions, persistence, and execution: Agent configuration lifecycle, Workflow editing and publication, app packages, authentication, and published Web Apps. Treat deployment edition and runtime dependencies as separate dimensions. Feature-flagged Agent coverage is not proof of the default Community installation. Cloud-only capabilities need a separate runtime and must not be enabled through development overrides to make the Community gate pass.
+
+For persistence, reload and assert restored user-visible state. For publication, distinguish the mutable draft from the published version consumed by a separate visitor. For execution, assert concrete outputs in addition to a successful status. Use scenario-owned resources whenever the behavior mutates state; do not publish or edit a shared seed merely for convenience.
+
+When validation is CI-only, do not start local browsers, services, seed, builds, or E2E runners. Perform scoped static checks, then use CI reports as the runtime evidence. Cucumber dry-run validates bindings only; it does not prove browser behavior. Keep deferred designs in the coverage document rather than adding placeholder or permanently skipped scenarios.
 
 The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1` to force a frontend rebuild. Use `E2E_BROWSER=webkit` for focused cross-browser runs and `E2E_SLOW_MO=500` with a headed command for local action debugging.
 
@@ -74,3 +85,5 @@ Validation failures are contract failures. Trace them to the backend schema owne
 - Remove child and referencing resources before owners. Attach cleanup failures to the report instead of swallowing them.
 
 Failures produce screenshots and HTML captures under `cucumber-report/artifacts/`; the HTML and Cucumber Messages reports live under `cucumber-report/`. Backend and frontend startup logs live under `.logs/`. Additional CI lanes preserve their own report and log directories.
+
+[COVERAGE.md]: COVERAGE.md
