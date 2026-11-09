@@ -2173,12 +2173,16 @@ export const copy = {
   post: post25,
 }
 
+/**
+ * Inspect model readiness for an admitted app editor when Builder is enabled
+ */
 export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdDifyBuilderAvailability',
     path: '/apps/{app_id}/dify-builder/availability',
+    summary: 'Inspect model readiness for an admitted app editor when Builder is enabled',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdDifyBuilderAvailabilityPath }))
@@ -4976,21 +4980,26 @@ export const get81 = oc
   })
 
 /**
- * Sync draft workflow
+ * Save the graph and explicit environment-variable patches
  *
- * Sync draft workflow configuration
+ * Save draft graph and environment patches; initialize configuration for new drafts
+ * Existing draft
+ * features and conversation variables are owned by their dedicated endpoints;
+ * the submitted snapshots only initialize a new draft. Legacy clients that
+ * edit configuration through this POST must use those dedicated endpoints.
+ *
  * Empty initialization or clearing requires force=true;
  * an already-empty draft may be saved with its current hash without force.
  */
 export const post66 = oc
   .route({
     description:
-      'Sync draft workflow configuration\nEmpty initialization or clearing requires force=true;\nan already-empty draft may be saved with its current hash without force.',
+      'Save draft graph and environment patches; initialize configuration for new drafts\nExisting draft\nfeatures and conversation variables are owned by their dedicated endpoints;\nthe submitted snapshots only initialize a new draft. Legacy clients that\nedit configuration through this POST must use those dedicated endpoints.\n\nEmpty initialization or clearing requires force=true;\nan already-empty draft may be saved with its current hash without force.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraft',
     path: '/apps/{app_id}/workflows/draft',
-    summary: 'Sync draft workflow',
+    summary: 'Save the graph and explicit environment-variable patches',
     tags: ['console'],
   })
   .input(
@@ -5529,16 +5538,20 @@ export const get91 = oc
   .output(zGetAppsResponse)
 
 /**
- * Create a new application
+ * Validate the admitted caller's request before creating the app under the active Builder setting
+ *
+ * Create a new application. A name is required when App Builder is disabled.
  */
 export const post71 = oc
   .route({
-    description: 'Create a new application',
+    description: 'Create a new application. A name is required when App Builder is disabled.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postApps',
     path: '/apps',
     successStatus: 201,
+    summary:
+      "Validate the admitted caller's request before creating the app under the active Builder setting",
     tags: ['console'],
   })
   .input(z.object({ body: zPostAppsBody }))
