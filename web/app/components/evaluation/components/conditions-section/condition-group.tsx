@@ -128,7 +128,7 @@ const ConditionMetricSelect = ({
     >
       <SelectTrigger
         aria-label={t(($) => $['conditions.fieldPlaceholder'])}
-        className="h-auto bg-transparent px-1 py-1 hover:bg-transparent focus-visible:bg-transparent"
+        className="h-auto bg-transparent py-1 ps-1 pe-3 hover:bg-transparent focus-visible:bg-transparent"
       >
         <ConditionMetricLabel metric={metric} placeholder={placeholder} />
       </SelectTrigger>
@@ -173,7 +173,7 @@ const ConditionOperatorSelect = ({
     >
       <SelectTrigger
         aria-label={tEvaluation(($) => $['conditions.operator'])}
-        className="h-8 w-auto min-w-14 shrink-0 gap-1 rounded-md bg-transparent px-1.5 py-0 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt"
+        className="h-8 w-auto min-w-14 shrink-0 gap-1 rounded-md bg-transparent px-3 py-0 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt"
       >
         <span className="truncate system-xs-medium text-text-secondary">
           {getComparisonOperatorLabel(operator, t)}
@@ -355,7 +355,7 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
                             metric?.valueType === 'number' &&
                               condition.comparisonOperator !== 'in' &&
                               condition.comparisonOperator !== 'not in'
-                              ? 'w-32'
+                              ? 'w-28'
                               : 'w-40',
                           )}
                         >
