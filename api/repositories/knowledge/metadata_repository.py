@@ -1,5 +1,6 @@
 """Tenant-scoped metadata operations; each mutation owns one atomic transaction."""
 
+import math
 from collections.abc import Sequence
 
 from sqlalchemy import func, select
@@ -18,6 +19,10 @@ from repositories.knowledge.dataset_read_repository import get_document_uploader
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.knowledge.metadata.application import MetadataList, MetadataOperation, MetadataRecord
 from services.knowledge.resource_scope import DatasetRef
+
+# Retrieval compares these fields with ``CAST(... AS FLOAT)``, so one stored value
+# that cannot be cast fails every metadata-filtered query for the dataset.
+_NUMERIC_METADATA_TYPES = frozenset({"number", "time"})
 
 
 class SQLAlchemyMetadataRepository:
@@ -63,6 +68,38 @@ class SQLAlchemyMetadataRepository:
             updated_by=row.updated_by,
             updated_at=row.updated_at,
         )
+
+    @staticmethod
+    def _validate_value(field: DatasetMetadata, value: str | int | float | None) -> None:
+        """Reject values that numeric metadata filters cannot cast.
+
+        Preconditions:
+            ``field`` is the persisted definition that owns ``value``.
+
+        Postconditions:
+            Returns for ``None``, string fields, finite numbers, and numeric
+            strings. Raises ``ValueError`` (translated to HTTP 400 by the API)
+            for booleans, non-finite numbers, and text that is not a finite
+            number when the field type is ``number`` or ``time``. The caller's
+            value is never coerced or changed by this check.
+        """
+        if value is None or field.type not in _NUMERIC_METADATA_TYPES:
+            return
+        if isinstance(value, bool):
+            raise ValueError(f"Metadata field '{field.name}' expects a numeric value.")
+        if isinstance(value, int | float):
+            if not math.isfinite(value):
+                raise ValueError(f"Metadata field '{field.name}' expects a finite numeric value.")
+            return
+        if isinstance(value, str):
+            try:
+                parsed = float(value)
+            except ValueError:
+                raise ValueError(f"Metadata field '{field.name}' expects a numeric value.") from None
+            if not math.isfinite(parsed):
+                raise ValueError(f"Metadata field '{field.name}' expects a finite numeric value.")
+            return
+        raise ValueError(f"Metadata field '{field.name}' expects a numeric value.")
 
     @classmethod
     def _check_name(cls, session: Session, ref: DatasetRef, name: str, exclude_id: str | None = None) -> None:
@@ -153,6 +190,17 @@ class SQLAlchemyMetadataRepository:
             dataset.built_in_field_enabled = enabled
 
     def update_documents(self, ref: DatasetRef, operations: Sequence[MetadataOperation], *, actor_id: str) -> None:
+        """Replace or merge document metadata in one transaction.
+
+        Preconditions:
+            Every metadata id and document id belongs to ``ref``.
+
+        Postconditions:
+            All operations commit atomically, or none do. An invalid value for a
+            ``number``/``time`` field raises ``ValueError`` before any document
+            or binding is written. Bindings mirror the final metadata list, and
+            built-in values are refreshed when the dataset enables them.
+        """
         with self._sessions.begin() as session:
             dataset = self._dataset(session, ref, write=True)
             metadata_ids = {value.id for operation in operations for value in operation.metadata_list}
@@ -168,6 +216,10 @@ class SQLAlchemyMetadataRepository:
             }
             if document_ids != set(documents):
                 raise MetadataResourceNotFoundError("Document not found.")
+            # Validate the whole batch before mutating either documents or bindings.
+            for operation in operations:
+                for value in operation.metadata_list:
+                    self._validate_value(fields[value.id], value.value)
             for operation in operations:
                 document = documents[operation.document_id]
                 values = dict(document.doc_metadata or {}) if operation.partial_update else {}

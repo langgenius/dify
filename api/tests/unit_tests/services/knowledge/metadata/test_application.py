@@ -281,12 +281,18 @@ DOCUMENT_ID = "11111111-1111-1111-1111-111111111111"
 FOREIGN_ID = "22222222-2222-2222-2222-222222222222"
 
 
-def _operation(document_id: str, metadata_id: str, *, partial: bool = False) -> MetadataOperationData:
+def _operation(
+    document_id: str,
+    metadata_id: str,
+    *,
+    partial: bool = False,
+    value: str | int | float | None = "Alice",
+) -> MetadataOperationData:
     return MetadataOperationData(
         operation_data=[
             DocumentMetadataOperation(
                 document_id=document_id,
-                metadata_list=[MetadataDetail(id=metadata_id, name="spoofed", value="Alice")],
+                metadata_list=[MetadataDetail(id=metadata_id, name="spoofed", value=value)],
                 partial_update=partial,
             )
         ]
@@ -394,6 +400,69 @@ class TestMetadataServiceSessionBoundaryCases:
                 {"existing": "kept", "author": "Alice"} if partial else {"author": "Alice"}
             )
             assert len(session.scalars(select(DatasetMetadataBinding)).all()) == 1
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("field_type", "value"),
+        [("number", "abc"), ("number", "  "), ("time", "2025-01-01")],
+    )
+    def test_numeric_metadata_rejects_non_numeric_text_before_writes(
+        metadata_service: MetadataService,
+        sqlite_session_factory: sessionmaker[Session],
+        field_type: str,
+        value: str,
+    ) -> None:
+        field = metadata_service.create_metadata(REF, MetadataArgs(type=field_type, name="year"), actor_id="actor")
+        with pytest.raises(ValueError, match="Metadata field 'year' expects a numeric value"):
+            metadata_service.update_documents_metadata(
+                REF, _operation(DOCUMENT_ID, field.id, value=value), actor_id="actor"
+            )
+        with sqlite_session_factory() as session:
+            document = session.get(Document, DOCUMENT_ID)
+            assert document is not None
+            assert document.doc_metadata is None
+            assert not session.scalars(select(DatasetMetadataBinding)).all()
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("field_type", "value"),
+        [("number", 2024), ("number", 2024.5), ("number", "2024"), ("time", 1767225600), ("time", "1767225600")],
+    )
+    def test_numeric_metadata_accepts_finite_numbers_and_numeric_strings(
+        metadata_service: MetadataService,
+        sqlite_session_factory: sessionmaker[Session],
+        field_type: str,
+        value: str | int | float,
+    ) -> None:
+        field = metadata_service.create_metadata(REF, MetadataArgs(type=field_type, name="year"), actor_id="actor")
+        metadata_service.update_documents_metadata(
+            REF, _operation(DOCUMENT_ID, field.id, value=value), actor_id="actor"
+        )
+        with sqlite_session_factory() as session:
+            document = session.get(Document, DOCUMENT_ID)
+            assert document is not None
+            assert document.doc_metadata == {"year": value}
+            assert len(session.scalars(select(DatasetMetadataBinding)).all()) == 1
+
+    @staticmethod
+    def test_numeric_metadata_still_allows_null_and_string_fields(
+        metadata_service: MetadataService, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        number = metadata_service.create_metadata(REF, MetadataArgs(type="number", name="year"), actor_id="actor")
+        label = metadata_service.create_metadata(REF, MetadataArgs(type="string", name="author"), actor_id="actor")
+        metadata_service.update_documents_metadata(
+            REF, _operation(DOCUMENT_ID, number.id, value=2024), actor_id="actor"
+        )
+        metadata_service.update_documents_metadata(
+            REF, _operation(DOCUMENT_ID, number.id, value=None, partial=True), actor_id="actor"
+        )
+        metadata_service.update_documents_metadata(
+            REF, _operation(DOCUMENT_ID, label.id, value="2025-01-01", partial=True), actor_id="actor"
+        )
+        with sqlite_session_factory() as session:
+            document = session.get(Document, DOCUMENT_ID)
+            assert document is not None
+            assert document.doc_metadata == {"year": None, "author": "2025-01-01"}
 
     @staticmethod
     @pytest.mark.parametrize("foreign", ["dataset", "document", "metadata"])
