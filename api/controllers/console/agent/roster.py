@@ -1022,7 +1022,12 @@ class AgentLogMessagesApi(Resource):
 class AgentLogSourcesApi(Resource):
     @error_responses(AgentNotFoundError)
     @console_ns.response(HTTPStatus.OK, "Agent log sources", console_ns.models[AgentLogSourceListResponse.__name__])
-    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    @console_account_admission(
+        rbac_checks=[
+            RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId()),
+            RBACCheck(RBACPermission.AGENT_MONITOR, AgentId()),
+        ]
+    )
     def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
         """Return the admitted Agent's available log sources."""
         try:
