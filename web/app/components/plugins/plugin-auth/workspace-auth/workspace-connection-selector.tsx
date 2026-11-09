@@ -78,7 +78,11 @@ const WorkspaceConnectionSelector = ({
     consoleQuery.oauth.plugin.byProvider.tool.authorizationUrl.get.mutationOptions({
       onSuccess: ({ authorization_url }) => {
         if (!authorization_url) return
-        openOAuthPopup(authorization_url, invalidPluginCredentialInfo)
+        openOAuthPopup(authorization_url, (result) => {
+          if (result?.success && result.connectionId && canUseCredential)
+            onAuthorizationItemClick(result.connectionId)
+          invalidPluginCredentialInfo()
+        })
         setVisibilityOpen(false)
       },
     }),
