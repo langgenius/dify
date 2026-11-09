@@ -2,14 +2,19 @@ import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import { useHydrateAtoms } from 'jotai/utils'
 import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { difyBuilderPendingCreationAtom } from '@/features/dify-builder/creation'
-import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
+import { createConsoleQueryClient, seedAppDetail, seedFeatures } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useWorkflowDraftGraphForCanvas } from '../../draft/use-draft-graph-for-canvas'
 import { useWorkflowTemplate } from '../use-workflow-template'
 
-const renderTemplateHook = (mode: AppMode, pendingCreationAppId?: string) => {
+const renderTemplateHook = (
+  mode: AppMode,
+  pendingCreationAppId?: string,
+  builderEnabled = true,
+) => {
   const queryClient = createConsoleQueryClient()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode }))
+  seedFeatures(queryClient, { dify_builder_enabled: builderEnabled })
   return renderHookWithConsoleQuery(
     () => {
       useHydrateAtoms([
@@ -71,6 +76,17 @@ describe('useWorkflowTemplate', () => {
       title: 'workflow.blocks.start',
     })
   })
+
+  it.each(['workflow', 'advanced-chat'] as const)(
+    'uses the regular initial selection in %s when Builder is off',
+    (mode) => {
+      const { result } = renderTemplateHook(mode, 'app-1', false)
+
+      expect(result.current.nodes.find((node) => node.data.selected)?.data.type).toBe(
+        mode === 'workflow' ? 'start-placeholder' : 'llm',
+      )
+    },
+  )
 
   it('should build start, llm, and answer templates with linked edges in chat mode', () => {
     const { result } = renderTemplateHook('advanced-chat')

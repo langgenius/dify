@@ -1960,7 +1960,9 @@ Get list of applications with pagination and filtering
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps
-Create a new application
+**Validate the admitted caller's request before creating the app under the active Builder setting**
+
+Create a new application. A name is required when App Builder is disabled.
 
 #### Request Body
 
@@ -3338,6 +3340,8 @@ Create a copy of an existing application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/dify-builder/availability
+**Inspect model readiness for an admitted app editor when Builder is enabled**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -3349,6 +3353,7 @@ Create a copy of an existing application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [DifyBuilderAvailabilityResponse](#difybuilderavailabilityresponse)<br> |
+| 403 | App Builder is disabled | **application/json**: [DifyBuilderFeatureUnavailableResponse](#difybuilderfeatureunavailableresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/export
@@ -15554,14 +15559,19 @@ Increment snippet use count by 1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/dify-builder/policy
+**Read policy for an admitted workspace administrator when Builder is enabled**
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [DifyBuilderPolicyResponse](#difybuilderpolicyresponse)<br> |
+| 403 | App Builder is disabled | **application/json**: [DifyBuilderFeatureUnavailableResponse](#difybuilderfeatureunavailableresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/dify-builder/policy
+**Validate and save policy for an admitted workspace administrator when Builder is enabled**
+
 #### Request Body
 
 | Required | Schema |
@@ -15573,6 +15583,7 @@ Increment snippet use count by 1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [DifyBuilderPolicyResponse](#difybuilderpolicyresponse)<br> |
+| 403 | App Builder is disabled | **application/json**: [DifyBuilderFeatureUnavailableResponse](#difybuilderfeatureunavailableresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Conflict | **application/json**: [BuilderPolicyConflictError](#builderpolicyconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
