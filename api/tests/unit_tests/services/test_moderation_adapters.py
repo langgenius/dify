@@ -48,6 +48,7 @@ from services.moderation_invocation_errors import (
 from services.moderation_service import (
     ModerationPhase,
     ModerationRejectedError,
+    ModerationRequest,
     ModerationRule,
     ModerationService,
     ModerationVerdict,
@@ -143,7 +144,10 @@ def test_platform_prefers_tenant_plugin_and_logs_rejection_without_content(
     text = "private blocked content" if flagged else "private safe content"
     with caplog.at_level("WARNING", logger="services.moderation_adapters"):
         verdict = gateway.check(
-            AppRequestContext(tenant_id="tenant-1", app_id="app-1"), rule=rule, text=text, phase="output"
+            AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
+            rule=rule,
+            request=ModerationRequest(text=text),
+            phase="output",
         )
 
     assert verdict.flagged is flagged
@@ -166,7 +170,12 @@ def test_missing_tenant_plugin_and_fallback_fail_closed(text: str) -> None:
     )
     rule = ModerationRule(type="openai_moderation", config={"inputs_config": {"enabled": True}})
     with pytest.raises(InvokeAuthorizationError, match="No trusted tenant"):
-        gateway.check(AppRequestContext(tenant_id="tenant-1", app_id=""), rule=rule, text=text, phase="input")
+        gateway.check(
+            AppRequestContext(tenant_id="tenant-1", app_id=""),
+            rule=rule,
+            request=ModerationRequest(text=text),
+            phase="input",
+        )
     assert not client.calls
 
 
@@ -185,8 +194,8 @@ def test_tenant_invoke_failure_switches_to_configured_fallback_for_remaining_che
     rule = ModerationRule(type="openai_moderation", config={"inputs_config": {"enabled": True}})
     context = AppRequestContext(tenant_id="tenant-1", app_id="app-1")
 
-    assert not gateway.check(context, rule=rule, text="safe", phase="input").flagged
-    assert not gateway.check(context, rule=rule, text="safe again", phase="input").flagged
+    assert not gateway.check(context, rule=rule, request=ModerationRequest(text="safe"), phase="input").flagged
+    assert not gateway.check(context, rule=rule, request=ModerationRequest(text="safe again"), phase="input").flagged
     assert [call[6] for call in client.calls] == [tenant_identifier, fallback, fallback]
     assert plugins.tenants == ["tenant-1"]
 
@@ -202,7 +211,10 @@ def test_trusted_tenant_plugin_does_not_require_a_valid_fallback_identifier() ->
     )
     rule = ModerationRule(type="openai_moderation", config={"inputs_config": {"enabled": True}})
     assert not gateway.check(
-        AppRequestContext(tenant_id="tenant-1", app_id=""), rule=rule, text="safe", phase="input"
+        AppRequestContext(tenant_id="tenant-1", app_id=""),
+        rule=rule,
+        request=ModerationRequest(text="safe"),
+        phase="input",
     ).flagged
     assert client.calls[0][6] == tenant_identifier
 
@@ -520,10 +532,15 @@ def test_bound_guard_uses_configured_nonstream_and_stream_segment_sizes(
 
     class RecordingGateway:
         def check(
-            self, context: AppRequestContext, *, rule: ModerationRule, text: str, phase: ModerationPhase
+            self,
+            context: AppRequestContext,
+            *,
+            rule: ModerationRule,
+            request: ModerationRequest,
+            phase: ModerationPhase,
         ) -> ModerationVerdict:
             del context, rule
-            calls.append((text, phase))
+            calls.append((request.text, phase))
             return ModerationVerdict(flagged=False, message="")
 
     config_overrides(
@@ -627,6 +644,27 @@ def test_api_override_verdict_rejects_original_content(
     ]
 
 
+def test_api_evaluate_preserves_app_inputs_and_replacement(api_moderation: APIModerationFixture) -> None:
+    service, rule, context, _, requests = api_moderation
+
+    verdict = service.evaluate(
+        context,
+        rule=rule,
+        request=ModerationRequest(text="", inputs={"input_key": "value"}, query="query"),
+        phase="input",
+    )
+
+    assert verdict.flagged is True
+    assert verdict.replacement is not None
+    assert verdict.replacement.action == "overridden"
+    assert requests == [
+        {
+            "point": "app.moderation.input",
+            "params": {"app_id": "app-1", "inputs": {"input_key": "value"}, "query": "query"},
+        }
+    ]
+
+
 @pytest.mark.parametrize("verdict", [None, "false", 0])
 def test_api_malformed_verdict_fails_closed(api_moderation: APIModerationFixture, verdict: str | int | None) -> None:
     service, rule, context, response, _ = api_moderation
@@ -718,7 +756,12 @@ def test_platform_moderation_fails_closed_without_credential_fallback(failure: s
             config={"inputs_config": {"enabled": True, "preset_response": "Rejected"}},
         )
         with pytest.raises(ValueError, match="pinned langgenius/openai"):
-            gateway.check(AppRequestContext(tenant_id="tenant-1", app_id=""), rule=rule, text="safe", phase="input")
+            gateway.check(
+                AppRequestContext(tenant_id="tenant-1", app_id=""),
+                rule=rule,
+                request=ModerationRequest(text="safe"),
+                phase="input",
+            )
         assert not client.calls
         return
     gateway = HostedOpenAIModerationGateway(
@@ -731,5 +774,10 @@ def test_platform_moderation_fails_closed_without_credential_fallback(failure: s
         config={"inputs_config": {"enabled": True, "preset_response": "Rejected"}},
     )
     with pytest.raises(InvokeAuthorizationError if failure == "missing_credentials" else RuntimeError):
-        gateway.check(AppRequestContext(tenant_id="test-tenant-id", app_id=""), rule=rule, text="safe", phase="input")
+        gateway.check(
+            AppRequestContext(tenant_id="test-tenant-id", app_id=""),
+            rule=rule,
+            request=ModerationRequest(text="safe"),
+            phase="input",
+        )
     assert len(client.calls) == (1 if failure == "provider_error" else 0)

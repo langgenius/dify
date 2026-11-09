@@ -7,6 +7,7 @@ from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import ModerationChecked, TraceCorrelation, TraceEvent
 
 from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
+from core.model_context import use_app_moderation_runtime
 from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult
 from core.moderation.input_moderation import InputModeration
 from models.model import AppMode
@@ -61,6 +62,43 @@ class TestInputModeration:
         assert flagged is False
         assert final_inputs == inputs
         assert final_query == query
+
+    def test_check_uses_bound_moderation_runtime(
+        self, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
+        app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(
+            type="keywords", config={"keywords": ["bad"]}
+        )
+        expected = ModerationInputsResult(
+            flagged=True,
+            action=ModerationAction.OVERRIDDEN,
+            inputs={"input_key": "rewritten"},
+            query="rewritten query",
+        )
+
+        class Runtime:
+            def evaluate_input(
+                self, app_config: AppConfig, inputs: dict[str, object], query: str
+            ) -> ModerationInputsResult:
+                del app_config
+                assert inputs == {"input_key": "input_value"}
+                assert query == "test query"
+                return expected
+
+        with use_app_moderation_runtime(Runtime()):  # type: ignore[arg-type]
+            flagged, final_inputs, final_query = input_moderation.check(
+                app_id="test_app_id",
+                tenant_id="test_tenant_id",
+                app_config=app_config,
+                inputs={"input_key": "input_value"},
+                query="test query",
+                message_id="test_message_id",
+                trace_scope=None,
+            )
+
+        assert flagged is True
+        assert final_inputs == {"input_key": "rewritten"}
+        assert final_query == "rewritten query"
 
     @patch("core.moderation.input_moderation.ModerationFactory")
     def test_check_not_flagged(self, mock_factory_cls, app_config, input_moderation):

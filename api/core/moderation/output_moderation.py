@@ -33,11 +33,11 @@ class OutputModeration(BaseModel):
     buffer: str = ""
     is_final_chunk: bool = False
     final_output: str | None = None
-    shared_openai_check: Callable[[str], bool | None] | None = Field(
+    output_evaluator: Callable[[str], ModerationOutputsResult | None] | None = Field(
         default=None,
         exclude=True,
         repr=False,
-        description="Process-local platform checker; None or a None verdict preserves independent app checks",
+        description="Injected app moderation use case; None preserves the legacy factory fallback",
     )
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -132,19 +132,9 @@ class OutputModeration(BaseModel):
                     break
 
     def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> ModerationOutputsResult | None:
+        if self.output_evaluator is not None:
+            return self.output_evaluator(moderation_buffer)
         try:
-            if self.rule.type == "openai_moderation" and self.shared_openai_check is not None:
-                outputs = self.rule.config.get("outputs_config", {})
-                if outputs.get("enabled") is True:
-                    flagged = self.shared_openai_check(moderation_buffer)
-                    if flagged is not None:
-                        return ModerationOutputsResult(
-                            flagged=flagged,
-                            action=ModerationAction.DIRECT_OUTPUT,
-                            preset_response=outputs.get("preset_response", ""),
-                        )
-                else:
-                    return ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
             moderation_factory = ModerationFactory(
                 name=self.rule.type, app_id=app_id, tenant_id=tenant_id, config=self.rule.config
             )

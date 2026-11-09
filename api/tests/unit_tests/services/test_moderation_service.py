@@ -6,6 +6,8 @@ from machinery.context import AppRequestContext
 from services.moderation_service import (
     ModerationPhase,
     ModerationRejectedError,
+    ModerationReplacement,
+    ModerationRequest,
     ModerationRule,
     ModerationService,
     ModerationVerdict,
@@ -18,9 +20,9 @@ class RecordingModerationGateway:
         self.calls: list[tuple[AppRequestContext, ModerationRule, str, ModerationPhase]] = []
 
     def check(
-        self, context: AppRequestContext, *, rule: ModerationRule, text: str, phase: ModerationPhase
+        self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
     ) -> ModerationVerdict:
-        self.calls.append((context, rule, text, phase))
+        self.calls.append((context, rule, request.text, phase))
         return self.verdict
 
 
@@ -75,3 +77,25 @@ def test_missing_tenant_is_not_admitted_even_when_disabled() -> None:
 def test_rejection_has_a_safe_fallback_message() -> None:
     error = ModerationRejectedError("output", "")
     assert str(error) == "Model output was rejected by moderation."
+
+
+def test_evaluate_preserves_app_replacement_data() -> None:
+    replacement = ModerationReplacement(
+        action="overridden",
+        preset_response="Preset",
+        inputs={"input": "rewritten"},
+        query="rewritten query",
+        text="rewritten output",
+    )
+    gateway = RecordingModerationGateway(ModerationVerdict(flagged=True, message="Blocked", replacement=replacement))
+    service = ModerationService(gateway=gateway)
+    rule = ModerationRule(type="keywords", config={"inputs_config": {"enabled": True}})
+
+    verdict = service.evaluate(
+        AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
+        rule=rule,
+        request=ModerationRequest(text="", inputs={"input": "value"}, query="query"),
+        phase="input",
+    )
+
+    assert verdict == ModerationVerdict(flagged=True, message="Blocked", replacement=replacement)

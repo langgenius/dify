@@ -73,12 +73,22 @@ than disabling it. When the switch is off, only the explicit policy applies.
 ## App-level sharing and replacement
 
 App generations create isolated tenant/app moderation sessions, shared only with
-their worker contexts and response pipelines. App OpenAI checks and the platform
-guard reuse exact same-phase input-segment verdicts. An app output prefix already
-approved by one model stream does not cause another OpenAI request. Arbitrary
-substrings, modified outputs, and concatenations from unrelated streams are not
-treated as approved. Other app backends keep their independent checks, and no
-verdicts are reused across app invocations or tenants.
+their worker contexts and response pipelines. App input and output checks use
+the same `ModerationService` as model invocation: app-specific rules use
+`evaluate`, while the platform OpenAI verdict path uses the strict `check`.
+`check` rejects rather than applying a backend's replacement action;
+`evaluate` returns replacement data only for the app pipeline. `keywords`,
+`openai_moderation`, and `api` app rules therefore share one execution and
+error boundary while preserving their backend-specific replacement data. App
+OpenAI checks and the platform guard reuse exact same-phase input-segment
+verdicts. An app output prefix already approved by one model stream does not
+cause another OpenAI request. Arbitrary substrings, modified outputs, and
+concatenations from unrelated streams are not treated as approved. No verdicts
+are reused across app invocations or tenants.
+
+App generation binds the shared scope before input and output work starts. A
+direct legacy caller without a bound scope retains the factory fallback; it is
+not used by app generation and cannot share platform verdicts.
 
 Sharing is process-local. Remote Agent LLM gateway calls do not inherit the app
 session, so their outputs retain independent app checks unless trusted delivery

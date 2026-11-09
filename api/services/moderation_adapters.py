@@ -1,4 +1,4 @@
-"""Adapters between legacy moderation capabilities, model invocation, and strict checks."""
+"""Adapters between legacy moderation capabilities, app replacement rules, and model invocation."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint, APIBasedExtensionRequestor
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.base import ModerationAction as LegacyModerationAction
 from core.moderation.factory import ModerationFactory
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
@@ -30,7 +31,14 @@ from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
     PlatformModerationRejectedInvocationError,
 )
-from services.moderation_service import ModerationPhase, ModerationRejectedError, ModerationRule, ModerationVerdict
+from services.moderation_service import (
+    ModerationPhase,
+    ModerationRejectedError,
+    ModerationReplacement,
+    ModerationRequest,
+    ModerationRule,
+    ModerationVerdict,
+)
 
 if TYPE_CHECKING:
     from core.model_manager import LLMModerationPolicy
@@ -171,7 +179,7 @@ class HostedOpenAIModerationGateway:
         return self._invoke(context, text, self._plugin_unique_identifier), "configured"
 
     def check(
-        self, context: AppRequestContext, *, rule: ModerationRule, text: str, phase: ModerationPhase
+        self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
     ) -> ModerationVerdict:
         """Return a verdict through the tenant-first platform-funded route and log rejections.
 
@@ -183,7 +191,7 @@ class HostedOpenAIModerationGateway:
             raise ValueError("Hosted moderation requires the OpenAI moderation rule.")
         if self._credentials is None:
             raise InvokeAuthorizationError("Hosted moderation credentials are not configured.")
-        flagged, source = self._evaluate(context, text)
+        flagged, source = self._evaluate(context, request.text)
         if flagged:
             logger.warning(
                 "Platform moderation rejected content. tenant_id=%s app_id=%s phase=%s plugin_source=%s",
@@ -237,7 +245,7 @@ class ExtensionModerationGateway:
         context: AppRequestContext,
         *,
         rule: ModerationRule,
-        text: str,
+        request: ModerationRequest,
         phase: ModerationPhase,
     ) -> ModerationVerdict:
         """Validate an existing backend and map its verdict without swallowing failures.
@@ -246,14 +254,24 @@ class ExtensionModerationGateway:
         scope. API override verdicts remain flagged rather than rewriting content.
         """
         if rule.type == "api":
-            return self._check_api(context, rule=rule, text=text, phase=phase)
+            return self._check_api(context, rule=rule, request=request, phase=phase)
         ModerationFactory.validate_config(rule.type, context.tenant_id, rule.config)
         backend = ModerationFactory(rule.type, context.app_id, context.tenant_id, rule.config)
-        result = backend.moderation_for_inputs({}, text) if phase == "input" else backend.moderation_for_outputs(text)
-        return ModerationVerdict(flagged=result.flagged, message=result.preset_response)
+        input_query = request.query if request.inputs is not None else request.text
+        result = (
+            backend.moderation_for_inputs(dict(request.inputs) if request.inputs is not None else {}, input_query)
+            if phase == "input"
+            else backend.moderation_for_outputs(request.text)
+        )
+        return _verdict_from_legacy_result(result)
 
     def _check_api(
-        self, context: AppRequestContext, *, rule: ModerationRule, text: str, phase: ModerationPhase
+        self,
+        context: AppRequestContext,
+        *,
+        rule: ModerationRule,
+        request: ModerationRequest,
+        phase: ModerationPhase,
     ) -> ModerationVerdict:
         """Load workspace-scoped extension data before outbound I/O and validate its verdict.
 
@@ -270,20 +288,40 @@ class ExtensionModerationGateway:
         requestor = APIBasedExtensionRequestor(
             extension.api_endpoint, self._cipher.decrypt(context.tenant_id, extension.api_key)
         )
+        app_inputs = request.inputs if request.inputs is not None else {}
+        input_query = request.query if request.inputs is not None else request.text
         if phase == "input":
             payload = requestor.request(
                 APIBasedExtensionPoint.APP_MODERATION_INPUT,
-                {"app_id": context.app_id, "inputs": {}, "query": text},
+                {"app_id": context.app_id, "inputs": dict(app_inputs), "query": input_query},
             )
             result = ModerationInputsResult.model_validate(payload)
         else:
             payload = requestor.request(
-                APIBasedExtensionPoint.APP_MODERATION_OUTPUT, {"app_id": context.app_id, "text": text}
+                APIBasedExtensionPoint.APP_MODERATION_OUTPUT, {"app_id": context.app_id, "text": request.text}
             )
             result = ModerationOutputsResult.model_validate(payload)
         if not isinstance(payload.get("flagged"), bool):
             raise ValueError("Moderation API response must include a boolean flagged verdict.")
-        return ModerationVerdict(flagged=result.flagged, message=result.preset_response)
+        return _verdict_from_legacy_result(result)
+
+
+def _verdict_from_legacy_result(
+    result: ModerationInputsResult | ModerationOutputsResult,
+) -> ModerationVerdict:
+    """Preserve app replacement data while adapting a legacy backend verdict to the use case."""
+    action = "overridden" if result.action == LegacyModerationAction.OVERRIDDEN else "direct_output"
+    inputs = result.inputs if isinstance(result, ModerationInputsResult) else {}
+    query = result.query if isinstance(result, ModerationInputsResult) else ""
+    text = result.text if isinstance(result, ModerationOutputsResult) else ""
+    replacement = ModerationReplacement(
+        action=action,
+        preset_response=result.preset_response,
+        inputs=inputs,
+        query=query,
+        text=text,
+    )
+    return ModerationVerdict(flagged=result.flagged, message=result.preset_response, replacement=replacement)
 
 
 def _message_text(message: PromptMessage | Mapping[str, object]) -> str:

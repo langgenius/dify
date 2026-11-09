@@ -20,15 +20,19 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.task_entities import MessageReplaceStreamResponse, MessageStreamResponse
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.model_context import get_app_moderation_runtime
+from core.moderation.base import ModerationAction
+from core.moderation.input_moderation import InputModeration
 from core.moderation.openai_moderation.openai_moderation import OpenAIModeration
 from enums import DeploymentEdition
 from extensions.application_services.app_moderation import (
     app_moderation_scope,
-    app_output_checker,
+    app_output_evaluator,
     app_rejection_replacement,
     build_app_openai_checker,
     configure_app_moderation,
     current_moderation_session,
+    evaluate_app_input,
+    evaluate_app_output,
     workflow_rejection_handler,
 )
 from extensions.application_services.moderation import build_llm_moderation_guard
@@ -41,7 +45,14 @@ from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
     PlatformModerationRejectedInvocationError,
 )
-from services.moderation_service import ModerationPhase, ModerationRule, ModerationService, ModerationVerdict
+from services.moderation_service import (
+    ModerationPhase,
+    ModerationReplacement,
+    ModerationRequest,
+    ModerationRule,
+    ModerationService,
+    ModerationVerdict,
+)
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
@@ -50,12 +61,39 @@ class RecordingGateway:
         self.calls: list[tuple[str, ModerationPhase]] = []
 
     def check(
-        self, context: AppRequestContext, *, rule: ModerationRule, text: str, phase: ModerationPhase
+        self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
     ) -> ModerationVerdict:
         assert context.tenant_id == "tenant-1"
         assert rule.type == "openai_moderation"
-        self.calls.append((text, phase))
-        return ModerationVerdict(flagged="blocked" in text, message=f"Model {phase} was rejected by moderation.")
+        self.calls.append((request.text, phase))
+        return ModerationVerdict(
+            flagged="blocked" in request.text, message=f"Model {phase} was rejected by moderation."
+        )
+
+
+class RecordingAppService:
+    def __init__(self) -> None:
+        self.calls: list[tuple[AppRequestContext, ModerationRule, ModerationRequest, ModerationPhase]] = []
+
+    def evaluate(
+        self,
+        context: AppRequestContext,
+        *,
+        rule: ModerationRule,
+        request: ModerationRequest,
+        phase: ModerationPhase,
+    ) -> ModerationVerdict:
+        self.calls.append((context, rule, request, phase))
+        return ModerationVerdict(
+            flagged=True,
+            message="Service rejection",
+            replacement=ModerationReplacement(
+                action="overridden",
+                inputs={"input_key": "rewritten"},
+                query="rewritten query",
+                text="rewritten output",
+            ),
+        )
 
 
 def app_config(backend: str = "openai_moderation") -> AppConfig:
@@ -114,6 +152,61 @@ def test_unrelated_capabilities_cannot_be_marked_as_shared_platform_openai_check
             )
         assert not session.enabled
     assert not gateway.calls
+
+
+def test_app_input_evaluation_uses_the_shared_use_case(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = RecordingAppService()
+    monkeypatch.setattr("extensions.application_services.app_moderation._app_service", lambda: service)
+    config = app_config("keywords")
+    with app_moderation_scope("tenant-1", "app-1") as session:
+        result = evaluate_app_input(session, config, {"input_key": "value"}, "query")
+
+    assert result is not None
+    assert result.flagged is True
+    assert result.action == ModerationAction.OVERRIDDEN
+    assert result.inputs == {"input_key": "rewritten"}
+    assert result.query == "rewritten query"
+    assert len(service.calls) == 1
+    assert service.calls[0][2].inputs == {"input_key": "value"}
+    assert service.calls[0][2].query == "query"
+    assert service.calls[0][3] == "input"
+
+
+def test_app_output_evaluation_uses_the_shared_use_case(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = RecordingAppService()
+    monkeypatch.setattr("extensions.application_services.app_moderation._app_service", lambda: service)
+    config = app_config("keywords")
+    with app_moderation_scope("tenant-1", "app-1") as session:
+        result = evaluate_app_output(session, config, "model output")
+
+    assert result is not None
+    assert result.flagged is True
+    assert result.action == ModerationAction.OVERRIDDEN
+    assert result.text == "rewritten output"
+    assert len(service.calls) == 1
+    assert service.calls[0][2].text == "model output"
+    assert service.calls[0][3] == "output"
+
+
+def test_input_moderation_runtime_uses_the_shared_use_case(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = RecordingAppService()
+    monkeypatch.setattr("extensions.application_services.app_moderation._app_service", lambda: service)
+    config = app_config("keywords")
+    with app_moderation_scope("tenant-1", "app-1"):
+        flagged, inputs, query = InputModeration().check(
+            app_id="app-1",
+            tenant_id="tenant-1",
+            app_config=config,
+            inputs={"input_key": "value"},
+            query="query",
+            message_id="message-1",
+            trace_scope=None,
+        )
+
+    assert flagged is True
+    assert inputs == {"input_key": "rewritten"}
+    assert query == "rewritten query"
+    assert len(service.calls) == 1
 
 
 @pytest.mark.parametrize("stream", [False, True])
@@ -207,10 +300,7 @@ def test_workflow_app_sharing_requires_cloud_and_the_global_switch(
         configure_app_moderation(entity)
         expected = enabled and edition == DeploymentEdition.CLOUD
         assert session.enabled is expected
-        if not expected:
-            checker = app_output_checker(config)
-            assert checker is not None
-            assert checker("safe") is None
+        assert (app_output_evaluator(config) is not None) is True
 
 
 def test_runtime_does_not_share_output_checks_or_presets_with_another_app() -> None:
@@ -219,7 +309,7 @@ def test_runtime_does_not_share_output_checks_or_presets_with_another_app() -> N
         session.enabled = True
         runtime = get_app_moderation_runtime()
         assert runtime is not None
-        assert app_output_checker(config) is None
+        assert app_output_evaluator(config) is None
         assert runtime.replacement(config, PlatformModerationRejectedInvocationError("output", "Rejected")) is None
 
 

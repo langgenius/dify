@@ -2,29 +2,33 @@ from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 
 from core.credit_usage import CreditUsageCreatedByInput, normalize_credit_usage_created_by
 
-if TYPE_CHECKING:
-    from core.app.app_config.entities import AppConfig
-    from core.app.entities.app_invoke_entities import AppGenerateEntity
-
 
 class AppModerationRuntime(Protocol):
-    """Injected invocation-local coordination; the kernel does not choose moderation backends or policies."""
+    """Injected invocation-local coordination; the kernel does not choose moderation backends or policies.
 
-    def configure(self, entity: "AppGenerateEntity") -> None: ...
+    App result shapes stay loosely typed so this shared kernel port does not pull
+    configuration, persistence, or framework modules into unrelated callers.
+    """
+
+    def configure(self, entity: Any) -> None: ...
 
     def check_openai(
         self, tenant_id: str, app_id: str, inputs: Mapping[str, object], phase: Literal["input", "output"]
     ) -> bool | None: ...
 
-    def output_checker(self, app_config: "AppConfig") -> Callable[[str], bool | None] | None: ...
+    def evaluate_input(self, app_config: Any, inputs: Mapping[str, object], query: str) -> Any: ...
 
-    def replacement(self, app_config: "AppConfig", error: Exception) -> tuple[str, str] | None: ...
+    def evaluate_output(self, app_config: Any, text: str) -> Any: ...
 
-    def workflow_replacement(self, app_config: "AppConfig") -> Callable[[str], tuple[str, str] | None]: ...
+    def output_evaluator(self, app_config: Any) -> Callable[[str], Any] | None: ...
+
+    def replacement(self, app_config: Any, error: Exception) -> tuple[str, str] | None: ...
+
+    def workflow_replacement(self, app_config: Any) -> Callable[[str], tuple[str, str] | None]: ...
 
 
 _app_moderation_runtime: ContextVar[AppModerationRuntime | None] = ContextVar("app_moderation_runtime", default=None)

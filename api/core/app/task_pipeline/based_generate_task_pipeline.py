@@ -128,7 +128,7 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
                 app_id=app_config.app_id,
                 rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
                 queue_manager=self.queue_manager,
-                shared_openai_check=self._app_moderation.output_checker(app_config)
+                output_evaluator=self._app_moderation.output_evaluator(app_config)
                 if self._app_moderation is not None
                 else None,
             )
