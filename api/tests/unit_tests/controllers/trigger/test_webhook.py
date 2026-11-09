@@ -304,6 +304,22 @@ def test_request_errors_are_400_before_execution(
 
 
 @pytest.mark.parametrize("debug", [False, True])
+def test_invalid_stored_webhook_configuration_does_not_expose_details(
+    harness: _Harness, webhook: _Webhook, debug: bool
+) -> None:
+    _configure(harness, webhook, body=[{"name": "amount", "type": "private-config-value", "required": True}])
+
+    response = Context().run(harness.client.post, webhook.debug_url if debug else webhook.url, json={"amount": 1})
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert response.get_json() == {"error": "Internal server error", "message": "An internal error has occurred."}
+    assert b"private-config-value" not in response.data
+    with harness.session_factory() as session:
+        assert session.scalar(select(WorkflowTriggerLog)) is None
+        assert session.scalar(select(EndUser)) is None
+
+
+@pytest.mark.parametrize("debug", [False, True])
 def test_unknown_webhook_is_opaque_noncacheable_404(harness: _Harness, webhook: _Webhook, debug: bool) -> None:
     url = webhook.debug_url if debug else webhook.url
     with harness.session_factory.begin() as session:

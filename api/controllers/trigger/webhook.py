@@ -8,7 +8,7 @@ from werkzeug.wrappers import Response
 
 from controllers.common.access_response import webhook_not_found_response
 from controllers.trigger import bp
-from controllers.trigger.webhook_request import WebhookRequestParser
+from controllers.trigger.webhook_request import WebhookRequestParser, WebhookRequestValidationError
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
 from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
@@ -53,8 +53,8 @@ def handle_webhook(webhook_id: str) -> Response | tuple[Response, int]:
         context, parser = _prepare_webhook_execution(webhook_id, debug=False)
         try:
             webhook_data = parser.extract_and_validate_webhook_data(context, context.node_config)
-        except ValueError as error:
-            return jsonify({"error": "Bad Request", "message": str(error)}), HTTPStatus.BAD_REQUEST
+        except WebhookRequestValidationError as error:
+            return jsonify({"error": "Bad Request", "message": error.public_message}), HTTPStatus.BAD_REQUEST
 
         # Process webhook call (send to Celery)
         application_services().workspaces.webhooks.execute(context=context, data=webhook_data)
@@ -95,8 +95,8 @@ def handle_webhook_debug(webhook_id: str) -> Response | tuple[Response, int]:
         context, parser = _prepare_webhook_execution(webhook_id, debug=True)
         try:
             webhook_data = parser.extract_and_validate_webhook_data(context, context.node_config)
-        except ValueError as error:
-            return jsonify({"error": "Bad Request", "message": str(error)}), HTTPStatus.BAD_REQUEST
+        except WebhookRequestValidationError as error:
+            return jsonify({"error": "Bad Request", "message": error.public_message}), HTTPStatus.BAD_REQUEST
 
         workflow_inputs = build_webhook_workflow_inputs(webhook_data)
 

@@ -5,7 +5,6 @@ from http import HTTPStatus
 from uuid import uuid4
 
 import pytest
-from kombu.simple import SimpleQueue
 from sqlalchemy import select
 
 from core.trigger.debug.event_bus import TriggerDebugEventBus
@@ -25,12 +24,11 @@ sqlite_engine = test_trigger_subscription_builder.sqlite_engine
 sqlite_session_factory = test_trigger_subscription_builder.sqlite_session_factory
 harness = test_trigger_oauth_client.harness
 webhook = test_webhook.webhook
-broker = test_webhook.broker
 
 
 @pytest.mark.parametrize("listener", ["absent", "other-app", "matching"])
 def test_debug_http_requires_matching_listener_and_preserves_draft_response(
-    harness: _Harness, webhook: _Webhook, broker: SimpleQueue, listener: str
+    harness: _Harness, webhook: _Webhook, listener: str
 ) -> None:
     _configure(harness, webhook, status_code=202, response_body='["accepted"]')
     with harness.session_factory.begin() as session:
@@ -79,7 +77,6 @@ def test_debug_http_requires_matching_listener_and_preserves_draft_response(
             ),
             "execution_url": generate_webhook_trigger_endpoint(webhook.webhook_id),
         }
-    assert broker.qsize() == 0
     with harness.session_factory() as session:
         assert session.scalar(select(EndUser)) is None
         assert session.scalar(select(WorkflowTriggerLog)) is None

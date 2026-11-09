@@ -37,6 +37,14 @@ class ValidationResultDict(TypedDict):
     error: NotRequired[str]
 
 
+class WebhookRequestValidationError(ValueError):
+    """Expose only messages intentionally generated for invalid webhook requests."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.public_message = message
+
+
 class WebhookRequestParser:
     def __init__(self, *, request: Request, files: WebhookFiles) -> None:
         self._request = request
@@ -70,7 +78,7 @@ class WebhookRequestParser:
         node_data = WebhookData.model_validate(node_config["data"], from_attributes=True)
         validation_result = self._validate_http_metadata(raw_data, node_data)
         if not validation_result["valid"]:
-            raise ValueError(validation_result.get("error", "Validation failed"))
+            raise WebhookRequestValidationError(validation_result.get("error", "Validation failed"))
 
         # Process and validate data according to configuration
         processed_data = self._process_and_validate_data(raw_data, node_data)
@@ -180,7 +188,8 @@ class WebhookRequestParser:
             body = orjson.loads(raw_body)
         except orjson.JSONDecodeError as exc:
             logger.warning("Failed to parse JSON body: %s", exc)
-            raise ValueError(f"Invalid JSON body: {exc}") from exc
+            message = f"{exc.msg}: line {exc.lineno} column {exc.colno} (char {exc.pos})"
+            raise WebhookRequestValidationError(f"Invalid JSON body: {message}") from exc
         return body, {}
 
     def _extract_form_body(self) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -324,7 +333,7 @@ class WebhookRequestParser:
 
             # Check required parameters
             if required and name not in raw_params:
-                raise ValueError(f"Required parameter missing: {name}")
+                raise WebhookRequestValidationError(f"Required parameter missing: {name}")
 
             if name in raw_params:
                 raw_value = raw_params[name]
@@ -362,7 +371,7 @@ class WebhookRequestParser:
                 if body_configs and any(config.required for config in body_configs):
                     raw_content = raw_body.get("raw")
                     if not raw_content:
-                        raise ValueError(f"Required body content missing for {content_type} request")
+                        raise WebhookRequestValidationError(f"Required body content missing for {content_type} request")
                 return raw_body
             case _:
                 pass
@@ -376,19 +385,15 @@ class WebhookRequestParser:
             param_type = body_config.type
             required = body_config.required
 
-            # Handle file parameters for multipart data
-            if param_type == SegmentType.FILE and content_type == ContentType.FORM_DATA:
-                # File validation is handled separately in extract phase
-                continue
+            # Multipart file validation is handled separately in the extraction phase.
+            if not (param_type == SegmentType.FILE and content_type == ContentType.FORM_DATA):
+                if required and name not in raw_body:
+                    raise WebhookRequestValidationError(f"Required body parameter missing: {name}")
 
-            # Check required parameters
-            if required and name not in raw_body:
-                raise ValueError(f"Required body parameter missing: {name}")
-
-            if name in raw_body:
-                raw_value = raw_body[name]
-                is_form_data = content_type in [ContentType.FORM_URLENCODED, ContentType.FORM_DATA]
-                processed[name] = self._validate_and_convert_value(name, raw_value, param_type, is_form_data)
+                if name in raw_body:
+                    raw_value = raw_body[name]
+                    is_form_data = content_type in [ContentType.FORM_URLENCODED, ContentType.FORM_DATA]
+                    processed[name] = self._validate_and_convert_value(name, raw_value, param_type, is_form_data)
 
         # Include unconfigured parameters
         for name, value in raw_body.items():
@@ -422,8 +427,10 @@ class WebhookRequestParser:
             else:
                 # JSON data should already be in correct types, just validate
                 return self._validate_json_value(param_name, value, param_type)
-        except Exception as e:
-            raise ValueError(f"Parameter '{param_name}' validation failed: {str(e)}") from e
+        except WebhookRequestValidationError as error:
+            raise WebhookRequestValidationError(
+                f"Parameter '{param_name}' validation failed: {error.public_message}"
+            ) from error
 
     def _convert_form_value(self, param_name: str, value: str, param_type: SegmentType | str) -> Any:
         """Convert form data string values to specified types.
@@ -444,7 +451,7 @@ class WebhookRequestParser:
                 return value
             case SegmentType.NUMBER:
                 if not self._can_convert_to_number(value):
-                    raise ValueError(f"Cannot convert '{value}' to number")
+                    raise WebhookRequestValidationError(f"Cannot convert '{value}' to number")
                 try:
                     # Parse integers exactly before float conversion can round them.
                     return int(value)
@@ -456,7 +463,7 @@ class WebhookRequestParser:
                 lower_value = value.lower()
                 bool_map = {"true": True, "false": False, "1": True, "0": False, "yes": True, "no": False}
                 if lower_value not in bool_map:
-                    raise ValueError(f"Cannot convert '{value}' to boolean")
+                    raise WebhookRequestValidationError(f"Cannot convert '{value}' to boolean")
                 return bool_map[lower_value]
             case (
                 SegmentType.OBJECT
@@ -473,9 +480,13 @@ class WebhookRequestParser:
                 | SegmentType.NONE
                 | SegmentType.GROUP
             ):
-                raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
+                raise WebhookRequestValidationError(
+                    f"Unsupported type '{param_type}' for form data parameter '{param_name}'"
+                )
             case _:
-                raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
+                raise WebhookRequestValidationError(
+                    f"Unsupported type '{param_type}' for form data parameter '{param_name}'"
+                )
 
     def _validate_json_value(self, param_name: str, value: Any, param_type: SegmentType | str) -> Any:
         """Validate JSON values against expected types.
@@ -500,7 +511,7 @@ class WebhookRequestParser:
         ):
             actual_type = type(value).__name__
             expected_type = self._expected_type_label(param_type_enum)
-            raise ValueError(f"Expected {expected_type}, got {actual_type}")
+            raise WebhookRequestValidationError(f"Expected {expected_type}, got {actual_type}")
 
         return value
 
@@ -554,7 +565,7 @@ class WebhookRequestParser:
                 header_name = header_config.name
                 sanitized_name = self._sanitize_key(header_name).lower()
                 if header_name.lower() not in headers_lower and sanitized_name not in headers_sanitized:
-                    raise ValueError(f"Required header missing: {header_name}")
+                    raise WebhookRequestValidationError(f"Required header missing: {header_name}")
 
     def _validate_http_metadata(self, webhook_data: RawWebhookDataDict, node_data: WebhookData) -> ValidationResultDict:
         """Validate HTTP method and content-type.
