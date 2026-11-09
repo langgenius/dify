@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useDatasetEvaluationMetrics, useDefaultEvaluationMetrics } from '../queries'
 import { useEvaluationResource, useEvaluationStore } from '../store'
 import { isBuiltinMetricSupportedByFramework } from '../store-utils'
+import { useSyncNodeTitles } from '../use-sync-node-titles'
 import FixedMetricItem from './fixed-metric-item'
 import CustomMetricCard from './metric-section/custom-metric-card'
 import { buildMetricOption, getDefaultMetricNodeInfoMap } from './metric-selector/utils'
@@ -42,6 +43,8 @@ const FixedMetricsSection = ({ resourceType, resourceId }: FixedMetricsSectionPr
       ),
     [resource.metrics],
   )
+  // Agent node titles are the agent's name, which can change after the config is saved.
+  useSyncNodeTitles(resourceType, resourceId, agentMetricsData?.default_metrics)
   const agentNodeInfoMap = useMemo(
     () => getDefaultMetricNodeInfoMap(agentMetricsData?.default_metrics ?? []),
     [agentMetricsData?.default_metrics],

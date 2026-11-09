@@ -4,6 +4,7 @@ import type { NonPipelineEvaluationResourceProps } from '../../types'
 import { useTranslation } from 'react-i18next'
 import { useDefaultEvaluationMetrics } from '../../queries'
 import { useEvaluationResource } from '../../store'
+import { useSyncNodeTitles } from '../../use-sync-node-titles'
 import MetricSelector from '../metric-selector'
 import { getDefaultMetricNodeInfoMap } from '../metric-selector/utils'
 import { InlineSectionHeader } from '../section-header'
@@ -23,6 +24,7 @@ const MetricSection = ({ resourceType, resourceId }: NonPipelineEvaluationResour
     hasBuiltinMetrics,
   )
   const nodeInfoMap = getDefaultMetricNodeInfoMap(defaultMetricsData?.default_metrics ?? [])
+  useSyncNodeTitles(resourceType, resourceId, defaultMetricsData?.default_metrics)
 
   return (
     <section className="max-w-[700px] py-4">

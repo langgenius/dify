@@ -624,6 +624,36 @@ export const updateMetric = (
   updater: (metric: EvaluationMetric) => EvaluationMetric,
 ) => metrics.map((metric) => (metric.id === metricId ? updater(metric) : metric))
 
+/**
+ * Saved configs keep a snapshot of each node's title, so a node renamed and republished
+ * would keep its old name. Rename by node id; returns the same object when nothing changed.
+ */
+export const withLatestNodeTitles = <T extends Pick<EvaluationResourceState, 'metrics'>>(
+  resource: T,
+  nodeTitles: ReadonlyMap<string, string>,
+): T => {
+  let changed = false
+  const metrics = resource.metrics.map((metric) => {
+    if (!metric.nodeInfoList?.length) return metric
+
+    let metricChanged = false
+    const nodeInfoList = metric.nodeInfoList.map((nodeInfo) => {
+      const title = nodeTitles.get(nodeInfo.node_id)
+      if (!title || title === nodeInfo.title) return nodeInfo
+
+      metricChanged = true
+      return { ...nodeInfo, title }
+    })
+
+    if (!metricChanged) return metric
+
+    changed = true
+    return { ...metric, nodeInfoList }
+  })
+
+  return changed ? { ...resource, metrics } : resource
+}
+
 export const isCustomMetricConfigured = (metric: EvaluationMetric) => {
   if (metric.kind !== 'custom-workflow') return true
 
