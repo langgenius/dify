@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from inspect import unwrap
 from unittest.mock import ANY, PropertyMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine, Table
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -23,7 +22,6 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
 )
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline, PipelineCustomizedTemplate
-from models.engine import db
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.errors.base import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
@@ -71,19 +69,6 @@ def _pipeline() -> Pipeline:
     pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline")
     pipeline.id = "pipeline-1"
     return pipeline
-
-
-@pytest.fixture
-def database_app() -> Iterator[Flask]:
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        template_table = PipelineCustomizedTemplate.__table__
-        assert isinstance(template_table, Table)
-        template_table.create(db.engine)
-        yield app
 
 
 class TestPipelineTemplateListApi:
