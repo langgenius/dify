@@ -4,15 +4,14 @@ import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { AppListCreationDialog } from './app-list-creation-modals'
 import type { AppListUrlQuery } from './query-params'
-import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { throttle, useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { useDifyBuilderEnabled } from '@/features/dify-builder/use-enabled'
 import { CheckResultToast } from '@/hooks/use-pay'
-import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { AppListCatalog } from './app-list-catalog'
 import { AppListCreationModals } from './app-list-creation-modals'
@@ -48,13 +47,7 @@ type Props = Readonly<{
 
 export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data: builderEnabled, isSuccess: hasFeatures } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      retry: false,
-      select: (features) => features.dify_builder_enabled,
-    }),
-  )
-  const isBuilderEnabled = hasFeatures && builderEnabled === true
+  const isBuilderEnabled = useDifyBuilderEnabled()
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
   const { category, keywords, creatorIDs, tagIDs, sort_by: sortBy } = urlQuery
@@ -228,7 +221,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
 
       <AppListCreationModals
         canCreateApp={canCreateApp}
-        defaultMode={creationQuery.mode ?? category}
+        defaultMode={creationQuery.mode ?? (category === 'all' ? 'advanced-chat' : category)}
         dialog={creationDialog}
         isBuilderEnabled={isBuilderEnabled}
         onClose={closeCreationDialog}

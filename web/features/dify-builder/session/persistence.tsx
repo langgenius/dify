@@ -24,7 +24,6 @@ export const DifyBuilderSessionPersistence = ({
   const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
   const jotaiStore = useStore()
   const storageKey = getSessionStorageKey(tenantId, userId, appId)
-  const attemptedStorageKeyRef = useRef<string | null>(null)
   const persistedSessionIdRef = useRef<string | null>(null)
   const restoringRef = useRef(false)
   const restoreSession = useEffectEvent(restore)
@@ -48,12 +47,11 @@ export const DifyBuilderSessionPersistence = ({
   }, [enabled, jotaiStore, storageKey])
 
   useEffect(() => {
-    if (!enabled || !storageKey || attemptedStorageKeyRef.current === storageKey) return
-    attemptedStorageKeyRef.current = storageKey
+    if (!enabled || !storageKey) return
 
-    let storedSessionId: string | null = null
+    let storedSessionId = jotaiStore.get(difyBuilderActiveSessionIdAtom)
     try {
-      storedSessionId = window.sessionStorage.getItem(storageKey)?.trim() || null
+      storedSessionId = window.sessionStorage.getItem(storageKey)?.trim() || storedSessionId
       const control = parseStoredLifecycleControl(
         window.sessionStorage.getItem(getLifecycleStorageKey(storageKey)),
       )
@@ -62,7 +60,7 @@ export const DifyBuilderSessionPersistence = ({
         jotaiStore.set(difyBuilderLifecycleControlAtom, control)
       }
     } catch {
-      return
+      // The current editor can still recover an in-memory session.
     }
     if (!storedSessionId) return
 
@@ -90,7 +88,6 @@ export const DifyBuilderSessionPersistence = ({
       })
     return () => {
       disposed = true
-      attemptedStorageKeyRef.current = null
       restoringRef.current = false
     }
   }, [enabled, jotaiStore, setActiveSessionId, storageKey])

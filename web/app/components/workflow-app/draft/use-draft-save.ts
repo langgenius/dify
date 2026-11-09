@@ -7,7 +7,7 @@ import type {
 import { safe } from '@orpc/client'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
-import { useAtomValue } from 'jotai'
+import { useStore as useAtomStore, useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
@@ -30,7 +30,6 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
 
 const shouldSkipDraftSync = (
   appId: string | undefined,
@@ -48,9 +47,10 @@ const isEmptyGraph = (graph: { nodes: unknown[]; edges: unknown[] }) =>
   graph.nodes.length === 0 && graph.edges.length === 0
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
-  const { t } = useTranslation(['workflow'] as const)
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const atomStore = useAtomStore()
   const featuresStore = useFeaturesStore()
   const appId = useAtomValue(workflowAppIdentityAtom).appId
   const { data: appMode } = useQuery(
@@ -59,11 +59,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       select: (app) => app.mode,
     }),
   )
-  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
   const isMountedRef = useRef(false)
   const emptySyncPendingRef = useRef(false)
   const cancelConfirmationRef = useRef<(() => void) | undefined>(undefined)
+  const builderPreparationRef = useRef<AbortSignal | null>(null)
 
   useEffect(() => {
     isMountedRef.current = true
@@ -178,7 +178,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
       },
     }
-  }, [store, featuresStore, workflowStore, isCollaborationEnabled, appMode, appId])
+  }, [appId, store, featuresStore, workflowStore, isCollaborationEnabled, appMode])
 
   const performLocalSync = useCallback(
     async (
@@ -201,10 +201,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const isCurrent = () => {
         const state = workflowStore.getState()
         return (
-          state.appId === baseParams.appId &&
+          atomStore.get(workflowAppIdentityAtom).appId === baseParams.appId &&
           state.workflowDraftGeneration === baseParams.generation &&
           !shouldSkipDraftSync(
-            state.appId,
+            baseParams.appId,
             state.isWorkflowDataLoaded,
             state.isSyncingWorkflowDraft,
             state.hasWorkflowDraftConflict,
@@ -227,23 +227,25 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
+      let expectedHash = baseParams.params.hash
       const emptyGraph = isEmptyGraph(baseParams.params.graph)
       const canSaveEmptyGraph = () => {
         const currentParams = getPostParams()
         return (
           isMountedRef.current &&
+          isCurrent() &&
           !getNodesReadOnly() &&
           (!isCollaborationEnabled || collaborationManager.canPersistLocalGraph()) &&
           currentParams?.url === baseParams.url &&
           isEmptyGraph(currentParams.params.graph)
         )
       }
-      if (emptyGraph && !canSaveEmptyGraph()) {
+      if (emptyGraph && force && !canSaveEmptyGraph()) {
         callback?.onSettled?.()
         return null
       }
 
-      if (emptyGraph && isCollaborationEnabled) {
+      if (emptyGraph && force && isCollaborationEnabled) {
         // CRDT updates do not carry the persisted revision from another collaborator's save.
         const hashBeforeRefresh = workflowStore.getState().syncWorkflowDraftHash
         const [error, draft] = await safe(
@@ -274,7 +276,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       }
 
       // Check after queued saves finish so a newly persisted nonempty draft is protected too.
-      if (emptyGraph && workflowStore.getState().syncWorkflowDraftIsEmpty !== true) {
+      if (emptyGraph && force && workflowStore.getState().syncWorkflowDraftIsEmpty !== true) {
         const { showConfirm, setShowConfirm } = workflowStore.getState()
         if (!isMountedRef.current || showConfirm) {
           callback?.onSettled?.()
@@ -317,12 +319,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           lastSave.appId === baseParams.appId &&
           lastSave.generation === baseParams.generation &&
           lastSave.hash === currentHash
-        if (currentHash !== baseParams.params.hash && !canUseLastSave) return null
+        if (currentHash !== expectedHash && !canUseLastSave) return null
 
         const body = {
           ...baseParams.params,
           hash: (canUseLastSave ? lastSave.hash : expectedHash) || null,
-          ...(emptyGraph ? { force: true } : {}),
           ...(force ? { force: true } : {}),
           ...(options?.environmentVariablePatch
             ? {
@@ -344,11 +345,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         if (!isCurrent()) return null
         if (workflowStore.getState().syncWorkflowDraftHash !== currentHash) return null
         if (error) {
-          const { isWorkflowDataLoaded } = workflowStore.getState()
-          if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
-
-          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-            handleRefreshWorkflowDraft(true)
+          if (isDefined && error.code === 'draft_workflow_not_sync')
+            workflowStore.getState().setWorkflowDraftConflict(true)
           callback?.onError?.()
           return null
         }
@@ -366,15 +364,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSettled?.()
       }
     },
-    [
-      workflowStore,
-      getNodesReadOnly,
-      getPostParams,
-      handleRefreshWorkflowDraft,
-      isCollaborationEnabled,
-      t,
-      appId,
-    ],
+    [atomStore, workflowStore, getNodesReadOnly, getPostParams, isCollaborationEnabled, t],
   )
 
   const doSyncWorkflowDraftLocally = useCallback(
@@ -417,7 +407,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       const {
-        appId,
         isWorkflowDataLoaded,
         isSyncingWorkflowDraft,
         workflowDraftGeneration,
@@ -450,11 +439,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       }
 
       const emptyGraph = isEmptyGraph(baseParams.params.graph)
-      // The initial Start selector is local UI for an already-empty draft.
-      // Save it without asking: real clears still need consent.
-      const requiresClearConfirmation = emptyGraph && !baseParams.initialPlaceholder
       if (
-        requiresClearConfirmation &&
+        emptyGraph &&
         (!isMountedRef.current ||
           emptySyncPendingRef.current ||
           workflowStore.getState().showConfirm)
@@ -471,15 +457,12 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         !options?.forceLocal
 
       if (!shouldRequestLeader) {
-        // Empty graphs stay in this tab so any required consent belongs to the initiating user.
         if (emptyGraph) emptySyncPendingRef.current = true
         try {
-          return await doSyncWorkflowDraftLocally(
-            baseParams,
-            notRefreshWhenSyncError,
-            callback,
-            options,
-          )
+          return await doSyncWorkflowDraftLocally(baseParams, callback, options, {
+            preparingBuilder,
+            force: emptyGraph && !baseParams.initialPlaceholder,
+          })
         } finally {
           if (emptyGraph) emptySyncPendingRef.current = false
         }
@@ -488,7 +471,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       try {
         const result = await collaborationManager.requestWorkflowSync()
         if (
-          workflowStore.getState().appId !== appId ||
+          atomStore.get(workflowAppIdentityAtom).appId !== appId ||
           workflowStore.getState().workflowDraftGeneration !== workflowDraftGeneration
         )
           return null
@@ -501,10 +484,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       } catch (error) {
         const state = workflowStore.getState()
         if (
-          state.appId === appId &&
+          atomStore.get(workflowAppIdentityAtom).appId === appId &&
           state.workflowDraftGeneration === workflowDraftGeneration &&
           !shouldSkipDraftSync(
-            state.appId,
+            appId,
             state.isWorkflowDataLoaded,
             state.isSyncingWorkflowDraft,
             state.hasWorkflowDraftConflict,
@@ -520,26 +503,46 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       }
     },
     [
+      appId,
+      atomStore,
       doSyncWorkflowDraftLocally,
       getNodesReadOnly,
       getPostParams,
       isCollaborationEnabled,
       workflowStore,
-      appId,
     ],
   )
+
+  const releaseWorkflowDraftFromBuilder = useCallback(() => {
+    const state = workflowStore.getState()
+    if (state.workflowDraftSyncPhase === 'idle' || state.workflowDraftSyncPhase === 'releasing')
+      return
+
+    builderPreparationRef.current = null
+    state.setWorkflowDraftSyncPhase('releasing')
+    void state.enqueueWorkflowDraftOperation(async () => {
+      state.setWorkflowDraftSyncPhase('idle')
+      const { workflowDraftLocalRevision, workflowDraftSavedRevision, debouncedSyncWorkflowDraft } =
+        workflowStore.getState()
+      if (workflowDraftLocalRevision > workflowDraftSavedRevision)
+        debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
+    })
+  }, [doSyncWorkflowDraft, workflowStore])
 
   const prepareWorkflowDraftForBuilder = useCallback(
     async (saveDraft: boolean, signal: AbortSignal) => {
       const state = workflowStore.getState()
-      const appId = state.appId
       signal.throwIfAborted()
       // A replacement restore may take over a canceled request's barrier.
-      if (saveDraft && state.workflowDraftSyncPhase !== 'idle')
+      if (
+        state.workflowDraftSyncPhase === 'releasing' ||
+        (saveDraft && state.workflowDraftSyncPhase !== 'idle')
+      )
         throw new Error(t(($) => $['common.syncingData']))
       if (state.hasWorkflowDraftConflict) throw new Error(t(($) => $['draftConflict.message']))
 
-      const shouldSave = saveDraft && !state.canvasReadOnly
+      const hasUnsavedEdits = state.workflowDraftLocalRevision > state.workflowDraftSavedRevision
+      const shouldSave = (saveDraft || hasUnsavedEdits) && !state.canvasReadOnly
       if (shouldSave && getNodesReadOnly()) throw new Error(t(($) => $['common.draftSaveFailed']))
       const requestLeader =
         shouldSave &&
@@ -551,6 +554,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const snapshot = shouldSave ? getPostParams() : null
       state.debouncedSyncWorkflowDraft.cancel?.()
       state.setBuilderViewportManuallyChanged(false)
+      builderPreparationRef.current = signal
       state.setWorkflowDraftSyncPhase(shouldSave ? 'preparing' : 'builder')
       try {
         let saved: SyncDraftResult | null = null
@@ -563,14 +567,14 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         } else {
           await state.enqueueWorkflowDraftOperation(async () => undefined)
           signal.throwIfAborted()
-          if (workflowStore.getState().appId !== appId)
+          if (atomStore.get(workflowAppIdentityAtom).appId !== appId)
             throw new Error(t(($) => $['common.draftSaveFailed']))
           if (requestLeader) {
             const generation = workflowStore.getState().workflowDraftGeneration
             saved = await collaborationManager.requestWorkflowSync()
             signal.throwIfAborted()
             if (
-              workflowStore.getState().appId !== appId ||
+              atomStore.get(workflowAppIdentityAtom).appId !== appId ||
               workflowStore.getState().workflowDraftGeneration !== generation
             )
               throw new Error(t(($) => $['common.draftSaveFailed']))
@@ -579,7 +583,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           }
         }
         signal.throwIfAborted()
-        if (workflowStore.getState().appId !== appId)
+        if (atomStore.get(workflowAppIdentityAtom).appId !== appId)
           throw new Error(t(($) => $['common.draftSaveFailed']))
         if (workflowStore.getState().hasWorkflowDraftConflict)
           throw new Error(t(($) => $['draftConflict.message']))
@@ -587,7 +591,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         state.invalidateWorkflowDraftSync()
         state.setWorkflowDraftSyncPhase('builder')
       } catch (error) {
-        if (workflowStore.getState().appId === appId) {
+        if (
+          builderPreparationRef.current === signal &&
+          atomStore.get(workflowAppIdentityAtom).appId === appId
+        ) {
           state.setWorkflowDraftSyncPhase(signal.aborted ? 'builder' : 'idle')
           if (error instanceof Error && error.message === 'draft_workflow_not_sync') {
             state.setWorkflowDraftConflict(true)
@@ -595,6 +602,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           }
         }
         throw error
+      } finally {
+        if (builderPreparationRef.current === signal) builderPreparationRef.current = null
       }
     },
     [
@@ -612,6 +621,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   return {
     doSyncWorkflowDraft,
     prepareWorkflowDraftForBuilder,
+    releaseWorkflowDraftFromBuilder,
     syncWorkflowDraftWhenPageClose,
   }
 }
