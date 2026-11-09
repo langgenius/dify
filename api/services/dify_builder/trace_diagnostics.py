@@ -21,7 +21,7 @@ _current: ContextVar[tuple[DiagnosticCallback | None, str]] = ContextVar("builde
 _MESSAGES = {
     "native_preparation_failed": (
         "preparation",
-        "Native test preparation failed before workflow worker dispatch. "
+        "Native test preparation failed before workflow execution started. "
         "Check provider/plugin services and configuration before preparing a fresh test.",
     ),
     "provider_invocation_failed": (

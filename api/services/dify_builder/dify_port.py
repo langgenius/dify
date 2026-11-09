@@ -1875,6 +1875,7 @@ class WorkflowServiceDifyPort:
         failed_resource = None
         failed_node_ids = ()
         recognized_resource_errors: dict[str, str] = {}
+        execution_observed = False
         from services.dify_builder.native_launch_observation import NativeLaunchObservation
 
         if launch:
@@ -1955,6 +1956,7 @@ class WorkflowServiceDifyPort:
                         payload = stream_chunk_as_mapping(chunk)
                         if payload is None:
                             continue
+                        execution_observed = execution_observed or payload.get("event") not in {"error", "ping"}
                         native_id = run_id_from_stream_chunk(payload)
                         if native_id:
                             self._bind_full_native_id(reservation.id, native_id)
@@ -1964,6 +1966,13 @@ class WorkflowServiceDifyPort:
                         presentation_payload = sanitize_resource_failure_event(
                             payload, graph=graph, recognized_errors=recognized_resource_errors
                         )
+                        if payload.get("event") == "error" and observation.initialization_error is not None:
+                            presentation_payload = {
+                                **presentation_payload,
+                                "message": (
+                                    "Model/tool metadata could not be read. Review the test result before retrying."
+                                ),
+                            }
                         if on_workflow_event is not None:
                             if agent_context is not None and payload.get("event") == "workflow_paused":
                                 pending_pause_event = payload
@@ -1977,6 +1986,26 @@ class WorkflowServiceDifyPort:
                         if terminal is not None:
                             final = terminal
                         error_frame = error_frame or error_from_stream_chunk(payload)
+                if (
+                    observation.initialization_error is not None
+                    and error_frame is not None
+                    and not stream_run_id
+                    and not final
+                    and not execution_observed
+                ):
+                    from services.dify_builder import trace_diagnostics
+
+                    error = observation.initialization_error
+                    preparation_failure = trace_diagnostics.failure_reason(error)
+                    failed_resource = observation.resource_for(error)
+                    failed_node_ids = observation.node_ids_for(error, graph)
+                    trace_diagnostics.report(
+                        "native_preparation_failed",
+                        error=error,
+                        provider=failed_resource[1] if failed_resource else None,
+                        model=failed_resource[2] if failed_resource and failed_resource[0] == "model" else None,
+                        node_id=failed_node_ids[0] if len(failed_node_ids) == 1 else None,
+                    )
             except Exception as exc:
                 from services.dify_builder import trace_diagnostics
 
@@ -2027,7 +2056,7 @@ class WorkflowServiceDifyPort:
         run, _ = result
         if preparation_failure is not None:
             run.status = "failed"
-            run.error = "Native test preparation failed before workflow worker dispatch."
+            run.error = "Native test preparation failed before workflow execution started."
         # A real Agent control wait is neither a failed workflow nor permission
         # to diagnose/rebuild it. C04 exposes waiting only after the native
         # WorkflowPause has actually persisted; Builder retains its same Run.
