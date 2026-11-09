@@ -1152,6 +1152,14 @@ def test_build_application_services_wires_credential_query(
         services.workspaces.trigger_subscription_renewal._providers
         is services.workspaces.trigger_subscription_management._providers
     )
+    assert (
+        services.workspaces.trigger_subscription_renewal._locks
+        is services.workspaces.trigger_subscription_management._locks
+    )
+    assert (
+        services.workspaces.trigger_subscription_renewal._codec
+        is services.workspaces.trigger_subscription_management._codec
+    )
     assert services.workspaces.trigger_subscription_renewal._clients is services.workspaces.trigger_oauth_clients
     assert services.workspaces.trigger_subscription_renewal._oauth is services.workspaces.trigger_oauth._providers
 

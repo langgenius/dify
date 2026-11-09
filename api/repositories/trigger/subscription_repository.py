@@ -147,7 +147,7 @@ class TriggerSubscriptionRepository(TriggerSubscriptionStore):
         self,
         *,
         expected: TriggerSubscriptionSnapshot,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_expires_at: int,
     ) -> None:
         with self._session_factory.begin() as session:

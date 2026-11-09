@@ -4,7 +4,7 @@ import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import Context
-from threading import Thread
+from threading import Event, Thread
 
 import pytest
 from sqlalchemy import Connection, Engine, event
@@ -18,7 +18,7 @@ from extensions.ext_redis import redis_client
 from models.enums import PermissionEnum
 from models.trigger import TriggerSubscription
 from services.plugin.dispatch_identity import PLUGIN_IDENTIFIER_HEADER
-from services.trigger.subscription_service import TriggerSubscriptionChangedError
+from services.trigger.subscription_service import TriggerSubscriptionChangedError, TriggerSubscriptionLeaseLostError
 from tasks.trigger_subscription_refresh_tasks import trigger_subscription_refresh
 from tests.e2e_tests.containers.services import test_trigger_subscription_builder
 from tests.e2e_tests.containers.services.test_trigger_subscription_management import (
@@ -107,6 +107,76 @@ def _paused_refresh(harness: _Harness, daemon: _Daemon, subscription_id: str, pa
         thread.join(timeout=10)
     assert not thread.is_alive(), "Renewal did not finish after releasing the plugin response"
     assert not errors
+
+
+def test_concurrent_oauth_renewals_share_the_subscription_lease(harness: _Harness, daemon: _Daemon) -> None:
+    subscription = _expiring_subscription(harness, daemon, credential_expiry=100, subscription_expiry=-1)
+    _prepare_responses(harness, daemon)
+    path = f"/plugin/{harness.tenant_id}/dispatch/oauth/refresh_credentials"
+    daemon.responses_by_path[path] = {
+        "credentials": {"token": "renewed-token", "username": "new"},
+        "expires_at": 10000,
+    }
+    started, finished = Event(), Event()
+    errors: list[BaseException] = []
+
+    def refresh_again() -> None:
+        started.set()
+        try:
+            _refresh(harness, subscription.id)
+        except BaseException as error:
+            errors.append(error)
+        finally:
+            finished.set()
+
+    second = Thread(target=refresh_again, daemon=True)
+    try:
+        with _paused_refresh(harness, daemon, subscription.id, path):
+            second.start()
+            assert started.wait(timeout=5)
+            assert not finished.wait(timeout=0.25)
+    finally:
+        if second.ident is not None:
+            second.join(timeout=10)
+
+    assert not second.is_alive()
+    assert not errors
+    assert [request.path for request in daemon.requests if request.method == "POST"] == [path]
+    saved = _read(harness, subscription.id)
+    assert _decrypt(harness, saved.credentials["token"]) == "renewed-token"
+    assert saved.credential_expires_at == 10000
+
+
+def test_lost_renewal_lease_prevents_write_and_subscription_refresh(harness: _Harness, daemon: _Daemon) -> None:
+    subscription = _expiring_subscription(harness, daemon, credential_expiry=100, subscription_expiry=100)
+    _prepare_responses(harness, daemon)
+    path = f"/plugin/{harness.tenant_id}/dispatch/oauth/refresh_credentials"
+    daemon.pause_path = path
+    errors: list[BaseException] = []
+
+    def refresh() -> None:
+        try:
+            _refresh(harness, subscription.id)
+        except BaseException as error:
+            errors.append(error)
+
+    worker = Thread(target=refresh, daemon=True)
+    worker.start()
+    try:
+        assert daemon.request_started.wait(timeout=5)
+        assert redis_client.delete(f"trigger_subscription_update_lock:{harness.tenant_id}_{subscription.id}") == 1
+    finally:
+        daemon.resume_response.set()
+        worker.join(timeout=10)
+
+    assert not worker.is_alive()
+    assert len(errors) == 1
+    assert isinstance(errors[0], TriggerSubscriptionLeaseLostError)
+    saved = _read(harness, subscription.id)
+    assert saved.credentials == subscription.credentials
+    assert saved.credential_expires_at == subscription.credential_expires_at
+    assert saved.properties == subscription.properties
+    assert [request.path for request in daemon.requests if request.method == "POST"] == [path]
 
 
 @pytest.mark.parametrize("client_configuration", ["missing", "empty", "configured"])

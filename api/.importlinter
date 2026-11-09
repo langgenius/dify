@@ -1475,11 +1475,31 @@ name = Trigger subscription commands depend on the encryption port
 type = forbidden
 source_modules =
     services.trigger.subscription_service
+    services.trigger.subscription_renewal_service
 forbidden_modules =
     core.helper.provider_cache
     core.helper.provider_encryption
     core.helper.encrypter
     services.trigger.subscription_codec
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-event-framework-boundary]
+name = Trigger event orchestration is independent of the web framework
+type = forbidden
+source_modules =
+    services.trigger.event_service
+forbidden_modules =
+    flask
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-renewal-configuration-boundary]
+name = Trigger renewal receives configuration from the composition root
+type = forbidden
+source_modules =
+    services.trigger.subscription_renewal_service
+forbidden_modules =
+    configs
 allow_indirect_imports = True
 
 [importlinter:contract:trigger-subscription-controller-persistence-boundary]
