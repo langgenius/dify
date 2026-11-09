@@ -2,7 +2,11 @@ import pytest
 from pydantic import ValidationError
 
 from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERATIONS, KnowledgeFSProductPermission
-from services.knowledge_fs.tidy_dto import KnowledgeFSTidyActionPayload, KnowledgeFSTidySettingsPayload
+from services.knowledge_fs.tidy_dto import (
+    KnowledgeFSTidyActionPayload,
+    KnowledgeFSTidyFindingListResponse,
+    KnowledgeFSTidySettingsPayload,
+)
 
 
 def test_conflict_detection_requires_cost_acknowledgment_but_text_only_and_disabling_do_not() -> None:
@@ -34,3 +38,19 @@ def test_tidy_mutations_require_space_edit_permission(operation: str) -> None:
 @pytest.mark.parametrize("operation", ["getTidySettings", "getTidySummary", "listTidyScans", "listTidyFindings"])
 def test_tidy_evidence_requires_space_read_permission(operation: str) -> None:
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation].permission == KnowledgeFSProductPermission.READ
+
+
+def test_finding_pages_carry_document_cards_and_tolerate_older_knowledge_fs() -> None:
+    card = {
+        "title": "Handbook",
+        "mimeType": "text/html",
+        "sizeBytes": 2048,
+        "publishedAt": "2026-08-01T00:00:00.000Z",
+        "enabled": False,
+    }
+    page = KnowledgeFSTidyFindingListResponse.model_validate(
+        {"items": [], "nextCursor": None, "documents": {"doc-1": card}}
+    )
+    assert page.documents["doc-1"].model_dump() == card
+    older = KnowledgeFSTidyFindingListResponse.model_validate({"items": [], "nextCursor": None})
+    assert older.documents == {}

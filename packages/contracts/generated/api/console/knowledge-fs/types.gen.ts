@@ -1301,6 +1301,9 @@ export type KnowledgeFsSpaceTagsReplacePayload = {
 }
 
 export type KnowledgeFsTidyFindingListResponse = {
+  documents?: {
+    [key: string]: KnowledgeFsTidyDocumentCardResponse
+  }
   items: Array<KnowledgeFsTidyFindingResponse>
   nextCursor: string | null
 }
@@ -2417,6 +2420,14 @@ export type KnowledgeFsSpaceTagResponse = {
   id: string
   name: string
   type?: 'knowledge'
+}
+
+export type KnowledgeFsTidyDocumentCardResponse = {
+  enabled: boolean
+  mimeType: string
+  publishedAt: string
+  sizeBytes: number
+  title: string
 }
 
 export type KnowledgeFsTidyEvidenceResponse = {

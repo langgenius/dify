@@ -17062,11 +17062,42 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "documents": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "mimeType": {
+                            "type": "string"
+                          },
+                          "sizeBytes": {
+                            "type": "integer"
+                          },
+                          "publishedAt": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "title",
+                          "mimeType",
+                          "sizeBytes",
+                          "publishedAt",
+                          "enabled"
+                        ]
+                      }
                     }
                   },
                   "required": [
                     "items",
-                    "nextCursor"
+                    "nextCursor",
+                    "documents"
                   ]
                 }
               }

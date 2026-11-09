@@ -2471,6 +2471,19 @@ export const zKnowledgeFsSpaceListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSTidyDocumentCardResponse
+ *
+ * What the review page shows about a document a finding quotes.
+ */
+export const zKnowledgeFsTidyDocumentCardResponse = z.object({
+  enabled: z.boolean(),
+  mimeType: z.string(),
+  publishedAt: z.string(),
+  sizeBytes: z.int(),
+  title: z.string(),
+})
+
+/**
  * KnowledgeFSTidyEvidenceResponse
  */
 export const zKnowledgeFsTidyEvidenceResponse = z.object({
@@ -2504,6 +2517,7 @@ export const zKnowledgeFsTidyFindingResponse = z.object({
  * KnowledgeFSTidyFindingListResponse
  */
 export const zKnowledgeFsTidyFindingListResponse = z.object({
+  documents: z.record(z.string(), zKnowledgeFsTidyDocumentCardResponse).optional(),
   items: z.array(zKnowledgeFsTidyFindingResponse),
   nextCursor: z.string().nullable(),
 })

@@ -89,9 +89,21 @@ class KnowledgeFSTidyFindingResponse(ResponseModel):
     stale: bool = False
 
 
+class KnowledgeFSTidyDocumentCardResponse(ResponseModel):
+    """What the review page shows about a document a finding quotes."""
+
+    title: str
+    mimeType: str
+    sizeBytes: int
+    publishedAt: str
+    enabled: bool
+
+
 class KnowledgeFSTidyFindingListResponse(ResponseModel):
     items: list[KnowledgeFSTidyFindingResponse]
     nextCursor: str | None
+    # Keyed by document id; absent from KnowledgeFS releases before document cards existed.
+    documents: dict[str, KnowledgeFSTidyDocumentCardResponse] = Field(default_factory=dict)
 
 
 class KnowledgeFSTidyFindingQuery(BaseModel):

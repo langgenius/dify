@@ -1,11 +1,11 @@
 'use client'
 
-import type {
-  KnowledgeFsTidyFindingResponse,
-  KnowledgeFsTidySummaryResponse,
-} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { KnowledgeFsTidySummaryResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { PlannedAction } from './review'
+import type { PlanConfirmation } from './review-cards'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
@@ -15,21 +15,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { newKnowledgeDocumentDetailPath } from '../routes'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
+import { groupDuplicates, TIDY_KIND_ORDER } from './review'
+import { DuplicateGroupCard, KindSection, PairCard } from './review-cards'
 
 const api = consoleQuery.knowledgeFs.spaces.byControlSpaceId.tidy
-type Finding = KnowledgeFsTidyFindingResponse
 const STATUSES = ['open', 'dismissed', 'reviewed', 'disabled'] as const
-const KINDS = ['all', 'conflict', 'similar', 'duplicate'] as const
+const KINDS = ['all', 'conflict', 'duplicate', 'similar'] as const
 type Status = (typeof STATUSES)[number]
 type Kind = (typeof KINDS)[number]
 
@@ -78,9 +85,7 @@ export function TidyPage() {
   const [cursor, setCursor] = useQueryState('tidyCursor', parseAsString)
   const [scanCursor, setScanCursor] = useQueryState('tidyScanCursor', parseAsString)
   const [confirmation, setConfirmation] = useState<
-    | { kind: 'enable' }
-    | { kind: 'conflicts' }
-    | { kind: 'disable'; finding: Finding; documentId: string; title: string }
+    { kind: 'enable' } | { kind: 'conflicts' } | ({ kind: 'plan' } & PlanConfirmation)
   >()
   const [withConflicts, setWithConflicts] = useState(true)
   const [error, setError] = useState<string>()
@@ -154,17 +159,20 @@ export function TidyPage() {
       report(cause)
     }
   }
-  async function apply(
-    finding: Finding,
-    action: 'dismiss' | 'review' | 'disable_document' | 'undo',
-    documentId?: string,
-  ) {
+  /** Runs reviewer actions in order (a keep-one merge disables one copy per finding). */
+  async function run(plan: PlannedAction[]) {
     setError(undefined)
     try {
-      await act.mutateAsync({
-        params: { ...params, finding_id: finding.id },
-        body: { action, expectedRevision: finding.revision, ...(documentId ? { documentId } : {}) },
-      })
+      for (const step of plan) {
+        await act.mutateAsync({
+          params: { ...params, finding_id: step.finding.id },
+          body: {
+            action: step.action,
+            expectedRevision: step.finding.revision,
+            ...(step.documentId ? { documentId: step.documentId } : {}),
+          },
+        })
+      }
       restoreQueueFocusRef.current = true
       if (!confirmation) queueFocusRef.current?.focus({ preventScroll: true })
       setConfirmation(undefined)
@@ -189,9 +197,9 @@ export function TidyPage() {
   }
   const kindLabels = {
     all: t(($) => $['tidy.allKinds']),
+    conflict: t(($) => $['tidy.conflict']),
     duplicate: t(($) => $['tidy.duplicate']),
     similar: t(($) => $['tidy.similar']),
-    conflict: t(($) => $['tidy.conflict']),
   }
   const scanLabels = {
     pending: t(($) => $['tidy.pending']),
@@ -204,18 +212,19 @@ export function TidyPage() {
     model_unavailable: t(($) => $['tidy.pausedModel']),
     scan_failed: t(($) => $['tidy.pausedScan']),
   }
-  function reasonOf(finding: Finding) {
-    if (finding.reason === 'identical_content_hash') return t(($) => $['tidy.duplicateReason'])
-    if (finding.reason === 'textual_overlap') return t(($) => $['tidy.similarReason'])
-    if (finding.reason === 'semantic_overlap') return t(($) => $['tidy.semanticReason'])
-    return finding.reason
-  }
-  function similarityOf(finding: Finding) {
-    if (finding.kind !== 'similar' || finding.similarity === null) return null
-    const percent = Math.round(finding.similarity * 100)
-    return finding.reason === 'semantic_overlap'
-      ? t(($) => $['tidy.semanticCoverage'], { percent })
-      : t(($) => $['tidy.overlap'], { percent })
+  const items = findings.data?.items ?? []
+  const cards = findings.data?.documents ?? {}
+  const cardProps = {
+    busy: pending,
+    canManage,
+    cards,
+    spaceId: space.control_space_id,
+    onConfirm: (plan: PlanConfirmation) => {
+      setError(undefined)
+      restoreQueueFocusRef.current = false
+      setConfirmation({ kind: 'plan', ...plan })
+    },
+    onRun: (plan: PlannedAction[]) => void run(plan),
   }
 
   return (
@@ -380,136 +389,106 @@ export function TidyPage() {
         </div>
       </details>
 
-      <nav aria-label={t(($) => $['tidy.results'])} className="mb-3 flex flex-wrap gap-2">
-        {STATUSES.map((value) => (
-          <Button
-            key={value}
-            ref={status === value ? queueFocusRef : undefined}
-            aria-pressed={status === value}
-            variant={status === value ? 'primary' : 'secondary'}
-            onClick={() => {
-              void setStatus(value)
-              void setCursor(null)
-            }}
-          >
-            {statusLabels[value]}
-            {countOf(summary.data, value) > 0 && <span> {countOf(summary.data, value)}</span>}
-          </Button>
-        ))}
-      </nav>
-      <div
-        role="group"
-        aria-label={t(($) => $['tidy.kindFilter'])}
-        className="mb-4 flex flex-wrap gap-1"
-      >
-        {KINDS.map((value) => (
-          <Button
-            key={value}
-            size="small"
-            aria-pressed={kind === value}
-            variant={kind === value ? 'secondary-accent' : 'ghost'}
-            onClick={() => {
-              void setKind(value)
-              void setCursor(null)
-            }}
-          >
-            {kindLabels[value]} {countOf(summary.data, status, value)}
-          </Button>
-        ))}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div
+          role="group"
+          aria-label={t(($) => $['tidy.kindFilter'])}
+          className="flex flex-wrap items-center gap-1 rounded-full bg-background-section p-1"
+        >
+          {KINDS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              ref={kind === value ? queueFocusRef : undefined}
+              aria-pressed={kind === value}
+              onClick={() => {
+                void setKind(value)
+                void setCursor(null)
+              }}
+              className={cn(
+                'inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 system-sm-medium outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                kind === value
+                  ? 'bg-components-panel-bg text-text-primary shadow-xs'
+                  : 'text-text-tertiary hover:text-text-secondary',
+              )}
+            >
+              {kindLabels[value]}
+              <span aria-hidden className="text-text-quaternary">
+                ·
+              </span>
+              <span className="system-xs-regular text-text-tertiary tabular-nums">
+                {countOf(summary.data, status, value)}
+              </span>
+            </button>
+          ))}
+        </div>
+        <Select
+          value={status}
+          onValueChange={(value) => {
+            if (!value) return
+            void setStatus(value as Status)
+            void setCursor(null)
+          }}
+        >
+          <SelectTrigger aria-label={t(($) => $['tidy.statusFilter'])} className="w-auto min-w-36">
+            {statusLabels[status]}
+          </SelectTrigger>
+          <SelectContent>
+            {STATUSES.map((value) => (
+              <SelectItem key={value} value={value}>
+                <SelectItemText>
+                  {statusLabels[value]}
+                  {countOf(summary.data, value) > 0 && (
+                    <span className="ms-1.5 text-text-tertiary tabular-nums">
+                      {countOf(summary.data, value)}
+                    </span>
+                  )}
+                </SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       {findings.isPending && <p role="status">{common(($) => $.loading)}</p>}
       {findings.isError && <p role="alert">{t(($) => $['tidy.error'])}</p>}
       {findings.data?.items.length === 0 && (
-        <p className="rounded-xl bg-background-section p-6 text-text-tertiary">
+        <p className="rounded-2xl bg-background-section p-6 text-text-tertiary">
           {t(($) => $['tidy.empty'])}
         </p>
       )}
-      <div className="space-y-4">
-        {findings.data?.items.map((finding) => (
-          <article key={finding.id} className="rounded-xl border border-divider-regular p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="system-md-semibold text-text-primary">
-                {kindLabels[finding.kind]}
-                {similarityOf(finding) && (
-                  <span className="ms-2 body-sm-regular text-text-tertiary">
-                    {similarityOf(finding)}
-                  </span>
-                )}
-              </h2>
-              <span className="body-sm-regular text-text-tertiary">
-                {statusLabels[finding.status]}
-              </span>
-            </div>
-            <p className="my-3 body-sm-regular text-text-secondary">{reasonOf(finding)}</p>
-            <div className="grid gap-3 lg:grid-cols-2">
-              {[finding.left, finding.right].map((evidence) => (
-                <div
-                  key={evidence.documentId}
-                  className="min-w-0 rounded-lg bg-background-section p-4"
-                >
-                  <Link
-                    className="system-sm-semibold text-text-accent underline focus-visible:outline-2"
-                    href={newKnowledgeDocumentDetailPath(
-                      space.control_space_id,
-                      evidence.documentId,
-                      { revision: evidence.revision, chunkId: evidence.chunkId },
-                    )}
-                  >
-                    {evidence.title} · v{evidence.revision}
-                  </Link>
-                  <blockquote className="my-3 max-h-72 overflow-auto body-sm-regular break-words whitespace-pre-wrap text-text-secondary">
-                    {evidence.text}
-                  </blockquote>
-                  {canManage && finding.status === 'open' && (
-                    <Button
-                      disabled={finding.stale || pending}
-                      onClick={() => {
-                        setError(undefined)
-                        restoreQueueFocusRef.current = false
-                        setConfirmation({
-                          kind: 'disable',
-                          finding,
-                          documentId: evidence.documentId,
-                          title: evidence.title,
-                        })
-                      }}
-                    >
-                      {t(($) => $['tidy.disableDocument'])} {evidence.title}
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-            {finding.stale && <p className="mt-3 text-text-warning">{t(($) => $['tidy.stale'])}</p>}
-            {canManage && finding.status !== 'outdated' && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {finding.status === 'open' ? (
-                  <>
-                    <Button
-                      disabled={finding.stale || pending}
-                      onClick={() => void apply(finding, 'dismiss')}
-                    >
-                      {t(($) => $['tidy.dismiss'])}
-                    </Button>
-                    <Button
-                      disabled={finding.stale || pending}
-                      onClick={() => void apply(finding, 'review')}
-                    >
-                      {t(($) => $['tidy.review'])}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    disabled={finding.stale || pending}
-                    onClick={() => void apply(finding, 'undo')}
-                  >
-                    {t(($) => $['tidy.undo'])}
-                  </Button>
-                )}
-              </div>
-            )}
-          </article>
-        ))}
+      <div aria-label={t(($) => $['tidy.results'])} className="flex flex-col gap-6">
+        {TIDY_KIND_ORDER.filter((value) => kind === 'all' || kind === value).map((value) => {
+          const ofKind = items.filter((finding) => finding.kind === value)
+          if (!ofKind.length) return null
+          // Identical copies awaiting review read best as one group with a keep-one choice.
+          const groups =
+            value === 'duplicate' && ofKind.every((finding) => finding.status === 'open')
+              ? groupDuplicates(ofKind)
+              : null
+          return (
+            <KindSection
+              key={value}
+              kind={value}
+              meta={
+                groups
+                  ? t(($) => $['tidy.groupsMeta'], {
+                      count: groups.length,
+                      files: groups.reduce((total, group) => total + group.documentIds.length, 0),
+                    })
+                  : t(($) => $['tidy.pairsMeta'], { count: ofKind.length })
+              }
+            >
+              {groups
+                ? groups.map((group) => (
+                    <DuplicateGroupCard key={group.key} group={group} {...cardProps} />
+                  ))
+                : ofKind.map((finding) => (
+                    <PairCard key={finding.id} finding={finding} {...cardProps} />
+                  ))}
+            </KindSection>
+          )
+        })}
       </div>
       <div className="my-5 flex gap-2">
         {cursor && (
@@ -541,21 +520,20 @@ export function TidyPage() {
               event.preventDefault()
               if (confirmation?.kind === 'enable') void save(true, withConflicts)
               else if (confirmation?.kind === 'conflicts') void save(true, true)
-              else if (confirmation)
-                void apply(confirmation.finding, 'disable_document', confirmation.documentId)
+              else if (confirmation) void run(confirmation.plan)
             }}
           >
             <DialogHeader>
               <DialogTitle>
-                {confirmation?.kind === 'disable'
-                  ? `${t(($) => $['tidy.disableDocument'])} ${confirmation.title}`
+                {confirmation?.kind === 'plan'
+                  ? confirmation.title
                   : confirmation?.kind === 'conflicts'
                     ? t(($) => $['tidy.conflicts'])
                     : 'Tidy'}
               </DialogTitle>
               <DialogDescription>
-                {confirmation?.kind === 'disable'
-                  ? t(($) => $['tidy.disableNotice'])
+                {confirmation?.kind === 'plan'
+                  ? confirmation.description
                   : confirmation?.kind === 'enable' && !withConflicts
                     ? t(($) => $['tidy.freeNotice'])
                     : t(($) => $['tidy.tokenNotice'])}

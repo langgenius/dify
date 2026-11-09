@@ -30280,6 +30280,18 @@ How far the scanner is through the document it is scanning now.
 | passagesTotal | integer |  | Yes |
 | title | string |  | Yes |
 
+#### KnowledgeFSTidyDocumentCardResponse
+
+What the review page shows about a document a finding quotes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| mimeType | string |  | Yes |
+| publishedAt | string |  | Yes |
+| sizeBytes | integer |  | Yes |
+| title | string |  | Yes |
+
 #### KnowledgeFSTidyDocumentProgressResponse
 
 | Name | Type | Description | Required |
@@ -30313,6 +30325,7 @@ How far the scanner is through the document it is scanning now.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| documents | object |  | No |
 | items | [ [KnowledgeFSTidyFindingResponse](#knowledgefstidyfindingresponse) ] |  | Yes |
 | nextCursor | string |  | Yes |
 

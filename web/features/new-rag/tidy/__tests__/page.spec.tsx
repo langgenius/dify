@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createHttpError } from '@/service/http-error'
@@ -219,7 +219,7 @@ describe('Tidy', () => {
     expect(await screen.findByText('十四天退款')).toBeVisible()
     expect(screen.getByText('七天退款')).toBeVisible()
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSpace.tidy.disableDocument Policy B' }),
+      screen.getByRole('button', { name: /knowledgeSpace\.tidy\.disableOne.*Policy B/ }),
     )
     expect(service.act).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog')).toHaveTextContent('Policy B')
@@ -274,5 +274,126 @@ describe('Tidy', () => {
       expect.objectContaining({ body: { action: 'undo', expectedRevision: 2 } }),
     )
     expect(screen.getByRole('button', { name: 'knowledgeSpace.tidy.undo' })).toBeEnabled()
+  })
+  it('groups identical copies, keeps the newest and disables each other copy once', async () => {
+    const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 7, text: 'Welcome' }
+    const copy = (id: string, left: string, right: string) => ({
+      id,
+      kind: 'duplicate',
+      left: { ...evidence, documentId: left, title: 'Handbook' },
+      right: { ...evidence, documentId: right, title: 'Handbook' },
+      reason: 'identical_content_hash',
+      similarity: 1,
+      status: 'open',
+      revision: 1,
+      actionId: null,
+      createdAt: '2026-11-09',
+      stale: false,
+    })
+    const card = (title: string, publishedAt: string) => ({
+      title,
+      mimeType: 'text/html',
+      sizeBytes: 2048,
+      publishedAt,
+      enabled: true,
+    })
+    service.findings.mockResolvedValue({
+      items: [copy('d1', 'c', 'd'), copy('d2', 'd', 'e')],
+      nextCursor: null,
+      documents: {
+        c: card('Handbook', '2026-01-01T00:00:00Z'),
+        d: card('Handbook v3', '2026-08-01T00:00:00Z'),
+        e: card('Handbook (copy)', '2026-03-01T00:00:00Z'),
+      },
+    })
+    service.act.mockImplementation(async ({ params }: { params: { finding_id: string } }) => ({
+      ...copy(params.finding_id, 'c', 'd'),
+      status: 'disabled',
+      revision: 2,
+    }))
+    const user = userEvent.setup()
+    renderPage()
+    const keep = await screen.findByRole('radiogroup', { name: 'knowledgeSpace.tidy.chooseKeep' })
+    expect(screen.getByRole('radio', { name: 'Handbook v3' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(keep).toHaveTextContent('knowledgeSpace.tidy.latest')
+    expect(screen.getAllByText('knowledgeSpace.tidy.exactCopy')).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tidy.keepNewestMerge' }))
+    expect(service.act).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toHaveTextContent('Handbook v3')
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    // Each step waits for the previous one (and its cache refresh) before the next disable.
+    await waitFor(() => expect(service.act).toHaveBeenCalledTimes(2), { timeout: 3000 })
+    // Walking outward from the kept copy: one disable per other copy, through the finding that reaches it.
+    expect(service.act.mock.calls.map(([input]) => [input.params.finding_id, input.body])).toEqual([
+      ['d1', { action: 'disable_document', expectedRevision: 1, documentId: 'c' }],
+      ['d2', { action: 'disable_document', expectedRevision: 1, documentId: 'e' }],
+    ])
+  })
+  it('lets an editor choose another copy to keep', async () => {
+    const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 7, text: 'Welcome' }
+    const finding = {
+      id: 'd1',
+      kind: 'duplicate',
+      left: { ...evidence, documentId: 'c', title: 'Handbook' },
+      right: { ...evidence, documentId: 'd', title: 'Handbook v3' },
+      reason: 'identical_content_hash',
+      similarity: 1,
+      status: 'open',
+      revision: 1,
+      actionId: null,
+      createdAt: '2026-11-09',
+      stale: false,
+    }
+    service.findings.mockResolvedValue({ items: [finding], nextCursor: null })
+    service.act.mockResolvedValue({ ...finding, status: 'disabled', revision: 2 })
+    const user = userEvent.setup()
+    renderPage()
+    // Without document cards the first copy counts as the newest.
+    expect(await screen.findByRole('radio', { name: 'Handbook' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await user.click(screen.getByRole('radio', { name: 'Handbook v3' }))
+    expect(screen.getByRole('radio', { name: 'Handbook v3' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tidy.keepSelectedMerge' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() =>
+      expect(service.act).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: { action: 'disable_document', expectedRevision: 1, documentId: 'c' },
+        }),
+      ),
+    )
+  })
+  it('shows review cards to readers without any actions', async () => {
+    const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }
+    service.findings.mockResolvedValue({
+      items: [
+        {
+          id: 'f',
+          kind: 'conflict',
+          left: { ...evidence, documentId: 'a', title: 'Policy A', text: '十四天退款' },
+          right: { ...evidence, documentId: 'b', title: 'Policy B', text: '七天退款' },
+          reason: '期限不一致',
+          similarity: null,
+          status: 'open',
+          revision: 1,
+          actionId: null,
+          createdAt: '2026-11-03',
+          stale: false,
+        },
+      ],
+      nextCursor: null,
+    })
+    renderPage(false)
+    const card = await screen.findByRole('article', { name: '期限不一致' })
+    expect(card).toHaveTextContent('七天退款')
+    expect(within(card).queryByRole('button')).not.toBeInTheDocument()
   })
 })
