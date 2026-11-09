@@ -124,7 +124,7 @@ const Harness = ({
       >
         Reset session
       </button>
-      <DifyBuilderCanvasLockCleanup />
+      <DifyBuilderCanvasLockCleanup enabled />
       {([true, false] as const).map((locked) => (
         <button
           key={String(locked)}

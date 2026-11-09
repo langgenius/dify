@@ -1360,6 +1360,50 @@ class TestConsoleAppApiCases:
         return boundary
 
     @staticmethod
+    @pytest.mark.parametrize("body", [{}, {"prompt": "Build a workflow"}, {"name": None}, {"name": ""}])
+    def test_create_requires_a_name_without_builder(
+        app: Flask, boundary: AppBoundary, config_overrides: Callable[..., None], body: dict[str, object]
+    ) -> None:
+        from werkzeug.exceptions import UnprocessableEntity
+
+        config_overrides(DIFY_BUILDER_ENABLED=False)
+        with (
+            app.test_request_context(method="POST", json={"mode": "workflow", **body}),
+            pytest.raises(UnprocessableEntity) as error,
+        ):
+            invoke(controller.AppListApi, controller.AppListApi.post)
+        assert json.loads(error.value.description)[0]["loc"] == ["name"]
+        assert boundary.calls == []
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("enabled", "body", "expected_name", "expected_prompt"),
+        [
+            (False, {"name": "Named", "prompt": {"ignored": True}}, "Named", None),
+            (True, {"name": "Named", "prompt": "Build a workflow"}, "Named", "Build a workflow"),
+            (True, {"prompt": "Build a workflow"}, None, "Build a workflow"),
+            (True, {}, None, None),
+        ],
+    )
+    def test_create_routes_by_builder_setting(
+        app: Flask,
+        boundary: AppBoundary,
+        config_overrides: Callable[..., None],
+        enabled: bool,
+        body: dict[str, object],
+        expected_name: str | None,
+        expected_prompt: str | None,
+    ) -> None:
+        config_overrides(DIFY_BUILDER_ENABLED=enabled)
+        with app.test_request_context(method="POST", json={"mode": "workflow", **body}):
+            response = invoke(controller.AppListApi, controller.AppListApi.post)
+        assert isinstance(response, tuple)
+        assert response[1] == 201
+        assert boundary.calls == [
+            ("create", CONTEXT, CreateAppParams(mode="workflow", name=expected_name, prompt=expected_prompt))
+        ]
+
+    @staticmethod
     def test_list_parses_repeated_filters_and_serializes_materialized_page(app: Flask, boundary: AppBoundary) -> None:
         tag = str(_CONSOLE_APP_API_APP_ID)
         with app.test_request_context(f"/?page=2&limit=5&tag_ids={tag}&is_created_by_me=true"):
@@ -1561,8 +1605,9 @@ class TestConsoleAppApiCases:
             injector(None, app_id=_CONSOLE_APP_API_APP_ID)
 
     @staticmethod
+    @pytest.mark.parametrize("builder_enabled", [True, False])
     def test_create_quota_is_part_of_admission_and_precedes_application_call(
-        app: Flask, boundary: AppBoundary, monkeypatch: pytest.MonkeyPatch
+        app: Flask, boundary: AppBoundary, monkeypatch: pytest.MonkeyPatch, builder_enabled: bool
     ) -> None:
         from services.entities.feature_entities import FeatureModel, LimitationModel
 
@@ -1570,7 +1615,9 @@ class TestConsoleAppApiCases:
         account.role = TenantAccountRole.EDITOR
         account.id = CONTEXT.account_id
         identity = AccountWithTenant(account=account, tenant_id=CONTEXT.active_workspace_id)
-        apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION="CLOUD", RBAC_ENABLED=False)
+        apply_config_overrides(
+            monkeypatch, DEPLOYMENT_EDITION="CLOUD", RBAC_ENABLED=False, DIFY_BUILDER_ENABLED=builder_enabled
+        )
         monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
         monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: identity)
         monkeypatch.setattr(flask_admission, "enforce_rbac_checks", lambda **_kwargs: None)

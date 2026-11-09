@@ -110,6 +110,7 @@ const sameNativeReceiptOrder = (
 export function useDifyBuilderSessionController(
   prepareCommand?: (saveDraft: boolean, signal: AbortSignal) => Promise<void>,
   runEvents?: SessionRunEvents,
+  enabled = true,
 ): DifyBuilderSessionController {
   const store = useStore()
 
@@ -176,9 +177,10 @@ export function useDifyBuilderSessionController(
 
   const traceRef = useRef(createTraceBuffer())
 
-  const resetRunOnUnmount = useEffectEvent(() => runEvents?.reset())
+  const resetDetachedRun = useEffectEvent(() => runEvents?.reset())
 
   useEffect(() => {
+    if (!enabled) return
     return () => {
       abortRef.current?.abort()
       abortRef.current = null
@@ -192,9 +194,15 @@ export function useDifyBuilderSessionController(
       setIsBusy(false)
       setTaskControl(null)
       setConversationLoading(false)
-      resetRunOnUnmount()
+      store.set(difyBuilderLifecycleControlAtom, (current) =>
+        current?.phase === 'pending' ? { ...current, phase: 'unknown' } : current,
+      )
+      store.set(difyBuilderMaterialControlAtom, (current) =>
+        current?.phase === 'pending' ? { ...current, phase: 'unknown' } : current,
+      )
+      resetDetachedRun()
     }
-  }, [setConversationLoading, setIsBusy, setTaskControl])
+  }, [enabled, setConversationLoading, setIsBusy, setTaskControl, store])
 
   const {
     confirmLocalUserMessage,

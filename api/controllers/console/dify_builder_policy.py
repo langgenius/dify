@@ -5,6 +5,7 @@ from flask_restx import Resource
 from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
+from configs import dify_config
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
@@ -21,6 +22,7 @@ from services.dify_builder.application.cognition_policy import CognitionPolicyDe
 from services.dify_builder.service import AppAccess
 from services.dify_builder.wiring import _authorize_app
 
+from .dify_builder_fields import DifyBuilderFeatureUnavailableResponse
 from .dify_builder_policy_fields import (
     DifyBuilderAvailabilityResponse,
     DifyBuilderPolicyPayload,
@@ -35,7 +37,9 @@ class BuilderPolicyConflictError(BaseHTTPException):
 
 
 register_schema_models(console_ns, DifyBuilderPolicyPayload)
-register_response_schema_models(console_ns, DifyBuilderPolicyResponse, DifyBuilderAvailabilityResponse)
+register_response_schema_models(
+    console_ns, DifyBuilderPolicyResponse, DifyBuilderAvailabilityResponse, DifyBuilderFeatureUnavailableResponse
+)
 
 
 def _actor(context: RequestContext) -> Actor:
@@ -51,8 +55,14 @@ def _raise_policy_error(error: CognitionPolicyDeniedError):
 @console_ns.route("/workspaces/current/dify-builder/policy")
 class DifyBuilderPolicyApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[DifyBuilderPolicyResponse.__name__])
+    @console_ns.response(
+        403, "App Builder is disabled", console_ns.models[DifyBuilderFeatureUnavailableResponse.__name__]
+    )
     @console_account_admission()
     def get(self, context: RequestContext):
+        """Read policy for an admitted workspace administrator when Builder is enabled."""
+        if not dify_config.DIFY_BUILDER_ENABLED:
+            return {"code": "feature_unavailable"}, 403
         actor = _actor(context)
         service = build_cognition_policy_service()
         try:
@@ -64,8 +74,14 @@ class DifyBuilderPolicyApi(Resource):
     @error_responses(BuilderPolicyConflictError)
     @console_ns.expect(console_ns.models[DifyBuilderPolicyPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[DifyBuilderPolicyResponse.__name__])
+    @console_ns.response(
+        403, "App Builder is disabled", console_ns.models[DifyBuilderFeatureUnavailableResponse.__name__]
+    )
     @console_account_admission()
     def put(self, context: RequestContext):
+        """Validate and save policy for an admitted workspace administrator when Builder is enabled."""
+        if not dify_config.DIFY_BUILDER_ENABLED:
+            return {"code": "feature_unavailable"}, 403
         actor = _actor(context)
         try:
             payload = DifyBuilderPolicyPayload.model_validate(request.get_json(silent=True))
@@ -83,8 +99,14 @@ class DifyBuilderPolicyApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/dify-builder/availability")
 class DifyBuilderAvailabilityApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[DifyBuilderAvailabilityResponse.__name__])
+    @console_ns.response(
+        403, "App Builder is disabled", console_ns.models[DifyBuilderFeatureUnavailableResponse.__name__]
+    )
     @console_account_admission()
     def get(self, context: RequestContext, app_id):
+        """Inspect model readiness for an admitted app editor when Builder is enabled."""
+        if not dify_config.DIFY_BUILDER_ENABLED:
+            return {"code": "feature_unavailable"}, 403
         actor = _actor(context)
         from core.dify_builder.errors import NotFoundError
 

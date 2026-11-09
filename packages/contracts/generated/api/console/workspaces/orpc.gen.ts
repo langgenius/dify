@@ -1030,22 +1030,31 @@ export const defaultModel = {
   post: post5,
 }
 
+/**
+ * Read policy for an admitted workspace administrator when Builder is enabled
+ */
 export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentDifyBuilderPolicy',
     path: '/workspaces/current/dify-builder/policy',
+    summary: 'Read policy for an admitted workspace administrator when Builder is enabled',
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentDifyBuilderPolicyResponse)
 
+/**
+ * Validate and save policy for an admitted workspace administrator when Builder is enabled
+ */
 export const put2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putWorkspacesCurrentDifyBuilderPolicy',
     path: '/workspaces/current/dify-builder/policy',
+    summary:
+      'Validate and save policy for an admitted workspace administrator when Builder is enabled',
     tags: ['console'],
   })
   .input(z.object({ body: zPutWorkspacesCurrentDifyBuilderPolicyBody }))

@@ -5,14 +5,13 @@ import type { SessionRunEvents } from '../session/types'
 import type { DifyBuilderCanvasSnapshot } from './initial-draft'
 import type { WorkflowDraftRefreshResult } from '@/app/components/workflow-app/draft/use-draft-refresh'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useStore as useAtomStore } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useHydrateAtoms } from 'jotai/utils'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useWorkflowAppSelector as useStore } from '@/app/components/workflow-app/store/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { consoleQuery } from '@/service/console'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { DifyBuilderAttachmentScope } from '../composer/attachment-scope'
 import { useDifyBuilderAttachmentDraft } from '../composer/use-attachment-draft'
@@ -25,6 +24,7 @@ import { DifyBuilderCanvasLockCleanup } from './canvas-lock-cleanup'
 import { DifyBuilderCreationStart } from './creation-start'
 import { useDifyBuilderCanvasEvents } from './use-canvas-events'
 import { useDifyBuilderCanvasRefresh } from './use-canvas-refresh'
+import { useWorkflowDifyBuilderEnabled } from './use-enabled'
 import { useDifyBuilderRunEvents } from './use-run-events'
 
 type DifyBuilderProviderProps = {
@@ -50,11 +50,7 @@ const DifyBuilderProviderContent = ({
   tenantId,
   userId,
 }: DifyBuilderProviderProps) => {
-  const { data: enabled = false } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (features) => features.dify_builder_enabled,
-    }),
-  )
+  const enabled = useWorkflowDifyBuilderEnabled()
   const setShowPanel = useStore((state) => state.setShowDifyBuilderPanel)
   const fileUploadConfig = useStore((state) => state.fileUploadConfig)
   const setPublishedAt = useStore((state) => state.setPublishedAt)
@@ -133,7 +129,7 @@ const DifyBuilderProviderContent = ({
     }),
     [attachmentDraft, canvasEvents, canvasRefresh, runEvents],
   )
-  const session = useDifyBuilderSessionController(onSyncDraft, sessionEvents)
+  const session = useDifyBuilderSessionController(onSyncDraft, sessionEvents, enabled)
   const runtime = useMemo(
     () => ({
       appId,
@@ -163,7 +159,7 @@ const DifyBuilderProviderContent = ({
 
   return (
     <>
-      <DifyBuilderCanvasLockCleanup />
+      <DifyBuilderCanvasLockCleanup enabled={enabled} />
       {children}
       {/* Install canvas and panel handlers before restoring or starting a session. */}
       <DifyBuilderSessionPersistence

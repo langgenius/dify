@@ -63,6 +63,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const isMountedRef = useRef(false)
   const emptySyncPendingRef = useRef(false)
   const cancelConfirmationRef = useRef<(() => void) | undefined>(undefined)
+  const builderPreparationRef = useRef<AbortSignal | null>(null)
 
   useEffect(() => {
     isMountedRef.current = true
@@ -512,16 +513,36 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     ],
   )
 
+  const releaseWorkflowDraftFromBuilder = useCallback(() => {
+    const state = workflowStore.getState()
+    if (state.workflowDraftSyncPhase === 'idle' || state.workflowDraftSyncPhase === 'releasing')
+      return
+
+    builderPreparationRef.current = null
+    state.setWorkflowDraftSyncPhase('releasing')
+    void state.enqueueWorkflowDraftOperation(async () => {
+      state.setWorkflowDraftSyncPhase('idle')
+      const { workflowDraftLocalRevision, workflowDraftSavedRevision, debouncedSyncWorkflowDraft } =
+        workflowStore.getState()
+      if (workflowDraftLocalRevision > workflowDraftSavedRevision)
+        debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
+    })
+  }, [doSyncWorkflowDraft, workflowStore])
+
   const prepareWorkflowDraftForBuilder = useCallback(
     async (saveDraft: boolean, signal: AbortSignal) => {
       const state = workflowStore.getState()
       signal.throwIfAborted()
       // A replacement restore may take over a canceled request's barrier.
-      if (saveDraft && state.workflowDraftSyncPhase !== 'idle')
+      if (
+        state.workflowDraftSyncPhase === 'releasing' ||
+        (saveDraft && state.workflowDraftSyncPhase !== 'idle')
+      )
         throw new Error(t(($) => $['common.syncingData']))
       if (state.hasWorkflowDraftConflict) throw new Error(t(($) => $['draftConflict.message']))
 
-      const shouldSave = saveDraft && !state.canvasReadOnly
+      const hasUnsavedEdits = state.workflowDraftLocalRevision > state.workflowDraftSavedRevision
+      const shouldSave = (saveDraft || hasUnsavedEdits) && !state.canvasReadOnly
       if (shouldSave && getNodesReadOnly()) throw new Error(t(($) => $['common.draftSaveFailed']))
       const requestLeader =
         shouldSave &&
@@ -533,6 +554,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const snapshot = shouldSave ? getPostParams() : null
       state.debouncedSyncWorkflowDraft.cancel?.()
       state.setBuilderViewportManuallyChanged(false)
+      builderPreparationRef.current = signal
       state.setWorkflowDraftSyncPhase(shouldSave ? 'preparing' : 'builder')
       try {
         let saved: SyncDraftResult | null = null
@@ -569,7 +591,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         state.invalidateWorkflowDraftSync()
         state.setWorkflowDraftSyncPhase('builder')
       } catch (error) {
-        if (atomStore.get(workflowAppIdentityAtom).appId === appId) {
+        if (
+          builderPreparationRef.current === signal &&
+          atomStore.get(workflowAppIdentityAtom).appId === appId
+        ) {
           state.setWorkflowDraftSyncPhase(signal.aborted ? 'builder' : 'idle')
           if (error instanceof Error && error.message === 'draft_workflow_not_sync') {
             state.setWorkflowDraftConflict(true)
@@ -577,6 +602,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           }
         }
         throw error
+      } finally {
+        if (builderPreparationRef.current === signal) builderPreparationRef.current = null
       }
     },
     [
@@ -594,6 +621,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   return {
     doSyncWorkflowDraft,
     prepareWorkflowDraftForBuilder,
+    releaseWorkflowDraftFromBuilder,
     syncWorkflowDraftWhenPageClose,
   }
 }

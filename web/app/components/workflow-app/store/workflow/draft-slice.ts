@@ -3,7 +3,7 @@ import type { WorkflowSliceShape } from './workflow-slice'
 import type { Shape } from '@/app/components/workflow/store'
 
 export type WorkflowAppDraftSliceShape = {
-  workflowDraftSyncPhase: 'idle' | 'preparing' | 'builder'
+  workflowDraftSyncPhase: 'idle' | 'preparing' | 'builder' | 'releasing'
   setWorkflowDraftSyncPhase: (phase: WorkflowAppDraftSliceShape['workflowDraftSyncPhase']) => void
   enqueueWorkflowDraftOperation: <T>(operation: () => Promise<T>) => Promise<T>
   runWorkflowDraftOperationImmediately: <T>(operation: () => Promise<T>) => Promise<T>

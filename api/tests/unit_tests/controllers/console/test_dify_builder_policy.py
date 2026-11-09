@@ -1,9 +1,12 @@
 """Policy wire schemas, registered routes, admission and error mapping."""
 
+from collections.abc import Callable
 from inspect import unwrap
+from uuid import UUID
 
 import pytest
 from flask import Flask
+from flask_restx import Resource
 from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden
 
@@ -12,6 +15,7 @@ from controllers.console.dify_builder_policy_fields import DifyBuilderPolicyPayl
 from core.dify_builder.models import Actor
 from machinery.context import RequestContext
 from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
+from tests.helpers.unit.config_override import apply_config_overrides
 
 PAYLOAD: dict[str, object] = {
     "expected_revision": 0,
@@ -77,7 +81,39 @@ def test_admin_policy_denial_is_forbidden_and_conflict_has_409() -> None:
     assert error.value.code == 409
 
 
+@pytest.mark.parametrize(
+    ("resource", "operation", "http_method", "path_params"),
+    [
+        (controller.DifyBuilderPolicyApi, controller.DifyBuilderPolicyApi.get, "GET", {}),
+        (controller.DifyBuilderPolicyApi, controller.DifyBuilderPolicyApi.put, "PUT", {}),
+        (
+            controller.DifyBuilderAvailabilityApi,
+            controller.DifyBuilderAvailabilityApi.get,
+            "GET",
+            {"app_id": UUID(int=1)},
+        ),
+    ],
+)
+def test_disabled_builder_blocks_policy_and_availability(
+    monkeypatch: pytest.MonkeyPatch,
+    resource: type[Resource],
+    operation: Callable[..., object],
+    http_method: str,
+    path_params: dict[str, UUID],
+) -> None:
+    apply_config_overrides(monkeypatch, DIFY_BUILDER_ENABLED=False)
+
+    def unexpected_service_call() -> None:
+        pytest.fail("Disabled Builder must not read or write policy")
+
+    monkeypatch.setattr(controller, "build_cognition_policy_service", unexpected_service_call)
+    with Flask(__name__).test_request_context(method=http_method, json=PAYLOAD):
+        handler = unwrap(operation)
+        assert handler(resource(), CONTEXT, **path_params) == ({"code": "feature_unavailable"}, 403)
+
+
 def test_get_admits_actor_then_reads_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, DIFY_BUILDER_ENABLED=True)
     calls: list[Actor] = []
 
     class Service:
@@ -117,6 +153,7 @@ def test_admin_policy_routes_serialize_missing_and_unknown_default_status(
 ) -> None:
     from services.dify_builder.application.cognition_policy import CognitionPolicy, CognitionPolicyStatus
 
+    apply_config_overrides(monkeypatch, DIFY_BUILDER_ENABLED=True)
     policy = CognitionPolicy(True, (), None, (), 0, "workspace_default")
     status = CognitionPolicyStatus(policy, {}, False, reason)
 

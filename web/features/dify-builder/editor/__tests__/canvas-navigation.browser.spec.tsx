@@ -130,6 +130,7 @@ vi.mock('@/app/components/workflow-app/draft/use-draft-save', () => ({
     doSyncWorkflowDraft: saveDraft,
     syncWorkflowDraftWhenPageClose: () => {},
     prepareWorkflowDraftForBuilder: async () => {},
+    releaseWorkflowDraftFromBuilder: () => {},
   }),
 }))
 vi.mock('@/app/components/workflow/node-catalog', () => ({

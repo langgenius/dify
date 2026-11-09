@@ -37,6 +37,7 @@ import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DifyBuilderProvider } from '@/features/dify-builder/editor'
 import { DifyBuilderNodeDecoration } from '@/features/dify-builder/editor/node-decoration'
+import { useWorkflowDifyBuilderEnabled } from '@/features/dify-builder/editor/use-enabled'
 import { useDifyBuilderViewportInteraction } from '@/features/dify-builder/editor/use-viewport-interaction'
 import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -75,7 +76,8 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const workflowStore = useWorkflowStore()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
   const isWorkflowDataLoaded = useStore((s) => s.isWorkflowDataLoaded)
-  const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
+  const difyBuilderEnabled = useWorkflowDifyBuilderEnabled()
+  const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel) && difyBuilderEnabled
   const hasWorkflowDraftConflict = useStore((s) => s.hasWorkflowDraftConflict)
   const onDraftChange = useCallback(() => {
     workflowStore.getState().markWorkflowDraftDirty()
@@ -233,8 +235,18 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     [featuresStore, workflowStore],
   )
 
-  const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose, prepareWorkflowDraftForBuilder } =
-    useWorkflowDraftSaveByCanEdit(appACLCapabilities.canEdit)
+  const {
+    doSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose,
+    prepareWorkflowDraftForBuilder,
+    releaseWorkflowDraftFromBuilder,
+  } = useWorkflowDraftSaveByCanEdit(appACLCapabilities.canEdit)
+  useEffect(() => {
+    if (difyBuilderEnabled) return
+    const state = workflowStore.getState()
+    if (state.showDifyBuilderPanel) state.setShowDifyBuilderPanel(false)
+    releaseWorkflowDraftFromBuilder()
+  }, [difyBuilderEnabled, releaseWorkflowDraftFromBuilder, workflowStore])
   const varsUpdateGenerationRef = useRef(0)
   const varsUpdateAppliedGenerationRef = useRef(0)
   const varsUpdateFailedGenerationRef = useRef(0)

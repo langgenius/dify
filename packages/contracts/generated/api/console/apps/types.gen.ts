@@ -661,6 +661,10 @@ export type DifyBuilderAvailabilityResponse = {
   source: 'explicit' | 'workspace_default'
 }
 
+export type DifyBuilderFeatureUnavailableResponse = {
+  code: 'feature_unavailable'
+}
+
 export type AppExportResponse = {
   data: string
 }
@@ -6645,6 +6649,7 @@ export type GetAppsByAppIdDifyBuilderAvailabilityData = {
 }
 
 export type GetAppsByAppIdDifyBuilderAvailabilityErrors = {
+  403: DifyBuilderFeatureUnavailableResponse | ErrorResponse
   default: ErrorResponse
 }
 

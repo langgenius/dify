@@ -1809,6 +1809,63 @@ describe('useWorkflowDraftSave', () => {
   })
 
   describe('Builder draft barrier', () => {
+    it.each([false, true])(
+      'releases editing after an accepted save settles (conflict: %s)',
+      async (conflict) => {
+        const pending = createDeferred<{ hash: string; updated_at: number }>()
+        mockSyncWorkflowDraft.mockReturnValueOnce(pending.promise)
+        const { result, store } = renderUseNodesSyncDraft()
+        const saving = result.current.doSyncWorkflowDraft()
+        await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+
+        const controller = new AbortController()
+        const restoring = expect(
+          result.current.prepareWorkflowDraftForBuilder(false, controller.signal),
+        ).rejects.toThrow()
+        act(() => {
+          controller.abort()
+          result.current.releaseWorkflowDraftFromBuilder()
+        })
+        expect(store.getState().canvasReadOnly).toBe(true)
+
+        await act(async () => {
+          if (conflict) pending.reject(draftNotSyncError())
+          else pending.resolve({ hash: 'accepted-hash', updated_at: 2 })
+          await Promise.all([saving, restoring])
+        })
+        expect(store.getState().canvasReadOnly).toBe(false)
+        expect(store.getState().nodeEditingLocked).toBe(conflict)
+        expect(store.getState().syncWorkflowDraftHash).toBe(conflict ? 'hash-123' : 'accepted-hash')
+        expect(mockFetchDraft).not.toHaveBeenCalled()
+
+        await act(async () => {
+          await result.current.doSyncWorkflowDraft()
+        })
+        if (conflict) expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+        else {
+          expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
+            draftRequest(expect.objectContaining({ hash: 'accepted-hash' })),
+          )
+        }
+      },
+    )
+
+    it('saves unsaved edits before restoring a Builder session', async () => {
+      const { result } = renderUseNodesSyncDraft({
+        initialStoreState: { workflowDraftLocalRevision: 1 },
+      })
+
+      await act(async () => {
+        await result.current.prepareWorkflowDraftForBuilder(false, new AbortController().signal)
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(
+          expect.objectContaining({ graph: expect.objectContaining({ nodes: [savedStartNode] }) }),
+        ),
+      )
+    })
+
     it('drains accepted saves and variable patches, saves the latest snapshot, and blocks later autosaves', async () => {
       const pending = createDeferred<{ hash: string; updated_at: number }>()
       mockSyncWorkflowDraft

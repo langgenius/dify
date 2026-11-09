@@ -630,6 +630,15 @@ export const zNewAppResponse = z.object({
 })
 
 /**
+ * DifyBuilderFeatureUnavailableResponse
+ *
+ * Builder is not enabled for the workspace (the shared ``dify_builder_required`` gate).
+ */
+export const zDifyBuilderFeatureUnavailableResponse = z.object({
+  code: z.literal('feature_unavailable'),
+})
+
+/**
  * AppExportResponse
  */
 export const zAppExportResponse = z.object({

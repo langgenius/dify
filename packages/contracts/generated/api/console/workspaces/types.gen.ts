@@ -149,6 +149,10 @@ export type DifyBuilderPolicyResponse = {
   source: 'explicit' | 'workspace_default'
 }
 
+export type DifyBuilderFeatureUnavailableResponse = {
+  code: 'feature_unavailable'
+}
+
 export type DifyBuilderPolicyPayload = {
   default_model_id: string | null
   enabled: boolean
@@ -4770,6 +4774,7 @@ export type GetWorkspacesCurrentDifyBuilderPolicyData = {
 }
 
 export type GetWorkspacesCurrentDifyBuilderPolicyErrors = {
+  403: DifyBuilderFeatureUnavailableResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4791,6 +4796,7 @@ export type PutWorkspacesCurrentDifyBuilderPolicyData = {
 }
 
 export type PutWorkspacesCurrentDifyBuilderPolicyErrors = {
+  403: DifyBuilderFeatureUnavailableResponse | ErrorResponse
   409: BuilderPolicyConflictError | ErrorResponse
   default: ErrorResponse
 }

@@ -15,7 +15,8 @@ import {
 import { difyBuilderPendingCreationAtom } from '@/features/dify-builder/creation'
 import { difyBuilderDraftAtom, difyBuilderErrorAtom } from '@/features/dify-builder/state'
 import { consoleQuery } from '@/service/console'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { renderWithConsoleQuery, seedFeatures } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import WorkflowMain from '../workflow-main'
 
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   setShowPanel: vi.fn(),
   syncWorkflowDraft: vi.fn(async () => ({ hash: 'saved-hash', updated_at: 1 })),
   create: vi.fn(),
+  session: vi.fn<() => Promise<SessionView>>(),
   conversation: vi.fn(),
   refreshDraft: vi.fn(async (): Promise<WorkflowDraftRefreshResult> => 'refreshed'),
   getNodes: () => [{ id: 'start-placeholder', data: { type: 'start-placeholder' } }],
@@ -66,6 +68,9 @@ vi.mock('reactflow', () => {
 })
 vi.mock('@/app/components/workflow', () => ({
   Workflow: ({ children }: { children: ReactNode }) => children,
+}))
+vi.mock('@/features/dify-builder/panel', () => ({
+  default: () => <aside aria-label="App Builder" />,
 }))
 vi.mock('../workflow-children', () => ({
   default: function BuilderStatus() {
@@ -132,7 +137,7 @@ vi.mock('@/service/console', async (importOriginal) => ({
     difyBuilder: {
       sessions: {
         post: mocks.create,
-        bySessionId: { conversation: { get: mocks.conversation } },
+        bySessionId: { get: mocks.session, conversation: { get: mocks.conversation } },
       },
     },
   },
@@ -199,10 +204,13 @@ const createCreationQueryClient = () => {
 describe('Workflow creation with App Builder', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.setShowPanel.mockReset()
+    mocks.session.mockReset()
     mocks.collaborative = true
     mocks.graphReady = false
     mocks.graphReadyListener = undefined
     workflowStore = createWorkflowStore()
+    mocks.setShowPanel.mockImplementation(workflowStore.getState().setShowDifyBuilderPanel)
     workflowStore.setState({
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: 'initial-hash',
@@ -335,4 +343,103 @@ describe('Workflow creation with App Builder', () => {
     expect(mocks.syncWorkflowDraft).toHaveBeenCalledOnce()
     expect(screen.getByRole('status', { name: 'Builder error' })).toBeEmptyDOMElement()
   })
+
+  it.each(['disabled', 'failed'])(
+    'detaches an active Builder session when features are %s',
+    async (outcome) => {
+      mocks.collaborative = false
+      const stream = createDeferred()
+      const sessionId = 'session-1'
+      const key = 'dify-builder:v1:workspace-1:user-1:created-app:active-session-id'
+      mocks.create.mockImplementationOnce(
+        async function* (): AsyncGenerator<DifyBuilderStreamEventResponse> {
+          yield {
+            event: 'command_started',
+            data: {
+              session_id: sessionId,
+              command_id: 'command-1',
+              version: 1,
+              phase: 'understand',
+              run_status: 'processing',
+            },
+          }
+          await stream.promise
+          yield {
+            event: 'canvas',
+            data: {
+              session_id: sessionId,
+              operation_id: 'op-1',
+              at_version: 2,
+              revision: 1,
+              event: 'graph_changed',
+              cause: 'apply',
+            },
+          }
+        },
+      )
+      mocks.session.mockResolvedValue({
+        session_id: sessionId,
+        version: 2,
+        canvas_read_only: false,
+        run_status: 'waiting_input',
+        reply_language: '',
+        interrupted: false,
+        last_command_id: 'command-1',
+        conversation_last_seq: -1,
+        phase: 'clarify',
+        actions: [],
+      })
+      const queryClient = createCreationQueryClient()
+      const user = userEvent.setup()
+      renderWithConsoleQuery(<CreatedAppNavigation />, {
+        queryClient,
+        accountProfile: { id: 'user-1' },
+        features: { dify_builder_enabled: true },
+        workspacePermissionKeys: ['app.create_and_management'],
+      })
+      await user.click(screen.getByRole('button', { name: 'Open created app' }))
+      await screen.findByRole('complementary', { name: 'App Builder' })
+      await waitFor(() => expect(window.sessionStorage.getItem(key)).toBe(sessionId))
+      expect(workflowStore.getState().canvasReadOnly).toBe(true)
+
+      await act(async () => {
+        if (outcome === 'disabled') seedFeatures(queryClient, { dify_builder_enabled: false })
+        else {
+          await expect(
+            queryClient.query({
+              queryKey: consoleQuery.features.get.queryKey(),
+              queryFn: async () => {
+                throw new Error('Features unavailable')
+              },
+              staleTime: 0,
+              retry: false,
+            }),
+          ).rejects.toThrow('Features unavailable')
+        }
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('complementary', { name: 'App Builder' })).not.toBeInTheDocument()
+        expect(workflowStore.getState().canvasReadOnly).toBe(false)
+      })
+      expect(mocks.create).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          signal: expect.objectContaining({ aborted: true }),
+        }),
+      )
+      await act(async () => stream.resolve())
+      expect(mocks.refreshDraft).not.toHaveBeenCalled()
+      expect(window.sessionStorage.getItem(key)).toBe(sessionId)
+
+      act(() => seedFeatures(queryClient, { dify_builder_enabled: true }))
+      await waitFor(() =>
+        expect(mocks.session).toHaveBeenCalledWith(
+          { params: { session_id: sessionId } },
+          expect.anything(),
+        ),
+      )
+      expect(mocks.create).toHaveBeenCalledOnce()
+    },
+  )
 })

@@ -2130,12 +2130,16 @@ export const copy = {
   post: post24,
 }
 
+/**
+ * Inspect model readiness for an admitted app editor when Builder is enabled
+ */
 export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdDifyBuilderAvailability',
     path: '/apps/{app_id}/dify-builder/availability',
+    summary: 'Inspect model readiness for an admitted app editor when Builder is enabled',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdDifyBuilderAvailabilityPath }))
@@ -5429,16 +5433,20 @@ export const get91 = oc
   .output(zGetAppsResponse)
 
 /**
- * Create a new application
+ * Validate the admitted caller's request before creating the app under the active Builder setting
+ *
+ * Create a new application. A name is required when App Builder is disabled.
  */
 export const post68 = oc
   .route({
-    description: 'Create a new application',
+    description: 'Create a new application. A name is required when App Builder is disabled.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postApps',
     path: '/apps',
     successStatus: 201,
+    summary:
+      "Validate the admitted caller's request before creating the app under the active Builder setting",
     tags: ['console'],
   })
   .input(z.object({ body: zPostAppsBody }))
