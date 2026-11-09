@@ -3,6 +3,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 import json
+import shlex
 import subprocess
 import sys
 import threading
@@ -20,7 +21,7 @@ from pydantic import ValidationError
 from dify_agent import protocol
 from dify_agent.client import Client
 from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend
-from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, _LOCAL_INSPECTION_PROBE
 from dify_agent.server.auth import create_bearer_token_dependency
 from dify_agent.server.execution_bindings import ExecutionBindingService
 from dify_agent.server.routes import execution_bindings
@@ -118,8 +119,6 @@ async def test_enterprise_health_is_never_authoritative_absence(state: str) -> N
     ],
 )
 def test_fixed_local_probe_executes_only_exact_paths(tmp_path: Path, case: str, want: str) -> None:
-    from dify_agent.runtime_backend.local import _LOCAL_INSPECTION_PROBE
-
     home_root, workspace_root = tmp_path / "homes", tmp_path / "workspaces"
     home_root.mkdir()
     workspace_root.mkdir()
@@ -202,7 +201,19 @@ async def test_local_real_transport_runs_fixed_read_only_probe(tmp_path: Path, c
         (workspace_root / "w").rmdir()
     if case == "permission":
         (home_root / "b").chmod(0)
+    probe_args = json.dumps(
+        dict(
+            binding_ref="b:w",
+            workspace_ref="w",
+            home_root=str(home_root),
+            workspace_root=str(workspace_root),
+            home_path=str(home_root / "b"),
+            workspace_path=str(workspace_root / "w"),
+        )
+    )
+    expected_script = shlex.join(["python3", "-c", _LOCAL_INSPECTION_PROBE, probe_args])
     requests: list[tuple[str, str]] = []
+    probes_match: list[bool] = []
 
     class Handler(BaseHTTPRequestHandler):
         @override
@@ -212,10 +223,13 @@ async def test_local_real_transport_runs_fixed_read_only_probe(tmp_path: Path, c
         def do_POST(self) -> None:
             requests.append((self.command, self.path))
             body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            matches = body.get("script") == expected_script
+            probes_match.append(matches)
+            if not matches:
+                self.send_error(400, "unexpected inspection command")
+                return
             completed = subprocess.run(
-                body["script"],
-                shell=True,
-                executable="/bin/sh",
+                [sys.executable, "-c", _LOCAL_INSPECTION_PROBE, probe_args],
                 check=True,
                 capture_output=True,
                 text=True,
@@ -267,6 +281,7 @@ async def test_local_real_transport_runs_fixed_read_only_probe(tmp_path: Path, c
         )
         assert result.state == want
         assert requests == [("POST", "/v1/jobs/run"), ("DELETE", "/v1/jobs/probe?force=true")]
+        assert probes_match == [True]
         assert home_root.is_dir() and workspace_root.is_dir()
     finally:
         if case == "permission":

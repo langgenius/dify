@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -142,7 +143,8 @@ func (s *Service) StartBackgroundPipeMonitor() {
 // RunJob creates and starts a new tmux-backed job, then waits for initial output.
 func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 	if s.config.NativeScopeConfigPath != "" {
-		cwd := "/workspace"
+		nativeCwd := "/workspace"
+		cwd := nativeCwd
 		if req.Cwd != nil {
 			cwd = *req.Cwd
 		}
@@ -156,7 +158,7 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		if len(jobs) >= 64 {
 			return nil, NewServerError(409, "native_job_limit", "scope job capacity exhausted")
 		}
-		req.Cwd = &cwd
+		req.Cwd = &nativeCwd
 	}
 	log.Printf("RunJob: script=%d bytes, cwd=%v, env_keys=%d", len(req.Script), req.Cwd, len(req.Env))
 	cwd, err := s.resolveCwd(req.Cwd)
@@ -871,12 +873,18 @@ func (s *Service) resolveCwd(rawCwd *string) (string, error) {
 		cwd = s.config.DefaultCwd
 	}
 
-	info, err := os.Stat(cwd)
-	if err != nil || !info.IsDir() {
-		return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", cwd))
+	abs, err := filepath.Abs(cwd)
+	if err == nil && cwd != "" {
+		root := filepath.VolumeName(abs) + string(os.PathSeparator)
+		name, err := filepath.Rel(root, abs)
+		if err == nil && filepath.IsLocal(name) {
+			info, err := fs.Stat(os.DirFS(root), filepath.ToSlash(name))
+			if err == nil && info.IsDir() {
+				return abs, nil
+			}
+		}
 	}
-	abs, _ := filepath.Abs(cwd)
-	return abs, nil
+	return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", cwd))
 }
 
 func (s *Service) allocateJobDir() (string, string, error) {

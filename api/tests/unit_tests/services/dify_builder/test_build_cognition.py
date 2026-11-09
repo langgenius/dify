@@ -1130,7 +1130,7 @@ def test_topology_directive_no_longer_steers_away_from_installed_tools() -> None
     assert "installed tool" in lowered
     # and an invented / placeholder endpoint is forbidden outright
     assert "never invent" in lowered
-    assert "example.com" in lowered
+    assert "never use a placeholder such as example.com --" in lowered
 
 
 def test_planner_catalogue_includes_setup_tools_and_remains_capped(monkeypatch: pytest.MonkeyPatch) -> None:
