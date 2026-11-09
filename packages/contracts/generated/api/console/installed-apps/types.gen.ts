@@ -1148,6 +1148,7 @@ export type GetInstalledAppsData = {
       | 'completion'
       | 'workflow'
     name?: string
+    sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
   }
   url: '/installed-apps'
 }

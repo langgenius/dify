@@ -6,18 +6,20 @@ from typing import cast, override
 
 from sqlalchemy import ColumnElement, UnaryExpression, and_, exists, or_, select, update
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
 from libs.helper import escape_like_pattern
 from models.model import App, AppMode, AppModelConfig, InstalledApp
 from models.workflow import Workflow
+from services.entities.app_list_entities import AppListSortBy
 from services.installed_app_access_service import InstalledAppAccessStore, InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_generation_service import InstalledAppUsageRecorder
 from services.installed_app_service import (
-    InstalledAppCursor,
     InstalledAppInfo,
     InstalledAppListMode,
+    InstalledAppPageCursor,
     InstalledAppRecord,
+    InstalledAppSortCursor,
     InstalledAppStore,
 )
 
@@ -40,7 +42,19 @@ def _published_app_filter() -> ColumnElement[bool]:
     )
 
 
-def _installed_app_cursor_filter(cursor: InstalledAppCursor) -> ColumnElement[bool]:
+def _installed_app_sort_column(sort_by: AppListSortBy) -> InstrumentedAttribute[datetime]:
+    """Resolve a validated Studio sort option to its app timestamp without I/O."""
+    return App.updated_at if sort_by == "last_modified" else App.created_at
+
+
+def _installed_app_cursor_filter(cursor: InstalledAppPageCursor) -> ColumnElement[bool]:
+    """Match rows strictly after a validated cursor in its ordering, including ID ties."""
+    if isinstance(cursor, InstalledAppSortCursor):
+        column = _installed_app_sort_column(cursor.sort_by)
+        later_timestamp = (
+            column > cursor.timestamp if cursor.sort_by == "earliest_created" else column < cursor.timestamp
+        )
+        return or_(later_timestamp, and_(column == cursor.timestamp, InstalledApp.id > cursor.installed_app_id))
     same_pin_group = InstalledApp.is_pinned == cursor.is_pinned
     if cursor.last_used_at is None:
         later_in_pin_group = and_(
@@ -61,9 +75,15 @@ def _installed_app_cursor_filter(cursor: InstalledAppCursor) -> ColumnElement[bo
     return and_(same_pin_group, later_in_pin_group)
 
 
-def _installed_app_order_by() -> tuple[
-    UnaryExpression[bool], UnaryExpression[bool], UnaryExpression[datetime | None], UnaryExpression[str]
+def _installed_app_order_by(
+    sort_by: AppListSortBy | None,
+) -> tuple[
+    UnaryExpression[bool] | UnaryExpression[datetime] | UnaryExpression[datetime | None] | UnaryExpression[str], ...
 ]:
+    """Return stable ordering for a validated sort; None retains legacy pin/usage order."""
+    if sort_by is not None:
+        column = _installed_app_sort_column(sort_by)
+        return (column.asc() if sort_by == "earliest_created" else column.desc(), InstalledApp.id.asc())
     # Sort null dates last with a boolean key: MySQL has no NULLS LAST.
     return (
         InstalledApp.is_pinned.desc(),
@@ -74,6 +94,7 @@ def _installed_app_order_by() -> tuple[
 
 
 def _to_record(installed_app: InstalledApp, app: App) -> InstalledAppRecord:
+    """Detach loaded installation/app fields, including pagination timestamps, without further I/O."""
     return InstalledAppRecord(
         id=installed_app.id,
         app=InstalledAppInfo(
@@ -89,6 +110,8 @@ def _to_record(installed_app: InstalledApp, app: App) -> InstalledAppRecord:
         app_owner_tenant_id=installed_app.app_owner_tenant_id,
         is_pinned=installed_app.is_pinned,
         last_used_at=installed_app.last_used_at,
+        app_created_at=app.created_at,
+        app_updated_at=app.updated_at,
     )
 
 
@@ -146,17 +169,19 @@ class SQLAlchemyInstalledAppRepository(InstalledAppAccessStore, InstalledAppUsag
         self,
         *,
         tenant_id: str,
-        cursor: InstalledAppCursor | None,
+        cursor: InstalledAppPageCursor | None,
         limit: int,
         app_id: str | None,
         name: str | None,
         mode: InstalledAppListMode,
+        sort_by: AppListSortBy | None = None,
     ) -> tuple[InstalledAppRecord, ...]:
         """Read tenant-scoped published candidates with validated filters and a limit.
 
         Apply exact mode and optional app ID/literal name filters before cursor
-        pagination. Return detached records in pin/usage/ID order without writes;
-        all modes retain the existing publication restrictions.
+        pagination. None retains pin/usage/ID ordering; explicit sorts order by app
+        timestamps with installation ID ties. The cursor must match that ordering.
+        Return detached records without writes, retaining publication restrictions.
         """
         statement = (
             select(InstalledApp, App)
@@ -173,7 +198,7 @@ class SQLAlchemyInstalledAppRepository(InstalledAppAccessStore, InstalledAppUsag
         if cursor is not None:
             statement = statement.where(_installed_app_cursor_filter(cursor))
         with self._session_factory() as session:
-            rows = session.execute(statement.order_by(*_installed_app_order_by()).limit(limit))
+            rows = session.execute(statement.order_by(*_installed_app_order_by(sort_by)).limit(limit))
             return tuple(starmap(_to_record, rows))
 
     @override

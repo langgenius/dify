@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from models.model import AppMode, IconType
+from services.entities.app_list_entities import AppListSortBy
 from services.entities.dsl_entities import DslImportWarning
 
 
@@ -35,7 +36,6 @@ class SupportedAppType(StrEnum):
 
 SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
-AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
 RecentAppMode = Literal[
     AppMode.COMPLETION,
     AppMode.WORKFLOW,

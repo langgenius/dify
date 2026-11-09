@@ -1637,6 +1637,7 @@ export const zGetInstalledAppsQuery = z.object({
     .optional()
     .default('all'),
   name: z.string().max(100).optional(),
+  sort_by: z.enum(['earliest_created', 'last_modified', 'recently_created']).optional(),
 })
 
 /**

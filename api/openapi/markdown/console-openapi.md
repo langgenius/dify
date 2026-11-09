@@ -7833,6 +7833,7 @@ No installation state changes on success or failure.
 | limit | query | Number of installed apps to return | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter, using the same values as Studio | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | App name to search for | No | string |
+| sort_by | query | Sort by app modification or creation time, using the same values as Studio. When omitted, pinned apps come first, then recently used apps. Restart pagination when changing sort order. | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created" |
 
 #### Responses
 
@@ -27807,6 +27808,7 @@ The app is not available in this app library.
 | limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter, using the same values as Studio<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | App name to search for | No |
+| sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created" | Sort by app modification or creation time, using the same values as Studio. When omitted, pinned apps come first, then recently used apps. Restart pagination when changing sort order. | No |
 
 #### InstalledConnectionConfigurationPayload
 
