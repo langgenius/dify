@@ -19,7 +19,7 @@ from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
-from services.snippet_generate_service import SnippetGenerateService
+from services.snippet_generate_service import SnippetGenerateService, _SnippetAsApp
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.model_factories import make_account, make_workflow
@@ -62,6 +62,14 @@ def _set_published_workflow(
     workflow: Workflow | None,
 ) -> None:
     monkeypatch.setattr(SnippetService, "get_published_workflow", lambda _self, _snippet: workflow)
+
+
+def test_snippet_as_app_has_no_app_tracing() -> None:
+    # WorkflowAppGenerator reads app_model.tracing to build the trace scope.
+    app = _SnippetAsApp(_snippet())
+
+    assert app.id == "snippet-1"
+    assert app.tracing is None
 
 
 def test_filter_virtual_start_events_keeps_blocking_response_unchanged():

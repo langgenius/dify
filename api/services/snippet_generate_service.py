@@ -58,6 +58,7 @@ class _SnippetAsApp:
     - mode: hardcoded to AppMode.WORKFLOW since snippets always run as workflows
     - max_active_requests: defaults to 0 (no limit) for snippet debugging
     - app_model_config_id: None (snippets don't have app model configs)
+    - tracing: None (snippets have no app-level tracing configuration)
     """
 
     id: str
@@ -65,6 +66,7 @@ class _SnippetAsApp:
     mode: str
     max_active_requests: int
     app_model_config_id: str | None
+    tracing: str | None
 
     def __init__(self, snippet: CustomizedSnippet) -> None:
         self.id = snippet.id
@@ -72,6 +74,7 @@ class _SnippetAsApp:
         self.mode = AppMode.WORKFLOW.value
         self.max_active_requests = 0
         self.app_model_config_id = None
+        self.tracing = None
 
 
 class SnippetGenerateService:
