@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "ຕັດການເຊື່ອມຕໍ່ນີ້ບໍ?",
   "endUser.emptyApps": "ຍັງບໍ່ມີແອັບ",
   "endUser.emptyAppsDescription": "ເປີດລິ້ງແອັບເພື່ອເລີ່ມຕົ້ນ. ແອັບທີ່ທ່ານເຂົ້າຊົມຈະປາກົດຢູ່ທີ່ນີ້.",
+  "endUser.emptyStarredApps": "ຍັງບໍ່ມີແອັບທີ່ຕິດດາວ",
+  "endUser.emptyStarredAppsDescription": "ຄລິກຮູບດາວຂ້າງແອັບເພື່ອບັນທຶກໄວ້ທີ່ນີ້.",
   "endUser.lastUsed": "ໃຊ້ຄັ້ງຫຼ້າສຸດ",
   "endUser.linkedAppCount_one": "{{count}} ແອັບ",
   "endUser.linkedAppCount_other": "{{count}} ແອັບ",

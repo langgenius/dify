@@ -60,6 +60,7 @@
   "connections.headless.security": "Giriş məlumatları Dify tərəfindən şifrələnir və saxlanılır. {{source}} onları heç vaxt almır.",
   "connections.headless.signedInAs": "{{identity}} kimi daxil olunub",
   "connections.headless.title": "Davam etmək üçün xidmətləri qoşun",
+  "connections.invalid": "Etibarsız bağlantı",
   "connections.required.inputPlaceholder": "Başlamaq üçün daxil olun və xidmətləri qoşun",
   "connections.required.signIn": "Dify-a daxil olun",
   "connections.required.signInDescription": "Bu bağlantıları qurmaq üçün daxil olun.",

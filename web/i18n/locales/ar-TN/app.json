@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "قطع هذا الاتصال؟",
   "endUser.emptyApps": "لا توجد تطبيقات بعد",
   "endUser.emptyAppsDescription": "افتح رابط تطبيق للبدء. ستظهر التطبيقات التي تزورها هنا.",
+  "endUser.emptyStarredApps": "لا توجد تطبيقات في المفضلة بعد",
+  "endUser.emptyStarredAppsDescription": "انقر على النجمة بجانب تطبيق لحفظه هنا.",
   "endUser.lastUsed": "آخر استخدام",
   "endUser.linkedAppCount_few": "{{count}} تطبيقات",
   "endUser.linkedAppCount_many": "{{count}} تطبيقًا",

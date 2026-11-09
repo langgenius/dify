@@ -60,6 +60,7 @@
   "connections.headless.security": "Dify cifra y almacena las credenciales. {{source}} nunca las recibe.",
   "connections.headless.signedInAs": "Sesión iniciada como {{identity}}",
   "connections.headless.title": "Conecta servicios para continuar",
+  "connections.invalid": "Conexión no válida",
   "connections.required.inputPlaceholder": "Inicia sesión y conecta los servicios para empezar",
   "connections.required.signIn": "Iniciar sesión en Dify",
   "connections.required.signInDescription": "Inicia sesión para configurar estas conexiones.",

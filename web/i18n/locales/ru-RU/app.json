@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Отключить это подключение?",
   "endUser.emptyApps": "Приложений пока нет",
   "endUser.emptyAppsDescription": "Откройте ссылку на приложение, чтобы начать. Посещённые приложения появятся здесь.",
+  "endUser.emptyStarredApps": "Избранных приложений пока нет",
+  "endUser.emptyStarredAppsDescription": "Нажмите на звёздочку рядом с приложением, чтобы сохранить его здесь.",
   "endUser.lastUsed": "Последнее использование",
   "endUser.linkedAppCount_few": "{{count}} приложения",
   "endUser.linkedAppCount_many": "{{count}} приложений",

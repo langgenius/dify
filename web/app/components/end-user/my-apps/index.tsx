@@ -87,12 +87,16 @@ export default function MyApps() {
             title={
               noSearchResults
                 ? t(($) => $['endUser.noResults'], { ns: 'app' })
-                : t(($) => $['endUser.emptyApps'], { ns: 'app' })
+                : filter.view === 'starred'
+                  ? t(($) => $['endUser.emptyStarredApps'], { ns: 'app' })
+                  : t(($) => $['endUser.emptyApps'], { ns: 'app' })
             }
             description={
               noSearchResults
                 ? t(($) => $['endUser.noResultsDescription'], { ns: 'app' })
-                : t(($) => $['endUser.emptyAppsDescription'], { ns: 'app' })
+                : filter.view === 'starred'
+                  ? t(($) => $['endUser.emptyStarredAppsDescription'], { ns: 'app' })
+                  : t(($) => $['endUser.emptyAppsDescription'], { ns: 'app' })
             }
           />
         )}

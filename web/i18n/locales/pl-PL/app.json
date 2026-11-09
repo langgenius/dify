@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Rozłączyć to połączenie?",
   "endUser.emptyApps": "Nie ma jeszcze aplikacji",
   "endUser.emptyAppsDescription": "Otwórz link do aplikacji, aby rozpocząć. Odwiedzone aplikacje pojawią się tutaj.",
+  "endUser.emptyStarredApps": "Nie ma jeszcze ulubionych aplikacji",
+  "endUser.emptyStarredAppsDescription": "Kliknij gwiazdkę obok aplikacji, aby zapisać ją tutaj.",
   "endUser.lastUsed": "Ostatnio używane",
   "endUser.linkedAppCount_few": "{{count}} aplikacje",
   "endUser.linkedAppCount_many": "{{count}} aplikacji",

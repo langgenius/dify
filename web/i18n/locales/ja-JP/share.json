@@ -60,6 +60,7 @@
   "connections.headless.security": "認証情報は Dify によって暗号化され、保存されます。{{source}} に渡されることはありません。",
   "connections.headless.signedInAs": "{{identity}} としてログイン中",
   "connections.headless.title": "サービスに接続して続行",
+  "connections.invalid": "無効な接続",
   "connections.required.inputPlaceholder": "ログインしてサービスに接続すると、利用を開始できます",
   "connections.required.signIn": "Dify にログイン",
   "connections.required.signInDescription": "ログインしてこれらの接続を設定してください。",

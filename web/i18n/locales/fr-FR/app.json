@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Déconnecter cette connexion ?",
   "endUser.emptyApps": "Aucune application pour le moment",
   "endUser.emptyAppsDescription": "Ouvrez un lien d’application pour commencer. Les applications que vous visitez apparaîtront ici.",
+  "endUser.emptyStarredApps": "Aucune application favorite pour le moment",
+  "endUser.emptyStarredAppsDescription": "Cliquez sur l’étoile à côté d’une application pour l’enregistrer ici.",
   "endUser.lastUsed": "Dernière utilisation",
   "endUser.linkedAppCount_many": "{{count}} applications",
   "endUser.linkedAppCount_one": "{{count}} application",

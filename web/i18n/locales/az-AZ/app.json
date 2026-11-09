@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Bu bağlantı kəsilsin?",
   "endUser.emptyApps": "Hələ tətbiq yoxdur",
   "endUser.emptyAppsDescription": "Başlamaq üçün tətbiq keçidini açın. Ziyarət etdiyiniz tətbiqlər burada görünəcək.",
+  "endUser.emptyStarredApps": "Hələ ulduzlanmış tətbiq yoxdur",
+  "endUser.emptyStarredAppsDescription": "Tətbiqi burada saxlamaq üçün yanındakı ulduza klikləyin.",
   "endUser.lastUsed": "Son istifadə",
   "endUser.linkedAppCount_one": "{{count}} tətbiq",
   "endUser.linkedAppCount_other": "{{count}} tətbiq",

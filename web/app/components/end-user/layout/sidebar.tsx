@@ -1,12 +1,15 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import MainNavLink from '@/app/components/main-nav/components/nav-link'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
+import { webAppQuery } from '@/service/webapp'
 import AccountMenu from './account-menu'
 import BuildAppLink from './build-app-link'
+import { getConsoleBaseUrl } from './console-base-url'
 
 const navigationItems = [
   {
@@ -32,6 +35,14 @@ const navigationItems = [
 export default function Sidebar() {
   const { t } = useTranslation(['app'])
   const pathname = usePathname()
+  const features = useQuery(
+    webAppQuery.systemFeatures.get.queryOptions({
+      context: { silent: true },
+      retry: false,
+      staleTime: Infinity,
+    }),
+  )
+  const consoleBaseUrl = getConsoleBaseUrl(features.data?.account_login_url)
 
   return (
     <div className="flex shrink-0 flex-col gap-4 border-b border-divider-subtle p-3 md:w-60 md:gap-0 md:border-0 md:p-0">
@@ -47,17 +58,22 @@ export default function Sidebar() {
         aria-label={t(($) => $['endUser.navigation'], { ns: 'app' })}
         className="flex gap-1 md:flex-col md:p-2"
       >
-        {navigationItems.map((item) => (
-          <MainNavLink
-            key={item.href}
-            pathname={pathname}
-            item={{
-              ...item,
-              label: t(($) => $[item.label], { ns: 'app' }),
-              active: (path) => path === item.href || path.startsWith(`${item.href}/`),
-            }}
-          />
-        ))}
+        {navigationItems.map((item) => {
+          if (item.href === '/account' && consoleBaseUrl === null) return null
+
+          return (
+            <MainNavLink
+              key={item.href}
+              pathname={pathname}
+              item={{
+                ...item,
+                href: item.href === '/account' ? `${consoleBaseUrl}/account` : item.href,
+                label: t(($) => $[item.label], { ns: 'app' }),
+                active: (path) => path === item.href || path.startsWith(`${item.href}/`),
+              }}
+            />
+          )
+        })}
       </nav>
       <div className="md:mt-auto">
         <div className="px-2 pb-1">

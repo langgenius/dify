@@ -23,6 +23,7 @@ export type WorkspaceConnectionSelectorProps = {
   authorization: ReturnType<typeof usePluginAuth>
   credentialId?: string
   useWorkspaceDefault?: boolean
+  defaultVisibility?: CredentialPermission
   active?: boolean
   disabled?: boolean
   placeholder?: string
@@ -39,6 +40,7 @@ const WorkspaceConnectionSelector = ({
   authorization,
   credentialId,
   useWorkspaceDefault = true,
+  defaultVisibility,
   active = true,
   disabled = false,
   placeholder,
@@ -73,7 +75,9 @@ const WorkspaceConnectionSelector = ({
   const [oauthSettingsSession, setOauthSettingsSession] = useState(0)
   const [oauthSettingsOpen, setOauthSettingsOpen] = useState(false)
   const [visibilityOpen, setVisibilityOpen] = useState(false)
-  const [visibility, setVisibility] = useState<CredentialPermission>(PermissionLevel.onlyMe)
+  const [visibility, setVisibility] = useState<CredentialPermission>(
+    defaultVisibility ?? PermissionLevel.onlyMe,
+  )
   const oauthAuthorization = useMutation(
     consoleQuery.oauth.plugin.byProvider.tool.authorizationUrl.get.mutationOptions({
       onSuccess: ({ authorization_url }) => {
@@ -147,7 +151,7 @@ const WorkspaceConnectionSelector = ({
       oauthSchema.data?.is_system_oauth_params_exists ||
       oauthSchema.data?.is_oauth_custom_client_enabled
     ) {
-      setVisibility(PermissionLevel.onlyMe)
+      setVisibility(defaultVisibility ?? PermissionLevel.onlyMe)
       setVisibilityOpen(true)
     } else {
       openOAuthSettings()
@@ -191,7 +195,7 @@ const WorkspaceConnectionSelector = ({
           oauthDisabled: !canManageCredential || oauthSchema.isPending || oauthSchema.isError,
           pluginPayload,
           emptyState: 'picker',
-          apiKey: operations.apiKey,
+          apiKey: { ...operations.apiKey, defaultVisibility },
           connectionActions: operations.connectionActions,
           providerName,
           subtitle,
@@ -223,7 +227,7 @@ const WorkspaceConnectionSelector = ({
           }}
           onClientTypeChange={onClientTypeChange}
           onRequestAuthorization={() => {
-            setVisibility(PermissionLevel.onlyMe)
+            setVisibility(defaultVisibility ?? PermissionLevel.onlyMe)
             setVisibilityOpen(true)
           }}
         />

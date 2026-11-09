@@ -60,6 +60,7 @@
   "connections.headless.security": "Dane uwierzytelniające są szyfrowane i przechowywane przez Dify. {{source}} nigdy ich nie otrzymuje.",
   "connections.headless.signedInAs": "Zalogowano jako {{identity}}",
   "connections.headless.title": "Połącz usługi, aby kontynuować",
+  "connections.invalid": "Nieprawidłowe połączenie",
   "connections.required.inputPlaceholder": "Zaloguj się i połącz usługi, aby rozpocząć",
   "connections.required.signIn": "Zaloguj się do Dify",
   "connections.required.signInDescription": "Zaloguj się, aby skonfigurować te połączenia.",

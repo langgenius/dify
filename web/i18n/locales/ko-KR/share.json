@@ -60,6 +60,7 @@
   "connections.headless.security": "자격 증명은 Dify에서 암호화하여 저장합니다. {{source}}에는 전달되지 않습니다.",
   "connections.headless.signedInAs": "{{identity}} 계정으로 로그인됨",
   "connections.headless.title": "계속하려면 서비스를 연결하세요",
+  "connections.invalid": "유효하지 않은 연결",
   "connections.required.inputPlaceholder": "시작하려면 로그인하고 서비스를 연결하세요",
   "connections.required.signIn": "Dify에 로그인",
   "connections.required.signInDescription": "로그인하여 이 연결들을 설정하세요.",
