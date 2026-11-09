@@ -11,6 +11,7 @@ from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import TriggerProviderPropertiesCache
 from models.provider_ids import TriggerProviderID
 from services.trigger.subscription_query_service import TriggerSubscriptionSchemas
+from services.trigger.subscription_refresh_service import TriggerSubscriptionRefreshJob
 from services.trigger.subscription_service import (
     TriggerSubscriptionInvalidError,
     TriggerSubscriptionProviderError,
@@ -108,3 +109,13 @@ def invalidate_subscription_properties(*, tenant_id: str, provider_id: str, subs
     TriggerProviderPropertiesCache(
         tenant_id=tenant_id, provider_id=provider_id, subscription_id=subscription_id
     ).delete()
+
+
+def enqueue_subscription_refresh(job: TriggerSubscriptionRefreshJob) -> None:
+    from tasks.trigger_subscription_refresh_tasks import trigger_subscription_refresh
+
+    # Keep the two-argument task contract for older workers during rolling upgrades.
+    trigger_subscription_refresh.apply_async(
+        kwargs={"tenant_id": job.subscription.tenant_id, "subscription_id": job.subscription.subscription_id},
+        headers={"reservation_token": job.token},
+    )
