@@ -43,9 +43,6 @@ def success(message_id: str = "18cab_1", **message: object) -> dict[str, object]
     return {"message": {"id": message_id, "thread_id": "thread-1", **message}, "message_id": message_id}
 
 
-# --- parameters -------------------------------------------------------------------
-
-
 @pytest.mark.parametrize("message_id", ["../m", "a/b", "a%2Fb", "a?x", "a#x", " a", "a\n", "é", "", "a" * 257, 7])
 def test_rejects_noncanonical_message_path(message_id: object) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
@@ -73,9 +70,6 @@ def test_normalizes_exact_bytes() -> None:
     assert normalize_get_message_parameters(params(message_id="Ab-_9", include_body=True)) == GmailReadParameters(
         message_id="Ab-_9", include_body=True, include_attachments=False
     )
-
-
-# --- outcome ----------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -167,9 +161,6 @@ def test_classifier_refuses_unsafe_expected_id() -> None:
         classify_get_message_result(
             expected_message_id="a/b", json_messages=[success("a/b")], stream_completed=True, declared_failure=False
         )
-
-
-# --- qualification and envelope ---------------------------------------------------
 
 
 def installed(**overrides: object) -> InstalledToolBinding:
@@ -390,9 +381,6 @@ def test_disclosure_retains_prior_uncertain_consent() -> None:
 def test_parameters_model_is_strict() -> None:
     with pytest.raises(ValidationError):
         GmailReadParameters.model_validate(params(include_body=1))
-
-
-# --- three-node admission -----------------------------------------------------------
 
 
 def tool_parameters(**changes: object) -> dict[str, object]:

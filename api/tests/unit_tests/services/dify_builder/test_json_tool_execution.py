@@ -566,46 +566,14 @@ def test_native_jsonpath_constant_cannot_read_non_start_value(json_graph: Graph)
         "$[65535]",
         "$.items[*].name",
         "$." + ".".join(f"n{i}" for i in range(16)),
+        pytest.param("$." + "a" * 64, id="identifier-64"),
+        pytest.param("$[00000]", id="index-five-digits"),
+        pytest.param("$." + ".".join(["a" * 64] * 15 + ["a" * 47]), id="filter-1024-bounded-segments"),
     ],
 )
 def test_admitted_jsonpath_grammar(json_graph: Graph, path: str) -> None:
     _tool(json_graph)["tool_parameters"]["json_filter"] = {"type": "constant", "value": path}
     assert resolve_json_parameters(snapshot_for(json_graph), _inputs())["json_filter"] == path
-
-
-@pytest.mark.parametrize(
-    "path",
-    [
-        "$." + "a" * 64,
-        "$[00000]",
-        "$." + ".".join(["a" * 64] * 15 + ["a" * 47]),
-    ],
-    ids=["identifier-64", "index-five-digits", "filter-1024-bounded-segments"],
-)
-def test_jsonpath_detailed_grammar_boundaries_admit(json_graph: Graph, path: str) -> None:
-    _tool(json_graph)["tool_parameters"]["json_filter"] = {"type": "constant", "value": path}
-    assert resolve_json_parameters(snapshot_for(json_graph), _inputs())["json_filter"] == path
-
-
-@pytest.mark.parametrize(
-    "path",
-    [
-        "$." + "a" * 65,
-        "$[000000]",
-        "$.*.name",
-        "$." + ".".join(["a" * 64] * 15 + ["a" * 48]),
-    ],
-    ids=["identifier-65", "index-six-digits", "dot-wildcard", "filter-1025-bounded-segments"],
-)
-@pytest.mark.parametrize("source_kind", ["constant", "variable"])
-def test_jsonpath_detailed_grammar_boundaries_refuse(json_graph: Graph, path: str, source_kind: str) -> None:
-    inputs = _inputs()
-    if source_kind == "constant":
-        _tool(json_graph)["tool_parameters"]["json_filter"] = {"type": "constant", "value": path}
-    else:
-        inputs["json_path"] = path
-    with pytest.raises(BuilderExecutionPolicyError):
-        resolve_json_parameters(snapshot_for(json_graph), inputs)
 
 
 @pytest.mark.parametrize(
@@ -625,6 +593,10 @@ def test_jsonpath_detailed_grammar_boundaries_refuse(json_graph: Graph, path: st
         "$.a ",
         "$." + ".".join(f"n{i}" for i in range(17)),
         "$.\ud800",
+        pytest.param("$." + "a" * 65, id="identifier-65"),
+        pytest.param("$[000000]", id="index-six-digits"),
+        pytest.param("$.*.name", id="dot-wildcard"),
+        pytest.param("$." + ".".join(["a" * 64] * 15 + ["a" * 48]), id="filter-1025-bounded-segments"),
     ],
 )
 @pytest.mark.parametrize("source_kind", ["constant", "variable"])

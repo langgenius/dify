@@ -37,8 +37,6 @@ def load_app(session: Session, app_id: str, actor: Actor) -> App:
     mirrors the P1 usecase's non-owner-to-NotFoundError convention.
     """
     app = session.get(App, app_id)
-    if app is None:
-        raise NotFoundError(f"app not found: {app_id}")
-    if app.tenant_id != actor.tenant_id:
+    if app is None or app.tenant_id != actor.tenant_id:
         raise NotFoundError(f"app not found: {app_id}")
     return app
