@@ -133,7 +133,7 @@ it('keeps an embedded error language and its portaled menus local to the dialog'
   await user.click(screen.getByRole('button', { name: 'العربية (تونس)' }))
   expect(screen.getByRole('menu')).toHaveAttribute('dir', 'rtl')
   await user.keyboard('{Escape}')
-  await user.click(screen.getByRole('button', { name: arCommon['theme.theme'] }))
+  await user.click(screen.getByRole('button', { name: arCommon['theme.label'] }))
   expect(screen.getByRole('menu')).toHaveAttribute('dir', 'rtl')
   expect(document.documentElement.lang).toBe('zh-Hans')
   expect(document.documentElement.dir).toBe('ltr')

@@ -14,7 +14,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { useMarketplace } from '@/features/marketplace/client'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { PluginSource } from '../types'
 
 type OperationMenuProps = Readonly<
@@ -55,7 +55,7 @@ export function OperationMenu({
   const { t } = useTranslation(['plugin'])
   const marketplace = useMarketplace()
   const locale = useLocale()
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const showInfo = source === PluginSource.github
   const showCheckVersionAction = showCheckVersion && source === PluginSource.github
   const detailUrl = !marketplace

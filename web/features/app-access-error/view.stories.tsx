@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { ThemeProvider } from 'next-themes'
+import { ThemeProvider } from '@/features/theme/provider'
 import AppNotAccessible from './view'
 
 const meta = {
@@ -11,7 +11,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <ThemeProvider attribute="data-theme" defaultTheme="light">
+      <ThemeProvider defaultPreference="light">
         <Story />
       </ThemeProvider>
     ),

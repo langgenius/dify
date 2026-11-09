@@ -1,6 +1,6 @@
 import type { ConnectionProvider } from './model'
 import AppIcon from '@/app/components/base/app-icon'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 
 type Props = {
   provider: ConnectionProvider
@@ -8,7 +8,7 @@ type Props = {
 }
 
 export default function ProviderIcon({ provider, size = 'medium' }: Props) {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const icon = theme === 'dark' ? (provider.icon_dark ?? provider.icon) : provider.icon
 
   return (

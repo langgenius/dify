@@ -15,12 +15,11 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import { ReadmePanelView } from '@/app/components/plugins/readme-panel/view'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { getModelLanguage } from '@/i18n/metadata'
 import { webAppQuery } from '@/service/webapp'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
-import { Theme } from '@/types/app'
 
 function ConnectionReadmeContent({
   service,
@@ -31,7 +30,7 @@ function ConnectionReadmeContent({
 }) {
   const { t } = useTranslation(['plugin', 'common'])
   const locale = useLocale()
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const address = resolveWebAppAddress()
   const authSession = useSyncExternalStore(
     subscribeWebAppAuthSession,
@@ -79,7 +78,7 @@ function ConnectionReadmeContent({
         <div className="flex items-center gap-3">
           <AppIcon
             size="large"
-            icon={theme === Theme.dark && service.iconDark ? service.iconDark : service.icon}
+            icon={theme === 'dark' && service.iconDark ? service.iconDark : service.icon}
             decorative
           />
           <span className="system-lg-semibold min-w-0 wrap-anywhere text-text-primary">
@@ -105,7 +104,7 @@ export default function ConnectionReadme({ service }: { service: RequiredConnect
         {t(($) => $['readmeInfo.needHelpCheckReadme'], { ns: 'plugin' })}
       </DialogTrigger>
       <DialogContent
-        className="h-[calc(100dvh-16px)] w-200 overflow-hidden"
+        className="h-dvh max-h-[calc(100dvh-1rem)] w-200 overflow-hidden"
         backdropProps={{ forceRender: true }}
       >
         <ConnectionReadmeContent

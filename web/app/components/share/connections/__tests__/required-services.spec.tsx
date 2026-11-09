@@ -10,7 +10,7 @@ import { getConnectionData } from '../connection-data'
 import RequiredServices from '../required-services'
 
 const theme = vi.hoisted(() => ({ value: 'light' }))
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: theme.value }) }))
+vi.mock('@/features/theme/hooks', () => ({ useResolvedTheme: () => theme.value }))
 
 beforeEach(() => {
   theme.value = 'light'
