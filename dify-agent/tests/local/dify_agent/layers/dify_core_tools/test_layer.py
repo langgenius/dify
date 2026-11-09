@@ -217,9 +217,11 @@ async def test_ordinary_plugin_canonical_file_uses_current_run_download_owner(tr
     import base64
 
     from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient, bind_runtime_identity
+    from dify_agent.agent_stub.protocol import file_reference
     from dify_agent.protocol.native_testing import AgentRuntimeIdentity
 
     seen = []
+    reference = file_reference("canonical-record")
 
     def handler(request):
         header = request.headers["X-Dify-Agent-Run"]
@@ -256,7 +258,7 @@ async def test_ordinary_plugin_canonical_file_uses_current_run_download_owner(tr
                 deps,
                 Toolset("core_tools"),
                 "search",
-                {"query": "live", "input": {"transfer_method": transfer, "reference": "canonical-ref"}},
+                {"query": "live", "input": {"transfer_method": transfer, "reference": reference}},
             )
     assert [path for path, _ in seen] == [
         "/inner/api/agent/runtime/files/download-request",
@@ -267,7 +269,8 @@ async def test_ordinary_plugin_canonical_file_uses_current_run_download_owner(tr
         "user_id": "user",
         "user_from": "account",
         "invoke_from": "web-app",
-        "file": {"transfer_method": transfer, "reference": "canonical-ref"},
+        "file": {"transfer_method": transfer, "reference": reference},
+        "for_frontend": False,
     }
     assert seen[1][1]["tool"]["tool_parameters"]["input"] == {
         "dify_model_identity": "__dify__file__",
@@ -282,9 +285,12 @@ async def test_ordinary_plugin_canonical_file_uses_current_run_download_owner(tr
 
 @pytest.mark.anyio
 async def test_ordinary_plugin_sandbox_path_reuses_shell_stub_upload_then_download(monkeypatch):
-    from dify_agent.layers.dify_plugin.tools_layer import _FILE_UPLOAD_BEGIN, _FILE_UPLOAD_END
+    import shlex
+
+    from dify_agent.agent_stub.protocol import file_reference
 
     calls = []
+    reference = file_reference("uploaded-record")
 
     from dify_agent.adapters.shell.protocols import CompleteShellCommandResult
     from dify_agent.layers.shell.layer import DifyShellLayerConfig, ShellSession
@@ -292,24 +298,26 @@ async def test_ordinary_plugin_sandbox_path_reuses_shell_stub_upload_then_downlo
 
     async def upload(self, script, *, timeout, inject_agent_stub_env):
         calls.append("upload")
-        assert "['dify-agent', 'file', 'upload', \"/sandbox/sample.txt\"]" in script
+        assert shlex.split(script) == [
+            "dify-agent",
+            "file",
+            "upload",
+            "--no-download-link",
+            "--",
+            "/sandbox/sample.txt",
+        ]
         assert timeout == 60.0 and inject_agent_stub_env is True
-        output = (
-            _FILE_UPLOAD_BEGIN
-            + json.dumps({"transfer_method": "tool_file", "reference": "uploaded-ref"})
-            + _FILE_UPLOAD_END
-        )
+        output = json.dumps({"transfer_method": "tool_file", "reference": reference})
         return CompleteShellCommandResult("upload", "exited", True, 0, output, True, None, len(output))
 
     def handler(request):
         calls.append(request.url.path)
-        if request.url.path.endswith("download/file/request"):
-            assert json.loads(request.content)["file"]["reference"] == "uploaded-ref"
+        if request.url.path.endswith("files/download-request"):
+            assert request.headers["X-Inner-Api-Key"] == "legacy-unused"
+            assert json.loads(request.content)["file"]["reference"] == reference
             return httpx.Response(
                 200,
-                json={
-                    "data": {"filename": "sample.txt", "size": 7, "download_url": "https://files.example.test/signed"}
-                },
+                json={"filename": "sample.txt", "size": 7, "download_uri": "https://files.example.test/signed"},
             )
         return httpx.Response(200, json={"observation": "ok", "messages": [], "metadata": {}})
 
@@ -325,7 +333,7 @@ async def test_ordinary_plugin_sandbox_path_reuses_shell_stub_upload_then_downlo
         await invoke_native_tool(
             deps, Toolset("core_tools"), "search", {"query": "live", "input": "/sandbox/sample.txt"}
         )
-    assert calls == ["upload", "/inner/api/download/file/request", "/inner/api/agent/tools/invoke"]
+    assert calls == ["upload", "/inner/api/agent/files/download-request", "/inner/api/agent/tools/invoke"]
 
 
 @pytest.mark.anyio

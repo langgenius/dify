@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from functools import cached_property
 from types import EllipsisType
 from typing import Any, NotRequired, TypedDict, cast
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-import pytz
 from pydantic import JsonValue
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -255,13 +255,13 @@ class AppService:
         A name the user gave wins outright -- that is create-from-blank, where
         Builder only inherits. Otherwise it is cut out of the goal prompt, with
         the account's timezone and console language shaping the
-        ``New app · Sep 7, 14:02`` fallback.
+        ``New app · Sep 7, 14:02`` fallback. Missing or invalid timezones use UTC.
         """
         if params.name:
             return params.name
         try:
-            now = datetime.now(pytz.timezone(account.timezone or "UTC"))
-        except Exception:
+            now = datetime.now(ZoneInfo(account.timezone or "UTC"))
+        except (ZoneInfoNotFoundError, ValueError):
             now = datetime.now(UTC)
         return naming.derive_app_name(
             (params.prompt or "")[:_NAME_PROMPT_SCAN_LIMIT],
@@ -407,7 +407,7 @@ class AppService:
                     tenant_id=tenant_id,
                     account_id=account.id,
                     app_id=app.id,
-                    name=params.name,
+                    name=app.name,
                     description=params.description or "",
                     role=params.agent_role,
                     icon_type=icon_type,
@@ -604,11 +604,7 @@ class AppService:
         return app
 
     def rename_app(self, app: App, name: str, *, account_id: str, session: Session) -> App:
-        """Rename an app on behalf of ``account_id``.
-
-        For callers outside a request context -- the Dify Builder advance
-        task -- that cannot read the actor off ``current_user``.
-        """
+        """Rename an app for the Dify Builder task outside a request context."""
         app.name = name
         app.updated_by = account_id
         app.updated_at = naive_utc_now()
