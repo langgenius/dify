@@ -128,10 +128,16 @@ describe('Tidy', () => {
       ],
       documents: { pending: 1, scanning: 0, complete: 3, failed: 1 },
       modelCalls: 0,
+      current: { documentId: 'doc-a', title: 'Big.txt', passagesDone: 179, passagesTotal: 285 },
     })
     const user = userEvent.setup()
     renderPage()
     expect(await screen.findByText(/knowledgeSpace\.tidy\.progressSummary/)).toBeVisible()
+    // A long document counts by passage: 4 of 5 documents done plus 63% of the current one.
+    expect(screen.getByText(/knowledgeSpace\.tidy\.progressCurrent/)).toBeVisible()
+    expect(
+      screen.getByRole('progressbar', { name: 'knowledgeSpace.tidy.progress' }),
+    ).toHaveAttribute('aria-valuenow', '93')
     expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.tidy.pausedAuthorization')
     expect(screen.getByText(/knowledgeSpace\.tidy\.failedCount/)).toBeVisible()
     expect(screen.getByRole('button', { name: 'knowledgeSpace.tidy.similar 2' })).toBeVisible()

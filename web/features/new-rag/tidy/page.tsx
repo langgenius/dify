@@ -37,9 +37,18 @@ type Kind = (typeof KINDS)[number]
 function progressOf(summary: KnowledgeFsTidySummaryResponse | undefined) {
   const docs = summary?.documents ?? { pending: 0, scanning: 0, complete: 0, failed: 0 }
   const total = docs.pending + docs.scanning + docs.complete + docs.failed
+  const done = docs.complete + docs.failed
+  const current = summary?.current ?? null
+  // A long document is most of the work: count its scanned passages too.
+  const partial =
+    current && current.passagesTotal > 0
+      ? Math.min(1, current.passagesDone / current.passagesTotal)
+      : 0
   return {
     total,
-    done: docs.complete + docs.failed,
+    done,
+    percent: total ? Math.min(100, Math.round(((done + partial) / total) * 100)) : 0,
+    current,
     active: docs.pending + docs.scanning > 0,
     failed: docs.failed,
   }
@@ -261,18 +270,44 @@ export function TidyPage() {
               />
             </div>
             {summary.data && (
-              <p role="status" className="body-sm-regular text-text-secondary">
-                {t(($) => $['tidy.progressSummary'], {
-                  done: progress.done,
-                  total: progress.total,
-                })}
-                {summary.data.modelCalls > 0 && (
-                  <span className="text-text-tertiary">
-                    {' · '}
-                    {t(($) => $['tidy.modelCalls'], { count: summary.data.modelCalls })}
-                  </span>
+              <div className="flex flex-col gap-1.5">
+                <p role="status" className="body-sm-regular text-text-secondary">
+                  {t(($) => $['tidy.progressSummary'], {
+                    done: progress.done,
+                    total: progress.total,
+                  })}
+                  {summary.data.modelCalls > 0 && (
+                    <span className="text-text-tertiary">
+                      {' · '}
+                      {t(($) => $['tidy.modelCalls'], { count: summary.data.modelCalls })}
+                    </span>
+                  )}
+                </p>
+                {progress.active && (
+                  <div
+                    role="progressbar"
+                    aria-label={t(($) => $['tidy.progress'])}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={progress.percent}
+                    className="h-1 overflow-hidden rounded-full bg-components-progress-bar-bg"
+                  >
+                    <div
+                      className="h-full rounded-full bg-components-progress-bar-progress-solid"
+                      style={{ width: `${progress.percent}%` }}
+                    />
+                  </div>
                 )}
-              </p>
+                {progress.active && progress.current && progress.current.passagesTotal > 0 && (
+                  <p className="truncate body-xs-regular text-text-tertiary tabular-nums">
+                    {t(($) => $['tidy.progressCurrent'], {
+                      title: progress.current.title,
+                      done: progress.current.passagesDone,
+                      total: progress.current.passagesTotal,
+                    })}
+                  </p>
+                )}
+              </div>
             )}
             {lastError && (
               <div

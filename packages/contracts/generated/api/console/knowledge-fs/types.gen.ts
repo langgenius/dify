@@ -1350,6 +1350,7 @@ export type KnowledgeFsTidySettingsPayload = {
 }
 
 export type KnowledgeFsTidySummaryResponse = {
+  current?: KnowledgeFsTidyCurrentScanResponse | null
   documents: KnowledgeFsTidyDocumentProgressResponse
   findings: Array<KnowledgeFsTidyFindingCountResponse>
   modelCalls: number
@@ -2435,6 +2436,13 @@ export type KnowledgeFsTidyScanResponse = {
   state: 'complete' | 'failed' | 'pending' | 'scanning'
   title: string
   windows: number
+}
+
+export type KnowledgeFsTidyCurrentScanResponse = {
+  documentId: string
+  passagesDone: number
+  passagesTotal: number
+  title: string
 }
 
 export type KnowledgeFsTidyDocumentProgressResponse = {

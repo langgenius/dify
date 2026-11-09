@@ -3166,6 +3166,7 @@ def test_tidy_calls_use_fresh_scoped_capabilities_and_preserve_evidence() -> Non
                     "findings": [{"status": "open", "kind": "similar", "count": 2}],
                     "documents": {"pending": 1, "scanning": 0, "complete": 4, "failed": 1},
                     "modelCalls": 0,
+                    "current": {"documentId": "doc-a", "title": "Big.txt", "passagesDone": 179, "passagesTotal": 285},
                 }
             if request.operation_id == "retryTidyScans":
                 return {"resumed": 1}
@@ -3220,6 +3221,8 @@ def test_tidy_calls_use_fresh_scoped_capabilities_and_preserve_evidence() -> Non
     assert settings.lastError == "authorization_failed"
     assert summary.documents.failed == 1
     assert summary.findings[0].kind == "similar"
+    assert summary.current is not None
+    assert (summary.current.passagesDone, summary.current.passagesTotal) == (179, 285)
     assert len(broker.calls) == 7
     assert all(call["tenant_id"] == "tenant-1" and call["account_id"] == "account-1" for call in broker.calls)
     # Text-only scanning makes no model calls, so it needs no token acknowledgment.

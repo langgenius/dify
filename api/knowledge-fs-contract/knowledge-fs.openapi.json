@@ -17710,12 +17710,39 @@
                     },
                     "modelCalls": {
                       "type": "integer"
+                    },
+                    "current": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "documentId": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "passagesDone": {
+                          "type": "integer"
+                        },
+                        "passagesTotal": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "documentId",
+                        "title",
+                        "passagesDone",
+                        "passagesTotal"
+                      ]
                     }
                   },
                   "required": [
                     "findings",
                     "documents",
-                    "modelCalls"
+                    "modelCalls",
+                    "current"
                   ]
                 }
               }

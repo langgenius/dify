@@ -2529,6 +2529,18 @@ export const zKnowledgeFsTidyScanListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSTidyCurrentScanResponse
+ *
+ * How far the scanner is through the document it is scanning now.
+ */
+export const zKnowledgeFsTidyCurrentScanResponse = z.object({
+  documentId: z.string(),
+  passagesDone: z.int(),
+  passagesTotal: z.int(),
+  title: z.string(),
+})
+
+/**
  * KnowledgeFSTidyDocumentProgressResponse
  */
 export const zKnowledgeFsTidyDocumentProgressResponse = z.object({
@@ -2551,6 +2563,7 @@ export const zKnowledgeFsTidyFindingCountResponse = z.object({
  * KnowledgeFSTidySummaryResponse
  */
 export const zKnowledgeFsTidySummaryResponse = z.object({
+  current: zKnowledgeFsTidyCurrentScanResponse.nullish(),
   documents: zKnowledgeFsTidyDocumentProgressResponse,
   findings: z.array(zKnowledgeFsTidyFindingCountResponse),
   modelCalls: z.int(),

@@ -49,10 +49,20 @@ class KnowledgeFSTidyDocumentProgressResponse(ResponseModel):
     failed: int
 
 
+class KnowledgeFSTidyCurrentScanResponse(ResponseModel):
+    """How far the scanner is through the document it is scanning now."""
+
+    documentId: str
+    title: str
+    passagesDone: int
+    passagesTotal: int
+
+
 class KnowledgeFSTidySummaryResponse(ResponseModel):
     findings: list[KnowledgeFSTidyFindingCountResponse]
     documents: KnowledgeFSTidyDocumentProgressResponse
     modelCalls: int
+    current: KnowledgeFSTidyCurrentScanResponse | None = None
 
 
 class KnowledgeFSTidyEvidenceResponse(ResponseModel):

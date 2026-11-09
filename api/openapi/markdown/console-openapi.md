@@ -30269,6 +30269,17 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | documentId | string |  | No |
 | expectedRevision | integer |  | Yes |
 
+#### KnowledgeFSTidyCurrentScanResponse
+
+How far the scanner is through the document it is scanning now.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| passagesDone | integer |  | Yes |
+| passagesTotal | integer |  | Yes |
+| title | string |  | Yes |
+
 #### KnowledgeFSTidyDocumentProgressResponse
 
 | Name | Type | Description | Required |
@@ -30383,6 +30394,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| current | [KnowledgeFSTidyCurrentScanResponse](#knowledgefstidycurrentscanresponse) |  | No |
 | documents | [KnowledgeFSTidyDocumentProgressResponse](#knowledgefstidydocumentprogressresponse) |  | Yes |
 | findings | [ [KnowledgeFSTidyFindingCountResponse](#knowledgefstidyfindingcountresponse) ] |  | Yes |
 | modelCalls | integer |  | Yes |
