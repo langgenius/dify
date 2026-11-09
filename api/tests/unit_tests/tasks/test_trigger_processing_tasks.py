@@ -131,6 +131,7 @@ class _Dispatch:
                     request_id=self.request_id,
                     end_users=services.app_scoped_end_users.commands,
                     events=services.workspaces.trigger_events,
+                    bindings=services.workspaces.trigger_binding_queries,
                 )
 
         return Context().run(invoke)
