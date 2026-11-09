@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Bu bağlantı kesilsin mi?",
   "endUser.emptyApps": "Henüz uygulama yok",
   "endUser.emptyAppsDescription": "Başlamak için bir uygulama bağlantısı açın. Ziyaret ettiğiniz uygulamalar burada görünür.",
+  "endUser.emptyStarredApps": "Henüz yıldızlı uygulama yok",
+  "endUser.emptyStarredAppsDescription": "Bir uygulamayı buraya kaydetmek için yanındaki yıldıza tıklayın.",
   "endUser.lastUsed": "Son kullanım",
   "endUser.linkedAppCount_one": "{{count}} uygulama",
   "endUser.linkedAppCount_other": "{{count}} uygulama",

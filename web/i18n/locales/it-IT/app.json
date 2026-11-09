@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Disconnettere questa connessione?",
   "endUser.emptyApps": "Nessuna app al momento",
   "endUser.emptyAppsDescription": "Apri il link di un’app per iniziare. Le app che visiti verranno visualizzate qui.",
+  "endUser.emptyStarredApps": "Nessuna app tra le preferite al momento",
+  "endUser.emptyStarredAppsDescription": "Fai clic sulla stella accanto a un’app per salvarla qui.",
   "endUser.lastUsed": "Ultimo utilizzo",
   "endUser.linkedAppCount_many": "{{count}} app",
   "endUser.linkedAppCount_one": "{{count}} app",

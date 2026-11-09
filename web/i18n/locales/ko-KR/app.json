@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "이 연결을 해제할까요?",
   "endUser.emptyApps": "아직 앱이 없습니다",
   "endUser.emptyAppsDescription": "앱 링크를 열어 시작하세요. 방문한 앱이 여기에 표시됩니다.",
+  "endUser.emptyStarredApps": "아직 즐겨찾는 앱이 없습니다",
+  "endUser.emptyStarredAppsDescription": "앱 옆의 별을 클릭하면 여기에 저장됩니다.",
   "endUser.lastUsed": "최근 사용",
   "endUser.linkedAppCount_one": "앱 {{count}}개",
   "endUser.linkedAppCount_other": "앱 {{count}}개",

@@ -593,6 +593,8 @@ export default interface Resources {
     'endUser.disconnectConnectionTitle': 'Disconnect this connection?'
     'endUser.emptyApps': 'No apps yet'
     'endUser.emptyAppsDescription': 'Open an app link to get started. Apps you visit will appear here.'
+    'endUser.emptyStarredApps': 'No starred apps yet'
+    'endUser.emptyStarredAppsDescription': 'Click the star next to an app to save it here.'
     'endUser.lastUsed': 'Last used'
     'endUser.linkedAppCount': '{{count}} app' | '{{count}} apps'
     'endUser.linkedApps': 'Linked apps'

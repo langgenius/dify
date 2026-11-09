@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "ตัดการเชื่อมต่อนี้หรือไม่?",
   "endUser.emptyApps": "ยังไม่มีแอป",
   "endUser.emptyAppsDescription": "เปิดลิงก์แอปเพื่อเริ่มต้น แอปที่คุณเข้าชมจะปรากฏที่นี่",
+  "endUser.emptyStarredApps": "ยังไม่มีแอปที่ติดดาว",
+  "endUser.emptyStarredAppsDescription": "คลิกดาวข้างแอปเพื่อบันทึกไว้ที่นี่",
   "endUser.lastUsed": "ใช้ล่าสุด",
   "endUser.linkedAppCount_one": "{{count}} แอป",
   "endUser.linkedAppCount_other": "{{count}} แอป",

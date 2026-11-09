@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Deconectezi această conexiune?",
   "endUser.emptyApps": "Nu există încă aplicații",
   "endUser.emptyAppsDescription": "Deschide un link către o aplicație pentru a începe. Aplicațiile pe care le vizitezi vor apărea aici.",
+  "endUser.emptyStarredApps": "Nu există încă aplicații favorite",
+  "endUser.emptyStarredAppsDescription": "Apasă pe steaua de lângă o aplicație pentru a o salva aici.",
   "endUser.lastUsed": "Ultima utilizare",
   "endUser.linkedAppCount_few": "{{count}} aplicații",
   "endUser.linkedAppCount_one": "{{count}} aplicație",

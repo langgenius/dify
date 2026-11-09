@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "این اتصال قطع شود؟",
   "endUser.emptyApps": "هنوز برنامه‌ای وجود ندارد",
   "endUser.emptyAppsDescription": "برای شروع، پیوند یک برنامه را باز کنید. برنامه‌هایی که بازدید می‌کنید در اینجا نمایش داده می‌شوند.",
+  "endUser.emptyStarredApps": "هنوز برنامه‌ای ستاره‌دار نشده است",
+  "endUser.emptyStarredAppsDescription": "برای ذخیره کردن یک برنامه در اینجا، روی ستاره کنار آن کلیک کنید.",
   "endUser.lastUsed": "آخرین استفاده",
   "endUser.linkedAppCount_one": "{{count}} برنامه",
   "endUser.linkedAppCount_other": "{{count}} برنامه",

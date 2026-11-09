@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Desconectar esta conexão?",
   "endUser.emptyApps": "Nenhum aplicativo ainda",
   "endUser.emptyAppsDescription": "Abra o link de um aplicativo para começar. Os aplicativos que você visitar aparecerão aqui.",
+  "endUser.emptyStarredApps": "Nenhum aplicativo favorito ainda",
+  "endUser.emptyStarredAppsDescription": "Clique na estrela ao lado de um aplicativo para salvá-lo aqui.",
   "endUser.lastUsed": "Último uso",
   "endUser.linkedAppCount_many": "{{count}} aplicativos",
   "endUser.linkedAppCount_one": "{{count}} aplicativo",

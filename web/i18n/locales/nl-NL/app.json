@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Deze verbinding verbreken?",
   "endUser.emptyApps": "Nog geen apps",
   "endUser.emptyAppsDescription": "Open een app-link om te beginnen. Apps die je bezoekt, verschijnen hier.",
+  "endUser.emptyStarredApps": "Nog geen favoriete apps",
+  "endUser.emptyStarredAppsDescription": "Klik op de ster naast een app om deze hier op te slaan.",
   "endUser.lastUsed": "Laatst gebruikt",
   "endUser.linkedAppCount_one": "{{count}} app",
   "endUser.linkedAppCount_other": "{{count}} apps",

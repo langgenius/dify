@@ -299,13 +299,20 @@ describe('MyApps account API integration', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json(page([])))
     const { onUrlUpdate } = setup('?view=starred&sort=name-desc&q=missing&unrelated=keep')
     expect(await screen.findByRole('heading', { name: 'app.endUser.noResults' })).toBeVisible()
+    expect(screen.getByText('app.endUser.noResultsDescription')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-    expect(await screen.findByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { name: 'app.endUser.emptyStarredApps' }),
+    ).toBeVisible()
+    expect(screen.getByText('app.endUser.emptyStarredAppsDescription')).toBeVisible()
     await waitFor(() => expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has('q')).toBe(false))
     const params = onUrlUpdate.mock.lastCall?.[0].searchParams
     expect(params?.get('view')).toBe('starred')
     expect(params?.get('sort')).toBe('name-desc')
     expect(params?.get('unrelated')).toBe('keep')
+    await user.click(screen.getByRole('radio', { name: 'app.endUser.all' }))
+    expect(await screen.findByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
+    expect(screen.getByText('app.endUser.emptyAppsDescription')).toBeVisible()
   })
 
   it('drops previous account rows when the cookie account session changes', async () => {
