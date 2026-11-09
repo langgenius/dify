@@ -119,6 +119,7 @@ type PageBranch = {
 const CONNECTION_PAGE_SIZE = 200
 const RESOURCE_PAGE_SIZE = 200
 const GITHUB_ROOT_PAGE_SIZE = 10
+const GITHUB_CHILD_PAGE_SIZE = 30
 const MAX_SELECTION = 200
 const MAX_SOURCE_CURSOR_PAGES = 100
 
@@ -309,7 +310,16 @@ function resourceType(resource: SelectableResource) {
 }
 
 function isFolder(resource: SelectableResource) {
-  return /folder|directory|workspace/i.test(resourceType(resource))
+  return (
+    isGitHubPreviewContainer(resource) || /folder|directory|workspace/i.test(resourceType(resource))
+  )
+}
+
+function isGitHubPreviewContainer(resource: SelectableResource) {
+  return (
+    resource.kind === 'page' &&
+    (resource.page.type === 'github_collection' || resource.page.type === 'github_directory')
+  )
 }
 
 function isBucket(resource: SelectableResource) {
@@ -325,7 +335,9 @@ function isExpandableResource(resource: SelectableResource) {
 }
 
 function isSelectableResource(resource: SelectableResource) {
-  return resource.kind === 'page' || !isDriveContainer(resource)
+  return resource.kind === 'page'
+    ? !isGitHubPreviewContainer(resource)
+    : !isDriveContainer(resource)
 }
 
 function hasDriveFolderCheckbox(resource: SelectableResource) {
@@ -397,6 +409,7 @@ function ResourceList({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources', 'common'])
   const selectableResources = selectionScope.filter(isSelectableResource)
+  const selectableKeys = new Set(selectableResources.map((resource) => resource.key))
   const driveContainers = selectionScope.filter(isDriveContainer)
   const allDriveContainersLoaded = driveContainers.every(
     (resource) => driveBranches.get(resource.key)?.loaded,
@@ -435,7 +448,7 @@ function ResourceList({
           const expandable = isExpandableResource(resource)
           const selectionKeys =
             resource.kind === 'page'
-              ? [resource.key, ...resource.descendantKeys]
+              ? [resource.key, ...resource.descendantKeys].filter((key) => selectableKeys.has(key))
               : isDriveContainer(resource)
                 ? (driveDescendantLeafKeys.get(resource.key) ?? [])
                 : [resource.key]
@@ -459,10 +472,7 @@ function ResourceList({
                 ? expandedPageKeys.has(resource.key)
                 : !collapsed.has(resource.key)
               : expandedDriveContainers.has(resource.key)
-          const rendersCheckbox =
-            resource.kind === 'page' ||
-            hasDriveFolderCheckbox(resource) ||
-            isSelectableResource(resource)
+          const rendersCheckbox = hasDriveFolderCheckbox(resource) || isSelectableResource(resource)
           return (
             <li
               key={resource.key}
@@ -774,7 +784,7 @@ function ResourceConfiguration({
               source_id: previewSource?.id ?? '',
             },
             query: {
-              limit: RESOURCE_PAGE_SIZE,
+              limit: GITHUB_CHILD_PAGE_SIZE,
               parentId,
               view: 'tree',
               ...(cursor ? { cursor } : {}),
@@ -1227,7 +1237,10 @@ function ResourceConfiguration({
       resource.kind === 'page'
         ? [
             resource,
-            ...pageResources.filter((candidate) => resource.descendantKeys.includes(candidate.key)),
+            ...pageResources.filter(
+              (candidate) =>
+                resource.descendantKeys.includes(candidate.key) && isSelectableResource(candidate),
+            ),
           ]
         : [resource]
     updateSelected((current) => {
