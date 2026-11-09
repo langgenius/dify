@@ -84,4 +84,61 @@ describe('datasets-detail-store provider', () => {
       ])
     })
   })
+
+  it('should refetch when a knowledge retrieval node changes the referenced dataset ids', async () => {
+    mockFetchDatasets.mockResolvedValueOnce({ data: [createDataset('dataset-1')] })
+
+    const { rerender } = render(
+      <DatasetsDetailProvider nodes={[createWorkflowNode(['dataset-1'])]}>
+        <Consumer />
+      </DatasetsDetailProvider>,
+    )
+
+    await waitFor(() => expect(mockFetchDatasets).toHaveBeenCalledTimes(1))
+
+    mockFetchDatasets.mockResolvedValueOnce({ data: [createDataset('dataset-2')] })
+    rerender(
+      <DatasetsDetailProvider nodes={[createWorkflowNode(['dataset-2'])]}>
+        <Consumer />
+      </DatasetsDetailProvider>,
+    )
+
+    await waitFor(() => {
+      expect(mockFetchDatasets).toHaveBeenCalledTimes(2)
+      expect(mockFetchDatasets).toHaveBeenLastCalledWith({
+        params: {
+          page: 1,
+          ids: ['dataset-2'],
+        },
+      })
+      expect(screen.getByText('dataset-2: Dataset dataset-2')).toBeInTheDocument()
+    })
+  })
+
+  it('should not refetch when node positions change but dataset ids stay the same', async () => {
+    mockFetchDatasets.mockResolvedValue({ data: [createDataset('dataset-1')] })
+
+    const { rerender } = render(
+      <DatasetsDetailProvider nodes={[createWorkflowNode(['dataset-1'])]}>
+        <Consumer />
+      </DatasetsDetailProvider>,
+    )
+
+    await waitFor(() => expect(mockFetchDatasets).toHaveBeenCalledTimes(1))
+
+    const movedNode = {
+      ...createWorkflowNode(['dataset-1']),
+      position: { x: 240, y: 120 },
+    }
+    rerender(
+      <DatasetsDetailProvider nodes={[movedNode]}>
+        <Consumer />
+      </DatasetsDetailProvider>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByText('dataset-1: Dataset dataset-1')).toBeInTheDocument(),
+    )
+    expect(mockFetchDatasets).toHaveBeenCalledTimes(1)
+  })
 })
