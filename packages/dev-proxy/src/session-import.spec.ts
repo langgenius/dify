@@ -12,20 +12,10 @@ const cookieRewrite: CookieRewriteOptions = {
   localCookieScope: 'target-origin',
 }
 
-const createApp = (
-  fetchImpl: typeof fetch,
-  requestCookies?: DevProxyRoute['requestCookies'],
-  requestHeaders?: DevProxyRoute['requestHeaders'],
-) =>
+const createApp = (fetchImpl: typeof fetch, requestHeaders?: DevProxyRoute['requestHeaders']) =>
   createDevProxyApp({
     routes: [
-      {
-        paths: '/console/api',
-        target: 'https://cloud.example.com',
-        cookieRewrite,
-        requestCookies,
-        requestHeaders,
-      },
+      { paths: '/console/api', target: 'https://cloud.example.com', cookieRewrite, requestHeaders },
     ],
     sessionImport: {
       refreshPath: '/console/api/refresh-token',
@@ -104,27 +94,6 @@ describe('session import', () => {
     ])
   })
 
-  // Scenario: session imports must include access cookies required by the upstream gateway.
-  it('should include configured request cookies when refreshing an imported session', async () => {
-    // Arrange
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response('{}', {
-        headers: { 'set-cookie': '__Host-access_token=new-access; Path=/; Secure; HttpOnly' },
-      }),
-    )
-
-    // Act
-    const response = await createApp(fetchImpl, { CF_Authorization: 'configured' }).request(
-      postInput('old-refresh'),
-    )
-
-    // Assert
-    expect(new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get('cookie')).toBe(
-      '__Host-refresh_token=old-refresh; CF_Authorization=configured',
-    )
-    expect(response.status).toBe(303)
-  })
-
   // Scenario: session imports must authenticate with configured gateway service headers.
   it('should include configured request headers when refreshing an imported session', async () => {
     // Arrange
@@ -135,7 +104,7 @@ describe('session import', () => {
     )
 
     // Act
-    const response = await createApp(fetchImpl, undefined, {
+    const response = await createApp(fetchImpl, {
       'CF-Access-Client-Id': 'configured-id',
       'CF-Access-Client-Secret': 'configured-secret',
     }).request(postInput('old-refresh'))

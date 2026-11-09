@@ -1,9 +1,12 @@
 """Compose workspace use cases with the shared account and workspace repositories."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import delete_cache_for_subscription
@@ -23,6 +26,8 @@ from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGatewa
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.event_service import TriggerEventService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_gateway import (
     OAuthProxyContextGateway,
@@ -32,9 +37,14 @@ from services.trigger.oauth_gateway import (
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.trigger.provider_query import TriggerProviderQuery
+from services.trigger.subscription_binding_service import (
+    TriggerSubscriptionBindingQuery,
+    TriggerSubscriptionBindingService,
+)
 from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
-from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
+from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway, invalidate_subscription_properties
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
+from services.trigger.subscription_renewal_service import TriggerSubscriptionRenewalService
 from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
@@ -76,9 +86,13 @@ class WorkspaceServices:
     plugin_parameters: PluginParameterService
     trigger_providers: TriggerProviderQuery
     trigger_subscriptions: TriggerSubscriptionQueryService
+    trigger_binding_queries: TriggerSubscriptionBindingQuery
+    create_trigger_binding_service: Callable[[Session], TriggerSubscriptionBindingService]
     trigger_subscription_management: TriggerSubscriptionService
+    trigger_subscription_renewal: TriggerSubscriptionRenewalService
     trigger_builders: TriggerSubscriptionBuilderService
     trigger_endpoints: TriggerEndpointService
+    trigger_events: TriggerEventService
     trigger_oauth_clients: TriggerOAuthClientService
     trigger_oauth: TriggerOAuthService
 
@@ -120,11 +134,14 @@ def build_workspace_services(
 ) -> WorkspaceServices:
     trigger_providers = PluginTriggerProviderQuery()
     subscriptions = TriggerSubscriptionRepository(session_factory=database_client)
+    subscription_provider = PluginTriggerSubscriptionGateway()
+    subscription_locks = RedisTriggerSubscriptionLocks(redis=redis)
+    subscription_codec = ProviderTriggerSubscriptionCodec()
     trigger_subscription_management = TriggerSubscriptionService(
         subscriptions=subscriptions,
-        providers=PluginTriggerSubscriptionGateway(),
-        locks=RedisTriggerSubscriptionLocks(redis=redis),
-        codec=ProviderTriggerSubscriptionCodec(),
+        providers=subscription_provider,
+        locks=subscription_locks,
+        codec=subscription_codec,
         invalidate_cache=delete_cache_for_subscription,
     )
     trigger_builders = TriggerSubscriptionBuilderService(
@@ -137,6 +154,9 @@ def build_workspace_services(
     trigger_oauth_clients = TriggerOAuthClientService(
         clients=TriggerOAuthClientRepository(session_factory=database_client),
         providers=trigger_oauth_provider,
+    )
+    trigger_subscriptions = TriggerSubscriptionQueryService(
+        credentials=credentials, schemas=trigger_providers, subscriptions=subscriptions
     )
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
@@ -177,8 +197,31 @@ def build_workspace_services(
             plugins=DaemonPluginParameterGateway(),
         ),
         trigger_providers=trigger_providers,
-        trigger_subscriptions=TriggerSubscriptionQueryService(credentials=credentials, schemas=trigger_providers),
+        trigger_subscriptions=trigger_subscriptions,
+        trigger_binding_queries=subscriptions,
+        # Bind only for the duration of the caller's publication transaction.
+        create_trigger_binding_service=lambda session: TriggerSubscriptionBindingService(
+            sync_bindings=partial(subscriptions.sync_workflow_bindings, session=session)
+        ),
+        trigger_events=TriggerEventService(
+            subscriptions=trigger_subscriptions,
+            plugins=PluginTriggerEventGateway(),
+            requests=TriggerHttpRequestCachingService,
+        ),
         trigger_subscription_management=trigger_subscription_management,
+        trigger_subscription_renewal=TriggerSubscriptionRenewalService(
+            subscriptions=subscriptions,
+            providers=subscription_provider,
+            oauth=trigger_oauth_provider,
+            clients=trigger_oauth_clients,
+            locks=subscription_locks,
+            codec=subscription_codec,
+            credential_threshold=dify_config.TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS,
+            subscription_threshold=dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS,
+            console_api_url=dify_config.CONSOLE_API_URL,
+            invalidate_cache=delete_cache_for_subscription,
+            invalidate_properties=invalidate_subscription_properties,
+        ),
         trigger_builders=trigger_builders,
         trigger_endpoints=TriggerEndpointService(
             subscriptions=subscriptions,

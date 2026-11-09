@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec
@@ -37,6 +38,8 @@ from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGatewa
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.event_service import TriggerEventService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_gateway import (
     OAuthProxyContextGateway,
@@ -45,9 +48,11 @@ from services.trigger.oauth_gateway import (
 )
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_binding_service import TriggerSubscriptionBindingService
 from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
-from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
+from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway, invalidate_subscription_properties
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
+from services.trigger.subscription_renewal_service import TriggerSubscriptionRenewalService
 from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
@@ -140,6 +145,11 @@ class TestWorkspaceCases:
             subscribe=TriggerManager.subscribe_trigger,
             create_subscription=subscription_management.create,
         )
+        subscription_queries = TriggerSubscriptionQueryService(
+            credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
+            schemas=PluginTriggerProviderQuery(),
+            subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+        )
         services = WorkspaceServices(
             queries=create_autospec(WorkspaceQueryService, instance=True),
             management=create_autospec(WorkspaceService, instance=True),
@@ -157,9 +167,18 @@ class TestWorkspaceCases:
                 plugins=DaemonPluginParameterGateway(),
             ),
             trigger_providers=PluginTriggerProviderQuery(),
-            trigger_subscriptions=TriggerSubscriptionQueryService(
-                credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
-                schemas=PluginTriggerProviderQuery(),
+            trigger_subscriptions=subscription_queries,
+            trigger_binding_queries=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+            create_trigger_binding_service=lambda session: TriggerSubscriptionBindingService(
+                sync_bindings=partial(
+                    TriggerSubscriptionRepository(session_factory=sqlite_session_factory).sync_workflow_bindings,
+                    session=session,
+                )
+            ),
+            trigger_events=TriggerEventService(
+                subscriptions=subscription_queries,
+                plugins=PluginTriggerEventGateway(),
+                requests=TriggerHttpRequestCachingService,
             ),
             trigger_builders=builders,
             trigger_endpoints=TriggerEndpointService(
@@ -169,6 +188,19 @@ class TestWorkspaceCases:
                 publish=enqueue_triggered_workflows,
             ),
             trigger_subscription_management=subscription_management,
+            trigger_subscription_renewal=TriggerSubscriptionRenewalService(
+                subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+                providers=PluginTriggerSubscriptionGateway(),
+                oauth=oauth_provider,
+                clients=oauth_clients,
+                locks=RedisTriggerSubscriptionLocks(redis=redis),
+                codec=ProviderTriggerSubscriptionCodec(),
+                credential_threshold=10,
+                subscription_threshold=10,
+                console_api_url="https://console.example.test",
+                invalidate_cache=delete_cache_for_subscription,
+                invalidate_properties=invalidate_subscription_properties,
+            ),
             trigger_oauth_clients=oauth_clients,
             trigger_oauth=TriggerOAuthService(
                 clients=oauth_clients,
