@@ -21,19 +21,15 @@ const ConditionsSection = ({ resourceType, resourceId }: EvaluationResourceProps
     [conditionMetricOptions],
   )
   const canAddCondition = conditionMetricOptions.length > 0
-  let emptyMessage: string = t(($) => $['conditions.emptyTitle'])
-  if (!canAddCondition) {
-    emptyMessage =
-      resourceType === 'datasets'
-        ? t(($) => $['conditions.selectFieldFirst'])
-        : t(($) => $['conditions.emptyDescription'])
-  }
+  const emptyMessage = canAddCondition
+    ? t(($) => $['conditions.emptyTitle'])
+    : t(($) => $['conditions.emptyDescription'])
 
   return (
     <section className="py-4 xl:max-w-[700px]">
       <InlineSectionHeader
         title={t(($) => $['conditions.title'])}
-        tooltip={resourceType === 'datasets' ? undefined : t(($) => $['conditions.description'])}
+        tooltip={t(($) => $['conditions.description'])}
       />
       <div className="mt-2 space-y-4">
         {resource.judgmentConfig.conditions.length === 0 && (

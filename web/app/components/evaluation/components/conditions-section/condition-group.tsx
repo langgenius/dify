@@ -36,6 +36,7 @@ import {
   groupConditionMetricOptions,
   isSelectorEqual,
   serializeVariableSelector,
+  shouldShowConditionGroupLabel,
 } from '../../utils'
 import { getEvaluationNodeBlockType } from '../metric-selector/utils'
 
@@ -90,9 +91,25 @@ const ConditionMetricLabel = ({ metric, placeholder }: ConditionMetricLabelProps
     )
   }
 
+  // Custom metrics name the evaluator workflow too, so "score" says whose score it is.
+  const showGroup = metric.groupLabel !== metric.itemLabel
+
   return (
     <div className="flex min-w-0 items-center gap-0.5 px-1">
-      <span className="truncate system-xs-medium text-text-secondary">{metric.itemLabel}</span>
+      {showGroup && (
+        <>
+          <span className="truncate system-xs-medium text-text-secondary">{metric.groupLabel}</span>
+          <span className="shrink-0 system-xs-regular text-text-quaternary">/</span>
+        </>
+      )}
+      <span
+        className={cn(
+          'truncate system-xs-medium text-text-secondary',
+          showGroup && 'max-w-24 shrink-0',
+        )}
+      >
+        {metric.itemLabel}
+      </span>
     </div>
   )
 }
@@ -127,9 +144,11 @@ const ConditionMetricSelect = ({
       <SelectContent className="w-[360px]">
         {groupedMetricOptions.map((group) => (
           <SelectGroup key={group.label}>
-            <SelectLabel className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">
-              {group.label}
-            </SelectLabel>
+            {shouldShowConditionGroupLabel(group) && (
+              <SelectLabel className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">
+                {group.label}
+              </SelectLabel>
+            )}
             {group.options.map((option) => (
               <SelectItem
                 key={option.id}
@@ -347,7 +366,7 @@ const ConditionGroup = ({ resourceType, resourceId }: ConditionGroupProps) => {
                             metric?.valueType === 'number' &&
                               condition.comparisonOperator !== 'in' &&
                               condition.comparisonOperator !== 'not in'
-                              ? 'w-28'
+                              ? 'w-32'
                               : 'w-40',
                           )}
                         >

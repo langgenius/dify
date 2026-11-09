@@ -109,15 +109,18 @@ export const buildConditionMetricOptions = (
         ]
       }
 
+      // An agent target is its own only node, so naming it next to each metric adds nothing.
+      const isAgentTarget = resourceType === 'agents'
+
       return (metric.nodeInfoList ?? []).map((nodeInfo) => {
         return {
           id: `${nodeInfo.node_id}:${metric.optionId}`,
           kind: metric.kind,
           groupLabel: metric.label,
-          itemLabel: nodeInfo.title || nodeInfo.node_id,
+          itemLabel: isAgentTarget ? metric.label : nodeInfo.title || nodeInfo.node_id,
           valueType: metric.valueType,
           variableSelector: [nodeInfo.node_id, metric.optionId] as [string, string],
-          nodeInfo,
+          ...(isAgentTarget ? {} : { nodeInfo }),
         }
       })
     }
@@ -151,6 +154,11 @@ export const groupConditionMetricOptions = (
     label,
     options,
   }))
+}
+
+// A group whose only option repeats the group name (a knowledge base metric) needs no header.
+export const shouldShowConditionGroupLabel = (group: ConditionMetricOptionGroup) => {
+  return !(group.options.length === 1 && group.options[0]!.itemLabel === group.label)
 }
 
 const conditionMetricValueTypeTranslationKeys = {

@@ -64,7 +64,8 @@ describe('agent evaluation metrics', () => {
     ).toEqual([{ metric: 'task_completion', value_type: 'number', node_info_list: nodeInfoList }])
 
     await user.click(addCondition)
-    await user.click(await screen.findByRole('menuitem', { name: /Research Agent/ }))
+    // An agent is its own only node, so the menu lists metrics, not the agent name.
+    await user.click(await screen.findByRole('menuitem', { name: /Task Completion/ }))
     expect(screen.getByRole('spinbutton')).toBeInTheDocument()
 
     await user.click(taskCompletion)

@@ -29,6 +29,7 @@ import {
   syncJudgmentConfigWithMetrics,
   updateMetric,
   updateResourceState,
+  withCustomMetricWorkflowName,
   withLatestNodeTitles,
 } from './store-utils'
 import { buildConditionMetricOptions } from './utils'
@@ -56,6 +57,12 @@ type EvaluationStore = {
     resourceType: EvaluationResourceType,
     resourceId: string,
     nodeTitles: ReadonlyMap<string, string>,
+  ) => void
+  syncCustomMetricWorkflowName: (
+    resourceType: EvaluationResourceType,
+    resourceId: string,
+    metricId: string,
+    workflowName: string,
   ) => void
   setEvaluationFramework: (
     resourceType: EvaluationResourceType,
@@ -307,6 +314,30 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       if (nextResource === resource && nextInitialResource === initialResource) return state
 
       // Rename the saved baseline too, so a rename alone does not enable Reset and Save.
+      return {
+        resources: nextResource
+          ? { ...state.resources, [resourceKey]: nextResource }
+          : state.resources,
+        initialResources: nextInitialResource
+          ? { ...state.initialResources, [resourceKey]: nextInitialResource }
+          : state.initialResources,
+      }
+    })
+  },
+  syncCustomMetricWorkflowName: (resourceType, resourceId, metricId, workflowName) => {
+    const resourceKey = buildResourceKey(resourceType, resourceId)
+
+    set((state) => {
+      const resource = state.resources[resourceKey]
+      const initialResource = state.initialResources[resourceKey]
+      const nextResource =
+        resource && withCustomMetricWorkflowName(resource, metricId, workflowName)
+      const nextInitialResource =
+        initialResource && withCustomMetricWorkflowName(initialResource, metricId, workflowName)
+
+      if (nextResource === resource && nextInitialResource === initialResource) return state
+
+      // Saved configs do not store the evaluator name; filling it in is not an edit.
       return {
         resources: nextResource
           ? { ...state.resources, [resourceKey]: nextResource }
