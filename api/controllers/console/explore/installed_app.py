@@ -28,6 +28,7 @@ from models.model import AppMode, IconType
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_service import (
     InstalledAppCursor,
+    InstalledAppListMode,
     InstalledAppRecord,
     InstalledAppUnavailableError,
 )
@@ -41,6 +42,7 @@ class InstalledAppUpdatePayload(BaseModel):
 class InstalledAppsListQuery(BaseModel):
     app_id: str | None = Field(default=None, description="App ID to filter by")
     name: str | None = Field(default=None, max_length=100, description="App name to search for")
+    mode: InstalledAppListMode = Field(default="all", description="App mode filter, using the same values as Studio")
     cursor: str | None = Field(default=None, description="Opaque cursor returned by the previous page")
     limit: int = Field(
         default=20,
@@ -146,6 +148,12 @@ class InstalledAppsListApi(Resource):
     @console_account_admission()
     @model_validate(InstalledAppsListQuery)
     def get(self, query: InstalledAppsListQuery, request_context: RequestContext) -> dict[str, object]:
+        """Return published, authorized installations matching the validated query.
+
+        Require an admitted workspace account; preserve the cursor response shape
+        and translate invalid cursors or unavailable access checks into API errors.
+        No installation state changes on success or failure.
+        """
         cursor = _decode_installed_app_cursor(query.cursor)
         try:
             page = application_services().installed_apps.management.get_visible_page(
@@ -155,6 +163,7 @@ class InstalledAppsListApi(Resource):
                 limit=query.limit,
                 app_id=query.app_id,
                 name=query.name,
+                mode=query.mode,
             )
         except WebAppAccessUnavailableError as error:
             logger.exception(

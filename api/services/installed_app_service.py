@@ -3,11 +3,15 @@
 from collections.abc import Sequence, Set
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import BaseModel
 
 from services.installed_app_access_service import InstalledAppRef
+
+InstalledAppListMode = Literal[
+    "completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"
+]
 
 
 class InstalledAppCursor(BaseModel):
@@ -71,7 +75,17 @@ class InstalledAppStore(Protocol):
         limit: int,
         app_id: str | None,
         name: str | None,
-    ) -> tuple[InstalledAppRecord, ...]: ...
+        mode: InstalledAppListMode,
+    ) -> tuple[InstalledAppRecord, ...]:
+        """Return detached published installations in tenant scope, filtered before pagination.
+
+        A null app ID or blank name leaves that filter unrestricted; names match
+        case-insensitive literal substrings. Mode uses Studio's exact type values,
+        with all retaining every otherwise eligible type. Publication and tenant
+        constraints apply to every mode, including types with no eligible apps.
+        Reads do not mutate installations and close their session before returning.
+        """
+        ...
 
     def get_published(self, *, installed_app: InstalledAppRef) -> InstalledAppRecord | None: ...
 
@@ -107,8 +121,15 @@ class InstalledAppService:
         limit: int,
         app_id: str | None,
         name: str | None,
+        mode: InstalledAppListMode,
     ) -> InstalledAppPage:
-        """Scan ordered candidates until one page of authorized apps is complete."""
+        """Return a filtered page for an admitted account in the given workspace.
+
+        Given a validated mode, positive limit and optional cursor, scan published
+        candidates matching all filters until a page of authorized apps is complete.
+        Preserve the filters across scans and derive the cursor only from consumed
+        candidates. Access-check failures propagate without changing installations.
+        """
         scan_size = limit * 2 if self._get_visible_app_ids is not None else limit + 1
         visible_rows: list[InstalledAppRecord] = []
         scan_cursor = cursor
@@ -124,6 +145,7 @@ class InstalledAppService:
                 limit=scan_size,
                 app_id=app_id,
                 name=name,
+                mode=mode,
             )
             if not candidate_rows:
                 break

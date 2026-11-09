@@ -7818,6 +7818,12 @@ Request body:
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps
+**Return published, authorized installations matching the validated query**
+
+Require an admitted workspace account; preserve the cursor response shape
+and translate invalid cursors or unavailable access checks into API errors.
+No installation state changes on success or failure.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -7825,6 +7831,7 @@ Request body:
 | app_id | query | App ID to filter by | No | string |
 | cursor | query | Opaque cursor returned by the previous page | No | string |
 | limit | query | Number of installed apps to return | No | integer, <br>**Default:** 20 |
+| mode | query | App mode filter, using the same values as Studio | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | App name to search for | No | string |
 
 #### Responses
@@ -27798,6 +27805,7 @@ The app is not available in this app library.
 | app_id | string | App ID to filter by | No |
 | cursor | string | Opaque cursor returned by the previous page | No |
 | limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
+| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter, using the same values as Studio<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | App name to search for | No |
 
 #### InstalledConnectionConfigurationPayload

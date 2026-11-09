@@ -1842,6 +1842,7 @@ def test_installed_app_management_composition_reads_real_installations_and_curre
             limit=1,
             app_id=None,
             name=None,
+            mode="all",
         )
         assert page.editable is True
         assert page.has_more is False
