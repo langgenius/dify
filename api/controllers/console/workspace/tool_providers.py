@@ -354,6 +354,10 @@ class ApiToolPreviewResponse(RootModel[ApiToolPreviewResult]):
     pass
 
 
+class BuiltinToolProviderCreateResponse(SimpleResultResponse):
+    id: str = Field(description="ID of the created Workspace credential, used as the Connection ID.")
+
+
 class BuiltinProviderOAuthClientSchemaResponse(ResponseModel):
     schema_: list[ProviderConfig] = Field(alias="schema")
     is_oauth_custom_client_enabled: bool
@@ -479,6 +483,7 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     SimpleResultResponse,
+    BuiltinToolProviderCreateResponse,
     ApiProviderDetailResponse,
     ApiSchemaParseResponse,
     ApiProviderRemoteSchemaResponse,
@@ -588,7 +593,7 @@ class ToolBuiltinProviderAddApi(Resource):
     @console_ns.response(
         200,
         "Builtin provider added successfully",
-        console_ns.models[SimpleResultResponse.__name__],
+        console_ns.models[BuiltinToolProviderCreateResponse.__name__],
     )
     @setup_required
     @login_required
@@ -599,8 +604,14 @@ class ToolBuiltinProviderAddApi(Resource):
     @with_current_tenant_id
     @model_validate(BuiltinToolAddPayload)
     def post(self, req_data: BuiltinToolAddPayload, tenant_id: str, user: Account, provider: str):
+        """Create a credential for the admitted member and return its persisted ID.
+
+        Requires validated credentials and Workspace creation permission. Success
+        preserves the result field and exposes the created credential as a Connection;
+        creation failures propagate without returning an ID or credential secrets.
+        """
         return dump_response(
-            SimpleResultResponse,
+            BuiltinToolProviderCreateResponse,
             BuiltinToolManageService.add_builtin_tool_provider(
                 user_id=user.id,
                 tenant_id=tenant_id,
@@ -1195,6 +1206,13 @@ class ToolOAuthCallback(Resource):
     @error_responses(ConnectionOAuthHTTPError)
     @setup_required
     def get(self, provider: str):
+        """Complete an authorized OAuth attempt and redirect with its Connection ID.
+
+        Requires valid provider state and the initiating browser's proxy context.
+        Personal attempts retain their own callback flow; Workspace attempts expose
+        only the persisted credential ID after creation. Invalid attempts raise
+        without a success redirect or exposing provider credentials.
+        """
         if personal_callback := redirect_end_user_connection_oauth(provider):
             # response-contract:ignore redirect to the originating Web API cookie boundary
             return personal_callback
@@ -1259,7 +1277,7 @@ class ToolOAuthCallback(Resource):
             visibility = PermissionEnum.ONLY_ME
         if visibility not in (PermissionEnum.ONLY_ME, PermissionEnum.ALL_TEAM):
             visibility = PermissionEnum.ONLY_ME
-        BuiltinToolManageService.add_builtin_tool_provider(
+        connection = BuiltinToolManageService.add_builtin_tool_provider(
             user_id=user_id,
             tenant_id=tenant_id,
             provider=provider,
@@ -1269,7 +1287,7 @@ class ToolOAuthCallback(Resource):
             visibility=visibility.value,
         )
         # response-contract:ignore redirect response
-        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
+        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback?connection_id={connection['id']}")
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/default-credential")
