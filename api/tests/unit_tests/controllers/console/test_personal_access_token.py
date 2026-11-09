@@ -1045,20 +1045,54 @@ def test_legacy_app_runner_resource_type_is_rejected(client: FlaskClient) -> Non
     assert client.get(BASE).get_json()["total"] == 0
 
 
-def test_token_can_be_created_with_no_resource_or_workspace_access(client: FlaskClient) -> None:
+@pytest.mark.parametrize(
+    ("resource_mode", "workspace_mode", "expected_status"),
+    [("none", "none", 400), ("all", "none", 201), ("none", "all", 201)],
+)
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_creation_requires_at_least_one_scope_domain(
+    client: FlaskClient,
+    monkeypatch: pytest.MonkeyPatch,
+    resource_mode: str,
+    workspace_mode: str,
+    expected_status: int,
+    edition: DeploymentEdition,
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
+    monkeypatch.setattr("controllers.console.wraps._is_setup_completed", lambda: True)
     response = client.post(
         BASE,
+        headers={"Idempotency-Key": "scope-validation"},
         json={
-            "name": "no-access",
-            "resource_scope": {"mode": "none"},
-            "workspace_scope": {"mode": "none"},
+            "name": "scope validation",
+            "expiration": "90_days",
+            "resource_scope": {"mode": resource_mode, "resources": []},
+            "workspace_scope": {"mode": workspace_mode, "workspace_ids": []},
         },
     )
+    assert response.status_code == expected_status, response.get_json()
+    assert client.get(BASE).get_json()["total"] == (1 if expected_status == 201 else 0)
 
-    assert response.status_code == 201, response.get_json()
-    token = response.get_json()
-    assert token["resource_scope_mode"] == "none"
-    assert token["workspace_scope_mode"] == "none"
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_rejects_disabling_both_scopes_without_changing_the_token(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch, edition: DeploymentEdition
+) -> None:
+    token = client.post(BASE, json={"name": "unchanged"}).get_json()
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
+    monkeypatch.setattr("controllers.console.wraps._is_setup_completed", lambda: True)
+    original = client.get(f"{BASE}/{token['id']}").get_json()
+    response = client.patch(
+        f"{BASE}/{token['id']}",
+        json={
+            "name": "must-not-save",
+            "version": token["version"],
+            "resource_scope": {"mode": "none", "resources": []},
+            "workspace_scope": {"mode": "none", "workspace_ids": []},
+        },
+    )
+    assert response.status_code == 400, response.get_json()
+    assert client.get(f"{BASE}/{token['id']}").get_json() == original
 
 
 def test_rejected_scope_update_preserves_name_and_grants(client: FlaskClient) -> None:

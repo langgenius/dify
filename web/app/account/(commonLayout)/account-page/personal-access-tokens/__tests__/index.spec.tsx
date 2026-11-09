@@ -215,7 +215,10 @@ it('keeps deletion pending until confirmed and refreshes the list after revocati
 
 it('edits saved scopes without changing expiry and submits the loaded version', async () => {
   const user = userEvent.setup()
+  let updateAttempts = 0
   transport.call.mockImplementation(async (path: string[]) => {
+    if (path.at(-1) === 'patch' && ++updateAttempts === 1)
+      throw new ORPCError('BAD_REQUEST', { message: 'Select at least one resource.' })
     if (path.includes('byTokenId'))
       return {
         token: { ...token, resource_scope_mode: 'all', workspace_scope_mode: 'all' },
@@ -237,6 +240,11 @@ it('edits saved scopes without changing expiry and submits the loaded version', 
   await user.clear(name)
   await user.type(name, 'renamed')
   expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument()
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    'Select at least one resource.',
+  )
+  expect(name).toHaveValue('renamed')
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
   await vi.waitFor(() =>
     expect(transport.call.mock.calls.some(([path]) => path.at(-1) === 'patch')).toBe(true),
@@ -943,15 +951,21 @@ it('preserves the editing draft but prevents another save after expiry is confir
   expect(name).toHaveValue('recoverable draft')
 })
 
-it.each(['FORBIDDEN', 'SERVICE_UNAVAILABLE'] as const)(
+it.each([
+  ['BAD_REQUEST', 'Enable resource access or workspace access for the personal access token.'],
+  ['UNPROCESSABLE_ENTITY', 'Backend validation message'],
+  ['FORBIDDEN', 'Selected resource is unavailable.'],
+  ['SERVICE_UNAVAILABLE', 'Deployment catalog is unavailable.'],
+  ['BAD_REQUEST', ''],
+] as const)(
   'shows %s creation failure feedback and retains the draft for retry',
-  async (code) => {
+  async (code, message) => {
     const user = userEvent.setup()
     let attempts = 0
     transport.call.mockImplementation(async (path: string[]) => {
       if (path.at(-1) === 'post') {
         attempts += 1
-        if (attempts === 1) throw new ORPCError(code, { message: 'Backend English message' })
+        if (attempts === 1) throw message ? new ORPCError(code, { message }) : new Error(message)
         return { ...token, secret: 'dpat_retry' }
       }
       return { data: [], page: 1, limit: 20, total: 0, has_more: false }
@@ -971,13 +985,11 @@ it.each(['FORBIDDEN', 'SERVICE_UNAVAILABLE'] as const)(
     await user.type(name, 'retained draft')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      code === 'SERVICE_UNAVAILABLE' ? 'Backend English message' : 'common.api.actionFailed',
+      message || 'common.api.actionFailed',
     )
     expect(name).toHaveValue('retained draft')
     const createCall = transport.call.mock.calls.find(([path]) => path.at(-1) === 'post')
     expect(createCall?.[2].context.silent).toBe(true)
-    if (code !== 'SERVICE_UNAVAILABLE')
-      expect(screen.queryByText('Backend English message')).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
     expect(await within(dialog).findByDisplayValue('dpat_retry')).toBeInTheDocument()
   },
