@@ -1,25 +1,14 @@
 import { act, renderHook } from '@testing-library/react'
 import { useAsyncWindowOpen } from './use-async-window-open'
 
-const createMockWindow = (opener: string | null, close = vi.fn()) => {
-  const iframe = document.createElement('iframe')
-  document.body.appendChild(iframe)
-  const popup = iframe.contentWindow!
-  Object.defineProperty(popup, 'opener', { value: opener, writable: true, configurable: true })
-  vi.spyOn(popup, 'close').mockImplementation(close)
-  Object.defineProperty(popup, 'location', { value: { href: '' }, configurable: true })
-  return popup
-}
+const createMockWindow = (opener: string | null, close = vi.fn()) =>
+  ({ opener, close, location: { href: '' } }) as unknown as Window
 
 describe('useAsyncWindowOpen', () => {
   const originalOpen = window.open
 
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  afterEach(() => {
-    document.querySelectorAll('iframe').forEach((iframe) => iframe.remove())
   })
 
   afterAll(() => {

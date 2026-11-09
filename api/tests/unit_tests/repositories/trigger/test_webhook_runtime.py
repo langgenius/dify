@@ -212,6 +212,19 @@ def test_draft_undo_keeps_url_and_published_delete_joins_caller_transaction(
         assert [r.node_id for r in session.scalars(select(WorkflowWebhookTrigger))] == ["new"]
 
 
+def test_missing_app_creator_is_rejected_only_when_creating_webhooks(
+    sqlite_session_factory: sessionmaker[Session], webhook_seed: WebhookSeed
+) -> None:
+    repository = SQLAlchemyAppTriggerRepository(session_factory=sqlite_session_factory)
+    repository.sync_draft_webhooks(
+        tenant_id=webhook_seed.tenant_id, app_id=webhook_seed.app_id, created_by=None, node_ids=["hook"]
+    )
+    with pytest.raises(RuntimeError, match="App is missing created_by"):
+        repository.sync_draft_webhooks(
+            tenant_id=webhook_seed.tenant_id, app_id=webhook_seed.app_id, created_by=None, node_ids=["hook", "new"]
+        )
+
+
 def test_binding_limit_validated_before_writing(
     sqlite_session_factory: sessionmaker[Session], webhook_seed: WebhookSeed
 ) -> None:

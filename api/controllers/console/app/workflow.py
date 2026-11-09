@@ -12,7 +12,6 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
-    ValidationError,
     field_validator,
     model_validator,
 )
@@ -666,7 +665,7 @@ class DraftWorkflowApi(Resource):
         elif "text/plain" in content_type:
             try:
                 args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
-            except (ValueError, ValidationError) as caught_error:
+            except ValueError as caught_error:
                 raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             abort(415)
@@ -1346,7 +1345,7 @@ class PublishedWorkflowApi(Resource):
         """
 
         workflow_service = WorkflowService()
-        with sessionmaker(db.engine).begin() as session:
+        with session_factory.get_session_maker().begin() as session:
             workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,

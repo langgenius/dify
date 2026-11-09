@@ -91,8 +91,6 @@ it('reports failed status changes without notifying the owner of success', async
   const onUpdate = vi.fn()
   show({ detail: { ...detail, enabled: false }, onUpdate })
   await user.click(screen.getByRole('switch'))
-  await waitFor(() =>
-    expect(toastError).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
-  )
+  await waitFor(() => expect(toastError).toHaveBeenCalledWith('Unavailable'))
   expect(onUpdate).not.toHaveBeenCalled()
 })

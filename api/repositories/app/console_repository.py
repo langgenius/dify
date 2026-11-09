@@ -7,7 +7,6 @@ existing use cases that still need attached models.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Sequence
 from dataclasses import replace
@@ -16,7 +15,7 @@ from typing import Any, cast, override
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
-from sqlalchemy import ColumnElement, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -50,6 +49,7 @@ from services.agent.errors import (
 from services.app.console_service import ConsoleAppNotFoundError, ConsoleApps
 from services.app.query_service import AppDescription, DiscoveryApps, RelatedApps
 from services.app_creation_records import create_installed_app_record, create_site_record
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     RECENT_APP_MODES,
     AppAgentBinding,
@@ -65,7 +65,6 @@ from services.entities.app_entities import (
     AppRecord,
     AppReference,
     AppSummary,
-    AppTraceSettings,
     AppUpdateArguments,
     CreateAppParams,
     RecentAppListItem,
@@ -129,6 +128,16 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 return None
             binding = app.agent_app_binding_with_session(session=session, include_archived=True)
             return AppAgentBinding(binding.id, binding.scope == AgentScope.WORKFLOW_ONLY) if binding else None
+
+    def get_agent_creator_id(self, workspace_id: str, agent_id: str) -> str | None:
+        with self._session_factory() as session:
+            return session.scalar(
+                select(Agent.created_by).where(
+                    Agent.id == agent_id,
+                    Agent.tenant_id == workspace_id,
+                    Agent.status == AgentStatus.ACTIVE,
+                )
+            )
 
     def get_maintainer_id(self, workspace_id: str, resource_id: str, *, normal_only: bool = False) -> str | None:
         statement = select(App.maintainer).where(App.id == resource_id, App.tenant_id == workspace_id)
@@ -326,12 +335,6 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             app = require_console_app(session, context, app_id)
             return _app_trace_settings_adapter.validate_json(app.tracing) if app.tracing else AppTraceSettings()
 
-    @override
-    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
-        with self._session_factory.begin() as session:
-            app = require_console_app(session, context, app_id)
-            app.tracing = json.dumps({"enabled": settings.enabled, "tracing_provider": settings.tracing_provider})
-
     @staticmethod
     def _draft_trigger_app_ids(session: Session, workspace_id: str, apps: list[App]) -> set[str]:
         workflow_app_ids = [app.id for app in apps if app.mode in {"workflow", "advanced-chat"}]
@@ -410,10 +413,9 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
         elif params.accessible_app_ids is not None:
-            accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
-            if params.include_own_apps:
-                accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
-            filters.append(accessible_filter)
+            filters.append(sa.or_(App.maintainer == user_id, App.id.in_(params.accessible_app_ids)))
+        if params.resource_app_ids is not None:
+            filters.append(App.id.in_(params.resource_app_ids))
         if params.creator_ids:
             filters.append(App.created_by.in_(params.creator_ids))
         if params.name:

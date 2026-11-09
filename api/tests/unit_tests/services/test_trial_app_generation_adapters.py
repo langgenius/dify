@@ -340,7 +340,7 @@ def _add_conversation(harness: _Harness, session_factory: sessionmaker[Session])
             app_id=harness.app.app_id,
             mode=AppMode.CHAT,
             name="Conversation",
-            inputs={},
+            _inputs={},
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=harness.account_id,
             from_end_user_id=None,

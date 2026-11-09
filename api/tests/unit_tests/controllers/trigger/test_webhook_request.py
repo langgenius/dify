@@ -4,6 +4,7 @@ from collections.abc import Mapping
 
 import pytest
 from flask import Flask, request
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from controllers.trigger.webhook_request import WebhookRequestParser
 from core.app.file_access import DatabaseFileAccessController
@@ -18,6 +19,7 @@ from graphon.entities.graph_config import NodeConfigDict
 from graphon.variables.types import SegmentType
 from services.trigger.webhook_gateway import ToolWebhookFiles
 from services.trigger.webhook_service import RawWebhookDataDict, WebhookContext, build_webhook_workflow_inputs
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -50,6 +52,34 @@ def _workflow_trigger() -> WebhookContext:
 
 
 class TestWebhookRequestParserUnit:
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("1234567890123456789", 1234567890123456789),
+            ("9007199254740993", 9007199254740993),
+            ("-9007199254740993", -9007199254740993),
+            ("1e3", 1000),
+        ],
+    )
+    def test_form_number_preserves_exact_integers(self, parser: WebhookRequestParser, raw: str, expected: int) -> None:
+        assert parser._convert_form_value("amount", raw, SegmentType.NUMBER) == expected
+
+    @pytest.mark.parametrize("raw", ["nan", "NaN", "inf", "-Infinity", "1e400"])
+    def test_form_number_rejects_non_finite_values(self, parser: WebhookRequestParser, raw: str) -> None:
+        with pytest.raises(ValueError, match="to number"):
+            parser._convert_form_value("amount", raw, SegmentType.NUMBER)
+
+    @pytest.mark.parametrize(("value", "kind"), [(True, "number"), ([1, True], "array[number]")])
+    def test_json_number_rejects_booleans(self, parser: WebhookRequestParser, value: object, kind: str) -> None:
+        with pytest.raises(ValueError, match="Expected"):
+            parser._validate_json_value("amount", value, kind)
+
+    def test_rejects_oversized_request(self, parser: WebhookRequestParser, flask_app: Flask) -> None:
+        with config_overrides_context(WEBHOOK_REQUEST_BODY_MAX_SIZE=1):
+            with flask_app.test_request_context("/webhook", method="POST", data="ab"):
+                with pytest.raises(RequestEntityTooLarge):
+                    parser.extract_webhook_data(_webhook_trigger())
+
     def test_extract_webhook_data_json(self, parser: WebhookRequestParser) -> None:
         """Test webhook data extraction from JSON request."""
         app = Flask(__name__)

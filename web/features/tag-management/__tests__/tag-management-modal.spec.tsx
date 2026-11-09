@@ -94,7 +94,7 @@ it('keeps a failed draft available for correction and retry', async () => {
   renderModal()
   const input = screen.getByRole('textbox', { name: inputName })
   await user.type(input, 'FailTag{Enter}')
-  await waitFor(() => expect(notify.error).toHaveBeenCalledWith('common.tag.failed'))
+  await waitFor(() => expect(notify.error).toHaveBeenCalledWith('Creation failed'))
   expect(input).toHaveValue('FailTag')
   expect(input).not.toHaveAttribute('readonly')
   await user.keyboard('{Enter}')

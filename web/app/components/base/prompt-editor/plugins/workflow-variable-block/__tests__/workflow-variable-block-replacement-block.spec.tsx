@@ -94,12 +94,21 @@ it('replaces multiple variables while retaining surrounding text and variable me
 it('uses updated callbacks and node metadata for subsequent replacements and unregisters on unmount', async () => {
   const first = vi.fn()
   const latest = vi.fn()
+  const firstVarType = () => Type.string
+  const latestVarType = () => Type.number
   let update: (value: boolean) => void
   let show: (value: boolean) => void
   const renamedMap = {
     ...workflowNodesMap,
     'node-1': { ...workflowNodesMap['node-1']!, title: 'Renamed' },
   }
+  const renamedVariables: NodeOutPutVar[] = [
+    {
+      nodeId: 'node-1',
+      title: 'Renamed',
+      vars: [{ variable: 'output', type: VarType.number }],
+    },
+  ]
   function Fixture() {
     const [updated, setUpdated] = useState(false)
     const [visible, setVisible] = useState(true)
@@ -108,6 +117,8 @@ it('uses updated callbacks and node metadata for subsequent replacements and unr
     return visible ? (
       <WorkflowVariableBlockReplacementBlock
         workflowNodesMap={updated ? renamedMap : workflowNodesMap}
+        variables={updated ? renamedVariables : variables}
+        getVarType={updated ? latestVarType : firstVarType}
         onInsert={updated ? latest : first}
       />
     ) : null
@@ -122,10 +133,15 @@ it('uses updated callbacks and node metadata for subsequent replacements and unr
   setEditorRootText(editor, '{{#node-1.output#}}', (value) => new CustomTextNode(value))
   await waitFor(() => expect(getNodeCount(editor, WorkflowVariableBlockNode)).toBe(1))
   expect(
-    readEditorStateValue(editor, () =>
-      $nodesOfType(WorkflowVariableBlockNode)[0]!.getWorkflowNodesMap(),
-    ),
-  ).toEqual(renamedMap)
+    readEditorStateValue(editor, () => {
+      const node = $nodesOfType(WorkflowVariableBlockNode)[0]!
+      return {
+        map: node.getWorkflowNodesMap(),
+        variables: node.getAvailableVariables(),
+        type: node.getVarType()?.({ nodeId: 'node-1', valueSelector: ['node-1', 'output'] }),
+      }
+    }),
+  ).toEqual({ map: renamedMap, variables: renamedVariables, type: Type.number })
   expect(latest).toHaveBeenCalledOnce()
   expect(first).not.toHaveBeenCalled()
   act(() => show(false))

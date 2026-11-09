@@ -1,49 +1,56 @@
-import type { ComponentProps } from 'react'
-import type { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { TransferMethod } from '@/types/app'
 import HumanInputForm from '../human-input-form'
 
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({
-    onChange,
-    fileConfig,
-  }: ComponentProps<typeof FileUploaderInAttachmentWrapper>) => {
-    const single = fileConfig.number_limits === 1
-    const update = (progress: number) =>
-      onChange([
-        {
-          id: single ? 'file-2' : 'file-1',
-          name: single ? 'main.png' : 'avatar.png',
-          size: 128,
-          type: 'image/png',
-          progress,
-          transferMethod: TransferMethod.local_file,
-          supportFileType: SupportUploadFileTypes.image,
-          uploadedId: progress === 100 ? (single ? 'upload-file-2' : 'upload-file-1') : undefined,
-        },
-      ])
-    return (
-      <>
-        <button onClick={() => update(50)}>
-          {single ? 'Upload single file' : 'Upload file list'}
-        </button>
-        <button onClick={() => update(100)}>
-          {single ? 'Finish single file' : 'Finish file list'}
-        </button>
-      </>
-    )
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+
+// The uploader owns file state; only its multipart network transport is controlled.
+const { uploadRequest } = vi.hoisted(() => ({
+  uploadRequest: vi.fn<(options: { data: FormData }) => Promise<unknown>>(),
+}))
+
+// The build-time release flag has no runtime control, so vary that configuration boundary directly.
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
   },
 }))
 
+vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/' }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  upload: uploadRequest,
+}))
+
+const uploadResponse = (file: File) => ({
+  id: file.name === 'main.png' ? 'upload-file-2' : 'upload-file-1',
+  name: file.name,
+  size: file.size,
+  mime_type: file.type,
+  extension: 'png',
+  created_at: 1,
+  created_by: 'user-1',
+  preview_url: null,
+  source_url: '',
+})
+
+beforeEach(() => {
+  uploadRequest.mockImplementation(async ({ data }) => uploadResponse(data.get('file') as File))
+})
+
 describe('HumanInputForm', () => {
+  beforeEach(() => {
+    releaseGate.enabled = true
+  })
+
   const mockFormData: HumanInputFormData = {
     form_id: 'form_1',
     node_id: 'node_1',
@@ -57,7 +64,7 @@ describe('HumanInputForm', () => {
         type: 'paragraph',
         output_variable_name: 'field1',
         default: { type: 'constant', value: 'initial', selector: [] },
-      } as FormInputItem,
+      },
     ],
     actions: [
       { id: 'action_1', title: 'Submit', button_style: UserActionButtonType.Primary },
@@ -67,6 +74,46 @@ describe('HumanInputForm', () => {
     ],
     resolved_default_values: {},
   }
+
+  it('does not expose a V2 form or its submit and upload controls when HITL IM is disabled', () => {
+    releaseGate.enabled = false
+    const onSubmit = vi.fn()
+
+    render(<HumanInputForm formData={{ ...mockFormData, form_version: '2' }} onSubmit={onSubmit} />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('share.humanInputV2.unavailable')
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, '1'] as const)(
+    'keeps legacy version %s interactive when HITL IM is disabled',
+    async (form_version) => {
+      releaseGate.enabled = false
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue(undefined)
+
+      render(<HumanInputForm formData={{ ...mockFormData, form_version }} onSubmit={onSubmit} />)
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(onSubmit).toHaveBeenCalledWith('token_123', {
+        action: 'action_1',
+        inputs: { field1: 'initial' },
+        form_version,
+      })
+    },
+  )
+
+  it('keeps V2 submissions available when HITL IM is enabled', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+
+    render(<HumanInputForm formData={{ ...mockFormData, form_version: '2' }} onSubmit={onSubmit} />)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledOnce()
+  })
 
   it('should handle input changes and submit correctly', async () => {
     const user = userEvent.setup()
@@ -107,15 +154,24 @@ describe('HumanInputForm', () => {
           allowed_file_upload_methods: [TransferMethod.local_file],
           number_limits: 5,
         },
-      ] as FormInputItem[],
+      ],
     }
 
-    render(<HumanInputForm formData={formDataWithFileList} onSubmit={mockOnSubmit} />)
+    const { container } = render(
+      <HumanInputForm formData={formDataWithFileList} onSubmit={mockOnSubmit} />,
+    )
 
     const input = screen.getByRole('textbox', { name: 'field1' })
     await user.clear(input)
     await user.type(input, 'new value')
-    await user.click(screen.getByRole('button', { name: 'Finish file list' }))
+    // The current file chooser has no label; target the native upload input.
+    await user.upload(
+      container.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['avatar'], 'avatar.png', { type: 'image/png' }),
+    )
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeEnabled())
+    expect(screen.getByText('avatar.png')).toBeVisible()
+    expect((uploadRequest.mock.calls[0]![0].data.get('file') as File).name).toBe('avatar.png')
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(mockOnSubmit).toHaveBeenCalledWith('token_123', {
@@ -165,28 +221,67 @@ describe('HumanInputForm', () => {
           allowed_file_types: [SupportUploadFileTypes.image],
           allowed_file_upload_methods: [TransferMethod.local_file],
         },
-      ] as FormInputItem[],
+      ],
     }
 
-    render(
+    const singleUpload = createDeferred<ReturnType<typeof uploadResponse>>()
+    const listUpload = createDeferred<ReturnType<typeof uploadResponse>>()
+    const replacementUpload = createDeferred<ReturnType<typeof uploadResponse>>()
+    let listAttempts = 0
+    uploadRequest.mockImplementation(({ data }) => {
+      const file = data.get('file') as File
+      if (file.name === 'main.png') return singleUpload.promise
+      return listAttempts++ === 0 ? listUpload.promise : replacementUpload.promise
+    })
+    const { container } = render(
       <HumanInputForm formData={formDataWithRequiredInteractiveFields} onSubmit={mockOnSubmit} />,
     )
 
     const submitButton = screen.getByRole('button', { name: 'Submit' })
     expect(submitButton).toBeDisabled()
-
     await user.click(screen.getByRole('combobox', { name: 'field2' }))
     await user.click(screen.getByRole('option', { name: 'approved' }))
-    await user.click(screen.getByRole('button', { name: 'Upload single file' }))
-    await user.click(screen.getByRole('button', { name: 'Finish file list' }))
-    expect(submitButton).toBeDisabled()
 
-    await user.click(screen.getByRole('button', { name: 'Finish single file' }))
-    await user.click(screen.getByRole('button', { name: 'Upload file list' }))
+    const singleFile = new File(['main'], 'main.png', { type: 'image/png' })
+    const listFile = new File(['avatar'], 'avatar.png', { type: 'image/png' })
+    // Native input.multiple distinguishes the single-file and file-list fields.
+    await user.upload(
+      container.querySelector<HTMLInputElement>('input[type="file"]:not([multiple])')!,
+      singleFile,
+    )
+    await screen.findByText('main.png')
     expect(submitButton).toBeDisabled()
+    await user.click(submitButton)
+    expect(mockOnSubmit).not.toHaveBeenCalled()
+    await user.upload(
+      container.querySelector<HTMLInputElement>('input[type="file"][multiple]')!,
+      listFile,
+    )
+    await screen.findByText('avatar.png')
+    expect(submitButton).toBeDisabled()
+    await user.click(submitButton)
+    expect(mockOnSubmit).not.toHaveBeenCalled()
+    await act(async () => listUpload.resolve(uploadResponse(listFile)))
+    // A completed file list must not hide a still-pending single-file upload.
+    expect(submitButton).toBeDisabled()
+    await user.click(submitButton)
+    expect(mockOnSubmit).not.toHaveBeenCalled()
+    await act(async () => singleUpload.resolve(uploadResponse(singleFile)))
+    await waitFor(() => expect(submitButton).toBeEnabled())
 
-    await user.click(screen.getByRole('button', { name: 'Finish file list' }))
-    expect(submitButton).toBeEnabled()
+    // Replace the completed list file through the real removal/upload controls.
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove avatar.png' }))
+    expect(submitButton).toBeDisabled()
+    await user.upload(
+      container.querySelector<HTMLInputElement>('input[type="file"][multiple]')!,
+      listFile,
+    )
+    await screen.findByText('avatar.png')
+    expect(submitButton).toBeDisabled()
+    await user.click(submitButton)
+    expect(mockOnSubmit).not.toHaveBeenCalled()
+    await act(async () => replacementUpload.resolve(uploadResponse(listFile)))
+    await waitFor(() => expect(submitButton).toBeEnabled())
 
     await user.click(submitButton)
 
@@ -244,7 +339,7 @@ describe('HumanInputForm', () => {
           allowed_file_types: [SupportUploadFileTypes.image],
           allowed_file_upload_methods: [TransferMethod.local_file],
         },
-      ] as FormInputItem[],
+      ],
     }
 
     render(<HumanInputForm formData={formDataWithStaleInput} onSubmit={mockOnSubmit} />)

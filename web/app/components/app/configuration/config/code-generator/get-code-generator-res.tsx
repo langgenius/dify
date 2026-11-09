@@ -189,9 +189,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] w-full min-w-285 overflow-hidden">
+      <DialogContent className="h-170 w-full overflow-hidden">
         <div className="relative flex h-full min-h-0 flex-wrap">
-          <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+          <div className="h-full w-142.5 shrink-0 overflow-y-auto border-e border-divider-regular p-6">
             <div className="mb-5">
               <div className={`text-lg leading-7 font-bold ${s.textGradient}`}>
                 {t(($) => $['codegen.title'], { ns: 'appGeneration' })}

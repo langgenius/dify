@@ -158,6 +158,48 @@ class TestGuessFileInfoFromResponse:
         assert isinstance(info, FileInfo)
 
 
+@pytest.mark.parametrize("url", ["https://example.com/download", "https://example.com/"])
+@pytest.mark.parametrize(
+    ("content_type", "expected_mimetype", "expected_extension"),
+    [
+        ("image/png; charset=binary", "image/png", ".png"),
+        ('application/pdf; name="a;b.pdf"', "application/pdf", ".pdf"),
+        ("Text/Plain; charset=UTF-8", "text/plain", ".txt"),
+        ("application/octet-stream; version=1", "application/octet-stream", ".bin"),
+        ("image/png", "image/png", ".png"),
+        (None, "application/octet-stream", ".bin"),
+    ],
+)
+def test_header_media_type_drives_extensionless_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+    url: str,
+    content_type: str | None,
+    expected_mimetype: str,
+    expected_extension: str,
+) -> None:
+    # Metadata must work without optional content sniffing, including HEAD responses.
+    monkeypatch.setattr(remote_file_metadata, "magic", None)
+    headers = {"Content-Type": content_type} if content_type is not None else {}
+    response = httpx.Response(200, request=httpx.Request("HEAD", url), headers=headers)
+
+    info = guess_file_info_from_response(response)
+
+    assert info.mimetype == expected_mimetype
+    assert info.extension == expected_extension
+    assert info.filename.endswith(expected_extension)
+
+
+def test_filename_mimetype_keeps_priority_over_parameterized_header() -> None:
+    response = make_response(
+        url="https://example.com/report.pdf",
+        headers={"Content-Type": "text/plain; charset=utf-8"},
+    )
+
+    info = guess_file_info_from_response(response)
+
+    assert (info.filename, info.extension, info.mimetype) == ("report.pdf", ".pdf", "application/pdf")
+
+
 class TestMagicImportWarnings:
     @pytest.mark.parametrize(
         ("platform_name", "expected_message"),

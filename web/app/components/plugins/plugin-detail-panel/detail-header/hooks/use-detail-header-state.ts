@@ -1,10 +1,9 @@
 'use client'
 
 import type { PluginDetail } from '../../../types'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useMemo, useState } from 'react'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { usePluginAutoUpgradeSettings } from '@/service/use-plugins'
 import { AUTO_UPDATE_MODE } from '../../../reference-setting-modal/auto-update-setting/types'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
@@ -46,10 +45,7 @@ type UseDetailHeaderStateReturn = {
 }
 
 export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderStateReturn => {
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const enable_marketplace = useMarketplace() !== null
   const category = detail.declaration?.category ?? PluginCategoryEnum.tool
   const autoUpgradeSettings = usePluginAutoUpgradeSettings(category)
 

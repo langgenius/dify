@@ -154,7 +154,7 @@ class PluginTriggerProviderController:
         """
         return self.entity.subscription_constructor
 
-    def validate_credentials(self, user_id: str, credentials: Mapping[str, str]) -> None:
+    def validate_credentials(self, user_id: str, credentials: Mapping[str, object]) -> None:
         """
         Validate credentials against schema
 
@@ -268,7 +268,7 @@ class PluginTriggerProviderController:
         self,
         request: Request,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> TriggerDispatchResponse:
         """
@@ -299,7 +299,7 @@ class PluginTriggerProviderController:
         user_id: str,
         endpoint: str,
         parameters: Mapping[str, Any],
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription:
         """
@@ -328,7 +328,11 @@ class PluginTriggerProviderController:
         return Subscription.model_validate(response.subscription)
 
     def unsubscribe_trigger(
-        self, user_id: str, subscription: Subscription, credentials: Mapping[str, str], credential_type: CredentialType
+        self,
+        user_id: str,
+        subscription: Subscription,
+        credentials: Mapping[str, object],
+        credential_type: CredentialType,
     ) -> UnsubscribeResult:
         """
         Unsubscribe from a trigger through plugin runtime
@@ -354,7 +358,7 @@ class PluginTriggerProviderController:
         return UnsubscribeResult.model_validate(response.subscription)
 
     def refresh_trigger(
-        self, subscription: Subscription, credentials: Mapping[str, str], credential_type: CredentialType
+        self, subscription: Subscription, credentials: Mapping[str, object], credential_type: CredentialType
     ) -> Subscription:
         """
         Refresh a trigger subscription through plugin runtime

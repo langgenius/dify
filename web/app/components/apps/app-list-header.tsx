@@ -4,7 +4,7 @@ import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppListUrlQuery } from './query-params'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { CreateAppDropdown } from '@/app/components/app/create-app-dropdown'
+import { CreateAppMenu } from '@/app/components/app/create-app-menu'
 import { SearchInput } from '@/app/components/base/search-input'
 import {
   activeStepByStepTourGuideGroupAtom,
@@ -15,12 +15,12 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
-import { useStudioListHref } from '@/features/studio-list-navigation'
-import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'
+import { StudioListLink } from './list-navigation'
+import { useStudioListHref } from './list-navigation-state'
 import { StudioListHeader } from './studio-list-header'
 
 type AppListQuery = NonNullable<GetAppsData['query']>
@@ -116,7 +116,7 @@ export function AppListHeader({
             {t(($) => $['studio.viewSnippets'], { ns: 'app' })}
           </StudioListLink>
           {showCreateButton && (
-            <CreateAppDropdown
+            <CreateAppMenu
               onCreateBlank={onCreateBlank}
               onCreateTemplate={onCreateTemplate}
               onImportDSL={onImportDSL}

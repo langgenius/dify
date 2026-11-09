@@ -10,7 +10,7 @@ from core.plugin.impl.exc import PluginInvokeError
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from enums import QuotaType
-from models.enums import CreatorUserRole, EndUserType
+from models.enums import CreatorUserRole
 from services.async_workflow_service import (
     TriggerExecutionLogs,
     TriggerWorkflowDispatcher,
@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 class TriggerEndUserProvisioner(Protocol):
     def get_or_create_trigger_end_user(self, *, tenant_id: str, app_id: str) -> TriggerActor: ...
 
-    def create_end_user_batch(
+    def create_trigger_end_users(
         self,
-        type: EndUserType,
+        *,
         tenant_id: str,
         app_ids: list[str],
         user_id: str,
@@ -101,8 +101,7 @@ class PluginTriggerWorkflowDispatchService:
             tenant_id=subscription.tenant_id, app_ids=[subscriber.app_id for subscriber in subscribers]
         )
 
-        end_users_by_app = self._end_users.create_end_user_batch(
-            type=EndUserType.TRIGGER,
+        end_users_by_app = self._end_users.create_trigger_end_users(
             tenant_id=subscription.tenant_id,
             app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
             user_id=user_id,

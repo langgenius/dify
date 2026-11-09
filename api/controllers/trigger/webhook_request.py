@@ -2,6 +2,7 @@
 
 import json
 import logging
+import math
 import mimetypes
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, NotRequired, TypedDict
@@ -444,6 +445,11 @@ class WebhookRequestParser:
             case SegmentType.NUMBER:
                 if not self._can_convert_to_number(value):
                     raise ValueError(f"Cannot convert '{value}' to number")
+                try:
+                    # Parse integers exactly before float conversion can round them.
+                    return int(value)
+                except ValueError:
+                    pass
                 numeric_value = float(value)
                 return int(numeric_value) if numeric_value.is_integer() else numeric_value
             case SegmentType.BOOLEAN:
@@ -489,12 +495,24 @@ class WebhookRequestParser:
         if param_type_enum is None:
             return value
 
-        if not param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL):
+        if not param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL) or self._is_boolean_for_number(
+            value, param_type_enum
+        ):
             actual_type = type(value).__name__
             expected_type = self._expected_type_label(param_type_enum)
             raise ValueError(f"Expected {expected_type}, got {actual_type}")
 
         return value
+
+    @staticmethod
+    def _is_boolean_for_number(value: Any, param_type: SegmentType) -> bool:
+        match param_type:
+            case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
+                return isinstance(value, bool)
+            case SegmentType.ARRAY_NUMBER:
+                return isinstance(value, list) and any(isinstance(item, bool) for item in value)
+            case _:
+                return False
 
     def _coerce_segment_type(self, param_type: SegmentType | str, *, param_name: str) -> SegmentType | None:
         if isinstance(param_type, SegmentType):
@@ -592,10 +610,9 @@ class WebhookRequestParser:
         return {"valid": False, "error": error_message}
 
     def _can_convert_to_number(self, value: str) -> bool:
-        """Check if a string can be converted to a number."""
+        """Check if a string can be converted to a finite number."""
         try:
-            float(value)
-            return True
+            return math.isfinite(float(value))
         except ValueError:
             return False
 

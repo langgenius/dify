@@ -13,7 +13,7 @@ export const ResultItemFooter = memo(({ docType, docTitle }: ResultItemFooterPro
   const { t } = useTranslation(['datasetHitTesting'])
 
   return (
-    <span className="mt-3 flex h-10 items-center justify-between border-t border-divider-subtle pr-2 pl-3">
+    <span className="mt-3 flex h-10 items-center justify-between border-t border-divider-subtle ps-3 pe-2">
       <span className="flex grow items-center space-x-1">
         <FileIcon type={docType} size="sm" />
         <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">
@@ -22,7 +22,7 @@ export const ResultItemFooter = memo(({ docType, docTitle }: ResultItemFooterPro
       </span>
       <span className="flex items-center space-x-1 text-text-tertiary">
         <span className="text-xs uppercase">{t(($) => $.open, { ns: 'datasetHitTesting' })}</span>
-        <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+        <span aria-hidden className="i-ri-arrow-right-up-line size-3.5 rtl:-scale-x-100" />
       </span>
     </span>
   )

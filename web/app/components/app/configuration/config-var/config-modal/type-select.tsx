@@ -88,7 +88,7 @@ const TypeSelector: FC<Props> = ({
         </div>
       </SelectTrigger>
       <SelectPortal>
-        <SelectPositioner sideOffset={4}>
+        <SelectPositioner>
           <SelectPopup
             className={cn(
               'w-(--anchor-width) rounded-md px-1 py-1 text-base sm:text-sm',

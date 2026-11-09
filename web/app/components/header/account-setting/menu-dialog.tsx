@@ -32,7 +32,7 @@ const MenuDialog = ({ children, title, onClose }: MenuDialogProps) => {
         <DialogViewport>
           <DialogPopup className="pointer-events-none isolate h-full w-full scale-100 transition-opacity data-ending-style:scale-100 data-starting-style:scale-100">
             <DialogTitle className="sr-only">{title}</DialogTitle>
-            <div className="pointer-events-auto absolute top-6 right-6 z-10 flex shrink-0 flex-col items-center">
+            <div className="pointer-events-auto absolute inset-e-6 top-6 z-10 flex shrink-0 flex-col items-center">
               <DialogClose
                 render={
                   <IconButton

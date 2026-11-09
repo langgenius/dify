@@ -1,0 +1,15 @@
+# Defaults for seekdb. Copy this file to seekdb.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+SEEKDB_MEMORY_LIMIT=${SEEKDB_MEMORY_LIMIT:-2G}
+OCEANBASE_VECTOR_PASSWORD=${OCEANBASE_VECTOR_PASSWORD-difyai123456}
+
+# Dify uses the OceanBase client for SeekDB.
+OCEANBASE_VECTOR_HOST=${OCEANBASE_VECTOR_HOST-seekdb}
+OCEANBASE_VECTOR_USER=${OCEANBASE_VECTOR_USER-root}
+OCEANBASE_VECTOR_DATABASE=${OCEANBASE_VECTOR_DATABASE-test}
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+MEMORY_LIMIT=${SEEKDB_MEMORY_LIMIT:-2G}
+ROOT_PASSWORD=${OCEANBASE_VECTOR_PASSWORD:-difyai123456}

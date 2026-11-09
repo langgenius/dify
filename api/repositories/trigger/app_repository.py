@@ -113,7 +113,9 @@ class SQLAlchemyAppTriggerRepository(AppTriggerStore):
                 status=status,
             )
 
-    def sync_draft_webhooks(self, *, tenant_id: str, app_id: str, created_by: str, node_ids: Sequence[str]) -> None:
+    def sync_draft_webhooks(
+        self, *, tenant_id: str, app_id: str, created_by: str | None, node_ids: Sequence[str]
+    ) -> None:
         # Draft signals are emitted after the draft transaction commits.
         with self._session_factory.begin() as session:
             self.sync_webhooks(
@@ -131,7 +133,7 @@ class SQLAlchemyAppTriggerRepository(AppTriggerStore):
         session: Session,
         tenant_id: str,
         app_id: str,
-        created_by: str,
+        created_by: str | None,
         node_ids: Sequence[str],
         remove_stale: bool,
     ) -> None:
@@ -148,6 +150,8 @@ class SQLAlchemyAppTriggerRepository(AppTriggerStore):
         existing = {row.node_id: row for row in rows}
         desired = set(node_ids)
         for node_id in desired - existing.keys():
+            if created_by is None:
+                raise RuntimeError("App is missing created_by; cannot create webhook trigger")
             session.add(
                 WorkflowWebhookTrigger(
                     tenant_id=tenant_id,

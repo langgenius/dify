@@ -12,10 +12,10 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
+import { useStudioListHref } from '@/app/components/apps/list-navigation-state'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
-import { useStudioListHref } from '@/features/studio-list-navigation'
 import Link from '@/next/link'
 
 type AppDetailTopProps = {
@@ -44,14 +44,14 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
   }
 
   return (
-    <div className="flex items-center py-2 pr-2 pl-1">
+    <div className="flex items-center py-2 ps-1 pe-2">
       <Breadcrumb aria-label={t(($) => $['menus.apps'], { ns: 'navigation' })} className="flex-1">
         <BreadcrumbList className="gap-px">
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink
               render={<Link href="/" />}
               aria-label={t(($) => $['mainNav.home'], { ns: 'navigation' })}
-              className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+              className="gap-0 rounded-lg py-2 ps-0.5 pe-1.5 hover:bg-background-default-hover"
             >
               <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
               <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
@@ -90,7 +90,7 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
               />
             }
           />
-          <TooltipContent placement="bottom" className="flex items-center gap-1">
+          <TooltipContent side="bottom" className="flex items-center gap-1">
             <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
             <KbdGroup>
               {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (

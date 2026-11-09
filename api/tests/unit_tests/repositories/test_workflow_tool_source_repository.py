@@ -228,11 +228,11 @@ def _save_source(session_factory: sessionmaker[Session]) -> None:
             kind=WorkflowKind.STANDARD,
             version=version,
             graph=json.dumps(graph),
-            features=json.dumps(_FEATURES),
+            _features=json.dumps(_FEATURES),
             created_by=_ACCOUNT_ID,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         for workflow_id, version, graph in (
             (_PUBLISHED_WORKFLOW_ID, _PUBLISHED_VERSION, _GRAPH),

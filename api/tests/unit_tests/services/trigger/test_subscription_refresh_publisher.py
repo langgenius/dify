@@ -15,11 +15,17 @@ application_redis = test_trigger_oauth_client.application_redis
 harness = test_trigger_oauth_client.harness
 
 
-def test_publisher_serializes_owner_chain_and_reservation_token() -> None:
+def test_publisher_preserves_legacy_worker_arguments_and_sends_reservation_in_headers() -> None:
     previous_app = trigger_subscription_refresh.app
     app = Celery("trigger-renewal-publisher-test", broker="memory://", set_as_current=False)
     app.conf.update(task_always_eager=False, task_serializer="json")
     app.set_current()
+
+    # Exercise Celery's header/argument separation with the old consumer signature.
+    @app.task
+    def legacy_refresh(tenant_id: str, subscription_id: str) -> tuple[str, str]:
+        return tenant_id, subscription_id
+
     job = TriggerSubscriptionRefreshJob(
         subscription=TriggerSubscriptionRefreshRef(tenant_id="tenant", subscription_id="subscription"),
         token="reservation-owner",
@@ -35,8 +41,15 @@ def test_publisher_serializes_owner_chain_and_reservation_token() -> None:
                     assert message.payload[1] == {
                         "tenant_id": "tenant",
                         "subscription_id": "subscription",
-                        "reservation_token": "reservation-owner",
                     }
+                    assert message.headers["reservation_token"] == "reservation-owner"
+                    result = legacy_refresh.apply(
+                        args=tuple(message.payload[0]),
+                        kwargs=message.payload[1],
+                        headers=message.headers,
+                        throw=True,
+                    )
+                    assert result.get() == ("tenant", "subscription")
                     message.ack()
                     assert queue.qsize() == 0
                 finally:

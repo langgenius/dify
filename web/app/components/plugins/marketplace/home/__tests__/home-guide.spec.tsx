@@ -27,11 +27,18 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: mocks.useDocLink,
 }))
 
-vi.mock('@/config', () => ({
-  get MARKETPLACE_URL_PREFIX() {
-    return mocks.marketplaceUrlPrefix
-  },
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      get NEXT_PUBLIC_MARKETPLACE_URL_PREFIX() {
+        return mocks.marketplaceUrlPrefix
+      },
+    },
+  }
+})
 
 const GUIDE_BUTTON_NAME = /marketplace\.home\.guide/
 
@@ -75,7 +82,7 @@ describe('HomeGuide', () => {
       'href',
       'https://docs.dify.ai/en/develop-plugin/publishing/marketplace-listing/release-overview',
     )
-    expect(options[3]).toHaveAttribute('href', 'https://creators.dify.ai')
+    expect(options[3]).toHaveAttribute('href', 'https://creators.dify.ai/')
     expect(mocks.useDocLink).not.toHaveBeenCalled()
   })
 

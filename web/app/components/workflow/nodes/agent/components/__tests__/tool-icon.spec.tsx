@@ -1,6 +1,6 @@
 import type { ToolProviderApiEntityResponse as ToolProvider } from '@dify/contracts/api/console/workspaces/types.gen'
 import { fireEvent, screen } from '@testing-library/react'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { ToolIcon } from '../tool-icon'

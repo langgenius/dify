@@ -5,6 +5,7 @@ from typing import Any
 
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.trigger import PluginTriggerClient
+from core.plugin.utils.http_parser import deserialize_request
 from core.trigger.errors import EventIgnoreError
 from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
@@ -38,7 +39,7 @@ class PluginTriggerEventGateway:
                 credentials=runtime.credentials,
                 credential_type=runtime.credential_type,
                 subscription=runtime.subscription,
-                request=event.request,
+                request=deserialize_request(event.raw_request),
                 payload=event.payload,
             )
         except EventIgnoreError:

@@ -6,7 +6,8 @@ from typing import Protocol, override
 
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition
-from services.billing_service import BillingService, SubscriptionPlan
+from services.billing_client.billing import SubscriptionPlanItem
+from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
 
     def __init__(
         self,
-        plan_provider: Callable[[Sequence[str]], dict[str, SubscriptionPlan]],
+        plan_provider: Callable[[Sequence[str]], dict[str, SubscriptionPlanItem]],
         graceful_period_days: int = 21,
         tenant_whitelist: Sequence[str] | None = None,
         current_timestamp: int | None = None,
@@ -119,7 +120,7 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
         self,
         messages: Sequence[SimpleMessage],
         app_to_tenant: dict[str, str],
-        tenant_plans: dict[str, SubscriptionPlan],
+        tenant_plans: dict[str, SubscriptionPlanItem],
     ) -> list[str]:
         """
         Filter messages that should be deleted based on sandbox plan expiration.
@@ -160,8 +161,8 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
             if not tenant_plan:
                 continue
 
-            plan = str(tenant_plan["plan"])
-            expiration_date = int(tenant_plan["expiration_date"])
+            plan = tenant_plan.plan
+            expiration_date = tenant_plan.expiration_date
 
             # Only process sandbox plans
             if plan != CloudPlan.SANDBOX:

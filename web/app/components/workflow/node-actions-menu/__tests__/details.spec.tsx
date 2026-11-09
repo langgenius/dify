@@ -11,7 +11,7 @@ import { BlockClassification } from '../../block-selector/types'
 import { useAvailableBlocks } from '../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
-import { NodeActionsDropdown } from '../index'
+import { NodeActionsMenu } from '../index'
 
 vi.mock('../../hooks/use-available-blocks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/use-available-blocks')>()
@@ -66,7 +66,7 @@ const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 
-async function renderDropdownContent(
+async function renderMenuContent(
   user: ReturnType<typeof userEvent.setup>,
   {
     showHelpLink = true,
@@ -79,7 +79,7 @@ async function renderDropdownContent(
   } = {},
 ) {
   const result = renderWorkflowFlowComponent(
-    <NodeActionsDropdown
+    <NodeActionsMenu
       id="node-1"
       data={{ type: BlockEnum.Code, title: 'Code Node', desc: '', ...data }}
       onOpenChange={(open) => !open && onClose()}
@@ -163,10 +163,7 @@ describe('node actions menu details', () => {
   it('keeps the menu after Escape and closes both surfaces after changing a node', async () => {
     const user = userEvent.setup()
     renderWorkflowFlowComponent(
-      <NodeActionsDropdown
-        id="node-1"
-        data={{ type: BlockEnum.Code, title: 'Code Node', desc: '' }}
-      />,
+      <NodeActionsMenu id="node-1" data={{ type: BlockEnum.Code, title: 'Code Node', desc: '' }} />,
       {
         resource: {
           kind: 'app',
@@ -247,7 +244,7 @@ describe('node actions menu details', () => {
 
   it('links the help menu item to the node documentation', async () => {
     const user = userEvent.setup()
-    await renderDropdownContent(user)
+    await renderMenuContent(user)
 
     expect(screen.getByRole('menuitem', { name: 'workflow.panel.helpLink' })).toHaveAttribute(
       'href',
@@ -257,7 +254,7 @@ describe('node actions menu details', () => {
 
   it('should stop the current single run from the run action when the node is running', async () => {
     const user = userEvent.setup()
-    const { store } = await renderDropdownContent(user, {
+    const { store } = await renderMenuContent(user, {
       data: {
         _singleRunningStatus: NodeRunningStatus.Running,
       },
@@ -280,7 +277,7 @@ describe('node actions menu details', () => {
       author: 'Dify',
     } as ReturnType<typeof useNodeMetaData>)
 
-    await renderDropdownContent(user, { showHelpLink: false })
+    await renderMenuContent(user, { showHelpLink: false })
 
     expect(screen.getByText('workflow.panel.runThisStep')).toBeInTheDocument()
     expect(
@@ -300,7 +297,7 @@ describe('node actions menu details', () => {
     ]
 
     renderWorkflowFlowComponent(
-      <NodeActionsDropdown
+      <NodeActionsMenu
         id="node-2"
         data={{
           type: BlockEnum.Tool,
@@ -361,7 +358,7 @@ describe('node actions menu details', () => {
 
   it('removes editing and run actions when the canvas becomes readonly', async () => {
     const user = userEvent.setup()
-    const { store } = await renderDropdownContent(user)
+    const { store } = await renderMenuContent(user)
     expect(screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /workflow.common.copy/ })).toBeInTheDocument()
 

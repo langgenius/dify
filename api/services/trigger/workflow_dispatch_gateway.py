@@ -18,10 +18,10 @@ class AppScopedTriggerEndUsers:
         )
         return TriggerActor(id=record.id, role=CreatorUserRole.END_USER)
 
-    def create_end_user_batch(
-        self, type: EndUserType, tenant_id: str, app_ids: list[str], user_id: str
+    def create_trigger_end_users(
+        self, *, tenant_id: str, app_ids: list[str], user_id: str
     ) -> Mapping[str, TriggerActor]:
         records = self._end_users.create_end_user_batch(
-            type=type, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
+            type=EndUserType.TRIGGER, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
         )
         return {app_id: TriggerActor(id=record.id, role=CreatorUserRole.END_USER) for app_id, record in records.items()}

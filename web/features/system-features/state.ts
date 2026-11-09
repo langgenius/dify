@@ -13,3 +13,7 @@ const systemFeaturesAtom = atom((get) => {
 export const deploymentEditionAtom = atom((get) => {
   return get(systemFeaturesAtom).deployment_edition
 })
+
+export const rbacEnabledAtom = atom((get) => {
+  return get(systemFeaturesAtom).rbac_enabled
+})

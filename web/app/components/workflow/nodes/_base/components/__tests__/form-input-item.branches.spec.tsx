@@ -29,13 +29,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-// The editor runtime is a browser boundary; keep form state and value serialization real.
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ onChange, value }: { onChange: (value: string) => void; value: string }) => (
-    <textarea aria-label="JSON" value={value} onChange={(event) => onChange(event.target.value)} />
-  ),
-}))
-
 type Props = ComponentProps<typeof FormInputItem>
 const createSchema = (overrides: Partial<Props['schema']> = {}): Props['schema'] => ({
   label: { en_US: 'Field', zh_Hans: '字段' },
@@ -243,10 +236,10 @@ describe('FormInputItem selections', () => {
       schema: createSchema({ type: FormTypeEnum.object }),
       value: { field: { type: VarKindType.constant, value: '{"enabled":false}' } },
     })
-    await user.clear(screen.getByRole('textbox', { name: 'JSON' }))
+    await user.clear(screen.getByTestId('monaco-editor'))
     await user.paste('{"enabled":true}')
 
-    expect(screen.getByRole('textbox', { name: 'JSON' })).toHaveValue('{"enabled":true}')
+    expect(screen.getByTestId('monaco-editor')).toHaveValue('{"enabled":true}')
     expect(onChange).toHaveBeenLastCalledWith({
       field: { type: VarKindType.constant, value: '{"enabled":true}' },
     })

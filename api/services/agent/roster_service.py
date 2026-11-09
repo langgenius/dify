@@ -8,7 +8,6 @@ from sqlalchemy.exc import IntegrityError
 
 from constants.model_template import default_app_templates
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
-from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
@@ -31,7 +30,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus, ConversationFromSource, ConversationStatus
+from models.enums import AppStatus, ConversationFromSource, ConversationStatus, InvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -43,6 +42,7 @@ from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionNotFoundError,
 )
+from services.agent.knowledge_spaces import validate_agent_knowledge_spaces
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.app.agent_app_contracts import AgentReferencingWorkflow
 from services.app_service import AppService, CreateAppParams
@@ -329,6 +329,9 @@ class AgentRosterService:
         source: AgentSource,
     ) -> Agent:
         ComposerConfigValidator.validate_agent_soul(payload.agent_soul)
+        validate_agent_knowledge_spaces(
+            session=self._session, tenant_id=tenant_id, account_id=account_id, agent_soul=payload.agent_soul
+        )
 
         agent = Agent(
             tenant_id=tenant_id,
@@ -510,7 +513,7 @@ class AgentRosterService:
             override_model_configs=None,
             mode=AppMode.AGENT,
             name="Agent Debugging Conversation",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,

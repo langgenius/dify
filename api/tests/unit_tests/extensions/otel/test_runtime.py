@@ -7,7 +7,7 @@ from opentelemetry.sdk.trace import TracerProvider
 
 from core.logging.context import clear_request_context
 from models import Account
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 def _user() -> Account:

@@ -19,7 +19,7 @@ from services.errors.app import IsDraftWorkflowError, QuotaExceededError, Workfl
 from services.workflow.entities import AsyncTriggerResponse, ScheduleTriggerData, TriggerActor
 from tasks.async_workflow_tasks import execute_workflow_professional, execute_workflow_sandbox, execute_workflow_team
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _Harness
 from tests.unit_tests.tasks import test_trigger_processing_tasks as worker_tests
 from tests.unit_tests.tasks.test_trigger_processing_tasks import _Billing, _Dispatch

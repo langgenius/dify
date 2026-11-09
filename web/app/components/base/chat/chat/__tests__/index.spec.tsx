@@ -5,24 +5,6 @@ import userEvent from '@testing-library/user-event'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import Chat from '../index'
 
-// Keep answer rendering at the component boundary; exercise real questions,
-// suggestions and input controls through Chat's shared context.
-vi.mock('../answer', () => ({
-  default: ({
-    item,
-    responding,
-    question,
-  }: {
-    item: ChatItem
-    responding?: boolean
-    question: string
-  }) => (
-    <article aria-label={`Answer to ${question}`} aria-busy={!!responding}>
-      {item.content}
-    </article>
-  ),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
   usePathname: () => '/chat',
@@ -82,7 +64,7 @@ describe('Chat', () => {
     })
   })
 
-  it('renders conversation order and marks only the latest answer as responding', async () => {
+  it('renders conversation order and enables answer actions after streaming ends', async () => {
     const chatList = [
       makeChatItem({ id: 'q1', content: 'First question' }),
       makeChatItem({ id: 'a1', content: 'First answer', isAnswer: true }),
@@ -92,19 +74,14 @@ describe('Chat', () => {
     const { rerender } = renderChat({ chatList, isResponding: true })
     expect(await screen.findByText('First question')).toBeInTheDocument()
     expect(screen.getByText('Second question')).toBeInTheDocument()
-    const answers = screen.getAllByRole('article')
-    expect(answers.map((answer) => answer.textContent)).toEqual(['First answer', 'Second answer'])
-    expect(answers[0]).toHaveAccessibleName('Answer to First question')
-    expect(answers[1]).toHaveAccessibleName('Answer to Second question')
-    expect(answers[0]).toHaveAttribute('aria-busy', 'false')
-    expect(answers[1]).toHaveAttribute('aria-busy', 'true')
+    const firstAnswer = await screen.findByText('First answer')
+    const secondAnswer = await screen.findByText('Second answer')
+    expect(firstAnswer.compareDocumentPosition(secondAnswer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    // Two question copy controls plus only the completed answer's action.
+    expect(screen.getAllByRole('button', { name: 'common.operation.copy' })).toHaveLength(3)
 
     rerender(<Chat chatList={chatList} isResponding={false} />)
-    expect(
-      screen
-        .getAllByRole('article')
-        .every((answer) => answer.getAttribute('aria-busy') === 'false'),
-    ).toBe(true)
+    expect(screen.getAllByRole('button', { name: 'common.operation.copy' })).toHaveLength(4)
   })
 
   it('sends a typed message without requiring upload configuration', async () => {

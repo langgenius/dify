@@ -64,7 +64,7 @@ class WebhookFiles(Protocol):
 
 
 class WebhookBindingWriter(Protocol):
-    def __call__(self, *, tenant_id: str, app_id: str, created_by: str, node_ids: Sequence[str]) -> None: ...
+    def __call__(self, *, tenant_id: str, app_id: str, created_by: str | None, node_ids: Sequence[str]) -> None: ...
 
 
 def build_webhook_workflow_inputs(webhook_data: RawWebhookDataDict) -> WorkflowInputsDict:
@@ -82,7 +82,7 @@ class WebhookBindingService:
     def __init__(self, *, sync_bindings: WebhookBindingWriter) -> None:
         self._sync_bindings = sync_bindings
 
-    def sync(self, *, tenant_id: str, app_id: str, created_by: str, node_ids: Sequence[str]) -> None:
+    def sync(self, *, tenant_id: str, app_id: str, created_by: str | None, node_ids: Sequence[str]) -> None:
         if len(node_ids) > self.MAX_WEBHOOK_NODES_PER_WORKFLOW:
             raise ValueError(
                 "Workflow exceeds maximum webhook node limit. "

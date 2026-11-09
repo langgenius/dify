@@ -28,13 +28,12 @@ from models.model import AppMode, EndUser
 from models.tools import ToolFile
 from models.trigger import AppTrigger, WorkflowTriggerLog, WorkflowWebhookTrigger
 from models.workflow import Workflow
-from services.billing_service import BillingService
 from tasks.async_workflow_tasks import execute_workflow_sandbox
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_app, make_workflow
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _Harness
-from tests.unit_tests.model_factories import make_app, make_workflow
 
 application_redis = test_trigger_oauth_client.application_redis
 harness = test_trigger_oauth_client.harness
@@ -163,14 +162,26 @@ def billing(sqlite_engine: Engine) -> Iterator[_Billing]:
         def do_GET(self) -> None:
             self.respond(
                 {
-                    "subscription": {"plan": "sandbox", "interval": "month", "education": False},
+                    "enabled": True,
+                    "subscription": {
+                        "plan": "sandbox",
+                        "interval": "month",
+                        "education": False,
+                        "status": "active",
+                        "cancel_at_period_end": False,
+                        "paid_period_end": 0,
+                    },
                     "members": {"size": 1, "limit": 10},
                     "apps": {"size": 1, "limit": 10},
+                    "vector_space": None,
+                    "knowledge_rate_limit": {"size": 0, "limit": 10},
                     "documents_upload_quota": {"size": 0, "limit": 10},
                     "annotation_quota_limit": {"size": 0, "limit": 10},
+                    "docs_processing": "standard",
                     "can_replace_logo": False,
                     "model_load_balancing_enabled": False,
                     "knowledge_pipeline_publish_enabled": False,
+                    "next_credit_reset_date": 0,
                 }
             )
 
@@ -207,13 +218,12 @@ def billing(sqlite_engine: Engine) -> Iterator[_Billing]:
 
     server = HTTPServer(("127.0.0.1", 0), Handler)
     thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
-    previous_url, previous_quota_url = BillingService.base_url, BillingService.quota_base_url
-    BillingService.base_url = BillingService.quota_base_url = f"http://127.0.0.1:{server.server_port}"
     thread.start()
     try:
-        yield billing
+        url = f"http://127.0.0.1:{server.server_port}"
+        with config_overrides_context(BILLING_API_URL=url, BILLING_QUOTA_API_URL=url):
+            yield billing
     finally:
-        BillingService.base_url, BillingService.quota_base_url = previous_url, previous_quota_url
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)

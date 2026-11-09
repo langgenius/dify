@@ -69,6 +69,8 @@ def _prepare(harness: _Harness, subscription: TriggerSubscriptionRuntime) -> Pre
     prepared = application_services().workspaces.trigger_events.prepare(
         subscription=subscription, event_name="push", request_id=request_id
     )
+    assert isinstance(prepared.raw_request, bytes)
+    assert b"webhook-body" in prepared.raw_request
     # A prepared event must not read the persisted request again for each node.
     storage.delete(f"triggers/{request_id}.raw")
     storage.delete(f"triggers/{request_id}.payload")

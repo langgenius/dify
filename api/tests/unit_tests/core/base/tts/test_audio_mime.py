@@ -13,7 +13,7 @@ from core.model_manager import ModelManager
 from core.plugin.entities.plugin_daemon import TTSAudioChunk
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
-from tests.unit_tests.audio_runtime_fixtures import AudioRuntimeObservations
+from tests.helpers.unit.audio_runtime_fixtures import AudioRuntimeObservations
 
 
 def test_inspect_audio_stream_preserves_the_prefix_with_matching_chunk_mime_type() -> None:

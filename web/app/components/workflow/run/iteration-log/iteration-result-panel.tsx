@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceRun } from '../external-trace-row'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -20,9 +21,10 @@ type Props = {
   readonly list: NodeTracing[][]
   readonly onBack: () => void
   readonly iterDurationMap?: IterationDurationMap
+  readonly externalTraceRun?: ExternalTraceRun
 }
 
-const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
+const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap, externalTraceRun }) => {
   const { t } = useTranslation(['workflow'])
   const [expandedIterations, setExpandedIterations] = useState<Record<number, boolean>>({})
 
@@ -126,7 +128,11 @@ const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
                 expandedIterations[index] ? 'opacity-100' : 'max-h-0 overflow-hidden opacity-0',
               )}
             >
-              <TracingPanel list={iteration} className="bg-background-section-burn" />
+              <TracingPanel
+                list={iteration}
+                className="bg-background-section-burn"
+                externalTraceRun={externalTraceRun}
+              />
             </div>
           </div>
         ))}

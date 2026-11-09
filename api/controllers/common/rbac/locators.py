@@ -88,7 +88,7 @@ class AgentId(_ParamLocator):
         return ResourceIdentity(self.scope, _required(path_args, self.param))
 
     def owner_id(self, tenant_id: str, identity: ResourceIdentity) -> str | None:
-        return None
+        return application_services().rbac.queries.get_agent_creator(tenant_id, identity.id)
 
 
 class PlainApp(_ParamLocator):

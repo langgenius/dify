@@ -27,7 +27,7 @@ from services.entities.account_entities import (
     AccountChangeEmailOldEmailVerifiedToken,
     AccountChangeEmailPhase,
 )
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 def _context() -> RequestContext:

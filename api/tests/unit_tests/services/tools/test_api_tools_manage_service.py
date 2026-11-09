@@ -5,7 +5,9 @@ import pytest
 from services.tools.api_tools_manage_service import ApiToolManageService
 
 
-def test_get_api_tool_provider_remote_schema_uses_ssrf_proxy_get(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_api_tool_provider_remote_schema_uses_ssrf_proxy_get(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     schema = """
     {
         "openapi": "3.0.0",

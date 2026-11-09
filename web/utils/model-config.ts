@@ -1,3 +1,4 @@
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptVariable } from '@/models/debug'
 import type { UserInputFormItem } from '@/types/app'
 import { zAppExternalDataToolPayload } from '@dify/contracts/api/console/apps/zod.gen'
@@ -134,7 +135,9 @@ export const userInputsFormToPromptVariables = (
         type,
         config: getFileInputConfig(content, 1),
         hide: getBoolean(content.hide),
-        default: getDefaultValue(content.default),
+        default: isRecord(content.default)
+          ? (content.default as FileEntity)
+          : getDefaultValue(content.default),
       })
     } else if (type === 'file-list') {
       promptVariables.push({
@@ -144,7 +147,10 @@ export const userInputsFormToPromptVariables = (
         type,
         config: getFileInputConfig(content, getNumber(content.max_length)),
         hide: getBoolean(content.hide),
-        default: getDefaultValue(content.default),
+        default:
+          Array.isArray(content.default) && content.default.every(isRecord)
+            ? (content.default as FileEntity[])
+            : getDefaultValue(content.default),
       })
     } else if (type === 'json_object') {
       promptVariables.push({

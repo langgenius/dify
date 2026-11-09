@@ -53,7 +53,7 @@ class PluginTriggerSubscriptionGateway:
         user_id: str,
         endpoint: str,
         parameters: Mapping[str, Any],
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription:
         provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)
@@ -72,7 +72,7 @@ class PluginTriggerSubscriptionGateway:
         provider_id: TriggerProviderID,
         user_id: str,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> UnsubscribeResult:
         provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)
@@ -89,7 +89,7 @@ class PluginTriggerSubscriptionGateway:
         tenant_id: str,
         provider_id: TriggerProviderID,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription:
         provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)
@@ -114,8 +114,8 @@ def invalidate_subscription_properties(*, tenant_id: str, provider_id: str, subs
 def enqueue_subscription_refresh(job: TriggerSubscriptionRefreshJob) -> None:
     from tasks.trigger_subscription_refresh_tasks import trigger_subscription_refresh
 
-    trigger_subscription_refresh.delay(
-        tenant_id=job.subscription.tenant_id,
-        subscription_id=job.subscription.subscription_id,
-        reservation_token=job.token,
+    # Keep the two-argument task contract for older workers during rolling upgrades.
+    trigger_subscription_refresh.apply_async(
+        kwargs={"tenant_id": job.subscription.tenant_id, "subscription_id": job.subscription.subscription_id},
+        headers={"reservation_token": job.token},
     )

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
@@ -21,6 +22,7 @@ from core.entities.provider_entities import (
     ModelSettings,
     ProviderQuotaType,
 )
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
@@ -42,7 +44,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 def _build_provider_manager() -> ProviderManager:
@@ -230,6 +232,67 @@ def test__to_model_settings(mock_provider_entity, provider_db: Session):
     assert len(result[0].load_balancing_configs) == 2
     assert result[0].load_balancing_configs[0].name == "__inherit__"
     assert result[0].load_balancing_configs[1].name == "first"
+
+
+@pytest.mark.parametrize("encrypted_config", ["{", "[]"])
+def test_invalid_credentials_are_not_decrypted_or_cached(encrypted_config: str) -> None:
+    manager = _build_provider_manager()
+    with (
+        patch("core.provider_manager.ProviderCredentialsCache") as cache,
+        patch.object(manager, "_get_decoding_context") as decoding_context,
+    ):
+        cache.return_value.get.return_value = None
+        credentials = manager._get_and_decrypt_credentials(
+            tenant_id="tenant-id",
+            record_id="credential-id",
+            encrypted_config=encrypted_config,
+            secret_variables=["api_key"],
+            cache_type=ProviderCredentialsCacheType.MODEL,
+        )
+
+    assert credentials == {}
+    decoding_context.assert_not_called()
+    cache.return_value.set.assert_not_called()
+
+
+@pytest.mark.parametrize("encrypted_config", ["{", "[]"])
+def test_invalid_load_balancing_credentials_preserve_valid_configs(
+    mock_provider_entity: Mock, provider_db: Session, encrypted_config: str
+) -> None:
+    setting = ProviderModelSetting(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type="llm",
+        enabled=True,
+        load_balancing_enabled=True,
+    )
+    configs = [
+        LoadBalancingModelConfig(
+            tenant_id="tenant-id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="llm",
+            name=name,
+            encrypted_config=credentials,
+            enabled=True,
+        )
+        for name, credentials in [("__inherit__", None), ("invalid", encrypted_config), ("valid", "{}")]
+    ]
+    settings, configs = _persist_model_configuration(provider_db, setting, configs)
+    manager = _build_provider_manager()
+    with (
+        patch("core.provider_manager.ProviderCredentialsCache") as cache,
+        patch.object(manager, "_get_decoding_context") as decoding_context,
+    ):
+        cache.return_value.get.side_effect = [None, {"api_key": "cached-secret"}]
+        result = manager._to_model_settings(mock_provider_entity, settings, configs)
+
+    assert len(result) == 1
+    assert [config.name for config in result[0].load_balancing_configs] == ["__inherit__", "valid"]
+    assert result[0].load_balancing_configs[1].credentials == {"api_key": "cached-secret"}
+    decoding_context.assert_not_called()
+    cache.return_value.set.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -1140,6 +1203,28 @@ def test_get_all_providers_attaches_active_credentials(provider_db: Session) -> 
     assert str(ModelProviderID("anthropic")) not in result
 
 
+def test_init_trial_provider_records_attaches_credential_of_concurrently_created_record(provider_db: Session) -> None:
+    existing_provider = _build_trial_provider_record()
+    existing_provider.credential_id = "credential-id"
+    credential = ProviderCredential(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        credential_name="primary",
+        encrypted_config='{"api_key": "secret"}',
+    )
+    credential.id = "credential-id"
+    provider_db.add_all([existing_provider, credential])
+    provider_db.commit()
+
+    with patch(
+        "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+        {"openai": _build_hosting_provider()},
+    ):
+        result = ProviderManager._init_trial_provider_records("tenant-id", defaultdict(list))
+
+    assert result["openai"][0].encrypted_config == '{"api_key": "secret"}'
+
+
 def test_invalidate_configurations_cache_bumps_selected_source_version() -> None:
     fake_redis = _FakeRedis()
 
@@ -1207,6 +1292,50 @@ def test_provider_model_credentials_cache_returns_cache_entries(provider_db: Ses
     assert second["openai"][0].credential_name == "primary"
     assert second["openai"][0].model_type == ModelType.LLM
     assert "anthropic" not in second
+
+
+def test_provider_model_cache_entries_resolve_credentials_through_owned_session(provider_db: Session) -> None:
+    credential = ProviderModelCredential(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        credential_name="primary",
+        encrypted_config='{"api_key": "secret"}',
+    )
+    credential.id = "credential-id"
+
+    def build_model(model_name: str, credential_id: str | None) -> ProviderModel:
+        return ProviderModel(
+            tenant_id="tenant-id",
+            provider_name="openai",
+            model_name=model_name,
+            model_type=ModelType.LLM,
+            credential_id=credential_id,
+            is_valid=True,
+        )
+
+    provider_db.add_all(
+        [
+            credential,
+            build_model("active", "credential-id"),
+            build_model("dangling", "deleted-credential-id"),
+            build_model("unset", None),
+        ]
+    )
+    provider_db.commit()
+
+    entries = {
+        entry.model_name: entry for entry in provider_manager_module._load_provider_model_cache_entries("tenant-id")
+    }
+
+    assert (entries["active"].credential_name, entries["active"].encrypted_config) == (
+        "primary",
+        '{"api_key": "secret"}',
+    )
+    assert entries["dangling"].credential_id == "deleted-credential-id"
+    assert (entries["dangling"].credential_name, entries["dangling"].encrypted_config) == (None, None)
+    assert (entries["unset"].credential_name, entries["unset"].encrypted_config) == (None, None)
 
 
 def test_provider_configuration_cache_skips_write_when_version_changes_during_load(
