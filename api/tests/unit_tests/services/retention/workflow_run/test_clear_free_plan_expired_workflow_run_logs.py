@@ -13,6 +13,19 @@ from services.retention.workflow_run import clear_free_plan_expired_workflow_run
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 from tests.helpers import billing_builders as builders
 
+
+@pytest.fixture(autouse=True)
+def _external_cleanup_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep native retention queries independent of the composed BYOA use case."""
+
+    def ignore_external_cleanup(tenant_id: str, kind: str, owner_id: str) -> None:
+        del tenant_id, kind, owner_id
+
+    monkeypatch.setattr(
+        "extensions.application_services.external_agent_lifecycle.fence_external_parent", ignore_external_cleanup
+    )
+
+
 """
 Unit tests for WorkflowRunCleanup service.
 """

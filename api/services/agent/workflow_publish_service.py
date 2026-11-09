@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any
 
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
+from models.account import TenantAccountJoin
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
@@ -25,6 +26,7 @@ from models.agent_config_entities import (
     WorkflowPreviousNodeOutputRef,
 )
 from models.workflow import Workflow
+from repositories.external_agents.workflow_bindings import project_external_bindings, sync_external_bindings
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.prompt_mentions import (
     extract_workflow_node_output_selectors,
@@ -36,6 +38,7 @@ from services.entities.agent_entities import (
     ComposerSoulLockPayload,
     ComposerVariant,
 )
+from services.external_agents.workflow_portability import iter_external_nodes
 
 
 class _InlineAgentUnavailableError(ValueError):
@@ -73,7 +76,12 @@ class WorkflowAgentPublishService:
         response-only projection keeps reads aligned without writing binding
         details back into the stored graph JSON.
         """
-        graph = cast(dict[str, Any], copy.deepcopy(draft_workflow.graph_dict))
+        graph = project_external_bindings(
+            session=session,
+            workflow=draft_workflow,
+            graph=copy.deepcopy(draft_workflow.graph_dict),
+            binding_version=binding_version,
+        )
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
         if not agent_nodes:
             return graph
@@ -249,6 +257,7 @@ class WorkflowAgentPublishService:
         account_id: str,
     ) -> set[str]:
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict))
+        external_node_ids = {identifier for identifier, _data in iter_external_nodes(draft_workflow.graph_dict)}
         existing_bindings = list(
             session.scalars(
                 select(WorkflowAgentNodeBinding).where(
@@ -260,10 +269,19 @@ class WorkflowAgentPublishService:
             ).all()
         )
         existing_by_node_id = {binding.node_id: binding for binding in existing_bindings}
+        if external_node_ids:
+            role = session.scalar(
+                select(TenantAccountJoin.role).where(
+                    TenantAccountJoin.tenant_id == draft_workflow.tenant_id,
+                    TenantAccountJoin.account_id == account_id,
+                )
+            )
+            if role not in {"owner", "admin", "editor"}:
+                raise ValueError("Workspace editor access is required to bind an External Agent.")
         retirement_candidates: set[str] = set()
 
         for binding in existing_bindings:
-            if binding.node_id not in agent_nodes:
+            if binding.node_id not in agent_nodes and binding.node_id not in external_node_ids:
                 if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and binding.agent_id:
                     retirement_candidates.add(binding.agent_id)
                 session.delete(binding)
@@ -304,6 +322,7 @@ class WorkflowAgentPublishService:
                 )
             ):
                 retirement_candidates.add(replaced_inline_agent_id)
+        sync_external_bindings(session=session, workflow=draft_workflow, account_id=account_id)
         session.flush()
         return retirement_candidates
 
@@ -406,6 +425,9 @@ class WorkflowAgentPublishService:
         binding.binding_type = resolved_binding_type
         binding.agent_id = agent.id
         binding.current_snapshot_id = current_snapshot_id
+        binding.binding_epoch = None
+        binding.external_job_config = {}
+        binding.original_reference = None
         binding.updated_by = account_id
 
     @classmethod
@@ -617,6 +639,8 @@ class WorkflowAgentPublishService:
         node_ids = {
             node_id for node_id, _node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict)
         }
+        external_node_ids = {node_id for node_id, _data in iter_external_nodes(draft_workflow.graph_dict)}
+        node_ids.update(external_node_ids)
         if not node_ids:
             return
 
@@ -634,7 +658,11 @@ class WorkflowAgentPublishService:
 
         for binding in bindings:
             current_snapshot_id = binding.current_snapshot_id
-            if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT and binding.agent_id:
+            if (
+                binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+                and binding.agent_id
+                and binding.node_id not in external_node_ids
+            ):
                 _, current_snapshot_id = cls._resolve_roster_agent_graph_binding(
                     session=session,
                     draft_workflow=draft_workflow,
@@ -651,6 +679,9 @@ class WorkflowAgentPublishService:
                 agent_id=binding.agent_id,
                 current_snapshot_id=current_snapshot_id,
                 node_job_config=WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
+                binding_epoch=binding.binding_epoch,
+                external_job_config=copy.deepcopy(binding.external_job_config),
+                original_reference=copy.deepcopy(binding.original_reference),
                 created_by=binding.created_by,
                 updated_by=binding.updated_by,
             )
@@ -688,8 +719,14 @@ class WorkflowAgentPublishService:
                 WorkflowAgentNodeBinding.workflow_version == source_workflow.version,
             )
         ).all()
+        source_external_ids = {identifier for identifier, _data in iter_external_nodes(source_workflow.graph_dict)}
+        existing_by_node = {binding.node_id: binding for binding in existing}
         for source in source_bindings:
-            if source.binding_type == WorkflowAgentBindingType.ROSTER_AGENT and source.agent_id:
+            if (
+                source.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+                and source.agent_id
+                and source.node_id not in source_external_ids
+            ):
                 cls._resolve_roster_agent_graph_binding(
                     session=session,
                     draft_workflow=draft_workflow,
@@ -704,6 +741,18 @@ class WorkflowAgentPublishService:
         for source in source_bindings:
             agent_id = source.agent_id
             snapshot_id = source.current_snapshot_id
+            existing_binding = existing_by_node.get(source.node_id)
+            epoch = source.binding_epoch
+            if source.node_id in source_external_ids:
+                from libs.uuid_utils import uuidv7
+
+                epoch = (
+                    existing_binding.binding_epoch
+                    if existing_binding and existing_binding.agent_id == agent_id
+                    else str(uuidv7())
+                    if agent_id
+                    else None
+                )
             if source.binding_type == WorkflowAgentBindingType.INLINE_AGENT and agent_id and snapshot_id:
                 try:
                     cls._resolve_inline_agent_graph_binding(
@@ -734,6 +783,9 @@ class WorkflowAgentPublishService:
                     agent_id=agent_id,
                     current_snapshot_id=snapshot_id,
                     node_job_config=WorkflowNodeJobConfig.model_validate(source.node_job_config_dict),
+                    binding_epoch=epoch,
+                    external_job_config=copy.deepcopy(source.external_job_config),
+                    original_reference=copy.deepcopy(source.original_reference),
                     created_by=account_id,
                     updated_by=account_id,
                 )

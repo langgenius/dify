@@ -2,6 +2,15 @@
 
 set -e
 
+# Resolve the dedicated queue from the container's merged env_file environment,
+# exactly as API/Beat configuration does, rather than Compose interpolation.
+if [[ "${MODE}" == "external_agent_worker" ]]; then
+  export CELERY_WORKER_QUEUES="${EXTERNAL_AGENTS_QUEUE:-external_agents}"
+  export CELERY_WORKER_POOL=prefork
+  export CELERY_PREFETCH_MULTIPLIER=1
+  export MODE=worker
+fi
+
 # Set UTF-8 encoding to address potential encoding issues in containerized environments
 # Use C.UTF-8 which is universally available in all containers
 export LANG=${LANG:-C.UTF-8}
@@ -99,7 +108,7 @@ if [[ "${MODE}" == "worker" ]]; then
 
   exec celery -A celery_entrypoint.celery worker -P ${WORKER_POOL} $CONCURRENCY_OPTION \
     --max-tasks-per-child ${MAX_TASKS_PER_CHILD:-50} --loglevel ${LOG_LEVEL:-INFO} \
-    -Q ${DEFAULT_QUEUES} \
+    -Q "${DEFAULT_QUEUES}" \
     --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-1}
 
 elif [[ "${MODE}" == "beat" ]]; then

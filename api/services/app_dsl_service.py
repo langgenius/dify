@@ -51,11 +51,14 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from libs.datetime_utils import naive_utc_now
 from libs.url_utils import github_blob_to_raw_url
+from machinery.context import RequestContext
 from models import Account, App, AppMode
+from models.account import TenantAccountJoin
 from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
+from repositories.external_agents.workflow_bindings import _target
 from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
@@ -79,6 +82,9 @@ from services.entities.dsl_entities import (
 from services.entities.site_dsl import SiteDsl, apply_site_dsl
 from services.errors.app import AppQuotaCheckError, DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
+from services.external_agents.contracts import ExternalAssetAccess
+from services.external_agents.workflow_portability import import_graph as import_external_graph
+from services.external_agents.workflow_portability import iter_external_nodes
 from services.feature_service import FeatureService
 from services.icon_configuration import (
     DEFAULT_ICON,
@@ -159,9 +165,67 @@ class CheckDependenciesPendingData(BaseModel):
 class AppDslService:
     _warnings: list[DslImportWarning]
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, *, external_access: ExternalAssetAccess | None = None):
         self._session = session
         self._warnings = []
+        self._external_access = external_access
+        self._external_visibility: dict[str, bool] = {}
+
+    def _preflight_external_references(self, graph: Mapping[str, Any], *, tenant_id: str, account_id: str) -> None:
+        """Read effective selection policy before the import's atomic mutation/lock phase."""
+        nodes = tuple(iter_external_nodes(graph))
+        self._external_visibility = {}
+        if not nodes:
+            return
+        context = RequestContext(
+            request_id="dsl-import", trace_id=None, account_id=account_id, active_workspace_id=tenant_id
+        )
+        visible = self._external_access.visible_agent_ids(context) if self._external_access else None
+        for _identifier, data in nodes:
+            binding = data.get("agent_binding") or {}
+            reference = binding.get("original_reference") if isinstance(binding, Mapping) else None
+            if isinstance(reference, Mapping) and reference.get("workspace_id") == tenant_id:
+                identifier = reference.get("agent_id")
+                if isinstance(identifier, str):
+                    self._external_visibility[identifier] = (
+                        visible is None or identifier in visible
+                        if self._external_access is not None
+                        else RBACService.CheckAccess.check(
+                            tenant_id,
+                            account_id,
+                            scene=RBACPermission.AGENT_PREVIEW,
+                            resource_type=RBACResourceScope.AGENT,
+                            resource_id=identifier,
+                        )
+                    )
+
+    def _import_external_graph(self, graph: Mapping[str, Any], *, tenant_id: str, account_id: str) -> dict[str, Any]:
+        """Restore exact same-workspace references only under current selection permission."""
+        if not any(iter_external_nodes(graph)):
+            return dict(graph)
+        role = self._session.scalar(
+            select(TenantAccountJoin.role).where(
+                TenantAccountJoin.tenant_id == tenant_id,
+                TenantAccountJoin.account_id == account_id,
+            )
+        )
+
+        def selectable(agent_id: str) -> bool:
+            allowed = role in {"owner", "admin", "editor"} and self._external_visibility.get(agent_id, False)
+            return allowed and _target(self._session, tenant_id, agent_id) is not None
+
+        graph, unresolved = import_external_graph(
+            graph, workspace_id=tenant_id, selectable=selectable, new_epoch=lambda: str(uuid.uuid4())
+        )
+        self._warnings.extend(
+            DslImportWarning(
+                code="external_agent_unconnected",
+                path=f"workflow.graph.nodes.{identifier}.data.agent_binding",
+                message="Original External Agent unavailable. Select an accessible asset before publishing.",
+            )
+            for identifier in unresolved
+        )
+        return graph
 
     @staticmethod
     def _check_app_quota(account: Account) -> None:
@@ -685,6 +749,11 @@ class AppDslService:
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
+        target_tenant = app.tenant_id if app is not None else account.current_tenant_id
+        workflow_section = data.get("workflow")
+        raw_graph = workflow_section.get("graph", {}) if isinstance(workflow_section, Mapping) else {}
+        if target_tenant and isinstance(raw_graph, Mapping):
+            self._preflight_external_references(raw_graph, tenant_id=target_tenant, account_id=account.id)
         # Check the draft before any write so a refused import leaves the app and its cached dependencies alone.
         locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash) if draft_hash is not None else None
         site_data = SiteDsl.model_validate(data["site"]) if data.get("site") is not None else None
@@ -787,6 +856,7 @@ class AppDslService:
                 # The source canvas position should not determine the imported app's initial view.
                 graph = graph.copy()
                 graph.pop("viewport", None)
+                graph = self._import_external_graph(graph, tenant_id=target_tenant_id, account_id=account.id)
                 for node in graph.get("nodes", []):
                     if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         dataset_ids = node["data"].get("dataset_ids", [])
@@ -819,8 +889,10 @@ class AppDslService:
                 raw_agent_packages = data.get("agent_packages") or {}
                 if not isinstance(raw_agent_packages, Mapping):
                     raise ValueError("agent_packages must be a mapping")
-                import_agent_bindings = bool(raw_agent_packages) or (
-                    preserve_agent_bindings and is_agent_v2_graph(graph)
+                import_agent_bindings = (
+                    bool(raw_agent_packages)
+                    or (preserve_agent_bindings and is_agent_v2_graph(graph))
+                    or bool(tuple(iter_external_nodes(graph)))
                 )
                 graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
                 draft_workflow = workflow_service.sync_draft_workflow(
@@ -848,6 +920,14 @@ class AppDslService:
                     if preserve_agent_bindings:
                         retirement_candidates.update(
                             self._sync_copied_workflow_bindings(workflow=draft_workflow, account_id=account.id)
+                        )
+                    elif any(iter_external_nodes(graph)):
+                        retirement_candidates.update(
+                            WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                                session=self._session,
+                                draft_workflow=draft_workflow,
+                                account_id=account.id,
+                            )
                         )
                     WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
                         session=self._session,

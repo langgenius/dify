@@ -157,6 +157,16 @@ def resolve_workflow_node_class(
     node_data: Mapping[str, Any] | BaseNodeData | None = None,
 ) -> type[Node]:
     """Resolve the production node class for the requested type/version."""
+    if node_type == BuiltinNodeTypes.AGENT and node_data is not None:
+        kind = node_data.get("agent_node_kind")
+        if kind == "external_a2a":
+            from providers.a2a.workflow_node import ExternalAgentNode
+
+            if node_version != "2":
+                raise ValueError("External Agent nodes require version=2.")
+            return ExternalAgentNode
+        if kind not in {None, "dify_agent"}:
+            raise ValueError(f"Unsupported Agent node kind: {kind}")
     node_mapping = get_node_type_classes_mapping().get(node_type)
     if not node_mapping:
         raise ValueError(f"No class mapping found for node type: {node_type}")
@@ -474,6 +484,30 @@ class DifyNodeFactory(NodeFactory):
         adapted_node_config, typed_node_config, node_class, resolved_node_data = self._validate_node_config(node_config)
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
+        if node_data.get("agent_node_kind") == "external_a2a":
+            from providers.a2a.workflow_node import ensure_supported_workflow_owner
+
+            ensure_supported_workflow_owner(self._dify_context, self._human_input_run_context.app_id)
+            # Graphon's permissive boundary accepts historical coercing defaults.
+            # Revalidate External defaults from the untouched scoped graph so a
+            # string number/JSON text cannot become a typed External fallback.
+            scoped_nodes = self.init_params.graph_config.get("nodes", [])
+            raw_node = next(
+                (
+                    item
+                    for item in scoped_nodes
+                    if isinstance(item, Mapping) and item.get("id") == typed_node_config["id"]
+                ),
+                None,
+            )
+            raw_data = raw_node.get("data") if isinstance(raw_node, Mapping) else adapted_node_config.get("data")
+            if isinstance(raw_data, Mapping):
+                from providers.a2a.workflow_node import ExternalAgentNodeData
+
+                external_data = node_data.model_dump(exclude_unset=True)
+                external_data["default_value"] = raw_data.get("default_value")
+                node_data = ExternalAgentNodeData.model_validate(external_data)
+                typed_node_config["data"] = node_data
         node_type = node_data.type
         if node_type == BuiltinNodeTypes.LLM:
             resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
@@ -559,7 +593,9 @@ class DifyNodeFactory(NodeFactory):
             },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
-        constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
+        constructor_node_data = resolved_node_data.model_dump(
+            mode="python", by_alias=True, exclude_unset=resolved_node_data.get("agent_node_kind") == "external_a2a"
+        )
         node = node_class(
             node_id=node_id,
             data=constructor_node_data,
@@ -656,6 +692,20 @@ class DifyNodeFactory(NodeFactory):
         return node_data.model_copy(update={"model": resolved_model})
 
     def _build_agent_node_init_kwargs(self, *, node_class: type[Node]) -> dict[str, object]:
+        from providers.a2a.workflow_node import ExternalAgentNode
+
+        if node_class is ExternalAgentNode:
+            from extensions.ext_application_services import application_services
+
+            external = application_services().external_agents
+            return {
+                "service": external.runtime,
+                "store": external.repository,
+                "bindings": external.repository,
+                "enqueue": external.enqueue,
+                "enabled": external.enabled,
+                "root_app_id": self._human_input_run_context.app_id,
+            }
         if issubclass(node_class, DifyAgentNode):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client

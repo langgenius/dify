@@ -10,6 +10,9 @@ from configs import dify_config
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import delete_cache_for_subscription
+from extensions.application_services.external_agent_lifecycle import (
+    fence_external_workspace as _fence_external_workspace,
+)
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
@@ -189,6 +192,7 @@ def build_workspace_services(
             apps=ConsoleAppRepository(session_factory=database_client),
             datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
             agent_resources=WorkspaceResourceCleanupRepository(session_factory=database_client),
+            external_cleanup=_fence_external_workspace,
         ),
         plugin_parameters=PluginParameterService(
             credentials=credentials,

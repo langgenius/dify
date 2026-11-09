@@ -98,6 +98,26 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.assertEqual(services["elasticsearch"]["environment"]["xpack.security.enabled"], "true")
         self.assertEqual(services["elasticsearch"]["environment"]["discovery.type"], "single-node")
 
+    def test_external_agent_worker_preserves_common_env_file_and_root_overrides(self):
+        self.copy_template(
+            "envs/core-services/api-worker.defaults",
+            "envs/core-services/api-worker.env",
+            {"EXTERNAL_AGENTS_ENABLED": "true", "EXTERNAL_AGENTS_QUEUE": "env-file.external-agents"},
+        )
+        services = self.render()
+        for name in ("api", "worker", "worker_beat", "worker_external_agents"):
+            self.assertEqual(services[name]["environment"]["EXTERNAL_AGENTS_ENABLED"], "true", name)
+            self.assertEqual(services[name]["environment"]["EXTERNAL_AGENTS_QUEUE"], "env-file.external-agents", name)
+        external_worker = services["worker_external_agents"]["environment"]
+        self.assertEqual(external_worker["MODE"], "external_agent_worker")
+        self.assertEqual(external_worker["CELERY_WORKER_POOL"], "prefork")
+        self.assertNotIn("CELERY_WORKER_QUEUES", external_worker)
+        self.override_root({"EXTERNAL_AGENTS_ENABLED": "false", "EXTERNAL_AGENTS_QUEUE": "root.external-agents"})
+        services = self.render()
+        for name in ("api", "worker", "worker_beat", "worker_external_agents"):
+            self.assertEqual(services[name]["environment"]["EXTERNAL_AGENTS_ENABLED"], "false", name)
+            self.assertEqual(services[name]["environment"]["EXTERNAL_AGENTS_QUEUE"], "root.external-agents", name)
+
     def test_qdrant_nofile_limits_use_defaults_and_root_overrides(self):
         services = self.render()
         self.assertEqual(

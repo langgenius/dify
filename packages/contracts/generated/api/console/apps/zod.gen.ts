@@ -1391,6 +1391,25 @@ export const zDraftWorkflowNotSyncError = zErrorResponse.and(
 )
 
 /**
+ * ExternalWorkflowRebindPayload
+ */
+export const zExternalWorkflowRebindPayload = z.object({
+  expected_hash: z.string().min(1).max(255),
+  include_matching: z.boolean().optional().default(true),
+  target_agent_id: z.uuid(),
+})
+
+/**
+ * ExternalWorkflowRebindResponse
+ */
+export const zExternalWorkflowRebindResponse = z.object({
+  binding_epochs: z.record(z.string(), z.string().nullable()),
+  hash: z.string(),
+  node_ids: z.array(z.string()),
+  workflow_id: z.string(),
+})
+
+/**
  * HumanInputDeliveryTestPayload
  */
 export const zHumanInputDeliveryTestPayload = z.object({
@@ -8371,6 +8390,20 @@ export const zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesPath = z.object({
  * Environment variables updated successfully
  */
 export const zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse = zSimpleResultResponse
+
+export const zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindBody =
+  zExternalWorkflowRebindPayload
+
+export const zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindPath = z.object({
+  app_id: z.uuid(),
+  node_id: z.string(),
+})
+
+/**
+ * Committed binding set
+ */
+export const zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponse =
+  zExternalWorkflowRebindResponse
 
 export const zPostAppsByAppIdWorkflowsDraftFeaturesBody = zWorkflowFeaturesPayload
 

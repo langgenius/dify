@@ -10,6 +10,7 @@ from core.db.session_factory import session_factory
 from extensions.ext_storage import storage
 from models import (
     AgentDebugConversation,
+    App,
     Conversation,
     ConversationVariable,
     HumanInputForm,
@@ -51,6 +52,18 @@ def _cleanup_conversation_related_data(conversation_id: str) -> bool:
     retains the durable ``file_key`` needed by the next retry.
     """
 
+    # The soft-deleted row is the broker-outage recovery marker. Resolve its
+    # trusted tenant before opening the destructive/storage transaction.
+    with session_factory.create_session() as lookup:
+        tenant_id = lookup.scalar(
+            select(App.tenant_id)
+            .join(Conversation, Conversation.app_id == App.id)
+            .where(Conversation.id == conversation_id, Conversation.is_deleted.is_(True))
+        )
+    if tenant_id is not None:
+        from extensions.application_services.external_agent_lifecycle import fence_external_parent
+
+        fence_external_parent(tenant_id, "conversation", conversation_id)
     with session_factory.create_session() as session:
         conversation = session.scalar(select(Conversation).where(Conversation.id == conversation_id).with_for_update())
         if conversation is not None and not conversation.is_deleted:
