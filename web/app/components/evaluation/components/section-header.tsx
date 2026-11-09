@@ -32,7 +32,8 @@ const SectionHeader = ({
 }: SectionHeaderProps) => {
   return (
     <div className={cn('flex flex-wrap items-start justify-between gap-3', className)}>
-      <div>
+      {/* Grow from a small basis so the description wraps beside the action instead of pushing it to a new row. */}
+      <div className="min-w-0 flex-1 basis-60">
         <div className={cn('system-xl-semibold text-text-primary', titleClassName)}>{title}</div>
         {description && (
           <div className={cn('mt-1 system-sm-regular text-text-tertiary', descriptionClassName)}>
