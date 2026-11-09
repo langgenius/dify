@@ -26,7 +26,7 @@ from core.trigger.debug.event_selectors import (
     select_trigger_debug_events,
 )
 from core.trigger.debug.events import WebhookDebugEvent
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
+from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, TriggerScheduleNodeData
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowType
 from models.model import App, AppMode
@@ -45,17 +45,17 @@ class _DummyRedis:
     def __init__(self):
         self.store: dict[str, str] = {}
 
-    def get(self, key: str):
+    def get(self, key: str) -> str | None:
         return self.store.get(key)
 
-    def setex(self, name: str, time: int, value: str):
+    def setex(self, name: str, time: int, value: str) -> None:
         self.store[name] = value
 
-    def expire(self, name: str, ttl: int):
+    def expire(self, name: str, ttl: int) -> None:
         # Expiration not required for these tests.
         pass
 
-    def delete(self, name: str):
+    def delete(self, name: str) -> None:
         self.store.pop(name, None)
 
 
@@ -67,7 +67,7 @@ def _make_poller(
         tenant_id="tenant-1",
         user_id="user-1",
         app_id="app-1",
-        node_config={"id": "node-1", "data": {"mode": "cron"}},
+        node_config=NodeConfigDict(id="node-1", data=TriggerScheduleNodeData.model_validate({"mode": "cron"})),
         node_id="node-1",
     )
 
@@ -84,7 +84,7 @@ class TestTriggerDebugEventSelectorsCases:
 
     @staticmethod
     @pytest.fixture(autouse=True)
-    def patch_schedule_service(monkeypatch: pytest.MonkeyPatch, dummy_schedule_config: ScheduleConfig):
+    def patch_schedule_service(monkeypatch: pytest.MonkeyPatch, dummy_schedule_config: ScheduleConfig) -> None:
         # Ensure poller always receives the deterministic config.
         monkeypatch.setattr(
             "services.trigger.schedule_service.ScheduleService.to_schedule_config",
@@ -92,7 +92,7 @@ class TestTriggerDebugEventSelectorsCases:
         )
 
     @staticmethod
-    def test_schedule_poller_handles_aware_next_run(monkeypatch: pytest.MonkeyPatch):
+    def test_schedule_poller_handles_aware_next_run(monkeypatch: pytest.MonkeyPatch) -> None:
         redis_client = _DummyRedis()
         poller = _make_poller(monkeypatch, redis_client)
 
@@ -111,7 +111,7 @@ class TestTriggerDebugEventSelectorsCases:
     @staticmethod
     def test_schedule_runtime_cache_normalizes_timezone(
         monkeypatch: pytest.MonkeyPatch, dummy_schedule_config: ScheduleConfig
-    ):
+    ) -> None:
         redis_client = _DummyRedis()
         poller = _make_poller(monkeypatch, redis_client)
 

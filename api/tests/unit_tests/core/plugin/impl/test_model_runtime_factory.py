@@ -405,7 +405,7 @@ def test_create_model_type_instance_builds_model_wrappers(
     )
 
     instance = create_model_type_instance(
-        runtime=runtime,
+        runtime=runtime,  # pyrefly: ignore[bad-argument-type]
         provider_schema=runtime.fetch_model_providers()[0],
         model_type=model_type,
     )
@@ -426,13 +426,13 @@ def test_create_model_type_instance_rejects_unsupported_model_type() -> None:
 
     with pytest.raises(ValueError, match="Unsupported model type: unsupported"):
         create_model_type_instance(
-            runtime=runtime,
+            runtime=runtime,  # pyrefly: ignore[bad-argument-type]
             provider_schema=runtime.fetch_model_providers()[0],
             model_type="unsupported",  # type: ignore[arg-type]
         )
 
 
-def test_plugin_model_assembly_reuses_single_runtime_across_views():
+def test_plugin_model_assembly_reuses_single_runtime_across_views() -> None:
     runtime = create_plugin_model_runtime(tenant_id="tenant-1", user_id="user-1")
     provider_factory = ModelProviderFactory(runtime=runtime)
     provider_manager = ProviderManager(model_runtime=runtime)
@@ -465,7 +465,7 @@ def test_plugin_model_assembly_reuses_single_runtime_across_views():
     mock_model_manager_cls.assert_called_once_with(provider_manager=provider_manager)
 
 
-def test_create_plugin_model_runtime_injects_plugin_service():
+def test_create_plugin_model_runtime_injects_plugin_service() -> None:
     runtime = create_plugin_model_runtime(tenant_id="tenant-1", user_id="user-1")
 
     assert runtime._plugin_service is PluginService
