@@ -1,5 +1,9 @@
 import type { EvaluationRunItemResponse } from '@dify/contracts/api/console/evaluate-target-type/types.gen'
-import { getIsItemPassed } from '../pipeline-results-utils'
+import {
+  formatExpectedOutput,
+  getIsItemPassed,
+  toPlainTextPreview,
+} from '../pipeline-results-utils'
 
 const createItem = (overrides: Partial<EvaluationRunItemResponse>): EvaluationRunItemResponse => ({
   id: 'item-1',
@@ -28,5 +32,33 @@ describe('knowledge evaluation result status', () => {
     const item = createItem({ judgment: { passed: false, condition_results: [] } })
 
     expect(getIsItemPassed(item)).toBe(true)
+  })
+})
+
+describe('result cell values', () => {
+  it('shows the expected value instead of the node-keyed object', () => {
+    expect(formatExpectedOutput({ LLM: 'The capital of France is Paris.' })).toBe(
+      'The capital of France is Paris.',
+    )
+    expect(formatExpectedOutput({ LLM: 'Paris', Answer: 'France' })).toBe(
+      'LLM: Paris\nAnswer: France',
+    )
+    expect(formatExpectedOutput('plain text')).toBe('plain text')
+    expect(formatExpectedOutput('{"LLM": "Water boils at 100 degrees Celsius."}')).toBe(
+      'Water boils at 100 degrees Celsius.',
+    )
+    expect(formatExpectedOutput('{not json')).toBe('{not json')
+  })
+
+  it('previews Markdown model output as plain text', () => {
+    expect(toPlainTextPreview('The capital of France is **Paris**.')).toBe(
+      'The capital of France is Paris.',
+    )
+    expect(toPlainTextPreview('Shakespeare wrote *Romeo and Juliet*, likely')).toBe(
+      'Shakespeare wrote Romeo and Juliet, likely',
+    )
+    expect(toPlainTextPreview('# Title\nSee [docs](https://example.com) and `code`')).toBe(
+      'Title\nSee docs and code',
+    )
   })
 })

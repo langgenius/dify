@@ -3,8 +3,9 @@ import type { EvaluationResourceProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -16,7 +17,8 @@ import PipelineResultsDialog from '../pipeline/pipeline-results-dialog'
 
 const PAGE_SIZE = 16
 const LOADING_ROW_IDS = ['1', '2', '3', '4', '5', '6']
-const CREATED_AT_FORMAT = 'YYYY-MM-DD'
+// Several runs a day are common, so include the time to tell them apart.
+const CREATED_AT_FORMAT = 'YYYY-MM-DD HH:mm'
 
 type FormatTimestamp = (value: number, format: string) => string
 
@@ -51,6 +53,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const [page, setPage] = useState(0)
   const [previewRunId, setPreviewRunId] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const previewTriggerRef = useRef<HTMLElement | null>(null)
   const hasResultsPreview = resourceType !== 'snippets'
   const resource = useEvaluationResource(resourceType, resourceId)
   const setSelectedRunId = useEvaluationStore((state) => state.setSelectedRunId)
@@ -78,6 +81,11 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
     failed: t(($) => $['history.status.failed']),
     cancelled: t(($) => $['history.status.cancelled']),
   }
+  const getStatusDescription = (record: EvaluationRunResponse) => {
+    const status = getDisplayStatus(record)
+    const label = statusLabels[status] ?? status
+    return record.error ? `${label}: ${record.error}` : label
+  }
   const total = logsQuery.data?.total ?? 0
   const isInitialLoading = logsQuery.isLoading && !logsQuery.data
 
@@ -95,7 +103,8 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
     setSelectedRunId,
   ])
 
-  const handleSelectRun = (runId: string) => {
+  const handleSelectRun = (runId: string, trigger?: HTMLElement | null) => {
+    previewTriggerRef.current = trigger ?? null
     setSelectedRunId(resourceType, resourceId, runId)
     if (hasResultsPreview) {
       setPreviewRunId(runId)
@@ -127,8 +136,8 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
       <div className="min-h-0 flex-1 overflow-hidden">
         <table className="w-full table-fixed border-collapse overflow-hidden rounded-md">
           <colgroup>
-            <col className="w-[120px]" />
-            <col className="w-[120px]" />
+            <col className="w-[140px]" />
+            <col className="w-[100px]" />
             <col className="w-[67px]" />
             <col className="w-[40px]" />
           </colgroup>
@@ -168,7 +177,9 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                     'cursor-pointer border-b border-divider-subtle hover:bg-state-base-hover',
                     record.id === resource.selectedRunId && 'bg-background-default-subtle',
                   )}
-                  onClick={() => handleSelectRun(record.id)}
+                  onClick={(event) =>
+                    handleSelectRun(record.id, event.currentTarget.querySelector('button'))
+                  }
                 >
                   <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">
                     {hasResultsPreview ? (
@@ -178,7 +189,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                         className="max-w-full truncate rounded-sm text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-accent"
                         onClick={(event) => {
                           event.stopPropagation()
-                          handleSelectRun(record.id)
+                          handleSelectRun(record.id, event.currentTarget)
                         }}
                       >
                         {formatCreatedAt(record.created_at, formatTime)}
@@ -192,16 +203,31 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
                   </td>
                   <td className="h-10 px-3">
                     <div className="flex h-10 items-center justify-center">
-                      <span
-                        aria-label={
-                          statusLabels[getDisplayStatus(record)] ?? getDisplayStatus(record)
-                        }
-                        className={cn(
-                          'inline-block h-4 w-4',
-                          STATUS_ICON_CLASS_NAMES[getDisplayStatus(record)] ??
-                            STATUS_ICON_CLASS_NAMES.pending,
-                        )}
-                      />
+                      {/* The tooltip names the status and, for failed runs, says why. */}
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              aria-label={getStatusDescription(record)}
+                              className="inline-flex rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-text-accent"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className={cn(
+                                  'inline-block h-4 w-4',
+                                  STATUS_ICON_CLASS_NAMES[getDisplayStatus(record)] ??
+                                    STATUS_ICON_CLASS_NAMES.pending,
+                                )}
+                              />
+                            </button>
+                          }
+                        />
+                        <TooltipContent className="max-w-[280px]">
+                          <span className="wrap-anywhere">{getStatusDescription(record)}</span>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </td>
                   <td className="h-10 text-center">
@@ -297,6 +323,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
           runId={previewRunId}
           open={previewOpen}
           onOpenChange={setPreviewOpen}
+          finalFocus={previewTriggerRef}
         />
       )}
     </div>

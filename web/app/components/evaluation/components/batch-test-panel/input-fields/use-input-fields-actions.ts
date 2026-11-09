@@ -32,7 +32,7 @@ export const useInputFieldsActions = ({
   isRunnable,
   templateFileName,
 }: UseInputFieldsActionsParams) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const setBatchTab = useEvaluationStore((state) => state.setBatchTab)
   const setSelectedRunId = useEvaluationStore((state) => state.setSelectedRunId)
@@ -77,7 +77,8 @@ export const useInputFieldsActions = ({
   const currentFileName = uploadedFileMeta?.name ?? resource.uploadedFileName
   const canDownloadTemplate = !evaluationActions.isDownloadingTemplate
   const isRunDisabled = !isRunnable || !uploadedFileId || isFileUploading || isRunning
-  const uploadButtonDisabled = !isPanelReady || isRunning
+  // The run needs a complete configuration, so don't offer the upload step before that.
+  const uploadButtonDisabled = !isPanelReady || !isRunnable || isRunning
 
   const handleDownloadTemplate = async () => {
     try {

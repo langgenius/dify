@@ -40,8 +40,8 @@ const UploadRunPopover = ({
   onClearUploadedFile,
   onRun,
 }: UploadRunPopoverProps) => {
-  const { t } = useTranslation('evaluation')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['evaluation'])
+  const { t: tCommon } = useTranslation(['common'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewFields = inputFields
   const booleanExampleValue = t(($) => $['conditions.boolean.true'])
@@ -88,7 +88,7 @@ const UploadRunPopover = ({
                     className="i-ri-file-excel-fill h-6 w-6 text-util-colors-green-green-600"
                   />
                 </div>
-                <div className="min-w-0 flex-1 py-1 pr-2">
+                <div className="min-w-0 flex-1 py-1 pe-2">
                   <div
                     className="truncate system-xs-medium text-text-secondary"
                     title={currentFileName}
@@ -105,7 +105,7 @@ const UploadRunPopover = ({
                     {!!currentFileSize && <span>{currentFileSize}</span>}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 pr-3">
+                <div className="flex items-center gap-1 pe-3">
                   {isFileUploading && (
                     <span
                       aria-hidden="true"
@@ -124,7 +124,7 @@ const UploadRunPopover = ({
               </div>
             ) : (
               <div
-                className="flex h-20 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg p-3 text-left hover:border-components-button-secondary-border"
+                className="flex h-20 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg p-3 text-start hover:border-components-button-secondary-border"
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDropFile}
               >
@@ -139,7 +139,7 @@ const UploadRunPopover = ({
                   />
                   <span className="sr-only">{t(($) => $['batch.uploadTitle'])}</span>
                 </button>
-                <div className="min-w-0 flex-1 text-left">
+                <div className="min-w-0 flex-1 text-start">
                   <div className="system-md-regular text-text-secondary">
                     {t(($) => $['batch.uploadDropzonePrefix'])}{' '}
                     <span className="system-md-semibold">
@@ -147,15 +147,18 @@ const UploadRunPopover = ({
                     </span>{' '}
                     {t(($) => $['batch.uploadDropzoneSuffix'])}
                   </div>
-                  <div className="mt-0.5 system-xs-regular text-text-tertiary">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-1 system-xs-regular text-text-tertiary">
                     <button
                       type="button"
                       className="text-text-accent hover:underline"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       {t(($) => $['batch.uploadDropzoneUploadButton'])}
-                    </button>{' '}
-                    {t(($) => $['batch.uploadHint'])}
+                    </button>
+                    <span aria-hidden="true" className="text-text-quaternary">
+                      ·
+                    </span>
+                    <span>{t(($) => $['batch.uploadHint'])}</span>
                   </div>
                 </div>
               </div>
@@ -172,13 +175,14 @@ const UploadRunPopover = ({
                       key={field.name}
                       className={cn(
                         'min-w-0 flex-1',
-                        index < previewFields.length - 1 && 'border-r border-divider-subtle',
+                        index < previewFields.length - 1 && 'border-e border-divider-subtle',
                       )}
                     >
-                      <div className="min-h-8 border-b border-divider-regular px-3 py-2 system-xs-medium-uppercase text-text-tertiary">
+                      {/* Column names like "LLM : expected_output" have no break points. */}
+                      <div className="min-h-8 border-b border-divider-regular px-3 py-2 system-xs-medium-uppercase wrap-anywhere text-text-tertiary">
                         {field.name}
                       </div>
-                      <div className="min-h-8 px-3 py-2 system-sm-regular text-text-secondary">
+                      <div className="min-h-8 px-3 py-2 system-sm-regular wrap-anywhere text-text-secondary">
                         {getExampleValue(field, booleanExampleValue)}
                       </div>
                     </div>
@@ -198,7 +202,7 @@ const UploadRunPopover = ({
               loading={isRunning}
               onClick={onRun}
             >
-              <span aria-hidden="true" className="mr-1 i-ri-play-fill h-5 w-5" />
+              <span aria-hidden="true" className="me-1 i-ri-play-fill h-5 w-5" />
               {t(($) => $['batch.run'])}
             </Button>
           </div>

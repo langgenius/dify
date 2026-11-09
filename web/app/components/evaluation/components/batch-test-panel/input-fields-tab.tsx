@@ -17,7 +17,7 @@ const InputFieldsTab = ({
   isPanelReady,
   isRunnable,
 }: InputFieldsTabProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const actions = useInputFieldsActions({
     resourceType,
     resourceId,
@@ -39,7 +39,7 @@ const InputFieldsTab = ({
           disabled={!actions.canDownloadTemplate}
           onClick={actions.handleDownloadTemplate}
         >
-          <span aria-hidden="true" className="mr-1 i-ri-download-line h-4 w-4" />
+          <span aria-hidden="true" className="me-1 i-ri-download-line h-4 w-4" />
           {t(($) => $['batch.downloadTemplate'])}
         </Button>
         <UploadRunPopover
