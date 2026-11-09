@@ -132,15 +132,13 @@ export const getIsItemPassed = (item: EvaluationRunItem) => {
   return item.overall_score == null ? true : item.overall_score > 0
 }
 
+// Columns come from the run's own results: metrics added to the config after the run would
+// otherwise show as columns of empty cells. The config only supplies friendlier labels.
 export const getMetricColumns = (resource: EvaluationResourceState, items: EvaluationRunItem[]) => {
+  const configLabels = new Map(
+    resource.metrics.map((metric) => [normalizeMetricKey(metric.optionId), metric.label] as const),
+  )
   const columns = new Map<string, MetricColumn>()
-
-  resource.metrics.forEach((metric) => {
-    columns.set(normalizeMetricKey(metric.optionId), {
-      id: metric.optionId,
-      label: metric.label,
-    })
-  })
 
   items.forEach((item) => {
     item.metrics?.forEach((metric) => {
@@ -150,7 +148,7 @@ export const getMetricColumns = (resource: EvaluationResourceState, items: Evalu
       if (!columns.has(normalizedName)) {
         columns.set(normalizedName, {
           id: metric.name,
-          label: humanizeMetricName(metric.name),
+          label: configLabels.get(normalizedName) ?? humanizeMetricName(metric.name),
         })
       }
     })
