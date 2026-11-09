@@ -31,6 +31,8 @@ const JudgeModelSelector = ({
       showDeprecatedWarnIcon
       ariaLabelledBy={ariaLabelledBy}
       className="h-8 w-full rounded-lg"
+      // The trigger is half a row wide; keep the model list readable.
+      popupClassName="min-w-80"
     />
   )
 }
