@@ -83,7 +83,7 @@ def runtime(harness: _Harness) -> Iterator[_Runtime]:
 
 
 def _persist_subscription(
-    harness: _Harness, *, subscription_id: str, tenant_id: str, provider_id: str, credentials: dict[str, str]
+    harness: _Harness, *, subscription_id: str, tenant_id: str, provider_id: str, credentials: dict[str, object]
 ) -> None:
     with harness.session_factory.begin() as session:
         subscription = TriggerSubscription(

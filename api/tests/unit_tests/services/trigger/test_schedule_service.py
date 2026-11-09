@@ -1,8 +1,10 @@
 import json
+import re
 import unittest
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock
+from zoneinfo import ZoneInfoNotFoundError
 
 import pytest
 
@@ -76,12 +78,26 @@ class TestScheduleService(unittest.TestCase):
 
     def test_calculate_next_run_at_invalid_timezone(self) -> None:
         """Test calculating next run time with invalid timezone."""
-        from pytz import UnknownTimeZoneError
-
         cron_expr = "30 10 * * *"
         timezone = "Invalid/Timezone"
 
-        with pytest.raises(UnknownTimeZoneError):
+        with pytest.raises(ZoneInfoNotFoundError):
+            calculate_next_run_at(cron_expr, timezone)
+
+    def test_calculate_next_run_at_malformed_timezone(self):
+        """Test that a malformed timezone raises ValueError with the value escaped."""
+        cron_expr = "30 10 * * *"
+
+        # Some zoneinfo versions expose the directory lookup as OSError, which
+        # calculate_next_run_at normalizes to ValueError. Others normalize it
+        # internally to ZoneInfoNotFoundError. Neither should leak a filesystem path.
+        with pytest.raises((ZoneInfoNotFoundError, ValueError)) as exc_info:
+            calculate_next_run_at(cron_expr, "America")
+        assert "America" in str(exc_info.value)
+        assert "/" not in str(exc_info.value)
+
+        timezone = "A/../B\nINJECTED"
+        with pytest.raises(ValueError, match=re.escape(f"Invalid timezone: {timezone!r}")):
             calculate_next_run_at(cron_expr, timezone)
 
 
