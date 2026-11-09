@@ -1230,6 +1230,14 @@ export const zApiToolSchemaPayload = z.object({
 })
 
 /**
+ * BuiltinToolProviderCreateResponse
+ */
+export const zBuiltinToolProviderCreateResponse = z.object({
+  id: z.string(),
+  result: z.string(),
+})
+
+/**
  * BuiltinProviderDefaultCredentialPayload
  */
 export const zBuiltinProviderDefaultCredentialPayload = z.object({
@@ -8768,7 +8776,8 @@ export const zPostWorkspacesCurrentToolProviderBuiltinByProviderAddPath = z.obje
 /**
  * Builtin provider added successfully
  */
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse = zSimpleResultResponse
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse =
+  zBuiltinToolProviderCreateResponse
 
 export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoPath = z.object({
   provider: z.string(),

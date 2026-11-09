@@ -1401,6 +1401,11 @@ export type BuiltinToolAddPayload = {
   visibility?: string | null
 }
 
+export type BuiltinToolProviderCreateResponse = {
+  id: string
+  result: string
+}
+
 export type ToolProviderCredentialInfoApiEntity = {
   credentials: Array<ToolProviderCredentialApiEntity>
   is_oauth_custom_client_enabled?: boolean
@@ -9821,7 +9826,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddError =
   PostWorkspacesCurrentToolProviderBuiltinByProviderAddErrors[keyof PostWorkspacesCurrentToolProviderBuiltinByProviderAddErrors]
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddResponses = {
-  200: SimpleResultResponse
+  200: BuiltinToolProviderCreateResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse =
