@@ -50,7 +50,7 @@ class ConnectionClaimSuccessResponse(ResponseModel):
     app_code: str
     access_token: str
     claimed_conversations: int = Field(
-        ge=0, description="Chat conversations transferred for supported Workflow/Chatflow Apps"
+        ge=0, description="Chat conversations transferred for supported Workflow/Chatflow/Chatbot Apps"
     )
     stop_requested_run_count: int = Field(
         ge=0,
@@ -162,6 +162,11 @@ class ConnectionClaimApi(Resource):
         "Stop failure also prevents that Passport from transferring resources. "
         "Each Passport atomically transfers Connections, files and all conversations with their personal state. "
         "Run terminal status is checked again inside each transfer transaction. "
+        "Ordinary Chatbot Apps transfer committed history without stopping or waiting for generation. "
+        "In-flight Chatbot requests may fail after transfer; uncommitted answers may be lost. "
+        "Their history reads and writes recheck the original caller's current conversation ownership. "
+        "Existing model calls or streams are not guaranteed to stop immediately. "
+        "Legacy agent configurations and non-Chatbot Guest history remain unsupported for Chatbot Claim. "
         "Concurrent migration or identity updates may report end_user_busy without waiting. "
         "Web execution registers each Run under the shared identity fence before launch. "
         "Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. "
@@ -238,7 +243,9 @@ class ClaimablePassportResponse(ResponseModel):
     index: int = Field(ge=0, description="Index of the candidate in the request's passports list")
     app_code: str
     app_name: str
-    conversation_count: int = Field(ge=0, description="Remaining Chatflow conversations; Workflow normally has zero")
+    conversation_count: int = Field(
+        ge=0, description="Remaining Chatflow/Chatbot conversations; Workflow normally has zero"
+    )
     connection_count: int = Field(
         ge=0, description="Current Guest Connection count; does not determine Passport eligibility"
     )
@@ -260,8 +267,9 @@ class ClaimablePassportsApi(Resource):
         "Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. "
         "Unavailable, disabled and unpublished Web Apps are filtered out. "
         "Zero-Connection Guest Passports are included. "
-        "Supports Workflow and Chatflow only; other App modes are omitted. "
-        "conversation_count counts Chatflow history; Workflow normally has none. "
+        "Supports Workflow, Chatflow and ordinary Chatbot Apps; other App modes are omitted. "
+        "Chatbot Apps with legacy agent configurations or non-Chatbot Guest history are omitted. "
+        "conversation_count counts Chatflow/Chatbot history; Workflow normally has none. "
         "connection_count counts all currently Guest-owned Connections, including ones needing reconnection. "
         "This is advisory: actual Claim rechecks ownership and Account App admission."
     )
