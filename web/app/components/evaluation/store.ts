@@ -29,6 +29,7 @@ import {
   syncJudgmentConfigWithMetrics,
   updateMetric,
   updateResourceState,
+  withLatestNodeTitles,
 } from './store-utils'
 import { buildConditionMetricOptions } from './utils'
 
@@ -50,6 +51,12 @@ type EvaluationStore = {
   ) => void
   resetResourceConfig: (resourceType: EvaluationResourceType, resourceId: string) => void
   markResourceConfigSaved: (resourceType: EvaluationResourceType, resourceId: string) => void
+  /** Apply node titles from the latest published workflow without marking the config dirty. */
+  syncNodeTitles: (
+    resourceType: EvaluationResourceType,
+    resourceId: string,
+    nodeTitles: ReadonlyMap<string, string>,
+  ) => void
   setEvaluationFramework: (
     resourceType: EvaluationResourceType,
     resourceId: string,
@@ -286,6 +293,29 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       },
       conditionErrorsVisible: { ...state.conditionErrorsVisible, [resourceKey]: false },
     }))
+  },
+  syncNodeTitles: (resourceType, resourceId, nodeTitles) => {
+    const resourceKey = buildResourceKey(resourceType, resourceId)
+
+    set((state) => {
+      const resource = state.resources[resourceKey]
+      const initialResource = state.initialResources[resourceKey]
+      const nextResource = resource && withLatestNodeTitles(resource, nodeTitles)
+      const nextInitialResource =
+        initialResource && withLatestNodeTitles(initialResource, nodeTitles)
+
+      if (nextResource === resource && nextInitialResource === initialResource) return state
+
+      // Rename the saved baseline too, so a rename alone does not enable Reset and Save.
+      return {
+        resources: nextResource
+          ? { ...state.resources, [resourceKey]: nextResource }
+          : state.resources,
+        initialResources: nextInitialResource
+          ? { ...state.initialResources, [resourceKey]: nextInitialResource }
+          : state.initialResources,
+      }
+    })
   },
   setEvaluationFramework: (resourceType, resourceId, framework) => {
     set((state) => ({

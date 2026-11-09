@@ -33,4 +33,51 @@ describe('evaluation config change tracking', () => {
     )
     expect(result.current).toBe(false)
   })
+
+  it('applies renamed node titles without marking the config dirty', () => {
+    act(() => {
+      useEvaluationStore.getState().hydrateResource('apps', resourceId, {
+        evaluation_framework: 'ragas',
+        evaluation_model: 'claude-sonnet-5',
+        evaluation_model_provider: 'anthropic',
+        default_metrics: [{ metric: 'answer_correctness', node_info_list: [nodeInfo] }],
+      })
+    })
+    const { result } = renderHook(() => useIsEvaluationConfigDirty('apps', resourceId))
+
+    act(() =>
+      useEvaluationStore
+        .getState()
+        .syncNodeTitles('apps', resourceId, new Map([['llm-1', 'Answer Writer']])),
+    )
+
+    const state = useEvaluationStore.getState()
+    expect(state.resources[`apps:${resourceId}`]!.metrics[0]!.nodeInfoList).toEqual([
+      { ...nodeInfo, title: 'Answer Writer' },
+    ])
+    expect(result.current).toBe(false)
+
+    // Reset restores the saved config, which carries the new title as well.
+    act(() => useEvaluationStore.getState().resetResourceConfig('apps', resourceId))
+    expect(
+      useEvaluationStore.getState().resources[`apps:${resourceId}`]!.metrics[0]!.nodeInfoList?.[0]
+        ?.title,
+    ).toBe('Answer Writer')
+  })
+
+  it('keeps the store unchanged when titles already match', () => {
+    act(() => {
+      useEvaluationStore.getState().hydrateResource('apps', resourceId, {
+        evaluation_framework: 'ragas',
+        default_metrics: [{ metric: 'answer_correctness', node_info_list: [nodeInfo] }],
+      })
+    })
+    const before = useEvaluationStore.getState()
+
+    act(() =>
+      useEvaluationStore.getState().syncNodeTitles('apps', resourceId, new Map([['llm-1', 'LLM']])),
+    )
+
+    expect(useEvaluationStore.getState()).toBe(before)
+  })
 })
