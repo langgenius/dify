@@ -12,10 +12,20 @@ const cookieRewrite: CookieRewriteOptions = {
   localCookieScope: 'target-origin',
 }
 
-const createApp = (fetchImpl: typeof fetch, requestCookies?: DevProxyRoute['requestCookies']) =>
+const createApp = (
+  fetchImpl: typeof fetch,
+  requestCookies?: DevProxyRoute['requestCookies'],
+  requestHeaders?: DevProxyRoute['requestHeaders'],
+) =>
   createDevProxyApp({
     routes: [
-      { paths: '/console/api', target: 'https://cloud.example.com', cookieRewrite, requestCookies },
+      {
+        paths: '/console/api',
+        target: 'https://cloud.example.com',
+        cookieRewrite,
+        requestCookies,
+        requestHeaders,
+      },
     ],
     sessionImport: {
       refreshPath: '/console/api/refresh-token',
@@ -112,6 +122,29 @@ describe('session import', () => {
     expect(new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get('cookie')).toBe(
       '__Host-refresh_token=old-refresh; CF_Authorization=configured',
     )
+    expect(response.status).toBe(303)
+  })
+
+  // Scenario: session imports must authenticate with configured gateway service headers.
+  it('should include configured request headers when refreshing an imported session', async () => {
+    // Arrange
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('{}', {
+        headers: { 'set-cookie': '__Host-access_token=new-access; Path=/; Secure; HttpOnly' },
+      }),
+    )
+
+    // Act
+    const response = await createApp(fetchImpl, undefined, {
+      'CF-Access-Client-Id': 'configured-id',
+      'CF-Access-Client-Secret': 'configured-secret',
+    }).request(postInput('old-refresh'))
+
+    // Assert
+    const headers = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers)
+    expect(headers.get('cookie')).toBe('__Host-refresh_token=old-refresh')
+    expect(headers.get('cf-access-client-id')).toBe('configured-id')
+    expect(headers.get('cf-access-client-secret')).toBe('configured-secret')
     expect(response.status).toBe(303)
   })
 

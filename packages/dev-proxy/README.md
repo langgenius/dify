@@ -70,6 +70,19 @@ Config files can be `.ts`, `.mts`, `.js`, or `.mjs`.
 
 `routes` are matched in declaration order. The first matching route wins. Each configured path matches both the exact path and all child paths, so `paths: '/api'` matches `/api`, `/api/apps`, and `/api/apps/123`.
 
+Use route-level `requestHeaders` for upstream gateway service tokens. Configured headers replace incoming values for HTTP requests, WebSocket upgrades, and session imports, before normal proxy header sanitization and cookie rewriting. Keep credentials in an ignored local env file and configure them only on routes for the intended upstream.
+
+```ts
+{
+  paths: '/api',
+  target: 'https://example.com',
+  requestHeaders: {
+    'CF-Access-Client-Id': process.env.CF_ACCESS_CLIENT_ID!,
+    'CF-Access-Client-Secret': process.env.CF_ACCESS_CLIENT_SECRET!,
+  },
+}
+```
+
 Use route-level `requestCookies` for upstream gateway authentication. These cookies are merged after cookie rewriting for HTTP requests, WebSocket upgrades, and session imports. Configured names replace incoming cookies with the same name; other cookies are preserved. Keep credentials in an ignored local env file and configure them only on routes for the intended upstream.
 
 ```ts
