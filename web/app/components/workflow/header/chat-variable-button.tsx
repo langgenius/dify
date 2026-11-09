@@ -4,10 +4,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
-import useTheme from '@/hooks/use-theme'
 
 const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
-  const { theme } = useTheme()
   const { t } = useTranslation(['workflow'])
   const showChatVariablePanel = useStore((s) => s.showChatVariablePanel)
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
@@ -34,9 +32,7 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
             size="lg"
             className={cn(
               'border border-transparent',
-              theme === 'dark' &&
-                showChatVariablePanel &&
-                'border-black/5 bg-white/10 backdrop-blur-xs',
+              showChatVariablePanel && 'dark:border-black/5 dark:bg-white/10 dark:backdrop-blur-xs',
             )}
             disabled={disabled}
             onClick={handleClick}

@@ -16,6 +16,11 @@ class TriggerHttpRequestCachingService:
     _TRIGGER_STORAGE_PATH = "triggers"
 
     @classmethod
+    def get_raw_request(cls, request_id: str) -> bytes:
+        """Return the persisted HTTP request bytes for an existing request ID."""
+        return storage.load_once(f"{cls._TRIGGER_STORAGE_PATH}/{request_id}.raw")
+
+    @classmethod
     def get_request(cls, request_id: str) -> Request:
         """
         Get the request object from the storage.
@@ -26,7 +31,7 @@ class TriggerHttpRequestCachingService:
         Returns:
             The request object.
         """
-        return deserialize_request(storage.load_once(f"{cls._TRIGGER_STORAGE_PATH}/{request_id}.raw"))
+        return deserialize_request(cls.get_raw_request(request_id))
 
     @classmethod
     def get_payload(cls, request_id: str) -> Mapping[str, Any]:

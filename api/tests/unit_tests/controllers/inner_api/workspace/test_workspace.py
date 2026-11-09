@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec
@@ -10,19 +11,71 @@ import pytest
 from flask import Flask
 from flask.typing import ResponseReturnValue
 from flask_restx import Api, Resource
+from redis import Redis
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.inner_api.workspace import workspace as controller
 from controllers.inner_api.wraps import InnerApiUnauthorizedError
+from core.plugin.impl.oauth import OAuthHandler
+from core.trigger.trigger_manager import TriggerManager
+from core.trigger.utils.encryption import delete_cache_for_subscription
 from extensions.application_services.workspace import WorkspaceServices
+from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import register_external_error_handlers
+from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
+from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerDispatchRepository
+from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
+from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
+from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
+from repositories.trigger.subscription_repository import (
+    RedisTriggerSubscriptionLocks,
+    RedisTriggerSubscriptionRefreshReservations,
+    TriggerSubscriptionRepository,
+)
 from services.account_errors import AccountNotFoundError
+from services.app_scoped_end_user_service import AppScopedEndUserService
+from services.async_workflow_service import AsyncWorkflowService
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     WorkspaceNotFoundError,
     WorkspaceOwnerNotFoundError,
     WorkspacesLimitExceededError,
 )
+from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
+from services.plugin.plugin_parameter_service import PluginParameterService
+from services.quota_service import QuotaService
+from services.trigger.app_trigger_service import AppTriggerService
+from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
+from services.trigger.endpoint_service import TriggerEndpointService
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.event_service import TriggerEventService
+from services.trigger.oauth_client_service import TriggerOAuthClientService
+from services.trigger.oauth_gateway import (
+    OAuthProxyContextGateway,
+    PluginTriggerOAuthGateway,
+    TriggerOAuthBuilderGateway,
+)
+from services.trigger.oauth_service import TriggerOAuthService
+from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_binding_service import TriggerSubscriptionBindingService
+from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
+from services.trigger.subscription_gateway import (
+    PluginTriggerSubscriptionGateway,
+    enqueue_subscription_refresh,
+    invalidate_subscription_properties,
+)
+from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
+from services.trigger.subscription_refresh_service import TriggerSubscriptionRefreshService
+from services.trigger.subscription_renewal_service import TriggerSubscriptionRenewalService
+from services.trigger.subscription_service import TriggerSubscriptionService
+from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
+from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
+from services.trigger.workflow_dispatch_gateway import AppScopedTriggerEndUsers
+from services.trigger.workflow_dispatch_service import PluginTriggerWorkflowDispatchService
+from services.workflow.queue_dispatcher import CeleryWorkflowQueuePublisher
 from services.workspace.contracts import CreatedWorkspace, WorkspaceMembership
 from services.workspace.provisioning_service import WorkspaceProvisioningService
 from services.workspace.service import WorkspaceQueryService, WorkspaceService
@@ -91,8 +144,56 @@ MEMBER = {"workspace_id": "w1", "account_id": "a1", "email": "member@example.com
 class TestWorkspaceCases:
     @staticmethod
     @pytest.fixture
-    def provisioning(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> Mock:
         provisioning = create_autospec(WorkspaceProvisioningService, instance=True)
+        oauth_provider = PluginTriggerOAuthGateway(oauth=OAuthHandler())
+        oauth_clients = TriggerOAuthClientService(
+            clients=TriggerOAuthClientRepository(session_factory=sqlite_session_factory), providers=oauth_provider
+        )
+        redis = RedisClientWrapper()
+        redis.initialize(Redis())
+        subscription_management = TriggerSubscriptionService(
+            subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+            providers=PluginTriggerSubscriptionGateway(),
+            locks=RedisTriggerSubscriptionLocks(redis=redis),
+            codec=ProviderTriggerSubscriptionCodec(),
+            invalidate_cache=delete_cache_for_subscription,
+        )
+        builders = TriggerSubscriptionBuilderService(
+            builders=RedisTriggerSubscriptionBuilderRepository(redis=redis),
+            get_provider=TriggerManager.get_trigger_provider,
+            subscribe=TriggerManager.subscribe_trigger,
+            create_subscription=subscription_management.create,
+        )
+        subscription_queries = TriggerSubscriptionQueryService(
+            credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
+            schemas=PluginTriggerProviderQuery(),
+            subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+        )
+        renewal = TriggerSubscriptionRenewalService(
+            subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+            providers=PluginTriggerSubscriptionGateway(),
+            oauth=oauth_provider,
+            clients=oauth_clients,
+            locks=RedisTriggerSubscriptionLocks(redis=redis),
+            codec=ProviderTriggerSubscriptionCodec(),
+            credential_threshold=10,
+            subscription_threshold=10,
+            console_api_url="https://console.example.test",
+            invalidate_cache=delete_cache_for_subscription,
+            invalidate_properties=invalidate_subscription_properties,
+        )
+        workflow_queries = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+        logs = SQLAlchemyWorkflowTriggerDispatchRepository(session_factory=sqlite_session_factory)
+        queues = CeleryWorkflowQueuePublisher()
+        events = TriggerEventService(
+            subscriptions=subscription_queries,
+            plugins=PluginTriggerEventGateway(),
+            requests=TriggerHttpRequestCachingService,
+        )
+        workflow_dispatch = AsyncWorkflowService(
+            workflows=workflow_queries, logs=logs, queues=queues, reserve_quota=QuotaService.reserve
+        )
         services = WorkspaceServices(
             queries=create_autospec(WorkspaceQueryService, instance=True),
             management=create_autospec(WorkspaceService, instance=True),
@@ -103,6 +204,62 @@ class TestWorkspaceCases:
             invitations=Mock(),
             identity=Mock(),
             resource_cleanup=Mock(),
+            plugin_parameters=PluginParameterService(
+                credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
+                subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+                builders=builders,
+                plugins=DaemonPluginParameterGateway(),
+            ),
+            trigger_providers=PluginTriggerProviderQuery(),
+            trigger_subscriptions=subscription_queries,
+            trigger_binding_queries=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+            create_trigger_binding_service=lambda session: TriggerSubscriptionBindingService(
+                sync_bindings=partial(
+                    TriggerSubscriptionRepository(session_factory=sqlite_session_factory).sync_workflow_bindings,
+                    session=session,
+                )
+            ),
+            trigger_events=events,
+            workflow_dispatch=workflow_dispatch,
+            trigger_workflow_dispatch=PluginTriggerWorkflowDispatchService(
+                workflows=workflow_queries,
+                logs=logs,
+                queues=queues,
+                dispatch=workflow_dispatch,
+                events=events,
+                bindings=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+                end_users=AppScopedTriggerEndUsers(
+                    end_users=AppScopedEndUserService(
+                        end_users=AppScopedEndUserRepo(session_factory=sqlite_session_factory)
+                    )
+                ),
+                reserve_quota=QuotaService.reserve,
+                mark_rate_limited=AppTriggerService(
+                    triggers=SQLAlchemyAppTriggerRepository(session_factory=sqlite_session_factory)
+                ).mark_tenant_triggers_rate_limited,
+            ),
+            trigger_builders=builders,
+            trigger_endpoints=TriggerEndpointService(
+                subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+                provider=PluginTriggerEndpointGateway(),
+                requests=TriggerHttpRequestCachingService,
+                publish=enqueue_triggered_workflows,
+            ),
+            trigger_subscription_management=subscription_management,
+            trigger_subscription_renewal=renewal,
+            trigger_subscription_refresh=TriggerSubscriptionRefreshService(
+                subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+                reservations=RedisTriggerSubscriptionRefreshReservations(redis=redis),
+                publish=enqueue_subscription_refresh,
+                renewal=renewal,
+            ),
+            trigger_oauth_clients=oauth_clients,
+            trigger_oauth=TriggerOAuthService(
+                clients=oauth_clients,
+                providers=oauth_provider,
+                contexts=OAuthProxyContextGateway(),
+                builders=TriggerOAuthBuilderGateway(builders=builders),
+            ),
         )
         monkeypatch.setattr(controller, "application_services", lambda: Services(services))
         return provisioning

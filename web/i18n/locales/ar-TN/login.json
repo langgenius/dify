@@ -25,6 +25,7 @@
   "enterYourName": "يرجى إدخال اسم المستخدم الخاص بك",
   "error.emailEmpty": "عنوان البريد الإلكتروني مطلوب",
   "error.emailInValid": "يرجى إدخال عنوان بريد إلكتروني صالح",
+  "error.initPasswordIncorrect": "كلمة مرور التهيئة غير صحيحة.",
   "error.invalidEmailOrPassword": "بريد إلكتروني أو كلمة مرور غير صالحة.",
   "error.invalidSSOProtocol": "بروتوكول SSO غير صالح",
   "error.nameEmpty": "الاسم مطلوب",

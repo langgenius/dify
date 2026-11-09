@@ -135,7 +135,7 @@ const MembersPageContent = () => {
     <Dialog
       handle={detailsDialogHandle}
       onOpenChange={(open, details) => {
-        if (!open && isSavingMember) details.cancel()
+        if (!open && isSavingMember && details.reason !== 'imperative-action') details.cancel()
       }}
     >
       {({ payload: member }) => (

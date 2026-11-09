@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -100,14 +100,13 @@ def test_worker_task_exports_once_through_the_ssrf_proxy_and_replay_observes_che
     monkeypatch.setattr(ssrf_proxy, "make_request", send)
     export_application_trace.run(case.run.id)
     export_application_trace.run(case.run.id)
-    assert proxied == [("POST", "https://langfuse.test/api/public/ingestion")]
+    assert proxied == [("POST", "https://langfuse.test/api/public/otel/v1/traces")]
     result = case.repository.get(case.run.id)
     assert result is not None
     assert result.state is TraceRunState.ACCEPTED
     assert result.attempts == 1
-    provider_trace_id = str(UUID(hex=case.run.trace_id))
-    assert result.provider_trace_id == provider_trace_id
-    assert result.trace_url == f"https://langfuse.test/project/original/traces/{provider_trace_id}"
+    assert result.provider_trace_id == case.run.trace_id
+    assert result.trace_url == f"https://langfuse.test/project/original/traces/{case.run.trace_id}"
 
 
 def test_worker_records_carry_no_enterprise_names(sqlite_session_factory: sessionmaker[Session]) -> None:

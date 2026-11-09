@@ -31,15 +31,15 @@ from factories import file_factory
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.file import FileTransferMethod
 from graphon.variables.types import ArrayValidation, SegmentType
-from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
+from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, EndUserType
 from models.model import App, EndUser
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
-from services.async_workflow_service import AsyncWorkflowService
+from services.async_workflow_service import TriggerWorkflowDispatcher
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
-from services.workflow.entities import WebhookTriggerData
+from services.workflow.entities import TriggerActor, WebhookTriggerData
 from services.workflow_service import WorkflowService
 
 try:
@@ -672,12 +672,28 @@ class WebhookService:
         if param_type_enum is None:
             return value
 
-        if not param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL):
+        matches_type = param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL)
+        if not matches_type or cls._is_boolean_for_number(value, param_type_enum):
             actual_type = type(value).__name__
             expected_type = cls._expected_type_label(param_type_enum)
             raise ValueError(f"Expected {expected_type}, got {actual_type}")
 
         return value
+
+    @staticmethod
+    def _is_boolean_for_number(value: Any, param_type: SegmentType) -> bool:
+        """Return True when a JSON boolean is given for a number parameter.
+
+        JSON ``true``/``false`` decode to ``bool``, a subclass of ``int``, so
+        ``SegmentType.is_valid`` accepts them as numbers.
+        """
+        match param_type:
+            case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
+                return isinstance(value, bool)
+            case SegmentType.ARRAY_NUMBER:
+                return isinstance(value, list) and any(isinstance(item, bool) for item in value)
+            case _:
+                return False
 
     @classmethod
     def _coerce_segment_type(cls, param_type: SegmentType | str, *, param_name: str) -> SegmentType | None:
@@ -812,6 +828,8 @@ class WebhookService:
         workflow: Workflow,
         *,
         end_users: WebhookEndUserProvisioner,
+        trigger_status: AppTriggerService,
+        workflow_dispatch: TriggerWorkflowDispatcher,
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
 
@@ -846,14 +864,13 @@ class WebhookService:
             try:
                 quota_charge = QuotaService.reserve(QuotaType.TRIGGER, webhook_trigger.tenant_id)
             except QuotaExceededError:
-                AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
+                trigger_status.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
                 raise
 
             try:
-                # NOTE: don not use `with sessionmaker(bind=db.engine, expire_on_commit=False).begin()`
-                # trigger_workflow_async need to handle multiple session commits internally
-                with Session(db.engine, expire_on_commit=False) as session:
-                    AsyncWorkflowService.trigger_workflow_async(end_user, trigger_data, session=session)
+                workflow_dispatch.trigger_workflow_async(
+                    actor=TriggerActor(id=end_user.id, role=CreatorUserRole.END_USER), trigger_data=trigger_data
+                )
                 quota_charge.commit()
             except Exception:
                 quota_charge.refund()
