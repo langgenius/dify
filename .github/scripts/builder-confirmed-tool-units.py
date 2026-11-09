@@ -3348,8 +3348,8 @@ json_policy_expected = {
     "test_direct_start_text_keeps_literal_markers_and_dots": 1,
     "test_native_generation_and_log_read_only_declared_start_values": 2,
     "test_native_jsonpath_constant_cannot_read_non_start_value": 1,
-    "test_admitted_jsonpath_grammar": 6,
-    "test_jsonpath_grammar_refuses_constant_and_resolved_values": 28,
+    "test_admitted_jsonpath_grammar": 9,
+    "test_jsonpath_grammar_refuses_constant_and_resolved_values": 36,
     "test_content_utf8_byte_boundary": 4,
     "test_parameter_validator_requires_exact_final_types_and_keys": 1,
     "test_qualified_binding_is_frozen_and_strict": 1,
@@ -3357,8 +3357,6 @@ json_policy_expected = {
     "test_optional_start_user_id_cannot_collide_with_native_system_owner": 1,
     "test_constant_json_parameters_need_no_start_declarations_or_inputs": 1,
     "test_empty_start_declarations_still_refuse_variable_selector": 1,
-    "test_jsonpath_detailed_grammar_boundaries_admit": 3,
-    "test_jsonpath_detailed_grammar_boundaries_refuse": 8,
 }
 json_runtime_expected = {
     "tests.unit_tests.services.dify_builder.test_json_tool_metadata": {
