@@ -3,6 +3,7 @@
 import type { ReactNode, Ref } from 'react'
 import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { lazy, Suspense, useMemo, useRef } from 'react'
@@ -161,13 +162,41 @@ export function MainNavFooter({
 }: {
   helpMenuTriggerRef?: Ref<HTMLButtonElement>
 }) {
+  const { t } = useTranslation(['navigation'])
+  const { data: webappUrl } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (data) => data.webapp_url,
+  })
+  const visitedAppsLabel = t(($) => $['mainNav.visitedApps'], { ns: 'navigation' })
+
   return (
-    <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
-      <div className="flex min-w-0 items-center gap-1 overflow-hidden">
-        <AccountSection />
-      </div>
-      <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-        <HelpMenu triggerRef={helpMenuTriggerRef} />
+    <div className="w-60 shrink-0">
+      <nav aria-label={visitedAppsLabel} className="px-2">
+        <div className="px-1 py-1.5">
+          <Separator />
+        </div>
+        <MainNavLink
+          item={{
+            href: `${webappUrl}/my-apps`,
+            label: visitedAppsLabel,
+            active: () => false,
+            icon: 'i-ri-apps-2-line',
+            activeIcon: 'i-ri-apps-2-line',
+          }}
+          pathname=""
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span aria-hidden className="ms-auto i-ri-arrow-right-up-line size-4.5 shrink-0" />
+        </MainNavLink>
+      </nav>
+      <div className="flex items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
+        <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+          <AccountSection />
+        </div>
+        <div className="flex shrink-0 items-center justify-center rounded-full p-1">
+          <HelpMenu triggerRef={helpMenuTriggerRef} />
+        </div>
       </div>
     </div>
   )

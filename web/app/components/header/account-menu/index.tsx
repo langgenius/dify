@@ -28,7 +28,6 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useThemePreference } from '@/features/theme/hooks'
 import { themeOptions } from '@/features/theme/theme'
 import Link from '@/next/link'
@@ -109,12 +108,11 @@ type MainNavMenuContentProps = {
 }
 
 function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
-  const { t } = useTranslation(['common', 'accountSettings', 'navigation', 'app'])
+  const { t } = useTranslation(['common', 'accountSettings', 'navigation'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: enableEducationPlan } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.education.enabled,
@@ -179,19 +177,6 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
       <MenuSeparator className="my-0" />
       <MenuGroup className="py-1">
         <LogoutMenuItem onLogout={onLogout} />
-      </MenuGroup>
-      <MenuSeparator className="my-0" />
-      <MenuGroup className="py-1">
-        <MenuLinkItem
-          className="justify-between px-3 py-1"
-          href={`${systemFeatures.webapp_url}/my-apps`}
-        >
-          <MenuItemContent
-            iconClassName="i-ri-apps-2-line"
-            label={t(($) => $['endUser.myApps'], { ns: 'app' })}
-            trailing={<ExternalLinkIndicator />}
-          />
-        </MenuLinkItem>
       </MenuGroup>
     </>
   )
