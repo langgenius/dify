@@ -333,3 +333,25 @@ def test_webhook_data_inheritance():
     data = WebhookData(title="Test")
     assert hasattr(data, "title")
     assert hasattr(data, "desc")  # Inherited from BaseNodeData
+
+
+def test_webhook_data_signature_secret_defaults_to_none():
+    """No secret configured keeps legacy behavior."""
+    data = WebhookData()
+    assert data.signature_secret is None
+
+
+def test_webhook_data_signature_secret_round_trip():
+    """A configured secret survives model validation."""
+    data = WebhookData.model_validate(
+        {
+            "method": "post",
+            "content_type": "application/json",
+            "headers": [],
+            "params": [],
+            "body": [],
+            "signature_secret": "s3cr3t",
+        },
+        from_attributes=True,
+    )
+    assert data.signature_secret == "s3cr3t"

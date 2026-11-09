@@ -127,3 +127,7 @@ class WebhookData(BaseNodeData):
     # Webhook specific fields (not from client data, set internally)
     webhook_id: str | None = None  # Set when webhook trigger is created
     timeout: int = 30  # Timeout in seconds to wait for webhook response
+
+    # Optional shared secret for HMAC request signing, set by the trigger owner.
+    # Unset (including all existing triggers) keeps legacy behavior.
+    signature_secret: str | None = None
