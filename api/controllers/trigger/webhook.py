@@ -78,6 +78,7 @@ def handle_webhook(webhook_id: str):
             workflow,
             end_users=application_services().app_scoped_end_users.commands,
             trigger_status=application_services().apps.trigger_status,
+            workflow_dispatch=application_services().workspaces.workflow_dispatch,
         )
 
         # Return configured response
