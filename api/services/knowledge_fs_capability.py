@@ -431,6 +431,13 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/tidy/findings",
             "knowledge_space",
         ),
+        "getTidySummary": KnowledgeFSCapabilityOperation(
+            "knowledge_spaces.tidy.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/tidy/summary",
+            "knowledge_space",
+        ),
         "listTidyScans": KnowledgeFSCapabilityOperation(
             "knowledge_spaces.tidy.read",
             _STANDARD_CALLERS,

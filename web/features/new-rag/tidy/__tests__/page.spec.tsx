@@ -8,6 +8,7 @@ import { TidyPage } from '../page'
 
 const service = vi.hoisted(() => ({
   settings: vi.fn(),
+  summary: vi.fn(),
   configure: vi.fn(),
   findings: vi.fn(),
   scans: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('@/service/console', async (original) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       [`${path}.settings.get`]: service.settings,
+      [`${path}.summary.get`]: service.summary,
       [`${path}.settings.patch`]: service.configure,
       [`${path}.findings.get`]: service.findings,
       [`${path}.scans.get`]: service.scans,
@@ -49,12 +51,19 @@ describe('Tidy', () => {
   beforeEach(() => {
     service.settings.mockResolvedValue({
       enabled: false,
+      conflicts: true,
       revision: 0,
       lastError: null,
       updatedAt: '2026-11-03',
     })
+    service.summary.mockResolvedValue({
+      findings: [],
+      documents: { pending: 0, scanning: 0, complete: 0, failed: 0 },
+      modelCalls: 0,
+    })
     service.configure.mockResolvedValue({
       enabled: true,
+      conflicts: true,
       revision: 1,
       lastError: null,
       updatedAt: '2026-11-03',
@@ -73,8 +82,104 @@ describe('Tidy', () => {
     await waitFor(() =>
       expect(service.configure).toHaveBeenCalledWith(
         expect.objectContaining({
-          body: { enabled: true, expectedRevision: 0, acknowledgeTokenUsage: true },
+          body: {
+            enabled: true,
+            conflicts: true,
+            expectedRevision: 0,
+            acknowledgeTokenUsage: true,
+          },
         }),
+      ),
+    )
+  })
+  it('enables free duplicate detection without token consent when conflicts are unchecked', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('switch'))
+    const dialog = screen.getByRole('dialog')
+    await user.click(screen.getByRole('checkbox', { name: 'knowledgeSpace.tidy.consentConflicts' }))
+    expect(dialog).toHaveTextContent('tidy.freeNotice')
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() =>
+      expect(service.configure).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: {
+            enabled: true,
+            conflicts: false,
+            expectedRevision: 0,
+            acknowledgeTokenUsage: false,
+          },
+        }),
+      ),
+    )
+  })
+  it('shows progress, explains a pause and asks before turning on conflict detection', async () => {
+    service.settings.mockResolvedValue({
+      enabled: true,
+      conflicts: false,
+      revision: 4,
+      lastError: 'authorization_failed',
+      updatedAt: '2026-11-04',
+    })
+    service.summary.mockResolvedValue({
+      findings: [
+        { status: 'open', kind: 'similar', count: 2 },
+        { status: 'open', kind: 'duplicate', count: 1 },
+      ],
+      documents: { pending: 1, scanning: 0, complete: 3, failed: 1 },
+      modelCalls: 0,
+    })
+    const user = userEvent.setup()
+    renderPage()
+    expect(await screen.findByText(/knowledgeSpace\.tidy\.progressSummary/)).toBeVisible()
+    expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.tidy.pausedAuthorization')
+    expect(screen.getByText(/knowledgeSpace\.tidy\.failedCount/)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.tidy.similar 2' })).toBeVisible()
+    await user.click(screen.getByRole('switch', { name: 'knowledgeSpace.tidy.conflicts' }))
+    expect(service.configure).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toHaveTextContent('tidy.tokenNotice')
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() =>
+      expect(service.configure).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: {
+            enabled: true,
+            conflicts: true,
+            expectedRevision: 4,
+            acknowledgeTokenUsage: true,
+          },
+        }),
+      ),
+    )
+  })
+  it('filters by kind and explains reworded duplicates found by stored vectors', async () => {
+    const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }
+    service.findings.mockResolvedValue({
+      items: [
+        {
+          id: 's',
+          kind: 'similar',
+          left: { ...evidence, documentId: 'a', title: 'Refunds', text: '十四天内退款' },
+          right: { ...evidence, documentId: 'b', title: 'Returns', text: '签收两周内可退' },
+          reason: 'semantic_overlap',
+          similarity: 0.75,
+          status: 'open',
+          revision: 1,
+          actionId: null,
+          createdAt: '2026-11-04',
+          stale: false,
+        },
+      ],
+      nextCursor: null,
+    })
+    const user = userEvent.setup()
+    renderPage()
+    expect(await screen.findByText('knowledgeSpace.tidy.semanticReason')).toBeVisible()
+    expect(screen.getByText(/knowledgeSpace\.tidy\.semanticCoverage/)).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tidy.similar 0' }))
+    await waitFor(() =>
+      expect(service.findings).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: { status: 'open', kind: 'similar' } }),
       ),
     )
   })

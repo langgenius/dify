@@ -1322,7 +1322,7 @@ export type KnowledgeFsTidyFindingResponse = {
   right: KnowledgeFsTidyEvidenceResponse
   similarity: number | null
   stale?: boolean
-  status: 'disabled' | 'dismissed' | 'open' | 'reviewed'
+  status: 'disabled' | 'dismissed' | 'open' | 'outdated' | 'reviewed'
 }
 
 export type KnowledgeFsTidyRetryResponse = {
@@ -1335,16 +1335,24 @@ export type KnowledgeFsTidyScanListResponse = {
 }
 
 export type KnowledgeFsTidySettingsResponse = {
+  conflicts: boolean
   enabled: boolean
-  lastError: string | null
+  lastError: 'authorization_failed' | 'model_unavailable' | 'scan_failed' | null
   revision: number
   updatedAt: string
 }
 
 export type KnowledgeFsTidySettingsPayload = {
   acknowledgeTokenUsage?: boolean
+  conflicts?: boolean | null
   enabled: boolean
   expectedRevision: number
+}
+
+export type KnowledgeFsTidySummaryResponse = {
+  documents: KnowledgeFsTidyDocumentProgressResponse
+  findings: Array<KnowledgeFsTidyFindingCountResponse>
+  modelCalls: number
 }
 
 export type KnowledgeFsTraceListResponse = {
@@ -2427,6 +2435,19 @@ export type KnowledgeFsTidyScanResponse = {
   state: 'complete' | 'failed' | 'pending' | 'scanning'
   title: string
   windows: number
+}
+
+export type KnowledgeFsTidyDocumentProgressResponse = {
+  complete: number
+  failed: number
+  pending: number
+  scanning: number
+}
+
+export type KnowledgeFsTidyFindingCountResponse = {
+  count: number
+  kind: 'conflict' | 'duplicate' | 'similar'
+  status: 'disabled' | 'dismissed' | 'open' | 'outdated' | 'reviewed'
 }
 
 export type KnowledgeFsTraceResponse = {
@@ -6012,7 +6033,8 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTidyFindingsData = {
   }
   query?: {
     cursor?: string
-    status?: 'disabled' | 'dismissed' | 'open' | 'reviewed'
+    kind?: 'conflict' | 'duplicate' | 'similar'
+    status?: 'disabled' | 'dismissed' | 'open' | 'outdated' | 'reviewed'
   }
   url: '/knowledge-fs/spaces/{control_space_id}/tidy/findings'
 }
@@ -6097,7 +6119,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTidyScansData = {
   }
   query?: {
     cursor?: string
-    limit?: number
+    state?: 'complete' | 'failed' | 'pending' | 'scanning'
   }
   url: '/knowledge-fs/spaces/{control_space_id}/tidy/scans'
 }
@@ -6173,6 +6195,33 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdTidySettingsResponses = {
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse =
   PatchKnowledgeFsSpacesByControlSpaceIdTidySettingsResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdTidySettingsResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTidySummaryData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/tidy/summary'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTidySummaryErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | KnowledgeFsSpaceNotFoundError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTidySummaryError =
+  GetKnowledgeFsSpacesByControlSpaceIdTidySummaryErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTidySummaryErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponses = {
+  200: KnowledgeFsTidySummaryResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesData = {
   body?: never

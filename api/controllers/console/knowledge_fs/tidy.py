@@ -16,7 +16,6 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
-from services.knowledge_fs.product_dto import KnowledgeFSCursorQuery
 from services.knowledge_fs.tidy_dto import (
     KnowledgeFSTidyActionPayload,
     KnowledgeFSTidyFindingListResponse,
@@ -24,16 +23,23 @@ from services.knowledge_fs.tidy_dto import (
     KnowledgeFSTidyFindingResponse,
     KnowledgeFSTidyRetryResponse,
     KnowledgeFSTidyScanListResponse,
+    KnowledgeFSTidyScanQuery,
     KnowledgeFSTidySettingsPayload,
     KnowledgeFSTidySettingsResponse,
+    KnowledgeFSTidySummaryResponse,
 )
 
 register_schema_models(
-    console_ns, KnowledgeFSTidySettingsPayload, KnowledgeFSTidyActionPayload, KnowledgeFSTidyFindingQuery
+    console_ns,
+    KnowledgeFSTidySettingsPayload,
+    KnowledgeFSTidyActionPayload,
+    KnowledgeFSTidyFindingQuery,
+    KnowledgeFSTidyScanQuery,
 )
 register_response_schema_models(
     console_ns,
     KnowledgeFSTidySettingsResponse,
+    KnowledgeFSTidySummaryResponse,
     KnowledgeFSTidyFindingResponse,
     KnowledgeFSTidyFindingListResponse,
     KnowledgeFSTidyScanListResponse,
@@ -74,6 +80,23 @@ class KnowledgeFSTidySettingsApi(Resource):
         return dump_response(KnowledgeFSTidySettingsResponse, result)
 
 
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/tidy/summary")
+class KnowledgeFSTidySummaryApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
+    @console_ns.response(200, "Tidy result", console_ns.models[KnowledgeFSTidySummaryResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        """Validate admitted input, forward scoped operation, and preserve upstream errors."""
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.get_tidy_summary(
+            tenant_id=tenant_id, account_id=actor_id, control_space_id=control_space_id
+        )
+        return dump_response(KnowledgeFSTidySummaryResponse, result)
+
+
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/tidy/findings")
 class KnowledgeFSTidyFindingsApi(Resource):
     @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
@@ -97,7 +120,7 @@ class KnowledgeFSTidyFindingsApi(Resource):
 class KnowledgeFSTidyScansApi(Resource):
     @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(200, "Tidy result", console_ns.models[KnowledgeFSTidyScanListResponse.__name__])
-    @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSTidyScanQuery))
     @setup_required
     @login_required
     @account_initialization_required
@@ -105,9 +128,9 @@ class KnowledgeFSTidyScansApi(Resource):
     def get(self, control_space_id: str):
         """Validate admitted input, forward scoped operation, and preserve upstream errors."""
         actor_id, tenant_id = _actor()
-        query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
+        query = KnowledgeFSTidyScanQuery.model_validate(request.args.to_dict())
         result = _console_services().facade.list_tidy_scans(
-            tenant_id=tenant_id, account_id=actor_id, control_space_id=control_space_id, cursor=query.cursor
+            tenant_id=tenant_id, account_id=actor_id, control_space_id=control_space_id, query=query
         )
         return dump_response(KnowledgeFSTidyScanListResponse, result)
 
