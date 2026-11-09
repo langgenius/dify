@@ -318,8 +318,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                                 stopped_agent_message = saved_message
                         else:
                             saved_message = self._save_message(session=session)
-                        entity = self._application_generate_entity
-                        if isinstance(entity, ChatAppGenerateEntity) and entity.web_chat_actor is not None:
+                        if self._requires_web_chat_ownership_check():
                             completed_chat_message = saved_message
                         session.commit()
                     if completed_chat_message is not None:
@@ -438,13 +437,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         :return:
         """
         entity = self._application_generate_entity
-        actor = entity.web_chat_actor if isinstance(entity, ChatAppGenerateEntity) else None
-        if actor is not None:
+        check_owner = self._requires_web_chat_ownership_check()
+        if check_owner:
             require_web_message_owner(
                 session,
-                tenant_id=actor.tenant_id,
-                app_id=actor.app_id,
-                end_user_id=actor.end_user_id,
+                tenant_id=entity.app_config.tenant_id,
+                app_id=entity.app_config.app_id,
+                end_user_id=entity.user_id,
                 message_id=self._message_id,
             )
         llm_result = self._task_state.llm_result
@@ -504,7 +503,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             metadata["agent_stop_requested"] = True
         message.message_metadata = json.dumps(metadata, ensure_ascii=False)
 
-        if not agent_stop_requested and actor is None:
+        if not agent_stop_requested and not check_owner:
             message_was_created.send(
                 message,
                 application_generate_entity=self._application_generate_entity,

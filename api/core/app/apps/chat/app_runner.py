@@ -4,11 +4,13 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.chat.app_config_manager import ChatAppConfig
 from core.app.entities.app_invoke_entities import (
     ChatAppGenerateEntity,
+    InvokeFrom,
     get_credit_usage_app_type,
     get_credit_usage_created_by,
 )
@@ -82,10 +84,15 @@ class ChatAppRunner(AppRunner):
                 model=application_generate_entity.model_conf.model,
             )
 
+            fence_history = (
+                application_generate_entity.invoke_from == InvokeFrom.WEB_APP
+                and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            )
             memory = TokenBufferMemory(
                 conversation=conversation,
                 model_instance=model_instance,
-                web_actor=application_generate_entity.web_chat_actor,
+                tenant_id=app_config.tenant_id if fence_history else None,
+                end_user_id=application_generate_entity.user_id if fence_history else None,
             )
 
         # organize all inputs and template to prompt messages
@@ -257,4 +264,5 @@ class ChatAppRunner(AppRunner):
             message_id=message.id,
             user_id=application_generate_entity.user_id,
             tenant_id=app_config.tenant_id,
+            app_id=app_config.app_id,
         )

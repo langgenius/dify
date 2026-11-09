@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     EasyUIBasedAppGenerateEntity,
@@ -222,6 +222,7 @@ class AppRunner:
         message_id: str | None = None,
         user_id: str | None = None,
         tenant_id: str | None = None,
+        app_id: str | None = None,
     ):
         """
         Handle invoke result
@@ -232,6 +233,7 @@ class AppRunner:
         :param message_id: message id for multimodal output
         :param user_id: user id for multimodal output
         :param tenant_id: tenant id for multimodal output
+        :param app_id: original Chatbot app for fenced attachments; None keeps legacy callers unchanged
         :return:
         """
         match invoke_result:
@@ -248,6 +250,7 @@ class AppRunner:
                     message_id=message_id,
                     user_id=user_id,
                     tenant_id=tenant_id,
+                    app_id=app_id,
                 )
             case _:
                 raise NotImplementedError(f"unsupported invoke result type: {type(invoke_result)}")
@@ -282,6 +285,7 @@ class AppRunner:
         message_id: str | None = None,
         user_id: str | None = None,
         tenant_id: str | None = None,
+        app_id: str | None = None,
     ):
         """
         Handle invoke result
@@ -291,6 +295,7 @@ class AppRunner:
         :param message_id: message id for multimodal output
         :param user_id: user id for multimodal output
         :param tenant_id: tenant id for multimodal output
+        :param app_id: original Chatbot app for fenced attachments; None keeps legacy callers unchanged
         :return:
         """
         model: str = ""
@@ -324,6 +329,7 @@ class AppRunner:
                                                     user_id=user_id,
                                                     tenant_id=tenant_id,
                                                     queue_manager=queue_manager,
+                                                    app_id=app_id,
                                                 )
                                                 session.commit()
                                             if message_file_id:
@@ -380,6 +386,8 @@ class AppRunner:
         tenant_id: str,
         queue_manager: AppQueueManager,
         session: Session,
+        *,
+        app_id: str | None = None,
     ) -> str | None:
         """
         Handle multimodal image content from LLM response.
@@ -390,6 +398,7 @@ class AppRunner:
         :param user_id: user id
         :param tenant_id: tenant id
         :param queue_manager: queue manager
+        :param app_id: original Chatbot app for fenced attachments; None keeps legacy callers unchanged
         :return:
         """
         _logger.info("Handling multimodal image content for message %s", message_id)
@@ -440,13 +449,16 @@ class AppRunner:
             _logger.exception("Failed to save image file")
             return None
 
-        if isinstance(queue_manager, MessageBasedAppQueueManager) and queue_manager.web_chat_actor is not None:
-            actor = queue_manager.web_chat_actor
+        if (
+            app_id is not None
+            and queue_manager.invoke_from == InvokeFrom.WEB_APP
+            and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+        ):
             require_web_message_owner(
                 session,
-                tenant_id=actor.tenant_id,
-                app_id=actor.app_id,
-                end_user_id=actor.end_user_id,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                end_user_id=user_id,
                 message_id=message_id,
             )
 

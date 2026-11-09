@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import UUID_NIL
-from context.web_chat import WebChatActor
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -195,9 +194,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                     else UUID_NIL
                 ),
                 user_id=user.id,
-                web_chat_actor=WebChatActor(app_model.tenant_id, app_model.id, user.id)
-                if invoke_from == InvokeFrom.WEB_APP and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
-                else None,
                 invoke_from=invoke_from,
                 extras=extras,
                 trace_scope=trace_scope,
@@ -219,7 +215,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 conversation_id=conversation.id,
                 app_mode=conversation.mode,
                 message_id=message.id,
-                web_chat_actor=application_generate_entity.web_chat_actor,
             )
 
             context = contextvars.copy_context()

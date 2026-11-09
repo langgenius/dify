@@ -1,6 +1,5 @@
 from typing import override
 
-from context.web_chat import WebChatActor
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.execution_coordinator import AppExecutionState
@@ -22,22 +21,13 @@ from models.model import AppMode
 
 class MessageBasedAppQueueManager(AppQueueManager):
     def __init__(
-        self,
-        task_id: str,
-        user_id: str,
-        invoke_from: InvokeFrom,
-        conversation_id: str,
-        app_mode: str,
-        message_id: str,
-        *,
-        web_chat_actor: WebChatActor | None = None,
+        self, task_id: str, user_id: str, invoke_from: InvokeFrom, conversation_id: str, app_mode: str, message_id: str
     ):
         super().__init__(task_id, user_id, invoke_from)
 
         self._conversation_id = str(conversation_id)
         self._app_mode = app_mode
         self._message_id = str(message_id)
-        self.web_chat_actor = web_chat_actor
 
     @override
     def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):

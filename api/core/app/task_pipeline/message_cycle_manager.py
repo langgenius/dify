@@ -12,6 +12,7 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
+    InvokeFrom,
 )
 from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
@@ -125,7 +126,12 @@ class MessageCycleManager:
         """
         with flask_app.app_context():
             entity = self._application_generate_entity
-            actor = entity.web_chat_actor if isinstance(entity, ChatAppGenerateEntity) else None
+            check_owner = (
+                isinstance(entity, ChatAppGenerateEntity)
+                and entity.app_config.app_mode == AppMode.CHAT
+                and entity.invoke_from == InvokeFrom.WEB_APP
+                and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            )
             with session_factory.create_session() as session:
                 # get conversation and message
                 stmt = select(Conversation).where(Conversation.id == conversation_id)
@@ -163,12 +169,12 @@ class MessageCycleManager:
                     name = query[:47] + "..." if len(query) > 50 else query
             try:
                 with session_factory.create_session() as session:
-                    if actor is not None:
+                    if check_owner:
                         require_web_message_access(
                             session,
-                            tenant_id=actor.tenant_id,
-                            app_id=actor.app_id,
-                            end_user_id=actor.end_user_id,
+                            tenant_id=entity.app_config.tenant_id,
+                            app_id=entity.app_config.app_id,
+                            end_user_id=entity.user_id,
                             conversation_id=conversation_id,
                         )
                     current = session.get(Conversation, conversation_id)

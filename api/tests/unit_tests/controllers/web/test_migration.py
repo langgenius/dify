@@ -19,7 +19,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType
-from context.web_chat import WebChatActor
 from controllers.console import bp as console_bp
 from controllers.console import wraps as console_wraps
 from controllers.console.auth import login as console_login
@@ -1244,7 +1243,6 @@ def chatbot_entity(harness: ClaimHarness) -> ChatAppGenerateEntity:
         user_id=guest.end_user_id,
         stream=True,
         invoke_from=AppInvokeFrom.WEB_APP,
-        web_chat_actor=WebChatActor(guest.tenant_id, guest.app_id, guest.end_user_id),
     )
 
 
@@ -1411,7 +1409,6 @@ def test_chatbot_claim_rejects_inflight_answer_and_error_writes(
         conversation_id=conversation_id,
         app_mode=AppMode.CHAT,
         message_id=message_id,
-        web_chat_actor=entity.web_chat_actor,
     )
     with base.sessions() as session:
         conversation = session.get(Conversation, conversation_id)
@@ -1468,7 +1465,6 @@ def test_chatbot_completion_releases_ownership_fence_before_notifying_subscriber
         conversation_id=conversation_id,
         app_mode=AppMode.CHAT,
         message_id=message_id,
-        web_chat_actor=entity.web_chat_actor,
     )
     with base.sessions() as session:
         conversation = session.get(Conversation, conversation_id)
@@ -1576,7 +1572,8 @@ def test_chatbot_claim_rejects_stale_message_creation_and_history_reads(harness:
         model_instance=ModelInstance(
             entity.model_conf.provider_model_bundle, entity.model_conf.model, credentials=entity.model_conf.credentials
         ),
-        web_actor=entity.web_chat_actor,
+        tenant_id=entity.app_config.tenant_id,
+        end_user_id=entity.user_id,
     )
     with pytest.raises(ConversationAccessDeniedError):
         memory.get_history_prompt_messages()
@@ -1589,9 +1586,6 @@ def test_chatbot_claim_rejects_stale_message_creation_and_history_reads(harness:
         )
     account_entity = chatbot_entity(harness)
     account_entity.user_id = harness.account.end_user_id
-    account_entity.web_chat_actor = WebChatActor(
-        harness.account.tenant_id, harness.account.app_id, harness.account.end_user_id
-    )
     with base.sessions() as session:
         current = session.get(Conversation, conversation_id)
         assert current is not None
@@ -1625,7 +1619,6 @@ def test_chatbot_generated_attachment_cannot_be_added_after_claim(
         conversation_id=conversation_id,
         app_mode=AppMode.CHAT,
         message_id=message_id,
-        web_chat_actor=entity.web_chat_actor,
     )
 
     def save_after_claim(_key: str, _data: bytes) -> None:
@@ -1644,6 +1637,7 @@ def test_chatbot_generated_attachment_cannot_be_added_after_claim(
             tenant_id=base.context.tenant_id,
             queue_manager=queue,
             session=session,
+            app_id=entity.app_config.app_id,
         )
     with base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(MessageFile)) == 0

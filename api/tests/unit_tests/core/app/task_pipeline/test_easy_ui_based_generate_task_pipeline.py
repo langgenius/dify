@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Generator, Iterator, Sequence
+from collections.abc import Callable, Generator, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -785,6 +785,33 @@ def _set_queue_events(
     events: Sequence[MessageQueueMessage | WorkflowQueueMessage],
 ) -> None:
     cast(_FakeQueueManager, pipeline.queue_manager).set_events(list(events))
+
+
+@pytest.mark.parametrize(
+    ("app_mode", "invoke_from", "enabled", "expected"),
+    [
+        (AppMode.CHAT, InvokeFrom.WEB_APP, True, True),
+        (AppMode.CHAT, InvokeFrom.WEB_APP, False, False),
+        (AppMode.CHAT, InvokeFrom.SERVICE_API, True, False),
+        (AppMode.CHAT, InvokeFrom.DEBUGGER, True, False),
+        (AppMode.CHAT, InvokeFrom.EXPLORE, True, False),
+        (AppMode.AGENT, InvokeFrom.WEB_APP, True, False),
+        (AppMode.AGENT_CHAT, InvokeFrom.WEB_APP, True, False),
+        (AppMode.COMPLETION, InvokeFrom.WEB_APP, True, False),
+    ],
+)
+def test_web_chat_ownership_check_uses_original_execution_metadata(
+    app_mode: AppMode,
+    invoke_from: InvokeFrom,
+    enabled: bool,
+    expected: bool,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled)
+    pipeline, _queue = _make_pipeline(app_mode=app_mode)
+    pipeline._application_generate_entity.invoke_from = invoke_from
+
+    assert pipeline._requires_web_chat_ownership_check() is expected
 
 
 def _set_method(obj: object, name: str, value: object) -> None:

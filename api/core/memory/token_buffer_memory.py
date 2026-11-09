@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only, sessionmaker
 
-from context.web_chat import WebChatActor
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.file_access import DatabaseFileAccessController
 from core.model_manager import ModelInstance
@@ -147,11 +146,21 @@ class TokenBufferMemory:
         conversation: Conversation,
         model_instance: ModelInstance,
         *,
-        web_actor: WebChatActor | None = None,
+        tenant_id: str | None = None,
+        end_user_id: str | None = None,
     ) -> None:
+        """Keep explicit original Web identity only for migration-fenced history.
+
+        Supply both tenant_id and end_user_id for fenced reads, or omit both to
+        retain the legacy caller-owned session. An incomplete pair raises before
+        constructing memory; conversation ownership never supplies the caller ID.
+        """
+        if (tenant_id is None) != (end_user_id is None):
+            raise ValueError("Fenced history requires both tenant_id and end_user_id.")
         self.conversation = conversation
         self.model_instance = model_instance
-        self._web_actor = web_actor
+        self._tenant_id = tenant_id
+        self._end_user_id = end_user_id
 
     @staticmethod
     def _file_config(
@@ -349,8 +358,7 @@ class TokenBufferMemory:
         before reading history. Unenrolled callers retain their existing session
         semantics, including visibility of their own uncommitted App changes.
         """
-        actor = self._web_actor
-        if actor is None:
+        if self._end_user_id is None:
             session = db.session()
             history = self.load_history(
                 conversation=self.conversation,
@@ -359,12 +367,13 @@ class TokenBufferMemory:
                 message_limit=message_limit,
             )
         else:
+            assert self._tenant_id is not None
             with Session(db.engine, expire_on_commit=False) as session:
                 require_web_message_access(
                     session,
-                    tenant_id=actor.tenant_id,
-                    app_id=actor.app_id,
-                    end_user_id=actor.end_user_id,
+                    tenant_id=self._tenant_id,
+                    app_id=self.conversation.app_id,
+                    end_user_id=self._end_user_id,
                     conversation_id=self.conversation.id,
                 )
                 history = self.load_history(

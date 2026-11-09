@@ -7,7 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 
 from constants import UUID_NIL
 from context.connection_execution import ConnectionExecutionContext
-from context.web_chat import WebChatActor
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.credit_usage import (
     CreditUsageAppType,
@@ -255,9 +254,7 @@ class ChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerat
     Chat Application Generate Entity.
     """
 
-    web_chat_actor: WebChatActor | None = Field(
-        default=None, description="Original admitted Web actor; None keeps non-migrating executions unchanged."
-    )
+    pass
 
 
 class CompletionAppGenerateEntity(EasyUIBasedAppGenerateEntity):

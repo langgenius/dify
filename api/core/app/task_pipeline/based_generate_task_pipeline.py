@@ -5,10 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from clients.agent_backend.errors import AgentBackendError
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     ChatAppGenerateEntity,
+    InvokeFrom,
 )
 from core.app.entities.queue_entities import (
     QueueErrorEvent,
@@ -21,7 +23,7 @@ from core.errors.error import QuotaExceededError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
-from models.model import Message
+from models.model import AppMode, Message
 from repositories.conversation_access import require_web_message_owner
 
 logger = logging.getLogger(__name__)
@@ -72,13 +74,12 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
             return err
 
         entity = self._application_generate_entity
-        actor = entity.web_chat_actor if isinstance(entity, ChatAppGenerateEntity) else None
-        if actor is not None:
+        if self._requires_web_chat_ownership_check():
             require_web_message_owner(
                 session,
-                tenant_id=actor.tenant_id,
-                app_id=actor.app_id,
-                end_user_id=actor.end_user_id,
+                tenant_id=entity.app_config.tenant_id,
+                app_id=entity.app_config.app_id,
+                end_user_id=entity.user_id,
                 message_id=message_id,
             )
         stmt = select(Message).where(Message.id == message_id)
@@ -90,6 +91,20 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         message.status = MessageStatus.ERROR
         message.error = err_desc
         return err
+
+    def _requires_web_chat_ownership_check(self) -> bool:
+        """Select ordinary Web Chatbot fencing without duplicating caller identity.
+
+        Read only the original execution metadata and deployment gate. Agent
+        subclasses and other invocation sources retain their existing behavior.
+        """
+        entity = self._application_generate_entity
+        return (
+            isinstance(entity, ChatAppGenerateEntity)
+            and entity.app_config.app_mode == AppMode.CHAT
+            and entity.invoke_from == InvokeFrom.WEB_APP
+            and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+        )
 
     def _error_to_desc(self, e: Exception) -> str:
         """
