@@ -103,16 +103,28 @@ infrastructure, not moderated business entry points.
 ## Guarantees and trade-offs
 
 - Input checks precede model invocation and quota reservation. All prompt roles,
-  text parts of multimodal messages, and assistant tool arguments are inspected.
+  text parts of multimodal messages, and assistant tool arguments are inspected
+  as independent non-stream segments, so long prompts are fully covered without
+  sending one oversized moderation request.
 - Opaque Agent gateway dictionaries are inspected through validated copies. The
   original payload and provider-specific extension fields are forwarded unchanged.
 - Output checks inspect completion text, tool arguments, and native structured
   payloads even when their message text is empty. Binary image, audio,
   video, and document content is not inspected by these text moderation backends.
-- With output moderation enabled, streaming buffers the entire completion before
-  yielding original chunks. This detects violations split across chunks without
-  leaking unchecked prefixes, at the cost of first-token latency and memory
-  proportional to the completion. Input-only rules retain live streaming.
+- Non-stream output is checked in independent segments of
+  `MODERATION_NON_STREAM_SEGMENT_SIZE` characters. Every segment must pass before
+  the original result is returned.
+- Streaming output is buffered until it reaches
+  `MODERATION_STREAM_SEGMENT_SIZE` characters, then checked before its original
+  chunks are released. The final partial segment is also checked before release.
+  Provider chunks are kept intact, so a segment can exceed the configured threshold.
+  A later rejection stops the stream and preserves earlier delivered segments;
+  current model-level consumers cannot retract those bytes.
+- Segmentation is the moderation boundary: each segment is checked independently,
+  without carrying text across segment boundaries or rechecking the full document
+  at completion. Content requiring cross-segment context may not be detected.
+  Defaults are 2000 characters for input and non-stream output, and a 300-character
+  buffering threshold for streaming output.
 - Consumed model usage is settled before output checking, including rejected
   completions. A provider or moderation error is not an approval or a model retry.
 - Structured output automatically uses the policy of its model instance. Workflow

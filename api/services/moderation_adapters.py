@@ -235,23 +235,41 @@ def result_text(result: LLMResult) -> str:
 
 
 class LLMModerationGuard:
-    """Check complete model inputs and outputs before exposing a result to the caller.
+    """Check model inputs and segmented outputs before exposing them to the caller.
 
-    Streams are buffered in full so split keywords and cross-chunk violations
-    cannot leak unchecked prefixes. The guard owns and closes the provider stream.
-    Model invocation, including quota accounting, completes before output checks.
+    Non-streaming output checks all text segments before returning the original
+    result. Streaming output checks each independent threshold-sized segment
+    before yielding its chunks. Segments never reuse previously checked text. The
+    guard owns and closes the provider stream. Model quota accounting completes
+    before output checks; rejection never refunds completed model usage.
     """
 
     def __init__(
-        self, *, tenant_id: str, check: Callable[[str, ModerationPhase], None], check_input: bool, check_output: bool
+        self,
+        *,
+        tenant_id: str,
+        check: Callable[[str, ModerationPhase], None],
+        check_input: bool,
+        check_output: bool,
+        non_stream_segment_size: int | None = None,
+        stream_segment_size: int | None = None,
     ) -> None:
-        """Bind a nonempty tenant and phase enablement; disabled phases perform no inspection or I/O."""
+        """Bind a nonempty tenant, phase enablement, and positive segment limits.
+
+        None disables segmentation for that mode and preserves a single full-text
+        check. Disabled phases perform no inspection or I/O.
+        """
         if not tenant_id:
             raise ValueError("Moderation requires a tenant scope.")
+        for segment_size in (non_stream_segment_size, stream_segment_size):
+            if segment_size is not None and segment_size <= 0:
+                raise ValueError("Moderation segment sizes must be positive.")
         self._tenant_id = tenant_id
         self._check = check
         self._check_input = check_input
         self._check_output = check_output
+        self._non_stream_segment_size = non_stream_segment_size
+        self._stream_segment_size = stream_segment_size
 
     @property
     def tenant_id(self) -> str:
@@ -259,14 +277,16 @@ class LLMModerationGuard:
         return self._tenant_id
 
     def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
-        """Approve complete prompt text and tool arguments or raise before model and quota effects."""
+        """Approve every non-streaming input segment before model and quota effects."""
         if self._check_input:
-            self._check(prompt_text(prompt_messages), "input")
+            for segment in self._segments(prompt_text(prompt_messages), self._non_stream_segment_size):
+                self._check(segment, "input")
 
     def check_result(self, result: LLMResult) -> None:
-        """Approve completion and native structured payloads without mutation; disabled checks perform no I/O."""
+        """Approve every non-streaming output segment, including structured content, without mutation."""
         if self._check_output:
-            self._check(result_text(result), "output")
+            for segment in self._segments(result_text(result), self._non_stream_segment_size):
+                self._check(segment, "output")
 
     def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
         """Return the original approved result or a guarded stream, propagating all failures.
@@ -277,9 +297,62 @@ class LLMModerationGuard:
         if not self._check_output:
             return response
         if isinstance(response, Generator):
+            if self._stream_segment_size is not None:
+                return self._check_stream_segments(response)
             return self._check_stream(response)
         self.check_result(response)
         return response
+
+    def _segments(self, text: str, segment_size: int | None) -> Generator[str]:
+        """Yield independent text segments within a positive size, or all text when size is None."""
+        if segment_size is None or len(text) <= segment_size:
+            yield text
+            return
+        start = 0
+        while start < len(text):
+            end = min(start + segment_size, len(text))
+            yield text[start:end]
+            start = end
+
+    @staticmethod
+    def _stream_fragment(chunk: LLMResultChunk) -> str:
+        """Extract textual deltas while concatenating argument fragments across the stream."""
+        message = chunk.delta.message
+        parts = [_message_text(AssistantPromptMessage(content=message.content))]
+        parts.extend(tool.function.arguments for tool in message.tool_calls)
+        if isinstance(chunk, LLMStructuredOutput) and chunk.structured_output is not None:
+            parts.append(_structured_text(chunk))
+        return "".join(parts)
+
+    def _check_stream_segments(self, response: Generator[LLMResultChunk]) -> Generator[LLMResultChunk]:
+        """Check each independent segment before releasing its chunks; close the stream even on failure."""
+        segment_size = self._stream_segment_size
+        if segment_size is None:
+            raise ValueError("Streaming moderation requires a segment size.")
+        chunks: list[LLMResultChunk] = []
+        fragment_parts: list[str] = []
+        fragment_length = 0
+        try:
+            for chunk in response:
+                chunks.append(chunk)
+                fragment = self._stream_fragment(chunk)
+                fragment_parts.append(fragment)
+                fragment_length += len(fragment)
+                if fragment_length >= segment_size:
+                    text = "".join(fragment_parts)
+                    self._check(text, "output")
+                    yield from chunks
+                    chunks = []
+                    fragment_parts = []
+                    fragment_length = 0
+
+            if chunks:
+                text = "".join(fragment_parts)
+                if text:
+                    self._check(text, "output")
+                yield from chunks
+        finally:
+            response.close()
 
     def _check_stream(self, response: Generator[LLMResultChunk]) -> Generator[LLMResultChunk]:
         """Consume and close a stream, then yield its original chunks only after full approval."""

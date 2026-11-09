@@ -32,7 +32,13 @@ from models.base import TypeBase
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from services.api_based_extension_application_service import APIBasedExtensionInput
 from services.moderation_adapters import ExtensionModerationGateway, HostedOpenAIModerationGateway, LLMModerationGuard
-from services.moderation_service import ModerationPhase, ModerationRejectedError, ModerationRule, ModerationService
+from services.moderation_service import (
+    ModerationPhase,
+    ModerationRejectedError,
+    ModerationRule,
+    ModerationService,
+    ModerationVerdict,
+)
 from tests.helpers.unit.core.model_moderation_fixtures import (
     RecordingHostedModerationClient,
     RecordingQuotaModelInstance,
@@ -152,6 +158,163 @@ def test_native_structured_payload_is_checked_without_message_text(keyword_guard
     assert isinstance(response, Generator)
     with pytest.raises(ModerationRejectedError, match="Output blocked"):
         next(response)
+
+
+@pytest.mark.parametrize("phase", ["input", "output"])
+def test_non_stream_checks_independent_segments(phase: ModerationPhase) -> None:
+    checked: list[str] = []
+
+    def check(text: str, checked_phase: ModerationPhase) -> None:
+        assert checked_phase == phase
+        checked.append(text)
+
+    guard = LLMModerationGuard(
+        tenant_id="tenant-1",
+        check=check,
+        check_input=True,
+        check_output=True,
+        non_stream_segment_size=5,
+    )
+
+    if phase == "input":
+        guard.check_inputs([UserPromptMessage(content="abcdefghijk")])
+    else:
+        result = _result("abcdefghijk")
+        assert guard.check_output(result) is result
+    assert checked == ["abcde", "fghij", "k"]
+
+
+def test_streaming_releases_only_checked_segments() -> None:
+    events: list[str] = []
+
+    def check(text: str, phase: ModerationPhase) -> None:
+        assert phase == "output"
+        events.append(f"check:{text}")
+
+    def response() -> Generator[LLMResultChunk]:
+        events.append("provider:aa")
+        yield _chunk("aa")
+        events.append("provider:bb")
+        yield _chunk("bb")
+        events.append("provider:cc")
+        yield _chunk("cc")
+        events.append("provider:dd")
+        yield _chunk("dd")
+
+    guard = LLMModerationGuard(
+        tenant_id="tenant-1",
+        check=check,
+        check_input=False,
+        check_output=True,
+        stream_segment_size=4,
+    )
+    stream = guard.check_output(response())
+    assert isinstance(stream, Generator)
+
+    assert next(stream).delta.message.content == "aa"
+    assert events == ["provider:aa", "provider:bb", "check:aabb"]
+
+    rest = [chunk.delta.message.content for chunk in stream]
+    assert rest == ["bb", "cc", "dd"]
+    assert events == ["provider:aa", "provider:bb", "check:aabb", "provider:cc", "provider:dd", "check:ccdd"]
+
+
+@pytest.mark.parametrize("segment_size", [4, 10])
+def test_streaming_rejection_withholds_current_segment_and_closes_provider(segment_size: int) -> None:
+    events: list[str] = []
+
+    def check(text: str, phase: ModerationPhase) -> None:
+        events.append(f"check:{text}")
+        if "blocked" in text:
+            raise ModerationRejectedError(phase, "Output blocked")
+
+    def response() -> Generator[LLMResultChunk]:
+        try:
+            yield _chunk("a" * segment_size)
+            yield _chunk("blocked")
+        finally:
+            events.append("closed")
+
+    guard = LLMModerationGuard(
+        tenant_id="tenant-1",
+        check=check,
+        check_input=False,
+        check_output=True,
+        stream_segment_size=segment_size,
+    )
+    stream = guard.check_output(response())
+    assert isinstance(stream, Generator)
+
+    assert next(stream).delta.message.content == "a" * segment_size
+    with pytest.raises(ModerationRejectedError, match="Output blocked"):
+        next(stream)
+    assert [event for event in events if event != "closed"] == [f"check:{'a' * segment_size}", "check:blocked"]
+    assert events.count("closed") == 1
+
+
+def test_streaming_checks_segments_without_cross_segment_context() -> None:
+    checked: list[str] = []
+
+    def check(text: str, phase: ModerationPhase) -> None:
+        assert phase == "output"
+        checked.append(text)
+        if "blocked" in text:
+            raise ModerationRejectedError(phase, "Output blocked")
+
+    guard = LLMModerationGuard(
+        tenant_id="tenant-1",
+        check=check,
+        check_input=False,
+        check_output=True,
+        stream_segment_size=4,
+    )
+    chunks = [_chunk("xxbl"), _chunk("ocked")]
+    stream = guard.check_output(chunk for chunk in chunks)
+    assert isinstance(stream, Generator)
+
+    assert list(stream) == chunks
+    assert checked == ["xxbl", "ocked"]
+
+
+def test_bound_guard_uses_configured_nonstream_and_stream_segment_sizes(
+    config_overrides: Callable[..., None],
+) -> None:
+    calls: list[tuple[str, ModerationPhase]] = []
+
+    class RecordingGateway:
+        def check(
+            self, context: AppRequestContext, *, rule: ModerationRule, text: str, phase: ModerationPhase
+        ) -> ModerationVerdict:
+            del context, rule
+            calls.append((text, phase))
+            return ModerationVerdict(flagged=False, message="")
+
+    config_overrides(
+        MODERATION_NON_STREAM_SEGMENT_SIZE=5,
+        MODERATION_STREAM_SEGMENT_SIZE=4,
+    )
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id="tenant-1", app_id=""),
+        service=ModerationService(gateway=RecordingGateway()),
+        rule=ModerationRule(
+            type="openai_moderation",
+            config={
+                "inputs_config": {"enabled": False},
+                "outputs_config": {"enabled": True},
+            },
+        ),
+    )
+
+    guard.check_result(_result("abcdefghij"))
+    assert calls == [("abcde", "output"), ("fghij", "output")]
+
+    calls.clear()
+    stream = guard.check_output(item for item in [_chunk("aa"), _chunk("bb"), _chunk("cc"), _chunk("dd")])
+    assert isinstance(stream, Generator)
+    assert next(stream).delta.message.content == "aa"
+    assert calls == [("aabb", "output")]
+    assert [chunk.delta.message.content for chunk in stream] == ["bb", "cc", "dd"]
+    assert calls == [("aabb", "output"), ("ccdd", "output")]
 
 
 class ScopedCipher:
@@ -290,8 +453,10 @@ def test_platform_moderation_never_reserves_additional_user_credits(
     if instance.reservations:
         assert instance.reservations[0].state == ModelQuotaReservationState.COMMITTED
         assert len(instance.reservations[0].commits) == 1
-    assert len(client.calls) == (1 if blocked_phase == "input" else 2)
-    assert client.calls[0][5] == prompt.content
+    assert len(client.calls) == (2 if blocked_phase == "input" else 3)
+    assert client.calls[0][5] == "a" * 2000
+    if blocked_phase == "output":
+        assert client.calls[-1][5] == "blocked"
     assert all(call[4] == {"api_key": "platform-key"} for call in client.calls)
     assert all(call[2:4] == ("langgenius/openai", "openai") for call in client.calls)
     assert all(call[6] == plugin_unique_identifier for call in client.calls)

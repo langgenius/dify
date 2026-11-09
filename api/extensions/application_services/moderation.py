@@ -113,5 +113,10 @@ def build_llm_moderation_guard(
         service.check(context, rule=rule, text=text, phase=phase)
 
     return LLMModerationGuard(
-        tenant_id=context.tenant_id, check=check, check_input=inputs["enabled"], check_output=outputs["enabled"]
+        tenant_id=context.tenant_id,
+        check=check,
+        check_input=inputs["enabled"],
+        check_output=outputs["enabled"],
+        non_stream_segment_size=dify_config.MODERATION_NON_STREAM_SEGMENT_SIZE,
+        stream_segment_size=dify_config.MODERATION_STREAM_SEGMENT_SIZE,
     )

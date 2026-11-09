@@ -1177,6 +1177,16 @@ class ModerationConfig(BaseSettings):
         default=300,
     )
 
+    MODERATION_NON_STREAM_SEGMENT_SIZE: PositiveInt = Field(
+        description="Maximum characters checked per moderation request for input or non-streaming output",
+        default=2000,
+    )
+
+    MODERATION_STREAM_SEGMENT_SIZE: PositiveInt = Field(
+        description="Characters buffered before checking and delivering a streaming output segment",
+        default=300,
+    )
+
 
 class ToolConfig(BaseSettings):
     """
