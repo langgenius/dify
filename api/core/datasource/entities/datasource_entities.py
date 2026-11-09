@@ -255,9 +255,10 @@ class OnlineDocumentPage(BaseModel):
 
 class OnlineDocumentInfo(BaseModel):
     """
-    Online document info
+    Online document info. Optional workspace cursors survive plugin transport for paged previews.
     """
 
+    next_cursor: str | None = Field(None, description="Cursor for the next workspace preview page")
     workspace_id: str | None = Field(None, description="The workspace id")
     workspace_name: str | None = Field(None, description="The workspace name")
     workspace_icon: str | None = Field(None, description="The workspace icon")
