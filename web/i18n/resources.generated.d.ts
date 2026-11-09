@@ -1592,7 +1592,7 @@ export default interface Resources {
     'plansCommon.taxTip': 'Prices exclude applicable taxes, which may be added at checkout.'
     'plansCommon.teamMember': '{{count,number}} team member' | '{{count,number}} team members'
     'plansCommon.teamWorkspace': '{{count,number}} Team Workspace'
-    'plansCommon.title.description': "Select the plan that best fits your team's needs."
+    'plansCommon.title.description': 'Select the plan that best fits your team’s need.'
     'plansCommon.title.plans': 'plans'
     'plansCommon.triggerEvents.professional': '{{count,number}} trigger events / month'
     'plansCommon.triggerEvents.sandbox': '{{count,number}} Trigger Events'

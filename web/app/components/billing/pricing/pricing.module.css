@@ -43,7 +43,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: url('/pricing/background.png') -830px -806px / 3905.51px 2196.849px no-repeat;
+  background: url('/pricing/background.webp') -830px -806px / 3905.51px 2196.849px no-repeat;
   content: '';
   pointer-events: none;
 }
@@ -248,6 +248,7 @@
   flex: none;
   width: 4px;
   height: 7px;
+  background: radial-gradient(circle at 2px 5px, var(--pricing-blue) 2px, transparent 2px);
 }
 .featureLabel {
   flex: 1;
@@ -259,13 +260,7 @@
   width: 18px;
   height: 18px;
   margin: -4px;
-  color: #a6b0c5;
-}
-.featureInfo > span {
-  width: 10px;
-  height: 10px;
-  background: url('/pricing/imgInfo.svg') center / contain no-repeat;
-  mask-image: none;
+  color: #b9bece;
 }
 .footer {
   display: flex;

@@ -38,7 +38,7 @@ export function PricingFooter({ category }: { category: 'cloud' | 'self-hosted' 
           >
             {t(($) => $['plansCommon.comparePlanAndFeatures'], { ns: 'billing' })}
           </Link>
-          <img src="/pricing/imgArrowRightUpLine.svg" alt="" width={24} height={24} />
+          <span aria-hidden className="i-ri-arrow-right-up-line size-6" />
         </span>
       </div>
     </div>

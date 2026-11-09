@@ -7,7 +7,7 @@ export function CloudPlanFeature({ label, description }: { label: string; descri
 
   return (
     <li className={styles.feature}>
-      <img src="/pricing/imgDot.svg" alt="" className={styles.featureDot} />
+      <span aria-hidden className={styles.featureDot} />
       <span id={labelId} className={styles.featureLabel}>
         {label}
       </span>

@@ -30,7 +30,7 @@ export function PricingDialogContent() {
               className={styles.close}
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             >
-              <img src="/pricing/imgCloseLine.svg" alt="" width={20} height={20} />
+              <span aria-hidden className="i-ri-close-line size-5" />
             </IconButton>
           }
         />
