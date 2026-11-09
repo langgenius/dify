@@ -48,6 +48,9 @@ def _create_uuidv7_bytes(timestamp_ms: int, random_bytes: bytes) -> bytes:
         This function assumes the random_bytes parameter is exactly 10 bytes.
         The caller is responsible for providing appropriate random data.
     """
+    if not 0 <= timestamp_ms < (1 << 48):
+        raise ValueError(f"timestamp_ms must be a 48-bit non-negative integer, got {timestamp_ms}")
+
     # Create the 128-bit UUID structure
     uuid_bytes = bytearray(16)
 

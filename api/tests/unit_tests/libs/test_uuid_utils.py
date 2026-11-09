@@ -349,3 +349,25 @@ def test_uuidv7_boundary_edge_cases() -> None:
     assert isinstance(current_uuid, uuid.UUID)
     assert current_uuid.version == 7
     assert uuidv7_timestamp(current_uuid) == current_time
+
+
+def test_uuidv7_rejects_timestamp_above_48_bits() -> None:
+    """A timestamp that exceeds the 48-bit field must not be silently truncated."""
+    with pytest.raises(ValueError, match="48-bit"):
+        uuidv7(1 << 48)
+
+
+def test_uuidv7_rejects_negative_timestamp() -> None:
+    with pytest.raises(ValueError, match="48-bit"):
+        uuidv7(-1)
+
+
+def test_uuidv7_boundary_rejects_out_of_range_timestamp() -> None:
+    with pytest.raises(ValueError, match="48-bit"):
+        uuidv7_boundary(1 << 48)
+
+
+def test_uuidv7_max_48_bit_timestamp_round_trip() -> None:
+    """Regression: the largest valid 48-bit timestamp still round-trips."""
+    timestamp_ms = (1 << 48) - 1
+    assert uuidv7_timestamp(uuidv7(timestamp_ms)) == timestamp_ms
