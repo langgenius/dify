@@ -3,6 +3,7 @@ import queue
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from datetime import timedelta
+from time import monotonic
 from types import TracebackType
 from typing import Any, Self
 
@@ -208,6 +209,11 @@ class BaseSession[
         response contains an error. If a request read timeout is provided, it
         will take precedence over the session read timeout.
 
+        A configured timeout bounds the response wait with a monotonic deadline.
+        With neither timeout configured, polling continues without a deadline.
+        Timeout raises MCPConnectionError and removes the pending response queue;
+        it does not cancel execution on the remote server.
+
         Do not use this method to emit notifications! Use send_notification()
         instead.
         """
@@ -227,18 +233,23 @@ class BaseSession[
             )
 
             self._write_stream.put(SessionMessage(message=JSONRPCMessage(jsonrpc_request), metadata=metadata))
-            timeout = DEFAULT_RESPONSE_READ_TIMEOUT
+            timeout = None
             if request_read_timeout_seconds is not None:
                 timeout = request_read_timeout_seconds.total_seconds()
             elif self._session_read_timeout_seconds is not None:
                 timeout = self._session_read_timeout_seconds.total_seconds()
-            while True:
+            deadline = monotonic() + timeout if timeout is not None else None
+            response_or_error: JSONRPCResponse | JSONRPCError | HTTPStatusError | None = None
+            response_received = False
+            while not response_received:
+                remaining = deadline - monotonic() if deadline is not None else DEFAULT_RESPONSE_READ_TIMEOUT
+                if remaining <= 0:
+                    raise MCPConnectionError(ErrorData(code=408, message="Timed out waiting for MCP response"))
                 try:
-                    response_or_error = response_queue.get(timeout=timeout)
-                    break
+                    response_or_error = response_queue.get(timeout=min(DEFAULT_RESPONSE_READ_TIMEOUT, remaining))
+                    response_received = True
                 except queue.Empty:
                     self.check_receiver_status()
-                    continue
 
             match response_or_error:
                 case None:

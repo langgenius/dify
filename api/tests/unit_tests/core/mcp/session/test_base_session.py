@@ -177,7 +177,7 @@ def test_send_request_success(streams):
 
 
 @pytest.mark.timeout(5)
-def test_send_request_retry_loop_coverage(streams):
+def test_send_request_without_deadline_retries_polling(streams):
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
     request = MockRequest(method="test", params=MockRequestParams(name="world"))
@@ -197,8 +197,8 @@ def test_send_request_retry_loop_coverage(streams):
     t = threading.Thread(target=mock_delayed_response, daemon=True)
     t.start()
 
-    with session:
-        result = session.send_request(request, MockResult, request_read_timeout_seconds=timedelta(seconds=0.1))
+    with patch("core.mcp.session.base_session.DEFAULT_RESPONSE_READ_TIMEOUT", 0.05), session:
+        result = session.send_request(request, MockResult)
         assert result.result == "slow"
     t.join(timeout=1)
 
@@ -611,3 +611,51 @@ def test_send_request_session_timeout_retry_6(streams):
     with patch.object(session, "check_receiver_status", side_effect=[None, RuntimeError("timeout_broken")]):
         with pytest.raises(RuntimeError, match="timeout_broken"):
             session.send_request(request, MockResult)
+
+
+@pytest.mark.timeout(3)
+@pytest.mark.parametrize("request_timeout", [None, timedelta(seconds=0.05)])
+def test_send_request_deadline_expires_with_live_receiver(streams, request_timeout):
+    """A missing reply must not keep restarting the configured timeout."""
+    read_stream, write_stream = streams
+    session = MockSession(
+        read_stream,
+        write_stream,
+        ReceiveRequest,
+        ReceiveNotification,
+        read_timeout_seconds=timedelta(seconds=0.1),
+    )
+    with session:
+        with pytest.raises(MCPConnectionError, match="Timed out"):
+            session.send_request(MockRequest(), MockResult, request_read_timeout_seconds=request_timeout)
+        assert session._response_streams == {}
+        assert not session._receiver_future.done()
+
+
+@pytest.mark.timeout(3)
+def test_request_timeout_overrides_shorter_session_timeout(streams):
+    read_stream, write_stream = streams
+    session = MockSession(
+        read_stream,
+        write_stream,
+        ReceiveRequest,
+        ReceiveNotification,
+        read_timeout_seconds=timedelta(seconds=0),
+    )
+
+    def respond():
+        message = write_stream.get(timeout=1)
+        read_stream.put(
+            SessionMessage(
+                message=JSONRPCMessage(
+                    JSONRPCResponse(jsonrpc="2.0", id=message.message.root.id, result={"result": "ok"})
+                )
+            )
+        )
+
+    with ThreadPoolExecutor(max_workers=1) as executor, session:
+        reply = executor.submit(respond)
+        result = session.send_request(MockRequest(), MockResult, request_read_timeout_seconds=timedelta(seconds=1))
+        assert result.result == "ok"
+        reply.result(timeout=1)
+        assert session._response_streams == {}
