@@ -112,7 +112,6 @@ project-excludes = [
   "core/app/workflow/layers/test_observability.py",
   "core/callback_handler/test_workflow_tool_callback_handler.py",
   "core/datasource/entities/test_datasource_entities.py",
-  "core/extension/test_api_based_extension_requestor.py",
   "core/helper/test_ssrf_proxy.py",
   "core/llm_generator/output_parser/test_structured_output.py",
   "core/llm_generator/test_llm_generator.py",

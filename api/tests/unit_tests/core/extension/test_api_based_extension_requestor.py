@@ -7,13 +7,22 @@ import pytest
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from models.api_based_extension import APIBasedExtensionPoint
 
+RequestHandler = Callable[[httpx.Request], httpx.Response]
+InstalledClient = tuple[
+    list[httpx.Request],
+    list[tuple[dict[str, httpx.BaseTransport] | None, httpx.Timeout]],
+]
+InstallClient = Callable[[RequestHandler], InstalledClient]
+
 
 @pytest.fixture
-def install_client(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]):
+def install_client(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> InstallClient:
     config_overrides(SSRF_PROXY_HTTP_URL=None, SSRF_PROXY_HTTPS_URL=None)
     client_type = httpx.Client
 
-    def install(handler: Callable[[httpx.Request], httpx.Response]):
+    def install(handler: RequestHandler) -> InstalledClient:
         requests: list[httpx.Request] = []
         options: list[tuple[dict[str, httpx.BaseTransport] | None, httpx.Timeout]] = []
 
@@ -31,7 +40,7 @@ def install_client(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[.
     return install
 
 
-def test_request_success(install_client):
+def test_request_success(install_client: InstallClient) -> None:
     requests, _ = install_client(lambda _: httpx.Response(200, json={"result": "success"}))
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
     result = requestor.request(APIBasedExtensionPoint.PING, {"foo": "bar"})
@@ -47,8 +56,8 @@ def test_request_success(install_client):
 
 
 def test_request_with_ssrf_proxy(
-    install_client, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-):
+    install_client: InstallClient, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
     config_overrides(SSRF_PROXY_HTTP_URL="http://proxy:8080", SSRF_PROXY_HTTPS_URL="https://proxy:8081")
     _, options = install_client(lambda _: httpx.Response(200, json={"result": "success"}))
     proxies: list[str] = []
@@ -71,7 +80,9 @@ def test_request_with_ssrf_proxy(
     assert timeout is requestor.timeout
 
 
-def test_request_with_only_one_proxy_config(install_client, config_overrides: Callable[..., None]):
+def test_request_with_only_one_proxy_config(
+    install_client: InstallClient, config_overrides: Callable[..., None]
+) -> None:
     config_overrides(SSRF_PROXY_HTTP_URL="http://proxy:8080", SSRF_PROXY_HTTPS_URL=None)
     _, options = install_client(lambda _: httpx.Response(200, json={"result": "success"}))
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
@@ -81,7 +92,7 @@ def test_request_with_only_one_proxy_config(install_client, config_overrides: Ca
     assert options[0][0] is None
 
 
-def test_request_timeout(install_client):
+def test_request_timeout(install_client: InstallClient) -> None:
     original = httpx.TimeoutException("timeout")
 
     def fail(_request: httpx.Request) -> httpx.Response:
@@ -95,7 +106,7 @@ def test_request_timeout(install_client):
     assert exc_info.value.__cause__ is original
 
 
-def test_request_connection_error(install_client):
+def test_request_connection_error(install_client: InstallClient) -> None:
     original = httpx.RequestError("error")
 
     def fail(_request: httpx.Request) -> httpx.Response:
@@ -109,14 +120,14 @@ def test_request_connection_error(install_client):
     assert exc_info.value.__cause__ is original
 
 
-def test_request_error_status_code(install_client):
+def test_request_error_status_code(install_client: InstallClient) -> None:
     install_client(lambda _: httpx.Response(404, text="Not Found"))
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
     with pytest.raises(ValueError, match="request error, status_code: 404, content: Not Found"):
         requestor.request(APIBasedExtensionPoint.PING, {})
 
 
-def test_request_error_status_code_long_content(install_client):
+def test_request_error_status_code_long_content(install_client: InstallClient) -> None:
     install_client(lambda _: httpx.Response(500, text="A" * 200))
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
     expected_content = "A" * 100
