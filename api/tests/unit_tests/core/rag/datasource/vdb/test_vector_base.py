@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import override
+from typing import Any, cast, override
 
 import pytest
 
@@ -77,6 +77,7 @@ def test_filter_duplicate_texts_removes_existing_docs() -> None:
     """Given valid document metadata, retain new documents and remove existing IDs."""
     vector = _DummyVector("collection_1", existing_ids={"dup"})
     docs = [
+        Document.model_construct(page_content="keep-no-meta", metadata=cast(dict[str, Any], None)),
         Document(page_content="keep-no-doc-id", metadata={"document_id": "d1"}),
         Document(page_content="remove-dup", metadata={"doc_id": "dup"}),
         Document(page_content="keep-unique", metadata={"doc_id": "unique"}),
@@ -84,7 +85,7 @@ def test_filter_duplicate_texts_removes_existing_docs() -> None:
 
     filtered = vector._filter_duplicate_texts(docs)
 
-    assert [d.page_content for d in filtered] == ["keep-no-doc-id", "keep-unique"]
+    assert [d.page_content for d in filtered] == ["keep-no-meta", "keep-no-doc-id", "keep-unique"]
 
 
 def test_get_uuids_and_collection_name_property() -> None:
@@ -92,6 +93,7 @@ def test_get_uuids_and_collection_name_property() -> None:
     vector = _DummyVector("collection_1")
     docs = [
         Document(page_content="a", metadata={"doc_id": "id-1"}),
+        Document.model_construct(page_content="b", metadata=cast(dict[str, Any], None)),
         Document(page_content="c", metadata={"document_id": "d-1"}),
         Document(page_content="d", metadata={"doc_id": "id-2"}),
     ]
