@@ -129,7 +129,9 @@ const AppUserAuth = ({
     consoleQuery.oauth.plugin.byProvider.tool.authorizationUrl.get.mutationOptions({
       onSuccess: ({ authorization_url }) => {
         if (!authorization_url) return
-        openOAuthPopup(authorization_url, authorization.invalidPluginCredentialInfo)
+        openOAuthPopup(authorization_url, () => {
+          void authorization.invalidPluginCredentialInfo()
+        })
         setVisibilityOpen(false)
       },
     }),

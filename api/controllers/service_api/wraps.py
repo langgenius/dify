@@ -39,6 +39,7 @@ from services.api_token_service import (
     fetch_token_with_single_flight,
     record_token_usage,
 )
+from services.app_definition_query_service import ServiceApiEndUserAuthError
 from services.app_service import AppService
 from services.auth.resource_access_token_contracts import DatasetServiceApiGrant, is_resource_access_token
 from services.feature_service import FeatureService
@@ -194,7 +195,18 @@ def validate_app_token[**P, R](
 
 
 def resolve_service_api_end_user(*, tenant_id: str, app_id: str, fetch_user_arg: FetchUserArg) -> EndUser:
-    """Share user parsing, provisioning and Flask login identity across API admission paths."""
+    """Resolve an admitted app's API user only when its publication permits impersonation.
+
+    Both admission paths reject personal tool authentication with 403 before
+    parsing user input, provisioning an EndUser, or updating Flask login state.
+    On success, retain the existing user parsing, provisioning and login behavior.
+    """
+    services = application_services()
+    try:
+        services.app_definitions.require_service_api_end_user_access(tenant_id, app_id)
+    except ServiceApiEndUserAuthError as error:
+        raise Forbidden(str(error)) from error
+
     user_id = None
     match fetch_user_arg.fetch_from:
         case WhereisUserArg.QUERY:
@@ -209,7 +221,7 @@ def resolve_service_api_end_user(*, tenant_id: str, app_id: str, fetch_user_arg:
     if user_id:
         user_id = str(user_id)
 
-    end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(tenant_id, app_id, user_id)
+    end_user = services.app_scoped_end_users.commands.get_or_create_end_user(tenant_id, app_id, user_id)
     current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
     user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
     return end_user

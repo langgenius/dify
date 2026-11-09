@@ -130,7 +130,7 @@ function ChatSession({ onComplete, onSwitch }: { onComplete: () => void; onSwitc
       >
         Change connection
       </button>
-      <button onClick={state.retry}>Refresh requirements</button>
+      <button onClick={() => void state.retry()}>Refresh requirements</button>
       <p>{answer}</p>
       <output aria-label="Selected connection">{state.selections.tool ?? 'none'}</output>
       <output aria-label="Connection error">{state.error?.message ?? 'none'}</output>

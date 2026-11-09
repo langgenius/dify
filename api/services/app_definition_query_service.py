@@ -12,6 +12,7 @@ from services.end_user_connections.errors import ConnectionError
 from services.entities.tool_connection_entities import ConnectionRevisions, ToolConnectionRequirement
 from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
 from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
+from services.workflow.tool_authorization import requires_end_user_connections
 
 
 class AppParameterConfig(NamedTuple):
@@ -96,6 +97,15 @@ class AppDefinitionQuery(Protocol):
         """Return the active workspace's owner ID, or None when that identity is unavailable."""
         ...
 
+    def get_published_workflow_graph(self, tenant_id: str, app_id: str) -> Mapping[str, Any] | None:
+        """Return the app's current published graph after closing the scoped read session.
+
+        Match both app and workflow ownership. Return None for non-workflow apps
+        or when no owned, non-draft publication is selected. Never read a draft
+        or another publication merely because it belongs to the same app.
+        """
+        ...
+
     def get_published_parameter_config(
         self,
         app_id: str,
@@ -118,6 +128,24 @@ class AppDefinitionUnavailableError(ValueError):
 
 class AppDefinitionNotPublishedError(AppDefinitionUnavailableError):
     """Raised when a public Agent App has not been published."""
+
+
+class ServiceApiEndUserAuthError(ValueError):
+    """Service API user identifiers cannot authenticate personal tool access."""
+
+
+def require_service_api_end_user_workflow_access(graph: Mapping[str, Any]) -> None:
+    """Check a server-selected workflow graph before Service API execution.
+
+    Reject any declared personal tool authentication, including incomplete
+    settings, with ServiceApiEndUserAuthError. Otherwise return without changing
+    state or resolving credentials. Callers must use the graph they will execute,
+    including after version selection or reconstruction across task boundaries.
+    """
+    if requires_end_user_connections(graph):
+        raise ServiceApiEndUserAuthError(
+            "Service API end-user access is unavailable for apps that require EndUser authentication."
+        )
 
 
 _API_TOOL_FALLBACK_ICON = {"background": "#252525", "content": "\ud83d\ude01"}
@@ -167,6 +195,19 @@ class AppDefinitionQueryService:
     def get_service_api_owner_id(self, tenant_id: str) -> str | None:
         """Return the active workspace's legacy owner identity; None means unavailable."""
         return self._definitions.get_service_api_owner_id(tenant_id)
+
+    def require_service_api_end_user_access(self, tenant_id: str, app_id: str) -> None:
+        """Check an admitted app before resolving any Service API EndUser identity.
+
+        Reject a published graph declaring personal tool authentication, including
+        incomplete settings, with ServiceApiEndUserAuthError. Otherwise return
+        without provisioning users or accessing personal credentials. Draft-only
+        requirements do not affect the published API; app/account-only operations
+        do not call this policy. Repository failures propagate without admission.
+        """
+        graph = self._definitions.get_published_workflow_graph(tenant_id, app_id)
+        if graph is not None:
+            require_service_api_end_user_workflow_access(graph)
 
     def get_mode(self, app_id: str) -> str:
         mode = self._definitions.get_mode(app_id)

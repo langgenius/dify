@@ -199,6 +199,29 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             )
 
     @override
+    def get_published_workflow_graph(self, tenant_id: str, app_id: str) -> Mapping[str, Any] | None:
+        """Read only the selected, owned publication and return its graph without an open session.
+
+        Return None when no workflow-backed publication matches the app/tenant
+        scope. Drafts and foreign app/workspace references never supply a graph;
+        database and graph decoding failures propagate without changing state.
+        """
+        with self._session_factory() as session:
+            workflow = session.scalar(
+                select(Workflow)
+                .join(App, App.workflow_id == Workflow.id)
+                .where(
+                    App.id == app_id,
+                    App.tenant_id == tenant_id,
+                    App.mode.in_([AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]),
+                    Workflow.app_id == app_id,
+                    Workflow.tenant_id == tenant_id,
+                    Workflow.version != Workflow.VERSION_DRAFT,
+                )
+            )
+            return workflow.graph_dict if workflow is not None else None
+
+    @override
     def get_mode(self, app_id: str) -> str | None:
         with self._session_factory() as session:
             mode = session.scalar(select(App.mode).where(App.id == app_id).limit(1))

@@ -53,7 +53,7 @@ const mocks = vi.hoisted(() => ({
   setOAuthClient: vi.fn(),
   deleteOAuthClient: vi.fn(),
   invalidOAuthClient: vi.fn(),
-  openOAuthPopup: vi.fn(),
+  openOAuthPopup: vi.fn<(typeof import('@/hooks/use-oauth'))['openOAuthPopup']>(),
 }))
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: (...args: unknown[]) => mocks.consoleCall(...args) },
@@ -147,6 +147,7 @@ const saveCustomClient = async (user: ReturnType<typeof userEvent.setup>) => {
 
 describe('AppUserAuth', () => {
   beforeEach(() => {
+    mocks.openOAuthPopup.mockReset()
     serverClient = createClientSchema()
     mocks.consoleCall.mockImplementation(async (path: string[]) => {
       if (path.includes('clientSchema')) return serverClient
@@ -396,6 +397,10 @@ describe('AppUserAuth', () => {
   )
 
   it('saves and authorizes through the real Workspace OAuth flow without creating a mock test credential', async () => {
+    mocks.openOAuthPopup.mockImplementation((_url, callback) => {
+      callback({ type: 'oauth_callback', success: true, connectionId: 'workspace-oauth' })
+      return null
+    })
     const user = userEvent.setup()
     const onChange = vi.fn<(draft: AppUserAuthDraft) => void>()
     render(<ControlledHarness initialDraft={createAppUserAuthDraft()} onChange={onChange} />)
@@ -408,12 +413,15 @@ describe('AppUserAuth', () => {
     )
     await user.click(within(clientDialog).getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
     const permissions = await screen.findByRole('dialog', { name: 'plugin.auth.whoCanUse' })
+    const refreshCount = vi.mocked(authorization.invalidPluginCredentialInfo).mock.calls.length
     await user.click(within(permissions).getByRole('button', { name: 'plugin.auth.authorize' }))
     await waitFor(() =>
-      expect(mocks.openOAuthPopup).toHaveBeenCalledWith(
-        'https://example.com/authorize',
-        authorization.invalidPluginCredentialInfo,
-      ),
+      expect(authorization.invalidPluginCredentialInfo).toHaveBeenCalledTimes(refreshCount + 1),
+    )
+    expect(authorization.invalidPluginCredentialInfo).toHaveBeenLastCalledWith()
+    expect(mocks.openOAuthPopup).toHaveBeenCalledWith(
+      'https://example.com/authorize',
+      expect.any(Function),
     )
     expect(mocks.consoleCall).toHaveBeenCalledWith(
       ['oauth', 'plugin', 'byProvider', 'tool', 'authorizationUrl', 'get'],
