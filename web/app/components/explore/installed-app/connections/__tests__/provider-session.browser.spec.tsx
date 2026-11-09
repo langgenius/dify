@@ -2,9 +2,14 @@ import type {
   InstalledAppParametersResponse,
   InstalledConnectionPreflightPayload,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { WorkflowRunSnapshot } from '@/app/components/share/text-generation/workflow-run-configuration'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { render } from 'vitest-browser-react'
+import {
+  captureWorkflowRunConfiguration,
+  isWorkflowRunSnapshotCurrent,
+} from '@/app/components/share/text-generation/workflow-run-configuration'
 import { createDeferred } from '@/test/deferred'
 import { createTestQueryClient } from '@/test/query-client'
 import { InstalledAppConnectionsProvider } from '../provider'
@@ -130,7 +135,13 @@ function ChatSession({ onComplete, onSwitch }: { onComplete: () => void; onSwitc
       >
         Change connection
       </button>
-      <button onClick={state.retry}>Refresh requirements</button>
+      <button
+        onClick={() => {
+          void state.retry()
+        }}
+      >
+        Refresh requirements
+      </button>
       <p>{answer}</p>
       <output aria-label="Selected connection">{state.selections.tool ?? 'none'}</output>
       <output aria-label="Connection error">{state.error?.message ?? 'none'}</output>
@@ -220,3 +231,96 @@ it.each(['success', 'failure'] as const)(
       .toHaveTextContent('none')
   },
 )
+
+function CaptureRun({ onCapture }: { onCapture: (snapshot: WorkflowRunSnapshot) => void }) {
+  const state = useInstalledAppConnections()
+  return (
+    <button
+      disabled={!state.canRun}
+      onClick={() => {
+        const snapshot = captureWorkflowRunConfiguration(state, state)
+        if (snapshot) onCapture(snapshot)
+      }}
+    >
+      Queue workflow run
+    </button>
+  )
+}
+
+function ModalWorkflowApp() {
+  const [client] = useState(createTestQueryClient)
+  const [open, setOpen] = useState(true)
+  const [conversationId, setConversationId] = useState<string>()
+  const [snapshot, setSnapshot] = useState<WorkflowRunSnapshot>()
+  const [snapshotStatus, setSnapshotStatus] = useState('none')
+  return (
+    <QueryClientProvider client={client}>
+      {open && (
+        <InstalledAppConnectionsProvider
+          installedAppId="installed-app"
+          conversationId={conversationId}
+        >
+          <CaptureRun onCapture={setSnapshot} />
+          <ChatSession
+            onComplete={() => {}}
+            onSwitch={() => setConversationId('another-conversation')}
+          />
+        </InstalledAppConnectionsProvider>
+      )}
+      <button onClick={() => setOpen(false)}>Close app</button>
+      <button
+        onClick={() => {
+          if (snapshot)
+            setSnapshotStatus(isWorkflowRunSnapshotCurrent(snapshot) ? 'current' : 'expired')
+        }}
+      >
+        Check queued run
+      </button>
+      <output aria-label="Queued run status">{snapshotStatus}</output>
+    </QueryClientProvider>
+  )
+}
+
+it('keeps homepage modal runs valid only while their provider conversation and revision remain active', async () => {
+  window.history.replaceState({}, '', '/')
+  const screen = await render(<ModalWorkflowApp />)
+  const queue = screen.getByRole('button', { name: 'Queue workflow run' })
+  const check = screen.getByRole('button', { name: 'Check queued run' })
+  const status = screen.getByRole('status', { name: 'Queued run status' })
+
+  await expect.element(queue).toBeEnabled()
+  await queue.click()
+  await check.click()
+  await expect.element(status).toHaveTextContent('current')
+
+  await screen.getByRole('button', { name: 'Switch conversation' }).click()
+  await expect
+    .poll(() =>
+      mocks.configuration.mock.calls.some(
+        ([input]) => input.query.conversation_id === 'another-conversation',
+      ),
+    )
+    .toBe(true)
+  await check.click()
+  await expect.element(status).toHaveTextContent('expired')
+
+  await expect.element(queue).toBeEnabled()
+  await queue.click()
+  await check.click()
+  await expect.element(status).toHaveTextContent('current')
+  mocks.parameters.mockResolvedValue({ ...parameters, connection_revision: 'revision-two' })
+  await screen.getByRole('button', { name: 'Refresh requirements' }).click()
+  await expect
+    .element(screen.getByRole('status', { name: 'Run revision' }))
+    .toHaveTextContent('revision-two')
+  await check.click()
+  await expect.element(status).toHaveTextContent('expired')
+
+  await queue.click()
+  await check.click()
+  await expect.element(status).toHaveTextContent('current')
+  await screen.getByRole('button', { name: 'Close app' }).click()
+  await expect.element(queue).not.toBeInTheDocument()
+  await check.click()
+  await expect.element(status).toHaveTextContent('expired')
+})

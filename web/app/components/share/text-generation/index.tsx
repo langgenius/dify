@@ -109,10 +109,7 @@ const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkf
   }, [])
   const handleRunOnce = useCallback(() => {
     if (runControl || (isCallBatchAPI && !allTasksRun)) return
-    const snapshot = captureWorkflowRunConfiguration(
-      connections,
-      installedConnections?.installedAppId,
-    )
+    const snapshot = captureWorkflowRunConfiguration(connections, installedConnections)
     if (snapshot === false) return
     setRunSnapshot(snapshot)
     setIsCallBatchAPI(false)
@@ -122,7 +119,7 @@ const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkf
   }, [
     allTasksRun,
     connections,
-    installedConnections?.installedAppId,
+    installedConnections,
     isCallBatchAPI,
     resetBatchExecution,
     runControl,
@@ -132,10 +129,7 @@ const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkf
   const handleRunBatch = useCallback(
     (data: string[][]) => {
       if (runControl) return
-      const snapshot = captureWorkflowRunConfiguration(
-        connections,
-        installedConnections?.installedAppId,
-      )
+      const snapshot = captureWorkflowRunConfiguration(connections, installedConnections)
       if (snapshot === false) return
       runBatchExecution(data, {
         onStart: () => {
@@ -146,20 +140,11 @@ const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkf
         },
       })
     },
-    [
-      connections,
-      installedConnections?.installedAppId,
-      runBatchExecution,
-      runControl,
-      showResultPanel,
-    ],
+    [connections, installedConnections, runBatchExecution, runControl, showResultPanel],
   )
   const handleRetryAllFailedTask = () => {
     if (!allTasksRun || runControl) return
-    const snapshot = captureWorkflowRunConfiguration(
-      connections,
-      installedConnections?.installedAppId,
-    )
+    const snapshot = captureWorkflowRunConfiguration(connections, installedConnections)
     if (snapshot === false) return
     setRunSnapshot(snapshot)
     retryAllFailedTasks()

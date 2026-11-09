@@ -2,6 +2,7 @@
 
 import type { AppMode } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { AppData } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import * as React from 'react'
@@ -21,15 +22,30 @@ const ChatWithHistory = dynamic(() => import('@/app/components/base/chat/chat-wi
   ssr: false,
 })
 
-const InstalledAppFrame = ({ children }: { children: React.ReactNode }) => (
-  <div className="h-full bg-background-body ps-2 pt-2">{children}</div>
-)
+const InstalledAppFrame = ({
+  children,
+  embedded,
+}: {
+  children: React.ReactNode
+  embedded: boolean
+}) => <div className={cn('h-full bg-background-body', !embedded && 'ps-2 pt-2')}>{children}</div>
 
 const installedAppSurfaceClassName =
   'rounded-tr-none rounded-bl-none border-t-4 border-l-4 border-components-chat-input-border'
 
-const InstalledTextGenerationSurface = ({ children }: { children: React.ReactNode }) => (
-  <div className={`h-full overflow-hidden rounded-2xl shadow-md ${installedAppSurfaceClassName}`}>
+const InstalledTextGenerationSurface = ({
+  children,
+  embedded,
+}: {
+  children: React.ReactNode
+  embedded: boolean
+}) => (
+  <div
+    className={cn(
+      'h-full overflow-hidden',
+      !embedded && `rounded-2xl shadow-md ${installedAppSurfaceClassName}`,
+    )}
+  >
     {children}
   </div>
 )
@@ -53,7 +69,7 @@ const getInstalledAppSurface = (
   }
 }
 
-const InstalledApp = ({ id }: { id: string }) => {
+const InstalledApp = ({ id, embedded = false }: { id: string; embedded?: boolean }) => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const webappAuthEnabled = systemFeatures.webapp_auth.enabled
   const {
@@ -159,7 +175,7 @@ const InstalledApp = ({ id }: { id: string }) => {
 
   if (appParamsError) {
     return (
-      <InstalledAppFrame>
+      <InstalledAppFrame embedded={embedded}>
         <div className="flex h-full items-center justify-center">
           <AppUnavailable unknownReason={appParamsError.message} />
         </div>
@@ -168,7 +184,7 @@ const InstalledApp = ({ id }: { id: string }) => {
   }
   if (appMetaError) {
     return (
-      <InstalledAppFrame>
+      <InstalledAppFrame embedded={embedded}>
         <div className="flex h-full items-center justify-center">
           <AppUnavailable unknownReason={appMetaError.message} />
         </div>
@@ -177,7 +193,7 @@ const InstalledApp = ({ id }: { id: string }) => {
   }
   if (useCanAccessAppError) {
     return (
-      <InstalledAppFrame>
+      <InstalledAppFrame embedded={embedded}>
         <div className="flex h-full items-center justify-center">
           <AppUnavailable unknownReason={useCanAccessAppError.message} />
         </div>
@@ -186,7 +202,7 @@ const InstalledApp = ({ id }: { id: string }) => {
   }
   if (webAppAccessModeError) {
     return (
-      <InstalledAppFrame>
+      <InstalledAppFrame embedded={embedded}>
         <div className="flex h-full items-center justify-center">
           <AppUnavailable unknownReason={webAppAccessModeError.message} />
         </div>
@@ -196,7 +212,7 @@ const InstalledApp = ({ id }: { id: string }) => {
   if (installedAppError) {
     const isNotFound = isNotFoundError(installedAppError)
     return (
-      <InstalledAppFrame>
+      <InstalledAppFrame embedded={embedded}>
         <div className="flex h-full items-center justify-center">
           {isNotFound ? (
             <AppUnavailable code={404} isUnknownReason />
@@ -209,7 +225,7 @@ const InstalledApp = ({ id }: { id: string }) => {
   }
   if (userCanAccessApp && !userCanAccessApp.result) {
     return (
-      <InstalledAppFrame>
+      <InstalledAppFrame embedded={embedded}>
         <div className="flex h-full flex-col items-center justify-center gap-y-2">
           <AppUnavailable className="size-auto" code={403} unknownReason="no permission." />
         </div>
@@ -224,7 +240,7 @@ const InstalledApp = ({ id }: { id: string }) => {
     isPendingUserCanAccessApp
   ) {
     return (
-      <InstalledAppFrame>
+      <InstalledAppFrame embedded={embedded}>
         <div className="flex h-full items-center justify-center">
           <LoadingPlaceholder />
         </div>
@@ -233,7 +249,7 @@ const InstalledApp = ({ id }: { id: string }) => {
   }
   if (!installedApp) {
     return (
-      <InstalledAppFrame>
+      <InstalledAppFrame embedded={embedded}>
         <div className="flex h-full items-center justify-center">
           <AppUnavailable code={404} isUnknownReason />
         </div>
@@ -244,7 +260,7 @@ const InstalledApp = ({ id }: { id: string }) => {
 
   if (surface === 'unsupported') {
     return (
-      <InstalledAppFrame>
+      <InstalledAppFrame embedded={embedded}>
         <div className="flex h-full items-center justify-center">
           <AppUnavailable unknownReason="Unsupported installed app mode." />
         </div>
@@ -253,20 +269,23 @@ const InstalledApp = ({ id }: { id: string }) => {
   }
 
   return (
-    <InstalledAppFrame>
+    <InstalledAppFrame embedded={embedded}>
       {surface === 'chat' && (
         <ChatWithHistory
           installedAppInfo={installedApp}
-          className={`overflow-hidden rounded-2xl shadow-md ${installedAppSurfaceClassName}`}
+          className={cn(
+            'overflow-hidden',
+            !embedded && `rounded-2xl shadow-md ${installedAppSurfaceClassName}`,
+          )}
         />
       )}
       {surface === 'completion' && (
-        <InstalledTextGenerationSurface>
+        <InstalledTextGenerationSurface embedded={embedded}>
           <TextGenerationApp isInstalledApp />
         </InstalledTextGenerationSurface>
       )}
       {surface === 'workflow' && (
-        <InstalledTextGenerationSurface>
+        <InstalledTextGenerationSurface embedded={embedded}>
           <TextGenerationApp isWorkflow isInstalledApp installedAppId={id} />
         </InstalledTextGenerationSurface>
       )}

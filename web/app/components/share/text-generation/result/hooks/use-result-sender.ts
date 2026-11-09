@@ -94,7 +94,7 @@ export const useResultSender = ({
         snapshot =
           useAcceptedSnapshot && runSnapshot
             ? runSnapshot
-            : captureWorkflowRunConfiguration(connections, installedConnections?.installedAppId)
+            : captureWorkflowRunConfiguration(connections, installedConnections)
       }
       if (snapshot === false || (snapshot && !isWorkflowRunSnapshotCurrent(snapshot))) {
         if (isCallBatchAPI && taskId !== undefined) onCompleted('', taskId, false)

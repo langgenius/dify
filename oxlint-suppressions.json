@@ -744,11 +744,6 @@
       "count": 2
     }
   },
-  "web/app/components/apps/app-card/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
-    }
-  },
   "web/app/components/apps/app-list-header.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
