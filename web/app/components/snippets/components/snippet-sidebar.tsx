@@ -151,6 +151,7 @@ export const SnippetSidebarContent = ({
             href={`/snippets/${snippet.id}/evaluation`}
             active={section === 'evaluation'}
             disabled={!snippet.is_published}
+            disabledReason={t(($) => $.unavailableUntilPublished, { ns: 'evaluation' })}
             iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
           />
         )}

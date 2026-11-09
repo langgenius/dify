@@ -1,9 +1,20 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
 import type { WorkflowKind } from '@/types/workflow'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SuggestedAction from '../suggested-action'
 import WorkflowToolAction from '../workflow-tool-action'
@@ -87,15 +98,22 @@ export function PublisherActionsSection({
     : isEvaluationWorkflow
       ? t(($) => $['common.switchToStandardWorkflow'], { ns: 'workflow' })
       : t(($) => $['common.switchToEvaluationWorkflow'], { ns: 'workflow' })
-  const showEvaluationWorkflowInfo = !hasPublishedVersion || !isEvaluationWorkflow
   const evaluationWorkflowInfoLabel = `${t(($) => $['operation.viewDetails'])}: ${evaluationWorkflowActionLabel}`
+  const [isKindChangeConfirmOpen, setIsKindChangeConfirmOpen] = useState(false)
 
   const handleEvaluationWorkflowAction = () => {
     if (workflowKindChangePending || isPublishing || published) return
-    const action = hasPublishedVersion
-      ? onConvertWorkflowKind?.(evaluationTargetKind)
-      : onPublishEvaluation?.()
-    void Promise.resolve(action).catch(() => undefined)
+    // Switching changes how a published workflow can be used, so confirm it first.
+    if (hasPublishedVersion) {
+      setIsKindChangeConfirmOpen(true)
+      return
+    }
+    void Promise.resolve(onPublishEvaluation?.()).catch(() => undefined)
+  }
+
+  const handleConfirmKindChange = () => {
+    setIsKindChangeConfirmOpen(false)
+    void Promise.resolve(onConvertWorkflowKind?.(evaluationTargetKind)).catch(() => undefined)
   }
 
   return (
@@ -107,11 +125,9 @@ export function PublisherActionsSection({
               disabled={workflowKindChangePending || isPublishing || published}
               endIcon={
                 <span className="flex items-center gap-1">
-                  {showEvaluationWorkflowInfo && <span aria-hidden className="size-4" />}
-                  {workflowKindChangePending ? (
+                  <span aria-hidden className="size-4" />
+                  {workflowKindChangePending && (
                     <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />
-                  ) : (
-                    <span aria-hidden className="i-ri-arrow-right-s-line size-3.5" />
                   )}
                 </span>
               }
@@ -126,18 +142,49 @@ export function PublisherActionsSection({
             >
               {evaluationWorkflowActionLabel}
             </SuggestedAction>
-            {showEvaluationWorkflowInfo && (
-              <Infotip>
-                <InfotipTrigger
-                  aria-label={evaluationWorkflowInfoLabel}
-                  className="absolute end-5.5 top-1/2 -translate-y-1/2"
-                />
-                <InfotipContent aria-label={evaluationWorkflowInfoLabel} className="max-w-72">
-                  {t(($) => $['common.evaluationWorkflowDescription'], { ns: 'workflow' })}
-                </InfotipContent>
-              </Infotip>
-            )}
+            <Infotip>
+              <InfotipTrigger
+                aria-label={evaluationWorkflowInfoLabel}
+                className={cn(
+                  'absolute top-1/2 -translate-y-1/2',
+                  workflowKindChangePending ? 'end-7' : 'end-3',
+                )}
+              />
+              {/* Open below so the explanation covers neither the Publish button nor this label. */}
+              <InfotipContent
+                side="bottom"
+                align="end"
+                aria-label={evaluationWorkflowInfoLabel}
+                className="max-w-72"
+              >
+                {t(($) => $['common.evaluationWorkflowDescription'], { ns: 'workflow' })}
+              </InfotipContent>
+            </Infotip>
           </div>
+          {hasPublishedVersion && (
+            <AlertDialog open={isKindChangeConfirmOpen} onOpenChange={setIsKindChangeConfirmOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{evaluationWorkflowActionLabel}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {isEvaluationWorkflow
+                      ? t(($) => $['common.switchToStandardWorkflowDescription'], {
+                          ns: 'workflow',
+                        })
+                      : t(($) => $['common.evaluationWorkflowDescription'], { ns: 'workflow' })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancelButton>
+                    {t(($) => $['operation.cancel'])}
+                  </AlertDialogCancelButton>
+                  <AlertDialogConfirmButton tone="default" onClick={handleConfirmKindChange}>
+                    {t(($) => $['operation.confirm'])}
+                  </AlertDialogConfirmButton>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <div aria-hidden className="m-1 h-px bg-divider-subtle" />
         </>
       )}

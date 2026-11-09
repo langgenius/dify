@@ -26,6 +26,7 @@ type AppDetailNavItem = {
   icon: string
   selectedIcon: string
   disabled?: boolean
+  disabledReason?: string
 }
 const isLogsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/logs')
 const isAnnotationsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/annotations')
@@ -102,6 +103,7 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
               icon: 'i-ri-flask-line',
               selectedIcon: 'i-ri-flask-fill',
               disabled: !appDetail.workflow,
+              disabledReason: t(($) => $.unavailableUntilPublished, { ns: 'evaluation' }),
             },
           ]
         : []),
@@ -195,7 +197,9 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
           <AppInfoHeader
             expand={expand}
             appName={appTitle}
-            modeLabel={appDetail ? getAppModeLabel(appDetail.mode, t) : undefined}
+            modeLabel={
+              appDetail ? getAppModeLabel(appDetail.mode, t, appDetail.workflow_kind) : undefined
+            }
             operationGroups={[]}
             icon={appDetail}
           />
@@ -233,6 +237,7 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
                 name={item.name}
                 href={item.href}
                 disabled={item.disabled}
+                disabledReason={item.disabledReason}
                 pathname={pathname}
               />
               {shouldRenderDividerAfter && renderNavDivider(`${item.href}-after`, expand)}

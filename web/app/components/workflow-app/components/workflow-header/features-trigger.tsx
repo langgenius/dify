@@ -317,7 +317,11 @@ const FeaturesTrigger = () => {
           queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
         }),
       ])
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+      toast.success(
+        targetKind === 'standard'
+          ? t(($) => $['common.switchedToStandardWorkflow'], { ns: 'workflow' })
+          : t(($) => $['common.switchedToEvaluationWorkflow'], { ns: 'workflow' }),
+      )
     },
     [appID, convertWorkflowKind, invalidateAppWorkflow, queryClient, t],
   )
