@@ -44,12 +44,15 @@ const ConditionsSection = ({ resourceType, resourceId }: EvaluationResourceProps
         {resource.judgmentConfig.conditions.length > 0 && (
           <ConditionGroup resourceType={resourceType} resourceId={resourceId} />
         )}
-        <AddConditionSelect
-          resourceType={resourceType}
-          resourceId={resourceId}
-          metricOptionGroups={groupedConditionMetricOptions}
-          disabled={!canAddCondition}
-        />
+        {/* Own wrapper: an open popup inserts focus guards beside its trigger, which would shift space-y margins. */}
+        <div>
+          <AddConditionSelect
+            resourceType={resourceType}
+            resourceId={resourceId}
+            metricOptionGroups={groupedConditionMetricOptions}
+            disabled={!canAddCondition}
+          />
+        </div>
       </div>
     </section>
   )

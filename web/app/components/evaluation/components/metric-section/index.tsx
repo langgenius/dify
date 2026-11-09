@@ -46,11 +46,14 @@ const MetricSection = ({ resourceType, resourceId }: NonPipelineEvaluationResour
             }
           />
         ))}
-        <MetricSelector
-          resourceType={resourceType}
-          resourceId={resourceId}
-          triggerClassName="rounded-md px-3 py-2"
-        />
+        {/* Own wrapper: an open popup inserts focus guards beside its trigger, which would shift space-y margins. */}
+        <div>
+          <MetricSelector
+            resourceType={resourceType}
+            resourceId={resourceId}
+            triggerClassName="rounded-md px-3 py-2"
+          />
+        </div>
       </div>
     </section>
   )
