@@ -2812,14 +2812,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     (current) =>
                       current && {
                         ...current,
-                        environment_deployments: current.environment_deployments.map(
-                          (deployment) =>
-                            deployment.environment.id === environment_id
-                              ? {
-                                  ...deployment,
-                                  access: { ...deployment.access, enable_api: updated.enabled },
-                                }
-                              : deployment,
+                        environment_deployments: current.environment_deployments.map((deployment) =>
+                          deployment.environment.id === environment_id
+                            ? {
+                                ...deployment,
+                                access: { ...deployment.access, enable_api: updated.enabled },
+                              }
+                            : deployment,
                         ),
                       },
                   )
@@ -2873,14 +2872,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     (current) =>
                       current && {
                         ...current,
-                        environment_deployments: current.environment_deployments.map(
-                          (deployment) =>
-                            deployment.environment.id === environment_id
-                              ? {
-                                  ...deployment,
-                                  access: { ...deployment.access, enable_site: updated.enabled },
-                                }
-                              : deployment,
+                        environment_deployments: current.environment_deployments.map((deployment) =>
+                          deployment.environment.id === environment_id
+                            ? {
+                                ...deployment,
+                                access: { ...deployment.access, enable_site: updated.enabled },
+                              }
+                            : deployment,
                         ),
                       },
                   )
