@@ -1,19 +1,15 @@
 'use client'
 
 import type { RequiredConnectionService } from '../connections/required-services'
-import type { ConnectionAuthSource } from './mock-data'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConnectionServiceItem from '../connections/connection-service-item'
 
 export default function ConnectionAuthCompletion({
   services,
-  source,
   requester,
 }: {
   services: readonly RequiredConnectionService[]
-  source: ConnectionAuthSource
   requester: string
 }) {
   const { t } = useTranslation(['share'])
@@ -35,10 +31,7 @@ export default function ConnectionAuthCompletion({
       </div>
       <div className="flex items-center gap-3 rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4">
         <span
-          className={cn(
-            'size-5 shrink-0 text-text-secondary',
-            source === 'api' ? 'i-ri-message-3-line' : 'i-ri-terminal-box-line',
-          )}
+          className="i-ri-message-3-line size-5 shrink-0 text-text-secondary"
           aria-hidden="true"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -49,9 +42,7 @@ export default function ConnectionAuthCompletion({
             })}
           </p>
           <p className="system-xs-regular text-text-tertiary">
-            {source === 'api'
-              ? t(($) => $['connections.headless.closeWindow'], { ns: 'share' })
-              : t(($) => $['connections.headless.closeTab'], { ns: 'share' })}
+            {t(($) => $['connections.headless.closeWindow'], { ns: 'share' })}
           </p>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import type { ConnectionAuthSource, ConnectionAuthState } from './mock-data'
+import type { ConnectionAuthState } from './mock-data'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
@@ -16,28 +16,19 @@ import { mockRequest } from './mock-data'
 import RequestContextItem from './request-context-item'
 import useMockConnections from './use-mock-connections'
 
-function ConnectionAuthSession({
-  source,
-  linkState,
-}: {
-  source: ConnectionAuthSource
-  linkState: ConnectionAuthState
-}) {
+function ConnectionAuthSession({ linkState }: { linkState: ConnectionAuthState }) {
   const { t } = useTranslation(['share', 'common'])
   const titleId = useId()
   const { services, connectedCount, ready, ...actions } = useMockConnections()
   const [finished, setFinished] = useState(false)
-  const { requester, identity } = mockRequest.sources[source]
+  const { requester, identity } = mockRequest
   const progressOptions = {
     ns: 'share' as const,
     source: requester,
     connected: connectedCount,
     total: services.length,
   }
-  const progressMessage =
-    source === 'api'
-      ? t(($) => $['connections.headless.apiProgress'], progressOptions)
-      : t(($) => $['connections.headless.progress'], progressOptions)
+  const progressMessage = t(($) => $['connections.headless.apiProgress'], progressOptions)
   useDocumentTitle(t(($) => $['connections.headless.title'], { ns: 'share' }))
 
   return (
@@ -74,14 +65,14 @@ function ConnectionAuthSession({
             </div>
           </div>
           {linkState !== 'setup' ? (
-            <ConnectionAuthIssue state={linkState} source={source} requester={requester} />
+            <ConnectionAuthIssue state={linkState} requester={requester} />
           ) : finished ? (
-            <ConnectionAuthCompletion services={services} source={source} requester={requester} />
+            <ConnectionAuthCompletion services={services} requester={requester} />
           ) : (
             <>
               <div className="divide-y divide-divider-subtle overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg">
                 <RequestContextItem
-                  iconClassName="i-ri-terminal-box-line"
+                  iconClassName="i-ri-message-3-line"
                   text={t(($) => $['connections.headless.requestedFrom'], {
                     ns: 'share',
                     source: requester,
@@ -147,18 +138,10 @@ function ConnectionAuthSession({
 
 export default function ConnectionAuth({
   appId,
-  source = 'cli',
   linkState = 'setup',
 }: {
   appId: string
-  source?: ConnectionAuthSource
   linkState?: ConnectionAuthState
 }) {
-  return (
-    <ConnectionAuthSession
-      key={`${appId}:${source}:${linkState}`}
-      source={source}
-      linkState={linkState}
-    />
-  )
+  return <ConnectionAuthSession key={`${appId}:${linkState}`} linkState={linkState} />
 }
