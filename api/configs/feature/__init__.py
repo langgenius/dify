@@ -1,7 +1,9 @@
 import logging
 from datetime import datetime, timedelta
 from enum import StrEnum
+from functools import cache
 from typing import Final, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 from pydantic import (
     AliasChoices,
@@ -24,6 +26,17 @@ logger = logging.getLogger(__name__)
 DEFAULT_OAUTH_TTL_DAYS: Final = 14
 MIN_OAUTH_TTL_DAYS: Final = 1
 MAX_OAUTH_TTL_DAYS: Final = 365
+
+
+@cache
+def _timezone_names_by_casefold() -> dict[str, str]:
+    """Return a cached case-insensitive index of available IANA timezone names.
+
+    The index is built only after a direct ``ZoneInfo`` lookup fails. Every
+    returned value remains a key accepted by the current runtime's timezone
+    database.
+    """
+    return {timezone_name.casefold(): timezone_name for timezone_name in available_timezones()}
 
 
 class SecurityConfig(BaseSettings):
@@ -885,6 +898,29 @@ class LoggingConfig(BaseSettings):
         description="Timezone for log timestamps (e.g., 'America/New_York')",
         default="UTC",
     )
+
+    @field_validator("LOG_TZ")
+    @classmethod
+    def validate_log_timezone(cls, timezone_name: str | None) -> str | None:
+        """Validate and normalize the logging timezone at the configuration boundary.
+
+        ``None`` and the legacy empty string remain unchanged. A name accepted
+        directly by ``ZoneInfo`` is returned verbatim, including valid aliases.
+        A case-only mismatch is normalized to an available IANA key. Any other
+        non-empty value raises a validation error and is never replaced by UTC.
+        """
+        if not timezone_name:
+            return timezone_name
+
+        try:
+            ZoneInfo(timezone_name)
+        except (OSError, ValueError, ZoneInfoNotFoundError):
+            canonical_name = _timezone_names_by_casefold().get(timezone_name.casefold())
+            if canonical_name is None:
+                raise ValueError(f"LOG_TZ must be a valid IANA timezone name, got {timezone_name!r}") from None
+            return canonical_name
+
+        return timezone_name
 
 
 class ModelLoadBalanceConfig(BaseSettings):
