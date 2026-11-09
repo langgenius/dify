@@ -12,7 +12,7 @@ vi.mock('echarts-for-react/esm/core', () => ({
   },
 }))
 
-const { request } = vi.hoisted(() => ({ request: vi.fn<() => Promise<Response>>() }))
+const { request } = vi.hoisted(() => ({ request: vi.fn<(url: string) => Promise<Response>>() }))
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request,
