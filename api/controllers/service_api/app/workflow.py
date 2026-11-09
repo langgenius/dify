@@ -9,7 +9,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, WithJsonSchema, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 from configs import dify_config
 from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
@@ -59,6 +59,7 @@ from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
+from services.app_definition_query_service import ServiceApiEndUserAuthError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.billing_service import BillingService
@@ -381,6 +382,8 @@ class WorkflowRunApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except ServiceApiEndUserAuthError as error:
+            raise Forbidden(str(error)) from error
         except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
             raise TriggerWorkflowServiceModeUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
@@ -523,6 +526,8 @@ class WorkflowRunByIdApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except ServiceApiEndUserAuthError as error:
+            raise Forbidden(str(error)) from error
         except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
             raise TriggerWorkflowServiceModeUnavailableError() from caught_error
         except WorkflowNotFoundError as ex:

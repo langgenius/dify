@@ -42,6 +42,10 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, Workfl
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
+from services.app_definition_query_service import (
+    ServiceApiEndUserAuthError,
+    require_service_api_end_user_workflow_access,
+)
 from services.app_task_service import AppTaskService
 from services.end_user_connection_execution_adapters import validate_connection_execution
 from services.end_user_connections.errors import ConnectionError, ConnectionIdentityError, ConnectionRequiredError
@@ -225,7 +229,15 @@ class _AppRunner:
         pause_state_config: PauseStateLayerConfig,
         session: Session,
     ):
+        """Execute the reconstructed workflow only after validating its invocation policy.
+
+        Service API personal-auth graphs fail before generator dispatch. Existing
+        WebApp, Explore and Debugger credential checks remain authoritative for
+        their surfaces; no credentials or workflow state change on policy denial.
+        """
         exec_params = self._exec_params
+        if exec_params.invoke_from == InvokeFrom.SERVICE_API:
+            require_service_api_end_user_workflow_access(workflow.graph_dict)
         if (
             exec_params.invoke_from == InvokeFrom.EXPLORE
             and requires_end_user_connections(workflow.graph_dict)
@@ -548,6 +560,13 @@ def workflow_based_app_execution_task(
 
 
 def _resume_app_execution(payload: dict[str, Any]) -> None:
+    """Resume a stored pause only after validating its reconstructed execution context.
+
+    The payload identifies an existing run; load its saved state, graph and actor
+    before dispatch. A Service API personal-auth graph fails the pause and emits
+    its terminal failure without resuming nodes. Repeated delivery after pause
+    cleanup is a no-op. Existing credential checks still govern other surfaces.
+    """
     workflow_run_id = payload["workflow_run_id"]
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -629,8 +648,13 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         generate_entity.connection_context is not None
         or workflow_run.connection_context is not None
         or (generate_entity.invoke_from == InvokeFrom.EXPLORE and requires_end_user_connections(workflow.graph_dict))
+        or (
+            generate_entity.invoke_from == InvokeFrom.SERVICE_API and requires_end_user_connections(workflow.graph_dict)
+        )
     ):
         try:
+            if generate_entity.invoke_from == InvokeFrom.SERVICE_API:
+                require_service_api_end_user_workflow_access(workflow.graph_dict)
             if workflow_run.connection_context is not None:
                 try:
                     generate_entity.connection_context = ConnectionExecutionContext.model_validate_json(
@@ -657,7 +681,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 ),
                 repository=EndUserConnectionRepository(session_factory=session_factory),
             )
-        except ConnectionError as exc:
+        except (ConnectionError, ServiceApiEndUserAuthError) as exc:
             failed_run = workflow_run_repo.fail_workflow_pause(
                 tenant_id=workflow_run.tenant_id,
                 app_id=workflow_run.app_id,
