@@ -26,12 +26,19 @@ from models.model import App, AppMode, EndUser
 from models.tools import ToolFile
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
+from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from services.errors.app import QuotaExceededError
 from services.trigger import webhook_service
 from services.trigger import webhook_service as service_module
 from services.trigger import webhook_service as webhook_service_module
+from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.webhook_service import WebhookService
 from tests.helpers.unit.model_factories import make_app, make_end_user, make_workflow
+
+
+@pytest.fixture
+def trigger_status(sqlite_session_factory: sessionmaker[Session]) -> AppTriggerService:
+    return AppTriggerService(triggers=SQLAlchemyAppTriggerRepository(session_factory=sqlite_session_factory))
 
 
 class _EndUserServiceStub:
@@ -248,6 +255,7 @@ class TestWebhookServiceCases:
             caplog: pytest.LogCaptureFixture,
             monkeypatch: pytest.MonkeyPatch,
             sqlite_engine: _webhook_service_Engine,
+            trigger_status: AppTriggerService,
         ) -> None:
             """Quota failures refund the charge and close the real service-owned session."""
             monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
@@ -270,6 +278,7 @@ class TestWebhookServiceCases:
                         {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
                         workflow,
                         end_users=_EndUserServiceStub(_end_user()),
+                        trigger_status=trigger_status,
                     )
 
             assert exc_info.value is quota_error
@@ -287,6 +296,7 @@ class TestWebhookServiceCases:
             self,
             monkeypatch: pytest.MonkeyPatch,
             sqlite_engine: _webhook_service_Engine,
+            trigger_status: AppTriggerService,
         ) -> None:
             monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
             webhook_trigger = _webhook_trigger()
@@ -313,6 +323,7 @@ class TestWebhookServiceCases:
                     webhook_data,
                     workflow,
                     end_users=_EndUserServiceStub(end_user),
+                    trigger_status=trigger_status,
                 )
 
             call_session = mock_trigger.call_args.kwargs["session"]
@@ -320,7 +331,7 @@ class TestWebhookServiceCases:
             quota_charge.commit.assert_called_once_with()
             quota_charge.refund.assert_not_called()
 
-        def test_trigger_workflow_execution_end_user_service_failure(self) -> None:
+        def test_trigger_workflow_execution_end_user_service_failure(self, trigger_status: AppTriggerService) -> None:
             webhook_trigger = _webhook_trigger()
             workflow = _workflow()
             webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
@@ -331,6 +342,7 @@ class TestWebhookServiceCases:
                     webhook_data,
                     workflow,
                     end_users=_EndUserServiceStub(ValueError("Failed to create end user")),
+                    trigger_status=trigger_status,
                 )
 
         def test_extract_webhook_data_json(self):

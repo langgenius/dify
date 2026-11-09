@@ -78,6 +78,7 @@ class AuthRouter:
                 session,
                 dict(request.view_args or {}),
                 trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+                pat_policy=spec.pat_policy,
             )
             status = 500
             try:

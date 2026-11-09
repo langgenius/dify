@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { getErrorMessage } from '@/utils/error-message'
 import ResourcePicker from './resource-picker'
 import { useTokenClipboard } from './use-token-clipboard'
 import WorkspacePicker from './workspace-picker'
@@ -429,9 +430,8 @@ export default function TokenForm({
           {(create.isError ||
             (update.isError && !editExpired && getHttpErrorStatus(update.error) !== 409)) && (
             <p role="alert" className="px-6 system-xs-regular text-text-warning">
-              {getHttpErrorStatus(create.error) === 503 && create.error instanceof Error
-                ? create.error.message
-                : t(($) => $['api.actionFailed'], { ns: 'common' })}
+              {getErrorMessage(isEdit ? update.error : create.error) ??
+                t(($) => $['api.actionFailed'], { ns: 'common' })}
             </p>
           )}
           {editExpired && (

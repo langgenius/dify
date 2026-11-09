@@ -810,6 +810,13 @@ class PersonalAccessTokenService:
 
     @staticmethod
     def _validate_scopes(scopes: PersonalAccessTokenScopes) -> None:
+        """Require an enabled scope domain before persisting creation or scope edits.
+
+        Invalid combinations raise ValueError without changing stored grants,
+        regardless of deployment edition.
+        """
+        if scopes.resource_mode == "none" and scopes.workspace_mode == "none":
+            raise ValueError("Enable resource access or workspace access for the personal access token.")
         if scopes.resource_mode == "selected" and not scopes.resources:
             raise ValueError("Select at least one resource.")
         if scopes.workspace_mode == "selected" and not scopes.workspace_ids:

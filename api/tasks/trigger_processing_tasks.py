@@ -243,6 +243,7 @@ def dispatch_triggered_workflow(
     end_users: TriggerEndUserProvisioner,
     events: TriggerEventService,
     bindings: TriggerSubscriptionBindingQuery,
+    trigger_status: AppTriggerService,
 ) -> int:
     """Process triggered workflows.
 
@@ -254,6 +255,7 @@ def dispatch_triggered_workflow(
         end_users: Provisioner that resolves or creates the end users for each app
         events: Shared plugin event preparation and invocation
         bindings: Workspace-scoped subscriber lookup
+        trigger_status: Best-effort quota status updates
 
     Returns:
         The number of workflows dispatched for the event
@@ -316,7 +318,7 @@ def dispatch_triggered_workflow(
         try:
             quota_charge = QuotaService.reserve(QuotaType.TRIGGER, subscription.tenant_id)
         except QuotaExceededError:
-            AppTriggerService.mark_tenant_triggers_rate_limited(subscription.tenant_id)
+            trigger_status.mark_tenant_triggers_rate_limited(subscription.tenant_id)
             logger.info("Tenant %s rate limited, skipping plugin trigger %s", subscription.tenant_id, plugin_trigger.id)
             return dispatched_count
 
@@ -414,6 +416,7 @@ def dispatch_triggered_workflows(
     end_users: TriggerEndUserProvisioner,
     event_service: TriggerEventService,
     bindings: TriggerSubscriptionBindingQuery,
+    trigger_status: AppTriggerService,
 ) -> int:
     dispatched_count = 0
     for event_name in events:
@@ -426,6 +429,7 @@ def dispatch_triggered_workflows(
                 end_users=end_users,
                 events=event_service,
                 bindings=bindings,
+                trigger_status=trigger_status,
             )
         except Exception:
             logger.exception(
@@ -499,6 +503,7 @@ def dispatch_triggered_workflows_async(
             end_users=application_services().app_scoped_end_users.commands,
             event_service=application_services().workspaces.trigger_events,
             bindings=application_services().workspaces.trigger_binding_queries,
+            trigger_status=application_services().apps.trigger_status,
         )
 
         debug_dispatched = dispatch_trigger_debug_event(
