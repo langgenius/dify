@@ -54,6 +54,9 @@ class AgentRuntimeSupport:
             agent_input = node_data.agent_parameters[parameter_name]
             match agent_input.type:
                 case "variable":
+                    if agent_input.value is None:
+                        result[parameter_name] = None
+                        continue
                     variable = variable_pool.get(agent_input.value)  # type: ignore[arg-type]
                     if variable is None:
                         raise AgentVariableNotFoundError(str(agent_input.value))

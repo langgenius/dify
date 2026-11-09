@@ -405,3 +405,15 @@ def test_build_parameters_keeps_top_level_string_lookup_behaviour():
     )
 
     assert result["query"] == "the user question"
+
+
+def test_build_parameters_treats_none_variable_value_as_unset():
+    """Unset optional strategy params written as {type: variable, value: null}
+    must not crash variable_pool.get with a None selector."""
+    result = _build_parameters(
+        configured={"files": {"type": "variable", "value": None}},
+        declared=[_declared_parameter("files", _ParameterType.FILES)],
+        variables={},
+    )
+
+    assert result == {"files": None}
