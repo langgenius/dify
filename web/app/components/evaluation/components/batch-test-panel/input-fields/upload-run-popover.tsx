@@ -69,10 +69,11 @@ const UploadRunPopover = ({
         side="bottom"
         align="end"
         sideOffset={8}
-        className="w-[402px] overflow-hidden rounded-lg border border-components-panel-border p-0 shadow-[0px_20px_24px_-4px_rgba(9,9,11,0.08),0px_8px_8px_-4px_rgba(9,9,11,0.03)]"
+        className="flex max-h-(--available-height) w-[402px] flex-col overflow-hidden rounded-lg border border-components-panel-border p-0 shadow-[0px_20px_24px_-4px_rgba(9,9,11,0.08),0px_8px_8px_-4px_rgba(9,9,11,0.03)]"
       >
-        <div className="flex flex-col bg-components-panel-bg">
-          <div className="flex flex-col gap-4 p-4">
+        {/* The body scrolls on short viewports so the run actions stay visible. */}
+        <div className="flex min-h-0 flex-1 flex-col bg-components-panel-bg">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
             <input
               ref={fileInputRef}
               hidden
@@ -169,20 +170,23 @@ const UploadRunPopover = ({
                 <div className="system-md-semibold text-text-secondary">
                   {t(($) => $['batch.example'])}
                 </div>
-                <div className="flex overflow-hidden rounded-lg border border-divider-regular">
+                {/* Mirrors the spreadsheet: columns keep their names on one line and scroll sideways. */}
+                <div className="flex overflow-x-auto rounded-lg border border-divider-regular">
                   {previewFields.map((field, index) => (
                     <div
                       key={field.name}
                       className={cn(
-                        'min-w-0 flex-1',
+                        'max-w-60 min-w-16 flex-auto shrink-0',
                         index < previewFields.length - 1 && 'border-e border-divider-subtle',
                       )}
                     >
-                      {/* Column names like "LLM : expected_output" have no break points. */}
-                      <div className="min-h-8 border-b border-divider-regular px-3 py-2 system-xs-medium-uppercase wrap-anywhere text-text-tertiary">
+                      <div
+                        className="truncate border-b border-divider-regular px-3 py-2 system-xs-medium-uppercase whitespace-nowrap text-text-tertiary"
+                        title={field.name}
+                      >
                         {field.name}
                       </div>
-                      <div className="min-h-8 px-3 py-2 system-sm-regular wrap-anywhere text-text-secondary">
+                      <div className="truncate px-3 py-2 system-sm-regular whitespace-nowrap text-text-secondary">
                         {getExampleValue(field, booleanExampleValue)}
                       </div>
                     </div>
@@ -191,7 +195,7 @@ const UploadRunPopover = ({
               </div>
             )}
           </div>
-          <div className="flex items-end justify-end gap-2 border-t border-components-panel-border px-4 py-4">
+          <div className="flex shrink-0 items-end justify-end gap-2 border-t border-components-panel-border px-4 py-4">
             <Button variant="secondary" className="rounded-lg" onClick={() => onOpenChange(false)}>
               {tCommon(($) => $['operation.cancel'])}
             </Button>
