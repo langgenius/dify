@@ -2,8 +2,6 @@ from dataclasses import dataclass
 from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -87,5 +85,4 @@ class WorkflowResumptionContext(BaseModel):
 class PauseStateLayerConfig:
     """Persistence configuration for resumable workflow runs."""
 
-    session_factory: Engine | sessionmaker[Session]
     state_owner_user_id: str

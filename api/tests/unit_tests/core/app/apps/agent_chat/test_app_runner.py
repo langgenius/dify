@@ -14,15 +14,16 @@ from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueLLMChunkEvent, QueueMessageEndEvent
+from core.db.session_factory import get_session_maker
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.plugin.entities.plugin_daemon import PluginLLMNumTokensResponse
 from core.plugin.impl.model import PluginModelClient
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from models.model import App, Conversation, Message, MessageAgentThought, MessageAnnotation
-from services.workflow_run_agg import WorkflowRunAgg
 
 
 def _assert_direct_output(agent_queue_manager: MessageBasedAppQueueManager, text: str) -> None:
@@ -38,7 +39,7 @@ def _assert_direct_output(agent_queue_manager: MessageBasedAppQueueManager, text
 @pytest.fixture
 def runner(agent_records: tuple[Conversation, Message]) -> AgentChatAppRunner:
     assert agent_records[0].id == "conv"
-    return AgentChatAppRunner(execution_driver=WorkflowRunAgg.run)
+    return AgentChatAppRunner(execution_driver=build_workflow_run_driver(database_client=get_session_maker()))
 
 
 def _records(session: Session) -> tuple[Conversation, Message]:
