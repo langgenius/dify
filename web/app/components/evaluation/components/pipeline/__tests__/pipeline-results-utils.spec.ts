@@ -1,7 +1,9 @@
 import type { EvaluationRunItemResponse } from '@dify/contracts/api/console/evaluate-target-type/types.gen'
+import { buildStateFromEvaluationConfig } from '../../../store-utils'
 import {
   formatExpectedOutput,
   getIsItemPassed,
+  getMetricColumns,
   toPlainTextPreview,
 } from '../pipeline-results-utils'
 
@@ -60,5 +62,39 @@ describe('result cell values', () => {
     expect(toPlainTextPreview('# Title\nSee [docs](https://example.com) and `code`')).toBe(
       'Title\nSee docs and code',
     )
+  })
+})
+
+describe('result metric columns', () => {
+  const nodeInfo = { node_id: 'llm', title: 'General Answer', type: 'llm' }
+
+  it('lists only metrics the run produced, labelled from the current config', () => {
+    // Answer Relevancy was added to the config after this run.
+    const resource = buildStateFromEvaluationConfig('apps', 'app-1', {
+      evaluation_framework: 'ragas',
+      default_metrics: [
+        { metric: 'answer_correctness', node_info_list: [nodeInfo] },
+        { metric: 'answer_relevancy', node_info_list: [nodeInfo] },
+      ],
+    })
+    const items = [
+      createItem({ metrics: [{ name: 'answer_correctness', value: 0.9 }] }),
+      createItem({ id: 'item-2', metrics: [{ name: 'answer_correctness', value: 0.5 }] }),
+    ]
+
+    expect(getMetricColumns(resource, items)).toEqual([
+      { id: 'answer_correctness', label: 'Answer Correctness' },
+    ])
+  })
+
+  it('names a metric missing from the config after its key', () => {
+    const resource = buildStateFromEvaluationConfig('apps', 'app-1', {
+      evaluation_framework: 'ragas',
+      default_metrics: [],
+    })
+
+    expect(
+      getMetricColumns(resource, [createItem({ metrics: [{ name: 'tool_selection', value: 1 }] })]),
+    ).toEqual([{ id: 'tool_selection', label: 'Tool Selection' }])
   })
 })
