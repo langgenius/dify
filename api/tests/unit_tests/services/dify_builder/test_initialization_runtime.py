@@ -1,17 +1,20 @@
 """Root initialization receipts against the real graph factory and plugin adapter."""
 
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import copy_context
-from unittest.mock import MagicMock
+from dataclasses import dataclass
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
+from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.entities.provider_configuration import ProviderConfiguration
+from core.model_manager import ModelInstance
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
@@ -20,7 +23,7 @@ from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchem
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.nodes.base.node import Node
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.account import Account
@@ -48,8 +51,18 @@ MODEL = "synthetic"
 harness = full_run_harness
 
 
-def _install_schema_failure(monkeypatch: pytest.MonkeyPatch, runner: WorkflowAppRunner) -> MagicMock:
-    """Inject only the metadata transport response, retaining graph and adapter code."""
+@dataclass
+class SchemaTransport:
+    handler: Callable[[str, str], Iterator[str]]
+    call_count: int = 0
+
+    def __call__(self, method: str, path: str, *_args: object, **_kwargs: object) -> Iterator[str]:
+        self.call_count += 1
+        return self.handler(method, path)
+
+
+def _install_schema_failure(monkeypatch: pytest.MonkeyPatch, runner: WorkflowAppRunner) -> SchemaTransport:
+    """Inject synthetic lookups/transport while retaining real adapters and graph code."""
     graph = runner._workflow.graph_dict
     graph["nodes"].append(
         {
@@ -71,20 +84,38 @@ def _install_schema_failure(monkeypatch: pytest.MonkeyPatch, runner: WorkflowApp
         "code": -500,
         "message": json.dumps({"error_type": "PluginDaemonInnerError", "message": "Synthetic metadata unavailable"}),
     }
-    transport = MagicMock(side_effect=lambda *_args, **_kwargs: iter([json.dumps(response)]))
+    transport = SchemaTransport(handler=lambda _method, _path: iter([json.dumps(response)]))
     monkeypatch.setattr(client, "_stream_request", transport)
     runtime = PluginModelRuntime("synthetic-tenant", "synthetic-account", client, PluginService)
     model = make_model_instance(provider=PROVIDER, model=MODEL)
     model.model_type_instance.model_runtime = runtime
-    credentials = MagicMock()
-    credentials.fetch.return_value = dict[str, object]()
-    model_factory = MagicMock()
-    model_factory.init_model_instance.return_value = model
-    monkeypatch.setattr(
-        "services.workflow_runtime.node_factory.build_dify_model_access",
-        lambda _context: (credentials, model_factory),
+    configuration = model.provider_model_bundle.configuration
+    schema = make_model_config(provider=PROVIDER, model=MODEL, mode="chat").model_schema
+    provider_model = ModelWithProviderEntity(
+        model=MODEL,
+        label=schema.label,
+        model_type=ModelType.LLM,
+        fetch_from=schema.fetch_from,
+        model_properties=schema.model_properties,
+        status=ModelStatus.ACTIVE,
+        provider=SimpleModelProviderEntity(configuration.provider),
     )
-    monkeypatch.setattr(ProviderConfiguration, "get_provider_model", MagicMock(return_value=MagicMock()))
+
+    def fetch_credentials(_self: DifyCredentialsProvider, provider_name: str, model_name: str) -> dict[str, str]:
+        assert (provider_name, model_name) == (PROVIDER, MODEL)
+        return dict[str, str]()
+
+    def init_model(_self: DifyModelFactory, provider_name: str, model_name: str) -> ModelInstance:
+        assert (provider_name, model_name) == (PROVIDER, MODEL)
+        return model
+
+    def get_provider_model(_self: ProviderConfiguration, model: str, model_type: ModelType) -> ModelWithProviderEntity:
+        assert (model, model_type) == (MODEL, ModelType.LLM)
+        return provider_model
+
+    monkeypatch.setattr(DifyCredentialsProvider, "fetch", fetch_credentials)
+    monkeypatch.setattr(DifyModelFactory, "init_model_instance", init_model)
+    monkeypatch.setattr(ProviderConfiguration, "get_provider_model", get_provider_model)
     monkeypatch.setattr("core.plugin.impl.model_runtime.redis_client.get", lambda _key: None)
     return transport
 
@@ -266,7 +297,7 @@ def test_repaired_metadata_and_fresh_input_execute_new_native_run_without_replay
             pytest.fail(f"Unexpected synthetic transport operation: {path}")
         return iter([json.dumps({"code": 0, "message": "success", "data": data})])
 
-    transport.side_effect = repaired_transport
+    transport.handler = repaired_transport
     entity = original.application_generate_entity.model_copy(
         update={"task_id": str(uuid4()), "workflow_execution_id": str(uuid4())}
     )
