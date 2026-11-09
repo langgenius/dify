@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from typing import override
 from unittest.mock import MagicMock, patch
 
-import httpx
 import pytest
 from flask import Flask
 from flask_login import LoginManager, UserMixin
@@ -50,6 +49,8 @@ from models import Account, DifySetup
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import RateLimitLog
 from services.entities.feature_entities import LicenseStatus
+from services.errors.billing import BillingUpstreamUnavailableError
+from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import config_overrides_context
 
 
@@ -815,7 +816,7 @@ class TestBillingPaidPlanRequired:
         def paid_view():
             return "paid_success"
 
-        billing_info = {"subscription": {"plan": plan}}
+        billing_info = builders.subscription_info(plan)
         with (
             patch(
                 "controllers.console.wraps.current_account_with_tenant",
@@ -836,7 +837,9 @@ class TestBillingPaidPlanRequired:
         def paid_view():
             return "paid_success"
 
-        billing_info = {"subscription": {"plan": plan}}
+        billing_info = builders.subscription_info(
+            subscription=builders.subscription_plan().model_copy(update={"plan": plan})
+        )
         with app.test_request_context():
             with (
                 patch(
@@ -866,7 +869,7 @@ class TestBillingPaidPlanRequired:
                 ),
                 patch(
                     "controllers.console.wraps.BillingService.get_info",
-                    side_effect=httpx.ConnectError("billing unavailable"),
+                    side_effect=BillingUpstreamUnavailableError("billing unavailable"),
                 ),
                 pytest.raises(HTTPException) as exc_info,
             ):

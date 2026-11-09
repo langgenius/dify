@@ -8,6 +8,9 @@
   "apps.fullTip2": "Osiągnięto limit planu",
   "apps.fullTip2des": "Zaleca się usunięcie nieaktywnych aplikacji, aby zwolnić miejsce, lub skontaktowanie się z nami.",
   "buyPermissionDeniedTip": "Skontaktuj się z administratorem swojej firmy, aby zasubskrybować",
+  "errors.operationFailed": "Nie udało się zrealizować tego żądania. Spróbuj ponownie później. Jeśli problem będzie się powtarzał, skontaktuj się z pomocą techniczną.",
+  "errors.requestInProgress": "Twoje poprzednie żądanie jest nadal przetwarzane. Spróbuj ponownie za chwilę.",
+  "errors.unavailable": "Ta usługa jest tymczasowo niedostępna. Spróbuj ponownie później.",
   "plans.community.btnText": "Rozpocznij pracę z społecznością",
   "plans.community.description": "Dla użytkowników indywidualnych, małych zespołów lub projektów niekomercyjnych",
   "plans.community.features": [

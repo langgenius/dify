@@ -26,6 +26,7 @@ import Badge from '@/app/components/base/badge'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { GoldenQuestionDialog } from './golden-question-dialog'
 import { GoldenQuestionImportDialog } from './golden-question-import-dialog'
@@ -97,7 +98,7 @@ function GoldenAnnotation({ annotation }: { annotation: string }) {
         render={
           <button
             type="button"
-            className="block w-fit max-w-full min-w-0 truncate text-left system-xs-regular text-text-secondary"
+            className="block w-fit max-w-full min-w-0 truncate text-start system-xs-regular text-text-secondary"
           >
             {annotation}
           </button>
@@ -126,10 +127,16 @@ function GoldenQuestionEditorDialog({
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
   const createMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const updateMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.patch.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.patch.mutationOptions(
+      {
+        context: { silent: true },
+      },
+    ),
   )
 
   const close = () => {
@@ -158,8 +165,8 @@ function GoldenQuestionEditorDialog({
         queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
       })
       close()
-    } catch {
-      setError(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      setError(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
     } finally {
       setSubmitting(false)
     }
@@ -210,7 +217,9 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
     })
   const query = useInfiniteQuery(queryOptions)
   const deleteMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
+      { context: { silent: true } },
+    ),
   )
   const items = query.data?.pages.flatMap((page) => page.data) ?? []
   const allSelected = items.length > 0 && selected.size === items.length
@@ -287,8 +296,8 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
       )
       setDeleteIds(undefined)
       return true
-    } catch {
-      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
       return false
     } finally {
       setDeleteSubmitting(false)
@@ -332,7 +341,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
         <div className="mt-2.5 w-full overflow-x-auto pt-3">
           <table
             aria-label={t(($) => $['qualityPage.goldenTab'], { ns: 'knowledgeQuality' })}
-            className="w-full min-w-195 table-fixed border-collapse text-left"
+            className="w-full min-w-195 table-fixed border-collapse text-start"
           >
             <colgroup>
               <col className="w-7" />
@@ -345,7 +354,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
             </colgroup>
             <thead>
               <tr className="h-9 text-[11px] leading-4 font-medium text-text-tertiary">
-                <td className="pr-3 align-middle">
+                <td className="pe-3 align-middle">
                   <Checkbox
                     aria-label={t(($) => $['qualityPage.selectAll'], { ns: 'knowledgeQuality' })}
                     checked={allSelected}
@@ -354,19 +363,19 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                     onCheckedChange={toggleAll}
                   />
                 </td>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}
                 </th>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}
                 </th>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.tags'], { ns: 'knowledgeQuality' })}
                 </th>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.annotation'], { ns: 'knowledgeQuality' })}
                 </th>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.updated'], { ns: 'knowledgeQuality' })}
                 </th>
                 <td />
@@ -375,7 +384,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="h-12 border-t border-divider-subtle">
-                  <td className="pr-3 align-middle">
+                  <td className="pe-3 align-middle">
                     <Checkbox
                       aria-label={t(($) => $['qualityPage.selectQuestion'], {
                         ns: 'knowledgeQuality',
@@ -388,11 +397,11 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                   </td>
                   <th
                     scope="row"
-                    className="truncate pr-3 text-left system-sm-medium text-text-primary"
+                    className="truncate pe-3 text-start system-sm-medium text-text-primary"
                   >
                     {item.question ?? ''}
                   </th>
-                  <td className="pr-3">
+                  <td className="pe-3">
                     <GoldenStatus
                       reason={item.status_reason}
                       status={
@@ -401,7 +410,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                       }
                     />
                   </td>
-                  <td className="pr-3">
+                  <td className="pe-3">
                     <div className="flex min-w-0 gap-1 overflow-hidden">
                       {visibleQualityTags(item.tags).map((tag) => (
                         <Badge key={tag} size="xs" variant="dimm" className="max-w-full min-w-0">
@@ -412,10 +421,10 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                       ))}
                     </div>
                   </td>
-                  <td className="pr-3">
+                  <td className="pe-3">
                     <GoldenAnnotation annotation={item.annotation} />
                   </td>
-                  <td className="pr-3 system-xs-regular text-text-secondary">
+                  <td className="pe-3 system-xs-regular text-text-secondary">
                     {formatQualityUpdatedAt(item.updated_at, i18n.language)}
                   </td>
                   <td>
@@ -482,7 +491,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
       )}
 
       {canEdit && selected.size > 0 && (
-        <div className="fixed bottom-6 left-[calc(50%+var(--new-rag-sidebar-width)/2)] flex h-12 -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg px-3 shadow-xl">
+        <div className="fixed inset-s-[calc(50%+var(--new-rag-sidebar-width)/2)] bottom-6 flex h-12 -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg px-3 shadow-xl rtl:translate-x-1/2">
           <span className="system-sm-medium text-text-primary">
             {t(($) => $['qualityPage.selectedCount'], {
               ns: 'knowledgeQuality',

@@ -120,12 +120,19 @@ const renderSelectLikeCombobox = ({
 const renderInputCombobox = ({
   children,
   open = false,
+  readOnly = false,
 }: {
   children?: React.ReactNode
   open?: boolean
+  readOnly?: boolean
 } = {}) =>
   renderWithSafeViewport(
-    <Combobox open={open} defaultValue="workflow" items={['workflow', 'dataset']}>
+    <Combobox
+      open={open}
+      readOnly={readOnly}
+      defaultValue="workflow"
+      items={['workflow', 'dataset']}
+    >
       {children ?? (
         <React.Fragment>
           <ComboboxInputGroup data-testid="input-group">
@@ -190,6 +197,13 @@ describe('Combobox wrappers', () => {
   })
 
   describe('Input group and controls', () => {
+    it('should keep the popup trigger and hide clear when read-only', async () => {
+      const screen = await renderInputCombobox({ readOnly: true })
+
+      await expect.element(screen.getByTestId('input-trigger')).toBeVisible()
+      await expect.element(screen.getByTestId('clear')).not.toBeVisible()
+    })
+
     it('should show the compound focus surface when keyboard users enter without Field', async () => {
       const screen = await renderInputCombobox()
       const inputGroup = screen.getByTestId('input-group')

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from sqlalchemy import Engine as _webhook_service_relationships_Engine
-from sqlalchemy import Table, select
+from sqlalchemy import select
 from sqlalchemy.engine import Engine as _webhook_service_Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
@@ -21,18 +21,24 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from graphon.variables.types import SegmentType
-from models.base import TypeBase
 from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
 from models.model import App, AppMode, EndUser
 from models.tools import ToolFile
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
+from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from services.errors.app import QuotaExceededError
 from services.trigger import webhook_service
 from services.trigger import webhook_service as service_module
 from services.trigger import webhook_service as webhook_service_module
+from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.webhook_service import WebhookService
 from tests.helpers.unit.model_factories import make_app, make_end_user, make_workflow
+
+
+@pytest.fixture
+def trigger_status(sqlite_session_factory: sessionmaker[Session]) -> AppTriggerService:
+    return AppTriggerService(triggers=SQLAlchemyAppTriggerRepository(session_factory=sqlite_session_factory))
 
 
 class _EndUserServiceStub:
@@ -271,6 +277,7 @@ class TestWebhookServiceCases:
             caplog: pytest.LogCaptureFixture,
             monkeypatch: pytest.MonkeyPatch,
             sqlite_engine: _webhook_service_Engine,
+            trigger_status: AppTriggerService,
         ) -> None:
             """Quota failures refund the charge and close the real service-owned session."""
             monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
@@ -293,6 +300,7 @@ class TestWebhookServiceCases:
                         {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
                         workflow,
                         end_users=_EndUserServiceStub(_end_user()),
+                        trigger_status=trigger_status,
                     )
 
             assert exc_info.value is quota_error
@@ -310,6 +318,7 @@ class TestWebhookServiceCases:
             self,
             monkeypatch: pytest.MonkeyPatch,
             sqlite_engine: _webhook_service_Engine,
+            trigger_status: AppTriggerService,
         ) -> None:
             monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
             webhook_trigger = _webhook_trigger()
@@ -336,6 +345,7 @@ class TestWebhookServiceCases:
                     webhook_data,
                     workflow,
                     end_users=_EndUserServiceStub(end_user),
+                    trigger_status=trigger_status,
                 )
 
             call_session = mock_trigger.call_args.kwargs["session"]
@@ -343,7 +353,7 @@ class TestWebhookServiceCases:
             quota_charge.commit.assert_called_once_with()
             quota_charge.refund.assert_not_called()
 
-        def test_trigger_workflow_execution_end_user_service_failure(self) -> None:
+        def test_trigger_workflow_execution_end_user_service_failure(self, trigger_status: AppTriggerService) -> None:
             webhook_trigger = _webhook_trigger()
             workflow = _workflow()
             webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
@@ -354,9 +364,12 @@ class TestWebhookServiceCases:
                     webhook_data,
                     workflow,
                     end_users=_EndUserServiceStub(ValueError("Failed to create end user")),
+                    trigger_status=trigger_status,
                 )
 
-        def test_trigger_workflow_execution_reuses_the_end_user_that_owns_the_uploads(self) -> None:
+        def test_trigger_workflow_execution_reuses_the_end_user_that_owns_the_uploads(
+            self, trigger_status: AppTriggerService
+        ) -> None:
             # The request creates trigger end user B and uploads under it while a concurrent request
             # commits trigger end user A, so a second lookup would select A. The run must stay with B,
             # because only the file's owner can load it.
@@ -382,7 +395,7 @@ class TestWebhookServiceCases:
                 mock_create.return_value.to_dict.return_value = {"file": "data"}
                 webhook_data = WebhookService.extract_webhook_data(webhook_trigger, end_users=end_users)
                 WebhookService.trigger_workflow_execution(
-                    webhook_trigger, webhook_data, _workflow(), end_users=end_users
+                    webhook_trigger, webhook_data, _workflow(), end_users=end_users, trigger_status=trigger_status
                 )
 
             assert mock_create.call_args[0][3] is upload_owner
@@ -756,6 +769,12 @@ class TestWebhookServiceCases:
             with pytest.raises(ValueError, match="Expected number, got str"):
                 WebhookService._validate_json_value("count", "42", "number")
 
+            # JSON true/false are bools, which Python treats as ints: still not a number
+            with pytest.raises(ValueError, match="Expected number, got bool"):
+                WebhookService._validate_json_value("count", True, "number")
+            with pytest.raises(ValueError, match="Expected number, got bool"):
+                WebhookService._validate_json_value("count", False, "number")
+
         def test_validate_json_value_bool(self):
             """Test JSON value validation for boolean type."""
             # Valid boolean
@@ -802,6 +821,10 @@ class TestWebhookServiceCases:
             # Invalid - array with non-numbers
             with pytest.raises(ValueError, match="Expected array of numbers, got list"):
                 WebhookService._validate_json_value("scores", [1, "2", 3], "array[number]")
+
+            # Invalid - array with a boolean
+            with pytest.raises(ValueError, match="Expected array of numbers, got list"):
+                WebhookService._validate_json_value("scores", [1, True, 3], "array[number]")
 
         def test_validate_json_value_array_bool(self):
             """Test JSON value validation for array[boolean] type."""
@@ -1022,6 +1045,27 @@ class TestWebhookServiceCases:
                 }
 
                 with pytest.raises(ValueError, match="Required body parameter missing: message"):
+                    WebhookService.extract_and_validate_webhook_data(
+                        _webhook_trigger(), node_config, end_users=_end_users()
+                    )
+
+        def test_extract_and_validate_webhook_request_rejects_boolean_for_number_body_param(self) -> None:
+            app = Flask(__name__)
+            with app.test_request_context(
+                "/webhook",
+                method="POST",
+                headers={"Content-Type": "application/json"},
+                json={"amount": True},
+            ):
+                node_config = {
+                    "data": {
+                        "method": "post",
+                        "content_type": "application/json",
+                        "body": [{"name": "amount", "type": "number", "required": True}],
+                    }
+                }
+
+                with pytest.raises(ValueError, match="Parameter 'amount' validation failed: Expected number, got bool"):
                     WebhookService.extract_and_validate_webhook_data(
                         _webhook_trigger(), node_config, end_users=_end_users()
                     )
@@ -1370,8 +1414,6 @@ class TestWebhookServiceRelationshipsCases:
     def test_draft_sync_preserves_webhook_id_when_deleted_node_is_restored(
         monkeypatch: pytest.MonkeyPatch, sqlite_engine: _webhook_service_relationships_Engine
     ) -> None:
-        webhook_trigger_table = cast(Table, WorkflowWebhookTrigger.__table__)
-        TypeBase.metadata.create_all(sqlite_engine, tables=[webhook_trigger_table])
         session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         app = cast(
             App,
@@ -1417,8 +1459,6 @@ class TestWebhookServiceRelationshipsCases:
     def test_published_sync_removes_stale_webhook_relationships(
         monkeypatch: pytest.MonkeyPatch, sqlite_engine: _webhook_service_relationships_Engine
     ) -> None:
-        webhook_trigger_table = cast(Table, WorkflowWebhookTrigger.__table__)
-        TypeBase.metadata.create_all(sqlite_engine, tables=[webhook_trigger_table])
         session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         app = cast(
             App,

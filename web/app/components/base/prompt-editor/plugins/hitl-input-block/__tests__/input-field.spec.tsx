@@ -171,31 +171,114 @@ describe('InputField', () => {
     )
   })
 
-  it('should disable save and show validation error when variable name is invalid', async () => {
+  it.each(['invalid name', '1name', 'user-name', 'a'.repeat(31)])(
+    'should reject invalid variable name %s',
+    async (name) => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+
+      render(
+        <InputField
+          nodeId="node-1"
+          isEdit
+          payload={createPayload()}
+          onChange={onChange}
+          onCancel={vi.fn()}
+        />,
+      )
+
+      const inputs = screen.getAllByRole('textbox')
+      await user.clear(inputs[0]!)
+      await user.type(inputs[0]!, name)
+
+      expect(
+        screen.getByText(
+          'workflowHumanInput.nodes.humanInput.insertInputField.variableNameInvalid',
+        ),
+      )!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await user.keyboard('{Control>}{Enter}{/Control}')
+      expect(onChange).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    { mode: 'insert', isEdit: false },
+    { mode: 'edit', isEdit: true },
+  ])(
+    'should reject surrounding whitespace until the field name is corrected in $mode mode',
+    async ({ isEdit }) => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      render(
+        <InputField
+          nodeId="node-whitespace-name"
+          isEdit={isEdit}
+          payload={isEdit ? createPayload() : undefined}
+          onChange={onChange}
+          onCancel={vi.fn()}
+        />,
+      )
+
+      const nameInput = screen.getByRole('textbox', { name: /saveResponseAs/ })
+      const saveButton = screen.getByRole('button', {
+        name: isEdit ? 'common.operation.save' : /insertInputField\.insert/,
+      })
+      await user.clear(nameInput)
+      await user.type(nameInput, ' ReviewNote ')
+
+      expect(screen.getByText(/insertInputField\.variableNameInvalid/)).toBeInTheDocument()
+      expect(saveButton).toBeDisabled()
+      await user.click(saveButton)
+      await user.keyboard('{Control>}{Enter}{/Control}')
+      expect(onChange).not.toHaveBeenCalled()
+
+      await user.clear(nameInput)
+      await user.type(nameInput, 'ReviewNote')
+      expect(screen.queryByText(/insertInputField\.variableNameInvalid/)).not.toBeInTheDocument()
+      expect(saveButton).toBeEnabled()
+      await user.click(saveButton)
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ output_variable_name: 'ReviewNote' }),
+      )
+    },
+  )
+
+  it.each([
+    { mode: 'insert', isEdit: false },
+    { mode: 'edit', isEdit: true },
+  ])('should accept uppercase-start names and preserve case in $mode mode', async ({ isEdit }) => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
       <InputField
-        nodeId="human"
-        isEdit
-        payload={createPayload()}
+        nodeId="node-uppercase-name"
+        isEdit={isEdit}
+        payload={isEdit ? createPayload() : undefined}
+        unavailableVariableNames={['age']}
         onChange={onChange}
         onCancel={vi.fn()}
       />,
     )
 
-    const inputs = screen.getAllByRole('textbox')
-    await user.clear(inputs[0]!)
-    await user.type(inputs[0]!, 'invalid name')
+    const nameInput = screen.getByRole('textbox', {
+      name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.saveResponseAs/,
+    })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Age')
+    const saveButton = screen.getByRole('button', {
+      name: isEdit
+        ? 'common.operation.save'
+        : /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/,
+    })
+    expect(saveButton).toBeEnabled()
+    await user.click(saveButton)
 
-    expect(
-      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.variableNameInvalid'),
-    )!.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    await user.keyboard('{Control>}{Enter}{/Control}')
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ output_variable_name: 'Age' }),
+    )
   })
 
   it('should disable save and show validation error when variable name already exists', async () => {

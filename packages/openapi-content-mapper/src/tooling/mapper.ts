@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { fileURLToPath } from 'node:url'
 import { record } from '../document.js'
 import { readFrames } from './framing.js'
 import { mapperTransform } from './mapper-cache.js'
@@ -8,6 +9,7 @@ import { isSource, resolveDocument, sourceProject } from './source.js'
 const projects = new Map<string, ReturnType<typeof sourceProject>>()
 let initialized = false
 const transform = mapperTransform()
+const bundledDirectory = fileURLToPath(new URL('../../contracts', import.meta.url))
 
 async function dispatch(method: string, params: Record<string, unknown>): Promise<string> {
   switch (method) {
@@ -19,7 +21,7 @@ async function dispatch(method: string, params: Record<string, unknown>): Promis
     case 'openProject': {
       if (!initialized || typeof params.projectHandle !== 'string')
         throw new Error('Initialize the mapper and supply a projectHandle first')
-      const project = sourceProject(params.configFileName, params.options)
+      const project = sourceProject(params.configFileName, params.options, bundledDirectory)
       projects.set(params.projectHandle, project)
       return JSON.stringify({
         configIdentity: project.configIdentity,

@@ -20,8 +20,7 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
-from controllers.openapi._errors import RunNotFound
-from controllers.openapi.app_workflow import require_uuid
+from controllers.openapi._errors import RunNotFound, require_uuid
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,

@@ -1,3 +1,4 @@
+import json
 import uuid
 
 import pytest
@@ -94,6 +95,7 @@ class TestAgentChatAppConfigManagerGetAppConfig:
         assert result.agent is not None
         assert result.agent.strategy.value == "function-calling"
 
+    @pytest.mark.parametrize("tools", [[], [{}]], ids=["no-tools", "legacy-empty-tool"])
     @pytest.mark.parametrize(
         ("conversation", "expected_from"),
         [
@@ -103,11 +105,13 @@ class TestAgentChatAppConfigManagerGetAppConfig:
     )
     def test_get_app_config_stored_config(
         self,
+        tools: list[dict[str, object]],
         conversation: Conversation | None,
         expected_from: EasyUIBasedAppModelConfigFrom,
     ) -> None:
         """None selects the latest app config; a conversation selects its supplied config."""
         app_model_config = _config()
+        app_model_config.agent_mode = json.dumps({**app_model_config.agent_mode_dict, "tools": tools})
         result = AgentChatAppConfigManager.get_app_config(
             app_model=_app(),
             app_model_config=app_model_config,
@@ -124,6 +128,7 @@ class TestAgentChatAppConfigManagerGetAppConfig:
         assert result.model.model == "m"
         assert result.agent is not None
         assert result.agent.strategy.value == "function-calling"
+        assert result.agent.tools == []
 
     def test_get_app_config_requires_annotation_reply_without_override(self):
         with pytest.raises(ValueError, match="Annotation reply config is required"):
@@ -343,3 +348,27 @@ class TestValidateAgentModeAndSetDefaults:
         updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, _session())
         assert updated["agent_mode"]["tools"][0]["dataset"]["enabled"] is False
         assert updated["agent_mode"]["tools"][1]["enabled"] is False
+
+    @pytest.mark.parametrize(
+        "tool",
+        [
+            pytest.param({}, id="empty-object"),
+            pytest.param(None, id="null"),
+            pytest.param(False, id="boolean"),
+            pytest.param(0, id="number"),
+            pytest.param("", id="empty-string"),
+            pytest.param("tool", id="string"),
+            pytest.param([], id="empty-list"),
+            pytest.param(["tool"], id="list"),
+        ],
+    )
+    def test_tool_entries_must_be_non_empty_objects(self, tool: object) -> None:
+        config = {
+            "agent_mode": {
+                "enabled": True,
+                "strategy": PlanningStrategy.ROUTER.value,
+                "tools": [tool],
+            }
+        }
+        with pytest.raises(ValueError, match=r"Each item in agent_mode\.tools must be a non-empty object"):
+            AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, _session())

@@ -117,9 +117,7 @@ class TestUnstructuredMarkdownMsgXml:
 
 
 class TestUnstructuredEmailAndEpub:
-    def test_email_extractor_local_decodes_html_and_suppresses_decode_errors(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_email_extractor_local_preserves_partitioned_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _register_unstructured_packages(monkeypatch)
         captured: dict[str, list[Text]] = {}
 
@@ -140,7 +138,7 @@ class TestUnstructuredEmailAndEpub:
 
         assert docs[0].page_content == "chunked-email"
         chunk_elements = captured["elements"]
-        assert "Hello Email" in chunk_elements[0].text
+        assert chunk_elements[0].text == encoded_html
         assert chunk_elements[1].text == bad_base64
 
     def test_email_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch) -> None:

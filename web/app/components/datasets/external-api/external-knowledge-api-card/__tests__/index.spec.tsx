@@ -174,6 +174,32 @@ it('deletes a confirmed API and removes its card after refreshing the list', asy
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
 })
 
+it('keeps deletion pending in the dialog and prevents duplicate requests', async () => {
+  const user = userEvent.setup()
+  const request = createDeferred<{ result: string }>()
+  vi.mocked(deleteExternalAPI).mockReturnValueOnce(request.promise)
+  getApis.mockResolvedValue(listResponse([]))
+  setup()
+  await user.click(remove())
+  const dialog = await screen.findByRole('alertdialog')
+  const confirm = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
+  const cancel = within(dialog).getByRole('button', { name: 'common.operation.cancel' })
+
+  await user.click(confirm)
+  expect(confirm).toHaveAttribute('aria-disabled', 'true')
+  expect(cancel).toBeDisabled()
+  expect(deleteExternalAPI).toHaveBeenCalledTimes(1)
+
+  await user.click(confirm)
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('alertdialog')).toBeVisible()
+  expect(deleteExternalAPI).toHaveBeenCalledTimes(1)
+
+  await act(async () => request.resolve({ result: 'success' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(screen.queryByText(api.name)).not.toBeInTheDocument()
+})
+
 it('cancels deletion without changing the list', async () => {
   const user = userEvent.setup()
   setup()

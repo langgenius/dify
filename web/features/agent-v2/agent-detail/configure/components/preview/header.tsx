@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   SegmentedControl,
@@ -138,15 +139,13 @@ export function AgentPreviewHeader({
   const restartLabel = t(($) => $['agentDetail.configure.preview.restart'])
   const modeTip = `${buildLabel}. ${buildTipBody} ${learnMoreLabel} ${previewLabel}. ${previewTipBody}`
   const restartButton = (
-    <button
-      type="button"
+    <IconButton
+      aria-label={restartLabel}
       disabled={refreshDisabled}
       onClick={mode === 'preview' ? onRefresh : undefined}
-      className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
-      aria-label={restartLabel}
     >
       <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
-    </button>
+    </IconButton>
   )
 
   return (

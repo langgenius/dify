@@ -13,6 +13,7 @@ from core.app.entities.app_invoke_entities import DifyRunContext
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import build_knowledge_fs_node_dependencies
 from extensions import ext_application_services
+from extensions.application_services.tracing import TracingServices, build_tracing_services
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables import StringSegment
@@ -76,6 +77,7 @@ class _FakeAccounts:
 
 @dataclass
 class _FakeApplicationServices:
+    tracing: TracingServices
     accounts: _FakeAccounts = field(default_factory=_FakeAccounts)
 
 
@@ -87,8 +89,11 @@ def test_application_registers_lazy_workflow_runtime_dependencies(monkeypatch: p
     monkeypatch.setattr(workflow_runtime, "get_knowledge_fs_runtime", resolve_runtime)
     monkeypatch.setattr(workflow_runtime.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: session_maker)
+    tracing = build_tracing_services(database_client=session_maker)
     monkeypatch.setattr(
-        ext_application_services, "build_application_services", lambda **_kwargs: _FakeApplicationServices()
+        ext_application_services,
+        "build_application_services",
+        lambda **_kwargs: _FakeApplicationServices(tracing=tracing),
     )
 
     ext_application_services.init_app(app)

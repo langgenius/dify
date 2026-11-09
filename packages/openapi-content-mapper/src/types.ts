@@ -257,6 +257,18 @@ type RpcInput<O> = O extends unknown
           : unknown)
   : never
 type RpcResponse<T> = T extends undefined ? void : T
+/** The first call argument, including undefined when the operation accepts no input. */
+export type RpcInputs<Router> = {
+  [K in keyof Router]: Router[K] extends (...args: infer Args) => unknown
+    ? Args[0]
+    : RpcInputs<Router[K]>
+}
+/** Decoded successful results, matching awaited API calls (including void). */
+export type RpcOutputs<Router> = {
+  [K in keyof Router]: Router[K] extends (...args: never[]) => infer Result
+    ? Awaited<Result>
+    : RpcOutputs<Router[K]>
+}
 /** Resolve operation signatures only when a consumer accesses their route. */
 export type RpcRouter<S, Routes, Context extends object = object, Errors = object> = {
   [K in keyof Routes]: Routes[K] extends readonly [

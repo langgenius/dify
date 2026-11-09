@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import queue
 import uuid
 from collections.abc import Callable, Generator, Mapping
 from contextlib import nullcontext
@@ -17,7 +18,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
@@ -54,6 +60,25 @@ class _StreamEventModel(BaseModel):
     message: object | None = None
 
 
+class _ResponsePublisher(queue.Queue[bytes]):
+    """Preserve actual published payloads in a FIFO queue without Redis I/O."""
+
+    def publish(self, payload: bytes) -> None:
+        """Enqueue the payload unchanged for inspection by the consumer."""
+        self.put(payload)
+
+
+@pytest.fixture
+def response_publisher(monkeypatch: pytest.MonkeyPatch) -> _ResponsePublisher:
+    publisher = _ResponsePublisher()
+    monkeypatch.setattr(
+        workflow_execute_task_module.MessageBasedAppGenerator,
+        "get_response_topic",
+        lambda *_args, **_kwargs: publisher,
+    )
+    return publisher
+
+
 def _build_advanced_chat_generate_entity(conversation_id: str | None) -> AdvancedChatAppGenerateEntity:
     return AdvancedChatAppGenerateEntity(
         task_id="task-id",
@@ -69,6 +94,7 @@ def _build_advanced_chat_generate_entity(conversation_id: str | None) -> Advance
 
 def _build_workflow_generate_entity(stream: bool) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task-id",
         inputs={},
         files=[],
@@ -671,6 +697,116 @@ def test_publish_streaming_response_does_not_publish_synthetic_failure_after_ter
 
     payloads = _published_payloads(mock_topic)
     assert [payload["event"] for payload in payloads] == ["workflow_started", "workflow_finished"]
+
+
+@pytest.mark.parametrize(
+    ("events", "app_mode"),
+    [
+        pytest.param([], AppMode.ADVANCED_CHAT, id="empty-stream"),
+        pytest.param([{"event": "message", "answer": "answer"}], AppMode.ADVANCED_CHAT, id="missing-message-end"),
+        pytest.param(
+            [{"event": "workflow_started"}, {"event": "message_end"}],
+            AppMode.ADVANCED_CHAT,
+            id="incomplete-workflow",
+        ),
+        pytest.param(
+            [{"event": "message_end"}, {"event": "error", "message": "provider failed"}],
+            AppMode.ADVANCED_CHAT,
+            id="error-after-message-end",
+        ),
+        pytest.param(
+            [{"event": "message_end"}, {"event": "error", "message": ""}],
+            AppMode.ADVANCED_CHAT,
+            id="empty-error-message",
+        ),
+        pytest.param(
+            [{"event": "message_end"}, {"event": "error", "message": 123}],
+            AppMode.ADVANCED_CHAT,
+            id="invalid-error-message",
+        ),
+        pytest.param(
+            [{"event": "message_end"}, {"event": "error"}],
+            AppMode.ADVANCED_CHAT,
+            id="missing-error-message",
+        ),
+        pytest.param([{"event": "message_end"}], AppMode.WORKFLOW, id="workflow-app"),
+    ],
+)
+def test_publish_streaming_response_preserves_failure_for_incomplete_or_failed_chat(
+    response_publisher: _ResponsePublisher,
+    events: list[Mapping[str, object]],
+    app_mode: AppMode,
+):
+    def response_stream() -> Generator[Mapping[str, object]]:
+        yield from events
+
+    _publish_streaming_response(
+        response_stream(),
+        "workflow-run-id",
+        app_mode=app_mode,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+    payloads = [json.loads(response_publisher.get_nowait()) for _ in range(response_publisher.qsize())]
+    assert payloads[: len(events)] == events
+    assert [payload["event"] for payload in payloads].count("workflow_started") == 1
+    assert payloads[-1]["event"] == "workflow_finished"
+    assert payloads[-1]["data"]["status"] == WorkflowExecutionStatus.FAILED
+    expected_error = (
+        "provider failed"
+        if events and events[-1].get("message") == "provider failed"
+        else "Workflow stream ended without a terminal event"
+    )
+    assert payloads[-1]["data"]["error"] == expected_error
+
+
+def test_publish_streaming_response_does_not_complete_chat_after_event_encoding_failure(
+    response_publisher: _ResponsePublisher,
+):
+    unencodable_event: dict[str, object] = {"event": "workflow_started"}
+    unencodable_event["data"] = unencodable_event
+
+    def response_stream() -> Generator[Mapping[str, object]]:
+        yield unencodable_event
+        yield {"event": "message_end"}
+
+    _publish_streaming_response(
+        response_stream(),
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+    payloads = [json.loads(response_publisher.get_nowait()) for _ in range(response_publisher.qsize())]
+    assert [payload["event"] for payload in payloads] == ["message_end", "workflow_started", "workflow_finished"]
+    assert payloads[-1]["data"]["status"] == WorkflowExecutionStatus.FAILED
+
+
+def test_publish_streaming_response_preserves_failure_when_iteration_raises_after_message_end(
+    response_publisher: _ResponsePublisher,
+):
+    def response_stream() -> Generator[Mapping[str, object]]:
+        yield {"event": "message_end"}
+        raise RuntimeError("stream exploded")
+
+    with pytest.raises(RuntimeError, match="stream exploded"):
+        _publish_streaming_response(
+            response_stream(),
+            "workflow-run-id",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow-id",
+            inputs={},
+            started_reason=WorkflowStartReason.INITIAL,
+        )
+
+    payloads = [json.loads(response_publisher.get_nowait()) for _ in range(response_publisher.qsize())]
+    assert [payload["event"] for payload in payloads] == ["message_end", "workflow_started", "workflow_finished"]
+    assert payloads[-1]["data"]["status"] == WorkflowExecutionStatus.FAILED
+    assert payloads[-1]["data"]["error"] == "stream exploded"
 
 
 def test_app_runner_streaming_failure_publishes_started_then_failed_workflow_finished(

@@ -9,7 +9,7 @@ import { getMarketplaceListCondition } from '@/app/components/plugins/marketplac
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/console'
 
-export const useMarketplace = (
+export const useToolMarketplace = (
   searchPluginText: string,
   filterPluginTags: string[],
   enabled = true,

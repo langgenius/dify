@@ -24,7 +24,7 @@ from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineDocumentStore, PipelineRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
@@ -197,6 +197,7 @@ class PipelineGenerator(BaseAppGenerator):
                 )
                 session.add(document_pipeline_execution_log)
             application_generate_entity = RagPipelineGenerateEntity(
+                user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
                 task_id=str(uuid.uuid4()),
                 app_config=pipeline_config,
                 pipeline_config=pipeline_config,
@@ -428,6 +429,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         # init application generate entity - use RagPipelineGenerateEntity instead
         application_generate_entity = RagPipelineGenerateEntity(
+            user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
             task_id=str(uuid.uuid4()),
             app_config=pipeline_config,
             pipeline_config=pipeline_config,
@@ -530,6 +532,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         # init application generate entity
         application_generate_entity = RagPipelineGenerateEntity(
+            user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
             task_id=str(uuid.uuid4()),
             app_config=pipeline_config,
             pipeline_config=pipeline_config,

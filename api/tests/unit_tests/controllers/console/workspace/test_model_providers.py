@@ -44,9 +44,11 @@ from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from libs.external_api import ExternalApi
 from models import Account
 from models.account import TenantAccountRole
 from models.provider import ProviderType
+from services.billing_client import billing
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
@@ -630,7 +632,8 @@ class TestModelProviderValidateApi:
 
 
 class TestModelProviderIconApi:
-    def test_icon_success(self, app: Flask):
+    @pytest.mark.parametrize("icon_type", ["icon_small", "icon_small_dark", "ICON_SMALL", "ICON_SMALL_DARK"])
+    def test_icon_success(self, app: Flask, icon_type: str):
         api = ModelProviderIconApi()
 
         with (
@@ -640,9 +643,11 @@ class TestModelProviderIconApi:
                 return_value=(b"123", "image/png"),
             ) as get_model_provider_icon,
         ):
-            response = api.get("t1", "openai", "logo", "en")
+            response = api.get(VALID_UUID, "openai", icon_type, "en_US")
 
-        get_model_provider_icon.assert_called_once_with(tenant_id="t1", provider="openai", icon_type="logo", lang="en")
+        get_model_provider_icon.assert_called_once_with(
+            tenant_id=VALID_UUID, provider="openai", icon_type=icon_type.lower(), lang="en_US"
+        )
         assert response.mimetype == "image/png"
         response.direct_passthrough = False
         assert response.get_data() == b"123"
@@ -657,8 +662,40 @@ class TestModelProviderIconApi:
                 return_value=(None, None),
             ),
         ):
-            with pytest.raises(ValueError, match="icon not found for provider openai, icon_type logo, lang en"):
-                api.get("t1", "openai", "logo", "en")
+            with pytest.raises(
+                ValueError, match="icon not found for provider openai, icon_type icon_small, lang en_US"
+            ):
+                api.get(VALID_UUID, "openai", "icon_small", "en_US")
+
+    @pytest.mark.parametrize(
+        ("tenant_id", "icon_type", "invalid_field"),
+        [
+            ("current", "icon_large", "tenant_id"),
+            ("current", "icon_small", "tenant_id"),
+            (INVALID_UUID, "icon_small", "tenant_id"),
+            (VALID_UUID, "icon_large", "icon_type"),
+            (VALID_UUID, "logo", "icon_type"),
+        ],
+    )
+    def test_invalid_icon_path_returns_bad_request(self, tenant_id: str, icon_type: str, invalid_field: str):
+        """Reject invalid paths over HTTP without configuring provider dependencies."""
+        app = Flask(__name__)
+        api = ExternalApi(app)
+        api.add_resource(
+            ModelProviderIconApi,
+            "/console/api/workspaces/<string:tenant_id>/model-providers/"
+            "<path:provider>/<string:icon_type>/<string:lang>",
+        )
+
+        response = app.test_client().get(
+            f"/console/api/workspaces/{tenant_id}/model-providers/ollama/{icon_type}/en_US"
+        )
+
+        assert response.status_code == 400
+        body = response.get_json()
+        assert body["code"] == "invalid_param"
+        assert body["status"] == 400
+        assert invalid_field in body["message"]
 
 
 class TestPreferredProviderTypeUpdateApi:
@@ -703,7 +740,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
-                return_value={"payment_link": "https://payment.example.com/provider"},
+                return_value=billing.GetModelProviderPaymentLinkReply(url="https://payment.example.com/provider"),
             ) as get_model_provider_payment_link,
         ):
             result = method(api, "tenant1", user, provider="anthropic")

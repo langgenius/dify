@@ -1,91 +1,121 @@
 import json
-import sys
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from collections.abc import Generator
+from contextlib import contextmanager
 
+import alibabacloud_gpdb20160503.client as gpdb_client_module
 import dify_vdb_analyticdb.analyticdb_vector_openapi as openapi_module
 import pytest
+from alibabacloud_gpdb20160503 import models as gpdb_models
+from alibabacloud_tea_openapi import models as open_api_models
 from dify_vdb_analyticdb.analyticdb_vector_openapi import (
     AnalyticdbVectorOpenAPI,
     AnalyticdbVectorOpenAPIConfig,
 )
+from Tea.exceptions import TeaException
 
-from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 
+# Fields every request sends to address the instance as its manager account.
+MANAGER = {
+    "DBInstanceId": "instance-1",
+    "ManagerAccount": "account",
+    "ManagerAccountPassword": "password",
+    "RegionId": "cn-hangzhou",
+}
+# Fields every request sends to address the collection inside the namespace.
+COLLECTION = {
+    "Collection": "collection_1",
+    "DBInstanceId": "instance-1",
+    "Namespace": "dify",
+    "NamespacePassword": "ns-password",
+    "RegionId": "cn-hangzhou",
+}
 
-def _request_class(name: str):
-    class _Request:
-        def __init__(self, **kwargs):
-            for key, value in kwargs.items():
-                setattr(self, key, value)
 
-    _Request.__name__ = name
-    return _Request
+class FakeGpdbClient:
+    """Stands in for the AnalyticDB OpenAPI client: records each request and answers with preset results."""
 
-
-class _StubClient:
-    def __init__(self, config):
+    def __init__(self, config: open_api_models.Config | None = None) -> None:
         self.config = config
+        self.requests: list[tuple[str, dict[str, object]]] = []
+        self.errors: dict[str, Exception] = {}
+        self.matches: list[gpdb_models.QueryCollectionDataResponseBodyMatchesMatch] = []
+
+    def sent(self, method: str) -> list[dict[str, object]]:
+        return [request for name, request in self.requests if name == method]
+
+    def _record(self, method: str, request_map: dict[str, object]) -> None:
+        self.requests.append((method, request_map))
+        if method in self.errors:
+            raise self.errors[method]
+
+    def init_vector_database(self, request: gpdb_models.InitVectorDatabaseRequest) -> None:
+        self._record("init_vector_database", request.to_map())
+
+    def describe_namespace(self, request: gpdb_models.DescribeNamespaceRequest) -> None:
+        self._record("describe_namespace", request.to_map())
+
+    def create_namespace(self, request: gpdb_models.CreateNamespaceRequest) -> None:
+        self._record("create_namespace", request.to_map())
+
+    def describe_collection(self, request: gpdb_models.DescribeCollectionRequest) -> None:
+        self._record("describe_collection", request.to_map())
+
+    def create_collection(self, request: gpdb_models.CreateCollectionRequest) -> None:
+        self._record("create_collection", request.to_map())
+
+    def upsert_collection_data(self, request: gpdb_models.UpsertCollectionDataRequest) -> None:
+        self._record("upsert_collection_data", request.to_map())
+
+    def query_collection_data(
+        self, request: gpdb_models.QueryCollectionDataRequest
+    ) -> gpdb_models.QueryCollectionDataResponse:
+        self._record("query_collection_data", request.to_map())
+        return gpdb_models.QueryCollectionDataResponse(
+            body=gpdb_models.QueryCollectionDataResponseBody(
+                matches=gpdb_models.QueryCollectionDataResponseBodyMatches(match=self.matches)
+            )
+        )
+
+    def delete_collection_data(self, request: gpdb_models.DeleteCollectionDataRequest) -> None:
+        self._record("delete_collection_data", request.to_map())
+
+    def delete_collection(self, request: gpdb_models.DeleteCollectionRequest) -> None:
+        self._record("delete_collection", request.to_map())
 
 
-def _install_openapi_stubs(monkeypatch: pytest.MonkeyPatch):
-    gpdb_package = FakeModule("alibabacloud_gpdb20160503")
-    gpdb_package.__path__ = []
-    gpdb_models = FakeModule("alibabacloud_gpdb20160503.models")
-    for class_name in [
-        "InitVectorDatabaseRequest",
-        "DescribeNamespaceRequest",
-        "CreateNamespaceRequest",
-        "DescribeCollectionRequest",
-        "CreateCollectionRequest",
-        "UpsertCollectionDataRequestRows",
-        "UpsertCollectionDataRequest",
-        "QueryCollectionDataRequest",
-        "DeleteCollectionDataRequest",
-        "DeleteCollectionRequest",
-    ]:
-        setattr(gpdb_models, class_name, _request_class(class_name))
+class FakeRedis:
+    """The parts of ``redis_client`` that initialization uses, returning one cached value for every key."""
 
-    gpdb_client = FakeModule("alibabacloud_gpdb20160503.client")
-    gpdb_client.Client = _StubClient
-    gpdb_package.models = gpdb_models
+    def __init__(self, cached: object = None) -> None:
+        self.cached = cached
+        self.lock_names: list[str] = []
+        self.set_calls: list[tuple[str, object, int | None]] = []
 
-    tea_openapi = FakeModule("alibabacloud_tea_openapi")
-    tea_openapi.__path__ = []
-    tea_openapi_models = FakeModule("alibabacloud_tea_openapi.models")
+    @contextmanager
+    def lock(self, name: str, timeout: int) -> Generator[None]:
+        self.lock_names.append(name)
+        yield
 
-    class OpenApiConfig:
-        def __init__(self, **kwargs):
-            for key, value in kwargs.items():
-                setattr(self, key, value)
+    def get(self, key: str) -> object:
+        return self.cached
 
-    tea_openapi_models.Config = OpenApiConfig
-    tea_openapi.models = tea_openapi_models
+    def set(self, key: str, value: object, ex: int | None = None) -> None:
+        self.set_calls.append((key, value, ex))
 
-    tea_package = FakeModule("Tea")
-    tea_package.__path__ = []
-    tea_exceptions = FakeModule("Tea.exceptions")
 
-    class TeaError(Exception):
-        def __init__(self, status_code=None, **kwargs):
-            super().__init__("TeaException")
-            status_code = kwargs.get("statusCode", status_code)
-            self.statusCode = status_code
-            self.status_code = status_code
+def _api_error(status_code: int) -> TeaException:
+    return TeaException({"code": "Error", "message": "request failed", "data": {"statusCode": status_code}})
 
-    tea_exceptions.TeaException = TeaError
-    tea_package.exceptions = tea_exceptions
 
-    monkeypatch.setitem(sys.modules, "alibabacloud_gpdb20160503", gpdb_package)
-    monkeypatch.setitem(sys.modules, "alibabacloud_gpdb20160503.models", gpdb_models)
-    monkeypatch.setitem(sys.modules, "alibabacloud_gpdb20160503.client", gpdb_client)
-    monkeypatch.setitem(sys.modules, "alibabacloud_tea_openapi", tea_openapi)
-    monkeypatch.setitem(sys.modules, "alibabacloud_tea_openapi.models", tea_openapi_models)
-    monkeypatch.setitem(sys.modules, "Tea", tea_package)
-    monkeypatch.setitem(sys.modules, "Tea.exceptions", tea_exceptions)
-
-    return SimpleNamespace(models=gpdb_models, TeaException=TeaError, OpenApiConfig=OpenApiConfig)
+def _match(
+    score: float, document_id: str, page_content: str, vector: list[float]
+) -> gpdb_models.QueryCollectionDataResponseBodyMatchesMatch:
+    return gpdb_models.QueryCollectionDataResponseBodyMatchesMatch(
+        score=score,
+        metadata={"metadata_": json.dumps({"document_id": document_id}), "page_content": page_content},
+        values=gpdb_models.QueryCollectionDataResponseBodyMatchesMatchValues(value=vector),
+    )
 
 
 def _config() -> AnalyticdbVectorOpenAPIConfig:
@@ -101,6 +131,29 @@ def _config() -> AnalyticdbVectorOpenAPIConfig:
     )
 
 
+@pytest.fixture
+def fake_redis(monkeypatch: pytest.MonkeyPatch) -> FakeRedis:
+    redis = FakeRedis()
+    monkeypatch.setattr(openapi_module, "redis_client", redis)
+    return redis
+
+
+@pytest.fixture
+def client() -> FakeGpdbClient:
+    return FakeGpdbClient()
+
+
+@pytest.fixture
+def vector(monkeypatch: pytest.MonkeyPatch, client: FakeGpdbClient, fake_redis: FakeRedis) -> AnalyticdbVectorOpenAPI:
+    monkeypatch.setattr(gpdb_client_module, "Client", lambda _config: client)
+    # The instance is already initialized, so construction sends no request.
+    fake_redis.cached = 1
+    vector = AnalyticdbVectorOpenAPI("COLLECTION_1", _config())
+    fake_redis.cached = None
+    assert vector._client is client
+    return vector
+
+
 @pytest.mark.parametrize(
     ("field", "value", "error_message"),
     [
@@ -113,7 +166,7 @@ def _config() -> AnalyticdbVectorOpenAPIConfig:
         ("namespace_password", "", "ANALYTICDB_NAMESPACE_PASSWORD"),
     ],
 )
-def test_openapi_config_validation(field, value, error_message):
+def test_openapi_config_validation(field: str, value: str, error_message: str) -> None:
     values = _config().model_dump()
     values[field] = value
 
@@ -121,7 +174,7 @@ def test_openapi_config_validation(field, value, error_message):
         AnalyticdbVectorOpenAPIConfig.model_validate(values)
 
 
-def test_openapi_config_to_client_params():
+def test_openapi_config_to_client_params() -> None:
     config = _config()
     params = config.to_analyticdb_client_params()
 
@@ -131,179 +184,126 @@ def test_openapi_config_to_client_params():
     assert params["read_timeout"] == 60000
 
 
-def test_init_creates_openapi_client_and_runs_initialize(monkeypatch: pytest.MonkeyPatch):
-    stubs = _install_openapi_stubs(monkeypatch)
-    initialize_mock = MagicMock()
-    monkeypatch.setattr(openapi_module.AnalyticdbVectorOpenAPI, "_initialize", initialize_mock)
+def test_init_creates_openapi_client_and_runs_initialize(
+    monkeypatch: pytest.MonkeyPatch, fake_redis: FakeRedis
+) -> None:
+    monkeypatch.setattr(gpdb_client_module, "Client", FakeGpdbClient)
+    fake_redis.cached = 1
 
     vector = AnalyticdbVectorOpenAPI("COLLECTION_1", _config())
 
     assert vector._collection_name == "collection_1"
-    assert isinstance(vector._client_config, stubs.OpenApiConfig)
+    assert isinstance(vector._client_config, open_api_models.Config)
     assert vector._client_config.user_agent == "dify"
     assert vector._client_config.access_key_id == "ak"
-    assert isinstance(vector._client, _StubClient)
+    assert isinstance(vector._client, FakeGpdbClient)
     assert vector._client.config is vector._client_config
-    initialize_mock.assert_called_once_with()
+    # _initialize ran: it took the instance lock and found the cache marker.
+    assert fake_redis.lock_names == ["vector_initialize_instance-1_lock"]
 
 
-def test_initialize_skips_when_cached(monkeypatch: pytest.MonkeyPatch):
-    lock = MagicMock()
-    lock.__enter__.return_value = None
-    lock.__exit__.return_value = None
-    monkeypatch.setattr(openapi_module.redis_client, "lock", MagicMock(return_value=lock))
-    monkeypatch.setattr(openapi_module.redis_client, "get", MagicMock(return_value=1))
-    monkeypatch.setattr(openapi_module.redis_client, "set", MagicMock())
-
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector.config = _config()
-    vector._initialize_vector_database = MagicMock()
-    vector._create_namespace_if_not_exists = MagicMock()
+def test_initialize_skips_when_cached(
+    vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient, fake_redis: FakeRedis
+) -> None:
+    fake_redis.cached = 1
 
     vector._initialize()
 
-    vector._initialize_vector_database.assert_not_called()
-    vector._create_namespace_if_not_exists.assert_not_called()
+    assert client.requests == []
+    assert fake_redis.set_calls == []
 
 
-def test_initialize_runs_when_cache_is_missing(monkeypatch: pytest.MonkeyPatch):
-    lock = MagicMock()
-    lock.__enter__.return_value = None
-    lock.__exit__.return_value = None
-    monkeypatch.setattr(openapi_module.redis_client, "lock", MagicMock(return_value=lock))
-    monkeypatch.setattr(openapi_module.redis_client, "get", MagicMock(return_value=None))
-    redis_set = MagicMock()
-    monkeypatch.setattr(openapi_module.redis_client, "set", redis_set)
-
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector.config = _config()
-    vector._initialize_vector_database = MagicMock()
-    vector._create_namespace_if_not_exists = MagicMock()
-
+def test_initialize_runs_when_cache_is_missing(
+    vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient, fake_redis: FakeRedis
+) -> None:
     vector._initialize()
 
-    vector._initialize_vector_database.assert_called_once()
-    vector._create_namespace_if_not_exists.assert_called_once()
-    redis_set.assert_called_once()
+    assert client.requests == [
+        ("init_vector_database", MANAGER),
+        ("describe_namespace", {**MANAGER, "Namespace": "dify"}),
+    ]
+    assert fake_redis.set_calls == [("vector_initialize_instance-1", 1, 3600)]
 
 
-def test_initialize_vector_database_calls_openapi_client(monkeypatch: pytest.MonkeyPatch):
-    _install_openapi_stubs(monkeypatch)
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector.config = _config()
-    vector._client = MagicMock()
-
+def test_initialize_vector_database_calls_openapi_client(
+    vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient
+) -> None:
     vector._initialize_vector_database()
 
-    request = vector._client.init_vector_database.call_args.args[0]
-    assert request.dbinstance_id == "instance-1"
-    assert request.region_id == "cn-hangzhou"
-    assert request.manager_account == "account"
-    assert request.manager_account_password == "password"
+    assert client.sent("init_vector_database") == [MANAGER]
 
 
-def test_create_namespace_creates_when_namespace_not_found(monkeypatch: pytest.MonkeyPatch):
-    stubs = _install_openapi_stubs(monkeypatch)
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector.config = _config()
-    vector._client = MagicMock()
-    vector._client.describe_namespace.side_effect = stubs.TeaException(statusCode=404)
+def test_create_namespace_creates_when_namespace_not_found(
+    vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient
+) -> None:
+    client.errors["describe_namespace"] = _api_error(404)
 
     vector._create_namespace_if_not_exists()
 
-    vector._client.create_namespace.assert_called_once()
+    assert client.sent("create_namespace") == [{**MANAGER, "Namespace": "dify", "NamespacePassword": "ns-password"}]
 
 
-def test_create_namespace_raises_on_unexpected_api_error(monkeypatch: pytest.MonkeyPatch):
-    stubs = _install_openapi_stubs(monkeypatch)
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector.config = _config()
-    vector._client = MagicMock()
-    vector._client.describe_namespace.side_effect = stubs.TeaException(statusCode=500)
+def test_create_namespace_raises_on_unexpected_api_error(
+    vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient
+) -> None:
+    client.errors["describe_namespace"] = _api_error(500)
 
     with pytest.raises(ValueError, match="failed to create namespace"):
         vector._create_namespace_if_not_exists()
 
+    assert client.sent("create_namespace") == []
 
-def test_create_namespace_noop_when_namespace_exists(monkeypatch: pytest.MonkeyPatch):
-    _install_openapi_stubs(monkeypatch)
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector.config = _config()
-    vector._client = MagicMock()
 
+def test_create_namespace_noop_when_namespace_exists(vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient) -> None:
     vector._create_namespace_if_not_exists()
 
-    vector._client.describe_namespace.assert_called_once()
-    vector._client.create_namespace.assert_not_called()
+    assert [name for name, _ in client.requests] == ["describe_namespace"]
 
 
-def test_create_collection_if_not_exists_creates_when_missing(monkeypatch: pytest.MonkeyPatch):
-    stubs = _install_openapi_stubs(monkeypatch)
-    lock = MagicMock()
-    lock.__enter__.return_value = None
-    lock.__exit__.return_value = None
-    monkeypatch.setattr(openapi_module.redis_client, "lock", MagicMock(return_value=lock))
-    monkeypatch.setattr(openapi_module.redis_client, "get", MagicMock(return_value=None))
-    redis_set = MagicMock()
-    monkeypatch.setattr(openapi_module.redis_client, "set", redis_set)
-
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector._collection_name = "collection_1"
-    vector.config = _config()
-    vector._client = MagicMock()
-    vector._client.describe_collection.side_effect = stubs.TeaException(statusCode=404)
+def test_create_collection_if_not_exists_creates_when_missing(
+    vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient, fake_redis: FakeRedis
+) -> None:
+    client.errors["describe_collection"] = _api_error(404)
 
     vector.create_collection_if_not_exists(embedding_dimension=1024)
 
-    vector._client.create_collection.assert_called_once()
-    redis_set.assert_called_once()
+    assert client.sent("create_collection") == [
+        {
+            **MANAGER,
+            "Collection": "collection_1",
+            "Dimension": 1024,
+            "FullTextRetrievalFields": "page_content",
+            "Metadata": '{"ref_doc_id":"text","page_content":"text","metadata_":"jsonb"}',
+            "Metrics": "cosine",
+            "Namespace": "dify",
+        }
+    ]
+    assert fake_redis.set_calls == [("vector_indexing_collection_1", 1, 3600)]
 
 
-def test_create_collection_if_not_exists_skips_when_cached(monkeypatch: pytest.MonkeyPatch):
-    lock = MagicMock()
-    lock.__enter__.return_value = None
-    lock.__exit__.return_value = None
-    monkeypatch.setattr(openapi_module.redis_client, "lock", MagicMock(return_value=lock))
-    monkeypatch.setattr(openapi_module.redis_client, "get", MagicMock(return_value=1))
-    monkeypatch.setattr(openapi_module.redis_client, "set", MagicMock())
-
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector._collection_name = "collection_1"
-    vector.config = _config()
-    vector._client = MagicMock()
+def test_create_collection_if_not_exists_skips_when_cached(
+    vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient, fake_redis: FakeRedis
+) -> None:
+    fake_redis.cached = 1
 
     vector.create_collection_if_not_exists(embedding_dimension=1024)
 
-    vector._client.describe_collection.assert_not_called()
-    vector._client.create_collection.assert_not_called()
+    assert client.requests == []
 
 
-def test_create_collection_if_not_exists_raises_on_non_404_errors(monkeypatch: pytest.MonkeyPatch):
-    stubs = _install_openapi_stubs(monkeypatch)
-    lock = MagicMock()
-    lock.__enter__.return_value = None
-    lock.__exit__.return_value = None
-    monkeypatch.setattr(openapi_module.redis_client, "lock", MagicMock(return_value=lock))
-    monkeypatch.setattr(openapi_module.redis_client, "get", MagicMock(return_value=None))
-    monkeypatch.setattr(openapi_module.redis_client, "set", MagicMock())
-
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector._collection_name = "collection_1"
-    vector.config = _config()
-    vector._client = MagicMock()
-    vector._client.describe_collection.side_effect = stubs.TeaException(statusCode=500)
+def test_create_collection_if_not_exists_raises_on_non_404_errors(
+    vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient, fake_redis: FakeRedis
+) -> None:
+    client.errors["describe_collection"] = _api_error(500)
 
     with pytest.raises(ValueError, match="failed to create collection collection_1"):
         vector.create_collection_if_not_exists(embedding_dimension=512)
 
+    assert client.sent("create_collection") == []
+    assert fake_redis.set_calls == []
 
-def test_openapi_add_delete_and_search_methods(monkeypatch: pytest.MonkeyPatch):
-    _install_openapi_stubs(monkeypatch)
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector._collection_name = "collection_1"
-    vector.config = _config()
-    vector._client = MagicMock()
 
+def test_openapi_add_delete_and_search_methods(vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient) -> None:
     documents = [
         Document(page_content="doc 1", metadata={"doc_id": "d1", "document_id": "doc-1"}),
         Document.model_construct(page_content="doc 2", metadata=None),
@@ -311,78 +311,66 @@ def test_openapi_add_delete_and_search_methods(monkeypatch: pytest.MonkeyPatch):
     embeddings = [[0.1, 0.2], [0.2, 0.3]]
     vector.add_texts(documents, embeddings)
 
-    upsert_request = vector._client.upsert_collection_data.call_args.args[0]
-    assert upsert_request.collection == "collection_1"
-    assert len(upsert_request.rows) == 1
+    # The document without metadata is skipped.
+    assert client.sent("upsert_collection_data") == [
+        {
+            **COLLECTION,
+            "Rows": [
+                {
+                    "Metadata": {
+                        "ref_doc_id": "d1",
+                        "page_content": "doc 1",
+                        "metadata_": json.dumps({"doc_id": "d1", "document_id": "doc-1"}),
+                    },
+                    "Vector": [0.1, 0.2],
+                }
+            ],
+        }
+    ]
 
-    vector._client.query_collection_data.return_value = SimpleNamespace(
-        body=SimpleNamespace(matches=SimpleNamespace(match=[SimpleNamespace()]))
-    )
+    client.matches = [_match(0.5, "doc-1", "existing", [1.0])]
     assert vector.text_exists("d1") is True
+    assert client.sent("query_collection_data")[-1]["Filter"] == "ref_doc_id='d1'"
 
     vector.delete_by_ids(["d1", "d2"])
-    request = vector._client.delete_collection_data.call_args.args[0]
-    assert request.collection_data_filter == "ref_doc_id IN ('d1','d2')"
-
     vector.delete_by_metadata_field("document_id", "doc-1")
-    request = vector._client.delete_collection_data.call_args.args[0]
-    assert request.collection_data_filter == "metadata_ ->> 'document_id' = 'doc-1'"
+    assert client.sent("delete_collection_data") == [
+        {**COLLECTION, "CollectionDataFilter": "ref_doc_id IN ('d1','d2')"},
+        {**COLLECTION, "CollectionDataFilter": "metadata_ ->> 'document_id' = 'doc-1'"},
+    ]
 
-    match_high = SimpleNamespace(
-        score=0.9,
-        metadata={"metadata_": json.dumps({"document_id": "doc-1"}), "page_content": "high"},
-        values=SimpleNamespace(value=[1.0, 2.0]),
-    )
-    match_low = SimpleNamespace(
-        score=0.1,
-        metadata={"metadata_": json.dumps({"document_id": "doc-2"}), "page_content": "low"},
-        values=SimpleNamespace(value=[3.0, 4.0]),
-    )
-    vector._client.query_collection_data.return_value = SimpleNamespace(
-        body=SimpleNamespace(matches=SimpleNamespace(match=[match_low, match_high]))
-    )
+    client.matches = [_match(0.1, "doc-2", "low", [3.0, 4.0]), _match(0.9, "doc-1", "high", [1.0, 2.0])]
 
     docs_by_vector = vector.search_by_vector([0.1, 0.2], top_k=2, score_threshold=0.5, document_ids_filter=["doc-1"])
     assert len(docs_by_vector) == 1
     assert docs_by_vector[0].page_content == "high"
     assert docs_by_vector[0].metadata["score"] == 0.9
+    assert docs_by_vector[0].vector == [1.0, 2.0]
+    vector_query = client.sent("query_collection_data")[-1]
+    assert vector_query["Filter"] == "metadata_->>'document_id' IN ('doc-1')"
+    assert vector_query["Vector"] == [0.1, 0.2]
+    assert vector_query["TopK"] == 2
 
     docs_by_text = vector.search_by_full_text("hello", top_k=2, score_threshold=0.2)
     assert len(docs_by_text) == 1
     assert docs_by_text[0].page_content == "high"
+    text_query = client.sent("query_collection_data")[-1]
+    assert text_query["Content"] == "hello"
+    assert text_query["Filter"] == ""
 
 
-def test_text_exists_returns_false_when_matches_empty(monkeypatch: pytest.MonkeyPatch):
-    _install_openapi_stubs(monkeypatch)
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector._collection_name = "collection_1"
-    vector.config = _config()
-    vector._client = MagicMock()
-    vector._client.query_collection_data.return_value = SimpleNamespace(
-        body=SimpleNamespace(matches=SimpleNamespace(match=[]))
-    )
-
+def test_text_exists_returns_false_when_matches_empty(vector: AnalyticdbVectorOpenAPI) -> None:
     assert vector.text_exists("missing-id") is False
 
 
-def test_openapi_delete_success(monkeypatch: pytest.MonkeyPatch):
-    _install_openapi_stubs(monkeypatch)
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector._collection_name = "collection_1"
-    vector.config = _config()
-    vector._client = MagicMock()
-
+def test_openapi_delete_success(vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient) -> None:
     vector.delete()
-    vector._client.delete_collection.assert_called_once()
+
+    assert client.sent("delete_collection") == [COLLECTION]
 
 
-def test_openapi_delete_propagates_errors(monkeypatch: pytest.MonkeyPatch):
-    _install_openapi_stubs(monkeypatch)
-    vector = AnalyticdbVectorOpenAPI.__new__(AnalyticdbVectorOpenAPI)
-    vector._collection_name = "collection_1"
-    vector.config = _config()
-    vector._client = MagicMock()
-    vector._client.delete_collection.side_effect = RuntimeError("boom")
+def test_openapi_delete_propagates_errors(vector: AnalyticdbVectorOpenAPI, client: FakeGpdbClient) -> None:
+    client.errors["delete_collection"] = RuntimeError("boom")
 
     with pytest.raises(RuntimeError, match="boom"):
         vector.delete()

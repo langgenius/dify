@@ -20,7 +20,12 @@ import core.app.apps.base_app_queue_manager as queue_module
 import core.app.apps.execution_coordinator as coordinator_module
 import services.app_task_service as task_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
@@ -34,7 +39,6 @@ from extensions.logstore.aliyun_logstore import AliyunLogStore
 from graphon.engine.command import AbortCommand
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.enums import WorkflowType as _paused_workflow_stop_WorkflowType
 from libs.broadcast_channel.redis.pubsub_channel import Topic
 from models import EndUser
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -680,6 +684,7 @@ def _seed_pause(
     if app_mode == AppMode.WORKFLOW:
         wrapper = _WorkflowGenerateEntityWrapper(
             entity=WorkflowAppGenerateEntity(
+                user_from=UserFrom.END_USER,
                 task_id=str(uuid4()),
                 app_config=config,
                 inputs={},
@@ -1122,7 +1127,7 @@ class TestPausedWorkflowStopCases:
             tenant_id="tenant-1",
             app_id="app-1",
             workflow_id="workflow-1",
-            type=_paused_workflow_stop_WorkflowType.WORKFLOW,
+            type=ModelWorkflowType.WORKFLOW,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.PAUSED,
@@ -1256,7 +1261,7 @@ class TestPausedWorkflowStopCases:
             tenant_id="tenant-1",
             app_id="app-1",
             workflow_id="workflow-1",
-            type=_paused_workflow_stop_WorkflowType.WORKFLOW,
+            type=ModelWorkflowType.WORKFLOW,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.PAUSED,
@@ -1310,7 +1315,7 @@ class TestPausedWorkflowStopCases:
             app_id="app-1",
             workflow_id="workflow-1",
             task_id=task_id,
-            type=_paused_workflow_stop_WorkflowType.WORKFLOW,
+            type=ModelWorkflowType.WORKFLOW,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.RUNNING,

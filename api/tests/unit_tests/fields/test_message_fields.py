@@ -3,7 +3,7 @@ from decimal import Decimal
 from fields.message_fields import ExploreMessageListItem, MessageListItem, RetrieverResource, WebMessageListItem
 
 
-def _retrieved_video_resource():
+def _retrieved_video_resource() -> dict[str, object]:
     # Shaped like a real stored retriever_resources entry (core/rag/entities/citation_metadata.py's
     # RetrievalSourceMetadata, the write-side model) for a video citation with a start/end offset.
     return {
@@ -21,67 +21,79 @@ def _retrieved_video_resource():
     }
 
 
-def _base_kwargs():
+def _base_kwargs() -> dict[str, object]:
+    inputs: dict[str, object] = {}
+    retriever_resources: list[object] = []
+    agent_thoughts: list[object] = []
+    message_files: list[object] = []
+    extra_contents: list[object] = []
     return {
         "id": "m1",
         "conversation_id": "c1",
-        "inputs": {},
+        "inputs": inputs,
         "query": "hi",
         "answer": "answer",
-        "retriever_resources": [],
-        "agent_thoughts": [],
-        "message_files": [],
+        "retriever_resources": retriever_resources,
+        "agent_thoughts": agent_thoughts,
+        "message_files": message_files,
         "status": "normal",
-        "extra_contents": [],
+        "extra_contents": extra_contents,
     }
 
 
 class TestExploreMessageListItem:
-    def test_retriever_resource_preserves_knowledge_fs_citation_identity(self):
+    def test_retriever_resource_preserves_knowledge_fs_citation_identity(self) -> None:
         kwargs = _base_kwargs()
-        kwargs["retriever_resources"] = [
+        payload = MessageListItem.model_validate(
             {
-                "position": 1,
-                "document_id": "11111111-1111-4111-8111-111111111111",
-                "document_asset_id": "22222222-2222-4222-8222-222222222222",
-                "document_revision": 4,
-                "document_version": 7,
+                **kwargs,
+                "retriever_resources": [
+                    {
+                        "position": 1,
+                        "document_id": "11111111-1111-4111-8111-111111111111",
+                        "document_asset_id": "22222222-2222-4222-8222-222222222222",
+                        "document_revision": 4,
+                        "document_version": 7,
+                    }
+                ],
             }
-        ]
-
-        payload = MessageListItem(**kwargs).model_dump(mode="json")["retriever_resources"][0]
+        ).model_dump(mode="json")["retriever_resources"][0]
 
         assert payload["document_id"] == "11111111-1111-4111-8111-111111111111"
         assert payload["document_asset_id"] == "22222222-2222-4222-8222-222222222222"
         assert payload["document_revision"] == 4
         assert payload["document_version"] == 7
 
-    def test_exposes_metadata_for_history_rehydration(self):
+    def test_exposes_metadata_for_history_rehydration(self) -> None:
         # The Explore/installed-app surface must surface message_metadata (incl. reasoning)
         # so the chat-with-history client can rehydrate the thinking panel on reload.
-        item = ExploreMessageListItem(**_base_kwargs(), metadata={"reasoning": {"llm": "thinking..."}})
+        item = ExploreMessageListItem.model_validate(
+            {**_base_kwargs(), "metadata": {"reasoning": {"llm": "thinking..."}}}
+        )
 
         payload = item.model_dump(mode="json")
 
         assert payload["metadata"] == {"reasoning": {"llm": "thinking..."}}
 
-    def test_metadata_defaults_to_none(self):
-        item = ExploreMessageListItem(**_base_kwargs())
+    def test_metadata_defaults_to_none(self) -> None:
+        item = ExploreMessageListItem.model_validate(_base_kwargs())
         assert item.model_dump(mode="json")["metadata"] is None
 
-    def test_base_message_list_item_has_no_metadata(self):
+    def test_base_message_list_item_has_no_metadata(self) -> None:
         # Guard the public service-API contract: the base item must not leak metadata.
-        payload = MessageListItem(**_base_kwargs()).model_dump(mode="json")
+        payload = MessageListItem.model_validate(_base_kwargs()).model_dump(mode="json")
         assert "metadata" not in payload
 
-    def test_message_list_item_exposes_usage_fields(self):
-        payload = MessageListItem(
-            **_base_kwargs(),
-            message_tokens=7,
-            answer_tokens=11,
-            provider_response_latency=1.25,
-            total_price=Decimal("0.0001234"),
-            currency="USD",
+    def test_message_list_item_exposes_usage_fields(self) -> None:
+        payload = MessageListItem.model_validate(
+            {
+                **_base_kwargs(),
+                "message_tokens": 7,
+                "answer_tokens": 11,
+                "provider_response_latency": 1.25,
+                "total_price": Decimal("0.0001234"),
+                "currency": "USD",
+            }
         ).model_dump(mode="json")
 
         assert payload["message_tokens"] == 7
@@ -91,12 +103,14 @@ class TestExploreMessageListItem:
         assert payload["total_price"] == "0.0001234"
         assert payload["currency"] == "USD"
 
-    def test_web_message_list_item_exposes_usage_and_metadata(self):
-        payload = WebMessageListItem(
-            **_base_kwargs(),
-            metadata={"usage": {"total_tokens": 18}},
-            message_tokens=7,
-            answer_tokens=11,
+    def test_web_message_list_item_exposes_usage_and_metadata(self) -> None:
+        payload = WebMessageListItem.model_validate(
+            {
+                **_base_kwargs(),
+                "metadata": {"usage": {"total_tokens": 18}},
+                "message_tokens": 7,
+                "answer_tokens": 11,
+            }
         ).model_dump(mode="json")
 
         assert payload["metadata"] == {"usage": {"total_tokens": 18}}
@@ -106,7 +120,7 @@ class TestExploreMessageListItem:
 
 
 class TestRetrieverResourceDocMetadata:
-    def test_doc_metadata_survives_validation_from_a_stored_dict(self):
+    def test_doc_metadata_survives_validation_from_a_stored_dict(self) -> None:
         # GET /messages re-validates the raw dicts stored in Message.retriever_resources
         # (JSON-backed, written from RetrievalSourceMetadata) against RetrieverResource.
         # Before this field existed, ResponseModel's extra="ignore" silently dropped
@@ -125,9 +139,9 @@ class TestRetrieverResourceDocMetadata:
         assert payload["title"] == "training.mp4"
         assert payload["retriever_from"] == "workflow"
 
-    def test_message_list_item_propagates_doc_metadata_through_retriever_resources(self):
-        payload = MessageListItem(
-            **{**_base_kwargs(), "retriever_resources": [_retrieved_video_resource()]},
+    def test_message_list_item_propagates_doc_metadata_through_retriever_resources(self) -> None:
+        payload = MessageListItem.model_validate(
+            {**_base_kwargs(), "retriever_resources": [_retrieved_video_resource()]}
         ).model_dump(mode="json")
 
         assert payload["retriever_resources"][0]["doc_metadata"]["start_seconds"] == 1036.0

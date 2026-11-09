@@ -166,19 +166,25 @@ describe('TransferOwnershipContent', () => {
     expect(
       consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
     ).toHaveBeenCalledWith({ body: {} })
-    expect(consoleClient.workspaces.current.members.ownerTransferCheck.post).toHaveBeenCalledWith({
-      body: { code: '123456', token: 'step-token' },
-    })
+    expect(consoleClient.workspaces.current.members.ownerTransferCheck.post).toHaveBeenCalledWith(
+      {
+        body: { code: '123456', token: 'step-token' },
+      },
+      { context: { silent: true } },
+    )
     expect(await screen.findByText(/members\.transferModal\.transferLabel/i)).toBeInTheDocument()
     await selectNewOwnerAndSubmit(user)
 
     await waitFor(() => {
       expect(
         consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post,
-      ).toHaveBeenCalledWith({
-        params: { member_id: 'new-owner-id' },
-        body: { token: 'final-token' },
-      })
+      ).toHaveBeenCalledWith(
+        {
+          params: { member_id: 'new-owner-id' },
+          body: { token: 'final-token' },
+        },
+        { context: { silent: true } },
+      )
       expect(window.location.reload).toHaveBeenCalled()
     })
   })

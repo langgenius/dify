@@ -153,7 +153,7 @@ spec:
 ```
 
 Configure the backend in `docker/.env`. The full `DIFY_AGENT_OPENSHELL_*`
-variable reference lives in `docker/envs/core-services/dify-agent.env.example`;
+variable reference lives in `docker/envs/core-services/dify-agent.defaults`;
 values may also be set in the `envs/core-services/dify-agent.env` env_file,
 but `docker/.env` is loaded last into `agent_backend` and overrides it. These
 lines are `.env` file content, not shell commands — values are taken verbatim,

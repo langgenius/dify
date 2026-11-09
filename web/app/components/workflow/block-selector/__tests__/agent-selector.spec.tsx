@@ -50,7 +50,7 @@ const createAgent = (overrides: Record<string, unknown> = {}) => ({
 const renderMenu = async ({
   onSelect = vi.fn<(agent: AgentRosterNodeData) => void>(),
   onStartFromScratch,
-  identity = { kind: 'app', appId: 'app-1', mode: 'workflow' },
+  identity = { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' },
 }: {
   onSelect?: ReturnType<typeof vi.fn<(agent: AgentRosterNodeData) => void>>
   onStartFromScratch?: () => void
@@ -154,7 +154,9 @@ describe('AgentSelectorMenu', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        <EditorResourceScope
+          resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+        >
           <AgentSelectorMenu>
             <AgentSelectorMenuContent onSelect={vi.fn()} />
             <AgentSelectorMenuTrigger render={<Button loading />}>

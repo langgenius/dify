@@ -72,7 +72,8 @@ it.each([
     )
     const { queryClient } = createConsoleQueryWrapper({
       systemFeatures: { deployment_edition: 'ENTERPRISE' },
-      knowledgeFsFeatures: { enabled: true, upload_enabled: true },
+      features: { enable_knowledge_fs: true },
+      knowledgeFsFeatures: { upload_enabled: true },
     })
     const screen = await render(
       <QueryClientTestProvider queryClient={queryClient}>

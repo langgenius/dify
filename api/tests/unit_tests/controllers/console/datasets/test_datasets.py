@@ -41,12 +41,14 @@ from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
+    KnowledgeFSUpgradeModelsUnavailableHTTPError,
 )
 from machinery.context import RequestContext
 from models.knowledge_fs import KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJobStatus, KnowledgeFSUpgradeStage
 from services.data_source.entities.notion_import import NotionPageType
 from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeConflictError,
+    KnowledgeFSUpgradeModelsUnavailableError,
     KnowledgeFSUpgradeNotFoundError,
 )
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
@@ -67,7 +69,11 @@ from services.knowledge.indexing.estimate import (
     IndexingEstimateProviderUnavailableError,
     UnsupportedEstimateSourceError,
 )
-from services.knowledge_fs.product_dto import KnowledgeFSUpgradeDiscoveryResponse
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSUpgradeModelIssueResponse,
+    KnowledgeFSUpgradeModelsPayload,
+    KnowledgeFSUpgradePreparationResponse,
+)
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
@@ -424,7 +430,73 @@ def test_upgrade_start_forwards_idempotency_key(app, upgrades):
         )
     assert status == 202
     assert response["id"] == "upgrade-job-1"
-    upgrades.start.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), idempotency_key="upgrade-request-1")
+    upgrades.start.assert_called_once_with(
+        CONTEXT, dataset_id=str(DATASET_ID), idempotency_key="upgrade-request-1", models=None
+    )
+
+
+def test_upgrade_start_forwards_all_model_choices(app, upgrades):
+    upgrades.start.return_value = _upgrade_job()
+    choices = {
+        "embedding": {"provider": "langgenius/openai/openai", "model": "embedding"},
+        "rerank": {"provider": "langgenius/cohere/cohere", "model": "rerank"},
+        "reasoning": {"provider": "langgenius/anthropic/anthropic", "model": "reasoning"},
+    }
+    with app.test_request_context(
+        f"/datasets/{DATASET_ID}/knowledge-fs-upgrades",
+        method="POST",
+        headers={"Idempotency-Key": "upgrade-request-1"},
+        json={"models": choices},
+    ):
+        response, status = unwrap(DatasetKnowledgeFSUpgradeApi.post)(
+            DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID
+        )
+    assert status == 202
+    assert response["id"] == "upgrade-job-1"
+    upgrades.start.assert_called_once_with(
+        CONTEXT,
+        dataset_id=str(DATASET_ID),
+        idempotency_key="upgrade-request-1",
+        models=KnowledgeFSUpgradeModelsPayload.model_validate(choices),
+    )
+
+
+def test_upgrade_start_rejects_incomplete_model_selection(app, upgrades):
+    with (
+        app.test_request_context(
+            f"/datasets/{DATASET_ID}/knowledge-fs-upgrades",
+            method="POST",
+            headers={"Idempotency-Key": "upgrade-request-1"},
+            json={"models": {"embedding": {"provider": "openai", "model": "embedding"}}},
+        ),
+        pytest.raises(BadRequest, match="Invalid upgrade model selection"),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeApi.post)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+
+    upgrades.start.assert_not_called()
+
+
+def test_upgrade_start_returns_field_specific_model_errors(app, upgrades):
+    upgrades.start.side_effect = KnowledgeFSUpgradeModelsUnavailableError(
+        [
+            KnowledgeFSUpgradeModelIssueResponse(
+                field="embedding", reason="credential-removed", provider="openai", model="embedding"
+            )
+        ]
+    )
+    with (
+        app.test_request_context(
+            f"/datasets/{DATASET_ID}/knowledge-fs-upgrades",
+            method="POST",
+            headers={"Idempotency-Key": "upgrade-request-1"},
+        ),
+        pytest.raises(KnowledgeFSUpgradeModelsUnavailableHTTPError) as error,
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeApi.post)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+    assert error.value.data is not None
+    assert error.value.data["details"]["issues"] == [
+        {"field": "embedding", "reason": "credential-removed", "provider": "openai", "model": "embedding"}
+    ]
 
 
 def test_upgrade_start_requires_idempotency_key(app, upgrades):
@@ -457,13 +529,37 @@ def test_upgrade_start_maps_domain_errors(app, upgrades, error, http_error):
 
 
 def test_upgrade_discovery_serializes_service_result(app, upgrades):
-    upgrades.discovery.return_value = KnowledgeFSUpgradeDiscoveryResponse(
-        job=None, can_upgrade=True, can_retry=False, block_reason=None
+    upgrades.discovery.return_value = KnowledgeFSUpgradePreparationResponse.model_validate(
+        {
+            "job": None,
+            "can_upgrade": True,
+            "can_retry": False,
+            "models": {
+                "embedding": {
+                    "value": {"provider": "openai", "model": "embedding"},
+                    "source": "legacy",
+                    "available": True,
+                },
+                "rerank": {
+                    "value": {"provider": "cohere", "model": "rerank"},
+                    "source": "workspace_default",
+                    "available": True,
+                },
+                "reasoning": {
+                    "value": {"provider": "anthropic", "model": "reasoning"},
+                    "source": "workspace_default",
+                    "available": False,
+                    "unavailable_reason": "credential-removed",
+                },
+            },
+        }
     )
     with app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades"):
         response = unwrap(DatasetKnowledgeFSUpgradeApi.get)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
     upgrades.discovery.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID))
     assert response["can_upgrade"] is True
+    assert response["models"]["embedding"]["value"] == {"provider": "openai", "model": "embedding"}
+    assert response["models"]["reasoning"]["unavailable_reason"] == "credential-removed"
 
 
 def test_upgrade_job_status_maps_missing_job_to_not_found(app, upgrades):

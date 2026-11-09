@@ -25,7 +25,7 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Effect, Example, Kind, endpoint
-from controllers.openapi._errors import AppModeMismatch, RunNotFound, RunNotStoppable
+from controllers.openapi._errors import AppModeMismatch, RunNotFound, RunNotStoppable, require_uuid
 from controllers.openapi._files import end_read_transaction, materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
@@ -38,7 +38,6 @@ from controllers.openapi._models import (
     TaskStopResponse,
     WorkflowRunPayload,
 )
-from controllers.openapi.app_workflow import require_uuid
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,

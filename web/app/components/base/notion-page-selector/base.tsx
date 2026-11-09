@@ -6,7 +6,8 @@ import type {
   DataSourceNotionWorkspace,
   NotionPage,
 } from '@/models/common'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Button } from '@langgenius/dify-ui/button'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -61,7 +62,7 @@ const NotionPageSelector = ({
   canPreview,
   previewPageId,
   onPreview,
-  datasetId = '',
+  datasetId,
   credentialList,
   onSelectCredential,
 }: NotionPageSelectorProps) => {
@@ -71,10 +72,12 @@ const NotionPageSelector = ({
 
   const queryClient = useQueryClient()
   const invalidPreImportNotionPages = useCallback(
-    ({ datasetId, credentialId }: { datasetId: string; credentialId: string }) =>
+    ({ datasetId, credentialId }: { datasetId?: string; credentialId: string }) =>
       queryClient.invalidateQueries({
         queryKey: consoleQuery.notion.preImport.pages.get.queryKey({
-          input: { query: { dataset_id: datasetId, credential_id: credentialId } },
+          input: {
+            query: { credential_id: credentialId, ...(datasetId && { dataset_id: datasetId }) },
+          },
         }),
       }),
     [queryClient],
@@ -129,9 +132,17 @@ const NotionPageSelector = ({
     data: notionsPages,
     isFetching: isFetchingNotionPages,
     isError: isFetchingNotionPagesError,
+    refetch: refetchNotionPages,
   } = useQuery(
     consoleQuery.notion.preImport.pages.get.queryOptions({
-      input: { query: { dataset_id: datasetId, credential_id: currentCredentialId } },
+      input: currentCredentialId
+        ? {
+            query: {
+              credential_id: currentCredentialId,
+              ...(datasetId && { dataset_id: datasetId }),
+            },
+          }
+        : skipToken,
       retry: 0,
       select: toNotionWorkspaces,
     }),
@@ -205,7 +216,7 @@ const NotionPageSelector = ({
     setSettingsDestination('data-source')
   }, [setSettingsDestination])
 
-  if (isFetchingNotionPagesError) {
+  if (!currentCredentialId) {
     return <NotionConnector onSetting={handleConfigureNotion} />
   }
 
@@ -230,7 +241,20 @@ const NotionPageSelector = ({
           <SearchInput value={searchValue} onChange={handleSearchValueChange} />
         </div>
         <div className="overflow-hidden rounded-b-xl">
-          {isFetchingNotionPages ? (
+          {isFetchingNotionPagesError ? (
+            <div className="flex h-74 flex-col items-center justify-center gap-3">
+              <p role="alert" className="text-text-secondary">
+                {t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
+              <Button
+                size="small"
+                loading={isFetchingNotionPages}
+                onClick={() => void refetchNotionPages()}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </div>
+          ) : isFetchingNotionPages ? (
             <div
               className="flex h-74 items-center justify-center"
               data-testid="notion-page-selector-loading"

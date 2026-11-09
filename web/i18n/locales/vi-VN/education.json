@@ -1,4 +1,5 @@
 {
+  "activateFailed": "Không thể kích hoạt ưu đãi giáo dục của bạn. Xác minh giáo dục hiện tại của bạn có thể vẫn còn hiệu lực, hoặc email này không còn đủ điều kiện.",
   "applied.activeSubscription.description": "Bạn có một gói đăng ký đang hoạt động. Bạn có thể sử dụng giảm giá giáo dục sau khi gói đăng ký hết hạn. Xác nhận gói đăng ký của bạn trên <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "Bạn không có quyền thanh toán trong workspace này. Vui lòng chuyển sang workspace mà bạn có thể quản lý thanh toán để sử dụng giảm giá giáo dục.",
   "applied.noPaymentPermission.returnHome": "Quay lại Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "mã giảm giá độc quyền 100%",
   "toVerifiedTip.end": "cho Kế hoạch Chuyên nghiệp Dify.",
   "toVerifiedTip.front": "Bạn hiện đủ điều kiện để có trạng thái Xác minh Giáo dục. Vui lòng nhập thông tin giáo dục của bạn bên dưới để hoàn tất quá trình và nhận một",
-  "useEducationDiscount": "Sử dụng giảm giá giáo dục"
+  "tooManyAttempts": "Thử quá nhiều lần. Vui lòng thử lại sau.",
+  "useEducationDiscount": "Sử dụng giảm giá giáo dục",
+  "verifyFailed": "Không thể xác minh tình trạng giáo dục của bạn. Nếu bạn vừa xác minh gần đây, xác minh giáo dục hiện tại của bạn có thể vẫn còn hiệu lực. Nếu không, vui lòng thử lại sau."
 }

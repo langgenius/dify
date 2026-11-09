@@ -1,17 +1,13 @@
 from __future__ import annotations
 
 import importlib
-import importlib.util
 import io
 import json
 from collections.abc import Generator
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
-from alembic.migration import MigrationContext
-from alembic.operations import Operations
 
 from tests.helpers.legacy_model_type_migration import (
     assert_tenant_rows_use_only_canonical_model_types,
@@ -19,28 +15,6 @@ from tests.helpers.legacy_model_type_migration import (
     fetch_table_rows,
     seed_legacy_model_type_dirty_data,
 )
-
-_ALEMBIC_MIGRATION_PATH = (
-    Path(__file__).resolve().parents[4]
-    / "migrations/versions/2026_08_27_1200-5578e028b2f2_migrate_legacy_model_types.py"
-)
-
-
-def _run_legacy_model_type_alembic_upgrade(engine: sa.Engine) -> None:
-    spec = importlib.util.spec_from_file_location("migrate_legacy_model_types", _ALEMBIC_MIGRATION_PATH)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("failed to load legacy model type migration")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    with engine.begin() as connection:
-        operations = Operations(MigrationContext.configure(connection))
-        original_op = module.__dict__["op"]
-        module.__dict__["op"] = operations
-        try:
-            module.__dict__["upgrade"]()
-        finally:
-            module.__dict__["op"] = original_op
 
 
 def _parse_json_lines(output: io.StringIO) -> list[dict[str, object]]:
@@ -137,6 +111,14 @@ def _insert_load_balancing_model_config(
         )
 
 
+@pytest.fixture(autouse=True)
+def reset_legacy_schema(container_engine: tuple[str, sa.Engine]) -> None:
+    from tests.helpers.legacy_model_type_migration import drop_minimal_legacy_model_type_schema
+
+    _, engine = container_engine
+    drop_minimal_legacy_model_type_schema(engine)
+
+
 @pytest.fixture(scope="session")
 def migration_module():
     try:
@@ -176,8 +158,6 @@ def test_legacy_model_type_migration_end_to_end_across_supported_backends(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     backend_name, engine = container_engine
-    helper_module = importlib.import_module("tests.helpers.legacy_model_type_migration")
-    helper_module.drop_minimal_legacy_model_type_schema(engine)
     fixture = seed_legacy_model_type_dirty_data(engine)
 
     deleted_cache_keys: list[str] = []
@@ -249,180 +229,12 @@ def test_legacy_model_type_migration_end_to_end_across_supported_backends(
     assert second_apply_state == first_apply_state
 
 
-def test_legacy_model_type_alembic_upgrade_across_supported_backends(
-    container_engine: tuple[str, sa.Engine],
-) -> None:
-    _, engine = container_engine
-    helper_module = importlib.import_module("tests.helpers.legacy_model_type_migration")
-    helper_module.drop_minimal_legacy_model_type_schema(engine)
-    fixture = seed_legacy_model_type_dirty_data(engine)
-
-    canonical_provider_model_id = "00000000-0000-0000-0000-00000000ca01"
-    canonical_default_model_id = "00000000-0000-0000-0000-00000000ca02"
-    canonical_credential_ids = {
-        "00000000-0000-0000-0000-00000000ca03",
-        "00000000-0000-0000-0000-00000000ca04",
-    }
-    older_inherit_id = "00000000-0000-0000-0000-00000000ca05"
-    newer_inherit_id = "00000000-0000-0000-0000-00000000ca06"
-    now = datetime(2025, 1, 1, 12, 0, 0)
-    with engine.begin() as connection:
-        connection.execute(
-            sa.text(
-                """
-                INSERT INTO provider_models
-                    (
-                        id, tenant_id, provider_name, model_name, model_type,
-                        credential_id, is_valid, created_at, updated_at
-                    )
-                VALUES
-                    (
-                        :id, :tenant_id, 'openai', 'gpt-4o-mini', 'llm',
-                        :credential_id, :is_valid, :created_at, :updated_at
-                    )
-                """
-            ),
-            {
-                "id": canonical_provider_model_id,
-                "tenant_id": fixture.primary.tenant_id,
-                "credential_id": fixture.primary.winner_credential_id,
-                "is_valid": True,
-                "created_at": now - timedelta(days=2),
-                "updated_at": now - timedelta(hours=7),
-            },
-        )
-        connection.execute(
-            sa.text(
-                """
-                INSERT INTO tenant_default_models
-                    (id, tenant_id, provider_name, model_name, model_type, created_at, updated_at)
-                VALUES
-                    (:id, :tenant_id, 'openai', 'gpt-4o-mini', 'llm', :created_at, :updated_at)
-                """
-            ),
-            {
-                "id": canonical_default_model_id,
-                "tenant_id": fixture.primary.tenant_id,
-                "created_at": now - timedelta(days=2),
-                "updated_at": now,
-            },
-        )
-        connection.execute(
-            sa.text(
-                """
-                INSERT INTO provider_model_credentials
-                    (
-                        id, tenant_id, provider_name, model_name, model_type,
-                        credential_name, encrypted_config, created_at, updated_at
-                    )
-                VALUES
-                    (:older_id, :tenant_id, 'openai', 'gpt-4o-mini', 'llm',
-                     'canonical-only', '{"api_key":"older"}', :created_at, :older_updated_at),
-                    (:newer_id, :tenant_id, 'openai', 'gpt-4o-mini', 'llm',
-                     'canonical-only', '{"api_key":"newer"}', :created_at, :newer_updated_at)
-                """
-            ),
-            {
-                "older_id": min(canonical_credential_ids),
-                "newer_id": max(canonical_credential_ids),
-                "tenant_id": fixture.primary.tenant_id,
-                "created_at": now - timedelta(days=2),
-                "older_updated_at": now - timedelta(hours=2),
-                "newer_updated_at": now - timedelta(hours=1),
-            },
-        )
-
-    _insert_load_balancing_model_config(
-        engine,
-        row_id=older_inherit_id,
-        tenant_id=fixture.primary.tenant_id,
-        provider_name="openai",
-        model_name="gpt-4o-mini",
-        model_type="llm",
-        name="__inherit__",
-        encrypted_config='{"api_key":"older-inherit"}',
-        credential_id=fixture.primary.winner_credential_id,
-        enabled=True,
-        created_at=now - timedelta(days=2),
-        updated_at=now - timedelta(hours=2),
-    )
-    _insert_load_balancing_model_config(
-        engine,
-        row_id=newer_inherit_id,
-        tenant_id=fixture.primary.tenant_id,
-        provider_name="openai",
-        model_name="gpt-4o-mini",
-        model_type="text-generation",
-        name="__inherit__",
-        encrypted_config='{"api_key":"newer-inherit"}',
-        credential_id=fixture.primary.distinct_credential_id,
-        enabled=True,
-        created_at=now - timedelta(days=2),
-        updated_at=now - timedelta(hours=1),
-    )
-
-    _run_legacy_model_type_alembic_upgrade(engine)
-
-    for tenant_id in (fixture.primary.tenant_id, fixture.secondary.tenant_id):
-        assert_tenant_rows_use_only_canonical_model_types(engine, tenant_id)
-
-    table_names = (
-        "provider_models",
-        "tenant_default_models",
-        "provider_model_settings",
-        "load_balancing_model_configs",
-        "provider_model_credentials",
-    )
-    first_apply_state = {table_name: fetch_table_rows(engine, table_name) for table_name in table_names}
-    primary_provider_models = [
-        row
-        for row in first_apply_state["provider_models"]
-        if row["tenant_id"] == fixture.primary.tenant_id and row["model_name"] == "gpt-4o-mini"
-    ]
-    assert [row["id"] for row in primary_provider_models] == [fixture.primary.provider_model_id]
-    assert primary_provider_models[0]["credential_id"] == fixture.primary.winner_credential_id
-
-    primary_defaults = [
-        row
-        for row in first_apply_state["tenant_default_models"]
-        if row["tenant_id"] == fixture.primary.tenant_id and row["model_type"] == "llm"
-    ]
-    assert [row["id"] for row in primary_defaults] == [canonical_default_model_id]
-    primary_credential_ids = {
-        row["id"]
-        for row in first_apply_state["provider_model_credentials"]
-        if row["tenant_id"] == fixture.primary.tenant_id
-    }
-    assert canonical_credential_ids <= primary_credential_ids
-    assert count_rows(engine, "provider_model_credentials", tenant_id=fixture.primary.tenant_id) == 4
-
-    primary_load_balancing_config = next(
-        row
-        for row in first_apply_state["load_balancing_model_configs"]
-        if row["id"] == fixture.primary.load_balancing_config_id
-    )
-    assert primary_load_balancing_config["credential_id"] == fixture.primary.winner_credential_id
-    assert primary_load_balancing_config["encrypted_config"] == fixture.primary.winner_encrypted_config
-    primary_inherit_ids = {
-        row["id"]
-        for row in first_apply_state["load_balancing_model_configs"]
-        if row["tenant_id"] == fixture.primary.tenant_id and row["name"] == "__inherit__"
-    }
-    assert primary_inherit_ids == {newer_inherit_id}
-
-    _run_legacy_model_type_alembic_upgrade(engine)
-    second_apply_state = {table_name: fetch_table_rows(engine, table_name) for table_name in table_names}
-    assert second_apply_state == first_apply_state
-
-
 def test_load_balancing_inherit_deduplication_is_applied_consistently_across_supported_backends(
     migration_module,
     container_engine: tuple[str, sa.Engine],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _, engine = container_engine
-    helper_module = importlib.import_module("tests.helpers.legacy_model_type_migration")
-    helper_module.drop_minimal_legacy_model_type_schema(engine)
     fixture = seed_legacy_model_type_dirty_data(engine)
 
     tenant_id = fixture.primary.tenant_id

@@ -30,6 +30,7 @@ export type PausedNodeResponse = {
 export type HumanInputPauseTypeResponse = {
   backstage_input_url?: string | null
   form_id: string
+  form_version?: '1' | '2'
   type: 'human_input'
 }
 

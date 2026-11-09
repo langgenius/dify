@@ -2,10 +2,21 @@
 
 from typing import Protocol
 
-from services.entities.conversation_entities import ConversationDeletion, ConversationRef
+from machinery.context import RequestContext
+from services.entities.conversation_entities import ConsoleConversationKind, ConversationDeletion, ConversationRef
 
 
 class ConversationCommandStore(Protocol):
+    def mark_console_read(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> None: ...
+
+    def delete_console(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> ConversationDeletion:
+        """Delete the account's Console conversation within the admitted workspace."""
+        ...
+
     def delete(self, *, ref: ConversationRef) -> ConversationDeletion:
         """Commit soft deletion and workspace retirement before returning cleanup data."""
         ...
@@ -23,6 +34,22 @@ class ConversationCommandService:
     def __init__(self, *, conversations: ConversationCommandStore, enqueue_delete_cleanup: ConversationCleanup) -> None:
         self._conversations: ConversationCommandStore = conversations
         self._enqueue_delete_cleanup: ConversationCleanup = enqueue_delete_cleanup
+
+    def mark_console_read(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> None:
+        """Record the legacy Console read receipt after detail rendering succeeds."""
+        self._conversations.mark_console_read(context, app_id, conversation_id, kind=kind)
+
+    def delete_console(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> None:
+        deleted = self._conversations.delete_console(context, app_id, conversation_id, kind=kind)
+        self._enqueue_delete_cleanup(
+            tenant_id=deleted.tenant_id,
+            conversation_id=deleted.conversation_id,
+            retired_workspace_ids=deleted.retired_workspace_ids,
+        )
 
     def delete(self, *, ref: ConversationRef) -> None:
         deleted = self._conversations.delete(ref=ref)

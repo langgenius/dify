@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import patch
 
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -15,7 +16,7 @@ def _workflow() -> Workflow:
 
 
 class TestWorkflowAppConfigManager:
-    def test_get_app_config(self):
+    def test_get_app_config(self) -> None:
         app_model = _app()
         workflow = _workflow()
 
@@ -34,18 +35,11 @@ class TestWorkflowAppConfigManager:
         assert app_config.workflow_id == "wf-1"
         assert app_config.app_mode == AppMode.WORKFLOW
 
-    def test_config_validate_filters_keys(self):
-        def _add_key(key, value):
-            def _inner[**P](*args: P.args, **kwargs: P.kwargs):
+    def test_config_validate_filters_keys(self) -> None:
+        def _add_key(key: str, value: object) -> Callable[..., tuple[dict[str, object], list[str]]]:
+            def _inner(config: dict[str, object], **_: object) -> tuple[dict[str, object], list[str]]:
                 # Support both positional and keyword arguments for config
-                if "config" in kwargs:
-                    config = kwargs["config"]
-                elif len(args) > 0:
-                    config = args[0]
-                else:
-                    config = {}
-                config[key] = value
-                return config, [key]
+                return {**config, key: value}, [key]
 
             return _inner
 

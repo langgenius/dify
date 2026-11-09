@@ -47,7 +47,7 @@ it('blocks chat submission for a cleared required picker and sends the confirmed
     await screen.getByRole('button', { name: 'common.operation.clear' }).click()
     await screen.getByRole('button', { name: 'Submit booking' }).click()
     expect(onSend).not.toHaveBeenCalled()
-    const trigger = screen.getByRole('button', { name: 'Departure' })
+    const trigger = screen.getByRole('button', { name: 'Departure time.operation.pickDate' })
     await expect.element(trigger).toHaveFocus()
     await expect.element(trigger).toHaveAttribute('aria-invalid', 'true')
     await expect.element(trigger).toHaveAccessibleDescription(/time.picker.required/)

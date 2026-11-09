@@ -13,9 +13,14 @@ from configs import dify_config
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import agent_inner_api_only
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from repositories.application_trace_repository import TraceCollectionError
-from services.tracing.service import application_tracing_service
+from services.tracing.errors import (
+    TraceCollectionConflictError,
+    TraceCollectionError,
+    TraceCollectionLimitError,
+    TraceCollectionNotFoundError,
+)
 
 
 class AgentTraceBatchResponse(ResponseModel):
@@ -38,12 +43,17 @@ class AgentTraceBatchesApi(Resource):
         request.max_content_length = dify_config.OPS_AGENT_TRACE_BATCH_MAX_BYTES
         try:
             payload = AgentTraceBatch.model_validate(inner_api_ns.payload or {})
-            accepted = application_tracing_service().ingest(payload)
+            accepted = application_services().tracing.agent_traces.ingest(payload)
         except ValidationError as error:
             raise BadRequest("Invalid Agent trace batch") from error
+        except TraceCollectionNotFoundError as error:
+            raise NotFound(error.code) from error
+        except TraceCollectionConflictError as error:
+            raise Conflict(error.code) from error
+        except TraceCollectionLimitError as error:
+            raise RequestEntityTooLarge(error.code) from error
         except TraceCollectionError as error:
-            error_type = {404: NotFound, 409: Conflict, 413: RequestEntityTooLarge}.get(error.status, BadRequest)
-            raise error_type(error.code) from error
+            raise BadRequest(error.code) from error
         return AgentTraceBatchResponse(result="success", batch_id=payload.batch_id, accepted_spans=accepted).model_dump(
             mode="json"
         )

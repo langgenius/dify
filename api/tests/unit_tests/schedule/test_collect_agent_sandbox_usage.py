@@ -42,7 +42,7 @@ def response(payload: object, status: int = 200) -> httpx.Response:
     )
 
 
-def test_task_uses_existing_queue_deadlines_and_single_authenticated_call(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_task_uses_configured_routing_deadlines_and_single_authenticated_call(monkeypatch: pytest.MonkeyPatch) -> None:
     post = MagicMock(return_value=response({"completed": True}))
     monkeypatch.setattr("schedule.collect_agent_sandbox_usage.ssrf_proxy.post", post)
     assert collect_agent_sandbox_usage() is True
@@ -56,7 +56,7 @@ def test_task_uses_existing_queue_deadlines_and_single_authenticated_call(monkey
     dispatch = MagicMock()
     monkeypatch.setattr(collect_agent_sandbox_usage.app, "send_task", dispatch)
     collect_agent_sandbox_usage.apply_async()
-    assert dispatch.call_args.kwargs["queue"] == "ops_trace"
+    assert dispatch.call_args.kwargs.get("queue") is None
     assert collect_agent_sandbox_usage.soft_time_limit == 270
     assert collect_agent_sandbox_usage.time_limit == 300
 

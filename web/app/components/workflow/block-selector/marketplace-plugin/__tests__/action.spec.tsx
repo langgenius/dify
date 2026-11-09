@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { marketplaceLinks } from '@/features/marketplace/links'
 import OperationMenu from '../action'
 
 const mockDownloadBlob = vi.fn()
@@ -29,9 +30,16 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
 
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: (path: string) => `https://marketplace.example${path}`,
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: 'https://marketplace.example',
+    },
+  }
+})
 
 const createQueryClient = () =>
   new QueryClient({
@@ -48,6 +56,7 @@ const renderComponent = (props?: Partial<ComponentProps<typeof OperationMenu>>) 
   return render(
     <QueryClientProvider client={queryClient}>
       <OperationMenu
+        marketplace={marketplaceLinks}
         open={false}
         onOpenChange={vi.fn()}
         author="langgenius"
@@ -112,7 +121,7 @@ describe('MarketplaceOperationMenu', () => {
 
     expect(screen.getByRole('menuitem', { name: 'common.operation.viewDetails' })).toHaveAttribute(
       'href',
-      'https://marketplace.example/plugins/langgenius/test-plugin',
+      'https://marketplace.example/plugins/langgenius/test-plugin?theme=light',
     )
   })
 })

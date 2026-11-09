@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence, Set
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, ClassVar, NotRequired, TypedDict, cast, override
+from typing import Any, ClassVar, NotRequired, TypedDict, override
 
 from sqlalchemy import Engine, delete, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -1064,14 +1064,15 @@ class DraftVariableSaver:
             return None
 
         original_length = None
-        if isinstance(value_seg.value, (list, dict)):
-            original_length = len(value_seg.value)
+        original_value = value_seg.value
+        if isinstance(original_value, (list, dict)):
+            original_length = len(original_value)
 
         # Prepare content for storage
         original_content_serialized: str
         if isinstance(value_seg, StringSegment):
             # For string types, store as plain text
-            original_content_serialized = cast(str, value_seg.value)
+            original_content_serialized = value_seg.value
             content_type = "text/plain"
             filename = f"{self._generate_filename(name)}.txt"
         else:

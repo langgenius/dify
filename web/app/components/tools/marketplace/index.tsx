@@ -1,27 +1,29 @@
 import type { SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { ToolsContentInset } from '../content-inset'
-import type { useMarketplace } from './hooks'
+import type { useToolMarketplace } from './hooks'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { useRouter } from '@/next/navigation'
-import { getMarketplaceUrl } from '@/utils/var'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 
 type MarketplaceProps = {
+  marketplace: MarketplaceLinks
   searchPluginText: string
   filterPluginTags: string[]
   isMarketplaceArrowVisible: boolean
   showMarketplacePanel: () => void
-  marketplaceContext: ReturnType<typeof useMarketplace>
+  marketplaceContext: ReturnType<typeof useToolMarketplace>
   contentInset?: ToolsContentInset
 }
 const Marketplace = ({
+  marketplace,
   searchPluginText,
   filterPluginTags,
   isMarketplaceArrowVisible,
@@ -31,7 +33,7 @@ const Marketplace = ({
 }: MarketplaceProps) => {
   const locale = useLocale()
   const { t } = useTranslation(['common', 'plugin'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const router = useRouter()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const { isLoading, marketplaceCollections, marketplaceCollectionPluginsMap, plugins, page } =
@@ -98,7 +100,7 @@ const Marketplace = ({
             </span>
             {t(($) => $['operation.in'], { ns: 'common' })}
             <a
-              href={getMarketplaceUrl('', {
+              href={marketplace.page('', {
                 language: locale,
                 q: searchPluginText,
                 tags: filterPluginTags.join(','),

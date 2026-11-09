@@ -16,6 +16,7 @@ import type {
   AgentTool,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -23,7 +24,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { mergeRegister } from '@lexical/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useClipboard } from 'foxact/use-clipboard'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom, useStore } from 'jotai'
 import {
   $getRoot,
   $getSelection,
@@ -39,7 +40,10 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
+import {
+  agentComposerKnowledgeRetrievalsAtom,
+  getVisibleKnowledgeRetrievals,
+} from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
   addProviderToolsAtom,
@@ -427,6 +431,7 @@ export function AgentPromptEditor() {
     }),
   )
   const [value, setValue] = useAtom(agentComposerPromptAtom)
+  const promptStore = useStore()
   const { skills: embeddedSkills } = useAgentConfigSkills()
   const workspaceSkillBindingsQuery = useAgentWorkspaceSkillBindings()
   const skills = useMemo<AgentSkill[]>(() => {
@@ -772,12 +777,13 @@ export function AgentPromptEditor() {
   }
 
   const handleSlashSelect = (token: string) => {
+    const currentValue = promptStore.get(agentComposerPromptAtom)
     const slashRange = pendingSlashInsertRangeRef.current
     let insertionResult
     if (slashRange) {
-      insertionResult = insertTokenAtTextRange(value, slashRange, token)
+      insertionResult = insertTokenAtTextRange(currentValue, slashRange, token)
     } else {
-      const nextValue = replaceTrailingSlashWithToken(value, token)
+      const nextValue = replaceTrailingSlashWithToken(currentValue, token)
       insertionResult = {
         value: nextValue,
         cursorOffset: nextValue.length,
@@ -1017,15 +1023,11 @@ export function AgentPromptEditor() {
       label: t(($) => $['agentDetail.configure.tools.label']),
       icon: 'i-ri-box-3-line',
     },
-    ...(knowledgeEnabled || retrievals.some((item) => !item.controlSpaceId)
-      ? [
-          {
-            key: 'knowledge' as const,
-            label: t(($) => $['agentDetail.configure.knowledgeRetrieval.label']),
-            icon: 'i-ri-book-open-line',
-          },
-        ]
-      : []),
+    {
+      key: 'knowledge',
+      label: t(($) => $['agentDetail.configure.knowledgeRetrieval.label']),
+      icon: 'i-ri-book-open-line',
+    },
   ]
   const handleOpenSlashMenuCategory = (view: Exclude<SlashMenuView, 'main'>) => {
     parentSlashMenuItemIndexRef.current = Math.max(
@@ -1064,10 +1066,10 @@ export function AgentPromptEditor() {
           onAddProviderTools={addProviderTools}
           onAddCliTool={addActions.cli}
           onAddFile={addActions.files}
-          onAddKnowledge={knowledgeEnabled ? addActions.knowledge : undefined}
+          onAddKnowledge={addActions.knowledge}
           onAddSkill={addActions.skills}
           canAddWorkspaceSkill={enableSkill === true}
-          knowledgeRetrievals={retrievals}
+          knowledgeRetrievals={getVisibleKnowledgeRetrievals(retrievals, knowledgeEnabled)}
           onBack={returnToSlashMenuMain}
           onOpenCategory={handleOpenSlashMenuCategory}
           onInsertToken={handleSlashSelect}
@@ -1096,21 +1098,20 @@ export function AgentPromptEditor() {
           <TooltipTrigger
             closeOnClick={false}
             render={
-              <button
-                type="button"
+              <IconButton
                 aria-label={
                   copied
                     ? t(($) => $['agentDetail.configure.prompt.copied'])
                     : t(($) => $['agentDetail.configure.prompt.copy'])
                 }
-                className="flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                className="shrink-0"
                 onClick={handleCopyPrompt}
               >
                 <span
                   aria-hidden
                   className={copied ? 'i-ri-check-line size-4' : 'i-ri-clipboard-line size-4'}
                 />
-              </button>
+              </IconButton>
             }
           />
           <TooltipContent>

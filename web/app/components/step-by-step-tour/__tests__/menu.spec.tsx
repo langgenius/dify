@@ -17,8 +17,14 @@ function TestMenu({
 
   return (
     <>
-      <button type="button" onClick={() => menu.onOpenChange(!menu.open)}>
+      <button
+        type="button"
+        onClick={() => menu.onOpenChange(!menu.open, { reason: 'trigger-press' })}
+      >
         Toggle menu
+      </button>
+      <button type="button" onClick={() => menu.onOpenChange(false, { reason: 'outside-press' })}>
+        Press outside
       </button>
       <button type="button" onClick={menu.close}>
         Close from action
@@ -53,6 +59,15 @@ describe('useStepByStepTourControlledMenu', () => {
     await user.click(screen.getByRole('button', { name: 'Toggle menu' }))
 
     expect(screen.getByText('Menu is closed and uncontrolled')).toBeInTheDocument()
+  })
+
+  it('keeps a tour-opened menu open on an outside press', async () => {
+    const user = userEvent.setup()
+    render(<TestMenu controlledOpen />)
+
+    await user.click(screen.getByRole('button', { name: 'Press outside' }))
+
+    expect(screen.getByText('Menu is open and controlled')).toBeInTheDocument()
   })
 
   it('can keep a tour-opened menu locked until the tour leaves the step', async () => {

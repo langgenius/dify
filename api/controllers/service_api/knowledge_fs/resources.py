@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from functools import wraps
 from http import HTTPStatus
 from typing import Literal
@@ -69,6 +69,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSDurableDeletionJobResponse,
     KnowledgeFSIdempotencyHeader,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSProfileMigrationResponse,
@@ -168,6 +169,7 @@ register_schema_models(
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSDocumentReindexPayload,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSResearchTaskPartialsQuery,
     KnowledgeFSResearchTaskCreatePayload,
@@ -295,7 +297,7 @@ _SERVICE_CALL_ERRORS = (
 )
 
 
-def _dump_response[ResponseT: BaseModel](model: type[ResponseT], value: object):
+def _dump_response[ResponseT: BaseModel](model: type[ResponseT], value: object) -> JsonValue:
     try:
         return dump_response(model, value)
     except ValidationError as exc:
@@ -354,7 +356,7 @@ def _stream_response(upstream: KnowledgeFSRemoteSSEResponse) -> Response:
         headers.setdefault("content-type", "text/event-stream")
         headers.setdefault("x-accel-buffering", "no")
 
-    def generate():
+    def generate() -> Iterator[bytes]:
         try:
             yield from upstream.chunks
         finally:
@@ -434,7 +436,7 @@ class KnowledgeFSServiceDocumentsApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         runtime = _runtime()
         profile = _profile(runtime, operation_id="listDocuments", control_space_id=control_space_id)
         query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
@@ -465,7 +467,7 @@ class KnowledgeFSServiceBulkDocumentsApi(Resource):
         service_api_ns.models[KnowledgeFSBulkDeletionAcceptedResponse.__name__],
     )
     @_service_api_errors
-    def delete(self, control_space_id: str):
+    def delete(self, control_space_id: str) -> tuple[JsonValue, HTTPStatus, dict[str, str]]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="bulkDeleteDocuments",
@@ -495,7 +497,7 @@ class KnowledgeFSServiceDocumentReindexApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentReindexResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str):
+    def post(self, control_space_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="reindexDocuments",
@@ -512,7 +514,7 @@ class KnowledgeFSServiceDocumentApi(Resource):
         HTTPStatus.OK, "Agent Knowledge Base document", service_api_ns.models[KnowledgeFSDocumentResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str, document_id: str):
+    def get(self, control_space_id: str, document_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getDocument",
@@ -533,7 +535,7 @@ class KnowledgeFSServiceDocumentApi(Resource):
         service_api_ns.models[KnowledgeFSLogicalDocumentResponse.__name__],
     )
     @_service_api_errors
-    def patch(self, control_space_id: str, document_id: str):
+    def patch(self, control_space_id: str, document_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="updateDocumentMetadata",
@@ -560,7 +562,7 @@ class KnowledgeFSServiceDocumentApi(Resource):
         service_api_ns.models[KnowledgeFSDurableDeletionAcceptedResponse.__name__],
     )
     @_service_api_errors
-    def delete(self, control_space_id: str, document_id: str):
+    def delete(self, control_space_id: str, document_id: str) -> tuple[JsonValue, HTTPStatus, dict[str, str]]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="deleteDocument",
@@ -581,7 +583,7 @@ class KnowledgeFSServiceDocumentOutlineApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentOutlineResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, document_id: str):
+    def get(self, control_space_id: str, document_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getDocumentOutline",
@@ -601,7 +603,7 @@ class KnowledgeFSServiceDocumentRevisionsApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentRevisionListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, document_id: str):
+    def get(self, control_space_id: str, document_id: str) -> JsonValue:
         query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -625,7 +627,7 @@ class KnowledgeFSServiceDocumentChunksApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentChunkListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, document_id: str, revision: int):
+    def get(self, control_space_id: str, document_id: str, revision: int) -> JsonValue:
         query = KnowledgeFSDocumentChunkListQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -648,7 +650,7 @@ class KnowledgeFSServiceDocumentChunkApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentChunkResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, document_id: str, revision: int, chunk_id: str):
+    def get(self, control_space_id: str, document_id: str, revision: int, chunk_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getDocumentChunk",
@@ -671,7 +673,7 @@ class KnowledgeFSServiceCompilationJobApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentCompilationJobResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, job_id: str):
+    def get(self, control_space_id: str, job_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id, operation_id="getCompilationJob", resource_id=job_id
         )
@@ -688,7 +690,7 @@ class KnowledgeFSServiceCompilationJobApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentCompilationJobResponse.__name__],
     )
     @_service_api_errors
-    def delete(self, control_space_id: str, job_id: str):
+    def delete(self, control_space_id: str, job_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id, operation_id="cancelCompilationJob", resource_id=job_id
         )
@@ -708,7 +710,7 @@ class KnowledgeFSServiceCompilationJobRetryApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentCompilationJobResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str, job_id: str):
+    def post(self, control_space_id: str, job_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id, operation_id="retryCompilationJob", resource_id=job_id
         )
@@ -722,7 +724,7 @@ class KnowledgeFSServiceBulkJobApi(Resource):
         HTTPStatus.OK, "Agent Knowledge Base bulk job", service_api_ns.models[KnowledgeFSBulkJobResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str, job_id: str):
+    def get(self, control_space_id: str, job_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id, operation_id="getBulkJob", resource_id=job_id
         )
@@ -743,7 +745,7 @@ class KnowledgeFSServiceQueryAdmissionApi(Resource):
         service_api_ns.models[KnowledgeFSQueryAdmissionResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str):
+    def post(self, control_space_id: str) -> JsonValue:
         runtime = _runtime()
         profile = _profile(runtime, operation_id="createQuery", control_space_id=control_space_id)
         payload = _payload(KnowledgeFSQueryCreatePayload)
@@ -781,7 +783,7 @@ class KnowledgeFSServiceQueryStreamProxyApi(Resource):
     @service_api_ns.doc(produces=["text/event-stream"])
     @service_api_ns.response(HTTPStatus.OK, "Agent Knowledge Base query event stream")
     @_service_api_errors
-    def post(self):
+    def post(self) -> Response:
         capability_token, trace_id = _stream_capability()
         payload = _payload(KnowledgeFSAdmittedQueryRequest)
         upstream = _runtime().facade.stream_query(
@@ -801,7 +803,7 @@ class KnowledgeFSServiceSettingsApi(Resource):
         service_api_ns.models[KnowledgeFSSettingsResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         runtime = _runtime()
         profile = _profile(runtime, operation_id="getSettings", control_space_id=control_space_id)
         raw = runtime.facade.execute_service(profile=profile, operation_id="getSettings")
@@ -825,7 +827,7 @@ class KnowledgeFSServiceSettingsApi(Resource):
         service_api_ns.models[KnowledgeFSSettingsUpdateResponse.__name__],
     )
     @_service_api_errors
-    def patch(self, control_space_id: str):
+    def patch(self, control_space_id: str) -> tuple[JsonValue, HTTPStatus]:
         runtime = _runtime()
         profile = _profile(runtime, operation_id="updateSettings", control_space_id=control_space_id)
         result = runtime.facade.update_service_settings(profile=profile, payload=_payload(KnowledgeFSSettingsPayload))
@@ -844,7 +846,7 @@ class KnowledgeFSServiceSourcesApi(Resource):
         service_api_ns.models[KnowledgeFSSourceListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         runtime = _runtime()
         profile = _profile(runtime, operation_id="listSources", control_space_id=control_space_id)
         query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
@@ -868,7 +870,7 @@ class KnowledgeFSServiceSourcesApi(Resource):
         service_api_ns.models[KnowledgeFSSourceResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str):
+    def post(self, control_space_id: str) -> tuple[JsonValue, HTTPStatus]:
         runtime = _runtime()
         profile = _profile(runtime, operation_id="createSource", control_space_id=control_space_id)
         raw = runtime.facade.execute_service(
@@ -886,7 +888,7 @@ class KnowledgeFSServiceSourceApi(Resource):
         HTTPStatus.OK, "Agent Knowledge Base source", service_api_ns.models[KnowledgeFSSourceResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str, source_id: str):
+    def get(self, control_space_id: str, source_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getSource",
@@ -905,7 +907,7 @@ class KnowledgeFSServiceSourceApi(Resource):
         HTTPStatus.OK, "Agent Knowledge Base source updated", service_api_ns.models[KnowledgeFSSourceResponse.__name__]
     )
     @_service_api_errors
-    def patch(self, control_space_id: str, source_id: str):
+    def patch(self, control_space_id: str, source_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="updateSource",
@@ -933,7 +935,7 @@ class KnowledgeFSServiceSourceApi(Resource):
         service_api_ns.models[KnowledgeFSDurableDeletionAcceptedResponse.__name__],
     )
     @_service_api_errors
-    def delete(self, control_space_id: str, source_id: str):
+    def delete(self, control_space_id: str, source_id: str) -> tuple[JsonValue, HTTPStatus, dict[str, str]]:
         query = KnowledgeFSSourceDeleteQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -956,7 +958,7 @@ class KnowledgeFSServiceSourceTestApi(Resource):
         service_api_ns.models[KnowledgeFSSourceCredentialTestResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str, source_id: str):
+    def post(self, control_space_id: str, source_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="testSource",
@@ -985,7 +987,7 @@ class KnowledgeFSServiceSourceCrawlApi(Resource):
         service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str, source_id: str):
+    def post(self, control_space_id: str, source_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="previewSourceCrawl",
@@ -1006,7 +1008,7 @@ class KnowledgeFSServiceSourcePagesApi(Resource):
         service_api_ns.models[KnowledgeFSSourcePagesResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, source_id: str):
+    def get(self, control_space_id: str, source_id: str) -> JsonValue:
         query = KnowledgeFSSourcePagesQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -1038,7 +1040,7 @@ class KnowledgeFSServiceSourcePageImportApi(Resource):
         service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str, source_id: str):
+    def post(self, control_space_id: str, source_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="importSourceWorkflow",
@@ -1060,7 +1062,7 @@ class KnowledgeFSServiceSourceFilesApi(Resource):
         service_api_ns.models[KnowledgeFSSourceFilesResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, source_id: str):
+    def get(self, control_space_id: str, source_id: str) -> JsonValue:
         query = KnowledgeFSSourceFilesQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -1092,7 +1094,7 @@ class KnowledgeFSServiceSourceFileImportApi(Resource):
         service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str, source_id: str):
+    def post(self, control_space_id: str, source_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="importSourceWorkflow",
@@ -1114,7 +1116,7 @@ class KnowledgeFSServiceResearchTasksApi(Resource):
         service_api_ns.models[KnowledgeFSResearchTaskListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         runtime = _runtime()
         profile = _profile(runtime, operation_id="listResearchTasks", control_space_id=control_space_id)
         query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
@@ -1144,7 +1146,7 @@ class KnowledgeFSServiceResearchTasksApi(Resource):
         service_api_ns.models[KnowledgeFSResearchTaskResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str):
+    def post(self, control_space_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="createResearchTask",
@@ -1170,7 +1172,7 @@ class KnowledgeFSServiceResearchTaskPlanApi(Resource):
         service_api_ns.models[KnowledgeFSResearchTaskPlanResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str):
+    def post(self, control_space_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="planResearchTask",
@@ -1189,7 +1191,7 @@ class KnowledgeFSServiceResearchTaskApi(Resource):
         service_api_ns.models[KnowledgeFSResearchTaskResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, task_id: str):
+    def get(self, control_space_id: str, task_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getResearchTask",
@@ -1208,7 +1210,7 @@ class KnowledgeFSServiceResearchTaskApi(Resource):
         service_api_ns.models[KnowledgeFSResearchTaskResponse.__name__],
     )
     @_service_api_errors
-    def delete(self, control_space_id: str, task_id: str):
+    def delete(self, control_space_id: str, task_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="cancelResearchTask",
@@ -1227,7 +1229,7 @@ class KnowledgeFSServiceResearchTaskPartialsApi(Resource):
         service_api_ns.models[KnowledgeFSResearchTaskPartialListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, task_id: str):
+    def get(self, control_space_id: str, task_id: str) -> JsonValue:
         query = KnowledgeFSResearchTaskPartialsQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -1252,7 +1254,7 @@ class KnowledgeFSServiceTracesApi(Resource):
         service_api_ns.models[KnowledgeFSTraceListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         runtime = _runtime()
         profile = _profile(runtime, operation_id="listTraces", control_space_id=control_space_id)
         query = KnowledgeFSTraceListQuery.model_validate(request.args.to_dict())
@@ -1273,7 +1275,7 @@ class KnowledgeFSServiceTraceApi(Resource):
         service_api_ns.models[KnowledgeFSAnswerTraceResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, trace_id: str):
+    def get(self, control_space_id: str, trace_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getTrace",
@@ -1283,7 +1285,9 @@ class KnowledgeFSServiceTraceApi(Resource):
         return _dump_response(KnowledgeFSAnswerTraceResponse, raw)
 
 
-def _service_trace_entries(*, control_space_id: str, trace_id: str, kind: Literal["conflicts", "evidence", "missing"]):
+def _service_trace_entries(
+    *, control_space_id: str, trace_id: str, kind: Literal["conflicts", "evidence", "missing"]
+) -> JsonValue:
     query = KnowledgeFSTraceEntriesQuery.model_validate(request.args.to_dict())
     operation_id = {
         "conflicts": "listTraceConflicts",
@@ -1310,7 +1314,7 @@ class KnowledgeFSServiceTraceEvidenceApi(Resource):
         service_api_ns.models[KnowledgeFSTraceEntryListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, trace_id: str):
+    def get(self, control_space_id: str, trace_id: str) -> JsonValue:
         return _service_trace_entries(control_space_id=control_space_id, trace_id=trace_id, kind="evidence")
 
 
@@ -1324,7 +1328,7 @@ class KnowledgeFSServiceTraceConflictsApi(Resource):
         service_api_ns.models[KnowledgeFSTraceEntryListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, trace_id: str):
+    def get(self, control_space_id: str, trace_id: str) -> JsonValue:
         return _service_trace_entries(control_space_id=control_space_id, trace_id=trace_id, kind="conflicts")
 
 
@@ -1338,7 +1342,7 @@ class KnowledgeFSServiceTraceMissingApi(Resource):
         service_api_ns.models[KnowledgeFSTraceEntryListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, trace_id: str):
+    def get(self, control_space_id: str, trace_id: str) -> JsonValue:
         return _service_trace_entries(control_space_id=control_space_id, trace_id=trace_id, kind="missing")
 
 
@@ -1351,7 +1355,7 @@ __all__ = [
 ]
 
 
-def _deletion_accepted(control_space_id: str, raw: JsonValue):
+def _deletion_accepted(control_space_id: str, raw: JsonValue) -> tuple[JsonValue, HTTPStatus, dict[str, str]]:
     result = _upstream_model(KnowledgeFSDurableDeletionAcceptedResponse, raw)
     result.status_url = _service_api_url(f"/knowledge-fs/spaces/{control_space_id}/deletion-jobs/{result.job.id}")
     return (
@@ -1361,7 +1365,7 @@ def _deletion_accepted(control_space_id: str, raw: JsonValue):
     )
 
 
-def _bulk_deletion_accepted(control_space_id: str, raw: JsonValue):
+def _bulk_deletion_accepted(control_space_id: str, raw: JsonValue) -> tuple[JsonValue, HTTPStatus, dict[str, str]]:
     result = _upstream_model(KnowledgeFSBulkDeletionAcceptedResponse, raw)
     _rewrite_deletion_batch_urls(control_space_id, result)
     headers = {"Location": result.status_url} if result.status_url else {}
@@ -1391,7 +1395,7 @@ class KnowledgeFSServiceLogicalDocumentsApi(Resource):
         HTTPStatus.OK, "listLogicalDocuments", service_api_ns.models[KnowledgeFSLogicalDocumentListResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -1408,7 +1412,7 @@ class KnowledgeFSServiceLogicalDocumentApi(Resource):
         HTTPStatus.OK, "getLogicalDocument", service_api_ns.models[KnowledgeFSLogicalDocumentResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str, document_id: str):
+    def get(self, control_space_id: str, document_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getLogicalDocument",
@@ -1416,6 +1420,38 @@ class KnowledgeFSServiceLogicalDocumentApi(Resource):
             path_parameters=(("documentId", document_id),),
         )
         return _dump_response(KnowledgeFSLogicalDocumentResponse, raw)
+
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
+    @service_api_ns.expect(service_api_ns.models[KnowledgeFSLogicalDocumentDeletePayload.__name__])
+    @service_api_ns.doc(
+        description=(
+            "Delete a logical document and its historical revisions. Use the logical document ID and its rowVersion "
+            "as expectedRevision; the accepted deletion job runs asynchronously."
+        ),
+        params={
+            "Idempotency-Key": {"in": "header", "required": True, "type": "string", "minLength": 8, "maxLength": 255}
+        },
+    )
+    @service_api_ns.response(
+        HTTPStatus.ACCEPTED,
+        "Agent Knowledge Base logical document deletion accepted",
+        service_api_ns.models[KnowledgeFSDurableDeletionAcceptedResponse.__name__],
+    )
+    @_service_api_errors
+    def delete(self, control_space_id: str, document_id: str) -> tuple[JsonValue, HTTPStatus, dict[str, str]]:
+        raw = _execute_service_operation(
+            control_space_id=control_space_id,
+            operation_id="deleteLogicalDocument",
+            resource_id=document_id,
+            path_parameters=(("documentId", document_id),),
+            payload=_payload(KnowledgeFSLogicalDocumentDeletePayload),
+            headers=(("Idempotency-Key", _idempotency_key()),),
+        )
+        return _deletion_accepted(control_space_id, raw)
 
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/document-references/resolve")
@@ -1428,7 +1464,7 @@ class KnowledgeFSServiceDocumentReferenceApi(Resource):
         service_api_ns.models[KnowledgeFSResolvedDocumentReferenceResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         query = KnowledgeFSDocumentReferenceQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -1448,7 +1484,7 @@ class KnowledgeFSServiceDeletionJobApi(Resource):
         HTTPStatus.OK, "getDeletionJob", service_api_ns.models[KnowledgeFSDurableDeletionJobResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str, job_id: str):
+    def get(self, control_space_id: str, job_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getDeletionJob",
@@ -1474,7 +1510,7 @@ class KnowledgeFSServiceDeletionJobRetryApi(Resource):
         HTTPStatus.OK, "retryDeletionJob", service_api_ns.models[KnowledgeFSDurableDeletionJobResponse.__name__]
     )
     @_service_api_errors
-    def post(self, control_space_id: str, job_id: str):
+    def post(self, control_space_id: str, job_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="retryDeletionJob",
@@ -1496,7 +1532,7 @@ class KnowledgeFSServiceResearchTaskResumeApi(Resource):
         HTTPStatus.OK, "resumeResearchTask", service_api_ns.models[KnowledgeFSResearchTaskResponse.__name__]
     )
     @_service_api_errors
-    def post(self, control_space_id: str, task_id: str):
+    def post(self, control_space_id: str, task_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="resumeResearchTask",
@@ -1517,7 +1553,7 @@ class KnowledgeFSServiceBackgroundTasksApi(Resource):
         HTTPStatus.OK, "listBackgroundTasks", service_api_ns.models[KnowledgeFSBackgroundTaskListResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         query = KnowledgeFSBackgroundTaskListQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -1534,7 +1570,7 @@ class KnowledgeFSServiceSettingsMigrationApi(Resource):
         HTTPStatus.OK, "getProfileMigration", service_api_ns.models[KnowledgeFSProfileMigrationResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str, migration_id: str):
+    def get(self, control_space_id: str, migration_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getProfileMigration",
@@ -1559,7 +1595,7 @@ class KnowledgeFSServiceSourceSyncApi(Resource):
         HTTPStatus.ACCEPTED, "syncSource", service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__]
     )
     @_service_api_errors
-    def post(self, control_space_id: str, source_id: str):
+    def post(self, control_space_id: str, source_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="syncSource",
@@ -1586,7 +1622,7 @@ class KnowledgeFSServiceSourceCrawlPreviewApi(Resource):
         HTTPStatus.ACCEPTED, "previewSourceCrawl", service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__]
     )
     @_service_api_errors
-    def post(self, control_space_id: str, source_id: str):
+    def post(self, control_space_id: str, source_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="previewSourceCrawl",
@@ -1616,7 +1652,7 @@ class KnowledgeFSServiceSourceCrawlImportApi(Resource):
         service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str, source_id: str):
+    def post(self, control_space_id: str, source_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="importSelectedSourceCrawl",
@@ -1645,7 +1681,7 @@ class KnowledgeFSServiceSourceWorkflowImportApi(Resource):
         HTTPStatus.ACCEPTED, "importSourceWorkflow", service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__]
     )
     @_service_api_errors
-    def post(self, control_space_id: str, source_id: str):
+    def post(self, control_space_id: str, source_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="importSourceWorkflow",
@@ -1664,7 +1700,7 @@ class KnowledgeFSServiceSourceSyncPolicyApi(Resource):
         HTTPStatus.OK, "getSourceSyncPolicy", service_api_ns.models[KnowledgeFSSourceSyncPolicyResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str, source_id: str):
+    def get(self, control_space_id: str, source_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getSourceSyncPolicy",
@@ -1683,7 +1719,7 @@ class KnowledgeFSServiceSourceSyncPolicyApi(Resource):
         HTTPStatus.OK, "updateSourceSyncPolicy", service_api_ns.models[KnowledgeFSSourceSyncPolicyResponse.__name__]
     )
     @_service_api_errors
-    def put(self, control_space_id: str, source_id: str):
+    def put(self, control_space_id: str, source_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="updateSourceSyncPolicy",
@@ -1702,7 +1738,7 @@ class KnowledgeFSServiceSourceConnectionsApi(Resource):
         HTTPStatus.OK, "listSourceConnections", service_api_ns.models[KnowledgeFSSourceConnectionListResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         query = KnowledgeFSSourceConnectionListQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -1723,7 +1759,7 @@ class KnowledgeFSServiceSourceConnectionsApi(Resource):
         service_api_ns.models[KnowledgeFSSourceConnectionResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str):
+    def post(self, control_space_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="createSourceConnection",
@@ -1746,7 +1782,7 @@ class KnowledgeFSServiceSourceConnectionRefreshApi(Resource):
         HTTPStatus.OK, "refreshSourceConnection", service_api_ns.models[KnowledgeFSSourceConnectionResponse.__name__]
     )
     @_service_api_errors
-    def post(self, control_space_id: str, connection_id: str):
+    def post(self, control_space_id: str, connection_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="refreshSourceConnection",
@@ -1764,7 +1800,7 @@ class KnowledgeFSServiceSourceWorkflowsApi(Resource):
         HTTPStatus.OK, "listSourceWorkflows", service_api_ns.models[KnowledgeFSSourceWorkflowListResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         query = KnowledgeFSSourceWorkflowListQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -1781,7 +1817,7 @@ class KnowledgeFSServiceSourceWorkflowApi(Resource):
         HTTPStatus.OK, "getSourceWorkflow", service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str, run_id: str):
+    def get(self, control_space_id: str, run_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getSourceWorkflow",
@@ -1803,7 +1839,7 @@ class KnowledgeFSServiceSourceWorkflowCancelApi(Resource):
         HTTPStatus.OK, "cancelSourceWorkflow", service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__]
     )
     @_service_api_errors
-    def post(self, control_space_id: str, run_id: str):
+    def post(self, control_space_id: str, run_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="cancelSourceWorkflow",
@@ -1825,7 +1861,7 @@ class KnowledgeFSServiceSourceWorkflowRetryApi(Resource):
         HTTPStatus.OK, "retrySourceWorkflow", service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__]
     )
     @_service_api_errors
-    def post(self, control_space_id: str, run_id: str):
+    def post(self, control_space_id: str, run_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="retrySourceWorkflow",
@@ -1843,7 +1879,7 @@ class KnowledgeFSServiceCrawlPreviewPagesApi(Resource):
         HTTPStatus.OK, "listCrawlPreviewPages", service_api_ns.models[KnowledgeFSCrawlPreviewPageListResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str, run_id: str):
+    def get(self, control_space_id: str, run_id: str) -> JsonValue:
         query = KnowledgeFSCrawlPreviewPageListQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -1874,7 +1910,7 @@ class KnowledgeFSServiceCrawlPreviewSelectionApi(Resource):
         service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str, run_id: str):
+    def post(self, control_space_id: str, run_id: str) -> tuple[JsonValue, HTTPStatus]:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="selectCrawlPreviewPages",
@@ -1893,7 +1929,7 @@ class KnowledgeFSServiceDeletionBatchApi(Resource):
         HTTPStatus.OK, "Deletion batch status", service_api_ns.models[KnowledgeFSBulkDeletionAcceptedResponse.__name__]
     )
     @_service_api_errors
-    def get(self, control_space_id: str, batch_id: str):
+    def get(self, control_space_id: str, batch_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getDeletionBatch",
@@ -1917,7 +1953,7 @@ class KnowledgeFSServiceDocumentProcessingTasksApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentProcessingTaskListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, document_id: str):
+    def get(self, control_space_id: str, document_id: str) -> JsonValue:
         query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
         raw = _execute_service_operation(
             control_space_id=control_space_id,
@@ -1940,7 +1976,7 @@ class KnowledgeFSServiceDocumentProcessingTaskApi(Resource):
         service_api_ns.models[KnowledgeFSDocumentProcessingTaskResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str, document_id: str, task_id: str):
+    def get(self, control_space_id: str, document_id: str, task_id: str) -> JsonValue:
         raw = _execute_service_operation(
             control_space_id=control_space_id,
             operation_id="getDocumentProcessingTask",
@@ -1959,7 +1995,7 @@ class KnowledgeFSServiceSourceProvidersApi(Resource):
         service_api_ns.models[KnowledgeFSSourceProviderListResponse.__name__],
     )
     @_service_api_errors
-    def get(self, control_space_id: str):
+    def get(self, control_space_id: str) -> JsonValue:
         raw = _execute_service_operation(control_space_id=control_space_id, operation_id="listSourceProviders")
         return _dump_response(KnowledgeFSSourceProviderListResponse, raw)
 
@@ -1984,7 +2020,7 @@ class KnowledgeFSServiceQueryImagesApi(Resource):
         service_api_ns.models[KnowledgeFSServiceQueryImageUploadResponse.__name__],
     )
     @_service_api_errors
-    def post(self, control_space_id: str):
+    def post(self, control_space_id: str) -> tuple[JsonValue, HTTPStatus]:
         runtime = _runtime()
         profile = _profile(runtime, operation_id="createQuery", control_space_id=control_space_id)
         raw = upload_service_query_image(profile=profile, file=request.files.get("file"))

@@ -28,6 +28,8 @@ type CloudPath =
   | '/cloud/use-dify/debug/step-run'
   | '/cloud/use-dify/debug/variable-inspect'
   | '/cloud/use-dify/getting-started/introduction'
+  | '/cloud/use-dify/knowledge-base/overview'
+  | '/cloud/use-dify/knowledge-base/upgrade-from-classic'
   | '/cloud/use-dify/knowledge/connect-external-knowledge-base'
   | '/cloud/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text'
   | '/cloud/use-dify/knowledge/create-knowledge/import-text-data/readme'
@@ -246,6 +248,7 @@ type ApiReferencePath =
   | '/api-reference/guides/get-started'
   | '/api-reference/guides/human-input-flow'
   | '/api-reference/guides/knowledge'
+  | '/api-reference/guides/knowledge-base'
   | '/api-reference/guides/streaming'
   | '/api-reference/guides/workflow'
 

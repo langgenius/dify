@@ -16,7 +16,7 @@ vi.mock('react-i18next', async () => {
 })
 
 describe('ToolDatePicker', () => {
-  it('disables interaction and clearing when read only', () => {
+  it('marks the trigger read only and hides clearing', () => {
     render(
       <ToolDatePicker
         aria-label="Select date"
@@ -28,8 +28,7 @@ describe('ToolDatePicker', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Select date May 1, 2024' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
+      'data-readonly',
     )
     expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument()
   })

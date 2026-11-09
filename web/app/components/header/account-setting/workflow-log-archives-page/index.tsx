@@ -35,6 +35,7 @@ import { API_PREFIX } from '@/config'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 const numberFormatter = new Intl.NumberFormat()
 const byteFormatter = new Intl.NumberFormat(undefined, {
@@ -378,7 +379,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     }),
   )
   const createDownloadMutation = useMutation(
-    consoleQuery.workflowRunArchives.downloads.post.mutationOptions(),
+    consoleQuery.workflowRunArchives.downloads.post.mutationOptions({ context: { silent: true } }),
   )
   const currentTask = latestDownloadTask(cachedTask, taskQuery.data)
   const isTaskPreparing = isPreparingStatus(currentTask?.status)
@@ -441,8 +442,11 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
               : t(($) => $['archives.action.prepareStarted'], { ns: 'appLog' }),
           )
         },
-        onError: () => {
-          toast.error(t(($) => $['archives.action.prepareFailed'], { ns: 'appLog' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['archives.action.prepareFailed'], { ns: 'appLog' }),
+          )
         },
       },
     )

@@ -95,7 +95,7 @@ class QueueDispatcherManager:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             try:
                 billing_info = BillingService.get_info(tenant_id)
-                plan = billing_info.get("subscription", {}).get("plan", "sandbox")
+                plan = billing_info.subscription.plan
             except Exception:
                 # If billing service fails, default to sandbox
                 plan = "sandbox"
