@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Prekinem to povezavo?",
   "endUser.emptyApps": "Aplikacij še ni",
   "endUser.emptyAppsDescription": "Za začetek odprite povezavo do aplikacije. Obiskane aplikacije bodo prikazane tukaj.",
+  "endUser.emptyStarredApps": "Priljubljenih aplikacij še ni",
+  "endUser.emptyStarredAppsDescription": "Kliknite zvezdico ob aplikaciji, da jo shranite sem.",
   "endUser.lastUsed": "Nazadnje uporabljeno",
   "endUser.linkedAppCount_few": "{{count}} aplikacije",
   "endUser.linkedAppCount_one": "{{count}} aplikacija",

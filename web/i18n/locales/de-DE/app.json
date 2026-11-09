@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Diese Verbindung trennen?",
   "endUser.emptyApps": "Noch keine Apps",
   "endUser.emptyAppsDescription": "Öffne einen App-Link, um loszulegen. Besuchte Apps werden hier angezeigt.",
+  "endUser.emptyStarredApps": "Noch keine Apps in den Favoriten",
+  "endUser.emptyStarredAppsDescription": "Klicke auf den Stern neben einer App, um sie hier zu speichern.",
   "endUser.lastUsed": "Zuletzt verwendet",
   "endUser.linkedAppCount_one": "{{count}} App",
   "endUser.linkedAppCount_other": "{{count}} Apps",

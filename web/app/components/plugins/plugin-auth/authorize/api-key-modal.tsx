@@ -34,6 +34,7 @@ export type ApiKeyModalDataSource = {
   schemas: FormSchema[]
   isLoading?: boolean
   defaultName?: string
+  defaultVisibility?: CredentialPermission
   permissionProfile?: PermissionProfile
   save: (values: {
     name: string
@@ -85,11 +86,13 @@ const ApiKeyModalContent = ({
     setDoingAction(value)
   }, [])
   const { schemas: mergedData, isLoading } = dataSource
-  const [permission, setPermission] = useState<CredentialPermission>(
-    editValues?.__visibility__ === PermissionLevel.onlyMe
-      ? PermissionLevel.onlyMe
-      : PermissionLevel.allTeamMembers,
-  )
+  const [permission, setPermission] = useState<CredentialPermission>(() => {
+    if (editValues)
+      return editValues.__visibility__ === PermissionLevel.onlyMe
+        ? PermissionLevel.onlyMe
+        : PermissionLevel.allTeamMembers
+    return dataSource.defaultVisibility ?? PermissionLevel.allTeamMembers
+  })
   const formSchemas = useMemo(() => {
     return [
       {

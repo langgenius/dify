@@ -17,6 +17,7 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const buildAppLabel = 'app.endUser.buildYourOwnApp'
+const accountLabel = 'app.endUser.account'
 const profile: WebAccountProfileResponse = {
   name: 'Joel',
   avatar: null,
@@ -75,6 +76,9 @@ describe('sidebar workspace entry', () => {
       .element(screen.getByRole('link', { name: buildAppLabel }))
       .toHaveAttribute('href', destination)
     await expect
+      .element(screen.getByRole('link', { name: accountLabel }))
+      .toHaveAttribute('href', 'https://console.example.com/dify/account')
+    await expect
       .element(screen.getByRole('link', { name: 'app.endUser.myApps' }))
       .toHaveAttribute('aria-current', 'page')
     await expect.element(screen.getByText(profile.name)).toBeVisible()
@@ -98,6 +102,9 @@ describe('sidebar workspace entry', () => {
     await expect
       .element(screen.getByRole('link', { name: buildAppLabel }))
       .toHaveAttribute('href', '/dify/create-workspace')
+    await expect
+      .element(screen.getByRole('link', { name: accountLabel }))
+      .toHaveAttribute('href', '/dify/account')
   })
 
   it('waits for the Console prefix before exposing the workspace destination', async () => {
@@ -110,10 +117,14 @@ describe('sidebar workspace entry', () => {
 
     await expect.element(screen.getByText(profile.name)).toBeVisible()
     await expect.element(screen.getByRole('link', { name: buildAppLabel })).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('link', { name: accountLabel })).not.toBeInTheDocument()
     featuresRequest.resolve(Response.json(features))
     await expect
       .element(screen.getByRole('link', { name: buildAppLabel }))
       .toHaveAttribute('href', 'https://console.example.com/dify/')
+    await expect
+      .element(screen.getByRole('link', { name: accountLabel }))
+      .toHaveAttribute('href', 'https://console.example.com/dify/account')
   })
 
   it.each(['missing', 'failed'] as const)(
@@ -132,6 +143,7 @@ describe('sidebar workspace entry', () => {
       await expect
         .element(screen.getByRole('link', { name: buildAppLabel }))
         .not.toBeInTheDocument()
+      await expect.element(screen.getByRole('link', { name: accountLabel })).not.toBeInTheDocument()
     },
   )
 

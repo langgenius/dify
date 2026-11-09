@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "この接続を解除しますか？",
   "endUser.emptyApps": "アプリはまだありません",
   "endUser.emptyAppsDescription": "アプリのリンクを開いて始めましょう。アクセスしたアプリがここに表示されます。",
+  "endUser.emptyStarredApps": "お気に入りのアプリはまだありません",
+  "endUser.emptyStarredAppsDescription": "アプリの横にある星をクリックすると、ここに保存されます。",
   "endUser.lastUsed": "最終使用日時",
   "endUser.linkedAppCount_one": "{{count}} 個のアプリ",
   "endUser.linkedAppCount_other": "{{count}} 個のアプリ",

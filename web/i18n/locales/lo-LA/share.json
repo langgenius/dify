@@ -60,6 +60,7 @@
   "connections.headless.security": "ຂໍ້ມູນຮັບຮອງຖືກເຂົ້າລະຫັດ ແລະ ເກັບໄວ້ໂດຍ Dify. {{source}} ຈະບໍ່ໄດ້ຮັບຂໍ້ມູນເຫຼົ່ານີ້.",
   "connections.headless.signedInAs": "ເຂົ້າສູ່ລະບົບໃນນາມ {{identity}}",
   "connections.headless.title": "ເຊື່ອມຕໍ່ບໍລິການເພື່ອສືບຕໍ່",
+  "connections.invalid": "ການເຊື່ອມຕໍ່ບໍ່ຖືກຕ້ອງ",
   "connections.required.inputPlaceholder": "ເຂົ້າສູ່ລະບົບ ແລະ ເຊື່ອມຕໍ່ບໍລິການເພື່ອເລີ່ມຕົ້ນ",
   "connections.required.signIn": "ເຂົ້າສູ່ລະບົບ Dify",
   "connections.required.signInDescription": "ເຂົ້າສູ່ລະບົບເພື່ອຕັ້ງຄ່າການເຊື່ອມຕໍ່ເຫຼົ່ານີ້.",

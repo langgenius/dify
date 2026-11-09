@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "यह कनेक्शन डिस्कनेक्ट करें?",
   "endUser.emptyApps": "अभी कोई ऐप नहीं है",
   "endUser.emptyAppsDescription": "शुरू करने के लिए किसी ऐप का लिंक खोलें। आप जिन ऐप पर जाएँगे, वे यहाँ दिखाई देंगे।",
+  "endUser.emptyStarredApps": "अभी कोई तारांकित ऐप नहीं है",
+  "endUser.emptyStarredAppsDescription": "किसी ऐप को यहाँ सहेजने के लिए उसके बगल में दिए गए तारे पर क्लिक करें।",
   "endUser.lastUsed": "पिछली बार उपयोग",
   "endUser.linkedAppCount_one": "{{count}} ऐप",
   "endUser.linkedAppCount_other": "{{count}} ऐप",

@@ -21,6 +21,7 @@ import WorkspaceConnectionItem from '@/app/components/plugins/plugin-auth/worksp
 import ConfigureConnectionsButton from '@/app/components/share/connections/configure-connections-button'
 import ConnectionLoadState from '@/app/components/share/connections/connection-load-state'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import {
   useInstalledAppConnections,
@@ -92,6 +93,7 @@ function InstalledConnectionRow({
       }}
       disabled={disabled}
       useWorkspaceDefault={false}
+      defaultVisibility={PermissionLevel.onlyMe}
       credentialId={selectedId ?? undefined}
       onAuthorizationItemClick={(id) => state.onSelect(requirement.node_id, id)}
     />

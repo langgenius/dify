@@ -60,6 +60,7 @@
   "connections.headless.security": "De inloggegevens worden versleuteld en opgeslagen door Dify. {{source}} ontvangt ze nooit.",
   "connections.headless.signedInAs": "Aangemeld als {{identity}}",
   "connections.headless.title": "Verbind services om door te gaan",
+  "connections.invalid": "Ongeldige verbinding",
   "connections.required.inputPlaceholder": "Log in en verbind diensten om aan de slag te gaan",
   "connections.required.signIn": "Inloggen bij Dify",
   "connections.required.signInDescription": "Log in om deze verbindingen in te stellen.",

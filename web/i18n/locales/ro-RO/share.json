@@ -60,6 +60,7 @@
   "connections.headless.security": "Datele de autentificare sunt criptate și stocate de Dify. {{source}} nu le primește niciodată.",
   "connections.headless.signedInAs": "Autentificat ca {{identity}}",
   "connections.headless.title": "Conectează serviciile pentru a continua",
+  "connections.invalid": "Conexiune nevalidă",
   "connections.required.inputPlaceholder": "Autentifică-te și conectează serviciile pentru a începe",
   "connections.required.signIn": "Autentificare în Dify",
   "connections.required.signInDescription": "Autentifică-te pentru a configura aceste conexiuni.",

@@ -60,6 +60,7 @@
   "connections.headless.security": "Облікові дані шифруються та зберігаються в Dify. {{source}} ніколи їх не отримує.",
   "connections.headless.signedInAs": "Ви ввійшли як {{identity}}",
   "connections.headless.title": "Підключіть сервіси, щоб продовжити",
+  "connections.invalid": "Недійсне підключення",
   "connections.required.inputPlaceholder": "Увійдіть і підключіть сервіси, щоб почати",
   "connections.required.signIn": "Увійти в Dify",
   "connections.required.signInDescription": "Увійдіть, щоб налаштувати ці підключення.",

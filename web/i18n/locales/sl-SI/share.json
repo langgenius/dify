@@ -60,6 +60,7 @@
   "connections.headless.security": "Poverilnice šifrira in shrani Dify. {{source}} jih nikoli ne prejme.",
   "connections.headless.signedInAs": "Prijavljeni kot {{identity}}",
   "connections.headless.title": "Povežite storitve za nadaljevanje",
+  "connections.invalid": "Neveljavna povezava",
   "connections.required.inputPlaceholder": "Za začetek se prijavite in povežite storitve",
   "connections.required.signIn": "Prijava v Dify",
   "connections.required.signInDescription": "Prijavite se, da nastavite te povezave.",

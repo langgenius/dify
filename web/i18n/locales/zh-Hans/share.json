@@ -60,6 +60,7 @@
   "connections.headless.security": "凭据由 Dify 加密并存储，{{source}} 不会获取这些凭据。",
   "connections.headless.signedInAs": "已登录为 {{identity}}",
   "connections.headless.title": "连接服务以继续",
+  "connections.invalid": "连接无效",
   "connections.required.inputPlaceholder": "请先登录并连接服务，开始使用",
   "connections.required.signIn": "登录 Dify",
   "connections.required.signInDescription": "登录以设置这些连接。",

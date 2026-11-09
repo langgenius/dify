@@ -876,7 +876,7 @@ describe('ChatWrapper', () => {
           await within(within(setup).getByRole('listitem', { name: 'Test Provider' })).findByRole(
             'status',
           ),
-        ).toHaveTextContent('plugin.auth.unavailable')
+        ).toHaveTextContent('share.connections.accounts.reconnectRequired')
       else
         expect(await within(setup).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
     },

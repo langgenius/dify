@@ -60,6 +60,7 @@
   "connections.headless.security": "تُشفَّر بيانات الاعتماد وتُخزَّن لدى Dify. ولا يتلقّاها {{source}} مطلقًا.",
   "connections.headless.signedInAs": "تم تسجيل الدخول باسم {{identity}}",
   "connections.headless.title": "اربط الخدمات للمتابعة",
+  "connections.invalid": "اتصال غير صالح",
   "connections.required.inputPlaceholder": "سجّل الدخول واربط الخدمات للبدء",
   "connections.required.signIn": "تسجيل الدخول إلى Dify",
   "connections.required.signInDescription": "سجّل الدخول لإعداد هذه الاتصالات.",

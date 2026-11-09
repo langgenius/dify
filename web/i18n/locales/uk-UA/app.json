@@ -58,6 +58,8 @@
   "endUser.disconnectConnectionTitle": "Відключити це підключення?",
   "endUser.emptyApps": "Застосунків ще немає",
   "endUser.emptyAppsDescription": "Відкрийте посилання на застосунок, щоб почати. Відвідані застосунки з’являться тут.",
+  "endUser.emptyStarredApps": "Обраних застосунків ще немає",
+  "endUser.emptyStarredAppsDescription": "Натисніть зірочку поруч із застосунком, щоб зберегти його тут.",
   "endUser.lastUsed": "Останнє використання",
   "endUser.linkedAppCount_few": "{{count}} застосунки",
   "endUser.linkedAppCount_many": "{{count}} застосунків",
