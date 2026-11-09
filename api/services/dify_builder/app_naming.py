@@ -42,7 +42,6 @@ def rename_app_from_proposal(*, app_id: str, tenant_id: str, account_id: str, pr
             AppService().rename_app(app, name, account_id=account_id, session=session)
             return name
     except Exception:
-        # The app keeps its derived name; the card keeps its generic title.
         logger.warning("dify_builder: renaming app %s failed; keeping the derived name", app_id, exc_info=True)
         return ""
 
