@@ -312,6 +312,8 @@ def project(record: Mapping[str, Any]) -> dict[str, Any]:
         "unknown",
     }:
         result["reason"] = reason
+    if record.get("credential_scope") == "enterprise_global":
+        result["credential_scope"] = "enterprise_global"
     if code == "provider_invocation_failed":
         # Null explicitly means unavailable, including historical observations.
         status = record.get("http_status")
@@ -403,6 +405,28 @@ def failure_reason(error: Exception | None) -> FailureReason:
     return "unknown"
 
 
+def credential_scope(error: Exception | None) -> Literal["enterprise_global"] | None:
+    """Only the native typed policy refusal establishes a credential scope.
+
+    The same exception type also wraps policy-service outages; those are not
+    proof of an enterprise-global requirement. Never return exception text.
+    """
+    from services.enterprise.plugin_manager_service import CredentialPolicyViolationError
+
+    seen: set[int] = set()
+    current: BaseException | None = error
+    for _ in range(8):
+        if current is None or id(current) in seen:
+            break
+        seen.add(id(current))
+        if isinstance(current, CredentialPolicyViolationError) and str(current) == (
+            "Credentials not available: Please use ENTERPRISE global credentials"
+        ):
+            return "enterprise_global"
+        current = current.__cause__
+    return None
+
+
 def failure_http_status(error: Exception | None) -> int | None:
     """Read an observed provider status from at most eight explicit causes.
 
@@ -438,11 +462,17 @@ def _failure_reason(error: BaseException) -> FailureReason:
 
     from core.plugin.impl.exc import PluginInvokeError
     from core.plugin.impl.model import _metadata_gateway_unavailable
+    from core.tools.errors import ToolProviderCredentialValidationError
     from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+    from services.enterprise.plugin_manager_service import CredentialPolicyViolationError
     from services.tools.draft_tool_setup import DraftToolSetupError
 
     if isinstance(error, DraftToolSetupError) and error.setup_failure is not None:
         return error.setup_failure.reason
+    if isinstance(error, CredentialPolicyViolationError):
+        return "permission_denied" if credential_scope(error) else "authorization_lookup_failed"
+    if isinstance(error, ToolProviderCredentialValidationError):
+        return "credential_unavailable"
     if isinstance(error, PluginInvokeError) and _metadata_gateway_unavailable(error):
         return "service_unavailable"
     if isinstance(error, Exception) and plugin_activation_unavailable(error):
@@ -499,6 +529,7 @@ def report(
             "attempt": attempt,
             "fallback_used": fallback_used,
             "reason": failure_reason(error) if error else None,
+            "credential_scope": credential_scope(error),
             "http_status": failure_http_status(error) if code == "provider_invocation_failed" else None,
             "validation_codes": [validation_code] if validation_code else None,
             "validation_details": validation_details,

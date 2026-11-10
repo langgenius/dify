@@ -870,31 +870,22 @@ def is_input_failure(run: Run) -> bool:
 
 
 def model_config_error_text(run: Run) -> str | None:
-    """The first failed-node / launch error that looks like a MODEL-CONFIGURATION
-    failure -- the workflow references a model that isn't configured or available
-    for the workspace (e.g. ``ModelNotExistError``, "Model X does not exist",
-    "Provider X does not exist", a provider/credentials error). Returns the
-    offending error text, or None.
+    """Retain explicit legacy model resolution errors, never bare credentials.
 
-    Such a failure is NOT a workflow-logic bug: diagnosing/repairing the graph
-    just thrashes (proposing if-else / extra nodes that can't help), so the flow
-    surfaces it to the human instead. Matching pairs an existence/credential
-    signal with a model/provider/credential token, so an unrelated
-    "<node> does not exist" fault is not swallowed.
+    Resource attribution owns credential failures. Tool/HTTP provider errors
+    and arbitrary credential mentions cannot establish a model failure.
     """
     texts = [n.error for n in run.per_node if n.status == "failed" and n.error]
     if run.error:
         texts.append(run.error)
     for text in texts:
         low = text.lower()
-        if "modelnotexist" in low:  # the ModelNotExistError class name
-            return text
-        has_model_ctx = "model" in low or "provider" in low or "credential" in low
-        if not has_model_ctx:
-            continue
-        if "does not exist" in low or "not exist" in low or "not found" in low or "not configured" in low:
-            return text
-        if "credential" in low:  # missing / invalid model credentials
+        if re.fullmatch(r"modelnotexisterror: [^\n]{1,512}", low):
+            return "Model configuration unavailable."
+        if re.fullmatch(
+            r"(?:model|provider) [a-z0-9_./:@+\-]{1,128} (?:does not exist|not exist|not found|not configured)\.?",
+            low,
+        ):
             return text
     return None
 
@@ -1552,12 +1543,17 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 
     fc.verify_run_id = run.id
 
-    from services.dify_builder.execution_messages import native_service_failure
+    from services.dify_builder.execution_messages import native_service_failure, tool_credential_failure_message
 
-    if is_execution_policy_blocker(run) or native_service_failure(run):
+    credential_message = tool_credential_failure_message(
+        run, graph=graph, graph_revision=env.dify.graph_revision(graph), reply_language=fc.reply_language
+    )
+    if is_execution_policy_blocker(run) or native_service_failure(run) or credential_message is not None:
         fc.diagnosis = None
         fc.staged_repair = []
         card = result_card(run, reply_language=fc.reply_language)
+        if credential_message is not None:
+            card = replace(card, failure_reason=credential_message)
         items = append_card(fc, card)
         execution = progress.finish()
         items += append_assistant(
