@@ -458,12 +458,14 @@ class TestQAIndexProcessor:
 @pytest.mark.parametrize("preview", [False, True])
 @pytest.mark.parametrize("phase", ["input", "output"])
 @pytest.mark.parametrize("unavailable", [False, True])
+@pytest.mark.parametrize("document_count", [1, 25])
 def test_qa_transform_propagates_model_moderation_failures(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
     preview: bool,
     phase: ModerationPhase,
     unavailable: bool,
+    document_count: int,
 ) -> None:
     model, provider = make_failing_moderated_model(phase=phase, unavailable=unavailable)
 
@@ -482,14 +484,15 @@ def test_qa_transform_propagates_model_moderation_failures(
     }
     with Flask(__name__).app_context(), pytest.raises(ModerationInvocationError) as rejected:
         QAIndexProcessor().transform(
-            [Document(page_content="content", metadata={})],
+            [Document(page_content="content", metadata={}) for _index in range(document_count)],
             session=sqlite_session,
             tenant_id="test-tenant-id",
             process_rule=process_rule,
             preview=preview,
         )
     assert rejected.value.error_code == ("moderation_unavailable" if unavailable else "moderation_rejected")
-    assert provider.invocations == (0 if phase == "input" else 1)
-    assert len(model.reservations) == (0 if phase == "input" else 1)
+    expected_invocations = 0 if phase == "input" else 1 if preview else min(document_count, 10)
+    assert provider.invocations == expected_invocations
+    assert len(model.reservations) == expected_invocations
     if model.reservations:
         assert model.reservations[0].commits

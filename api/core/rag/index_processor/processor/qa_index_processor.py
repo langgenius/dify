@@ -115,19 +115,20 @@ class QAIndexProcessor(BaseIndexProcessor):
             )
         else:
             with ThreadPoolExecutor(max_workers=10) as executor:
-                futures = [
-                    executor.submit(
-                        self._format_qa_document,
-                        flask_app,
-                        tenant_id,
-                        document,
-                        all_qa_documents,
-                        kwargs.get("doc_language", "English"),
-                    )
-                    for document in all_documents
-                ]
-                for future in futures:
-                    future.result()
+                for start in range(0, len(all_documents), 10):
+                    futures = [
+                        executor.submit(
+                            self._format_qa_document,
+                            flask_app,
+                            tenant_id,
+                            document,
+                            all_qa_documents,
+                            kwargs.get("doc_language", "English"),
+                        )
+                        for document in all_documents[start : start + 10]
+                    ]
+                    for future in futures:
+                        future.result()
         return all_qa_documents
 
     def format_by_template(self, file: FileStorage, **kwargs) -> list[Document]:

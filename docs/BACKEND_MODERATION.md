@@ -248,6 +248,8 @@ model charges.
 QA formatting propagates moderation failures in preview and indexing mode.
 Bounded worker futures return failures to the indexing coordinator, which marks
 the document as errored instead of completing an empty or partial QA index.
+Workers retain ten-chunk batches, so a failed batch does not submit subsequent
+batches or incur further model calls for them.
 Ordinary QA generation failures retain their existing best-effort handling.
 
 Function-call dataset routing also propagates moderation failures. Ordinary
