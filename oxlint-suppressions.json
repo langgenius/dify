@@ -2938,11 +2938,6 @@
       "count": 4
     }
   },
-  "web/app/components/plugins/marketplace/home/__tests__/home-trending.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 4
-    }
-  },
   "web/app/components/plugins/marketplace/home/catalog-languages-filter.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
