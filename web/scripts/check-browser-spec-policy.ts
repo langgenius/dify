@@ -1151,8 +1151,20 @@ function browserSpecsIn(directory: string): string[] {
   })
 }
 
-function run() {
-  const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+export type PolicyCheckResult = {
+  violations: PolicyViolation[]
+  staleAllowances: string[]
+}
+
+export function checkBrowserSpecPolicy(
+  webRoot: string,
+  options: {
+    mockAllowlist?: MockAllowance[]
+    lineAllowlist?: LineAllowance[]
+  } = {},
+): PolicyCheckResult {
+  const mockAllowlist = options.mockAllowlist ?? MOCK_ALLOWLIST
+  const lineAllowlist = options.lineAllowlist ?? LINE_ALLOWLIST
   const observedMockAllowances = new Set<string>()
   const observedLineAllowances = new Set<string>()
   const violations = browserSpecsIn(webRoot)
@@ -1160,8 +1172,8 @@ function run() {
     .flatMap((absolutePath) => {
       const path = relative(webRoot, absolutePath)
       const analysis = analyzeBrowserSpec(path, readFileSync(absolutePath, 'utf8'), {
-        mockAllowlist: MOCK_ALLOWLIST,
-        lineAllowlist: LINE_ALLOWLIST,
+        mockAllowlist,
+        lineAllowlist,
       })
       analysis.observedMockAllowances.forEach((key) => observedMockAllowances.add(key))
       if (analysis.observedLineAllowance) observedLineAllowances.add(path)
@@ -1169,22 +1181,28 @@ function run() {
     })
 
   const staleAllowances = [
-    ...MOCK_ALLOWLIST.filter(
-      (entry) =>
-        !observedMockAllowances.has(
-          mockAllowanceKey(entry.path, entry.specifier, entry.occurrence),
-        ),
-    ).map(
-      (entry) => `stale mock allowlist: ${entry.path} :: ${entry.specifier} #${entry.occurrence}`,
-    ),
-    ...LINE_ALLOWLIST.filter((entry) => !observedLineAllowances.has(entry.path)).map(
-      (entry) => `stale line allowlist: ${entry.path}`,
-    ),
+    ...mockAllowlist
+      .filter(
+        (entry) =>
+          !observedMockAllowances.has(
+            mockAllowanceKey(entry.path, entry.specifier, entry.occurrence),
+          ),
+      )
+      .map(
+        (entry) => `stale mock allowlist: ${entry.path} :: ${entry.specifier} #${entry.occurrence}`,
+      ),
+    ...lineAllowlist
+      .filter((entry) => !observedLineAllowances.has(entry.path))
+      .map((entry) => `stale line allowlist: ${entry.path}`),
   ]
 
+  return { violations, staleAllowances }
+}
+
+export function reportPolicyResult({ violations, staleAllowances }: PolicyCheckResult) {
   if (!violations.length && !staleAllowances.length) {
     console.log('Browser spec policy passed.')
-    return
+    return true
   }
 
   console.error('Browser spec policy failed:')
@@ -1194,6 +1212,12 @@ function run() {
   })
   staleAllowances.forEach((message) => console.error(`- ${message}`))
   process.exitCode = 1
+  return false
+}
+
+function run() {
+  const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+  reportPolicyResult(checkBrowserSpecPolicy(webRoot))
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) run()
