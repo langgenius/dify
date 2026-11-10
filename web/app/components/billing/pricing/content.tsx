@@ -1,6 +1,6 @@
 import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup, RadioGroupIndicator, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -15,7 +15,7 @@ import styles from './pricing.module.css'
 type BillingInterval = GetBillingSubscriptionData['query']['interval']
 
 const intervalOptionClassName =
-  'flex min-w-0 flex-1 cursor-pointer flex-wrap items-center justify-center gap-1 rounded-full px-3 py-1 text-lg leading-6 font-medium text-(--pricing-subdued) focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-text-accent data-checked:bg-components-button-secondary-bg data-checked:text-(--pricing-ink) sm:min-w-[190px] sm:flex-none sm:px-6 sm:text-2xl sm:leading-[30px]'
+  'relative flex min-w-0 flex-1 cursor-pointer flex-wrap items-center justify-center gap-1 rounded-full px-3 py-1 text-lg leading-6 font-medium text-(--pricing-subdued) focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-text-accent data-checked:bg-components-button-secondary-bg data-checked:text-(--pricing-ink) sm:min-w-[190px] sm:flex-none sm:px-6 sm:text-2xl sm:leading-[30px]'
 
 export function PricingContent() {
   const { t } = useTranslation(['appApi', 'billing', 'common'])
@@ -67,8 +67,9 @@ export function PricingContent() {
         aria-label={t(($) => $['pricing.billingInterval'], { ns: 'billing' })}
         value={billingInterval}
         onValueChange={setSelectedBillingInterval}
-        className="mx-auto my-8 min-h-[49px] w-full max-w-full gap-0 rounded-full border border-(--pricing-switch-border) bg-(--pricing-switch) p-1 sm:w-fit"
+        className="relative isolate mx-auto my-8 min-h-[49px] w-full max-w-full gap-0 rounded-full border border-(--pricing-switch-border) bg-(--pricing-switch) p-1 sm:w-fit"
       >
+        <RadioGroupIndicator />
         <RadioItem value="month" className={intervalOptionClassName}>
           {t(($) => $['pricing.monthly'], { ns: 'billing' })}
         </RadioItem>

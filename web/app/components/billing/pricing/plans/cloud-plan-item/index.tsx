@@ -23,6 +23,7 @@ import { billingErrorMessageKey } from '../../../billing-error'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import { CloudPlanFeatures } from './list'
+import { RollingPrice } from './rolling-price'
 
 type CloudPlanItemProps = {
   plan: CloudPlan
@@ -201,7 +202,11 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
                   isMostPopularPlan && 'text-text-primary',
                 )}
               >
-                {`$${isYearly ? planInfo.price * 10 : planInfo.price}`}
+                <RollingPrice
+                  monthly={planInfo.price}
+                  annual={planInfo.price * 10}
+                  isYearly={isYearly}
+                />
               </span>
               <span className="text-xl leading-[25px]">
                 {t(($) => $['plansCommon.priceTip'], { ns: 'billing' })}
