@@ -403,6 +403,48 @@ const notionDatasourceAuth = {
   provider: 'notion',
 }
 
+const githubDatasourcePlugin = {
+  ...notionDatasourcePlugin,
+  declaration: {
+    ...notionDatasourcePlugin.declaration,
+    datasources: [
+      {
+        ...notionDatasourcePlugin.declaration.datasources[0],
+        identity: {
+          ...notionDatasourcePlugin.declaration.datasources[0]?.identity,
+          label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub Repository' },
+          name: 'github',
+          provider: 'github',
+        },
+      },
+    ],
+    identity: {
+      ...notionDatasourcePlugin.declaration.identity,
+      label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub Repository' },
+      name: 'github',
+    },
+  },
+  plugin_id: 'langgenius/github_datasource',
+  plugin_unique_identifier: 'langgenius/github_datasource:0.4.12@local',
+  provider: 'github',
+}
+
+const githubDatasourceAuth = {
+  ...notionDatasourceAuth,
+  credentials_list: [
+    {
+      ...notionDatasourceAuth.credentials_list[0],
+      id: 'github-credential-1',
+      name: 'GitHub token',
+    },
+  ],
+  label: { en_US: 'GitHub Repository' },
+  name: 'github',
+  plugin_id: 'langgenius/github_datasource',
+  plugin_unique_identifier: 'langgenius/github_datasource:0.4.12@local',
+  provider: 'github',
+}
+
 const outlineDatasourcePlugin = {
   ...notionDatasourcePlugin,
   declaration: {
@@ -2378,6 +2420,100 @@ describe('CreateKnowledgePage', () => {
           ],
           sync_policy: 'daily',
         },
+      }),
+    })
+  })
+
+  it('previews GitHub branches lazily and imports only explicitly selected pages', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [
+      firecrawlDatasourcePlugin,
+      notionDatasourcePlugin,
+      githubDatasourcePlugin,
+    ]
+    datasourceQueryMock.auth.data = {
+      result: [firecrawlDatasourceAuth, notionDatasourceAuth, githubDatasourceAuth],
+    }
+    const page = (pageId: string, name: string, type: string, parentId?: string) => ({
+      has_children:
+        type === 'repository' || type === 'github_collection' || type === 'github_directory',
+      last_edited_time: '2026-11-10T00:00:00Z',
+      name,
+      page_id: pageId,
+      parent_id: parentId ?? null,
+      provider_item_id: JSON.stringify(['github-user-1', pageId]),
+      type,
+      workspace_id: 'github-user-1',
+      workspace_name: "FFXN's GitHub",
+    })
+    serviceMock.previewInitialSource.mockImplementation(
+      async ({ body }: { body: { parameters: Record<string, unknown> } }) => {
+        const { parent_id: parentId, cursor } = body.parameters
+        const documents =
+          parentId === 'repo:FFXN/dify'
+            ? [page('contents:FFXN/dify', 'Contents', 'github_collection', parentId)]
+            : parentId === 'contents:FFXN/dify'
+              ? [page('dir:FFXN/dify:src', 'src', 'github_directory', parentId)]
+              : parentId === 'dir:FFXN/dify:src'
+                ? cursor
+                  ? [page('file:FFXN/dify:src/extra.ts', 'extra.ts', 'file', parentId)]
+                  : [page('file:FFXN/dify:src/index.ts', 'index.ts', 'file', parentId)]
+                : [page('repo:FFXN/dify', 'dify', 'repository')]
+        return {
+          documents,
+          kind: 'online_document',
+          next_cursor: parentId === 'dir:FFXN/dify:src' && !cursor ? '100' : null,
+        }
+      },
+    )
+
+    await renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'GitHub Repository' }))
+    await user.type(
+      screen.getByPlaceholderText('knowledgeSources.sourceNamePlaceholder'),
+      'GitHub code',
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+
+    await user.click(await screen.findByRole('button', { name: 'dify' }))
+    await user.click(await screen.findByRole('button', { name: 'Contents' }))
+    await user.click(await screen.findByRole('button', { name: 'src' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'src' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    await screen.findByRole('checkbox', { name: 'extra.ts' })
+
+    expect(screen.getByRole('checkbox', { name: 'index.ts' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'extra.ts' })).not.toBeChecked()
+    expect(
+      serviceMock.previewInitialSource.mock.calls.map(([request]) => request.body.parameters),
+    ).toEqual([
+      { limit: 10, view: 'tree' },
+      { limit: 30, parent_id: 'repo:FFXN/dify', view: 'tree' },
+      { limit: 100, parent_id: 'contents:FFXN/dify', view: 'tree' },
+      { limit: 100, parent_id: 'dir:FFXN/dify:src', view: 'tree' },
+      { cursor: '100', limit: 100, parent_id: 'dir:FFXN/dify:src', view: 'tree' },
+    ])
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        initial_source: expect.objectContaining({
+          datasource: 'github',
+          kind: 'online_document',
+          name: 'GitHub code',
+          parameters: {},
+          pluginId: 'langgenius/github_datasource',
+          selection: [
+            expect.objectContaining({
+              pageId: 'file:FFXN/dify:src/index.ts',
+              type: 'file',
+            }),
+          ],
+        }),
       }),
     })
   })

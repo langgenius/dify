@@ -1277,9 +1277,11 @@ export const zKnowledgeFsInitialWebsiteSourcePreviewPayload = z.object({
  * KnowledgeFSInitialSourcePreviewDocumentResponse
  */
 export const zKnowledgeFsInitialSourcePreviewDocumentResponse = z.object({
+  has_children: z.boolean().nullish(),
   last_edited_time: z.string().nullish(),
   name: z.string(),
   page_id: z.string(),
+  parent_id: z.string().nullish(),
   provider_item_id: z.string(),
   type: z.string(),
   workspace_id: z.string(),
@@ -1317,6 +1319,7 @@ export const zKnowledgeFsInitialSourcePreviewResponse = z.object({
   documents: z.array(zKnowledgeFsInitialSourcePreviewDocumentResponse).optional(),
   files: z.array(zKnowledgeFsInitialSourcePreviewFileResponse).optional(),
   kind: z.enum(['online_document', 'online_drive', 'website_crawl']),
+  next_cursor: z.string().nullish(),
   next_page_parameters: z.record(z.string(), zJsonValue).nullish(),
   pages: z.array(zKnowledgeFsInitialSourcePreviewPageResponse).optional(),
 })

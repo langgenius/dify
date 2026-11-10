@@ -80,6 +80,7 @@ export type KnowledgeFsInitialSourcePreviewResponse = {
   documents?: Array<KnowledgeFsInitialSourcePreviewDocumentResponse>
   files?: Array<KnowledgeFsInitialSourcePreviewFileResponse>
   kind: 'online_document' | 'online_drive' | 'website_crawl'
+  next_cursor?: string | null
   next_page_parameters?: {
     [key: string]: JsonValue
   } | null
@@ -1590,9 +1591,11 @@ export type KnowledgeFsPublicFailureResponse = {
 export type JsonValue = unknown
 
 export type KnowledgeFsInitialSourcePreviewDocumentResponse = {
+  has_children?: boolean | null
   last_edited_time?: string | null
   name: string
   page_id: string
+  parent_id?: string | null
   provider_item_id: string
   type: string
   workspace_id: string
