@@ -11,7 +11,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.tools.api_tool.definition_binding import admit_api_definition, api_definition, provider_definition
+from core.tools.custom_tool.definition_binding import admit_api_definition, api_definition, provider_definition
 from models.tools import ApiToolProvider
 
 __all__ = ["admit_api_definition", "api_definition", "is_api_tool", "owned_api_definitions", "provider_definition"]
