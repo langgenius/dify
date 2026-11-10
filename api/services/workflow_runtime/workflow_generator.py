@@ -198,6 +198,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
@@ -231,6 +232,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -264,6 +266,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
@@ -296,6 +299,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         from services.dify_builder.native_launch_observation import begin_preparation
         from services.dify_builder.native_testing.generation_wiring import validate_native_host
@@ -365,6 +369,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             builder_mocked_node_ids
             or builder_expected_revision is not None
             or builder_tool_credential_bindings is not None
+            or builder_api_tool_bindings is not None
         ) and (builder_execution is not None or native_context is not None or invoke_from != InvokeFrom.DEBUGGER):
             raise BuilderExecutionPolicyError("unsupported_execution_policy")
         try:
@@ -468,6 +473,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 builder_mocked_node_ids=builder_mocked_node_ids,
                 builder_expected_revision=builder_expected_revision,
                 builder_tool_credential_bindings=builder_tool_credential_bindings,
+                builder_api_tool_bindings=builder_api_tool_bindings,
                 trace_scope=trace_scope,
                 workflow_execution_id=workflow_run_id,
                 extras=extras,

@@ -95,6 +95,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -113,6 +114,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ) -> Generator[Mapping | str]: ...
 
     @overload
@@ -131,6 +133,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping]: ...
 
     def generate(
@@ -148,6 +151,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping]:
         """
         Generate App response.
@@ -167,6 +171,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             builder_mocked_node_ids
             or builder_expected_revision is not None
             or builder_tool_credential_bindings is not None
+            or builder_api_tool_bindings is not None
         ) and invoke_from != InvokeFrom.DEBUGGER:
             raise ValueError("Mocked Builder nodes are only available in draft Test Runs.")
         if not args.get("query"):
@@ -258,6 +263,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 builder_mocked_node_ids=builder_mocked_node_ids,
                 builder_expected_revision=builder_expected_revision,
                 builder_tool_credential_bindings=builder_tool_credential_bindings,
+                builder_api_tool_bindings=builder_api_tool_bindings,
             )
             contexts.plugin_tool_providers.set({})
             contexts.plugin_tool_providers_lock.set(threading.Lock())

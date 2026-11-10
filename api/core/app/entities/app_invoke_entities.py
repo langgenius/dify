@@ -119,6 +119,7 @@ class DifyRunContext(BaseModel):
     # return a mocked result instead of running. Never set for ordinary runs.
     builder_mocked_node_ids: frozenset[str] = frozenset()
     builder_tool_credential_bindings: dict[str, str] | None = None
+    builder_api_tool_bindings: dict[str, str] | None = None
 
     @field_serializer("builder_mocked_node_ids")
     def _dump_builder_mocked_node_ids(self, value: frozenset[str]) -> list[str]:
@@ -171,6 +172,7 @@ def build_dify_run_context(
     builder_agent_execution: BuilderAgentExecutionContext | None = None,
     builder_mocked_node_ids: frozenset[str] = frozenset(),
     builder_tool_credential_bindings: Mapping[str, str] | None = None,
+    builder_api_tool_bindings: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
@@ -186,6 +188,7 @@ def build_dify_run_context(
         builder_agent_execution=builder_agent_execution,
         builder_mocked_node_ids=builder_mocked_node_ids,
         builder_tool_credential_bindings=builder_tool_credential_bindings,
+        builder_api_tool_bindings=builder_api_tool_bindings,
         tenant_id=tenant_id,
         app_id=app_id,
         user_id=user_id,
@@ -240,6 +243,7 @@ class AppGenerateEntity(BaseModel):
     builder_expected_revision: str | None = None
     builder_mocked_node_ids: frozenset[str] = frozenset()
     builder_tool_credential_bindings: Mapping[str, str] | None = None
+    builder_api_tool_bindings: Mapping[str, str] | None = None
 
     @field_serializer("builder_mocked_node_ids")
     def _dump_builder_mocked_node_ids(self, value: frozenset[str]) -> list[str]:

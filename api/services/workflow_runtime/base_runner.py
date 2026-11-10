@@ -266,6 +266,7 @@ class WorkflowBasedAppRunner:
         native_runtime: NativeRuntimeBridge | None = None,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ) -> Graph:
         """
         Init graph
@@ -278,9 +279,11 @@ class WorkflowBasedAppRunner:
         # extras, before Graph.init introduces typed node data.
 
         # Create explicit graph init context for Graph.init.
-        if (builder_mocked_node_ids or builder_tool_credential_bindings is not None) and (
-            builder_execution is not None or native_test_ref is not None
-        ):
+        if (
+            builder_mocked_node_ids
+            or builder_tool_credential_bindings is not None
+            or builder_api_tool_bindings is not None
+        ) and (builder_execution is not None or native_test_ref is not None):
             raise BuilderExecutionPolicyError("unsupported_execution_policy")
         run_context = build_dify_run_context(
             builder_execution=builder_execution,
@@ -289,6 +292,7 @@ class WorkflowBasedAppRunner:
             builder_agent_execution=builder_agent_execution,
             builder_mocked_node_ids=builder_mocked_node_ids,
             builder_tool_credential_bindings=builder_tool_credential_bindings,
+            builder_api_tool_bindings=builder_api_tool_bindings,
             tenant_id=tenant_id or "",
             app_id=self._app_id,
             user_id=user_id,

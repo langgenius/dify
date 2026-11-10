@@ -137,6 +137,7 @@ class AppGenerateService:
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ):
         """
         App Content Generate
@@ -161,6 +162,7 @@ class AppGenerateService:
             builder_mocked_node_ids
             or builder_expected_revision is not None
             or builder_tool_credential_bindings is not None
+            or builder_api_tool_bindings is not None
         ) and (
             builder_execution is not None
             or app_model.mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}
@@ -207,6 +209,7 @@ class AppGenerateService:
                 builder_mocked_node_ids=builder_mocked_node_ids,
                 builder_expected_revision=builder_expected_revision,
                 builder_tool_credential_bindings=builder_tool_credential_bindings,
+                builder_api_tool_bindings=builder_api_tool_bindings,
             ),
         )
 
@@ -355,6 +358,7 @@ class AppGenerateService:
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_expected_revision: str | None = None,
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
     ):
         effective_mode = (
             AppMode.AGENT_CHAT
@@ -504,6 +508,7 @@ class AppGenerateService:
                             builder_mocked_node_ids=builder_mocked_node_ids,
                             builder_expected_revision=builder_expected_revision,
                             builder_tool_credential_bindings=builder_tool_credential_bindings,
+                            builder_api_tool_bindings=builder_api_tool_bindings,
                         ),
                         **conversion_options,
                     ),
@@ -597,6 +602,7 @@ class AppGenerateService:
                             builder_mocked_node_ids=builder_mocked_node_ids,
                             builder_expected_revision=builder_expected_revision,
                             builder_tool_credential_bindings=builder_tool_credential_bindings,
+                            builder_api_tool_bindings=builder_api_tool_bindings,
                         ),
                         **conversion_options,
                     ),

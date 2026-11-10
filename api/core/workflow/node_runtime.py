@@ -633,6 +633,11 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             )
             if guard is None:
                 draft_options: WorkflowToolRuntimeKwargs = {}
+                api_bindings = self._run_context.builder_api_tool_bindings
+                if node_data.provider_type.value == "api" and (api_bindings is not None or bindings is not None):
+                    if api_bindings is None or node_id not in api_bindings:
+                        raise BuilderExecutionPolicyError("api_tool_definition_stale")
+                    draft_options["builder_expected_api_binding"] = api_bindings[node_id]
                 if bindings is not None and node_id in bindings:
                     draft_options["builder_expected_credential_fingerprint"] = bindings[node_id]
                     draft_options["builder_credential_refreshed"] = self._credential_refresh_recorder(node_id)
@@ -640,6 +645,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                     draft_options["draft_tool_workflow_id"] = self._workflow_id
                     draft_options["allow_draft_credential_delegation"] = (
                         bindings is None
+                        and api_bindings is None
                         and self._run_context.builder_execution is None
                         and self._run_context.builder_agent_execution is None
                         and not self._run_context.builder_mocked_node_ids

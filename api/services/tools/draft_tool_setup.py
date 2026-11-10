@@ -459,6 +459,7 @@ def admit_resumed_draft_tool_setup(
         generate_entity.builder_execution is None
         and generate_entity.builder_agent_execution is None
         and generate_entity.builder_tool_credential_bindings is None
+        and generate_entity.builder_api_tool_bindings is None
         and generate_entity.builder_expected_revision is None
         and not generate_entity.builder_mocked_node_ids
         and not generate_entity.native_test_required

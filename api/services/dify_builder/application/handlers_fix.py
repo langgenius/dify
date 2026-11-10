@@ -1034,9 +1034,12 @@ def record_effect_confirmation(
     plain, confirmed = split_confirmations(inputs)
     current = _test_effects(env, s, fc, actor, plain)
     prior = validated_assessments(fc.code_risk_assessments)
-    missing_code_assessment = any(item.node_type == "code" and not item.assessment_digest for item in current.items)
+    missing_semantic_assessment = any(
+        (item.node_type == "code" or item.assessment_status == "unavailable") and not item.assessment_digest
+        for item in current.items
+    )
     refresh = (
-        missing_code_assessment
+        missing_semantic_assessment
         and not confirmed
         and not fc.effect_confirmation
         and not fc.effect_confirmation_form
@@ -1067,11 +1070,18 @@ def record_effect_confirmation(
         reason = BuilderCopyId.TEST_CONTEXT_CHANGED
     elif len(accepted) != len(selected):
         reason = BuilderCopyId.TEST_EFFECTS_CHANGED
-    elif any(item.node_type == "code" and not item.assessment_digest for item in current.items) or (
+    elif any(
+        (item.node_type == "code" or item.assessment_status == "unavailable") and not item.assessment_digest
+        for item in current.items
+    ) or (
         refresh
         and (
             current.confirmable
-            or any(item.node_type == "code" and item.tier not in {"sandboxed", "read"} for item in current.items)
+            or any(
+                item.assessment_status
+                and (item.assessment_status != "assessed" or item.tier not in {"sandboxed", "read"})
+                for item in current.items
+            )
         )
     ):
         reason = BuilderCopyId.TEST_POLICY_REVIEW
@@ -1085,7 +1095,8 @@ def needs_effect_confirmation(env: Env, s: Session, fc: DifyBuilderContext, acto
     Run test shows the form again instead of silently mocking it."""
     disclosure = _test_effects(env, s, fc, actor, saved_test_inputs(env, fc))
     return any(fc.effect_confirmation.get(item.node_id) != item.signature for item in disclosure.confirmable) or any(
-        item.node_type == "code" and not item.assessment_digest for item in disclosure.items
+        (item.node_type == "code" or item.assessment_status == "unavailable") and not item.assessment_digest
+        for item in disclosure.items
     )
 
 

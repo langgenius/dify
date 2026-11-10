@@ -134,6 +134,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 builder_mocked_node_ids=self.application_generate_entity.builder_mocked_node_ids,
                 builder_tool_credential_bindings=self.application_generate_entity.builder_tool_credential_bindings,
+                builder_api_tool_bindings=self.application_generate_entity.builder_api_tool_bindings,
                 call_depth=self.application_generate_entity.call_depth,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -220,6 +221,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 builder_mocked_node_ids=self.application_generate_entity.builder_mocked_node_ids,
                 builder_tool_credential_bindings=self.application_generate_entity.builder_tool_credential_bindings,
+                builder_api_tool_bindings=self.application_generate_entity.builder_api_tool_bindings,
                 call_depth=self.application_generate_entity.call_depth,
             )
 
