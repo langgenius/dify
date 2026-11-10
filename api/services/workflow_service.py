@@ -1978,7 +1978,7 @@ class WorkflowService:
             except Exception as e:
                 name = variable.get("variable") if isinstance(variable, dict) else None
                 label = name or "<unnamed>"
-                raise ValueError(f"Invalid Start node variable '{label}': {str(e)}")
+                raise ValueError(f"Invalid Start node variable '{label}': {str(e)}") from e
 
     def update_workflow(
         self,
