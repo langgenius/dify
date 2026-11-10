@@ -1345,11 +1345,6 @@
       "count": 4
     }
   },
-  "web/app/components/base/markdown-blocks/__tests__/paragraph.spec.tsx": {
-    "jsx-a11y/anchor-is-valid": {
-      "count": 1
-    }
-  },
   "web/app/components/base/markdown-blocks/audio-block.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
@@ -6215,11 +6210,6 @@
   "web/features/new-rag/upgrade/knowledge-upgrade-card.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/features/new-rag/upload/file-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/features/skills/client.ts": {

@@ -3791,7 +3791,6 @@ export default interface Resources {
     selectedFiles: 'Selected files ({{valid}} of {{total}} valid)'
     startWith: 'Start with'
     startWithHelp: 'You can add more Sources or Documents anytime.'
-    uploadCharactersUnavailable: 'Characters: —'
     uploadCompleted: 'Added'
     uploadDocuments: 'Upload documents'
     uploadDropZoneTitle: 'Drag and drop files, or browse'
