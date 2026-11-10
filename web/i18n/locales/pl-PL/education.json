@@ -6,7 +6,7 @@
   "applied.step1.description": "Pomyślnie złożono wniosek o rabat edukacyjny.",
   "applied.step2.description": "Wybierz obszar roboczy, który chcesz używać z rabatem edukacyjnym.",
   "currentSigned": "AKTUALNIE ZALOGOWANY JAKO",
-  "educationPricingConfirm.cancel": "Zachowaj obecny plan",
+  "educationPricingConfirm.cancel": "Kontynuuj bez zniżki",
   "educationPricingConfirm.continue": "Przełącz na Professional roczny",
   "educationPricingConfirm.description": "Zniżka edukacyjna dotyczy tylko rocznego planu Professional. Pozostanie przy obecnym planie nie obejmie zniżki.",
   "educationPricingConfirm.title": "Wybrany plan nie obsługuje zniżki edukacyjnej",

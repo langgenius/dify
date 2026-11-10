@@ -18,24 +18,34 @@ export function PricingContent() {
   const { t } = useTranslation(['appApi', 'billing', 'common'])
   const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
   const { data: features } = featuresQuery
-  const educationEnabled = features?.education.enabled ?? false
+  const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const currentCloudPlan = features?.billing.subscription.plan
+  const checkEducationEligibility =
+    canManageBilling &&
+    currentCloudPlan === 'sandbox' &&
+    features?.education.enabled === true &&
+    !features.education.activated
   const educationQuery = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      enabled: educationEnabled,
+      enabled: checkEducationEligibility,
       select: ({ is_student }) => is_student,
     }),
   )
-  const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const isEducationDiscountEligible = educationEnabled ? educationQuery.data : false
+  const isEducationDiscountEligible = checkEducationEligibility ? educationQuery.data : false
   const isCheckoutReady = features !== undefined && isEducationDiscountEligible !== undefined
   const pricingError =
     (!features && featuresQuery.isError) ||
-    (educationEnabled && educationQuery.data === undefined && educationQuery.isError)
+    (checkEducationEligibility && educationQuery.data === undefined && educationQuery.isError)
+  const paidInterval =
+    currentCloudPlan !== 'sandbox' ? features?.billing.subscription.interval : undefined
   const defaultBillingInterval: BillingInterval =
-    canManageBilling && isEducationDiscountEligible ? 'year' : 'month'
+    paidInterval === 'year' || paidInterval === 'month'
+      ? paidInterval
+      : canManageBilling && isEducationDiscountEligible
+        ? 'year'
+        : 'month'
   const [selectedBillingInterval, setSelectedBillingInterval] = React.useState<BillingInterval>()
   const billingInterval = selectedBillingInterval ?? defaultBillingInterval
-  const currentCloudPlan = features?.billing.subscription.plan
   const billing = currentCloudPlan
     ? {
         currentPlan: currentCloudPlan,

@@ -6,7 +6,7 @@
   "applied.step1.description": "Vous avez fait la demande de remise éducative avec succès.",
   "applied.step2.description": "Sélectionnez l'espace de travail que vous souhaitez utiliser avec la remise éducative.",
   "currentSigned": "ACTUELLEMENT CONNECTÉ EN TANT QUE",
-  "educationPricingConfirm.cancel": "Conserver le plan actuel",
+  "educationPricingConfirm.cancel": "Continuer sans réduction",
   "educationPricingConfirm.continue": "Passer à Professional annuel",
   "educationPricingConfirm.description": "La remise éducation s'applique uniquement au plan Professional annuel. En conservant votre plan actuel, la remise ne sera pas incluse.",
   "educationPricingConfirm.title": "Le plan sélectionné ne prend pas en charge la remise éducation",

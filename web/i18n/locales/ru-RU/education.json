@@ -6,7 +6,7 @@
   "applied.step1.description": "Вы успешно подали заявку на образовательную скидку.",
   "applied.step2.description": "Выберите рабочее пространство, которое хотите использовать с образовательной скидкой.",
   "currentSigned": "В ДАННЫЙ МОМЕНТ ВХОД В ПРОФИЛЬ КАК",
-  "educationPricingConfirm.cancel": "Оставить текущий план",
+  "educationPricingConfirm.cancel": "Продолжить без скидки",
   "educationPricingConfirm.continue": "Перейти на Professional годовой",
   "educationPricingConfirm.description": "Образовательная скидка применяется только к годовому плану Professional. Если оставить текущий план, скидка не будет включена.",
   "educationPricingConfirm.title": "Выбранный план не поддерживает образовательную скидку",

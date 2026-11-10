@@ -6,7 +6,7 @@
   "applied.step1.description": "You've successfully applied for the education discount.",
   "applied.step2.description": "Select the workspace you want to use the education discount with.",
   "currentSigned": "CURRENTLY SIGNED IN AS",
-  "educationPricingConfirm.cancel": "Keep current plan",
+  "educationPricingConfirm.cancel": "Continue without discount",
   "educationPricingConfirm.continue": "Switch to Professional Annual",
   "educationPricingConfirm.description": "The education discount applies to the Professional annual plan only. Keeping your current plan won't include the discount.",
   "educationPricingConfirm.title": "Your selected plan doesn't support the education discount",

@@ -6,7 +6,7 @@
   "applied.step1.description": "您已成功申请教育优惠。",
   "applied.step2.description": "选择要使用教育优惠的 workspace。",
   "currentSigned": "您当前登录的账户是",
-  "educationPricingConfirm.cancel": "保留当前计划",
+  "educationPricingConfirm.cancel": "不使用折扣，继续购买",
   "educationPricingConfirm.continue": "切换到 Professional 年付",
   "educationPricingConfirm.description": "教育优惠仅适用于 Professional 年付计划。保留当前计划将不包含该优惠。",
   "educationPricingConfirm.title": "你选择的计划不支持教育优惠",

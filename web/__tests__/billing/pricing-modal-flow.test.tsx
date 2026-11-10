@@ -146,7 +146,9 @@ describe('Pricing Modal Flow', () => {
       const user = userEvent.setup()
       await render(<Pricing />)
 
-      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
+      await user.click(
+        screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
+      )
 
       await waitFor(() => {
         expect(mockGetSubscription).toHaveBeenCalledWith(
@@ -166,7 +168,9 @@ describe('Pricing Modal Flow', () => {
 
       expect(screen.getByRole('radio', { name: /billing\.pricing\.annually/ })).toBeChecked()
 
-      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
+      await user.click(
+        screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
+      )
 
       await waitFor(() => {
         expect(mockGetSubscription).toHaveBeenCalledWith(
@@ -194,13 +198,14 @@ describe('Pricing Modal Flow', () => {
       expect(window.open).not.toHaveBeenCalled()
     })
 
-    it('keeps the Sandbox action disabled for the current free plan', async () => {
+    it('shows the current Sandbox plan as a label without a purchase action', async () => {
       setupContexts({ type: 'sandbox' })
       await render(<Pricing />)
 
       expect(
-        screen.getByRole('button', { name: 'billing.plansCommon.startForFree' }),
-      ).toBeDisabled()
+        screen.queryByRole('button', { name: 'billing.plansCommon.startForFree' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText('billing.plansCommon.currentPlan')).toBeVisible()
     })
   })
 

@@ -6,7 +6,7 @@
   "applied.step1.description": "Anda telah berhasil mengajukan diskon pendidikan.",
   "applied.step2.description": "Pilih workspace yang ingin Anda gunakan dengan diskon pendidikan.",
   "currentSigned": "SAAT INI MASUK SEBAGAI",
-  "educationPricingConfirm.cancel": "Tetap gunakan paket saat ini",
+  "educationPricingConfirm.cancel": "Lanjutkan tanpa diskon",
   "educationPricingConfirm.continue": "Beralih ke Professional Tahunan",
   "educationPricingConfirm.description": "Diskon pendidikan hanya berlaku untuk paket Professional tahunan. Jika tetap menggunakan paket saat ini, diskon tidak akan disertakan.",
   "educationPricingConfirm.title": "Paket yang Anda pilih tidak mendukung diskon pendidikan",

@@ -6,7 +6,7 @@
   "applied.step1.description": "Bạn đã đăng ký giảm giá giáo dục thành công.",
   "applied.step2.description": "Chọn workspace bạn muốn sử dụng với giảm giá giáo dục.",
   "currentSigned": "HIỆN ĐANG ĐĂNG NHẬP VÀO",
-  "educationPricingConfirm.cancel": "Giữ gói hiện tại",
+  "educationPricingConfirm.cancel": "Tiếp tục mà không áp dụng giảm giá",
   "educationPricingConfirm.continue": "Chuyển sang Professional hằng năm",
   "educationPricingConfirm.description": "Giảm giá giáo dục chỉ áp dụng cho gói Professional hằng năm. Nếu giữ gói hiện tại, giảm giá sẽ không được áp dụng.",
   "educationPricingConfirm.title": "Gói bạn chọn không hỗ trợ giảm giá giáo dục",
