@@ -146,6 +146,25 @@ def test_stop_flag_command_channel_emits_abort_once_per_instance() -> None:
         assert channel.fetch_commands() == []
 
 
+@pytest.mark.parametrize("command_delivered", [False, True], ids=["flag-only", "with-command"])
+def test_legacy_manual_stop_flag_preserves_reason_through_command_processor(command_delivered: bool) -> None:
+    reason = "User requested stop"
+    primary = _CommandChannelStub([AbortCommand(reason=reason)] if command_delivered else [])
+    combined = CombinedCommandChannel((primary, StopFlagCommandChannel(task_id="task")))
+    execution = GraphExecution(workflow_id="workflow")
+    processor = CommandProcessor(combined, execution, FrameRegistry())
+
+    with patch("core.app.apps.execution_coordinator.redis_client") as redis_client:
+        redis_client.get.return_value = b"1"
+
+        processor.process_commands()
+        assert execution.aborted is True
+        assert str(execution.error) == f"Aborted: {reason}"
+
+        assert combined.fetch_commands() == []
+        redis_client.get.assert_called_once_with("generate_task_stopped:task")
+
+
 @pytest.mark.parametrize("poll_after_flag", [False, True], ids=["same-poll", "flag-first"])
 @pytest.mark.parametrize("command_failure", [False, True], ids=["command-delivered", "command-unavailable"])
 def test_timeout_reason_survives_both_cancellation_channels(poll_after_flag: bool, command_failure: bool) -> None:
