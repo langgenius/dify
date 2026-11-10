@@ -1,7 +1,7 @@
 """Add the upstream EE synchronization initiator identity.
 
 Revision ID: 6b7e2a9c4d10
-Revises: 0cc3158b50b0
+Revises: 53c10126d551
 Create Date: 2026-11-09 12:00:00
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 from models.types import StringUUID
 
 revision = "6b7e2a9c4d10"
-down_revision = "0cc3158b50b0"
+down_revision = "53c10126d551"
 branch_labels = None
 depends_on = None
 
