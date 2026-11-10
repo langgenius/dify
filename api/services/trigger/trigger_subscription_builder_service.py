@@ -10,18 +10,13 @@ from flask import Request, Response
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse
 from core.tools.errors import ToolProviderCredentialValidationError
-from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
-from core.trigger.entities.entities import (
-    RequestLog,
-    Subscription,
-    SubscriptionBuilder,
-    SubscriptionBuilderUpdater,
-    SubscriptionConstructor,
-)
-from core.trigger.provider import PluginTriggerProviderController
-from core.trigger.utils.encryption import masked_credentials
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
+from core.trigger.entities.entities import Subscription, SubscriptionConstructor
 from models.provider_ids import TriggerProviderID
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
+from services.trigger.api_entities import SubscriptionBuilderApiEntity
+from services.trigger.builder_entities import RequestLog, SubscriptionBuilder, SubscriptionBuilderUpdater
+from services.trigger.credential_encryption import masked_credentials
+from services.trigger.plugin_provider import PluginTriggerProvider
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +51,7 @@ class TriggerSubscriptionBuilderQuery(Protocol):
 
 
 class TriggerSubscriptionProviderLookup(Protocol):
-    def __call__(self, *, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController: ...
+    def __call__(self, *, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProvider: ...
 
 
 class TriggerSubscriber(Protocol):
@@ -302,7 +297,7 @@ class TriggerSubscriptionBuilderService:
 
     @staticmethod
     def builder_to_api_entity(
-        controller: PluginTriggerProviderController, entity: SubscriptionBuilder
+        controller: PluginTriggerProvider, entity: SubscriptionBuilder
     ) -> SubscriptionBuilderApiEntity:
         credential_type = CredentialType.of(entity.credential_type or CredentialType.UNAUTHORIZED.value)
         return SubscriptionBuilderApiEntity(
@@ -420,7 +415,7 @@ class TriggerSubscriptionBuilderService:
 
         try:
             # response to validation endpoint
-            controller: PluginTriggerProviderController = self._get_provider(
+            controller: PluginTriggerProvider = self._get_provider(
                 tenant_id=subscription_builder.tenant_id,
                 provider_id=TriggerProviderID(subscription_builder.provider_id),
             )

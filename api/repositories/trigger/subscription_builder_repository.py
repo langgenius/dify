@@ -6,8 +6,8 @@ from typing import override
 
 from pydantic import TypeAdapter
 
-from core.trigger.entities.entities import RequestLog, SubscriptionBuilder
 from extensions.ext_redis import RedisClientWrapper
+from services.trigger.builder_entities import RequestLog, SubscriptionBuilder
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderStore
 
 _request_logs_adapter = TypeAdapter(list[RequestLog])

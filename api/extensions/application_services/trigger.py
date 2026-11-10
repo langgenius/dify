@@ -11,8 +11,6 @@ from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.tool_file_manager import ToolFileManager
-from core.trigger.trigger_manager import TriggerManager
-from core.trigger.utils.encryption import delete_cache_for_subscription
 from enums import QuotaType
 from extensions.ext_redis import RedisClientWrapper
 from extensions.ext_storage import storage
@@ -32,6 +30,7 @@ from repositories.trigger.subscription_repository import (
 )
 from services.async_workflow_service import AsyncWorkflowService, TriggerWorkflowQuery
 from services.quota_service import QuotaService
+from services.trigger.credential_encryption import delete_cache_for_subscription
 from services.trigger.debug_service import TriggerDebugEventStore, TriggerDebugService
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
@@ -47,6 +46,7 @@ from services.trigger.oauth_gateway import (
 )
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.provider_query import TriggerProviderQuery
 from services.trigger.schedule_gateway import ScheduleWorkflowGateway, publish_schedules
 from services.trigger.schedule_service import SchedulePublicationService, TriggerScheduleService
@@ -110,12 +110,13 @@ def build_trigger_services(
     redis: RedisClientWrapper,
     credentials: CredentialQueryRepository,
     subscriptions: TriggerSubscriptionRepository,
+    provider_loader: PluginTriggerProviderLoader,
     workflow_queries: TriggerWorkflowQuery,
     trigger_end_users: TriggerEndUserProvisioner,
     mark_rate_limited: Callable[[str], None],
 ) -> TriggerServices:
-    trigger_providers = PluginTriggerProviderQuery()
-    subscription_provider = PluginTriggerSubscriptionGateway()
+    trigger_providers = PluginTriggerProviderQuery(providers=provider_loader)
+    subscription_provider = PluginTriggerSubscriptionGateway(providers=provider_loader)
     subscription_locks = RedisTriggerSubscriptionLocks(redis=redis)
     subscription_codec = ProviderTriggerSubscriptionCodec()
     trigger_subscription_management = TriggerSubscriptionService(
@@ -127,11 +128,11 @@ def build_trigger_services(
     )
     trigger_builders = TriggerSubscriptionBuilderService(
         builders=RedisTriggerSubscriptionBuilderRepository(redis=redis),
-        get_provider=TriggerManager.get_trigger_provider,
-        subscribe=TriggerManager.subscribe_trigger,
+        get_provider=provider_loader.get_trigger_provider,
+        subscribe=provider_loader.subscribe_trigger,
         create_subscription=trigger_subscription_management.create,
     )
-    trigger_oauth_provider = PluginTriggerOAuthGateway(oauth=OAuthHandler())
+    trigger_oauth_provider = PluginTriggerOAuthGateway(oauth=OAuthHandler(), providers=provider_loader)
     trigger_oauth_clients = TriggerOAuthClientService(
         clients=TriggerOAuthClientRepository(session_factory=database_client),
         providers=trigger_oauth_provider,
@@ -156,7 +157,7 @@ def build_trigger_services(
     trigger_debug_events = RedisTriggerDebugRepository(redis=redis)
     trigger_events = TriggerEventService(
         subscriptions=trigger_subscriptions,
-        plugins=PluginTriggerEventGateway(),
+        plugins=PluginTriggerEventGateway(providers=provider_loader),
         requests=trigger_requests,
     )
     execution_logs = SQLAlchemyWorkflowTriggerExecutionRepository(session_factory=database_client)
@@ -236,7 +237,7 @@ def build_trigger_services(
         builders=trigger_builders,
         endpoints=TriggerEndpointService(
             subscriptions=subscriptions,
-            provider=PluginTriggerEndpointGateway(),
+            provider=PluginTriggerEndpointGateway(providers=provider_loader),
             requests=trigger_requests,
             publish=enqueue_triggered_workflows,
         ),

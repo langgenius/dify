@@ -9,12 +9,12 @@ from flask import Flask, Response, request
 from sqlalchemy import select
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.entities import SubscriptionBuilder
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from models.trigger import TriggerSubscription
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
+from services.trigger.builder_entities import SubscriptionBuilder
 from tests.e2e_tests.containers.services import test_trigger_subscription_query
 from tests.e2e_tests.containers.services.test_trigger_subscription_query import _provider_with_secrets
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client, test_trigger_subscription_builder

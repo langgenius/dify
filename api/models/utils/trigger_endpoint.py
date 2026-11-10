@@ -8,6 +8,14 @@ Basic URL for third-party trigger services
 base_url = URL(dify_config.TRIGGER_URL)
 
 
+def generate_trigger_plugin_icon_url(tenant_id: str, filename: str | None) -> str:
+    """Keep the legacy icon query string, including 'None' for a missing filename."""
+    return (
+        f"{dify_config.CONSOLE_API_URL}/console/api/workspaces/current/plugin/icon"
+        f"?tenant_id={tenant_id}&filename={filename}"
+    )
+
+
 def generate_plugin_trigger_endpoint_url(endpoint_id: str) -> str:
     """
     Generate url for plugin trigger endpoint url

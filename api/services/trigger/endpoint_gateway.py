@@ -5,15 +5,15 @@ from flask import Request
 from core.helper.provider_encryption import create_provider_encrypter
 from core.plugin.impl.exc import PluginNotFoundError
 from core.trigger.entities.entities import Subscription
-from core.trigger.trigger_manager import TriggerManager
-from core.trigger.utils.encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from models.provider_ids import TriggerProviderID
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
+from services.trigger.credential_encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
 from services.trigger.endpoint_service import (
     TriggerEndpointDispatch,
     TriggerEndpointLoadError,
     TriggerEndpointProviderNotFoundError,
 )
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.subscription_service import TriggerSubscriptionSnapshot
 from services.workflow.entities import PluginTriggerDispatchData
 
@@ -25,9 +25,12 @@ class PluginTriggerEndpointGateway:
     dependency when tenant key reads return detached values.
     """
 
+    def __init__(self, *, providers: PluginTriggerProviderLoader) -> None:
+        self._providers = providers
+
     def dispatch(self, *, subscription: TriggerSubscriptionSnapshot, request: Request) -> TriggerEndpointDispatch:
         try:
-            provider = TriggerManager.get_trigger_provider(
+            provider = self._providers.get_trigger_provider(
                 tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
             )
             credentials_encrypter, _ = create_provider_encrypter(
@@ -51,7 +54,7 @@ class PluginTriggerEndpointGateway:
             )
             properties = properties_encrypter.decrypt(subscription.properties)
         except Exception as error:
-            # TriggerManager wraps a missing plugin in ValueError, preserving its cause.
+            # PluginTriggerProviderLoader wraps a missing plugin in ValueError, preserving its cause.
             if isinstance(error, PluginNotFoundError) or (
                 isinstance(error, ValueError) and isinstance(error.__cause__, PluginNotFoundError)
             ):

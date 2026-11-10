@@ -9,9 +9,9 @@ from werkzeug.wrappers import Response
 from controllers.common.access_response import webhook_not_found_response
 from controllers.trigger import bp
 from controllers.trigger.webhook_request import WebhookRequestParser, WebhookRequestValidationError
-from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
 from enums import QuotaType
 from extensions.ext_application_services import application_services
+from models.utils.trigger_endpoint import generate_webhook_trigger_endpoint
 from services.errors.app import QuotaExceededError
 from services.trigger.debug_events import WebhookDebugEvent, build_webhook_pool_key
 from services.trigger.webhook_service import WebhookContext, WebhookNotFoundError, build_webhook_workflow_inputs
