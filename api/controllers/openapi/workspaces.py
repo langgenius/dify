@@ -101,7 +101,6 @@ class WorkspacesApi(Resource):
 class WorkspaceByIdApi(Resource):
     @endpoint(
         op="describe.workspace",
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Workspace detail",
         examples=(
@@ -130,7 +129,6 @@ class WorkspaceSwitchApi(Resource):
 
     @endpoint(
         op="switch.workspace",
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Server-side current workspace switch (shared with the web console)",
         examples=(Example(title="Make a workspace current on the server", input={"workspace_id": "<workspace_id>"}),),
@@ -162,7 +160,6 @@ class WorkspaceMembersApi(Resource):
 
     @endpoint(
         op="get.workspace.member",
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.LIST,
         summary="List workspace members",
         examples=(Example(title="List members of the pinned workspace, first page", input={"page": 1, "limit": 20}),),
@@ -187,7 +184,6 @@ class WorkspaceMembersApi(Resource):
 
     @endpoint(
         op="invite.workspace.member",
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Invite a member by email",
         examples=(
@@ -239,7 +235,6 @@ class WorkspaceMemberApi(Resource):
 
     @endpoint(
         op="delete.workspace.member",
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Remove a member",
         examples=(Example(title="Remove a member by account id", input={"member_id": "<member_id>"}),),
@@ -269,7 +264,6 @@ class WorkspaceMemberApi(Resource):
 
     @endpoint(
         op="set.workspace.member_role",
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change a member's role",
         examples=(
