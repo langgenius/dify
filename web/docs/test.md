@@ -111,6 +111,8 @@ Keep the production code that owns or transforms the asserted behavior real. Moc
 
 Mocks must preserve the public contract needed by the test. A mock must not reimplement the owner's transformation, state, or subscription. A child double that only records props or manually invokes captured callbacks does not prove the real control exists or submits valid values; render the real child and drive it, or keep the double at an external SDK or service boundary. Do not mock interactive Dify UI primitives or feature-owned wrappers around them. Keep their semantic roles, state attributes, portals, focus behavior, and `render(props, state)` contract real; mock only service or external-data boundaries needed to reach the scenario.
 
+Browser specs must keep owned UI, feature modules, hooks, stores, context providers, i18n, and internal helpers real when they participate in the tested journey. Put `// boundary: <reason>` immediately above every retained owned-path or otherwise non-obvious module mock, explaining the external or unavailable capability it isolates.
+
 - Never make real network requests.
 - Reset shared mock state before each test that mutates it.
 - Create a fresh TanStack Query client for tests that exercise query behavior.
@@ -132,6 +134,7 @@ Mocks must preserve the public contract needed by the test. A mock must not reim
 - If a newly migrated Browser spec makes Vitest report `optimized dependencies changed`, reproduce with a fresh Vite cache and add the discovered external package to the Browser project's `optimizeDeps.include`. Do not hide the dependency behind an owned-component mock, extend timeouts, or dismiss the resulting cross-file failures as unrelated.
 - Browser string locators use Vitest 5's exact, case-sensitive matching. Use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`. In Browser Mode, `toHaveTextContent` checks the entire normalized text; use `toMatchTextContent` for a substring or regular expression. Use the latter for negated partial checks too: `not.toHaveTextContent` only rejects exact whole-text equality.
 - Tests in one browser file share a page. `web/vitest.browser.setup.ts` resets the viewport and pointer before each test; set the viewport a test depends on inside that test.
+- Keep one behavior domain per Browser spec. Split oversized suites near 500 lines so a failure names one domain, and keep fixtures and mocks scoped to the file that uses them; extract only genuinely shared, side-effect-free presets.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
 - Shared test helpers must have no import-time side effects: no `beforeEach`/`afterEach` registration, global or fetch stubbing, or assertions. Render helpers accept initial store state and injected props and return the real stores and query client. When two or more specs need the same query-cache seed, extract a side-effect-free preset under `web/test/`, distinct from `__mocks__`, that seeds only the client passed in.
@@ -166,6 +169,8 @@ vp test run --project unit --coverage path/to/spec-or-directory
 Always pass `--project unit` or `--project browser`. Bare `vp test` runs both registered projects and is not the standard Web test command.
 
 ## Provenance
+
+- The 2026-11-10 Browser test review found that owned-module mocks and multi-domain suites could hide integration regressions despite otherwise strong Browser Mode coverage. The remediation keeps behavior owners real, documents necessary boundaries, and splits oversized suites by domain.
 
 - [#45758], `signin/normal-form`: importing the real Turnstile script adapter caused Vite to optimize `next/script` during the Browser suite, reload active iframes, and cascade into unrelated hook and startup failures.
 
