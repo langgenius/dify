@@ -315,16 +315,20 @@ def resolve_tool_entry(
 
     Missing legacy selectors may use exact text identifiers. An explicit type
     or an installed ambiguous pair is authoritative even when no match exists:
-    prose must never substitute another provider type for either case.
+    prose must never substitute another provider type for either case. Supplied
+    types must be nonblank strings; null is malformed, not an omitted type.
+    Identity strings are normalized before both lookup and ambiguity checks.
     """
     if isinstance(selector, dict):
-        provider = str(selector.get("provider_id") or selector.get("provider_name") or "")
-        name = str(selector.get("tool_name") or "")
-        provider_type = selector.get("provider_type")
-        entry = find_tool_entry(
-            entries, provider, name, provider_type=str(provider_type) if provider_type is not None else None
-        )
-        if entry is not None or provider_type is not None:
+        provider = str(selector.get("provider_id") or selector.get("provider_name") or "").strip()
+        name = str(selector.get("tool_name") or "").strip()
+        has_type = "provider_type" in selector
+        raw_type = selector.get("provider_type")
+        if has_type and (not isinstance(raw_type, str) or not raw_type.strip()):
+            return None
+        provider_type = raw_type.strip() if isinstance(raw_type, str) else None
+        entry = find_tool_entry(entries, provider, name, provider_type=provider_type)
+        if entry is not None or has_type:
             return entry
         if any(e["provider_name"] == provider and e["tool_name"] == name for e in entries):
             return None

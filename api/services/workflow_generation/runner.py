@@ -496,8 +496,10 @@ def _planned_tool_selector_errors(
     """Refuse unresolved authoritative Tool identities before generation or hydration.
 
     A supplied provider type and an installed multi-type pair require exact
-    resolution. Generic/no-selector plans and unique legacy prose fallbacks
-    remain choices for the builder. Returns ordinary UNKNOWN_TOOL diagnostics;
+    normalized structured lookup, never prose fallback. Supplied malformed or
+    blank types are unresolved even if a unique tool is named in the prose.
+    Generic/no-selector plans and unique legacy prose fallbacks remain choices
+    for the builder. Returns ordinary UNKNOWN_TOOL diagnostics;
     this check mutates neither the plan nor the graph and performs no I/O.
     """
     errors: list[WorkflowGenerateErrorDict] = []
@@ -511,8 +513,16 @@ def _planned_tool_selector_errors(
                 for entry in entries
                 if entry["provider_name"] == provider and entry["tool_name"] == name
             }
-            authoritative = selector.get("provider_type") is not None or len(native_types) > 1
-            if authoritative and _find_planned_tool_entry(node, entries) is None:
+            has_type = "provider_type" in selector
+            raw_type = selector.get("provider_type")
+            valid_type = not has_type or (isinstance(raw_type, str) and bool(raw_type.strip()))
+            provider_type = raw_type.strip() if isinstance(raw_type, str) else None
+            # Authoritative validation must resolve the structured fields
+            # themselves. The general resolver may intentionally use prose for
+            # legacy choices, which cannot establish this exact selection.
+            entry = find_tool_entry(entries, provider, name, provider_type=provider_type) if valid_type else None
+            authoritative = has_type or len(native_types) > 1
+            if authoritative and entry is None:
                 errors.append(
                     _err(
                         WorkflowGenerateErrorCode.UNKNOWN_TOOL,
