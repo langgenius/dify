@@ -212,6 +212,8 @@ allow_indirect_imports = True
 name = Account consumer transport uses application services
 type = forbidden
 source_modules =
+    controllers.account_email
+    controllers.account_email_errors
     controllers.web.me
     controllers.web.account
     controllers.web.account_email
@@ -220,6 +222,17 @@ forbidden_modules =
     repositories
     models
     sqlalchemy
+allow_indirect_imports = True
+
+[importlinter:contract:account-email-surface-boundary]
+name = Shared Account email transport is independent of Console and WebApp surfaces
+type = forbidden
+source_modules =
+    controllers.account_email
+    controllers.account_email_errors
+forbidden_modules =
+    controllers.console
+    controllers.web
 allow_indirect_imports = True
 
 [importlinter:contract:machinery-framework-boundary]

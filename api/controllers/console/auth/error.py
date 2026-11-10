@@ -1,4 +1,12 @@
+from controllers import account_email_errors
 from libs.exception import BaseHTTPException
+
+EmailAlreadyInUseError = account_email_errors.EmailAlreadyInUseError
+EmailChangeLimitError = account_email_errors.EmailChangeLimitError
+EmailChangeRateLimitExceededError = account_email_errors.EmailChangeRateLimitExceededError
+EmailCodeError = account_email_errors.EmailCodeError
+InvalidEmailError = account_email_errors.InvalidEmailError
+InvalidTokenError = account_email_errors.InvalidTokenError
 
 
 class DataSourceApiKeyAuthProviderNotSupportedError(BaseHTTPException):
@@ -25,12 +33,6 @@ class DataSourceApiKeyAuthProviderUnavailableRequestError(BaseHTTPException):
     code = 502
 
 
-class InvalidEmailError(BaseHTTPException):
-    error_code = "invalid_email"
-    description = "The email address is not valid."
-    code = 400
-
-
 class InvitationAccountMismatchError(BaseHTTPException):
     error_code = "invitation_account_mismatch"
     description = "This invitation was sent to another account. Please sign in with the invited account."
@@ -40,12 +42,6 @@ class InvitationAccountMismatchError(BaseHTTPException):
 class PasswordMismatchError(BaseHTTPException):
     error_code = "password_mismatch"
     description = "The passwords do not match."
-    code = 400
-
-
-class InvalidTokenError(BaseHTTPException):
-    error_code = "invalid_or_expired_token"
-    description = "The token is invalid or has expired."
     code = 400
 
 
@@ -69,16 +65,6 @@ class EmailRegisterRateLimitExceededError(BaseHTTPException):
         super().__init__(description=description)
 
 
-class EmailChangeRateLimitExceededError(BaseHTTPException):
-    error_code = "email_change_rate_limit_exceeded"
-    description = "Too many email change emails have been sent. Please try again in {minutes} minutes."
-    code = 429
-
-    def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=minutes) if self.description else None
-        super().__init__(description=description)
-
-
 class OwnerTransferRateLimitExceededError(BaseHTTPException):
     error_code = "owner_transfer_rate_limit_exceeded"
     description = "Too many owner transfer emails have been sent. Please try again in {minutes} minutes."
@@ -87,12 +73,6 @@ class OwnerTransferRateLimitExceededError(BaseHTTPException):
     def __init__(self, minutes: int = 1):
         description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
-
-
-class EmailCodeError(BaseHTTPException):
-    error_code = "email_code_error"
-    description = "Email code is invalid or expired."
-    code = 400
 
 
 class EmailCodeLoginServiceUnavailableError(BaseHTTPException):
@@ -161,18 +141,6 @@ class EmailRegisterLimitError(BaseHTTPException):
     error_code = "email_register_limit"
     description = "Too many failed email register attempts. Please try again in 24 hours."
     code = 429
-
-
-class EmailChangeLimitError(BaseHTTPException):
-    error_code = "email_change_limit"
-    description = "Too many failed email change attempts. Please try again in 24 hours."
-    code = 429
-
-
-class EmailAlreadyInUseError(BaseHTTPException):
-    error_code = "email_already_in_use"
-    description = "A user with this email already exists."
-    code = 400
 
 
 class NormalizedEmailAlreadyInUseError(EmailAlreadyInUseError):

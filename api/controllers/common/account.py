@@ -1,4 +1,4 @@
-"""Shared transport validation for Account profile changes."""
+"""Shared transport validation for Account settings."""
 
 from typing import Annotated, Literal
 

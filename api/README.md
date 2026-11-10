@@ -103,6 +103,9 @@ Verify the current email before requesting a `new_email` challenge, verify that
 challenge, then submit its verified token to `/reset`. Tokens are Account-bound;
 the reset response contains only personal settings.
 
+Console and WebApp share email-change transport handlers and HTTP errors; each
+surface owns its admission, Account serialization, and missing-Account response.
+
 ### EndUser execution authorization
 
 Service API requests that resolve an EndUser are forbidden when the app's current
