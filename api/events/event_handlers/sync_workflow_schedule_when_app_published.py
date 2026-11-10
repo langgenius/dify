@@ -19,6 +19,6 @@ def handle(sender: App, *, session: Session, published_workflow: Workflow | None
         graph = published_workflow.graph_dict
     except (json.JSONDecodeError, TypeError, AttributeError) as exc:
         raise ScheduleConfigError(f"Failed to parse workflow graph: {exc}") from exc
-    application_services().workspaces.create_schedule_publication_service(session).sync(
+    application_services().triggers.create_schedule_publication_service(session).sync(
         tenant_id=sender.tenant_id, app_id=sender.id, graph=graph
     )

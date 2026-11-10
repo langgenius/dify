@@ -139,7 +139,7 @@ class _Dispatch:
                 config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
             ):
                 services = application_services()
-                return services.workspaces.trigger_workflow_dispatch.dispatch_event(
+                return services.triggers.plugin_workflow_dispatch.dispatch_event(
                     user_id="webhook-actor",
                     subscription=self.subscription,
                     event_name="push",

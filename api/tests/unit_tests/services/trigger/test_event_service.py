@@ -68,7 +68,7 @@ def _prepare(harness: _Harness, subscription: TriggerSubscriptionRuntime) -> Pre
         TriggerHttpRequestCachingService(storage=storage).persist_payload(
             request_id, {"count": 0, "nested": {"empty": []}}
         )
-    prepared = application_services().workspaces.trigger_events.prepare(
+    prepared = application_services().triggers.events.prepare(
         subscription=subscription, event_name="push", request_id=request_id
     )
     assert isinstance(prepared.raw_request, bytes)
@@ -93,7 +93,7 @@ def test_prepared_event_reuses_request_and_provider_identity_for_each_node(harne
 
     def run() -> list[TriggerInvokeEventResponse]:
         with harness.app.app_context():
-            service = application_services().workspaces.trigger_events
+            service = application_services().triggers.events
             prepared = _prepare(harness, subscription)
             assert prepared.definition.plugin_unique_identifier == _IDENTIFIER
             assert prepared.definition.provider_name == _PROVIDER
@@ -160,7 +160,7 @@ def test_cancelled_response_and_event_ignore_error_preserve_cancellation(
     def run() -> TriggerInvokeEventResponse:
         with harness.app.app_context():
             prepared = _prepare(harness, subscription)
-            return application_services().workspaces.trigger_events.invoke(
+            return application_services().triggers.events.invoke(
                 event=prepared, user_id="webhook-user", node_data=_node(subscription)
             )
 
@@ -185,7 +185,7 @@ def test_plugin_invoke_error_keeps_its_type_and_description(harness: _Harness, d
         with harness.app.app_context():
             prepared = _prepare(harness, subscription)
             with pytest.raises(TriggerPluginInvokeError, match="Repository is unavailable"):
-                application_services().workspaces.trigger_events.invoke(
+                application_services().triggers.events.invoke(
                     event=prepared, user_id="webhook-user", node_data=_node(subscription)
                 )
 
@@ -205,7 +205,7 @@ def test_plugin_daemon_failure_is_not_reported_as_cancelled(harness: _Harness, d
         with harness.app.app_context():
             prepared = _prepare(harness, subscription)
             with pytest.raises(PluginDaemonInternalServerError):
-                application_services().workspaces.trigger_events.invoke(
+                application_services().triggers.events.invoke(
                     event=prepared, user_id="webhook-user", node_data=_node(subscription)
                 )
 
@@ -230,9 +230,7 @@ def test_invalid_parameter_kind_fails_before_event_dispatch(harness: _Harness, d
                 "branch": TriggerEventNodeData.TriggerEventInput(type="variable", value=["node", "branch"]),
             }
             with pytest.raises(TriggerEventParameterError, match="Unknown plugin trigger input type 'variable'"):
-                application_services().workspaces.trigger_events.invoke(
-                    event=prepared, user_id="webhook-user", node_data=node
-                )
+                application_services().triggers.events.invoke(event=prepared, user_id="webhook-user", node_data=node)
 
     Context().run(run)
 

@@ -1765,7 +1765,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
         event: TriggerDebugEvent | None = None
         try:
-            event = application_services().workspaces.trigger_debug.poll(
+            event = application_services().triggers.debug.poll(
                 node_config=node_config,
                 tenant_id=app_model.tenant_id,
                 user_id=current_user.id,
@@ -1842,7 +1842,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         # for other trigger types, poll for the event
         else:
             try:
-                event = application_services().workspaces.trigger_debug.poll(
+                event = application_services().triggers.debug.poll(
                     node_config=node_config,
                     tenant_id=app_model.tenant_id,
                     user_id=current_user.id,
@@ -1913,7 +1913,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
             raise ValueError("Workflow not found")
 
         try:
-            trigger_debug_event = application_services().workspaces.trigger_debug.select_events(
+            trigger_debug_event = application_services().triggers.debug.select_events(
                 node_configs=(draft_workflow.get_node_config_by_id(node_id) for node_id in node_ids),
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,

@@ -8,4 +8,4 @@ from extensions.ext_application_services import application_services
 @shared_task(queue="schedule_executor")
 def run_schedule_trigger(schedule_id: str) -> None:
     # Schedules repeat at their next interval; preserve the existing no-retry policy.
-    application_services().workspaces.trigger_schedules.execute(schedule_id)
+    application_services().triggers.schedules.execute(schedule_id)

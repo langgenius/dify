@@ -167,7 +167,7 @@ def test_missing_builder_does_not_recreate_a_draft(harness: _Harness, daemon: _D
 def test_logs_are_owned_and_keep_only_last_ten_requests(harness: _Harness, daemon: _Daemon) -> None:
     builder = _create(harness, daemon, CredentialType.UNAUTHORIZED)
     with harness.app.app_context():
-        service = application_services().workspaces.trigger_builders
+        service = application_services().triggers.builders
         for index in range(12):
             with harness.app.test_request_context(f"/triggers/plugin/{builder.id}", method="POST", data=str(index)):
                 service.append_log(builder.id, request, Response(f"response-{index}", status=202))
