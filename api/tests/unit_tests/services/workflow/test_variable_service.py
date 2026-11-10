@@ -24,7 +24,8 @@ from repositories.workflow.draft_variable_repository import WorkflowDraftVariabl
 from services.app.generation.input_adapter import AppInputAdapter
 from services.file_service import FileService
 from services.workflow.contracts import WorkflowSnapshot
-from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
+from services.workflow.draft_variable_contracts import DraftVariableFileWriteCommand, DraftVariableWriteCommand
+from services.workflow.variable_file_gateway import WorkflowDraftFileUploader, WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 from tasks.workflow_draft_var_tasks import cleanup_draft_variable_files_task, recover_draft_variable_file_cleanup_task
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
@@ -139,23 +140,23 @@ def test_failed_save_reclaims_uploads_or_retries_from_persisted_upload_records(
         contents.pop(key, None)
 
     failure_injected = False
+    draft_write_seen = False
 
     def fail_insert(
         _connection: object, _cursor: object, statement: str, _parameters: object, _context: object, _many: bool
     ) -> None:
-        nonlocal failure_injected
+        nonlocal draft_write_seen, failure_injected
         table = {"variable_insert": "workflow_draft_variables", "metadata_insert": "workflow_draft_variable_files"}
+        draft_write_seen = draft_write_seen or any(
+            statement.startswith(f"INSERT INTO {name} ") for name in table.values()
+        )
         if not failure_injected and failure in table and statement.startswith(f"INSERT INTO {table[failure]} "):
             failure_injected = True
             raise RuntimeError("save failed")
 
-    def fail_commit(session: Session) -> None:
+    def fail_commit(_session: Session) -> None:
         nonlocal failure_injected
-        if (
-            not failure_injected
-            and failure == "commit"
-            and any(isinstance(item, WorkflowDraftVariableFile) for item in session.identity_map.values())
-        ):
+        if not failure_injected and failure == "commit" and draft_write_seen:
             failure_injected = True
             raise RuntimeError("save failed")
 
@@ -210,8 +211,8 @@ def test_failed_save_keeps_retry_information_when_cleanup_cannot_be_queued(
 
     def fail_write(
         _self: WorkflowDraftVariableRepository,
-        _variables: Sequence[WorkflowDraftVariable],
-        _files: Sequence[WorkflowDraftVariableFile],
+        _variables: Sequence[DraftVariableWriteCommand],
+        _files: Sequence[DraftVariableFileWriteCommand],
     ) -> None:
         raise RuntimeError("original write failure")
 
@@ -317,7 +318,7 @@ def test_offloaded_variables_use_injected_storage_outside_transactions(
     variables = WorkflowVariableService(
         file_inputs=WorkflowVariableFileGateway(factory, DatabaseFileAccessController()),
         repository=WorkflowDraftVariableRepository(sessions=factory),
-        files=FileService(factory),
+        files=WorkflowDraftFileUploader(FileService(factory)),
         executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(factory),
         storage=IsolatedStorage(),
         defer_file_cleanup=lambda _file_ids: None,

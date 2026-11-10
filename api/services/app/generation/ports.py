@@ -101,12 +101,19 @@ class MessageIdentity:
 
 @dataclass(frozen=True)
 class MessageUpdate:
+    """Message content and usage to save for an admitted invocation.
+
+    ``paused_workflow_run_id=None`` is an ordinary save. A run ID requests
+    pause persistence only while that app-owned run remains paused; the
+    repository serializes this decision with durable stop in one transaction.
+    """
+
     answer: str
     latency: float
     metadata: Mapping[str, Any]
     files: Sequence[Mapping[str, Any]]
     usage: LLMUsage | None
-    paused: bool = False
+    paused_workflow_run_id: str | None = None
     prompt: Sequence[Mapping[str, Any]] | None = None
     preserve_existing_usage: bool = False
 
@@ -162,7 +169,15 @@ class MessageCycleRecords(Protocol):
 class MessagePipelineRecords(MessageCycleRecords, Protocol):
     def message_files(self, identity: MessageIdentity) -> tuple[list[MessageFile], dict[str, UploadFile]]: ...
 
-    def save_message(self, identity: MessageIdentity, update: MessageUpdate) -> Message: ...
+    def save_message(self, identity: MessageIdentity, update: MessageUpdate) -> Message:
+        """Save an owned message atomically, or raise if its owner chain is missing.
+
+        Pause saves lock the app-owned workflow run before the message and
+        retain PAUSED only while the run is PAUSED. This lock order matches
+        durable stop so delayed pause persistence cannot undo cancellation.
+        Return the committed message; a failed save leaves storage unchanged.
+        """
+        ...
 
     def fail_message(self, identity: MessageIdentity, error: str) -> None: ...
 

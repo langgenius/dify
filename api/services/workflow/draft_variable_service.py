@@ -18,44 +18,104 @@ from core.workflow.variable_prefixes import (
 from factories.variable_factory import build_segment, build_segment_with_type, segment_to_variable
 from graphon.enums import NodeType
 from graphon.file import File
+from graphon.file.constants import maybe_file_object
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.variable_assigner.common.helpers import get_updated_variables
 from graphon.variable_loader import VariableLoader
 from graphon.variables import Segment, StringSegment, VariableBase
 from graphon.variables.consts import SELECTORS_LENGTH
-from graphon.variables.segments import ArrayFileSegment
 from graphon.variables.types import SegmentType
 from graphon.variables.utils import dumps_with_segments
 from libs.uuid_utils import uuidv7
-from models import Account, UploadFile
-from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
 from services.variable_truncator import VariableTruncator
+from services.workflow.draft_variable_contracts import (
+    DraftUploadRecord,
+    DraftVariableCreator,
+    DraftVariableFileWriteCommand,
+    DraftVariableRecord,
+    DraftVariableWriteCommand,
+)
+from services.workflow.variable_policy import is_system_variable_editable
 
 
 class DraftVariableReader(Protocol):
     def get_draft_variables_by_selectors(
         self, app_id: str, selectors: Sequence[list[str]], user_id: str
-    ) -> list[WorkflowDraftVariable]: ...
+    ) -> list[DraftVariableRecord]:
+        """Return values for the admitted owner/account and valid selectors, with no live ORM state.
+
+        Missing selectors are omitted. Offloaded content metadata is materialized before the read ends.
+        """
+        ...
 
 
 class DraftVariableWriter(Protocol):
-    def save(self, variables: Sequence[WorkflowDraftVariable], files: Sequence[WorkflowDraftVariableFile]) -> None: ...
-    def retain_files_for_cleanup(self, files: Sequence[WorkflowDraftVariableFile]) -> None: ...
+    def save(
+        self, variables: Sequence[DraftVariableWriteCommand], files: Sequence[DraftVariableFileWriteCommand]
+    ) -> None:
+        """Commit file metadata and output upserts atomically; rollback both if any write fails.
+
+        Commands carry the admitted owner/account. The unique owner/account/node/name key serializes
+        competing output upserts, resetting edit state and refreshing persistence timestamps.
+        """
+        ...
+
+    def retain_files_for_cleanup(self, files: Sequence[DraftVariableFileWriteCommand]) -> None:
+        """Retain failed-save metadata in a new transaction without replacing committed references."""
+        ...
 
 
 class DraftFileUploader(Protocol):
     def upload_file(
-        self, *, filename: str, content: bytes, mimetype: str, user: Account, tenant_id: str
-    ) -> UploadFile: ...
+        self, *, filename: str, content: bytes, mimetype: str, creator: DraftVariableCreator, tenant_id: str
+    ) -> DraftUploadRecord:
+        """Upload for an account into the explicit resource tenant and return its committed identity.
+
+        Storage and persistence errors propagate; the result has no ORM or account session state.
+        """
+        ...
 
 
 class DraftFileRestorer(Protocol):
     def restore(self, *, tenant_id: str, mapping: dict[str, Any]) -> File: ...
 
 
-def conversation_defaults(app_id: str, variables: Sequence[VariableBase], user_id: str) -> list[WorkflowDraftVariable]:
+def _conversation_variable_write(
+    *, app_id: str, user_id: str, name: str, value: Segment, description: str = ""
+) -> DraftVariableWriteCommand:
+    """Build an editable conversation upsert with no originating node execution or file reference."""
+    return DraftVariableWriteCommand(
+        app_id=app_id,
+        user_id=user_id,
+        node_id=CONVERSATION_VARIABLE_NODE_ID,
+        name=name,
+        value=value,
+        description=description,
+        node_execution_id=None,
+    )
+
+
+def _system_variable_write(
+    *, app_id: str, user_id: str, name: str, value: Segment, node_execution_id: str, editable: bool
+) -> DraftVariableWriteCommand:
+    """Build a visible system-variable upsert attributed to the originating node execution."""
+    return DraftVariableWriteCommand(
+        app_id=app_id,
+        user_id=user_id,
+        node_id=SYSTEM_VARIABLE_NODE_ID,
+        name=name,
+        value=value,
+        node_execution_id=node_execution_id,
+        editable=editable,
+    )
+
+
+def conversation_defaults(
+    app_id: str, variables: Sequence[VariableBase], user_id: str
+) -> list[DraftVariableWriteCommand]:
+    """Build default-value writes for an admitted owner/account; persistence decides which are missing."""
     return [
-        WorkflowDraftVariable.new_conversation_variable(
+        _conversation_variable_write(
             app_id=app_id, user_id=user_id, name=variable.name, value=variable, description=variable.description
         )
         for variable in variables
@@ -130,14 +190,14 @@ class DraftVarLoader(VariableLoader):
 
         offloaded_draft_vars = []
         for draft_var in draft_vars:
-            if draft_var.is_truncated():
+            if draft_var.file_id is not None:
                 offloaded_draft_vars.append(draft_var)
                 continue
 
             segment = self._build_segment(draft_var.value_type, json.loads(draft_var.value))
             variable = segment_to_variable(
                 segment=segment,
-                selector=draft_var.get_selector(),
+                selector=list(draft_var.selector),
                 variable_id=draft_var.id,
                 name=draft_var.name,
                 description=draft_var.description,
@@ -154,7 +214,11 @@ class DraftVarLoader(VariableLoader):
 
         return list(variable_by_selector.values())
 
-    def _load_offloaded_variable(self, draft_var: WorkflowDraftVariable) -> tuple[tuple[str, str], VariableBase]:
+    def _load_offloaded_variable(self, draft_var: DraftVariableRecord) -> tuple[tuple[str, str], VariableBase]:
+        """Read a truncated record's full content after persistence has closed its read session.
+
+        File metadata and a storage key must exist; missing metadata or storage/decoding errors propagate.
+        """
         # This logic is closely tied to `DraftVariableSaver._try_offload_large_variable`
         # and must remain synchronized with it.
         # Ideally, these should be co-located for better maintainability.
@@ -162,16 +226,15 @@ class DraftVarLoader(VariableLoader):
 
         variable_file = draft_var.variable_file
         assert variable_file is not None
-        upload_file = variable_file.upload_file
-        assert upload_file is not None
-        content = self._load_file(upload_file.key)
+        assert variable_file.storage_key is not None
+        content = self._load_file(variable_file.storage_key)
         if variable_file.value_type == SegmentType.STRING:
             # The inferenced type is StringSegment, which is not correct inside this function.
             segment: Segment = StringSegment(value=content.decode())
 
             variable = segment_to_variable(
                 segment=segment,
-                selector=draft_var.get_selector(),
+                selector=list(draft_var.selector),
                 variable_id=draft_var.id,
                 name=draft_var.name,
                 description=draft_var.description,
@@ -182,7 +245,7 @@ class DraftVarLoader(VariableLoader):
         segment = self._build_segment(variable_file.value_type, deserialized)
         variable = segment_to_variable(
             segment=segment,
-            selector=draft_var.get_selector(),
+            selector=list(draft_var.selector),
             variable_id=draft_var.id,
             name=draft_var.name,
             description=draft_var.description,
@@ -191,7 +254,7 @@ class DraftVarLoader(VariableLoader):
         return (draft_var.node_id, draft_var.name), variable
 
 
-def _build_segment_for_serialized_values(v: Any) -> Segment:
+def _build_segment_for_serialized_values(v: Any, *, restore_file: Callable[[dict[str, Any]], File]) -> Segment:
     """
     Reconstructs Segment objects from serialized values, with special handling
     for FileSegment and ArrayFileSegment types.
@@ -203,7 +266,11 @@ def _build_segment_for_serialized_values(v: Any) -> Segment:
     It detects potential file objects in the serialized data and properly rebuilds the
     appropriate segment type.
     """
-    return build_segment(WorkflowDraftVariable.rebuild_file_types(v))
+    if isinstance(v, dict) and maybe_file_object(v):
+        return build_segment(restore_file(v))
+    if isinstance(v, list) and v and maybe_file_object(v[0]):
+        return build_segment([restore_file(item) for item in v])
+    return build_segment(v)
 
 
 def _make_filename_trans_table() -> dict[int, str]:
@@ -289,7 +356,7 @@ class DraftVariableSaver:
         file_inputs: DraftFileRestorer,
         cleanup_files: Callable[[list[str]], None],
         tenant_id: str,
-        user: Account,
+        creator: DraftVariableCreator,
     ):
         # Important: `node_execution_id` parameter refers to the primary key (`id`) of the
         # WorkflowNodeExecutionModel/WorkflowNodeExecution, not their `node_execution_id`
@@ -299,19 +366,34 @@ class DraftVariableSaver:
         self._file_inputs = file_inputs
         self._cleanup_files = cleanup_files
         self._uploaded_file_ids: list[str] = []
-        self._variable_files: list[WorkflowDraftVariableFile] = []
+        self._variable_files: list[DraftVariableFileWriteCommand] = []
         self._tenant_id = tenant_id
         self._app_id = app_id
         self._node_id = node_id
         self._node_type = node_type
         self._node_execution_id = node_execution_id
-        self._user = user
+        self._creator = creator
         self._enclosing_node_id = enclosing_node_id
 
-    def _create_dummy_output_variable(self):
-        return WorkflowDraftVariable.new_node_variable(
+    def _restore_file(self, mapping: dict[str, Any]) -> File:
+        """Restore a serialized file in the resource tenant through the injected file adapter."""
+        return self._file_inputs.restore(tenant_id=self._tenant_id, mapping=mapping)
+
+    def _build_segment(self, segment_type: SegmentType, value: Any) -> Segment:
+        """Build a typed segment, restoring file mappings through the resource's file adapter.
+
+        Already materialized files remain values; invalid segment data propagates the factory error.
+        """
+        if segment_type == SegmentType.FILE and isinstance(value, dict):
+            value = self._restore_file(value)
+        elif segment_type == SegmentType.ARRAY_FILE and isinstance(value, list):
+            value = [self._restore_file(item) if isinstance(item, dict) else item for item in value]
+        return build_segment_with_type(segment_type, value)
+
+    def _create_dummy_output_variable(self) -> DraftVariableWriteCommand:
+        return DraftVariableWriteCommand(
             app_id=self._app_id,
-            user_id=self._user.id,
+            user_id=self._creator.id,
             node_id=self._node_id,
             name=self._DUMMY_OUTPUT_IDENTITY,
             node_execution_id=self._node_execution_id,
@@ -324,8 +406,8 @@ class DraftVariableSaver:
         # Currently we do not save output variables for nodes inside loop or iteration.
         return self._enclosing_node_id is None or self._node_type == BuiltinNodeTypes.VARIABLE_ASSIGNER
 
-    def _build_from_variable_assigner_mapping(self, process_data: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
-        draft_vars: list[WorkflowDraftVariable] = []
+    def _build_from_variable_assigner_mapping(self, process_data: Mapping[str, Any]) -> list[DraftVariableWriteCommand]:
+        draft_vars: list[DraftVariableWriteCommand] = []
         updated_variables = get_updated_variables(process_data) or []
 
         for item in updated_variables:
@@ -341,11 +423,11 @@ class DraftVariableSaver:
             # persisted type is INTEGER. Allow float updates by loosening the type
             # to NUMBER here so downstream storage infers the precise subtype.
             segment_type = SegmentType.NUMBER if item.value_type == SegmentType.INTEGER else item.value_type
-            segment = WorkflowDraftVariable.build_segment_with_type(segment_type=segment_type, value=item.new_value)
+            segment = self._build_segment(segment_type=segment_type, value=item.new_value)
             draft_vars.append(
-                WorkflowDraftVariable.new_conversation_variable(
+                _conversation_variable_write(
                     app_id=self._app_id,
-                    user_id=self._user.id,
+                    user_id=self._creator.id,
                     name=item.name,
                     value=segment,
                 )
@@ -354,32 +436,22 @@ class DraftVariableSaver:
         draft_vars.append(self._create_dummy_output_variable())
         return draft_vars
 
-    def _build_variables_from_start_mapping(self, output: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
+    def _build_variables_from_start_mapping(self, output: Mapping[str, Any]) -> list[DraftVariableWriteCommand]:
         draft_vars = []
         has_non_sys_variables = False
         for name, value in output.items():
-            value_seg = _build_segment_for_serialized_values(value)
             node_id, name = self._normalize_variable_for_start_node(name)
+            # sys.files has an explicit array[file] type even when empty. Restore each file once.
+            value_seg = (
+                self._build_segment(SegmentType.ARRAY_FILE, value)
+                if node_id == SYSTEM_VARIABLE_NODE_ID and name == SystemVariableKey.FILES
+                else _build_segment_for_serialized_values(value, restore_file=self._restore_file)
+            )
             if node_id == SYSTEM_VARIABLE_NODE_ID:
-                if name == SystemVariableKey.FILES:
-                    # Here we know the type of variable must be `array[file]`, we
-                    # just rebuild files from the serialized payload.
-                    files = [
-                        self._file_inputs.restore(
-                            mapping=v,
-                            tenant_id=self._tenant_id,
-                        )
-                        for v in value
-                    ]
-                    if files:
-                        value_seg = WorkflowDraftVariable.build_segment_with_type(SegmentType.ARRAY_FILE, files)
-                    else:
-                        value_seg = ArrayFileSegment(value=[])
-
                 draft_vars.append(
-                    WorkflowDraftVariable.new_sys_variable(
+                    _system_variable_write(
                         app_id=self._app_id,
-                        user_id=self._user.id,
+                        user_id=self._creator.id,
                         name=name,
                         node_execution_id=self._node_execution_id,
                         value=value_seg,
@@ -388,9 +460,9 @@ class DraftVariableSaver:
                 )
             elif node_id == CONVERSATION_VARIABLE_NODE_ID:
                 draft_vars.append(
-                    WorkflowDraftVariable.new_conversation_variable(
+                    _conversation_variable_write(
                         app_id=self._app_id,
-                        user_id=self._user.id,
+                        user_id=self._creator.id,
                         name=name,
                         value=value_seg,
                     )
@@ -398,9 +470,9 @@ class DraftVariableSaver:
                 has_non_sys_variables = True
             else:
                 draft_vars.append(
-                    WorkflowDraftVariable.new_node_variable(
+                    DraftVariableWriteCommand(
                         app_id=self._app_id,
-                        user_id=self._user.id,
+                        user_id=self._creator.id,
                         node_id=node_id,
                         name=name,
                         node_execution_id=self._node_execution_id,
@@ -428,7 +500,7 @@ class DraftVariableSaver:
 
         return self._node_id, name
 
-    def _build_variables_from_mapping(self, output: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
+    def _build_variables_from_mapping(self, output: Mapping[str, Any]) -> list[DraftVariableWriteCommand]:
         draft_vars = []
         for name, value in output.items():
             if not self._should_variable_be_saved(name):
@@ -438,7 +510,11 @@ class DraftVariableSaver:
                     self._node_type,
                 )
                 continue
-            value_seg = value if isinstance(value, Segment) else _build_segment_for_serialized_values(value)
+            value_seg = (
+                value
+                if isinstance(value, Segment)
+                else _build_segment_for_serialized_values(value, restore_file=self._restore_file)
+            )
             draft_vars.append(
                 self._create_draft_variable(
                     name=name,
@@ -446,14 +522,6 @@ class DraftVariableSaver:
                     visible=True,
                     editable=True,
                 ),
-                # WorkflowDraftVariable.new_node_variable(
-                #     app_id=self._app_id,
-                #     node_id=self._node_id,
-                #     name=name,
-                #     node_execution_id=self._node_execution_id,
-                #     value=value_seg,
-                #     visible=self._should_variable_be_visible(self._node_id, self._node_type, name),
-                # )
             )
         return draft_vars
 
@@ -465,7 +533,12 @@ class DraftVariableSaver:
         self,
         name: str,
         value_seg: Segment,
-    ) -> tuple[Segment, WorkflowDraftVariableFile] | None:
+    ) -> tuple[Segment, DraftVariableFileWriteCommand] | None:
+        """Offload values exceeding truncation limits and return a plain metadata command.
+
+        Uploads commit independently; retain their identities for cleanup if the subsequent save fails.
+        Untruncated values return None without an upload. Upload and serialization failures propagate.
+        """
         # This logic is closely tied to `DraftVarLoader._load_offloaded_variable` and must remain
         # synchronized with it.
         # Ideally, these should be co-located for better maintainability.
@@ -479,9 +552,8 @@ class DraftVariableSaver:
         if not truncation_result.truncated:
             return None
 
-        original_length = None
-        if isinstance(value_seg.value, (list, dict)):
-            original_length = len(value_seg.value)
+        original_value = value_seg.value
+        original_length = len(original_value) if isinstance(original_value, (list, dict)) else None
 
         # Prepare content for storage
         original_content_serialized: str
@@ -502,21 +574,21 @@ class DraftVariableSaver:
             filename=filename,
             content=original_content_serialized.encode(),
             mimetype=content_type,
-            user=self._user,
+            creator=self._creator,
             tenant_id=self._tenant_id,
         )
         self._uploaded_file_ids.append(upload_file.id)
-        # Create WorkflowDraftVariableFile record
-        variable_file = WorkflowDraftVariableFile(
+        # Stage metadata for the repository's variable-write transaction.
+        variable_file = DraftVariableFileWriteCommand(
+            id=str(uuidv7()),
             upload_file_id=upload_file.id,
             size=original_size,
             length=original_length,
             value_type=value_seg.value_type,
             app_id=self._app_id,
             tenant_id=self._tenant_id,
-            user_id=self._user.id,
+            user_id=self._creator.id,
         )
-        variable_file.id = str(uuidv7())
         self._variable_files.append(variable_file)
 
         return truncation_result.result, variable_file
@@ -528,17 +600,21 @@ class DraftVariableSaver:
         value: Segment,
         visible: bool = True,
         editable: bool = True,
-    ) -> WorkflowDraftVariable:
-        """Create a draft variable with large variable handling and truncation."""
+    ) -> DraftVariableWriteCommand:
+        """Build an output upsert, uploading large values and disabling edits on truncated previews.
+
+        File metadata and variable references are commands for a later atomic repository write.
+        Upload or serialization failures propagate without creating any mapped variable state.
+        """
         # Handle Segment values
 
         offload_result = self._try_offload_large_variable(name, value)
 
         if offload_result is None:
             # Create the draft variable
-            draft_var = WorkflowDraftVariable.new_node_variable(
+            draft_var = DraftVariableWriteCommand(
                 app_id=self._app_id,
-                user_id=self._user.id,
+                user_id=self._creator.id,
                 node_id=self._node_id,
                 name=name,
                 node_execution_id=self._node_execution_id,
@@ -550,9 +626,9 @@ class DraftVariableSaver:
         else:
             truncated, var_file = offload_result
             # Create the draft variable
-            draft_var = WorkflowDraftVariable.new_node_variable(
+            draft_var = DraftVariableWriteCommand(
                 app_id=self._app_id,
-                user_id=self._user.id,
+                user_id=self._creator.id,
                 node_id=self._node_id,
                 name=name,
                 node_execution_id=self._node_execution_id,
@@ -568,9 +644,14 @@ class DraftVariableSaver:
         process_data: Mapping[str, Any] | None = None,
         outputs: Mapping[str, Any] | None = None,
     ):
+        """Save eligible node outputs atomically and retain offloaded uploads when persistence fails.
+
+        The creator and tenant must describe the admitted execution. Nested non-assigner outputs
+        are skipped. Failed saves propagate after best-effort durable retention and cleanup delivery.
+        """
         self._variable_files = []
         self._uploaded_file_ids = []
-        draft_vars: list[WorkflowDraftVariable] = []
+        draft_vars: list[DraftVariableWriteCommand] = []
         if outputs is None:
             outputs = {}
         if process_data is None:
