@@ -204,6 +204,8 @@ FILES += [
 ]
 # First-phase release blockers: repair evidence, initial inputs and metadata readiness.
 FILES += [
+    "api/tests/unit_tests/services/dify_builder/test_diagnostic_context.py",
+    "api/tests/unit_tests/services/dify_builder/test_api_tool_effects.py",
     "api/tests/unit_tests/services/dify_builder/test_fix_context.py",
     "api/tests/unit_tests/services/dify_builder/test_testdata_code_refresh.py",
     "api/tests/unit_tests/services/dify_builder/test_predefined_model_readiness.py",
@@ -2108,6 +2110,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_advance_task"] = {
 }
 # ENG-1293: action API and terminal projection regressions, exact inventory.
 a4_expected["tests.unit_tests.services.dify_builder.test_test_actions"] = {
+    "test_approval_only_resumes_the_eligible_saved_wait": 5,
     "test_action_accepts_stable_client_identity_without_changing_old_requests": 1,
     "test_action_rejects_invalid_client_identity": 3,
     "test_risk_action_preserves_pending_version_and_explicit_target": 1,
@@ -2675,6 +2678,7 @@ a4_expected["tests.unit_tests.core.workflow.generator.test_output_contracts"] = 
 a4_expected["tests.unit_tests.services.dify_builder.test_native_live_stream"].update(
     {
         "test_startup_stream_defers_only_until_sql_root_initialization": 9,
+        "test_session_stream_relays_buffered_commands_and_native_state_on_one_subscription": 1,
     }
 )
 a4_expected["tests.unit_tests.services.dify_builder.test_stream_frames"].update(
@@ -2763,7 +2767,7 @@ a4_expected.update(
             "test_forged_or_old_decision_field_does_not_modify_goal": 1,
             "test_public_description_is_bounded_escaped_data_in_same_discovery_call": 1,
             "test_replaying_resolved_scope_card_does_not_reauthorize_or_replan": 1,
-            "test_decision_is_rejected_after_goal_or_actor_changes": 1,
+            "test_decision_is_rejected_after_goal_task_or_actor_changes": 2,
             "test_real_discovery_empty_or_failed_source_cannot_authorize_omission": 4,
             "test_excluded_resource_list_reaches_formal_plan_without_a_knowledge_waiver": 3,
             "test_excluded_resource_list_never_disables_server_or_model_source_guards": 3,
@@ -2892,10 +2896,38 @@ knowledge_cases.update(
         "test_explicit_goal_change_is_traceable_and_allows_no_knowledge_plan": 4,
         "test_forged_or_old_decision_field_does_not_modify_goal": 2,
         "test_old_decision_version_cannot_waive_after_retaining_goal": 1,
+        "test_retained_goal_stays_adjustable_after_sql_stop_resume": 4,
+        "test_legacy_goal_form_requires_its_original_generation_before_task_scope_upgrade": 4,
+        "test_stale_legacy_form_cannot_restore_for_a_different_goal_task_or_actor": 5,
         "test_required_knowledge_reaches_actor_scoped_discovery_before_executable_planning": 3,
         "test_required_business_answer_is_not_skipped_by_knowledge_discovery": 1,
         "test_excluded_knowledge_goal_keeps_normal_executable_planning": 1,
         "test_preflight_knowledge_selection_waits_until_waiver_then_preserves_business_clarification": 1,
+    }
+)
+# P1 privacy and custom API consent: frozen reviewed function/parameter counts.
+a4_expected.update(
+    {
+        "tests.unit_tests.services.dify_builder.test_diagnostic_context": {
+            "test_nested_sensitive_fields_are_redacted_without_hiding_ordinary_key": 6,
+            "test_graph_credentials_repeated_in_run_and_output_text_are_removed": 11,
+            "test_authorization_scheme_is_removed_when_only_the_token_repeats_in_error": 1,
+            "test_falsey_diagnostic_values_are_preserved_in_independent_copies": 1,
+            "test_overlapping_credentials_do_not_leave_a_suffix_in_free_text": 1,
+            "test_short_graph_credential_does_not_corrupt_an_inserted_sentinel": 1,
+            "test_structured_redaction_preserves_exact_sentinels_when_a_credential_matches_part_of_them": 1,
+            "test_read_task_dsl_withholds_body_code_nested_and_known_echoes": 1,
+            "test_final_prompt_projects_synchronized_dsl_without_mutating_snapshot": 9,
+        },
+        "tests.unit_tests.services.dify_builder.test_api_tool_effects": {
+            "test_read_shaped_api_name_without_owned_definition_never_runs": 1,
+            "test_owned_api_definition_uses_semantic_assessment": 4,
+            "test_native_admission_refuses_owned_api_drift_before_decryption": 4,
+            "test_confirmation_to_native_tool_recording_transport": 14,
+            "test_bound_api_cannot_use_another_credential_version_from_provider_name_cache": 1,
+            "test_api_reasoning_withholds_parameter_values_account_version_and_url_secrets": 1,
+            "test_missing_api_bindings_never_resolve_ordinary_with_surviving_marker": 6,
+        },
     }
 )
 # Source-bound semantic intent: exact captured-negative and safety cases.
