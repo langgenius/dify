@@ -237,7 +237,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "7d95a2e61346"
-    current_head = "7d95a2e61346"
+    current_head = "c34e2f7b5a10"
     main_head = "53c10126d551"
     fix_intents_head = "6c84f1d90235"
     writer_head = "5b73e0c8f124"
@@ -257,7 +257,10 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    main_merge = scripts.get_revision(current_head)
+    canvas_revision = scripts.get_revision(current_head)
+    assert canvas_revision is not None
+    assert canvas_revision.down_revision == merge_revision
+    main_merge = scripts.get_revision(merge_revision)
     assert main_merge is not None
     assert main_merge.down_revision == (fix_intents_head, main_head)
     fix_intents_revision = scripts.get_revision(fix_intents_head)
@@ -666,7 +669,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         parents.stamp(scripts, coordination_head)
         parents.stamp(scripts, main_head)
         assert set(parents.get_current_heads()) == {coordination_head, main_head}
-        assert migrate("head") == (current_head,)
+        assert migrate(merge_revision) == (merge_revision,)
         assert native_ledger_witness() == ledger_before
         assert archive_witness() == archive_before
         assert connection.scalar(text("SELECT count(*) FROM dify_builder_cognition_policies")) == 0
@@ -760,10 +763,20 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         assert final_witness() == final_before
         assert native_ledger_witness() == final_ledger
         assert archive_witness() == archive_before
-        assert migrate(merge_revision) == (current_head,)
+        assert migrate(merge_revision) == (merge_revision,)
         assert final_witness() == final_before
         assert native_ledger_witness() == final_ledger
         assert archive_witness() == archive_before
+        assert migrate("head") == (current_head,)
+        previous_request = final_before[request_table]
+        assert final_witness() == {
+            **final_before,
+            request_table: {
+                **previous_request,
+                "columns": [*previous_request["columns"], ("canvas_path", "JSONB", True, None)],
+                "rows": [(*row, None) for row in previous_request["rows"]],
+            },
+        }
 
 
 @pytest.mark.parametrize(

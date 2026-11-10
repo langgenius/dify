@@ -15,6 +15,7 @@ import chineseCommon from '@/i18n/locales/zh-Hans/common.json'
 import chineseBuilder from '@/i18n/locales/zh-Hans/dify-builder.json'
 import chineseAgent from '@/i18n/locales/zh-Hans/workflow-agent.json'
 import chineseWorkflow from '@/i18n/locales/zh-Hans/workflow.json'
+import { createNativeApproval } from '@/test/fixtures/dify-builder'
 import { ConversationCard } from '../../conversation/conversation-card'
 import { TestResultCard } from '../../conversation/test-result'
 import { DifyBuilderInteractionDock } from '../../interactions/interaction-dock'
@@ -57,15 +58,17 @@ const renderInteraction = ({
   decision = null,
   replyLanguage = 'zh-Hans',
   result,
+  sessionView,
 }: {
   accountLocale?: Locale
   activeInteraction?: DifyBuilderActiveInteraction | null
   decision?: DifyBuilderDecision | null
   replyLanguage?: string
   result?: TestResultPayload
+  sessionView?: Partial<SessionView>
 }) => {
   const store = createStore()
-  const view: SessionView = createSessionView({ reply_language: replyLanguage })
+  const view: SessionView = createSessionView({ reply_language: replyLanguage, ...sessionView })
   store.set(difyBuilderSessionViewAtom, view)
   const submitInteraction = vi.fn(async () => true)
   render(
@@ -375,8 +378,29 @@ describe('Builder interaction language', () => {
 describe('native risk choice consent', () => {
   it('requires explicit selection instead of preselecting approval', async () => {
     const user = userEvent.setup()
+    const pending = createNativeApproval()
     renderInteraction({
       replyLanguage: 'en-US',
+      sessionView: {
+        test_execution: createNativeReceipt({
+          status: 'waiting',
+          wait_reason: 'approval',
+          pending: [pending],
+        }),
+        actions: [
+          {
+            id: 'confirm_test_operation',
+            label: 'Approve',
+            kind: 'primary',
+            payload: {
+              request_id: 'request-1',
+              pending_operation_id: pending.pending_operation_id,
+              pending_version: pending.version,
+              scope_digest: pending.scope_digest,
+            },
+          },
+        ],
+      },
       decision: {
         title: 'Approve this call?',
         description: 'Reads one synthetic message',
@@ -417,7 +441,11 @@ describe('replacement native disclosure', () => {
     act(() =>
       store.set(difyBuilderSessionViewAtom, {
         ...view,
-        test_execution: createNativeReceipt({ status: 'waiting' }),
+        test_execution: createNativeReceipt({
+          status: 'waiting',
+          wait_reason: 'approval',
+          pending: [createNativeApproval({ pending_operation_id: payload.pending_operation_id })],
+        }),
         actions: [{ id: 'confirm_test_operation', label: 'Approve', kind: 'primary', payload }],
       }),
     )
@@ -432,7 +460,16 @@ describe('replacement native disclosure', () => {
     act(() =>
       store.set(difyBuilderSessionViewAtom, {
         ...view,
-        test_execution: createNativeReceipt({ status: 'waiting' }),
+        test_execution: createNativeReceipt({
+          status: 'waiting',
+          wait_reason: 'approval',
+          pending: [
+            createNativeApproval({
+              pending_operation_id: replacement.pending_operation_id,
+              scope_digest: replacement.scope_digest,
+            }),
+          ],
+        }),
         actions: [
           { id: 'confirm_test_operation', label: 'Approve', kind: 'primary', payload: replacement },
         ],

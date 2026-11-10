@@ -17,6 +17,7 @@ import {
   createOptimisticInteractionResponse,
   receiptSnapshotFor,
 } from './interactions/optimistic-response'
+import { hasUnresolvedNativeTest } from './session/projection'
 import {
   difyBuilderActiveCommandAtom,
   difyBuilderConversationAtom,
@@ -46,14 +47,6 @@ export type DifyBuilderRuntime = {
 const isActiveStatus = (status?: string) => status === 'processing'
 const canContinueConversation = (status?: string) =>
   status === 'complete' || status === 'waiting_input' || status === 'waiting_confirmation'
-
-const hasUnresolvedNativeTest = (view: SessionView | null) =>
-  Boolean(
-    view?.test_execution &&
-    (view.test_execution.status !== 'terminal' ||
-      view.test_execution.outcome === 'unknown' ||
-      view.test_execution.cancellation?.status === 'cancelling'),
-  )
 
 export const difyBuilderRuntimeAtom = atom<DifyBuilderRuntime | null>(null)
 export const difyBuilderAppIdAtom = atom((get) => get(difyBuilderRuntimeAtom)?.appId)

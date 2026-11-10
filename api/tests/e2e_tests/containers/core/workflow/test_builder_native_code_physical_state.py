@@ -150,7 +150,7 @@ def physical_migration(migrated_dispatch_claims: None, flask_app_with_containers
             config = Config()
             config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
             scripts = ScriptDirectory.from_config(config)
-            assert scripts.get_heads() == ["7d95a2e61346"]
+            assert scripts.get_heads() == ["c34e2f7b5a10"]
             main_merge = scripts.get_revision("7d95a2e61346")
             assert main_merge is not None
             assert main_merge.down_revision == ("6c84f1d90235", "53c10126d551")
@@ -172,7 +172,7 @@ def physical_migration(migrated_dispatch_claims: None, flask_app_with_containers
             assert coordination.down_revision == ("c6f4a90d8b31", "7d2b9c4e61a8")
             for current in ("base", "c6f4a90d8b31", "7d2b9c4e61a8"):
                 planned = scripts._upgrade_revs("head", current)
-                assert planned[-1].revision.revision == "7d95a2e61346"
+                assert planned[-1].revision.revision == "c34e2f7b5a10"
             steps = list(scripts.iterate_revisions("7d2b9c4e61a8", "e59b7d32a6c1"))
             assert [step.revision for step in steps] == ["7d2b9c4e61a8"]
             for step in reversed(steps):

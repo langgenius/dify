@@ -235,7 +235,7 @@ def _assert_waiting_policy(connection: Connection, *, native: bool) -> None:
 
 @pytest.fixture(scope="module", autouse=True)
 def migrated_native_tables(flask_app_with_containers: DifyApp) -> None:
-    """Rebuild the race schema through both real migrations with deployed metadata."""
+    """Rebuild the native race schema and apply the optional canvas column."""
     from extensions.ext_database import db
 
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
@@ -275,6 +275,7 @@ def migrated_native_tables(flask_app_with_containers: DifyApp) -> None:
             _request_migration().upgrade()
             _assert_single_request_state_check(connection, native=False)
             _native_migration().upgrade()
+            _migration("2026_11_10_1200-c34e2f7b5a10_builder_native_canvas_path.py").upgrade()
             _assert_single_request_state_check(connection, native=True)
             _assert_waiting_policy(connection, native=True)
         connection.execute(text("COMMENT ON TABLE dify_builder_native_attempts IS 'ci-alembic:c67e12a904bf'"))

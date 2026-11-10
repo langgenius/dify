@@ -17,7 +17,7 @@ export const InteractionDockShell = ({
   title,
 }: {
   children?: ReactNode
-  description?: string
+  description?: ReactNode
   footer?: ReactNode
   title: string
 }) => {
@@ -45,9 +45,13 @@ export const InteractionDockShell = ({
             style={{ overflowX: 'hidden' }}
           >
             <ScrollAreaContent className="pe-3" style={{ minWidth: 0 }}>
-              <p className="system-xs-regular whitespace-pre-wrap text-text-secondary">
-                {description}
-              </p>
+              {typeof description === 'string' ? (
+                <p className="system-xs-regular whitespace-pre-wrap text-text-secondary">
+                  {description}
+                </p>
+              ) : (
+                description
+              )}
             </ScrollAreaContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar>

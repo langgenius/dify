@@ -877,6 +877,7 @@ export const zBuilderCopyId = z.enum([
   'actions.confirmTestOperation',
   'actions.continue',
   'actions.continueAdjusting',
+  'actions.continueTest',
   'actions.discardThisChangePlan',
   'actions.finish',
   'actions.fixAgain',
@@ -918,6 +919,8 @@ export const zBuilderCopyId = z.enum([
   'decision.howShouldBuilderRecover',
   'decision.isThisChangePlanReadyToApply',
   'decision.isThisWorkflowPlanReadyToApply',
+  'decision.testOperationApproval',
+  'decision.testOperationApprovalDescription',
   'decision.whatShouldBuilderDoNext',
   'decision.whatShouldBuilderDoWithTheAppliedFix',
   'decision.whatShouldBuilderDoWithTheBuiltWorkflow',
@@ -1230,82 +1233,6 @@ export const zDifyBuilderPlanConversationItemResponse = z.object({
 })
 
 /**
- * TestResultCard
- */
-export const zTestResultCard = z.object({
-  action_reason_code: z.string().nullish(),
-  action_state: z.enum(['completed', 'failed', 'unknown']).nullish(),
-  blocked_node_ids: z.array(z.string()).optional(),
-  business_acceptance_case_id: z.string().nullish(),
-  business_acceptance_state: z.enum(['failed', 'passed', 'unverified']).nullish(),
-  consent_id: z.string().nullish(),
-  dify_run_id: z.string().optional().default(''),
-  executed_node_ids: z.array(z.string()).optional(),
-  execution_mode: z.enum(['confirmed_run', 'confirmed_tool', 'mock', 'restricted']).nullish(),
-  failure_code: z
-    .enum([
-      'authentication',
-      'authorization_lookup_failed',
-      'connection_refused',
-      'credential_unavailable',
-      'permission_denied',
-      'rate_limit',
-      'service_unavailable',
-      'timeout',
-      'unknown',
-    ])
-    .nullish(),
-  failure_node_ids: z.array(z.string()).optional(),
-  failure_phase: z.enum(['execution', 'preparation']).nullish(),
-  failure_reason: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
-  failure_resource: z.string().nullish(),
-  outcome: z
-    .enum([
-      'execution_failed',
-      'execution_succeeded_needs_review',
-      'execution_unknown',
-      'required_output_unresolved',
-    ])
-    .nullish(),
-  policy_version: z
-    .enum([
-      'builder-confirmed-gmail-read-v1',
-      'builder-confirmed-run-v1',
-      'builder-json-parse-v1',
-      'builder-restricted-v1',
-    ])
-    .nullish(),
-  reply_language: z.string().optional().default(''),
-  review_note: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
-  safety_outcome: z
-    .enum([
-      'confirmed_run_completed',
-      'confirmed_tool_completed',
-      'execution_blocked',
-      'execution_evidence_unknown',
-      'native_failed',
-      'preparation_failed',
-      'restricted_execution_completed',
-      'simulation_completed',
-      'unsupported_safe_execution',
-    ])
-    .nullish(),
-  simulated_node_ids: z.array(z.string()).optional(),
-  status: z.enum(['failed', 'succeeded']),
-  terminal_outputs: z.record(z.string(), z.unknown()).nullish(),
-})
-
-/**
- * DifyBuilderTestResultConversationItemResponse
- */
-export const zDifyBuilderTestResultConversationItemResponse = z.object({
-  at_version: z.int(),
-  kind: z.literal('test_result'),
-  payload: zTestResultCard,
-  seq: z.int(),
-})
-
-/**
  * OptionInput
  */
 export const zOptionInput = z.object({
@@ -1376,175 +1303,6 @@ export const zPendingActionDisclosure = z.object({
   target: zJsonValue,
   version: z.int().gte(0).lte(9223372036854776000),
   wait_reason: z.enum(['approval', 'configuration', 'interaction']),
-})
-
-/**
- * NativeTestPublicReceipt
- */
-export const zNativeTestPublicReceipt = z.object({
-  can_resume: z.boolean().optional().default(false),
-  cancellation: zCancellationReceipt.nullish(),
-  decision_public_revision: z.int().gte(0).lte(9223372036854776000).optional().default(0),
-  evidence_refs: z.array(z.string().min(1).max(128)),
-  generation: z.int().gte(0).lte(9223372036854776000),
-  native_run_id: z.string().min(1).max(128).nullable(),
-  native_status: z.string().nullable(),
-  outcome: z.enum(['cancelled', 'failed', 'succeeded', 'unknown']).nullable(),
-  pending: z.array(zPendingActionDisclosure),
-  request_id: z.string().min(1).max(128),
-  resume_blocked_reason: z
-    .enum([
-      'approval_required',
-      'native_expired',
-      'native_resolution_unavailable',
-      'not_waiting',
-      'state_unavailable',
-    ])
-    .nullish()
-    .default('state_unavailable'),
-  schema_version: z.literal('builder-native-test-v1').optional().default('builder-native-test-v1'),
-  status: z.enum(['prepared', 'running', 'terminal', 'waiting']),
-  version: z.int().gte(0).lte(9223372036854776000),
-  wait_reason: z.enum(['approval', 'configuration', 'interaction']).nullable(),
-})
-
-/**
- * DifyBuilderSessionViewResponse
- */
-export const zDifyBuilderSessionViewResponse = z.object({
-  actions: z.array(zDifyBuilderActionResponse).optional(),
-  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
-  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
-  attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
-  canvas_read_only: z.boolean(),
-  command_pending: z.boolean().optional().default(false),
-  conversation_cleared: z.boolean().optional().default(false),
-  conversation_last_seq: z.int(),
-  decision: zDecision.nullish(),
-  diagnostics: z.array(z.record(z.string(), z.unknown())).max(33).optional(),
-  interrupted: z.boolean(),
-  last_command_id: z.string().optional().default(''),
-  lifecycle_settlement: z.enum(['pending', 'settled', 'unknown']).nullish(),
-  model: zSessionModel.nullish(),
-  pending_fix_context: z.union([zRunContextCard, zPreflightContextCard]).nullish(),
-  phase: zPhase,
-  recovery: zRecoveryRef.nullish(),
-  reply_language: z.string(),
-  run_status: zRunStatus,
-  session_id: z.string(),
-  task_id: z.string().optional().default(''),
-  task_status: z.enum(['abandoned', 'active', 'completed', 'paused']).optional().default('active'),
-  task_summaries: z.array(zTaskSummary).max(8).optional(),
-  test_execution: zNativeTestPublicReceipt.nullish(),
-  version: z.int(),
-})
-
-/**
- * DifyBuilderCreatedSessionResponse
- */
-export const zDifyBuilderCreatedSessionResponse = z.object({
-  requires_start: z.boolean(),
-  session: zDifyBuilderSessionViewResponse,
-})
-
-/**
- * DifyBuilderCommandSubmissionResponse
- */
-export const zDifyBuilderCommandSubmissionResponse = z.object({
-  command_id: z.string(),
-  pending: z.boolean(),
-  session: zDifyBuilderSessionViewResponse.nullish(),
-})
-
-/**
- * DifyBuilderFixIntentResponse
- */
-export const zDifyBuilderFixIntentResponse = z.object({
-  fix_intent_id: z.string(),
-  session: zDifyBuilderSessionViewResponse,
-  status: z.string(),
-})
-
-/**
- * DifyBuilderNativeTestResponse
- *
- * Strict public native receipt; domain DTO also owns generated schemas.
- */
-export const zDifyBuilderNativeTestResponse = z.object({
-  data: zNativeTestPublicReceipt,
-})
-
-/**
- * DifyBuilderSessionReadyEventResponse
- */
-export const zDifyBuilderSessionReadyEventResponse = z.object({
-  data: zDifyBuilderSessionViewResponse,
-  event: z.literal('session_ready'),
-})
-
-/**
- * DifyBuilderSessionStateEventResponse
- */
-export const zDifyBuilderSessionStateEventResponse = z.object({
-  data: zDifyBuilderSessionViewResponse,
-  event: z.literal('session_state'),
-})
-
-/**
- * DifyBuilderCommandFinishedEventData
- */
-export const zDifyBuilderCommandFinishedEventData = z.object({
-  actions: z.array(zDifyBuilderActionResponse).optional(),
-  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
-  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
-  attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
-  canvas_read_only: z.boolean(),
-  command_id: z.string(),
-  command_pending: z.boolean().optional().default(false),
-  conversation_cleared: z.boolean().optional().default(false),
-  conversation_last_seq: z.int(),
-  decision: zDecision.nullish(),
-  diagnostics: z.array(z.record(z.string(), z.unknown())).max(33).optional(),
-  interrupted: z.boolean(),
-  lifecycle_settlement: z.enum(['pending', 'settled', 'unknown']).nullish(),
-  model: zSessionModel.nullish(),
-  pending_fix_context: z.union([zRunContextCard, zPreflightContextCard]).nullish(),
-  phase: zPhase,
-  post_canvas_action_id: z.string().nullish(),
-  recovery: zRecoveryRef.nullish(),
-  reply_language: z.string(),
-  run_status: zRunStatus,
-  session_id: z.string(),
-  task_id: z.string().optional().default(''),
-  task_status: z.enum(['abandoned', 'active', 'completed', 'paused']).optional().default('active'),
-  task_summaries: z.array(zTaskSummary).max(8).optional(),
-  test_execution: zNativeTestPublicReceipt.nullish(),
-  version: z.int(),
-})
-
-/**
- * DifyBuilderCommandFinishedEventResponse
- */
-export const zDifyBuilderCommandFinishedEventResponse = z.object({
-  data: zDifyBuilderCommandFinishedEventData,
-  event: z.literal('command_finished'),
-})
-
-/**
- * DifyBuilderNativeExecutionEventData
- */
-export const zDifyBuilderNativeExecutionEventData = z.object({
-  cursor: z.string().regex(/^[a-f0-9]{64}$/),
-  receipt: zNativeTestPublicReceipt,
-  session_id: z.string(),
-})
-
-/**
- * DifyBuilderNativeExecutionEventResponse
- */
-export const zDifyBuilderNativeExecutionEventResponse = z.object({
-  data: zDifyBuilderNativeExecutionEventData,
-  event: z.literal('native_execution'),
 })
 
 /**
@@ -1775,6 +1533,208 @@ export const zDifyBuilderProgressSnapshotEventResponse = z.object({
   event: z.literal('progress_snapshot'),
 })
 
+export const zNativeCanvasNodeStatus = z.enum([
+  'exception',
+  'failed',
+  'paused',
+  'retry',
+  'running',
+  'stopped',
+  'succeeded',
+])
+
+/**
+ * NativeCanvasEdge
+ */
+export const zNativeCanvasEdge = z.object({
+  edge_id: z.string().nullable(),
+  source: z.string(),
+  source_handle: z.string(),
+  source_status: zNativeCanvasNodeStatus.nullish(),
+  target: z.string(),
+  target_handle: z.string(),
+  target_status: zNativeCanvasNodeStatus.nullish(),
+})
+
+/**
+ * NativeCanvasPath
+ */
+export const zNativeCanvasPath = z.object({
+  edges: z.array(zNativeCanvasEdge),
+  native_run_id: z.string(),
+  revision: z.int(),
+})
+
+/**
+ * NativeTestPublicReceipt
+ */
+export const zNativeTestPublicReceipt = z.object({
+  can_resume: z.boolean().optional().default(false),
+  cancellation: zCancellationReceipt.nullish(),
+  canvas_path: zNativeCanvasPath.nullish(),
+  decision_public_revision: z.int().gte(0).lte(9223372036854776000).optional().default(0),
+  evidence_refs: z.array(z.string().min(1).max(128)),
+  generation: z.int().gte(0).lte(9223372036854776000),
+  native_run_id: z.string().min(1).max(128).nullable(),
+  native_status: z.string().nullable(),
+  outcome: z.enum(['cancelled', 'failed', 'succeeded', 'unknown']).nullable(),
+  pending: z.array(zPendingActionDisclosure),
+  request_id: z.string().min(1).max(128),
+  resume_blocked_reason: z
+    .enum([
+      'approval_required',
+      'native_expired',
+      'native_resolution_unavailable',
+      'not_waiting',
+      'state_unavailable',
+    ])
+    .nullish()
+    .default('state_unavailable'),
+  schema_version: z.literal('builder-native-test-v1').optional().default('builder-native-test-v1'),
+  status: z.enum(['prepared', 'running', 'terminal', 'waiting']),
+  version: z.int().gte(0).lte(9223372036854776000),
+  wait_reason: z.enum(['approval', 'configuration', 'interaction']).nullable(),
+})
+
+/**
+ * DifyBuilderSessionViewResponse
+ */
+export const zDifyBuilderSessionViewResponse = z.object({
+  actions: z.array(zDifyBuilderActionResponse).optional(),
+  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
+  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
+  attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
+  canvas_read_only: z.boolean(),
+  command_pending: z.boolean().optional().default(false),
+  conversation_cleared: z.boolean().optional().default(false),
+  conversation_last_seq: z.int(),
+  decision: zDecision.nullish(),
+  diagnostics: z.array(z.record(z.string(), z.unknown())).max(33).optional(),
+  interrupted: z.boolean(),
+  last_command_id: z.string().optional().default(''),
+  lifecycle_settlement: z.enum(['pending', 'settled', 'unknown']).nullish(),
+  model: zSessionModel.nullish(),
+  pending_fix_context: z.union([zRunContextCard, zPreflightContextCard]).nullish(),
+  phase: zPhase,
+  recovery: zRecoveryRef.nullish(),
+  reply_language: z.string(),
+  run_status: zRunStatus,
+  session_id: z.string(),
+  task_id: z.string().optional().default(''),
+  task_status: z.enum(['abandoned', 'active', 'completed', 'paused']).optional().default('active'),
+  task_summaries: z.array(zTaskSummary).max(8).optional(),
+  test_execution: zNativeTestPublicReceipt.nullish(),
+  version: z.int(),
+})
+
+/**
+ * DifyBuilderCreatedSessionResponse
+ */
+export const zDifyBuilderCreatedSessionResponse = z.object({
+  requires_start: z.boolean(),
+  session: zDifyBuilderSessionViewResponse,
+})
+
+/**
+ * DifyBuilderCommandSubmissionResponse
+ */
+export const zDifyBuilderCommandSubmissionResponse = z.object({
+  command_id: z.string(),
+  pending: z.boolean(),
+  session: zDifyBuilderSessionViewResponse.nullish(),
+})
+
+/**
+ * DifyBuilderFixIntentResponse
+ */
+export const zDifyBuilderFixIntentResponse = z.object({
+  fix_intent_id: z.string(),
+  session: zDifyBuilderSessionViewResponse,
+  status: z.string(),
+})
+
+/**
+ * DifyBuilderNativeTestResponse
+ *
+ * Strict public native receipt; domain DTO also owns generated schemas.
+ */
+export const zDifyBuilderNativeTestResponse = z.object({
+  data: zNativeTestPublicReceipt,
+})
+
+/**
+ * DifyBuilderSessionReadyEventResponse
+ */
+export const zDifyBuilderSessionReadyEventResponse = z.object({
+  data: zDifyBuilderSessionViewResponse,
+  event: z.literal('session_ready'),
+})
+
+/**
+ * DifyBuilderSessionStateEventResponse
+ */
+export const zDifyBuilderSessionStateEventResponse = z.object({
+  data: zDifyBuilderSessionViewResponse,
+  event: z.literal('session_state'),
+})
+
+/**
+ * DifyBuilderCommandFinishedEventData
+ */
+export const zDifyBuilderCommandFinishedEventData = z.object({
+  actions: z.array(zDifyBuilderActionResponse).optional(),
+  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
+  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
+  attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
+  canvas_read_only: z.boolean(),
+  command_id: z.string(),
+  command_pending: z.boolean().optional().default(false),
+  conversation_cleared: z.boolean().optional().default(false),
+  conversation_last_seq: z.int(),
+  decision: zDecision.nullish(),
+  diagnostics: z.array(z.record(z.string(), z.unknown())).max(33).optional(),
+  interrupted: z.boolean(),
+  lifecycle_settlement: z.enum(['pending', 'settled', 'unknown']).nullish(),
+  model: zSessionModel.nullish(),
+  pending_fix_context: z.union([zRunContextCard, zPreflightContextCard]).nullish(),
+  phase: zPhase,
+  post_canvas_action_id: z.string().nullish(),
+  recovery: zRecoveryRef.nullish(),
+  reply_language: z.string(),
+  run_status: zRunStatus,
+  session_id: z.string(),
+  task_id: z.string().optional().default(''),
+  task_status: z.enum(['abandoned', 'active', 'completed', 'paused']).optional().default('active'),
+  task_summaries: z.array(zTaskSummary).max(8).optional(),
+  test_execution: zNativeTestPublicReceipt.nullish(),
+  version: z.int(),
+})
+
+/**
+ * DifyBuilderCommandFinishedEventResponse
+ */
+export const zDifyBuilderCommandFinishedEventResponse = z.object({
+  data: zDifyBuilderCommandFinishedEventData,
+  event: z.literal('command_finished'),
+})
+
+/**
+ * DifyBuilderNativeExecutionEventData
+ */
+export const zDifyBuilderNativeExecutionEventData = z.object({
+  cursor: z.string().regex(/^[a-f0-9]{64}$/),
+  receipt: zNativeTestPublicReceipt,
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderNativeExecutionEventResponse
+ */
+export const zDifyBuilderNativeExecutionEventResponse = z.object({
+  data: zDifyBuilderNativeExecutionEventData,
+  event: z.literal('native_execution'),
+})
+
 /**
  * ExecutionActivity
  */
@@ -1817,6 +1777,92 @@ export const zDifyBuilderAssistantTurnConversationItemResponse = z.object({
   at_version: z.int(),
   kind: z.literal('assistant_turn'),
   payload: zAssistantTurnItem,
+  seq: z.int(),
+})
+
+/**
+ * ResumedTestProgress
+ */
+export const zResumedTestProgress = z.object({
+  execution: zExecutionProgress,
+  source_seq: z.int(),
+})
+
+/**
+ * TestResultCard
+ */
+export const zTestResultCard = z.object({
+  action_reason_code: z.string().nullish(),
+  action_state: z.enum(['completed', 'failed', 'unknown']).nullish(),
+  blocked_node_ids: z.array(z.string()).optional(),
+  business_acceptance_case_id: z.string().nullish(),
+  business_acceptance_state: z.enum(['failed', 'passed', 'unverified']).nullish(),
+  consent_id: z.string().nullish(),
+  dify_run_id: z.string().optional().default(''),
+  executed_node_ids: z.array(z.string()).optional(),
+  execution_mode: z.enum(['confirmed_run', 'confirmed_tool', 'mock', 'restricted']).nullish(),
+  failure_code: z
+    .enum([
+      'authentication',
+      'authorization_lookup_failed',
+      'connection_refused',
+      'credential_unavailable',
+      'permission_denied',
+      'rate_limit',
+      'service_unavailable',
+      'timeout',
+      'unknown',
+    ])
+    .nullish(),
+  failure_node_ids: z.array(z.string()).optional(),
+  failure_phase: z.enum(['execution', 'preparation']).nullish(),
+  failure_reason: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
+  failure_resource: z.string().nullish(),
+  native_canvas_path: zNativeCanvasPath.nullish(),
+  outcome: z
+    .enum([
+      'execution_failed',
+      'execution_succeeded_needs_review',
+      'execution_unknown',
+      'required_output_unresolved',
+    ])
+    .nullish(),
+  policy_version: z
+    .enum([
+      'builder-confirmed-gmail-read-v1',
+      'builder-confirmed-run-v1',
+      'builder-json-parse-v1',
+      'builder-restricted-v1',
+    ])
+    .nullish(),
+  reply_language: z.string().optional().default(''),
+  resumed_progress: zResumedTestProgress.nullish(),
+  review_note: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
+  safety_outcome: z
+    .enum([
+      'confirmed_run_completed',
+      'confirmed_tool_completed',
+      'execution_blocked',
+      'execution_evidence_unknown',
+      'native_failed',
+      'preparation_failed',
+      'restricted_execution_completed',
+      'simulation_completed',
+      'unsupported_safe_execution',
+    ])
+    .nullish(),
+  simulated_node_ids: z.array(z.string()).optional(),
+  status: z.enum(['failed', 'succeeded']),
+  terminal_outputs: z.record(z.string(), z.unknown()).nullish(),
+})
+
+/**
+ * DifyBuilderTestResultConversationItemResponse
+ */
+export const zDifyBuilderTestResultConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('test_result'),
+  payload: zTestResultCard,
   seq: z.int(),
 })
 

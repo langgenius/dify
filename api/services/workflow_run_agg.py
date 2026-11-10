@@ -21,6 +21,7 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.db.session_factory import session_factory
+from core.dify_builder.models import Actor
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord, HumanInputFormSubmissionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
@@ -59,6 +60,7 @@ from repositories.knowledge.document_repository import SQLAlchemyDocumentReposit
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowPauseStoppedError
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.conversation_variable_updater import ConversationVariableUpdater
+from services.dify_builder.native_testing.canvas_path import NativeCanvasPathLayer
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from services.workflow_runtime.base_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
@@ -172,6 +174,20 @@ class WorkflowRunAgg:
             self._persistence_layer,
             build_workflow_agent_workspace_retirement_layer(dify_run_context=self._run_context),
         ]
+        entity = prepared.generate_entity
+        canvas_ref = entity.builder_agent_execution.ref if entity.builder_agent_execution else entity.native_test_ref
+        if canvas_ref is not None:
+            application_layers.append(
+                NativeCanvasPathLayer(
+                    sessions=session_factory.get_session_maker(),
+                    ref=canvas_ref,
+                    actor=Actor(account_id=entity.user_id, tenant_id=self._run_context.tenant_id),
+                    app_id=entity.app_config.app_id,
+                    workflow_id=self._entry.graph_engine.graph.root_node.workflow_id,
+                    run_id=self._run_id,
+                    graph=self._entry.graph_config,
+                )
+            )
         if isinstance(prepared.generate_entity, AdvancedChatAppGenerateEntity):
             application_layers.append(
                 ConversationVariablePersistenceLayer(ConversationVariableUpdater(session_factory.get_session_maker()))

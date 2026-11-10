@@ -129,6 +129,7 @@ def published_callback(c: RuntimeDeliveryCase) -> Callable[..., None]:
 
 
 def initial_graph(kind: str = "root") -> Graph:
+    """Build a test graph with one approved HTTP node and the requested topology."""
     graph: Graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
@@ -151,6 +152,12 @@ def initial_graph(kind: str = "root") -> Graph:
     }
 
     if kind == "root":
+        return graph
+    if kind == "branch":
+        graph["nodes"].append({"id": "other-end", "data": {"type": "end", "title": "Other output", "outputs": []}})
+        graph["edges"].append(
+            {"id": "http-other-end", "source": "http", "target": "other-end", "sourceHandle": "source"}
+        )
         return graph
     http = graph["nodes"][1]
     http_data = http["data"]

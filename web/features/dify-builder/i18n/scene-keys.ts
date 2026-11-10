@@ -21,6 +21,7 @@ export const builderSceneKeys = {
   'actions.confirmResources': 'copy.actions.confirmResources',
   'actions.continue': 'copy.actions.continue',
   'actions.continueAdjusting': 'copy.actions.continueAdjusting',
+  'actions.continueTest': 'copy.actions.continueTest',
   'actions.discardThisChangePlan': 'copy.actions.discardThisChangePlan',
   'actions.finish': 'copy.actions.finish',
   'actions.fixAgain': 'copy.actions.fixAgain',
@@ -63,6 +64,8 @@ export const builderSceneKeys = {
   'decision.howShouldBuilderRecover': 'copy.decision.howShouldBuilderRecover',
   'decision.isThisChangePlanReadyToApply': 'copy.decision.isThisChangePlanReadyToApply',
   'decision.isThisWorkflowPlanReadyToApply': 'copy.decision.isThisWorkflowPlanReadyToApply',
+  'decision.testOperationApproval': 'copy.decision.testOperationApproval',
+  'decision.testOperationApprovalDescription': 'copy.decision.testOperationApprovalDescription',
   'decision.whatShouldBuilderDoNext': 'copy.decision.whatShouldBuilderDoNext',
   'decision.whatShouldBuilderDoWithTheAppliedFix':
     'copy.decision.whatShouldBuilderDoWithTheAppliedFix',

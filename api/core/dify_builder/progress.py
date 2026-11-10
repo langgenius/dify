@@ -6,13 +6,22 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import Literal
 
-from core.dify_builder.contract import ExecutionActivity, ExecutionProgress, ProgressEventData
+from core.dify_builder.contract import ExecutionActivity, ExecutionActivityState, ExecutionProgress, ProgressEventData
 from core.dify_builder.models import NodeEvent, Session
 from runtime_contracts.builder.presentation import BuilderText
 
-__all__ = ["ProgressReporter"]
+__all__ = ["ProgressReporter", "node_activity_state"]
 
 _InternalActivityState = Literal["pending", "active", "done", "failed", "stopped"]
+
+
+def node_activity_state(status: str) -> ExecutionActivityState:
+    """Translate a native node status into Builder's progress vocabulary."""
+    if status in {"success", "succeeded"}:
+        return "done"
+    if status in {"error", "exception", "failed"}:
+        return "failed"
+    return "active" if status == "running" else "stopped"
 
 
 @dataclass
@@ -158,14 +167,7 @@ class ProgressReporter:
             activity.label = event.title or event.node_id
             activity.parent_id = parent_id
 
-        if event.status in {"success", "succeeded"}:
-            activity.state = "done"
-        elif event.status in {"error", "exception", "failed"}:
-            activity.state = "failed"
-        elif event.status == "running":
-            activity.state = "active"
-        else:
-            activity.state = "stopped"
+        activity.state = node_activity_state(event.status)
         self._publish(activity)
 
     def finish(

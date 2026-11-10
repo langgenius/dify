@@ -2,9 +2,10 @@ import type {
   WorkflowRunDetailResponse,
   WorkflowRunNodeExecutionListResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { NativeCanvasPath } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ReactNode } from 'react'
 import type { CanvasEventData, ConversationItem } from '../../types'
-import type { Node } from '@/app/components/workflow/types'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
 import { ReactFlowProvider, useStoreApi } from 'reactflow'
@@ -20,6 +21,7 @@ import {
   runStarted,
   workflowEvent,
 } from '../../__tests__/workflow-fixtures'
+import { createNativeReceipt } from '../../session/__tests__/fixtures'
 import { difyBuilderErrorAtom } from '../../state'
 import { useDifyBuilderRunEvents } from '../use-run-events'
 
@@ -80,7 +82,7 @@ const canvasEvent = (event: 'graph_changed', revision = 1): CanvasEventData => (
   cause: 'apply',
 })
 
-const setup = () => {
+const setup = (edges: Edge[] = [{ id: 'edge', source: 'start', target: 'answer' }]) => {
   const store = createStore()
   const workflow = createWorkflowStore()
   const QueryProvider = createQueryClientWrapper(createConsoleQueryClient())
@@ -105,9 +107,7 @@ const setup = () => {
   }))
   act(() => {
     hook.result.current.canvas.getState().setNodes(nodes)
-    hook.result.current.canvas
-      .getState()
-      .setEdges([{ id: 'edge', source: 'start', target: 'answer' }])
+    hook.result.current.canvas.getState().setEdges(edges)
   })
   const nodeStatus = () =>
     (hook.result.current.canvas.getState().getNodes() as Node[]).find(
@@ -201,6 +201,110 @@ describe('Builder run event handlers', () => {
     act(() => result.current.events.reset())
     expect(nodeStatus()).toBeUndefined()
     expect(workflow.getState().workflowRunningData).toBeUndefined()
+  })
+
+  it.each(['linear', 'branch'] as const)(
+    'paints only the traversed edges during %s continuation and after reopening the Run',
+    async (topology) => {
+      const selected = {
+        id: 'taken',
+        source: 'start',
+        target: 'answer',
+        sourceHandle: 'approved',
+        data: { sourceType: BlockEnum.IfElse, targetType: BlockEnum.End },
+      }
+      const alternate = { ...selected, id: 'skipped', sourceHandle: 'alternate' }
+      const edges = topology === 'branch' ? [selected, alternate] : [selected]
+      const active = setup(edges)
+      const observed: NativeCanvasPath = {
+        native_run_id: 'dify-run',
+        revision: 1,
+        edges: [
+          {
+            edge_id: selected.id,
+            source: selected.source,
+            target: selected.target,
+            source_handle: selected.sourceHandle,
+            target_handle: 'target',
+            source_status: 'succeeded',
+            target_status: 'running',
+          },
+        ],
+      }
+      const completed: NativeCanvasPath = {
+        ...observed,
+        revision: 2,
+        edges: observed.edges.map((edge) => ({ ...edge, target_status: 'succeeded' })),
+      }
+      const edgeStatuses = (hook: typeof active) =>
+        (hook.result.current.canvas.getState().edges as Edge[]).map(
+          (edge) => edge.data?._targetRunningStatus,
+        )
+      const status = (taken: string) => (topology === 'branch' ? [taken, undefined] : [taken])
+
+      act(() => active.result.current.events.onNativeCanvasPath('session-1', 2, observed))
+      expect(edgeStatuses(active)).toEqual(status('running'))
+      act(() => {
+        active.result.current.events.onNativeCanvasPath('session-1', 2, completed)
+        active.result.current.events.onNativeCanvasPath('session-1', 2, observed)
+        active.result.current.canvas.getState().setEdges(edges)
+        active.result.current.events.onCanvasRefreshed()
+      })
+      expect(edgeStatuses(active)).toEqual(status('succeeded'))
+      active.unmount()
+
+      mocks.executions.mockResolvedValue({
+        data: [
+          { id: 'exec-1', node_id: 'start', status: 'succeeded' },
+          { id: 'exec-2', node_id: 'answer', status: 'succeeded' },
+        ],
+      })
+      const reopened = setup(edges)
+      act(() =>
+        reopened.result.current.events.restoreRun('session-1', [
+          {
+            ...resultCard,
+            payload: { ...resultCard.payload, native_canvas_path: completed },
+          },
+        ]),
+      )
+      await waitFor(() => expect(reopened.nodeStatus()).toBe('succeeded'))
+      expect(edgeStatuses(reopened)).toEqual(status('succeeded'))
+    },
+  )
+
+  it('restores a waiting native Run from the session before it has a result card', async () => {
+    const { result, workflow } = setup()
+    const waiting = createNativeReceipt({
+      native_run_id: 'paused-run',
+      native_status: 'paused',
+      status: 'waiting',
+      wait_reason: 'approval',
+    })
+    mocks.detail.mockResolvedValueOnce({
+      id: 'paused-run',
+      status: 'paused',
+      graph: {},
+      inputs: {},
+      outputs: {},
+    })
+
+    act(() =>
+      result.current.events.restoreRun('session-1', [resultCard], {
+        version: 3,
+        test_execution: waiting,
+      }),
+    )
+
+    await waitFor(() =>
+      expect(workflow.getState().workflowRunningData?.result).toMatchObject({
+        id: 'paused-run',
+        status: 'paused',
+      }),
+    )
+    expect(mocks.detail).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', run_id: 'paused-run' },
+    })
   })
 
   it('recovers from a dropped terminal event when the result card is committed at the same version', async () => {

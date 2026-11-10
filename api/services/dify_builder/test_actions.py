@@ -4,6 +4,7 @@ No start implementation lives here: run_test keeps the ordinary input and
 run_draft path. Browser payloads identify a disclosed operation, never authority.
 """
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -14,6 +15,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.dify_builder.contract import Action, ActionKind
 from core.dify_builder.errors import BadRequestError, ConflictError
 from core.dify_builder.models import Actor
 from models.dify_builder import (
@@ -30,9 +32,11 @@ from models.dify_builder_native_tests import (
 )
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowRun
+from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, Digest, canonical_digest
 from runtime_contracts.builder.native.contracts import ID, Counter, FrozenDTO
 from runtime_contracts.builder.native.observation import parse_native_model_failure
+from runtime_contracts.builder.presentation import BuilderText, copy_text
 from services.dify_builder import trace_diagnostics
 from services.dify_builder.execution_policy_service import load_execution_owners
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
@@ -41,6 +45,9 @@ if TYPE_CHECKING:
     from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
 
 TEST_ACTIONS = frozenset({"confirm_test_operation", "deny_test_operation", "resume_test", "cancel_test"})
+TEST_CONTROL_RECEIPT_KINDS = ("decision", "interaction_response")
+
+logger = logging.getLogger(__name__)
 
 
 class TestOperationPayload(FrozenDTO):
@@ -123,6 +130,7 @@ class BuilderTestActions:
         self.command_factory = command_factory
 
     def find_command(self, *, actor: Actor, session_id: str, command_id: str) -> dict[str, Any] | None:
+        """Read an owned committed native control receipt by its stable command ID."""
         with self.sessions() as sql:
             return sql.scalar(
                 select(DifyBuilderConversationItem.payload)
@@ -139,7 +147,7 @@ class BuilderTestActions:
                     DifyBuilderSession.id == session_id,
                     DifyBuilderSession.tenant_id == actor.tenant_id,
                     DifyBuilderSession.owner_account_id == actor.account_id,
-                    DifyBuilderConversationItem.kind == "decision",
+                    DifyBuilderConversationItem.kind.in_(TEST_CONTROL_RECEIPT_KINDS),
                     DifyBuilderConversationItem.payload["test_command_id"].as_string() == command_id,
                 )
                 .limit(1)
@@ -373,32 +381,60 @@ class BuilderTestActions:
     def execute(
         self, *, actor: Actor, session_id: str, test_input_id: str, command: TestCommand, idempotency_key: str
     ) -> NativeTestPublicReceipt:
+        """Apply an owned control and queue the same generation's continuation after its last approval.
+
+        The saved decision proves the selected operation was approved. A fresh
+        receipt and the existing resume guard must both permit the handoff.
+        """
         if self._current_id(actor=actor, session_id=session_id, test_input_id=test_input_id) != command.request_id:
             raise ConflictError("test request is no longer current")
+        commands = self.command_factory(actor=actor)
+        owner = {"actor": actor, "session_id": session_id, "request_id": command.request_id}
+        execute = {"decide": commands.decide, "resume": commands.resume, "cancel": commands.cancel}[command.method]
+        saved = execute(**owner, idempotency_key=idempotency_key, **command.native_payload)
+        if command.method != "decide" or command.native_payload["decision"] != "confirm":
+            return saved
+        if not any(
+            item.decision_status == "confirmed"
+            and item.pending_operation_id == command.native_payload["pending_operation_id"]
+            and item.version == command.native_payload["expected_version"]
+            and item.scope_digest == command.native_payload["scope_digest"]
+            for item in saved.pending
+        ):
+            raise BuilderExecutionPolicyError("native_pending_conflict")
+        if any(item.decision_status != "confirmed" for item in saved.pending):
+            return saved
         try:
-            commands = self.command_factory(actor=actor)
-            execute = {"decide": commands.decide, "resume": commands.resume, "cancel": commands.cancel}[command.method]
-            return execute(
-                actor=actor,
-                session_id=session_id,
-                request_id=command.request_id,
-                idempotency_key=idempotency_key,
-                **command.native_payload,
-            )
-        except BuilderExecutionPolicyError:
-            # Preserve the typed reason for the transport's safe HTTP mapping.
-            raise
+            current = commands.peek(actor=actor, session_id=session_id, request_id=command.request_id)
+            if (
+                current.status == "waiting"
+                and current.can_resume
+                and (current.generation, current.decision_public_revision)
+                == (saved.generation, saved.decision_public_revision)
+            ):
+                return commands.resume(
+                    **owner,
+                    expected_generation=current.generation,
+                    idempotency_key=canonical_digest({"builder_approval": idempotency_key}),
+                )
+            return current
+        except BuilderExecutionPolicyError as error:
+            logger.warning("Builder test approved but continuation was blocked (%s)", error.reason_code)
+            return saved
 
 
-def control_actions(receipt: NativeTestPublicReceipt):
-    from core.dify_builder.contract import Action, ActionKind
-    from runtime_contracts.builder.copy_ids import BuilderCopyId
-    from runtime_contracts.builder.presentation import copy_text
-
-    actions = []
-    for pending in receipt.pending:
-        if pending.wait_reason != "approval" or pending.decision_status != "awaiting_decision":
-            continue
+def control_actions(receipt: NativeTestPublicReceipt) -> list[Action]:
+    """Disclose one current unapproved operation or an eligible retained continuation."""
+    actions: list[Action] = []
+    pending = next(
+        (
+            item
+            for item in receipt.pending
+            if item.wait_reason == "approval" and item.decision_status == "awaiting_decision"
+        ),
+        None,
+    )
+    if pending is not None:
         payload = {
             "request_id": receipt.request_id,
             "pending_operation_id": pending.pending_operation_id,
@@ -409,24 +445,23 @@ def control_actions(receipt: NativeTestPublicReceipt):
             [
                 Action(
                     "confirm_test_operation",
-                    copy_text(BuilderCopyId.ACTIONS_SUBMIT),
+                    control_label("confirm_test_operation"),
                     ActionKind.PRIMARY,
                     payload=payload,
                 ),
                 Action(
                     "deny_test_operation",
-                    copy_text(BuilderCopyId.ACTIONS_REJECT),
+                    control_label("deny_test_operation"),
                     ActionKind.DESTRUCTIVE,
                     payload=payload,
                 ),
             ]
         )
-        break  # disclose/approve pending operations one at a time
     if receipt.can_resume:
         actions.append(
             Action(
                 "resume_test",
-                copy_text(BuilderCopyId.ACTIONS_CONTINUE),
+                control_label("resume_test"),
                 ActionKind.PRIMARY,
                 payload={"request_id": receipt.request_id, "expected_generation": receipt.generation},
             )
@@ -443,42 +478,22 @@ def control_actions(receipt: NativeTestPublicReceipt):
     return actions
 
 
-def control_label(kind: str):
-    from runtime_contracts.builder.copy_ids import BuilderCopyId
-    from runtime_contracts.builder.presentation import copy_text
-
+def control_label(kind: str) -> BuilderText:
+    """Use the same option label in the choice and its durable receipt."""
     return copy_text(
         {
             "confirm_test_operation": BuilderCopyId.ACTIONS_CONFIRM_TEST_OPERATION,
             "deny_test_operation": BuilderCopyId.ACTIONS_REJECT,
-            "resume_test": BuilderCopyId.ACTIONS_CONTINUE,
+            "resume_test": BuilderCopyId.ACTIONS_CONTINUE_TEST,
             "cancel_test": BuilderCopyId.ACTIONS_CANCEL_TEST,
         }[kind]
     )
 
 
-def test_disclosure_text(receipt: NativeTestPublicReceipt):
-    import json
-
-    from runtime_contracts.builder.copy_ids import BuilderCopyId
-    from runtime_contracts.builder.presentation import copy_text, text_parts
-
-    # Only human-reviewable scope belongs in the choice description. Version,
-    # digest and operation identities remain in the structured action payload.
-    reviewed = [
-        {
-            "account": pending.account_label,
-            "action": pending.action,
-            "target": pending.target,
-            "parameters": pending.parameters_summary,
-            "risk": pending.risk_notice,
-            "limits": pending.approval_limits.model_dump(mode="json") if pending.approval_limits else None,
-            "decision": pending.decision,
-        }
-        for pending in receipt.pending
-    ]
-    return text_parts(
-        copy_text(BuilderCopyId.DECISION_HOW_SHOULD_BUILDER_CONTINUE),
-        "\n",
-        json.dumps(reviewed, ensure_ascii=False, indent=2),
+def control_title(kind: str) -> BuilderText:
+    """Name the native choice without embedding its disclosure or action payload."""
+    return copy_text(
+        BuilderCopyId.DECISION_TEST_OPERATION_APPROVAL
+        if kind in {"confirm_test_operation", "deny_test_operation"}
+        else BuilderCopyId.ACTIONS_RUN_TEST
     )

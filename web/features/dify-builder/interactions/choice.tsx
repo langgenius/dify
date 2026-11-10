@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { DifyBuilderDecision, SessionView } from '../types'
 import type { SubmitInteraction } from './types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -14,6 +15,7 @@ import { InteractionDockShell } from './dock-shell'
 export const ChoiceInteraction = ({
   actions,
   busy,
+  children,
   decision,
   context,
   recheckReady,
@@ -21,6 +23,7 @@ export const ChoiceInteraction = ({
 }: {
   actions: SessionView['actions']
   busy: boolean
+  children?: ReactNode
   decision: DifyBuilderDecision
   context: SessionView['pending_fix_context']
   recheckReady: boolean
@@ -32,6 +35,7 @@ export const ChoiceInteraction = ({
   const options = decision.options ?? []
   const { renderText } = useBuilderText()
   const title = renderText(decision.title)
+  const description = renderText(decision.description)
   const requiresConsent = options.some((option) => option.id === 'confirm_test_operation')
   const defaultOptionId = decision.default_option_id || options[0]?.id || ''
   const requiresExplicitChoice =
@@ -67,7 +71,18 @@ export const ChoiceInteraction = ({
   return (
     <InteractionDockShell
       title={title}
-      description={renderText(decision.description)}
+      description={
+        children ? (
+          <>
+            {description && (
+              <p className="mb-2 system-xs-regular text-text-secondary">{description}</p>
+            )}
+            {children}
+          </>
+        ) : (
+          description
+        )
+      }
       footer={
         <Button
           type="submit"

@@ -1335,6 +1335,99 @@ describe('DifyBuilderConversation test data form', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
   })
 
+  it('settles only the original approval progress when the resumed test result arrives', async () => {
+    const user = userEvent.setup()
+    const paused: Extract<ConversationItem, { kind: 'assistant_turn' }> = {
+      seq: 1,
+      at_version: 2,
+      kind: 'assistant_turn',
+      payload: {
+        turn_id: 'test-turn',
+        stage_id: 'edit.test_affected_paths',
+        execution: {
+          status: 'stopped',
+          activities: [
+            { id: 'edit-run-test', label: 'Run affected paths', state: 'stopped', kind: 'stage' },
+            {
+              id: 'node:agent',
+              label: 'Weather query',
+              state: 'stopped',
+              kind: 'node',
+              parent_id: 'edit-run-test',
+            },
+          ],
+        },
+      },
+    }
+    const earlier: ConversationItem = {
+      ...paused,
+      seq: 0,
+      at_version: 1,
+      payload: {
+        ...paused.payload,
+        execution: {
+          status: 'stopped',
+          activities: [{ id: 'edit-run-test', label: 'Earlier test', state: 'stopped' }],
+        },
+      },
+    }
+    const result: ConversationItem = {
+      seq: 3,
+      at_version: 4,
+      kind: 'test_result',
+      payload: {
+        status: 'succeeded',
+        resumed_progress: {
+          source_seq: paused.seq,
+          execution: {
+            status: 'completed',
+            activities: [
+              ...(paused.payload.execution.activities ?? []).map((activity) => ({
+                ...activity,
+                state: 'done' as const,
+              })),
+              {
+                id: 'node:output',
+                label: 'Output',
+                state: 'done',
+                kind: 'node',
+                parent_id: 'edit-run-test',
+              },
+            ],
+          },
+        },
+      },
+    }
+    const approval: ConversationItem = {
+      seq: 2,
+      at_version: 3,
+      kind: 'interaction_response',
+      payload: { interaction_kind: 'choice', question: 'Test approval', answer: 'Allow' },
+    }
+    const { rerender, unmount } = render(
+      <DifyBuilderConversation
+        busy={false}
+        interrupted={false}
+        items={[earlier, paused, approval]}
+      />,
+    )
+    const progress = screen.getByRole('group', { name: 'Run affected paths' })
+    await user.click(within(progress).getByText('Run affected paths'))
+
+    const settled = [earlier, paused, approval, result]
+    rerender(<DifyBuilderConversation busy={false} interrupted={false} items={settled} />)
+    expect(screen.getByRole('group', { name: 'Output' })).toBe(progress)
+    expect(progress).toHaveAttribute('open')
+    expect(within(progress).getByText('Weather query').previousElementSibling).toHaveClass(
+      'i-ri-check-line',
+    )
+    expect(screen.getByRole('group', { name: 'Earlier test' })).toBeInTheDocument()
+
+    unmount()
+    render(<DifyBuilderConversation busy={false} interrupted={false} items={settled} />)
+    expect(screen.getByRole('group', { name: 'Output' })).toBeInTheDocument()
+  })
+
   it('renders the resulting workflow overview and the actual plan step count', () => {
     render(
       <DifyBuilderConversation

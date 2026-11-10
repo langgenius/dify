@@ -23,6 +23,7 @@ from pydantic import model_validator
 
 from runtime_contracts.builder.execution import Digest
 from runtime_contracts.builder.native.approval_contracts import NativeApprovalTerms
+from runtime_contracts.builder.native.canvas_path import NativeCanvasPath
 from runtime_contracts.builder.native.contracts import (
     ID,
     CancellationReceipt,
@@ -118,6 +119,7 @@ class NativeTestPublicReceipt(FrozenDTO):
     pending: tuple[PendingActionDisclosure, ...]
     outcome: Literal["succeeded", "failed", "cancelled", "unknown"] | None
     evidence_refs: tuple[ID, ...]
+    canvas_path: NativeCanvasPath | None = None
     cancellation: CancellationReceipt | None = None
     # Order with generation; version retains its existing execution semantics.
     decision_public_revision: Counter = 0

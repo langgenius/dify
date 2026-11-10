@@ -344,9 +344,42 @@ def test_confirmed_pause_frame_is_public_only_after_durable_parent_barrier(
     result = _run(harness, {"agent-1": signature}, on_workflow_event=lambda _event: order.append("public"))
     assert order == (["barrier", "public"] if barrier_ok else ["barrier"])
     assert result.status == "running"
+    assert result.awaiting_native_approval is barrier_ok
     assert result.verification is not None
     assert result.verification.execution_evidence is not None
     assert result.verification.execution_evidence.sealed is False
+
+    monkeypatch.setattr(WorkflowServiceDifyPort, "run_draft", lambda *_args, **_kwargs: result)
+    actor = Actor(account_id=harness.ids["account"], tenant_id=harness.ids["tenant"])
+    session = Session(
+        id=harness.ids["session"],
+        app_id=harness.ids["app"],
+        tenant_id=actor.tenant_id,
+        owner_account_id=actor.account_id,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_TEST_AND_REPAIR,
+    )
+    context = DifyBuilderContext(test_input_ref=harness.ids["input"])
+    env = Env(
+        dify=WorkflowServiceDifyPort(),
+        repo=SqlDifyBuilderRepository(harness.factory),
+        agent=PlaceholderAgent(),
+        now=lambda: datetime.min,
+    )
+    step = handlers_build.handle_test_and_repair(env, Turn(actor=actor), session, context)
+    assert step.run is not None
+    assert step.run.dify_run_id == "native-1"
+    assert step.run.status == "running"
+    assert context.verify_run_id == step.run.id
+    reply = next(item for item in step.items if item.kind == "assistant_turn")
+    activity = next(a for a in reply.payload["execution"]["activities"] if a["id"] == "build-run-test")
+    assert activity["state"] == "stopped"
+    if barrier_ok:
+        assert step.items == [reply]
+        assert reply.payload["reply_text"] == ""
+    else:
+        card = next(item for item in step.items if item.kind == "test_result")
+        assert card.payload["outcome"] == "execution_unknown"
 
 
 def test_legacy_agent_cannot_use_confirmed_profile_to_bypass_nested_tool_controls(harness: FullRunCase) -> None:

@@ -513,6 +513,21 @@ def append_assistant(
     )
 
 
+def wait_for_native_approval(
+    env: Env, s: Session, fc: DifyBuilderContext, progress: ProgressReporter, run: Run, next_state: PcState
+) -> StepResult:
+    """Settle the Builder command at a confirmed native wait and retain its unfinished Run.
+
+    The native receipt owns live status and controls. The committed conversation
+    keeps the steps observed so far, and the terminal projector completes them
+    when the original Run settles.
+    """
+    fc.verify_run_id = run.id
+    fc.diagnosis, fc.staged_repair, fc.unknown_outcome_count = None, [], 0
+    items = append_assistant(env, s, fc, "", execution=progress.finish(status="stopped"), turn_id=progress.operation_id)
+    return StepResult(next=next_state, context=fc, items=items, run=run)
+
+
 def test_failure_reason(run: Run) -> BuilderText:
     """Return the most specific user-facing reason available for a failed run."""
     for output in run.per_node:
@@ -1478,12 +1493,6 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         # is captured on the Run (log + store) so the decision gate can show it.
         logger.exception("dify_builder verify run failed to launch (session=%s, app=%s)", s.id, s.app_id)
         result = Run(kind="verify", status="failed", per_node=[], error=launch_error_text(exc))
-    if result.status == "succeeded":
-        progress.complete("fix-run-validation")
-    else:
-        progress.fail_step("fix-run-validation")
-    progress.activate("fix-evaluate-validation")
-
     # Python has no equivalent to Go's `runIDSink: &fc.VerifyRunID` pointer
     # aliasing (see runner.py's module docstring), so this handler mints the
     # run id itself and threads the SAME value into both the Run and
@@ -1515,6 +1524,18 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    if result.awaiting_native_approval:
+        return wait_for_native_approval(env, s, fc, progress, run, PcState.FIX_AWAIT_DECISION)
+
+    if result.status == "running":
+        progress.finish(status="stopped")
+    else:
+        if result.status == "succeeded":
+            progress.complete("fix-run-validation")
+        else:
+            progress.fail_step("fix-run-validation")
+        progress.activate("fix-evaluate-validation")
 
     record_run_acceptance(s, fc, run, ti, graph, _hash)
 

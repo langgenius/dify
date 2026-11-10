@@ -1,3 +1,4 @@
+import type { ExecutionProgress } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem } from '../types'
 
 export type DifyBuilderConversationGroup =
@@ -26,6 +27,13 @@ export const groupConversationItems = (
   items: ConversationItem[],
 ): DifyBuilderConversationGroup[] => {
   const groups: DifyBuilderConversationGroup[] = []
+  const resumedProgress = new Map<number, ExecutionProgress>()
+  for (const item of items) {
+    if (item.kind === 'test_result' && item.payload.resumed_progress) {
+      const { source_seq, execution } = item.payload.resumed_progress
+      resumedProgress.set(source_seq, execution)
+    }
+  }
   let pendingCards: ConversationItem[] = []
   // A handler can allocate its output before the runner appends the durable
   // response. They share one CAS version, so present the user's submission
@@ -52,12 +60,14 @@ export const groupConversationItems = (
 
   for (const item of orderedItems) {
     if (item.kind === 'assistant_turn') {
+      const execution = resumedProgress.get(item.seq)
+      const turn = execution ? { ...item, payload: { ...item.payload, execution } } : item
       const attachedKinds = item.payload.cards ?? []
       if (!hasMatchingSuffix(pendingCards, attachedKinds)) {
         flushPendingCards()
         groups.push({
           type: 'assistant',
-          turn: item,
+          turn,
           cards: [],
           invalidated: item.payload.card_state === 'invalidated',
         })
@@ -70,7 +80,7 @@ export const groupConversationItems = (
       flushPendingCards()
       groups.push({
         type: 'assistant',
-        turn: item,
+        turn,
         cards: attachedCards,
         invalidated: item.payload.card_state === 'invalidated',
       })

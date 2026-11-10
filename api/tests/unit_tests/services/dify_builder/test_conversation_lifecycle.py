@@ -22,7 +22,7 @@ from core.dify_builder.models import (
     TestInput,
 )
 from core.dify_builder.state import PcState
-from models.dify_builder import DifyBuilderConversationItem, DifyBuilderRun
+from models.dify_builder import DifyBuilderConversationItem, DifyBuilderExecutionRequest, DifyBuilderRun
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from services.dify_builder.task_controls import ExecutionFence, execution_scope, require_active
@@ -165,6 +165,58 @@ def test_clear_reload_projects_durable_settlement_without_reviving_history(
     assert repo.get_session(session.id)[0].version == receipt["version"]
     with pytest.raises(NotFoundError):
         service.get_session_view(session.id, Actor(account_id="other", tenant_id=TENANT_ID))
+
+
+@pytest.mark.parametrize("request_state", ["sealed", "running"])
+def test_clear_observes_the_original_native_test_without_replaying_it(
+    service: DifyBuilderService,
+    repo: SqlDifyBuilderRepository,
+    request_state: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = seed(repo)
+    request_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    with repo._session_factory() as sql, sql.begin():
+        sql.add(
+            DifyBuilderExecutionRequest(
+                id=request_id,
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                workflow_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                actor_id=ACCOUNT_ID,
+                session_id=session.id,
+                test_input_id="inputs",
+                context={"policy_version": "builder-native-test-v1"},
+                context_digest="a" * 64,
+                state=request_state,
+            )
+        )
+    service._get_app_revision_fn = forbidden
+    service._read_task_dsl_fn = forbidden
+    service._enqueue_fn = forbidden
+    monkeypatch.setattr(service, "_build_session_view", forbidden)
+    clear = partial(
+        lifecycle().clear, service, session.id, _actor(), base_version=1, client_action_id="clear", confirmed=True
+    )
+    receipt = clear()
+    expected = "settled" if request_state == "sealed" else "pending"
+    assert receipt["settlement"] == expected
+    assert service.get_session_view(session.id, _actor()).lifecycle_settlement == expected
+
+    if request_state == "running":
+        with repo._session_factory() as sql, sql.begin():
+            request = sql.get(DifyBuilderExecutionRequest, request_id)
+            assert request is not None
+            request.state = "sealed"
+
+    view = service.get_session_view(session.id, _actor())
+    assert view.conversation_cleared
+    assert view.last_command_id == "clear"
+    assert view.lifecycle_settlement == "settled"
+    assert view.test_execution is None
+    assert repo.list_conversation(session.id) == []
+    assert clear()["settlement"] == expected
+    assert repo.get_session(session.id)[0].version == receipt["version"]
 
 
 @pytest.mark.parametrize("cleared", [True, False])

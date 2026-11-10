@@ -110,13 +110,17 @@ def migrated_builder_tables(flask_app_with_containers: Flask) -> None:
 
     Drops the ``create_all`` execution-request and consent tables (no foreign key references
     them; the per-test cleanup leaves them empty) and the request migration's added test-input
-    column, then runs the actual ``c84e6a217b90`` and ``d82f9a6c31e0`` ``upgrade()`` against the
-    same ``public`` schema every test here uses, and marks each rebuilt table with a comment.
+    column, then applies the actual request, consent, and canvas column migrations
+    against the ``public`` schema every test here uses, and marks the rebuilt tables.
     """
     from extensions.ext_database import db
 
     execution = _migration(EXECUTION_MIGRATION, "builder_execution_migration_for_ci_tables")
     consent = _migration(MIGRATION, "builder_real_call_consent_migration_for_ci_tables")
+    canvas_path = _migration(
+        "migrations/versions/2026_11_10_1200-c34e2f7b5a10_builder_native_canvas_path.py",
+        "builder_canvas_path_migration_for_ci_tables",
+    )
     assert (execution.revision, consent.revision, consent.down_revision) == (
         "c84e6a217b90",
         "d82f9a6c31e0",
@@ -133,6 +137,7 @@ def migrated_builder_tables(flask_app_with_containers: Flask) -> None:
             with Operations.context(MigrationContext.configure(connection)):
                 execution.upgrade()
                 consent.upgrade()
+                canvas_path.upgrade()
             for table, marker in MIGRATED_TABLES.items():
                 connection.execute(text(f"COMMENT ON TABLE {table} IS '{marker}'"))
 

@@ -67,9 +67,12 @@ The controller loads durable conversation groups through a paginated JSON GET.
 Create, action, and message POSTs return JSON. The client opens the session SSE
 stream and applies its `session_ready` snapshot before submitting work. The
 same stream delivers command progress, native test updates, and committed
-cards and replies through `conversation_item_appended`. Disabling Builder
-closes the stream. Re-enabling it restores the saved session and observes its
-existing native test without submitting another run. New-session prompts and
+cards and replies through `conversation_item_appended`. After two minutes without
+a pending command, submission, or unresolved native test, Builder closes the
+stream and stops reconnecting. The next message or action reopens the stream for
+the same session before submission. Disabling Builder closes the stream.
+Re-enabling it restores the saved session and observes its existing native test
+without submitting another run. New-session prompts and
 message commands render the submitted user text immediately. Message turns use
 their client-generated `turn_id`, and the matching durable event supplies sequence and version
 metadata without adding a second bubble. The local display item never
@@ -146,7 +149,10 @@ refresh failure and completion. Only unmount cleanup retains lifecycle effects.
 The refresh module owns canvas-state reset; the outer reset command clears
 the composer and checklist state.
 Native test events retain the editor's existing per-node tracking and navigation.
-The composer uses Stop for a native test in progress or waiting for approval.
+The current native receipt supplies the waiting and running status. The final
+approval schedules continuation of the same Run and records a standard choice
+receipt. Each approval presents the details for its current operation.
+The composer shows Stop during a native test and hides it while a form is open.
 Once cancellation settles, Resume continues the Builder task. A new test
 requires a separate Test Run.
 
@@ -158,9 +164,12 @@ pause, and terminal events. An inner workflow `error` or `workflow_finished`
 does not terminate the outer Builder command. Chatflow message/text events
 without a run ID use the run started in the same command, with native message
 chunks and replacements handled by the shared text callbacks. Complete live
-canvas updates need no subsequent detail or node-execution queries. Canvas
-recovery uses persisted test cards' `dify_run_id` when reopening history or
-recovering missing events.
+canvas updates need no subsequent detail or node-execution queries. On reopen
+or recovery, the current native receipt supplies an unfinished Run's ID.
+Persisted test cards supply IDs for completed runs. Native Test records the
+edges Graphon traverses before and after each approval on the same Run. The
+receipt and result card restore that path with the ordinary canvas edge colors;
+other edges, including branches that share a target, stay neutral.
 Native execution status remains
 authoritative over Builder validation cards. An interrupted run clears live
 animation without inventing a failed result. Canvas refresh completion reapplies

@@ -1,5 +1,5 @@
 import { act, waitFor } from '@testing-library/react'
-import { difyBuilderDraftAtom } from '../../state'
+import { difyBuilderCanComposeAtom, difyBuilderDraftAtom } from '../../state'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
@@ -315,6 +315,52 @@ it('does not restore old context from a delayed snapshot after an acknowledged c
   expect(store.get(difyBuilderConversationAtom)).toEqual([])
   expect(api.conversation).not.toHaveBeenCalled()
   expect(api.clear).toHaveBeenCalledOnce()
+})
+
+it('unlocks the composer on Retry when the original clear settles after its stream closes', async () => {
+  const stream = createControlledEventStream()
+  api.stream.mockResolvedValue(stream.iterable)
+  const { result, store } = renderSessionHook(undefined, undefined, { scripted: false })
+  const before = seed(store)
+  await act(async () => stream.push({ event: 'session_ready', data: before }))
+  let clearId = ''
+  api.clear.mockImplementation(async ({ body }) => {
+    clearId = body.client_action_id
+    return {
+      session_id: 'session-1',
+      version: 5,
+      task_id: 'task-1',
+      task_status: 'abandoned',
+      last_command_id: clearId,
+      conversation_cleared: true,
+      conversation_last_seq: -1,
+      settlement: 'pending',
+    }
+  })
+  await act(async () => expect(await result.current.clearConversation()).toBe(false))
+  const pending = createSessionView({
+    version: 5,
+    task_status: 'abandoned',
+    conversation_cleared: true,
+    run_status: 'complete',
+    canvas_read_only: false,
+    last_command_id: clearId,
+    lifecycle_settlement: 'pending',
+  })
+  await act(async () => {
+    stream.push({ event: 'session_state', data: pending })
+    stream.close()
+  })
+  expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+
+  api.get.mockResolvedValue({ ...pending, lifecycle_settlement: 'settled' })
+  await act(async () => expect(await result.current.refresh()).toBe(true))
+  expect(store.get(difyBuilderCanComposeAtom)).toBe(true)
+  expect(store.get(difyBuilderActiveSessionIdAtom)).toBeNull()
+  expect(store.get(difyBuilderConversationAtom)).toEqual([])
+  expect(api.clear).toHaveBeenCalledOnce()
+  expect(api.get).toHaveBeenCalledOnce()
+  expect(api.create).not.toHaveBeenCalled()
 })
 
 it('isolates an SSE clear projection and keeps its pending settlement blocked', async () => {

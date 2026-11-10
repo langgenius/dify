@@ -512,6 +512,7 @@ export type TaskSummary = {
 export type NativeTestPublicReceipt = {
   can_resume?: boolean
   cancellation?: CancellationReceipt | null
+  canvas_path?: NativeCanvasPath | null
   decision_public_revision?: number
   evidence_refs: Array<string>
   generation: number
@@ -837,6 +838,12 @@ export type CancellationReceipt = {
   status: 'cancelled' | 'cancelling' | 'unknown'
 }
 
+export type NativeCanvasPath = {
+  edges: Array<NativeCanvasEdge>
+  native_run_id: string
+  revision: number
+}
+
 export type PendingActionDisclosure = {
   account_label: string | null
   action: string
@@ -955,6 +962,7 @@ export type TestResultCard = {
   failure_phase?: 'execution' | 'preparation' | null
   failure_reason?: string | BuilderCopy | BuilderTextParts | null
   failure_resource?: string | null
+  native_canvas_path?: NativeCanvasPath | null
   outcome?:
     | 'execution_failed'
     | 'execution_succeeded_needs_review'
@@ -968,6 +976,7 @@ export type TestResultCard = {
     | 'builder-restricted-v1'
     | null
   reply_language?: string
+  resumed_progress?: ResumedTestProgress | null
   review_note?: string | BuilderCopy | BuilderTextParts | null
   safety_outcome?:
     | 'confirmed_run_completed'
@@ -1232,6 +1241,7 @@ export type BuilderCopyId =
   | 'actions.confirmTestOperation'
   | 'actions.continue'
   | 'actions.continueAdjusting'
+  | 'actions.continueTest'
   | 'actions.discardThisChangePlan'
   | 'actions.finish'
   | 'actions.fixAgain'
@@ -1273,6 +1283,8 @@ export type BuilderCopyId =
   | 'decision.howShouldBuilderRecover'
   | 'decision.isThisChangePlanReadyToApply'
   | 'decision.isThisWorkflowPlanReadyToApply'
+  | 'decision.testOperationApproval'
+  | 'decision.testOperationApprovalDescription'
   | 'decision.whatShouldBuilderDoNext'
   | 'decision.whatShouldBuilderDoWithTheAppliedFix'
   | 'decision.whatShouldBuilderDoWithTheBuiltWorkflow'
@@ -1493,6 +1505,16 @@ export type OptionInput = {
   required?: boolean
 }
 
+export type NativeCanvasEdge = {
+  edge_id: string | null
+  source: string
+  source_handle: string
+  source_status?: NativeCanvasNodeStatus | null
+  target: string
+  target_handle: string
+  target_status?: NativeCanvasNodeStatus | null
+}
+
 export type NativeApprovalTerms = {
   expires_at: string
   max_calls: number
@@ -1543,6 +1565,11 @@ export type ResourceOption = {
   label: string
   meta: string
   readiness: string
+}
+
+export type ResumedTestProgress = {
+  execution: ExecutionProgress
+  source_seq: number
 }
 
 export type WorkflowStreamEventLiteralWorkflowStartedData = {
@@ -1714,6 +1741,15 @@ export type DifyBuilderExecutionActivityResponse = {
   parent_id?: string | null
   state: 'active' | 'done' | 'failed' | 'stopped'
 }
+
+export type NativeCanvasNodeStatus =
+  | 'exception'
+  | 'failed'
+  | 'paused'
+  | 'retry'
+  | 'running'
+  | 'stopped'
+  | 'succeeded'
 
 export type ExecutionActivity = {
   id: string

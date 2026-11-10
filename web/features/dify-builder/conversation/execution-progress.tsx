@@ -102,6 +102,11 @@ export const ExecutionProgress = memo(
       summaryActivity =
         activities.find((activity) => activity.state === 'failed') ?? summaryActivity
     }
+    if (execution.status === 'stopped') {
+      summaryActivity =
+        activities.find((activity) => activity.kind === 'stage' && activity.state === 'stopped') ??
+        summaryActivity
+    }
 
     return (
       <details

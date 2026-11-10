@@ -178,7 +178,7 @@ const DifyBuilderPanelContent = () => {
                         ? localUserMessage
                         : null
                     }
-                    busy={interactionBusy || !canvasReady}
+                    busy={!view?.conversation_cleared && (interactionBusy || !canvasReady)}
                     interrupted={interrupted}
                     onStreamingContentChange={scrollToBottomIfPinned}
                   />

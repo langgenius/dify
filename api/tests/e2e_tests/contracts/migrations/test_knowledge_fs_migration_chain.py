@@ -32,7 +32,10 @@ def _scripts() -> ScriptDirectory:
 
 def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
     scripts = _scripts()
-    assert scripts.get_heads() == ["7d95a2e61346"]
+    assert scripts.get_heads() == ["c34e2f7b5a10"]
+    canvas_path = scripts.get_revision("c34e2f7b5a10")
+    assert canvas_path is not None
+    assert canvas_path.down_revision == "7d95a2e61346"
     current = scripts.get_revision("7d95a2e61346")
     assert current is not None
     assert isinstance(current.down_revision, tuple)

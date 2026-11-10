@@ -137,6 +137,8 @@ class PublicationDecision:
 
 @dataclass(kw_only=True)
 class Run:
+    """Builder's run facts. The live approval flag requires an acknowledged native wait."""
+
     execution_refusal: BuilderExecutionRefusal | None = None
     id: str = ""
     session_id: str = ""
@@ -158,6 +160,7 @@ class Run:
     tokens: int = 0
     elapsed_ms: int = 0
     immutable: bool = False
+    awaiting_native_approval: bool = False
 
 
 @dataclass(kw_only=True)

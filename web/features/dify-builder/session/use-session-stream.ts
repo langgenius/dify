@@ -3,7 +3,7 @@
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { SessionView } from '../types'
 import type { SessionStreamOutcome } from './types'
-import { useStore } from 'jotai'
+import { atom, useStore } from 'jotai'
 import { useCallback, useEffect, useEffectEvent, useRef } from 'react'
 import { getSessionStream } from './client'
 import {
@@ -12,10 +12,34 @@ import {
   streamErrorMessage,
   UNEXPECTED_EOF_ERROR,
 } from './errors'
-import { difyBuilderActiveSessionIdAtom } from './state'
+import { hasUnresolvedNativeTest, isActiveView } from './projection'
+import {
+  difyBuilderActiveCommandAtom,
+  difyBuilderActiveSessionIdAtom,
+  difyBuilderLifecycleControlAtom,
+  difyBuilderMaterialControlAtom,
+  difyBuilderSessionBusyAtom,
+  difyBuilderSessionViewAtom,
+} from './state'
 
 const RECONNECT_DELAY_MS = 1000
+const IDLE_TIMEOUT_MS = 2 * 60_000
 const MAX_RECENT_OUTCOMES = 16
+
+const sessionIdleAtom = atom((get) => {
+  const view = get(difyBuilderSessionViewAtom)
+  return (
+    view !== null &&
+    view.session_id === get(difyBuilderActiveSessionIdAtom) &&
+    !view.conversation_cleared &&
+    !isActiveView(view) &&
+    !hasUnresolvedNativeTest(view) &&
+    !get(difyBuilderActiveCommandAtom) &&
+    !get(difyBuilderSessionBusyAtom) &&
+    get(difyBuilderLifecycleControlAtom)?.phase !== 'pending' &&
+    get(difyBuilderMaterialControlAtom)?.phase !== 'pending'
+  )
+})
 
 type StreamUpdate = {
   view?: SessionView
@@ -97,12 +121,35 @@ export function useDifyBuilderSessionStream({
   onDisconnect: () => void
 }) {
   const store = useStore()
-  const observationRef = useRef<SessionObservation | null>(null)
+  const startObservationRef = useRef<
+    ((sessionId: string) => SessionObservation | undefined) | null
+  >(null)
   const projectEvent = useEffectEvent(onEvent)
   const disconnect = useEffectEvent(onDisconnect)
 
   useEffect(() => {
     if (!enabled) return
+
+    let currentObservation: SessionObservation | undefined
+    let idleTimeout: ReturnType<typeof setTimeout> | undefined
+
+    const clearIdleTimeout = () => {
+      clearTimeout(idleTimeout)
+      idleTimeout = undefined
+    }
+
+    const stopObserving = () => {
+      clearIdleTimeout()
+      const observation = currentObservation
+      currentObservation = undefined
+      observation?.controller.abort()
+    }
+
+    const syncIdleTimeout = () => {
+      if (currentObservation && store.get(sessionIdleAtom))
+        idleTimeout ??= setTimeout(stopObserving, IDLE_TIMEOUT_MS)
+      else clearIdleTimeout()
+    }
 
     const observe = async (observation: SessionObservation) => {
       const { controller, sessionId } = observation
@@ -156,26 +203,39 @@ export function useDifyBuilderSessionStream({
       }
     }
 
-    const connect = () => {
-      const sessionId = store.get(difyBuilderActiveSessionIdAtom)
-      if (sessionId === observationRef.current?.sessionId) return
-      observationRef.current?.controller.abort()
-      const observation = sessionId ? new SessionObservation(sessionId) : null
-      observationRef.current = observation
-      if (observation) void observe(observation)
+    const startObserving = (sessionId: string) => {
+      if (sessionId !== store.get(difyBuilderActiveSessionIdAtom)) return
+      if (currentObservation?.sessionId === sessionId && !currentObservation.failure)
+        return currentObservation
+      stopObserving()
+      const observation = new SessionObservation(sessionId)
+      currentObservation = observation
+      void observe(observation)
+      syncIdleTimeout()
+      return observation
     }
-    const unsubscribe = store.sub(difyBuilderActiveSessionIdAtom, connect)
-    connect()
+    startObservationRef.current = startObserving
+
+    const syncSession = () => {
+      const sessionId = store.get(difyBuilderActiveSessionIdAtom)
+      if (sessionId) startObserving(sessionId)
+      else stopObserving()
+    }
+    const unsubscribeSession = store.sub(difyBuilderActiveSessionIdAtom, syncSession)
+    const unsubscribeIdle = store.sub(sessionIdleAtom, syncIdleTimeout)
+    syncSession()
     return () => {
-      unsubscribe()
-      observationRef.current?.controller.abort()
-      observationRef.current = null
+      startObservationRef.current = null
+      unsubscribeSession()
+      unsubscribeIdle()
+      stopObserving()
     }
   }, [enabled, store])
 
   return useCallback(async (sessionId: string, signal: AbortSignal) => {
-    const observation = observationRef.current
-    if (observation?.sessionId !== sessionId) throw new Error(UNEXPECTED_EOF_ERROR)
+    signal.throwIfAborted()
+    const observation = startObservationRef.current?.(sessionId)
+    if (!observation) throw new Error(UNEXPECTED_EOF_ERROR)
     await observation.waitFor(
       (current) => (current.ready ? true : undefined),
       AbortSignal.any([signal, AbortSignal.timeout(15000)]),

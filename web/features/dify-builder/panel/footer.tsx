@@ -151,6 +151,11 @@ export const DifyBuilderPanelFooter = ({
         taskControl === null &&
         taskControlOperation !== 'resume' &&
         !testCancelling))
+  const formVisible =
+    interactionVisible &&
+    (activeInteraction?.card.kind === 'form' ||
+      activeInteraction?.card.kind === 'resource_select' ||
+      Boolean(decision?.options?.length))
   const dockBusy = pendingFix
     ? lifecycleControl !== null || taskControl !== null
     : interactionBusy || !canvasReady
@@ -263,7 +268,7 @@ export const DifyBuilderPanelFooter = ({
               />
             </AnimatedInteractionDock>
           )}
-          <DifyBuilderComposer attachmentsOnly={interactionVisible} />
+          <DifyBuilderComposer attachmentsOnly={interactionVisible} hideStop={formVisible} />
         </Suspense>
       </div>
     </footer>

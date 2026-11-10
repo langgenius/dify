@@ -126,6 +126,7 @@ export function useDifyBuilderSessionController(
   const { t } = useTranslation(['difyBuilder'])
 
   const onSessionStateChanged = runEvents?.onSessionStateChanged
+  const onNativeCanvasPath = runEvents?.onNativeCanvasPath
 
   const onAttachmentsAccepted = runEvents?.onAttachmentsAccepted
 
@@ -400,6 +401,9 @@ export function useDifyBuilderSessionController(
         onAttachmentsAccepted?.(material.attachments, material.text)
       }
       if (projectLifecycleSettlement(projected, reading)) return true
+      const path = projected.test_execution?.canvas_path
+      if (path && path.native_run_id === projected.test_execution?.native_run_id)
+        onNativeCanvasPath?.(projected.session_id, projected.version, path)
       onSessionStateChanged?.(projected)
       const canvasCursor = canvasCursorRef.current
       if (
@@ -414,6 +418,7 @@ export function useDifyBuilderSessionController(
     },
     [
       onAttachmentsAccepted,
+      onNativeCanvasPath,
       onSessionStateChanged,
       projectLifecycleSettlement,
       setActiveSessionId,
@@ -445,7 +450,7 @@ export function useDifyBuilderSessionController(
       const throughSequence = projected.conversation_last_seq
       const afterSequence = (items[0]?.seq ?? 0) - 1
       const covered = hasConversationRange(items, afterSequence, throughSequence)
-      if (restoreRun && covered && items.length) runEvents?.restoreRun(view.session_id, items)
+      if (restoreRun && covered) runEvents?.restoreRun(view.session_id, items, projected)
       const historyApplied =
         covered ||
         (items.length

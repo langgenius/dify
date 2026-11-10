@@ -5,7 +5,7 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createDeferred } from '@/test/deferred'
-import { createDifyBuilderRuntime } from '@/test/fixtures/dify-builder'
+import { createDifyBuilderRuntime, createNativeApproval } from '@/test/fixtures/dify-builder'
 import DifyBuilderPanel from '..'
 import { createBuilderQueryClient } from '../../__tests__/model-fixtures'
 import {
@@ -169,19 +169,54 @@ it('keeps truncated model selections and long inputs inside both the active form
 })
 
 it('keeps native approval choices and submit in view while long details scroll', async () => {
-  const title = 'How should Builder continue?'
-  const detail =
-    'The command downloads the configured skill into the workspace and reads the script help.'
-  const description = `Review the proposed Shell call. ${Array.from({ length: 12 }, () => detail).join(' ')}`
+  const title = 'Test operation approval'
+  const risk = 'The operation reads one test message.'
+  const pending = createNativeApproval({ risk_notice: `${risk} `.repeat(12).trim() })
+  const payload = {
+    request_id: 'request-1',
+    pending_operation_id: pending.pending_operation_id,
+    pending_version: pending.version,
+    scope_digest: pending.scope_digest,
+  }
+  const finishApproval = createDeferred<boolean>()
+  const runAction = vi.fn(() => finishApproval.promise)
+  const approve = { id: 'confirm_test_operation', label: 'Allow once' }
   const options = [
-    { id: 'confirm_test_operation', label: 'Allow once' },
+    approve,
     { id: 'deny_test_operation', label: 'Reject' },
     { id: 'cancel_test', label: 'Cancel test' },
   ]
   const { screen } = await renderPanel(
-    [],
+    [
+      {
+        seq: 1,
+        at_version: 3,
+        kind: 'assistant_turn',
+        payload: {
+          turn_id: 'native-wait',
+          execution: {
+            status: 'stopped',
+            activities: [
+              {
+                id: 'edit-run-test',
+                kind: 'stage',
+                label: 'Run affected workflow paths',
+                state: 'stopped',
+              },
+              {
+                id: 'node:start',
+                kind: 'node',
+                parent_id: 'edit-run-test',
+                label: 'Start',
+                state: 'done',
+              },
+            ],
+          },
+        },
+      },
+    ],
     {
-      actions: [cancelTest],
+      actions: [{ ...approve, kind: 'primary', payload }, cancelTest],
       phase: 'test',
       run_status: 'waiting_confirmation',
       test_execution: {
@@ -189,21 +224,28 @@ it('keeps native approval choices and submit in view while long details scroll',
         native_status: 'paused',
         status: 'waiting',
         wait_reason: 'approval',
+        pending: [pending],
       },
       decision: {
         title,
-        description,
+        description: 'The test resumes automatically after approval.',
         options,
         submit: { id: 'confirm', label: 'Submit', kind: 'primary' },
       },
     },
     480,
+    createDifyBuilderRuntime({ session: { runAction } }),
   )
   const dock = screen.getByRole('region', { name: title })
   const submit = dock.getByRole('button', { name: 'Submit' })
   const stop = screen.getByRole('button', { name: 'difyBuilder.taskControl.stop' })
   await expect.element(submit).toBeDisabled()
-  await expect.element(stop).toBeEnabled()
+  await expect.element(stop).not.toBeInTheDocument()
+  const run = screen.getByRole('article', { name: 'difyBuilder.cardCategory.test' })
+  await expect.element(screen.getByText('Run affected workflow paths')).toBeVisible()
+  await expect
+    .element(run.getByRole('status'))
+    .toHaveTextContent('difyBuilder.nativeTest.waitingForApproval')
   await expect
     .element(screen.getByRole('button', { name: cancelTest.label }))
     .not.toBeInTheDocument()
@@ -212,7 +254,6 @@ it('keeps native approval choices and submit in view while long details scroll',
     dock.getByRole('radio', { name: 'Allow once' }),
     dock.getByRole('radio', { name: 'Reject' }),
     submit,
-    stop,
   ]) {
     await expect.element(control).toBeVisible()
     await expect
@@ -228,6 +269,9 @@ it('keeps native approval choices and submit in view while long details scroll',
 
   const details = dock.getByRole('region', { name: 'common.operation.viewDetails' })
   await expect.element(details).toBeVisible()
+  await expect.element(details.getByText('Read one message')).toBeInTheDocument()
+  await expect.element(details.getByText('Synthetic message')).toBeInTheDocument()
+  await expect.element(details.getByText(pending.risk_notice!)).toBeInTheDocument()
   const viewport = details.element()
   expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight)
   const submitTop = submit.element().getBoundingClientRect().top
@@ -238,8 +282,20 @@ it('keeps native approval choices and submit in view while long details scroll',
     .poll(() => viewport.scrollTop + viewport.clientHeight)
     .toBeGreaterThanOrEqual(viewport.scrollHeight - 1)
   expect(submit.element().getBoundingClientRect().top).toBe(submitTop)
+  await details.getByText('difyBuilder.nativeTest.parameters').click()
+  await expect.element(details.getByText('limit')).toBeVisible()
   await dock.getByRole('radio', { name: 'Allow once' }).click()
-  await expect.element(dock.getByRole('button', { name: 'Allow once' })).toBeEnabled()
+  await dock.getByRole('button', { name: 'Allow once' }).click()
+  const transcript = screen.getByRole('log', { name: 'difyBuilder.panelTitle' })
+  await expect.element(transcript.getByRole('heading', { name: title })).toBeVisible()
+  await expect.element(transcript.getByText('Allow once')).toBeVisible()
+  await expect.element(transcript.getByText(pending.risk_notice!)).not.toBeInTheDocument()
+  expect(runAction).toHaveBeenCalledExactlyOnceWith(
+    'confirm',
+    { option_id: 'confirm_test_operation', ...payload },
+    expect.objectContaining({ interaction_kind: 'choice', question: title, answer: 'Allow once' }),
+  )
+  finishApproval.resolve(true)
 })
 
 it('uses Stop for the running native test and offers Resume after it settles', async () => {
@@ -286,6 +342,11 @@ it('uses Stop for the running native test and offers Resume after it settles', a
 
   const stop = screen.getByRole('button', { name: 'difyBuilder.taskControl.stop' })
   const resume = screen.getByRole('button', { name: 'difyBuilder.taskControl.resume' })
+  await expect
+    .element(
+      screen.getByRole('article', { name: 'difyBuilder.cardCategory.test' }).getByRole('status'),
+    )
+    .toHaveTextContent('difyBuilder.running')
   await expect
     .element(screen.getByRole('button', { name: cancelTest.label }))
     .not.toBeInTheDocument()

@@ -18,6 +18,7 @@ from typing import Any, ClassVar, Literal, override
 
 from core.dify_builder.models import ConversationItem, EntryMode, TaskSummary
 from runtime_contracts.builder.execution import HttpResponseFixtureV1, decode_http_fixture_submission
+from runtime_contracts.builder.native.canvas_path import NativeCanvasPath
 from runtime_contracts.builder.presentation import BuilderPresentation, BuilderText
 
 
@@ -453,6 +454,14 @@ class ExecutionProgress:
     activities: list[ExecutionActivity] = field(default_factory=list)
 
 
+@dataclass(frozen=True, slots=True)
+class ResumedTestProgress:
+    """Final progress for the earlier assistant item that paused for approval."""
+
+    source_seq: int
+    execution: ExecutionProgress
+
+
 # ---------------------------------------------------------------------------
 # Cards (spec §4.3). Each subclasses ``_Card``: ``kind`` is a ``ClassVar``
 # discriminant (not a dataclass field), so ``dataclasses.asdict(card)`` is
@@ -642,6 +651,8 @@ class TestResultCard(_Card, BuilderPresentation):
     business_acceptance_case_id: str | None = None
     terminal_outputs: dict[str, Any] | None = None
     executed_node_ids: list[str] = field(default_factory=list)
+    native_canvas_path: NativeCanvasPath | None = None
+    resumed_progress: ResumedTestProgress | None = None
     review_note: BuilderText | None = None
     execution_mode: Literal["restricted", "mock", "confirmed_tool", "confirmed_run"] | None = None
     safety_outcome: (

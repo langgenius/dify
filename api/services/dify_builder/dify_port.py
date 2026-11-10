@@ -2082,6 +2082,8 @@ class WorkflowServiceDifyPort:
         # to diagnose/rebuild it. C04 exposes waiting only after the native
         # WorkflowPause has actually persisted; Builder retains its same Run.
         native_row = result[1]
+        from runtime_contracts.builder.native.contracts import WaitingReceipt
+
         native_graph = native_row.graph_dict if native_row is not None else {}
         has_agent = (
             any(
@@ -2102,9 +2104,10 @@ class WorkflowServiceDifyPort:
                     native_run_id=run.dify_run_id,
                     paused=paused,
                 )
-                if paused and receipt is not None:
+                if isinstance(receipt, WaitingReceipt):
                     run.status = "running"
-                    run.error = "Agent test is waiting for explicit call confirmation; continue the same Run."
+                    run.error = ""
+                    run.awaiting_native_approval = receipt.wait_reason == "approval"
                     if pending_pause_event is not None and on_workflow_event is not None:
                         on_workflow_event(pending_pause_event)
                 elif receipt is not None and receipt.status == "unknown":

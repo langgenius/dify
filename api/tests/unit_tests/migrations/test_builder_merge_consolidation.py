@@ -17,7 +17,8 @@ from alembic.script.base import Script
 from alembic.script.revision import RevisionMap
 
 _MIGRATIONS = Path(__file__).resolve().parents[3] / "migrations"
-_HEAD = "7d95a2e61346"
+_MERGE = "7d95a2e61346"
+_HEAD = "c34e2f7b5a10"
 _REMOVED = {
     "733e4c46f90e": ("a9cc8d552db4", "e7b2a9c4d601"),
     "f9a3c62de418": ("d82f9a6c31e0", "a8c9e2f1b704"),
@@ -110,7 +111,8 @@ _STARTS = [
 def test_only_final_feature_merge_is_retained() -> None:
     current = _metadata()
     assert not _REMOVED.keys() & current.keys()
-    assert current[_HEAD]["down_revision"] == ("6c84f1d90235", "53c10126d551")
+    assert current[_MERGE]["down_revision"] == ("6c84f1d90235", "53c10126d551")
+    assert current[_HEAD]["down_revision"] == _MERGE
     assert _directory(current).get_heads() == [_HEAD]
 
 

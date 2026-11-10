@@ -9,6 +9,7 @@ import { difyBuilderSessionViewAtom } from '../session/state'
 import { ChoiceInteraction } from './choice'
 import { InteractionDockShell } from './dock-shell'
 import { FormInteraction } from './form'
+import { NativeApprovalDetails } from './native-approval-details'
 import { ResourceInteraction } from './resource'
 
 export const DifyBuilderInteractionDock = ({
@@ -83,16 +84,41 @@ export const DifyBuilderInteractionDock = ({
           description={renderText(decision.description)}
         />
       )
+    const approvalOffered = decision.options?.some(
+      (option) => option.id === 'confirm_test_operation',
+    )
+    const approvalAction = view?.actions?.find((action) => action.id === 'confirm_test_operation')
+    const receipt = view?.test_execution
+    const pendingApproval =
+      receipt &&
+      receipt.request_id === approvalAction?.payload?.request_id &&
+      receipt.pending.find(
+        (pending) =>
+          pending.wait_reason === 'approval' &&
+          pending.decision_status === 'awaiting_decision' &&
+          pending.pending_operation_id === approvalAction?.payload?.pending_operation_id &&
+          pending.version === approvalAction?.payload?.pending_version &&
+          pending.scope_digest === approvalAction?.payload?.scope_digest,
+      )
     return (
       <ChoiceInteraction
         key={choiceKey}
         actions={view?.actions}
-        busy={busy}
+        busy={busy || (Boolean(approvalOffered) && !pendingApproval)}
         decision={decision}
         context={view?.pending_fix_context}
         recheckReady={recheckReady}
         submitInteraction={submitWithResponseCopy}
-      />
+      >
+        {approvalOffered &&
+          (pendingApproval ? (
+            <NativeApprovalDetails pending={pendingApproval} />
+          ) : (
+            <p role="status" className="mb-3 system-xs-regular text-text-secondary">
+              {t(($) => $['nativeTest.approvalUnavailable'], { ns: 'difyBuilder' })}
+            </p>
+          ))}
+      </ChoiceInteraction>
     )
   }
 

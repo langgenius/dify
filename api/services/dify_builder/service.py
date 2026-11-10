@@ -69,7 +69,14 @@ from services.dify_builder.application.ports import Repository
 from services.dify_builder.business_acceptance import context_publication_decision
 from services.dify_builder.receipt_snapshot import apply_receipt_snapshot
 from services.dify_builder.repair_gate import NO_REPAIR_ACTIONS, NO_REPAIR_DECISION_COPY
-from services.dify_builder.test_actions import TEST_ACTIONS, TestActionPort, parse_test_action
+from services.dify_builder.test_actions import (
+    TEST_ACTIONS,
+    TestActionPort,
+    control_actions,
+    control_label,
+    control_title,
+    parse_test_action,
+)
 
 if TYPE_CHECKING:
     from core.dify_builder.real_call_consent import ConsentReceipt
@@ -1723,7 +1730,10 @@ class DifyBuilderService:
         from services.dify_builder.conversation_lifecycle import cleared_session_view, is_conversation_cleared
 
         if is_conversation_cleared(fc):
-            return cleared_session_view(s, fc)
+            view = cleared_session_view(s, fc)
+            if view.lifecycle_settlement == "pending" and self._repo.cleared_execution_settled(s):
+                view.lifecycle_settlement = "settled"
+            return view
         if fc.paused and fc.task_control.get("settlement") in {"pending", "unknown"}:
             from services.dify_builder.task_control_service import observe_stop
 
@@ -1825,6 +1835,7 @@ class DifyBuilderService:
         )
         test_execution = None
         receipt = None
+        native_controls = False
         if self._test_actions is not None:
             receipt = self._test_actions.current(
                 actor=Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id),
@@ -1833,23 +1844,20 @@ class DifyBuilderService:
             )
             if receipt is not None:
                 test_execution = receipt.model_dump(mode="json")
-                if receipt.status != "terminal" or receipt.outcome == "unknown":
-                    from services.dify_builder.test_actions import control_actions
-
+                native_controls = receipt.status != "terminal" or receipt.outcome == "unknown"
+                if native_controls:
                     actions = control_actions(receipt)
         decision = _decision_for(st, actions)
-        if (
-            receipt is not None
-            and test_execution is not None
-            and (test_execution["status"] != "terminal" or test_execution["outcome"] == "unknown")
-        ):
-            from services.dify_builder.test_actions import test_disclosure_text
-
-            if decision is not None:
-                decision.description = test_disclosure_text(receipt)
-                decision.default_option_id = ""  # risk approval must be an explicit choice
-                for option in decision.options:
-                    option.is_default = False
+        if native_controls and decision is not None:
+            decision.title = control_title(decision.options[0].id)
+            decision.description = (
+                copy_text(BuilderCopyId.DECISION_TEST_OPERATION_APPROVAL_DESCRIPTION)
+                if decision.options[0].id == "confirm_test_operation"
+                else ""
+            )
+            decision.default_option_id = ""
+            for option in decision.options:
+                option.is_default = False
         if decision is not None and fc.recovery_class:
             decision.description = _RECOVERY_DESCRIPTION[fc.recovery_class]
         checkpoint = (
@@ -2192,14 +2200,12 @@ class DifyBuilderService:
             )
         return self._build_session_view(s, fc), True, []
 
-    @staticmethod
-    def _test_action_receipt_text(kind, receipt):
-        from runtime_contracts.builder.presentation import text_parts
-        from services.dify_builder.test_actions import control_label, test_disclosure_text
-
-        return asdict(text_parts(control_label(kind), "\n", test_disclosure_text(receipt)))
-
     def _prepare_test_action(self, s: Session, fc: DifyBuilderContext, actor: Actor, action: Action):
+        """Apply an authorized native control once and commit its choice receipt.
+
+        The command digest and native owner retain retry identity. Public
+        presentation records the chosen action, independently of its scope.
+        """
         if self._test_actions is None:
             raise BadRequestError("native test controls unavailable")
         self._authorize_app(s.app_id, actor, AppAccess.TEST_AND_RUN)
@@ -2233,7 +2239,16 @@ class DifyBuilderService:
             )
             if current_request_id != command.request_id:
                 raise ConflictError("test request is no longer current")
-            saved_receipt = self._test_actions.execute(
+            response = InteractionResponseItem(
+                reply_language=fc.reply_language,
+                interaction_kind="choice",
+                question=control_title(action.kind),
+                answer=control_label(action.kind),
+                submitted_data={"option_id": action.kind},
+            )
+            if action.receipt_snapshot is not None:
+                apply_receipt_snapshot(response, action.receipt_snapshot)
+            self._test_actions.execute(
                 actor=actor,
                 session_id=s.id,
                 test_input_id=fc.test_input_ref,
@@ -2246,10 +2261,10 @@ class DifyBuilderService:
             fc.last_command_id = action.command_id
             item = ConversationItem(
                 seq=fc.next_seq,
-                kind="decision",
+                kind="interaction_response",
                 at_version=s.version + 1,
                 payload={
-                    "text": self._test_action_receipt_text(action.kind, saved_receipt),
+                    **asdict(response),
                     "test_action_kind": action.kind,
                     "test_command_id": action.command_id,
                     "test_action_digest": fingerprint,

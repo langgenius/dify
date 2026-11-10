@@ -1,3 +1,4 @@
+import type { NativeCanvasPath } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { SessionRunEvents } from '../session/types'
 import type { BuilderRun } from './run-projection'
 import type { Edge, Node } from '@/app/components/workflow/types'
@@ -13,7 +14,7 @@ import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { requestErrorMessage } from '../session/errors'
 import { difyBuilderRunRestoreErrorAtom } from '../state'
-import { getHistoricalRun } from './run-projection'
+import { getHistoricalRun, projectNativeCanvasEdges } from './run-projection'
 import { useWorkflowEventDispatch } from './use-workflow-event-dispatch'
 
 type ObservedRun = BuilderRun & {
@@ -26,6 +27,7 @@ type CanvasRunState = {
   nodes: Map<string, Partial<Node['data']>>
   edges: Map<string, Partial<NonNullable<Edge['data']>>>
 }
+type NativeCanvasObservation = { sessionId: string; version: number; path: NativeCanvasPath }
 
 export const useDifyBuilderRunEvents = (appId?: string) => {
   const canvas = useStoreApi()
@@ -36,6 +38,39 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
   const runRef = useRef<ObservedRun | null>(null)
   const requestIdRef = useRef(0)
   const canvasRunRef = useRef<CanvasRunState | null>(null)
+  const nativeCanvasRef = useRef<NativeCanvasObservation | null>(null)
+
+  const paintNativeCanvas = useCallback(
+    (path: NativeCanvasPath) => {
+      const { edges, setEdges } = canvas.getState()
+      const projected = projectNativeCanvasEdges(edges as Edge[], path)
+      if (projected !== edges) setEdges(projected)
+    },
+    [canvas],
+  )
+
+  const onNativeCanvasPath = useCallback(
+    (sessionId: string, version: number, path: NativeCanvasPath) => {
+      const current = nativeCanvasRef.current
+      if (
+        current?.sessionId === sessionId &&
+        (current.path.native_run_id === path.native_run_id
+          ? current.path.revision >= path.revision
+          : current.version > version)
+      )
+        return
+      nativeCanvasRef.current = { sessionId, version, path }
+      const displayed = workflow.getState().workflowRunningData?.result.id
+      const run = runRef.current
+      if (
+        !displayed ||
+        displayed === path.native_run_id ||
+        (run?.sessionId === sessionId && run.runId === displayed)
+      )
+        paintNativeCanvas(path)
+    },
+    [paintNativeCanvas, workflow],
+  )
 
   const captureCanvasRun = useCallback(() => {
     const { getNodes, edges } = canvas.getState()
@@ -116,7 +151,12 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
   const onCanvasRefreshed = useCallback(() => {
     const run = runRef.current
     const saved = canvasRunRef.current
-    if (!run || !saved || workflow.getState().workflowRunningData?.result.id !== run.runId) return
+    const displayed = workflow.getState().workflowRunningData?.result.id
+    const path = nativeCanvasRef.current?.path
+    if (!run || !saved || displayed !== run.runId) {
+      if (path && (!displayed || displayed === path.native_run_id)) paintNativeCanvas(path)
+      return
+    }
     const { getNodes, setNodes, edges, setEdges } = canvas.getState()
     setNodes(
       (getNodes() as Node[]).map((node) => ({
@@ -124,21 +164,24 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
         data: { ...node.data, ...saved.nodes.get(node.id) },
       })),
     )
-    setEdges(
-      (edges as Edge[]).map((edge) => ({
-        ...edge,
-        data: { ...edge.data, ...saved.edges.get(edge.id) },
-      })),
+    const restored = (edges as Edge[]).map((edge) =>
+      edge.data ? { ...edge, data: { ...edge.data, ...saved.edges.get(edge.id) } } : edge,
     )
-  }, [canvas, workflow])
+    setEdges(
+      path?.native_run_id === run.runId ? projectNativeCanvasEdges(restored, path) : restored,
+    )
+  }, [canvas, paintNativeCanvas, workflow])
 
   const reset = useCallback(() => {
     requestIdRef.current += 1
     setRestoreError('')
     const run = runRef.current
+    const path = nativeCanvasRef.current?.path
     runRef.current = null
     canvasRunRef.current = null
-    if (!run || workflow.getState().workflowRunningData?.result.id !== run.runId) return
+    nativeCanvasRef.current = null
+    const displayed = workflow.getState().workflowRunningData?.result.id
+    if (displayed ? displayed !== run?.runId && displayed !== path?.native_run_id : !path) return
     workflow.setState({ workflowRunningData: undefined })
     clearCanvasRun()
   }, [clearCanvasRun, setRestoreError, workflow])
@@ -175,6 +218,9 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
         requestIdRef.current += 1
         setRestoreError('')
         canvasRunRef.current = null
+        const native = nativeCanvasRef.current
+        if (native?.sessionId !== event.session_id || native.path.native_run_id !== runId)
+          nativeCanvasRef.current = null
         runRef.current = {
           sessionId: event.session_id,
           runId,
@@ -193,7 +239,14 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
       // A reconnect may join midway through a run. Restore that run from durable
       // history instead of invoking node callbacks without its started event.
       if (!run || run.source !== 'live' || run.runId !== runId) return
+      const path = nativeCanvasRef.current?.path
+      const previousEdges = canvas.getState().edges
       dispatch(payload)
+      if (
+        path?.native_run_id === runId &&
+        (previousEdges !== canvas.getState().edges || payload.event === 'workflow_started')
+      )
+        paintNativeCanvas(path)
       if (
         payload.event === 'workflow_finished' ||
         payload.event === 'workflow_paused' ||
@@ -201,7 +254,7 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
       )
         run.complete = true
     },
-    [clearCanvasRun, dispatch, setRestoreError, workflow],
+    [canvas, clearCanvasRun, dispatch, paintNativeCanvas, setRestoreError, workflow],
   )
 
   const onStreamInterrupted = useCallback(() => {
@@ -219,20 +272,35 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
   )
 
   const restoreRun = useCallback<SessionRunEvents['restoreRun']>(
-    (sessionId, items) => {
-      const restored = getHistoricalRun(sessionId, items)
+    (sessionId, items, view) => {
+      const restored = getHistoricalRun(sessionId, items, view)
       const current = runRef.current
+      const displayedResult = workflow.getState().workflowRunningData?.result
+      const receipt = view?.test_execution
+      const native = nativeCanvasRef.current
+      const endedPausedRun =
+        receipt?.status === 'terminal' &&
+        receipt.native_run_id === displayedResult?.id &&
+        displayedResult?.status === 'paused' &&
+        receipt.native_status !== 'paused'
       if (
         !restored ||
         !appId ||
+        (native?.sessionId === sessionId &&
+          native.path.native_run_id !== restored.runId &&
+          native.version > restored.atVersion) ||
         (current?.sessionId === sessionId &&
           (current.atVersion > restored.atVersion ||
             (current.runId === restored.runId &&
-              ((current.complete && !current.interrupted) || current.restoring))))
+              ((current.complete && !current.interrupted && !endedPausedRun) ||
+                current.restoring))))
       )
         return
 
-      const displayedRunId = workflow.getState().workflowRunningData?.result.id
+      if (restored.canvasPath?.native_run_id === restored.runId)
+        onNativeCanvasPath(sessionId, restored.atVersion, restored.canvasPath)
+
+      const displayedRunId = displayedResult?.id
       const run: ObservedRun = { ...restored, source: 'history', complete: false, restoring: true }
       runRef.current = run
       const requestId = ++requestIdRef.current
@@ -253,6 +321,13 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
       ])
         .then(([detail, response]) => {
           if (requestIdRef.current !== requestId || runRef.current !== run) return
+          const native = nativeCanvasRef.current
+          if (
+            native?.sessionId === sessionId &&
+            native.path.native_run_id !== run.runId &&
+            native.version > run.atVersion
+          )
+            return
           const executions = response.data ?? []
           const displayed = workflow.getState().workflowRunningData?.result.id
           if (displayed !== displayedRunId && displayed !== run.runId) return
@@ -272,22 +347,25 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
               data: { ...node.data, _runningStatus: statuses.get(node.id) },
             })),
           )
+          const path = native?.path.native_run_id === run.runId ? native.path : null
           setEdges(
-            (edges as Edge[]).map((edge) => {
-              const executed = executions.some(
-                (execution) =>
-                  execution.node_id === edge.target &&
-                  execution.predecessor_node_id === edge.source,
-              )
-              return {
-                ...edge,
-                data: {
-                  ...edge.data,
-                  _sourceRunningStatus: executed ? statuses.get(edge.source) : undefined,
-                  _targetRunningStatus: executed ? statuses.get(edge.target) : undefined,
-                },
-              }
-            }),
+            path
+              ? projectNativeCanvasEdges(edges as Edge[], path)
+              : (edges as Edge[]).map((edge) => {
+                  const executed = executions.some(
+                    (execution) =>
+                      execution.node_id === edge.target &&
+                      execution.predecessor_node_id === edge.source,
+                  )
+                  return {
+                    ...edge,
+                    data: {
+                      ...edge.data,
+                      _sourceRunningStatus: executed ? statuses.get(edge.source) : undefined,
+                      _targetRunningStatus: executed ? statuses.get(edge.target) : undefined,
+                    },
+                  }
+                }),
           )
           workflow.getState().setWorkflowRunningData({
             result: {
@@ -320,7 +398,16 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
           run.restoring = false
         })
     },
-    [appId, canvas, captureCanvasRun, clearCanvasRun, queryClient, setRestoreError, workflow],
+    [
+      appId,
+      canvas,
+      captureCanvasRun,
+      clearCanvasRun,
+      onNativeCanvasPath,
+      queryClient,
+      setRestoreError,
+      workflow,
+    ],
   )
 
   const finishCommand = useCallback(() => {
@@ -349,6 +436,7 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
   return useMemo(
     () => ({
       onWorkflowEvent,
+      onNativeCanvasPath,
       onStreamInterrupted,
       onCanvasEvent,
       restoreRun,
@@ -358,6 +446,7 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
     }),
     [
       onWorkflowEvent,
+      onNativeCanvasPath,
       onStreamInterrupted,
       onCanvasEvent,
       restoreRun,
