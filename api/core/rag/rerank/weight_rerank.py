@@ -1,5 +1,6 @@
 import math
 from collections import Counter
+from collections.abc import Sequence
 from typing import override
 
 import numpy as np
@@ -11,7 +12,7 @@ from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaK
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
-from core.rag.models.document import Document
+from core.rag.models.document import SCORE_FROM_FULL_TEXT_METADATA_KEY, Document
 from core.rag.rerank.entity.weight import VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -73,6 +74,7 @@ class WeightRerankRunner(BaseRerankRunner):
                 continue
             if document.metadata is not None:
                 document.metadata["score"] = score
+                document.metadata.pop(SCORE_FROM_FULL_TEXT_METADATA_KEY, None)
                 rerank_documents.append(document)
 
         rerank_documents.sort(key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
@@ -161,45 +163,70 @@ class WeightRerankRunner(BaseRerankRunner):
     ) -> list[float]:
         """
         Calculate cosine scores, resolving the query vector only for unscored documents.
+
+        A vector-search score in metadata["score"] is reused as the similarity. A full-text score
+        (flagged with SCORE_FROM_FULL_TEXT_METADATA_KEY) is ignored: such a document is compared by
+        its stored vector, or, when the vector store returned none, by the embedding of its page
+        content, which CacheEmbedding normally serves from the embeddings cached at indexing time.
+
         :param query: search query
         :param documents: documents for reranking
-
-        :return:
+        :return: one similarity per document, in input order
         """
-        query_vector_scores = []
-        query_vector: list[float] | None = None
-        for document in documents:
-            # calculate cosine similarity
-            if document.metadata and "score" in document.metadata:
-                query_vector_scores.append(document.metadata["score"])
-            else:
-                if query_vector is None:
-                    query_vector = CacheEmbedding.get_cached_query_embedding(
-                        vector_setting.embedding_provider_name, vector_setting.embedding_model_name, query
-                    )
-                    if query_vector is None:
-                        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
-                        embedding_model = model_manager.get_model_instance(
-                            tenant_id=tenant_id,
-                            provider=vector_setting.embedding_provider_name,
-                            model_type=ModelType.TEXT_EMBEDDING,
-                            model=vector_setting.embedding_model_name,
-                        )
-                        query_vector = CacheEmbedding(embedding_model).embed_query(query)
+        needs_vector = [
+            not (
+                document.metadata
+                and "score" in document.metadata
+                and not document.metadata.get(SCORE_FROM_FULL_TEXT_METADATA_KEY)
+            )
+            for document in documents
+        ]
+        if not any(needs_vector):
+            return [document.metadata["score"] for document in documents]
 
-                # transform to NumPy
-                vec1 = np.array(query_vector)
-                vec2 = np.array(document.vector)
+        query_vector = CacheEmbedding.get_cached_query_embedding(
+            vector_setting.embedding_provider_name, vector_setting.embedding_model_name, query
+        )
+        unvectorized_full_text_indices = [
+            index
+            for index, document in enumerate(documents)
+            if needs_vector[index]
+            and document.vector is None
+            and document.metadata
+            and document.metadata.get(SCORE_FROM_FULL_TEXT_METADATA_KEY)
+        ]
+        content_embeddings: Sequence[list[float] | None] = []
+        if query_vector is None or unvectorized_full_text_indices:
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+            embedding_model = model_manager.get_model_instance(
+                tenant_id=tenant_id,
+                provider=vector_setting.embedding_provider_name,
+                model_type=ModelType.TEXT_EMBEDDING,
+                model=vector_setting.embedding_model_name,
+            )
+            cache_embedding = CacheEmbedding(embedding_model)
+            if query_vector is None:
+                query_vector = cache_embedding.embed_query(query)
+            if unvectorized_full_text_indices:
+                content_embeddings = cache_embedding.embed_documents(
+                    [documents[index].page_content for index in unvectorized_full_text_indices]
+                )
 
-                # calculate dot product
-                dot_product = np.dot(vec1, vec2)
+        def cosine(document_vector: list[float] | None) -> float:
+            vec1 = np.array(query_vector)
+            vec2 = np.array(document_vector)
+            return float(np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
 
-                # calculate norm
-                norm_vec1 = np.linalg.norm(vec1)
-                norm_vec2 = np.linalg.norm(vec2)
-
-                # calculate cosine similarity
-                cosine_sim = dot_product / (norm_vec1 * norm_vec2)
-                query_vector_scores.append(cosine_sim)
-
-        return query_vector_scores
+        # CacheEmbedding yields None for a text whose embedding is unusable (e.g. NaN).
+        content_similarities = {
+            index: cosine(embedding) if embedding is not None else 0.0
+            for index, embedding in zip(unvectorized_full_text_indices, content_embeddings, strict=True)
+        }
+        return [
+            content_similarities[index]
+            if index in content_similarities
+            else cosine(document.vector)
+            if needs_vector[index]
+            else document.metadata["score"]
+            for index, document in enumerate(documents)
+        ]
