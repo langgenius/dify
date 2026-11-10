@@ -25,7 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from constants.workflow import EDITABLE_SYSTEM_VARIABLE_NAMES
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
+from core.trigger.constants import is_trigger_node_type
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
