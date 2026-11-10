@@ -168,9 +168,19 @@ class QAIndexProcessor(BaseIndexProcessor):
         # For disable operations, disable_summaries_for_segments is called directly in the task.
         # Note: qa_model doesn't generate summaries, but we clean them for completeness
         # Only delete summaries if explicitly requested (e.g., when segment is actually deleted)
+        if not node_ids and node_ids is not None:
+            # An empty batch says "nothing to remove"; only ``None`` means
+            # "the whole dataset". Treating the two alike removed every
+            # vector and summary of the dataset when a document happened to
+            # have no segments yet.
+            return
+
         delete_summaries = kwargs.get("delete_summaries", False)
         if delete_summaries:
-            if node_ids:
+            if node_ids is None:
+                # Delete all summaries for the dataset
+                SummaryIndexAdapter.delete_summaries_for_segments(dataset, None, session=session)
+            else:
                 # Find segments by index_node_id
                 segments = session.scalars(
                     select(DocumentSegment).where(
@@ -181,15 +191,12 @@ class QAIndexProcessor(BaseIndexProcessor):
                 segment_ids = [segment.id for segment in segments]
                 if segment_ids:
                     SummaryIndexAdapter.delete_summaries_for_segments(dataset, segment_ids, session=session)
-            else:
-                # Delete all summaries for the dataset
-                SummaryIndexAdapter.delete_summaries_for_segments(dataset, None, session=session)
 
         vector = Vector(dataset, session=session)
-        if node_ids:
-            vector.delete_by_ids(node_ids)
-        else:
+        if node_ids is None:
             vector.delete()
+        else:
+            vector.delete_by_ids(node_ids)
 
     @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:
