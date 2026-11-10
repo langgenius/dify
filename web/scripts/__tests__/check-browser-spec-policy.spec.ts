@@ -8,6 +8,7 @@ import {
   isOwnedMockSpecifier,
   MAX_BROWSER_SPEC_LINES,
   reportPolicyResult,
+  runBrowserSpecPolicy,
 } from '../check-browser-spec-policy'
 
 describe('Browser spec policy', () => {
@@ -61,6 +62,20 @@ describe('Browser spec policy', () => {
     const result = analyzeBrowserSpec(
       'app/example.browser.spec.tsx',
       ["// vi.mock('../commented')", 'const example = "vi.mock(\'../string\')"'].join('\n'),
+    )
+
+    expect(result.violations).toEqual([])
+  })
+
+  it('ignores non-mock calls and non-literal mock specifiers', () => {
+    const result = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      [
+        "jest.mock('../owner')",
+        "vi.spyOn(console, 'log')",
+        'vi.mock(getOwnerSpecifier())',
+        'vi.mock()',
+      ].join('\n'),
     )
 
     expect(result.violations).toEqual([])
@@ -218,5 +233,12 @@ describe('Browser spec policy', () => {
       ['- stale line allowlist: app/old.browser.spec.ts'],
     ])
     expect(process.exitCode).toBe(1)
+  })
+
+  it('runs the repository policy through the command entry point', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    expect(runBrowserSpecPolicy()).toBe(true)
+    expect(log).toHaveBeenCalledWith('Browser spec policy passed.')
   })
 })

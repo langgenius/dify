@@ -1215,9 +1215,10 @@ export function reportPolicyResult({ violations, staleAllowances }: PolicyCheckR
   return false
 }
 
-function run() {
+export function runBrowserSpecPolicy() {
   const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-  reportPolicyResult(checkBrowserSpecPolicy(webRoot))
+  return reportPolicyResult(checkBrowserSpecPolicy(webRoot))
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) run()
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+  runBrowserSpecPolicy()
