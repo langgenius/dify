@@ -28,7 +28,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dif
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 
 export type ExternalAgentActionRequest = {
@@ -177,25 +177,44 @@ export function ExternalAgentActions({
       </Dialog>
       <AlertDialog open={open && action !== 'edit'} onOpenChange={onOpenChange}>
         <AlertDialogContent finalFocus={finalFocus}>
-          <AlertDialogHeader>
+          {/* oxlint-disable-next-line shadcn/no-restyle -- The delete confirmation design groups its title and agent-name subtitle with a 4px gap. */}
+          <AlertDialogHeader className="gap-1">
             <AlertDialogTitle>{title}</AlertDialogTitle>
             {deleting && <p className="system-xs-regular text-text-tertiary">{agent.name}</p>}
           </AlertDialogHeader>
           <AlertDialogBody>
-            <AlertDialogDescription>
-              {deleting
-                ? t(($) => $['external.deleteDialog.description'], { name: agent.name })
-                : agent.enabled
+            {deleting ? (
+              <AlertDialogDescription render={<div />}>
+                <p>
+                  <Trans
+                    i18nKey={($) => $['external.deleteDialog.usage']}
+                    ns="agentRoster"
+                    count={agent.apps.length}
+                    values={{ count: agent.apps.length }}
+                    components={{ apps: <span className="system-md-semibold" /> }}
+                  />
+                </p>
+                <p className="mt-2 text-text-tertiary">
+                  {t(($) => $['external.deleteDialog.retention'])}
+                </p>
+              </AlertDialogDescription>
+            ) : (
+              <AlertDialogDescription>
+                {agent.enabled
                   ? t(($) => $['external.disableDialog.description'])
                   : t(($) => $['external.enableDialog.description'])}
-            </AlertDialogDescription>
+              </AlertDialogDescription>
+            )}
           </AlertDialogBody>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton variant="secondary">
+          {/* oxlint-disable-next-line shadcn/no-restyle -- The delete confirmation needs 28px above its actions and 16px before the separate pause tip, as specified in Figma. */}
+          <AlertDialogFooter className={deleting ? 'pt-7 pb-4' : undefined}>
+            <AlertDialogCancelButton variant="secondary" size="large" className="font-medium">
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <Button
               variant="primary"
+              size="large"
+              className="font-medium"
               tone={deleting ? 'destructive' : undefined}
               onClick={() => (deleting ? onDelete : onToggle)(agent.key)}
             >
@@ -203,12 +222,12 @@ export function ExternalAgentActions({
             </Button>
           </AlertDialogFooter>
           {deleting && agent.enabled && (
-            <div className="flex flex-wrap items-center justify-center gap-1 border-t border-divider-subtle bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary">
+            <div className="flex shrink-0 flex-wrap items-center justify-center gap-1 rounded-b-2xl border-t border-divider-subtle bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary">
               <span>{t(($) => $['external.deleteDialog.pauseInstead'])}</span>
               <Button
                 variant="ghost"
                 size="small"
-                className="h-auto p-0 text-text-accent"
+                className="h-auto p-0 system-xs-regular text-text-accent"
                 onClick={() => onRequest({ ...request, kind: 'toggle' })}
               >
                 {t(($) => $['external.disable'])}

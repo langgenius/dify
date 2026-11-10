@@ -1,8 +1,11 @@
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createRef } from 'react'
 import { I18nextProvider } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { ExternalAgentActions } from '@/features/agent-v2/roster/components/external-agent-actions'
+import { createExternalRosterPreview } from '@/features/agent-v2/roster/external-roster-preview'
 import agentRoster from '@/i18n/locales/en-US/agent-roster.json'
 import app from '@/i18n/locales/en-US/app.json'
 import common from '@/i18n/locales/en-US/common.json'
@@ -18,8 +21,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   usePathname: () => '/external-agent/contract-review/overview',
 }))
 
-async function setup() {
-  await page.viewport(1512, 982)
+async function createI18n() {
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
@@ -27,6 +29,12 @@ async function setup() {
     keySeparator: false,
     interpolation: { escapeValue: false },
   })
+  return i18n
+}
+
+async function setup() {
+  await page.viewport(1512, 982)
+  const i18n = await createI18n()
   const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
   })
@@ -143,43 +151,39 @@ it('keeps the header and connection rail visible while skill headings hand over 
     .toBeLessThan(1)
 })
 
-it('updates the overview identity after saving the management edit', async () => {
+it('offers only enablement and deletion and changes enablement only after confirmation', async () => {
   await setup()
-  await manage('Edit info')
-  const dialog = page.getByRole('dialog', { name: 'Edit info', exact: true })
-  await dialog.getByRole('textbox', { name: 'Name', exact: true }).fill('Contract Analyzer')
-  await dialog.getByRole('textbox', { name: /Role/ }).fill('Legal operations')
-  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect.element(dialog).not.toBeInTheDocument()
+  const trigger = page.getByRole('button', { name: 'Manage agent', exact: true })
+  const create = page.getByRole('button', { name: 'Create app', exact: true })
+  const disabled = page.getByText('Disabled', { exact: true })
+  await trigger.click()
   await expect
-    .element(page.getByRole('heading', { name: 'Contract Analyzer', exact: true }))
+    .element(page.getByRole('menuitem', { name: 'Disable agent', exact: true }))
     .toBeVisible()
-  await expect.element(page.getByText('Legal operations', { exact: true })).toBeVisible()
   await expect
-    .element(page.getByRole('heading', { name: 'Contract Review Agent', exact: true }))
-    .not.toBeInTheDocument()
-})
+    .element(page.getByRole('menuitem', { name: 'Delete agent', exact: true }))
+    .toBeVisible()
+  expect(page.getByRole('menuitem').all()).toHaveLength(2)
+  await page.getByRole('menuitem', { name: 'Disable agent', exact: true }).click()
 
-it('updates the disabled status and navigates away only after deletion is confirmed', async () => {
-  await setup()
-  await manage('Disable agent')
   const disable = page.getByRole('alertdialog', { name: 'Disable agent?', exact: true })
+  await expect
+    .element(disable)
+    .toHaveAccessibleDescription(
+      'Block new app calls and node tests. Submitted tasks continue. Testing in Overview remains available.',
+    )
+  await disable.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect.element(disable).not.toBeInTheDocument()
+  await expect.element(disabled).not.toBeInTheDocument()
+  await expect.element(create).toBeEnabled()
+  await expect.element(trigger).toHaveFocus()
+
+  await manage('Disable agent')
   await disable.getByRole('button', { name: 'Disable agent', exact: true }).click()
   await expect.element(disable).not.toBeInTheDocument()
-  await expect.element(page.getByText('Disabled', { exact: true })).toBeVisible()
-  await manage('Delete agent')
-  const canceled = page.getByRole('alertdialog', { name: 'Delete agent?', exact: true })
-  await canceled.getByRole('button', { name: 'Cancel', exact: true }).click()
-  await expect.element(canceled).not.toBeInTheDocument()
-  expect(router.push).not.toHaveBeenCalled()
-  await manage('Delete agent')
-  const confirmed = page.getByRole('alertdialog', { name: 'Delete agent?', exact: true })
-  await confirmed.getByRole('button', { name: 'Delete agent', exact: true }).click()
-  await expect.poll(() => router.push.mock.calls).toEqual([['/agents?agent_type=external']])
-})
+  await expect.element(disabled).toBeVisible()
+  await expect.element(create).toBeDisabled()
 
-it('shows a local test response and adds a newly created app to the overview', async () => {
-  await setup()
   await page.getByRole('button', { name: 'Test agent', exact: true }).click()
   const testDialog = page.getByRole('dialog', { name: 'Test agent', exact: true })
   await testDialog
@@ -189,19 +193,59 @@ it('shows a local test response and adds a newly created app to the overview', a
   await expect
     .element(testDialog.getByRole('heading', { name: 'Sample response', exact: true }))
     .toBeVisible()
-  await expect
-    .element(
-      testDialog
-        .getByRole('status')
-        .getByText(
-          'The clause allows payment beyond your company’s 30-day policy. Consider revising the payment term to 30 days from receipt of a valid invoice.',
-          { exact: true },
-        ),
-    )
-    .toBeVisible()
   await testDialog.getByRole('button', { name: 'Close', exact: true }).last().click()
   await expect.element(testDialog).not.toBeInTheDocument()
 
+  await manage('Enable agent')
+  const enable = page.getByRole('alertdialog', { name: 'Enable agent?', exact: true })
+  await expect.element(enable).toHaveAccessibleDescription('Allow new app calls and node tests.')
+  await enable.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect.element(enable).not.toBeInTheDocument()
+  await expect.element(disabled).toBeVisible()
+  await expect.element(create).toBeDisabled()
+
+  await manage('Enable agent')
+  await enable.getByRole('button', { name: 'Enable agent', exact: true }).click()
+  await expect.element(enable).not.toBeInTheDocument()
+  await expect.element(disabled).not.toBeInTheDocument()
+  await expect.element(create).toBeEnabled()
+})
+
+it('explains deletion and requires confirmation when choosing disable instead', async () => {
+  await setup()
+  await manage('Delete agent')
+  const deletion = page.getByRole('alertdialog', { name: 'Delete agent?', exact: true })
+  await expect.element(deletion.getByText('Contract Review Agent', { exact: true })).toBeVisible()
+  await expect.element(deletion.getByText('3 apps', { exact: true })).toBeVisible()
+  await expect
+    .element(deletion)
+    .toHaveAccessibleDescription(
+      '3 apps use this agent. Deleting it will disconnect their agent nodes. There may be tasks still in progress. Node configurations will be kept. The external agent and its data will not be deleted. Historical runs remain available according to retention settings.',
+    )
+  await deletion.getByRole('button', { name: 'Disable agent', exact: true }).click()
+  const disable = page.getByRole('alertdialog', { name: 'Disable agent?', exact: true })
+  await expect.element(deletion).not.toBeInTheDocument()
+  await expect.element(disable).toBeVisible()
+  expect(router.push).not.toHaveBeenCalled()
+  await disable.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect.element(disable).not.toBeInTheDocument()
+  await expect.element(page.getByText('Disabled', { exact: true })).not.toBeInTheDocument()
+  await expect.element(page.getByRole('button', { name: 'Create app', exact: true })).toBeEnabled()
+  await expect
+    .element(page.getByRole('button', { name: 'Manage agent', exact: true }))
+    .toHaveFocus()
+
+  await manage('Delete agent')
+  await deletion.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect.element(deletion).not.toBeInTheDocument()
+  expect(router.push).not.toHaveBeenCalled()
+  await manage('Delete agent')
+  await deletion.getByRole('button', { name: 'Delete agent', exact: true }).click()
+  await expect.poll(() => router.push.mock.calls).toEqual([['/agents?agent_type=external']])
+})
+
+it('includes newly created apps in the overview and deletion impact count', async () => {
+  await setup()
   await page.getByRole('button', { name: 'Create app', exact: true }).click()
   await page.getByRole('menuitem', { name: /Workflow/ }).click()
   const createDialog = page.getByRole('dialog', { name: 'Create app', exact: true })
@@ -211,4 +255,44 @@ it('shows a local test response and adds a newly created app to the overview', a
   await createDialog.getByRole('button', { name: 'Create app', exact: true }).click()
   await expect.element(createDialog).not.toBeInTheDocument()
   await expect.element(page.getByRole('link', { name: /Legal review workflow/ })).toBeVisible()
+  await manage('Delete agent')
+  const deletion = page.getByRole('alertdialog', { name: 'Delete agent?', exact: true })
+  await expect.element(deletion.getByText('4 apps', { exact: true })).toBeVisible()
+  await expect.element(deletion.getByText('3 apps', { exact: true })).not.toBeInTheDocument()
 })
+
+it.each([
+  { count: 0, usage: '0 apps use this agent.', nodes: 'their agent nodes' },
+  { count: 1, usage: '1 app uses this agent.', nodes: 'its agent nodes' },
+])(
+  'uses the actual app count and correct grammar for $count connected apps',
+  async ({ count, usage, nodes }) => {
+    const i18n = await createI18n()
+    const agent = createExternalRosterPreview()[1]!
+    await render(
+      <I18nextProvider i18n={i18n}>
+        <ExternalAgentActions
+          request={{
+            kind: 'delete',
+            agent: { ...agent, apps: agent.apps.slice(0, count) },
+            trigger: null,
+            adjacentFocusTargets: [],
+          }}
+          open
+          onOpenChange={vi.fn()}
+          fallbackFocus={createRef()}
+          onEdit={vi.fn()}
+          onToggle={vi.fn()}
+          onDelete={vi.fn()}
+          onRequest={vi.fn()}
+        />
+      </I18nextProvider>,
+    )
+    const deletion = page.getByRole('alertdialog', { name: 'Delete agent?', exact: true })
+    await expect
+      .element(deletion)
+      .toHaveAccessibleDescription(
+        `${usage} Deleting it will disconnect ${nodes}. There may be tasks still in progress. Node configurations will be kept. The external agent and its data will not be deleted. Historical runs remain available according to retention settings.`,
+      )
+  },
+)

@@ -128,9 +128,12 @@ export default interface Resources {
     'external.connection.verify': 'Verify connection'
     'external.connection.verifying': 'Verifying…'
     'external.delete': 'Delete agent'
-    'external.deleteDialog.description': 'Deleting {{name}} will disconnect its agent nodes. There may be tasks still in progress. Node configurations will be kept. The external agent and its data will not be deleted. Historical runs remain available according to retention settings.'
     'external.deleteDialog.pauseInstead': 'Want to pause it instead?'
+    'external.deleteDialog.retention': 'Node configurations will be kept. The external agent and its data will not be deleted. Historical runs remain available according to retention settings.'
     'external.deleteDialog.title': 'Delete agent?'
+    'external.deleteDialog.usage':
+      | '<apps>{{count}} app</apps> uses this agent. Deleting it will disconnect its agent nodes. There may be tasks still in progress.'
+      | '<apps>{{count}} apps</apps> use this agent. Deleting it will disconnect their agent nodes. There may be tasks still in progress.'
     'external.disable': 'Disable agent'
     'external.disableDialog.description': 'Block new app calls and node tests. Submitted tasks continue. Testing in Overview remains available.'
     'external.disableDialog.title': 'Disable agent?'

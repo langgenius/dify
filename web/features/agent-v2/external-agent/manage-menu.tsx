@@ -4,7 +4,7 @@ import type { ExternalAgentActionRequest } from '../roster/components/external-a
 import type { ExternalAgentListItem } from '../roster/components/external-agent-list'
 import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -58,25 +58,11 @@ export function ExternalAgentManageMenu({
             </>
           )}
         </MenuTrigger>
-        <MenuContent align="end">
-          <MenuItem onClick={() => requestAction('edit')}>
-            <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
-            {t(($) => $['external.editInfo'])}
-          </MenuItem>
-          <MenuItem onClick={() => requestAction('toggle')}>
-            <span
-              aria-hidden
-              className={
-                agent.enabled
-                  ? 'i-ri-pause-circle-line size-4 text-text-tertiary'
-                  : 'i-ri-play-circle-line size-4 text-text-tertiary'
-              }
-            />
+        <MenuContent align="end" className="w-57">
+          <MenuItem className="px-3" onClick={() => requestAction('toggle')}>
             {agent.enabled ? t(($) => $['external.disable']) : t(($) => $['external.enable'])}
           </MenuItem>
-          <MenuSeparator />
-          <MenuItem onClick={() => requestAction('delete')}>
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+          <MenuItem variant="destructive" className="px-3" onClick={() => requestAction('delete')}>
             {t(($) => $['external.delete'])}
           </MenuItem>
         </MenuContent>
