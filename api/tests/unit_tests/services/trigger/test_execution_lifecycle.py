@@ -49,6 +49,7 @@ from services.trigger.execution_layer import TriggerPostLayer
 from services.trigger.execution_service import TriggerExecution, TriggerExecutionRef, TriggerExecutionService
 from services.workflow.entities import ScheduleTriggerData, TriggerActor
 from tasks.async_workflow_tasks import execute_workflow_professional, execute_workflow_sandbox, execute_workflow_team
+from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client as oauth_tests
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _Harness
 
@@ -78,14 +79,12 @@ def execution(sqlite_session_factory: sessionmaker[Session]) -> TriggerExecution
         )
         session.add(app)
         session.flush()
-        workflow = Workflow(
-            id=str(uuid4()),
+        workflow = make_workflow(
+            workflow_id=str(uuid4()),
             tenant_id=tenant.id,
             app_id=app.id,
-            type="workflow",
             version="1",
             graph='{"nodes": [], "edges": []}',
-            features="{}",
             created_by=account.id,
         )
         session.add(workflow)
