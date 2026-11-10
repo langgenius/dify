@@ -340,8 +340,10 @@ class TestParagraphIndexProcessor:
 
         Callers build the list from the document's segments, so a document
         without segments yet hands over `[]`. Routing that to the dataset-wide
-        branch wiped every vector in the knowledge base.
+        branch wiped every vector in the knowledge base — and, on the economy
+        technique, the dataset's whole keyword table with it.
         """
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
         session = self.session
 
         with (
@@ -349,8 +351,15 @@ class TestParagraphIndexProcessor:
                 "core.rag.index_processor.processor.paragraph_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
         ):
-            processor.clean(dataset, [], delete_summaries=True, session=session)
+            processor.clean(dataset, [], with_keywords=True, delete_summaries=True, session=session)
+
+        mock_vector_cls.return_value.delete.assert_not_called()
+        mock_vector_cls.return_value.delete_by_ids.assert_not_called()
+        mock_keyword_cls.return_value.delete.assert_not_called()
+        mock_keyword_cls.return_value.delete_by_ids.assert_not_called()
+        mock_summary.assert_not_called()
 
         mock_vector_cls.return_value.delete.assert_not_called()
         mock_vector_cls.return_value.delete_by_ids.assert_not_called()

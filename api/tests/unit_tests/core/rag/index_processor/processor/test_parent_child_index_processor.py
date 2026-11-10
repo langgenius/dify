@@ -377,6 +377,7 @@ class TestParentChildIndexProcessor:
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
             patch("core.rag.index_processor.processor.parent_child_index_processor.delete") as mock_delete,
+            patch.object(session, "execute") as mock_execute,
         ):
             processor.clean(dataset, [], delete_summaries=True, delete_child_chunks=True, session=session)
 
@@ -384,6 +385,9 @@ class TestParentChildIndexProcessor:
         mock_vector_cls.return_value.delete_by_ids.assert_not_called()
         mock_summary.assert_not_called()
         mock_delete.assert_not_called()
+        # The child-chunk rows are removed through the session, so patching
+        # the SQL expression alone would not catch that side effect.
+        mock_execute.assert_not_called()
 
     def test_split_child_nodes_requires_subchunk_segmentation(self, processor: ParentChildIndexProcessor) -> None:
         rules = Rule(subchunk_segmentation=None)
