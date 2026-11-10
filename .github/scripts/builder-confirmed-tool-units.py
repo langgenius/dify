@@ -206,6 +206,8 @@ FILES += [
 FILES += [
     "api/tests/unit_tests/services/dify_builder/test_diagnostic_context.py",
     "api/tests/unit_tests/services/dify_builder/test_api_tool_effects.py",
+    "api/tests/unit_tests/services/tools/test_mcp_tool_catalogue.py",
+    "api/tests/unit_tests/services/dify_builder/test_credential_failure_attribution.py",
     "api/tests/unit_tests/services/dify_builder/test_fix_context.py",
     "api/tests/unit_tests/services/dify_builder/test_testdata_code_refresh.py",
     "api/tests/unit_tests/services/dify_builder/test_predefined_model_readiness.py",
@@ -2905,7 +2907,7 @@ knowledge_cases.update(
         "test_preflight_knowledge_selection_waits_until_waiver_then_preserves_business_clarification": 1,
     }
 )
-# P1 privacy and custom API consent: frozen reviewed function/parameter counts.
+# P1 privacy, tool consent, MCP and credential attribution: frozen reviewed counts.
 a4_expected.update(
     {
         "tests.unit_tests.services.dify_builder.test_diagnostic_context": {
@@ -2927,6 +2929,37 @@ a4_expected.update(
             "test_bound_api_cannot_use_another_credential_version_from_provider_name_cache": 1,
             "test_api_reasoning_withholds_parameter_values_account_version_and_url_secrets": 1,
             "test_missing_api_bindings_never_resolve_ordinary_with_surviving_marker": 6,
+        },
+        "tests.unit_tests.services.tools.test_mcp_tool_catalogue": {
+            "test_cached_mcp_discovery_reads_only_public_columns_and_exact_native_identity": 1,
+            "test_mcp_configuration_does_not_borrow_builtin_credentials": 1,
+            "test_selected_mcp_binding_rejects_stale_or_foreign_declarations": 5,
+            "test_mcp_catalogue_constructs_bound_graph_without_schema_or_identity_guesses": 1,
+            "test_search_named_mcp_still_requires_explicit_confirmation": 1,
+            "test_bound_mcp_graph_uses_native_tool_adapter_and_end_returns_transport_output": 1,
+            "test_empty_or_malformed_mcp_cache_never_fabricates_tools": 3,
+            "test_mcp_inventory_failure_is_reported_without_losing_other_tool_sources": 1,
+            "test_native_mcp_adapter_rechecks_current_owned_provider_before_dispatch": 3,
+            "test_mcp_without_output_declaration_keeps_native_generic_outputs": 1,
+            "test_mcp_destructive_evidence_remains_unconfirmable": 1,
+            "test_malformed_mcp_action_does_not_hide_other_cached_actions": 1,
+            "test_native_identity_collision_keeps_selected_mcp_binding_and_provider": 1,
+            "test_colliding_untyped_lookup_refuses_and_routed_catalogue_retains_native_types": 1,
+            "test_valid_mcp_sibling_reaches_native_resolver_with_boolean_property_schema": 1,
+            "test_collision_namespaced_pinning_and_explicit_type_remain_authoritative": 1,
+        },
+        "tests.unit_tests.services.dify_builder.test_credential_failure_attribution": {
+            "test_handler_attributes_global_credentials_to_exact_failed_tool": 6,
+            "test_bare_credentials_and_tool_providers_are_not_model_configuration": 4,
+            "test_typed_tool_credential_diagnostics_are_bounded": 4,
+            "test_observational_tool_fallback_rejects_unbound_or_ambiguous_evidence": 14,
+            "test_missing_tool_credentials_do_not_claim_enterprise_policy": 1,
+            "test_sealed_credentials_name_resource_kind_without_copying_provider_error": 4,
+            "test_credential_scope_uses_only_explicit_typed_cause_and_never_error_text": 1,
+            "test_legacy_model_exception_details_are_not_echoed_to_public_copy": 1,
+            "test_actual_native_model_configuration_errors_are_recognized": 2,
+            "test_native_model_setup_failures_keep_existing_handler_gate_without_graph_repair": 6,
+            "test_native_model_setup_matcher_does_not_admit_tool_or_secret_bearing_variants": 4,
         },
     }
 )
