@@ -466,6 +466,15 @@ forbidden_modules =
     services.agent.workspace_service
 allow_indirect_imports = True
 
+[importlinter:contract:snippet-generation-reader-boundary]
+name = Snippet generation reads workflow snapshots without repository imports
+type = forbidden
+source_modules =
+    services.snippet_generate_service
+forbidden_modules =
+    repositories
+allow_indirect_imports = True
+
 [importlinter:contract:installed-app-generation-boundary]
 name = Installed app generation service is framework and persistence neutral
 type = forbidden
@@ -1261,6 +1270,7 @@ name = App trigger management contracts are framework and persistence neutral
 type = forbidden
 source_modules =
     services.trigger.app_trigger_store
+    services.trigger.app_trigger_service
 forbidden_modules =
     configs
     controllers
@@ -1425,6 +1435,19 @@ forbidden_modules =
     extensions
 allow_indirect_imports = True
 
+[importlinter:contract:draft-variable-record-boundary]
+name = Draft variable loading and output preparation exchange plain records and commands
+type = forbidden
+source_modules =
+    services.workflow.draft_variable_service
+    services.workflow.draft_variable_contracts
+forbidden_modules =
+    models
+    sqlalchemy
+    repositories
+    services.file_service
+allow_indirect_imports = True
+
 [importlinter:contract:api-tool-provider-boundary]
 name = API tool providers build runtimes from loaded configuration
 type = forbidden
@@ -1584,6 +1607,19 @@ forbidden_modules =
     extensions.application_services.workflow_variables
 allow_indirect_imports = True
 
+[importlinter:contract:annotation-reply-persistence-boundary]
+name = Annotation reply service and search contracts do not expose persistence dependencies
+type = forbidden
+source_modules =
+    services.annotation.reply_service
+    models.annotation_reply
+forbidden_modules =
+    models.dataset
+    repositories
+    extensions
+    flask
+    sqlalchemy
+
 [importlinter:contract:annotation-application-boundary]
 name = Annotation application services and contracts are framework and persistence neutral
 type = forbidden
@@ -1689,6 +1725,11 @@ source_modules =
     services.trigger.provider_query
     services.trigger.subscription_query_service
     services.trigger.subscription_service
+    services.trigger.subscription_renewal_service
+    services.trigger.subscription_refresh_service
+    services.trigger.subscription_binding_service
+    services.async_workflow_service
+    services.trigger.workflow_dispatch_service
 forbidden_modules =
     controllers
     extensions
@@ -1698,17 +1739,27 @@ forbidden_modules =
     werkzeug
 allow_indirect_imports = True
 
+[importlinter:contract:services-composition-root-boundary]
+name = Trigger services do not locate their dependencies through the application container
+type = forbidden
+source_modules =
+    services.trigger
+forbidden_modules =
+    extensions.ext_application_services
+allow_indirect_imports = True
+
 [importlinter:contract:trigger-subscription-builder-persistence-boundary]
-name = Trigger subscription builder orchestration uses injected persistence
+name = Trigger builder, endpoint and event orchestration use injected persistence
 type = forbidden
 source_modules =
     services.trigger.trigger_subscription_builder_service
+    services.trigger.endpoint_service
+    services.trigger.event_service
 forbidden_modules =
     controllers
     extensions
     repositories
     sqlalchemy
-    services.trigger.trigger_provider_service
 allow_indirect_imports = True
 
 [importlinter:contract:trigger-subscription-encryption-boundary]
@@ -1716,11 +1767,31 @@ name = Trigger subscription commands depend on the encryption port
 type = forbidden
 source_modules =
     services.trigger.subscription_service
+    services.trigger.subscription_renewal_service
 forbidden_modules =
     core.helper.provider_cache
     core.helper.provider_encryption
     core.helper.encrypter
     services.trigger.subscription_codec
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-event-framework-boundary]
+name = Trigger event orchestration is independent of the web framework
+type = forbidden
+source_modules =
+    services.trigger.event_service
+forbidden_modules =
+    flask
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-renewal-configuration-boundary]
+name = Trigger renewal receives configuration from the composition root
+type = forbidden
+source_modules =
+    services.trigger.subscription_renewal_service
+forbidden_modules =
+    configs
 allow_indirect_imports = True
 
 [importlinter:contract:trigger-subscription-controller-persistence-boundary]

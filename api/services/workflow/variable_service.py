@@ -22,6 +22,7 @@ from models.workflow import (
     is_system_variable_editable,
 )
 from services.workflow.contracts import WorkflowBindingScope, WorkflowSnapshot
+from services.workflow.draft_variable_contracts import DraftVariableCreator, DraftVariableWriteCommand
 from services.workflow.draft_variable_service import (
     DraftFileRestorer,
     DraftFileUploader,
@@ -62,7 +63,7 @@ class DebugVariableStore(DraftVariableReader, DraftVariableWriter, Protocol):
         self, snapshot: WorkflowDraftVariable, *, name: str | None, value: Segment | None
     ) -> WorkflowDraftVariable: ...
     def delete_variables(self, app_id: str, *, user_id: str, node_id: str | None) -> list[str]: ...
-    def prefill(self, variables: Sequence[WorkflowDraftVariable]) -> None: ...
+    def prefill(self, variables: Sequence[DraftVariableWriteCommand]) -> None: ...
     def actor(self, context: RequestContext, app_id: str) -> Account: ...
     def reset_variable(
         self, snapshot: WorkflowDraftVariable, value: Segment | None
@@ -301,6 +302,7 @@ class WorkflowVariableService:
         return self._loader(workflow.app_id, workflow.tenant_id, user_id, conversation_variable_values(workflow))
 
     def saver_factory(self, tenant_id: str, account: Account) -> DraftVariableSaverFactory:
+        """Bind the admitted account to the persistence-neutral draft saver identity."""
         return partial(
             DraftVariableSaver,
             repository=self._repository,
@@ -308,7 +310,7 @@ class WorkflowVariableService:
             file_inputs=self._file_inputs,
             cleanup_files=self._cleanup_or_defer,
             tenant_id=tenant_id,
-            user=account,
+            creator=DraftVariableCreator(id=account.id),
         )
 
     def loader(

@@ -19,6 +19,11 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class AppDslOverwriteTarget:
+    """Persistence-neutral overwrite facts; ``workflow=None`` means the App has no draft.
+
+    Workflow variables remain encrypted so loading a target never requires key I/O.
+    """
+
     mode: AppMode
     workflow: WorkflowSnapshot | None
 
@@ -30,8 +35,13 @@ class AppDslOverwriteStore(Protocol):
         """Authorize the target and materialize its encrypted draft in a short read session."""
         ...
 
-    def load(self, *, tenant_id: str, account_id: str, app_id: str, rbac_allowed: bool) -> App | None:
-        """Recheck the target in the enclosing import transaction."""
+    def load(self, *, tenant_id: str, account_id: str, app_id: str, rbac_allowed: bool) -> AppDslOverwriteTarget | None:
+        """Recheck the scoped target using the supplied RBAC verdict in the enclosing import transaction.
+
+        Return immutable facts, or None for a missing/non-normal App in the tenant; raise
+        NoPermissionError if neither RBAC nor maintainership permits overwriting. ORM state
+        stays inside the repository, and this read never commits or rolls back the import.
+        """
         ...
 
 

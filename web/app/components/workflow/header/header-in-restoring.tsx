@@ -1,5 +1,4 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { RiHistoryLine } from '@remixicon/react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -12,7 +11,6 @@ import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import {
   useInvalidateAllLastRun,
@@ -30,7 +28,6 @@ export type HeaderInRestoringProps = {
 }
 const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   const { t } = useTranslation(['billing', 'workflow', 'workflowHistory'])
-  const { theme } = useTheme()
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
@@ -169,19 +166,13 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
           onClick={handleRestore}
           disabled={isPlanUnavailable || !canRestore}
           variant="primary"
-          className={cn(
-            'rounded-lg inset-ring-1 inset-ring-transparent',
-            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
-          )}
+          className="rounded-lg inset-ring-1 inset-ring-transparent dark:bg-white/10 dark:inset-ring-black/5 dark:backdrop-blur-xs"
         >
           {t(($) => $['common.restore'], { ns: 'workflow' })}
         </Button>
         <Button
           onClick={handleCancelRestore}
-          className={cn(
-            'rounded-lg text-components-button-secondary-accent-text inset-ring-1 inset-ring-transparent',
-            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
-          )}
+          className="rounded-lg text-components-button-secondary-accent-text inset-ring-1 inset-ring-transparent dark:bg-white/10 dark:inset-ring-black/5 dark:backdrop-blur-xs"
         >
           <div className="flex items-center gap-x-0.5">
             <RiHistoryLine className="size-4" />

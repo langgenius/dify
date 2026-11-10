@@ -3,7 +3,7 @@ from yarl import URL
 from configs import dify_config
 
 """
-Basic URL for thirdparty trigger services
+Basic URL for third-party trigger services
 """
 base_url = URL(dify_config.TRIGGER_URL)
 

@@ -4,6 +4,8 @@ from decimal import Decimal
 from sqlite3 import Connection
 
 import pytest
+from dify_agent.layers.prompt import Config as PromptConfig
+from dify_agent.layers.user_prompt import DifyUserPromptImageConfig, DifyUserPromptLayerConfig
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
@@ -817,14 +819,34 @@ class TestAgentObservabilityServiceCases:
         }
 
     @staticmethod
-    def test_serialize_workflow_node_message_returns_frontend_log_shape() -> None:
+    @pytest.mark.parametrize("multimodal", [False, True])
+    def test_serialize_workflow_node_message_returns_frontend_log_shape(multimodal: bool) -> None:
         created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
         finished_at = datetime(2026, 7, 23, 7, 0, 28, tzinfo=UTC)
         node_execution = _agent_observability_service_node_execution()
-        node_execution.inputs = (
-            '{"agent_backend_request":{"composition":{"layers":['
-            '{"name":"workflow_node_job_prompt","config":{"user":"Summarize the meeting"}},'
-            '{"name":"workflow_user_prompt","config":{"user":"Focus on action items"}}]}}}'
+        context_config = (
+            DifyUserPromptLayerConfig(
+                text="Focus on action items",
+                files=[
+                    DifyUserPromptImageConfig(
+                        filename="meeting.png", mime_type="image/png", format="png", base64_data="aW1hZ2U="
+                    )
+                ],
+            ).model_dump(mode="json")
+            if multimodal
+            else PromptConfig(user="Focus on action items").model_dump(mode="json")
+        )
+        node_execution.inputs = json.dumps(
+            {
+                "agent_backend_request": {
+                    "composition": {
+                        "layers": [
+                            {"name": "workflow_node_job_prompt", "config": {"user": "Summarize the meeting"}},
+                            {"name": "user_prompt" if multimodal else "workflow_user_prompt", "config": context_config},
+                        ]
+                    }
+                }
+            }
         )
         node_execution.outputs = '{"output":"Alice owns the follow-up."}'
         node_execution.execution_metadata = (
