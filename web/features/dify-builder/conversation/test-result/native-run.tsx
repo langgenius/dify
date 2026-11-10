@@ -1,13 +1,17 @@
+import type { NativeTestPublicReceipt } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { NodeTracing } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
+import { DifyBuilderCard } from '../../cards/card-shell'
 import { useDifyBuilderLocale } from '../../i18n/use-builder-locale'
+import { difyBuilderAppIdAtom, difyBuilderTestExecutionAtom } from '../../state'
 import { TestResultOutputs } from './outputs'
 
 const TracingPanel = dynamic(() => import('@/app/components/workflow/run/tracing-panel'))
@@ -95,5 +99,45 @@ export const TestResultRunDetails = ({ appId, runId }: NativeRunProps) => {
         </div>
       </CollapsiblePanel>
     </Collapsible>
+  )
+}
+
+const waitLabel = (receipt: NativeTestPublicReceipt) => {
+  if (
+    receipt.resume_blocked_reason === 'native_expired' ||
+    receipt.pending.some((item) => item.decision_status === 'expired')
+  )
+    return 'nativeTest.approvalExpired'
+  if (receipt.pending.some((item) => item.decision_status === 'awaiting_decision'))
+    return 'nativeTest.waitingForApproval'
+  return receipt.can_resume ? 'nativeTest.waitingToResume' : 'nativeTest.resumeUnavailable'
+}
+
+export const ActiveNativeTestRun = () => {
+  const appId = useAtomValue(difyBuilderAppIdAtom)
+  const receipt = useAtomValue(difyBuilderTestExecutionAtom)
+  const locale = useDifyBuilderLocale()
+  const { t } = useTranslation(['difyBuilder'], { lng: locale })
+  if (!receipt?.native_run_id || receipt.status === 'terminal' || receipt.cancellation) return null
+  const waiting = receipt.status === 'waiting'
+  if (waiting && receipt.wait_reason !== 'approval') return null
+  const label = waiting
+    ? waitLabel(receipt)
+    : receipt.native_status === 'paused'
+      ? 'nativeTest.resuming'
+      : 'running'
+
+  return (
+    <DifyBuilderCard
+      category={t(($) => $['cardCategory.test'])}
+      status={{
+        state: waiting ? 'waiting' : 'working',
+        label: t(($) => $[label]),
+        live: true,
+        className: 'normal-case',
+      }}
+    >
+      {appId && <TestResultRunDetails appId={appId} runId={receipt.native_run_id} />}
+    </DifyBuilderCard>
   )
 }

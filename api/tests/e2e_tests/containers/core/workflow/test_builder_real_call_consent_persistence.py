@@ -71,9 +71,9 @@ from services.dify_builder.real_call_consent_service import BuilderRealCallConse
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import execution_revision
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import advance_builder_context
-from tests.test_containers_integration_tests.core.workflow.test_builder_execution_policy_persistence import race
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import advance_builder_context
+from tests.e2e_tests.containers.core.workflow.test_builder_execution_policy_persistence import race
+from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
 
@@ -95,7 +95,7 @@ MIGRATED_TABLES = {
 
 
 def _migration(relative: str, name: str) -> ModuleType:
-    path = Path(__file__).parents[4] / relative
+    path = Path(__file__).parents[5] / relative
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None
     assert spec.loader is not None
@@ -110,13 +110,17 @@ def migrated_builder_tables(flask_app_with_containers: Flask) -> None:
 
     Drops the ``create_all`` execution-request and consent tables (no foreign key references
     them; the per-test cleanup leaves them empty) and the request migration's added test-input
-    column, then runs the actual ``c84e6a217b90`` and ``d82f9a6c31e0`` ``upgrade()`` against the
-    same ``public`` schema every test here uses, and marks each rebuilt table with a comment.
+    column, then applies the actual request, consent, and canvas column migrations
+    against the ``public`` schema every test here uses, and marks the rebuilt tables.
     """
     from extensions.ext_database import db
 
     execution = _migration(EXECUTION_MIGRATION, "builder_execution_migration_for_ci_tables")
     consent = _migration(MIGRATION, "builder_real_call_consent_migration_for_ci_tables")
+    canvas_path = _migration(
+        "migrations/versions/2026_11_10_1200-c34e2f7b5a10_builder_native_canvas_path.py",
+        "builder_canvas_path_migration_for_ci_tables",
+    )
     assert (execution.revision, consent.revision, consent.down_revision) == (
         "c84e6a217b90",
         "d82f9a6c31e0",
@@ -133,6 +137,7 @@ def migrated_builder_tables(flask_app_with_containers: Flask) -> None:
             with Operations.context(MigrationContext.configure(connection)):
                 execution.upgrade()
                 consent.upgrade()
+                canvas_path.upgrade()
             for table, marker in MIGRATED_TABLES.items():
                 connection.execute(text(f"COMMENT ON TABLE {table} IS '{marker}'"))
 
@@ -173,7 +178,10 @@ def gmail_graph(credential_id: str) -> dict[str, object]:
             "data": {"type": "end", "title": "End", "outputs": [{"variable": "r", "value_selector": ["tool", "json"]}]},
         },
     ]
-    return {"nodes": nodes, "edges": [{"source": a["id"], "target": b["id"]} for a, b in zip(nodes, nodes[1:])]}
+    return {
+        "nodes": nodes,
+        "edges": [{"source": a["id"], "target": b["id"]} for a, b in zip(nodes, nodes[1:], strict=False)],
+    }
 
 
 class World:
@@ -817,7 +825,7 @@ def test_real_postgres_consent_migration_upgrade_downgrade(flask_app_with_contai
     """The actual migration in an isolated schema: constraints, index, downgrade and re-upgrade."""
     from extensions.ext_database import db
 
-    path = Path(__file__).parents[4] / MIGRATION
+    path = Path(__file__).parents[5] / MIGRATION
     spec = importlib.util.spec_from_file_location("builder_real_call_consent_migration", path)
     assert spec is not None
     assert spec.loader is not None

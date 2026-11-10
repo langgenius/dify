@@ -4,6 +4,16 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type DifyBuilderCreateSessionPayload =
   | DifyBuilderCreateBuildSessionPayload
   | DifyBuilderCreateEditSessionPayload
@@ -502,6 +512,7 @@ export type TaskSummary = {
 export type NativeTestPublicReceipt = {
   can_resume?: boolean
   cancellation?: CancellationReceipt | null
+  canvas_path?: NativeCanvasPath | null
   decision_public_revision?: number
   evidence_refs: Array<string>
   generation: number
@@ -827,6 +838,12 @@ export type CancellationReceipt = {
   status: 'cancelled' | 'cancelling' | 'unknown'
 }
 
+export type NativeCanvasPath = {
+  edges: Array<NativeCanvasEdge>
+  native_run_id: string
+  revision: number
+}
+
 export type PendingActionDisclosure = {
   account_label: string | null
   action: string
@@ -945,6 +962,7 @@ export type TestResultCard = {
   failure_phase?: 'execution' | 'preparation' | null
   failure_reason?: string | BuilderCopy | BuilderTextParts | null
   failure_resource?: string | null
+  native_canvas_path?: NativeCanvasPath | null
   outcome?:
     | 'execution_failed'
     | 'execution_succeeded_needs_review'
@@ -958,6 +976,7 @@ export type TestResultCard = {
     | 'builder-restricted-v1'
     | null
   reply_language?: string
+  resumed_progress?: ResumedTestProgress | null
   review_note?: string | BuilderCopy | BuilderTextParts | null
   safety_outcome?:
     | 'confirmed_run_completed'
@@ -1222,6 +1241,7 @@ export type BuilderCopyId =
   | 'actions.confirmTestOperation'
   | 'actions.continue'
   | 'actions.continueAdjusting'
+  | 'actions.continueTest'
   | 'actions.discardThisChangePlan'
   | 'actions.finish'
   | 'actions.fixAgain'
@@ -1263,6 +1283,8 @@ export type BuilderCopyId =
   | 'decision.howShouldBuilderRecover'
   | 'decision.isThisChangePlanReadyToApply'
   | 'decision.isThisWorkflowPlanReadyToApply'
+  | 'decision.testOperationApproval'
+  | 'decision.testOperationApprovalDescription'
   | 'decision.whatShouldBuilderDoNext'
   | 'decision.whatShouldBuilderDoWithTheAppliedFix'
   | 'decision.whatShouldBuilderDoWithTheBuiltWorkflow'
@@ -1483,6 +1505,16 @@ export type OptionInput = {
   required?: boolean
 }
 
+export type NativeCanvasEdge = {
+  edge_id: string | null
+  source: string
+  source_handle: string
+  source_status?: NativeCanvasNodeStatus | null
+  target: string
+  target_handle: string
+  target_status?: NativeCanvasNodeStatus | null
+}
+
 export type NativeApprovalTerms = {
   expires_at: string
   max_calls: number
@@ -1533,6 +1565,11 @@ export type ResourceOption = {
   label: string
   meta: string
   readiness: string
+}
+
+export type ResumedTestProgress = {
+  execution: ExecutionProgress
+  source_seq: number
 }
 
 export type WorkflowStreamEventLiteralWorkflowStartedData = {
@@ -1705,6 +1742,15 @@ export type DifyBuilderExecutionActivityResponse = {
   state: 'active' | 'done' | 'failed' | 'stopped'
 }
 
+export type NativeCanvasNodeStatus =
+  | 'exception'
+  | 'failed'
+  | 'paused'
+  | 'retry'
+  | 'running'
+  | 'stopped'
+  | 'succeeded'
+
 export type ExecutionActivity = {
   id: string
   kind?: 'node' | 'stage'
@@ -1723,7 +1769,7 @@ export type WorkflowStartStreamResponseData = {
   workflow_id: string
 }
 
-export type CoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData = {
+export type WorkflowFinishStreamResponseData = {
   created_at: number
   created_by?: {
     [key: string]: unknown
@@ -1745,7 +1791,7 @@ export type CoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData = {
   workflow_id: string
 }
 
-export type CoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData = {
+export type WorkflowPauseStreamResponseData = {
   created_at: number
   elapsed_time: number
   outputs?: {
@@ -1761,7 +1807,7 @@ export type CoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData = {
   workflow_run_id: string
 }
 
-export type CoreAppEntitiesTaskEntitiesNodeStartStreamResponseData = {
+export type NodeStartStreamResponseData = {
   agent_strategy?: AgentStrategyInfo | null
   created_at: number
   extras?: {
@@ -1781,7 +1827,7 @@ export type CoreAppEntitiesTaskEntitiesNodeStartStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData = {
+export type NodeFinishStreamResponseData = {
   created_at: number
   elapsed_time: number
   error?: string | null
@@ -1817,7 +1863,7 @@ export type CoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData = {
+export type NodeRetryStreamResponseData = {
   created_at: number
   elapsed_time: number
   error?: string | null
@@ -1854,7 +1900,7 @@ export type CoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData = {
+export type IterationNodeStartStreamResponseData = {
   created_at: number
   extras?: {
     [key: string]: unknown
@@ -1872,7 +1918,7 @@ export type CoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData = {
+export type IterationNodeNextStreamResponseData = {
   created_at: number
   extras?: {
     [key: string]: unknown
@@ -1884,7 +1930,7 @@ export type CoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData = {
+export type IterationNodeCompletedStreamResponseData = {
   created_at: number
   elapsed_time: number
   error?: string | null
@@ -1912,7 +1958,7 @@ export type CoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData 
   total_tokens: number
 }
 
-export type CoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData = {
+export type LoopNodeStartStreamResponseData = {
   created_at: number
   extras?: {
     [key: string]: unknown
@@ -1930,7 +1976,7 @@ export type CoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData = {
+export type LoopNodeNextStreamResponseData = {
   created_at: number
   extras?: {
     [key: string]: unknown
@@ -1943,7 +1989,7 @@ export type CoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData = {
+export type LoopNodeCompletedStreamResponseData = {
   created_at: number
   elapsed_time: number
   error?: string | null
@@ -1971,23 +2017,23 @@ export type CoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData = {
   total_tokens: number
 }
 
-export type CoreAppEntitiesTaskEntitiesTextChunkStreamResponseData = {
+export type TextChunkStreamResponseData = {
   from_variable_selector?: Array<string> | null
   text: string
 }
 
-export type CoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData = {
+export type TextReplaceStreamResponseData = {
   text: string
 }
 
-export type CoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData = {
+export type ReasoningChunkStreamResponseData = {
   is_final?: boolean
   message_id?: string | null
   node_id?: string | null
   reasoning: string
 }
 
-export type CoreAppEntitiesTaskEntitiesAgentLogStreamResponseData = {
+export type AgentLogStreamResponseData = {
   data: {
     [key: string]: unknown
   }
@@ -2003,7 +2049,7 @@ export type CoreAppEntitiesTaskEntitiesAgentLogStreamResponseData = {
   status: string
 }
 
-export type CoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = {
+export type HumanInputRequiredResponseData = {
   actions?: Array<UserActionConfig>
   approval_channels?: Array<string>
   display_in_ui?: boolean
@@ -2011,6 +2057,7 @@ export type CoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = {
   form_content: string
   form_id: string
   form_token?: string | null
+  form_version?: '1' | '2'
   inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
@@ -2019,7 +2066,7 @@ export type CoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = {
   }
 }
 
-export type CoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData = {
+export type HumanInputFormFilledResponseData = {
   action_id: string
   action_text: string
   form_id: string
@@ -2031,7 +2078,7 @@ export type CoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData = {
   } | null
 }
 
-export type CoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData = {
+export type HumanInputFormTimeoutResponseData = {
   expiration_time: number
   form_id: string
   node_id: string
@@ -2163,6 +2210,13 @@ export type PostDifyBuilderAgentPingData = {
   url: '/dify-builder/agent/ping'
 }
 
+export type PostDifyBuilderAgentPingErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderAgentPingError =
+  PostDifyBuilderAgentPingErrors[keyof PostDifyBuilderAgentPingErrors]
+
 export type PostDifyBuilderAgentPingResponses = {
   200: {
     [key: string]: unknown
@@ -2180,7 +2234,8 @@ export type PostDifyBuilderSessionsData = {
 }
 
 export type PostDifyBuilderSessionsErrors = {
-  400: DifyBuilderErrorResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsError =
@@ -2203,7 +2258,8 @@ export type GetDifyBuilderSessionsBySessionIdData = {
 }
 
 export type GetDifyBuilderSessionsBySessionIdErrors = {
-  404: DifyBuilderErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDifyBuilderSessionsBySessionIdError =
@@ -2249,9 +2305,10 @@ export type PostDifyBuilderSessionsBySessionIdActionsData = {
 }
 
 export type PostDifyBuilderSessionsBySessionIdActionsErrors = {
-  400: DifyBuilderErrorResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderErrorResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdActionsError =
@@ -2301,8 +2358,9 @@ export type GetDifyBuilderSessionsBySessionIdConversationData = {
 }
 
 export type GetDifyBuilderSessionsBySessionIdConversationErrors = {
-  400: DifyBuilderErrorResponse
-  404: DifyBuilderErrorResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDifyBuilderSessionsBySessionIdConversationError =
@@ -2380,9 +2438,10 @@ export type PostDifyBuilderSessionsBySessionIdMessagesData = {
 }
 
 export type PostDifyBuilderSessionsBySessionIdMessagesErrors = {
-  400: DifyBuilderErrorResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderErrorResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdMessagesError =
@@ -2547,10 +2606,11 @@ export type PostDifyBuilderSessionsBySessionIdRealCallConsentsData = {
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsErrors = {
-  400: DifyBuilderErrorResponse
-  403: DifyBuilderRealCallForbiddenResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderRealCallRefusalResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  403: DifyBuilderRealCallForbiddenResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderRealCallRefusalResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsError =
@@ -2574,9 +2634,10 @@ export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdData = {
 }
 
 export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdErrors = {
-  403: DifyBuilderRealCallForbiddenResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderRealCallRefusalResponse
+  403: DifyBuilderRealCallForbiddenResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderRealCallRefusalResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdError =
@@ -2600,10 +2661,11 @@ export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirm
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmErrors = {
-  400: DifyBuilderErrorResponse
-  403: DifyBuilderRealCallForbiddenResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderRealCallRefusalResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  403: DifyBuilderRealCallForbiddenResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderRealCallRefusalResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmError =
@@ -2627,10 +2689,11 @@ export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecute
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteErrors = {
-  400: DifyBuilderErrorResponse
-  403: DifyBuilderRealCallForbiddenResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderRealCallRefusalResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  403: DifyBuilderRealCallForbiddenResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderRealCallRefusalResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteError =
@@ -2699,7 +2762,8 @@ export type GetDifyBuilderSessionsBySessionIdStreamData = {
 }
 
 export type GetDifyBuilderSessionsBySessionIdStreamErrors = {
-  404: DifyBuilderErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDifyBuilderSessionsBySessionIdStreamError =

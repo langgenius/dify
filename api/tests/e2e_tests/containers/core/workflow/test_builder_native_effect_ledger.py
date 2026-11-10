@@ -14,7 +14,7 @@ from sqlalchemy import Engine, Table
 from models.account import TenantAccountRole, TenantStatus
 from models.workflow import Workflow
 from runtime_contracts.builder.native.contracts import DispatchPermit, PolicyStop
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 
 if TYPE_CHECKING:
     from multiprocessing.connection import Connection as ProcessConnection
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+    from tests.e2e_tests.containers.core.workflow import test_builder_restricted_native as _fixture_types_0
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
@@ -81,11 +81,11 @@ from runtime_contracts.builder.native.contracts import (
     operation_digest,
 )
 from services.dify_builder.native_testing.repository import native_workflow_revision
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_present
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_present
+from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
+from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     no_live as no_live,  # noqa: PLC0414 - zero early capability I/O fixture
 )
 
@@ -177,7 +177,7 @@ class LedgerCase:
 
 
 def _migration(filename: str) -> ModuleType:
-    path = Path(__file__).parents[4] / "migrations/versions" / filename
+    path = Path(__file__).parents[5] / "migrations/versions" / filename
     spec = importlib.util.spec_from_file_location("native_ledger_migration_" + filename, path)
     assert spec is not None
     assert spec.loader is not None
@@ -235,7 +235,7 @@ def _assert_waiting_policy(connection: Connection, *, native: bool) -> None:
 
 @pytest.fixture(scope="module", autouse=True)
 def migrated_native_tables(flask_app_with_containers: DifyApp) -> None:
-    """Rebuild the race schema through both real migrations with deployed metadata."""
+    """Rebuild the native race schema and apply the optional canvas column."""
     from extensions.ext_database import db
 
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
@@ -275,6 +275,7 @@ def migrated_native_tables(flask_app_with_containers: DifyApp) -> None:
             _request_migration().upgrade()
             _assert_single_request_state_check(connection, native=False)
             _native_migration().upgrade()
+            _migration("2026_11_10_1200-c34e2f7b5a10_builder_native_canvas_path.py").upgrade()
             _assert_single_request_state_check(connection, native=True)
             _assert_waiting_policy(connection, native=True)
         connection.execute(text("COMMENT ON TABLE dify_builder_native_attempts IS 'ci-alembic:c67e12a904bf'"))
