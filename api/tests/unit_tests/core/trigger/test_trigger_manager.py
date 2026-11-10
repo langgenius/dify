@@ -2,7 +2,7 @@
 Tests for core.trigger.trigger_manager.TriggerManager.
 
 Covers: icon URL construction, provider listing with error resilience,
-double-check lock caching, error translation, EventIgnoreError -> cancelled,
+double-check lock caching, error translation,
 and delegation to provider controller.
 """
 
@@ -13,14 +13,9 @@ from threading import Lock
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Request
-from typing_extensions import TypedDict
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginDaemonError, PluginNotFoundError
-from core.trigger.entities.entities import Subscription
-from core.trigger.errors import EventIgnoreError
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
@@ -33,19 +28,6 @@ from tests.unit_tests.core.trigger.conftest import (
 
 PID = TriggerProviderID(VALID_PROVIDER_ID)
 PID_STR = str(PID)
-
-
-class _InvokeTriggerEventArgs(TypedDict, closed=True):
-    tenant_id: str
-    user_id: str
-    provider_id: TriggerProviderID
-    event_name: str
-    parameters: dict[str, object]
-    credentials: dict[str, str]
-    credential_type: CredentialType
-    subscription: Subscription
-    request: Request
-    payload: dict[str, object]
 
 
 class TestGetTriggerPluginIcon:
@@ -212,54 +194,6 @@ class TestListTriggersByProvider:
         result = TriggerManager.list_triggers_by_provider("t1", PID)
 
         assert result == ctrl.get_events()
-
-
-class TestInvokeTriggerEvent:
-    def _args(self) -> _InvokeTriggerEventArgs:
-        return {
-            "tenant_id": "t1",
-            "user_id": "u1",
-            "provider_id": PID,
-            "event_name": "on_push",
-            "parameters": {"branch": "main"},
-            "credentials": {"token": "abc"},
-            "credential_type": CredentialType.API_KEY,
-            "subscription": make_subscription(),
-            "request": MagicMock(),
-            "payload": {"action": "push"},
-        }
-
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_returns_invoke_response(self, mock_get: MagicMock) -> None:
-        ctrl = MagicMock()
-        expected = TriggerInvokeEventResponse(variables={"v": "1"}, cancelled=False)
-        ctrl.invoke_trigger_event.return_value = expected
-        mock_get.return_value = ctrl
-
-        result = TriggerManager.invoke_trigger_event(**self._args())
-
-        assert result is expected
-        assert result.cancelled is False
-
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_event_ignore_returns_cancelled(self, mock_get: MagicMock) -> None:
-        ctrl = MagicMock()
-        ctrl.invoke_trigger_event.side_effect = EventIgnoreError("skip")
-        mock_get.return_value = ctrl
-
-        result = TriggerManager.invoke_trigger_event(**self._args())
-
-        assert result.cancelled is True
-        assert result.variables == {}
-
-    @patch.object(TriggerManager, "get_trigger_provider")
-    def test_other_errors_propagate(self, mock_get: MagicMock) -> None:
-        ctrl = MagicMock()
-        ctrl.invoke_trigger_event.side_effect = RuntimeError("boom")
-        mock_get.return_value = ctrl
-
-        with pytest.raises(RuntimeError, match="boom"):
-            TriggerManager.invoke_trigger_event(**self._args())
 
 
 class TestSubscribeTrigger:

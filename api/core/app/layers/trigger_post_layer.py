@@ -64,7 +64,7 @@ class TriggerPostLayer(Layer):
                 # Extract relevant data from result
                 outputs = self.runtime_state.outputs
 
-                # BASICLY, workflow_execution_id is the same as workflow_run_id
+                # Basically, workflow_execution_id is the same as workflow_run_id
                 workflow_run_id = get_system_text(
                     self.runtime_state.variable_pool,
                     SystemVariableKey.WORKFLOW_EXECUTION_ID,
