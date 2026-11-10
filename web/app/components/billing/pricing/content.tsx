@@ -16,7 +16,7 @@ import styles from './pricing.module.css'
 type BillingInterval = GetBillingSubscriptionData['query']['interval']
 
 const intervalOptionClassName =
-  'relative flex min-w-0 flex-1 cursor-pointer flex-wrap items-center justify-center gap-1 rounded-full px-3 py-1 text-lg leading-6 font-medium text-(--pricing-subdued) outline-state-accent-solid focus-visible:outline-2 focus-visible:outline-offset-2 forced-colors:data-checked:underline data-checked:text-(--pricing-ink) sm:min-w-[190px] sm:flex-none sm:px-6 sm:text-2xl sm:leading-[30px]'
+  'group/interval relative flex min-w-0 flex-1 cursor-pointer flex-wrap items-center justify-center gap-1 rounded-full px-3 py-1 text-lg leading-6 font-medium text-(--pricing-subdued) outline-state-accent-solid focus-visible:outline-2 focus-visible:outline-offset-2 forced-colors:data-checked:underline data-checked:text-(--pricing-ink) sm:min-w-[190px] sm:flex-none sm:px-6 sm:text-2xl sm:leading-[30px]'
 
 export function PricingContent() {
   const { t } = useTranslation(['appApi', 'billing', 'common'])
@@ -52,21 +52,15 @@ export function PricingContent() {
   const billingInterval = selectedBillingInterval ?? defaultBillingInterval
   const indicatorId = React.useId()
   const reducedMotion = useReducedMotion()
-  const [keyboardInput, setKeyboardInput] = React.useState(false)
-  const indicatorClassName =
-    'pointer-events-none absolute inset-0 -z-1 rounded-full bg-components-button-secondary-bg'
-  const intervalIndicator =
-    reducedMotion || keyboardInput ? (
-      <span aria-hidden="true" className={indicatorClassName} />
-    ) : (
-      <motion.span
-        aria-hidden="true"
-        initial={false}
-        layoutId={indicatorId}
-        transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
-        className={indicatorClassName}
-      />
-    )
+  const intervalIndicator = (
+    <motion.span
+      aria-hidden="true"
+      initial={false}
+      layoutId={reducedMotion ? undefined : indicatorId}
+      transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
+      className="pointer-events-none absolute inset-0 -z-1 rounded-full bg-components-button-secondary-bg group-focus-visible/interval:transform-none! group-focus-visible/interval:opacity-100! motion-reduce:transform-none! motion-reduce:opacity-100!"
+    />
+  )
   const billing = currentCloudPlan
     ? {
         currentPlan: currentCloudPlan,
@@ -85,8 +79,6 @@ export function PricingContent() {
         aria-label={t(($) => $['pricing.billingInterval'], { ns: 'billing' })}
         value={billingInterval}
         onValueChange={setSelectedBillingInterval}
-        onKeyDownCapture={() => setKeyboardInput(true)}
-        onPointerDownCapture={() => setKeyboardInput(false)}
         className="relative isolate mx-auto my-8 min-h-[49px] w-full max-w-full gap-0 rounded-full border border-(--pricing-switch-border) bg-(--pricing-switch) p-1 sm:w-fit"
       >
         <RadioItem value="month" className={intervalOptionClassName}>
