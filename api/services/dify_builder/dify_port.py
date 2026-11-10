@@ -739,30 +739,30 @@ class WorkflowServiceDifyPort:
             return load_app(session, app_id, actor).mode
 
     def read_task_dsl(self, app_id: str, actor: Actor) -> tuple[dict, str]:
-        """Capture execution DSL for continuation, with credentials withheld."""
-        from services.dify_builder.credentials import REDACTED, redact_node_config
+        """Capture an owned draft's credential-safe continuation context.
+
+        Resolve the current draft under the tenant guard; sanitize a context copy
+        only. Binding and execution revision still describe the original draft,
+        and neither successful capture nor read failures mutate authored state.
+        """
+        from services.dify_builder.diagnostic_context import redact_dsl_context
 
         with _session_factory()() as sql:
             app = load_app(sql, app_id, actor)
             workflow = _load_draft_workflow_or_raise(app, session=sql)
-            graph = dict(workflow.graph_dict)
-            graph["nodes"] = [
-                {**node, "data": redact_node_config(dict(node.get("data") or {}))} for node in graph.get("nodes", [])
-            ]
-            variables = []
-            for variable in workflow.environment_variables:
-                value = variable.model_dump(mode="json")
-                if value.get("value_type") == "secret":
-                    value["value"] = REDACTED
-                variables.append(value)
             from services.dify_builder.task_controls import draft_binding
 
+            context = redact_dsl_context(
+                {
+                    "graph": dict(workflow.graph_dict),
+                    "features": dict(workflow.features_dict),
+                    "environment_variables": [v.model_dump(mode="json") for v in workflow.environment_variables],
+                    "conversation_variables": [v.model_dump(mode="json") for v in workflow.conversation_variables],
+                }
+            )
             return {
                 "_draft_binding": {"workflow_id": workflow.id, "digest": draft_binding(workflow)},
-                "graph": graph,
-                "features": dict(workflow.features_dict),
-                "environment_variables": variables,
-                "conversation_variables": [v.model_dump(mode="json") for v in workflow.conversation_variables],
+                **context,
             }, execution_revision(workflow)
 
     def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:

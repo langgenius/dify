@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from graphon.model_runtime.entities.message_entities import (
+    PromptMessage,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
@@ -23,6 +24,7 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.nodes.llm.reasoning import ThinkStreamFilter, split_reasoning
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.attachment_context import append_material, material_policy
+from services.dify_builder.diagnostic_context import redact_dsl_context
 from services.dify_builder.task_lifecycle import append_task_summaries
 
 # --- Reply-language instruction (M1) -----------------------------------------
@@ -115,6 +117,24 @@ def _as_dict(text: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
+def _prompt_messages(system: str, user: str) -> list[PromptMessage]:
+    """Assemble prompts with a sanitized copy of any synchronized DSL.
+
+    Historical fences may contain plaintext credentials, even when the caller's
+    diagnostic text is already safe. Project the DSL here for every model path
+    without altering the fence or its persisted continuation snapshot.
+    """
+    from services.dify_builder.task_controls import synchronized_dsl
+
+    dsl = synchronized_dsl()
+    if dsl:
+        user += "\n\nCURRENT SYNCHRONIZED WORKFLOW DSL:\n" + json.dumps(redact_dsl_context(dsl), ensure_ascii=False)
+    return [
+        SystemPromptMessage(content=system + material_policy()),
+        UserPromptMessage(content=append_material(append_task_summaries(user))),
+    ]
+
+
 def invoke_text(
     model_instance,
     *,
@@ -124,15 +144,7 @@ def invoke_text(
     stop: list[str] | None = None,
     on_reasoning: ReasoningCallback | None = None,
 ) -> str:
-    from services.dify_builder.task_controls import synchronized_dsl
-
-    dsl = synchronized_dsl()
-    if dsl:
-        user += "\n\nCURRENT SYNCHRONIZED WORKFLOW DSL:\n" + json.dumps(dsl, ensure_ascii=False)
-    messages = [
-        SystemPromptMessage(content=system + material_policy()),
-        UserPromptMessage(content=append_material(append_task_summaries(user))),
-    ]
+    messages = _prompt_messages(system, user)
     return _complete(model_instance, messages, model_parameters, stop, on_reasoning)
 
 
@@ -146,15 +158,7 @@ def invoke_text_stream(
     on_reasoning: ReasoningCallback | None = None,
 ) -> Iterator[str]:
     """Yield answer deltas while routing model reasoning to its own callback."""
-    from services.dify_builder.task_controls import synchronized_dsl
-
-    dsl = synchronized_dsl()
-    if dsl:
-        user += "\n\nCURRENT SYNCHRONIZED WORKFLOW DSL:\n" + json.dumps(dsl, ensure_ascii=False)
-    messages = [
-        SystemPromptMessage(content=system + material_policy()),
-        UserPromptMessage(content=append_material(append_task_summaries(user))),
-    ]
+    messages = _prompt_messages(system, user)
     from services.dify_builder.task_controls import check_current
 
     check_current()
@@ -232,15 +236,7 @@ def invoke_json(
     stop: list[str] | None = None,
     on_reasoning: ReasoningCallback | None = None,
 ) -> dict[str, Any]:
-    from services.dify_builder.task_controls import synchronized_dsl
-
-    dsl = synchronized_dsl()
-    if dsl:
-        user += "\n\nCURRENT SYNCHRONIZED WORKFLOW DSL:\n" + json.dumps(dsl, ensure_ascii=False)
-    messages = [
-        SystemPromptMessage(content=system + material_policy()),
-        UserPromptMessage(content=append_material(append_task_summaries(user))),
-    ]
+    messages = _prompt_messages(system, user)
     text = _complete(model_instance, messages, model_parameters, stop, on_reasoning)
     parsed = _as_dict(text)
     if parsed is not None:
