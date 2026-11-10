@@ -1036,6 +1036,10 @@ describe('ConnectedSourceWorkflow', () => {
 
     await user.click(contents)
     expect(await screen.findByRole('button', { name: 'src' })).toBeInTheDocument()
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 100, parentId: 'contents:FFXN/dify', view: 'tree' },
+    })
     const srcCheckbox = screen.getByRole('checkbox', { name: 'src' })
     expect(contentsCheckbox).not.toHaveAttribute('aria-disabled', 'true')
     expect(srcCheckbox).toHaveAttribute('aria-disabled', 'true')
@@ -1043,7 +1047,7 @@ describe('ConnectedSourceWorkflow', () => {
     const codeFile = await screen.findByRole('checkbox', { name: 'main.py' })
     expect(clientMock.getPages).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
-      query: { limit: 30, parentId: 'dir:FFXN/dify:src', view: 'tree' },
+      query: { limit: 100, parentId: 'dir:FFXN/dify:src', view: 'tree' },
     })
     expect(codeFile).not.toBeChecked()
     expect(srcCheckbox).not.toHaveAttribute('aria-disabled', 'true')
