@@ -340,12 +340,21 @@ export const integrates = {
   get: get6,
 }
 
+/**
+ * Change admitted Account credentials only while password login is enabled
+ *
+ * Existing passwords require verification. Disabled policy rejects before
+ * payload validation or credential writes; failures leave credentials unchanged.
+ */
 export const post9 = oc
   .route({
+    description:
+      'Existing passwords require verification. Disabled policy rejects before\npayload validation or credential writes; failures leave credentials unchanged.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAccountPassword',
     path: '/account/password',
+    summary: 'Change admitted Account credentials only while password login is enabled',
     tags: ['console'],
   })
   .input(z.object({ body: zPostAccountPasswordBody }))

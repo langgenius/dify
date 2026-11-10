@@ -54,7 +54,12 @@ from controllers.console.workspace.error import (
     MissingInvitationCodeRequestError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import enterprise_license_required, model_validate, setup_required
+from controllers.console.wraps import (
+    email_password_login_enabled,
+    enterprise_license_required,
+    model_validate,
+    setup_required,
+)
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountProfileResponse, AccountResponse
@@ -312,8 +317,14 @@ class AccountPasswordApi(Resource):
     @console_ns.expect(console_ns.models[AccountPasswordPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
+    @email_password_login_enabled
     @model_validate(AccountPasswordPayload)
     def post(self, args: AccountPasswordPayload, request_context: RequestContext):
+        """Change admitted Account credentials only while password login is enabled.
+
+        Existing passwords require verification. Disabled policy rejects before
+        payload validation or credential writes; failures leave credentials unchanged.
+        """
         try:
             assert args.password is not None
             account = application_services().accounts.password.change(
