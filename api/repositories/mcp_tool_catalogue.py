@@ -9,11 +9,9 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from jsonschema import Draft202012Validator, SchemaError
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from core.mcp.types import Tool as RemoteMCPTool
 from core.tools.mcp_tool.provider import MCPToolProviderController
 from models.tools import MCPToolProvider
 
@@ -58,13 +56,10 @@ def list_mcp_tool_metadata(tenant_id: str) -> list["ToolCatalogueEntry"]:
         else:
             for raw_tool in tools:
                 try:
-                    tool = RemoteMCPTool.model_validate(raw_tool)
-                    if not tool.name.strip():
-                        raise ValueError("Invalid MCP action identity")
-                    Draft202012Validator.check_schema(tool.inputSchema)
-                    if tool.outputSchema is not None:
-                        Draft202012Validator.check_schema(tool.outputSchema)
-                    parameters = MCPToolProviderController.parameters_from_schema(tool.inputSchema)
+                    declaration = MCPToolProviderController.compatible_declaration(raw_tool)
+                    if declaration is None:
+                        raise ValueError("Unsupported MCP action declaration")
+                    tool, parameters = declaration
                     entries.append(
                         {
                             "provider_name": server,
@@ -81,7 +76,7 @@ def list_mcp_tool_metadata(tenant_id: str) -> list["ToolCatalogueEntry"]:
                             "mcp_cached_auth": row["authed"] is True,
                         }
                     )
-                except (TypeError, ValueError, AttributeError, SchemaError):
+                except (TypeError, ValueError):
                     # Do not log raw declarations or validation exceptions: a
                     # malformed cached declaration may contain arbitrary text.
                     logger.warning("Workflow generator: invalid public MCP action metadata; skipping action")

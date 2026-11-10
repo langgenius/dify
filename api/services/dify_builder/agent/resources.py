@@ -32,6 +32,7 @@ from core.workflow.generator.tool_catalogue import (
     build_tool_catalogue,
     format_tool_builder_context,
     tool_capability_text,
+    tool_entry_identifier,
 )
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
@@ -327,7 +328,7 @@ def _tool_ref(entry: ToolCatalogueEntry, authorized: set[str] | None) -> Resourc
     # (the discovery prompt line) never cuts it off.
     meta = f"{note} — {description}" if description and note else (note or description)
     return ResourceRef(
-        id=f"{entry['provider_name']}/{entry['tool_name']}",
+        id=tool_entry_identifier(entry),
         label=str(entry.get("tool_label") or entry["tool_name"]),
         meta=meta,
         readiness=readiness,

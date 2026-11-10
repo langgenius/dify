@@ -259,7 +259,7 @@ def format_tool_catalogue(entries: list[ToolCatalogueEntry], *, max_tools: int |
         desc = e["description"].replace("\n", " ").strip()
         if len(desc) > 120:
             desc = desc[:117] + "..."
-        line = f"- {e['provider_name']}/{e['tool_name']}"
+        line = f"- {tool_entry_identifier(e)}"
         if e["tool_label"] and e["tool_label"] != e["tool_name"]:
             line += f" ({e['tool_label']})"
         # provider names for plugin tools commonly contain slashes themselves
@@ -279,14 +279,71 @@ def format_tool_catalogue(entries: list[ToolCatalogueEntry], *, max_tools: int |
     return "\n".join(lines)
 
 
-def find_tool_entry(entries: list[ToolCatalogueEntry], provider_name: str, tool_name: str) -> ToolCatalogueEntry | None:
-    """Return one exact installed-tool entry, or ``None`` when unavailable."""
-    provider_name = provider_name.strip()
-    tool_name = tool_name.strip()
-    for entry in entries:
-        if entry["provider_name"] == provider_name and entry["tool_name"] == tool_name:
+def tool_entry_identifier(entry: ToolCatalogueEntry) -> str:
+    """Return the selection ID, retaining legacy IDs outside the MCP namespace."""
+    prefix = "mcp:" if entry.get("provider_type") == "mcp" else ""
+    return f"{prefix}{entry['provider_name']}/{entry['tool_name']}"
+
+
+def _tool_entry_key(entry: ToolCatalogueEntry) -> tuple[str, str, str]:
+    """Provider type is part of native identity even when display pairs collide."""
+    return entry["provider_name"], entry["tool_name"], entry["provider_type"]
+
+
+def find_tool_entry(
+    entries: list[ToolCatalogueEntry], provider_name: str, tool_name: str, *, provider_type: str | None = None
+) -> ToolCatalogueEntry | None:
+    """Resolve an exact native identity; legacy untyped pairs must be unambiguous.
+
+    Explicit provider types never fall back to another type. Unknown or ambiguous
+    identities return None without choosing a provider by catalogue order.
+    """
+    matches = [
+        entry
+        for entry in entries
+        if entry["provider_name"] == provider_name.strip()
+        and entry["tool_name"] == tool_name.strip()
+        and (provider_type is None or entry["provider_type"] == provider_type)
+    ]
+    return matches[0] if matches and len({_tool_entry_key(entry) for entry in matches}) == 1 else None
+
+
+def resolve_tool_entry(
+    entries: list[ToolCatalogueEntry], selector: object, *, purpose: str
+) -> ToolCatalogueEntry | None:
+    """Honor an explicit native selector; allow only an unambiguous prose fallback.
+
+    Missing legacy selectors may use exact text identifiers. An explicit type
+    or an installed ambiguous pair is authoritative even when no match exists:
+    prose must never substitute another provider type for either case.
+    """
+    if isinstance(selector, dict):
+        provider = str(selector.get("provider_id") or selector.get("provider_name") or "")
+        name = str(selector.get("tool_name") or "")
+        provider_type = selector.get("provider_type")
+        entry = find_tool_entry(
+            entries, provider, name, provider_type=str(provider_type) if provider_type is not None else None
+        )
+        if entry is not None or provider_type is not None:
             return entry
-    return None
+        if any(e["provider_name"] == provider and e["tool_name"] == name for e in entries):
+            return None
+    return find_tool_entry_in_text(entries, purpose)
+
+
+def find_tool_entry_in_text(entries: list[ToolCatalogueEntry], text: str) -> ToolCatalogueEntry | None:
+    """Resolve one mentioned native identity, refusing ambiguous legacy display IDs."""
+    matches = [entry for entry in entries if _text_mentions_entry(text, entry)]
+    return matches[0] if matches and len({_tool_entry_key(entry) for entry in matches}) == 1 else None
+
+
+def _text_mentions_entry(text: str, entry: ToolCatalogueEntry, *, ignore_case: bool = False) -> bool:
+    """Accept namespaced MCP IDs and legacy mentions without guessing a provider type."""
+    provider = ("mcp:" if entry["provider_type"] == "mcp" else "") + entry["provider_name"]
+    return text_mentions_tool_identifier(text, provider, entry["tool_name"], ignore_case=ignore_case) or (
+        entry["provider_type"] == "mcp"
+        and text_mentions_tool_identifier(text, entry["provider_name"], entry["tool_name"], ignore_case=ignore_case)
+    )
 
 
 def text_mentions_tool_identifier(
@@ -324,10 +381,10 @@ def select_tool_candidates(
     """
     pinned_keys = _find_explicit_tool_keys(entries, explicit_text)
     pinned_keys.update(_find_current_graph_tool_keys(entries, current_graph))
-    entries_by_key = {(entry["provider_name"], entry["tool_name"]): entry for entry in entries}
-    pinned = [entry for entry in entries if (entry["provider_name"], entry["tool_name"]) in pinned_keys]
+    entries_by_key = {_tool_entry_key(entry): entry for entry in entries}
+    pinned = [entry for entry in entries if _tool_entry_key(entry) in pinned_keys]
 
-    candidate_scores: dict[tuple[str, str], float] = {}
+    candidate_scores: dict[tuple[str, str, str], float] = {}
     unmatched_queries: list[str] = []
     for query in queries[:5]:
         ranked = _rank_tools_for_query(entries, query)
@@ -338,12 +395,12 @@ def select_tool_candidates(
                 unmatched_queries.append(capability)
             continue
         for score, entry in confident[:MAX_ROUTED_TOOLS_PER_QUERY]:
-            key = (entry["provider_name"], entry["tool_name"])
+            key = _tool_entry_key(entry)
             candidate_scores[key] = max(score, candidate_scores.get(key, 0.0))
 
     ranked_keys = sorted(
         candidate_scores,
-        key=lambda key: (-candidate_scores[key], key[0], key[1]),
+        key=lambda key: (-candidate_scores[key], key[0], key[1], key[2]),
     )
     provider_counts: dict[str, int] = {}
     routed: list[ToolCatalogueEntry] = []
@@ -378,9 +435,9 @@ def select_legacy_fallback_selection(
         explicit_text=explicit_text,
         current_graph=current_graph,
     ).entries
-    pinned_keys = {(entry["provider_name"], entry["tool_name"]) for entry in pinned}
+    pinned_keys = {_tool_entry_key(entry) for entry in pinned}
     regular_limit = max(0, _MAX_PROMPT_TOOLS - len(pinned))
-    regular = [entry for entry in entries if (entry["provider_name"], entry["tool_name"]) not in pinned_keys]
+    regular = [entry for entry in entries if _tool_entry_key(entry) not in pinned_keys]
     return LegacyToolFallbackSelection(
         entries=[*pinned, *regular[:regular_limit]],
         omitted_entries=regular[regular_limit:],
@@ -406,29 +463,24 @@ def select_legacy_fallback_tools(
 def _find_explicit_tool_keys(
     entries: list[ToolCatalogueEntry],
     text: str,
-) -> set[tuple[str, str]]:
+) -> set[tuple[str, str, str]]:
     if not text.strip():
         return set()
-    keys: set[tuple[str, str]] = set()
+    keys: set[tuple[str, str, str]] = set()
     for entry in entries:
-        if text_mentions_tool_identifier(
-            text,
-            entry["provider_name"],
-            entry["tool_name"],
-            ignore_case=True,
-        ):
-            keys.add((entry["provider_name"], entry["tool_name"]))
+        if _text_mentions_entry(text, entry, ignore_case=True):
+            keys.add(_tool_entry_key(entry))
     return keys
 
 
 def _find_current_graph_tool_keys(
     entries: list[ToolCatalogueEntry],
     current_graph: dict[str, Any] | None,
-) -> set[tuple[str, str]]:
+) -> set[tuple[str, str, str]]:
     if not current_graph:
         return set()
-    installed = {(entry["provider_name"], entry["tool_name"]) for entry in entries}
-    keys: set[tuple[str, str]] = set()
+    installed = {_tool_entry_key(entry) for entry in entries}
+    keys: set[tuple[str, str, str]] = set()
     for node in current_graph.get("nodes") or []:
         if not isinstance(node, dict):
             continue
@@ -438,6 +490,7 @@ def _find_current_graph_tool_keys(
         key = (
             str(data.get("provider_id") or data.get("provider_name") or "").strip(),
             str(data.get("tool_name") or "").strip(),
+            str(data.get("provider_type") or "builtin"),
         )
         if key in installed:
             keys.add(key)

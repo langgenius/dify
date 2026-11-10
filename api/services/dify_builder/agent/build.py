@@ -505,8 +505,13 @@ _MAX_DISCOVERY_TOOLS = 40
 
 
 def _tool_key(ref: ResourceRef) -> tuple[str, str]:
-    """``(provider_name, tool_name)`` of a tool resource id ``provider/tool``.
-    Provider ids may contain slashes; tool names never do."""
+    """Read the native pair from its binding; preserve legacy unbound refs.
+
+    Resource IDs may be namespaced (MCP); that namespace is never a provider ID.
+    """
+    provider, action = ref.binding.get("provider_id"), ref.binding.get("tool_name")
+    if isinstance(provider, str) and isinstance(action, str) and provider and action:
+        return provider, action
     provider_name, _, tool_name = ref.id.rpartition("/")
     return provider_name, tool_name
 
@@ -1725,7 +1730,11 @@ def _installed_tool_refs(tenant_id: str, account_id: str | None) -> dict[tuple[s
         trace_diagnostics.report("inventory_unavailable", error=exc, fallback_used=True)
         logger.warning("dify_builder: tool listing failed; generating without installed tools", exc_info=True)
         return {}
-    return {_tool_key(t): t for t in tools}
+    # This legacy pair projection feeds builtin setup and the availability
+    # allowlist, never resource selection. Keep the builtin setup owner if an
+    # MCP action has the same pair; exact selections retain namespaced ref IDs.
+    ordered = sorted(tools, key=lambda ref: ref.binding.get("provider_type", "builtin") in {"builtin", "plugin"})
+    return {_tool_key(t): t for t in ordered}
 
 
 def _uninstalled_tool_refusals(graph: dict[str, Any], ready_tool_keys: frozenset[tuple[str, str]]) -> list[str]:

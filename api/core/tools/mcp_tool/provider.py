@@ -1,5 +1,7 @@
 from typing import Any, Self, override
 
+from jsonschema import Draft202012Validator, SchemaError
+
 from core.entities.mcp_provider import IdentityMode, MCPProviderEntity
 from core.mcp.types import Tool as RemoteMCPTool
 from core.tools.__base.tool_provider import ToolProviderController
@@ -65,7 +67,11 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
         """
         create a MCPToolProviderController from a MCPProviderEntity
         """
-        remote_mcp_tools = [RemoteMCPTool(**tool) for tool in entity.tools]
+        declarations = [
+            declaration
+            for raw_tool in entity.tools
+            if (declaration := cls.compatible_declaration(raw_tool)) is not None
+        ]
 
         tools = [
             ToolEntity(
@@ -82,7 +88,7 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
                     provider=entity.server_identifier,
                     icon=entity.icon if isinstance(entity.icon, str) else "",
                 ),
-                parameters=cls.parameters_from_schema(remote_mcp_tool.inputSchema),
+                parameters=parameters,
                 description=ToolDescription(
                     human=I18nObject(
                         en_US=remote_mcp_tool.description or "", zh_Hans=remote_mcp_tool.description or ""
@@ -92,7 +98,7 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
                 output_schema=remote_mcp_tool.outputSchema or {},
                 has_runtime_parameters=len(remote_mcp_tool.inputSchema) > 0,
             )
-            for remote_mcp_tool in remote_mcp_tools
+            for remote_mcp_tool, parameters in declarations
         ]
         if not entity.icon:
             raise ValueError("Database provider icon is required")
@@ -117,6 +123,26 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
             sse_read_timeout=entity.sse_read_timeout,
             identity_mode=entity.identity_mode,
         )
+
+    @classmethod
+    def compatible_declaration(cls, raw_tool: object) -> tuple[RemoteMCPTool, list[ToolParameter]] | None:
+        """Admit one public action only when its declared schemas convert natively.
+
+        Returns None for an invalid/unsupported action, leaving valid siblings
+        usable. This pure boundary catches declaration/conversion failures only;
+        provider ownership, credential, configuration and transport errors remain
+        with their existing owners and are never swallowed here.
+        """
+        try:
+            tool = RemoteMCPTool.model_validate(raw_tool)
+            if not tool.name.strip():
+                return None
+            Draft202012Validator.check_schema(tool.inputSchema)
+            if tool.outputSchema is not None:
+                Draft202012Validator.check_schema(tool.outputSchema)
+            return tool, cls.parameters_from_schema(tool.inputSchema)
+        except (TypeError, ValueError, AttributeError, SchemaError):
+            return None
 
     @staticmethod
     def parameters_from_schema(schema: dict[str, Any]) -> list[ToolParameter]:
