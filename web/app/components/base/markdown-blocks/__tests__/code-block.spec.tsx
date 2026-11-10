@@ -1,14 +1,14 @@
+import type { ResolvedTheme } from '@/features/theme/theme'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Theme } from '@/types/app'
 import { CodeBlock } from '../code-block'
 import { highlightCode } from '../code-highlight'
 
 type UseThemeReturn = {
-  theme: Theme
+  theme: ResolvedTheme
 }
 
-const mockUseTheme = vi.fn<() => UseThemeReturn>(() => ({ theme: Theme.light }))
+const mockUseTheme = vi.fn<() => UseThemeReturn>(() => ({ theme: 'light' }))
 const mockEcharts = vi.hoisted(() => {
   const state = {
     option: undefined as unknown,
@@ -65,9 +65,9 @@ class MockAudioContext {
   }))
 }
 
-vi.mock('@/hooks/use-theme', () => ({
+vi.mock('@/features/theme/hooks', () => ({
   __esModule: true,
-  default: () => mockUseTheme(),
+  useResolvedTheme: () => mockUseTheme().theme,
 }))
 
 // Keep the real highlighter so tests cover its output; the spy only forces
@@ -149,7 +149,7 @@ const findHighlightedKeyword = async () => {
 describe('CodeBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseTheme.mockReturnValue({ theme: Theme.light })
+    mockUseTheme.mockReturnValue({ theme: 'light' })
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(900)
@@ -249,7 +249,7 @@ describe('CodeBlock', () => {
     })
 
     it('should render syntax-highlighted output when language is standard and app theme is dark', async () => {
-      mockUseTheme.mockReturnValue({ theme: Theme.dark })
+      mockUseTheme.mockReturnValue({ theme: 'dark' })
 
       render(<CodeBlock className="language-javascript">const y = 2;</CodeBlock>)
 
@@ -361,7 +361,7 @@ describe('CodeBlock', () => {
     })
 
     it('should render dark themed echarts path when app theme is dark', async () => {
-      mockUseTheme.mockReturnValue({ theme: Theme.dark })
+      mockUseTheme.mockReturnValue({ theme: 'dark' })
       render(<CodeBlock className="language-echarts">{'{"series":[]}'}</CodeBlock>)
 
       expect(await findEchartsHost())!.toBeInTheDocument()

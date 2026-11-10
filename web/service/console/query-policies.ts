@@ -2380,7 +2380,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     return {
                       ...oldList,
                       data: oldList.data.map((item) =>
-                        item.id === updatedAgent.id ? updatedAgent : item,
+                        item.id === updatedAgent.id ? { ...item, ...updatedAgent } : item,
                       ),
                     }
                   },
@@ -2402,7 +2402,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                       pages: oldList.pages.map((page) => ({
                         ...page,
                         data: page.data.map((item) =>
-                          item.id === updatedAgent.id ? updatedAgent : item,
+                          item.id === updatedAgent.id ? { ...item, ...updatedAgent } : item,
                         ),
                       })),
                     }

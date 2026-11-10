@@ -12,7 +12,7 @@ from core.app.entities.task_entities import (
 
 
 class TestAgentChatAppGenerateResponseConverterBlocking:
-    def test_convert_blocking_full_response(self):
+    def test_convert_blocking_full_response(self) -> None:
         blocking = ChatbotAppBlockingResponse(
             task_id="task",
             data=ChatbotAppBlockingResponse.Data(
@@ -32,7 +32,7 @@ class TestAgentChatAppGenerateResponseConverterBlocking:
         assert result["answer"] == "answer"
         assert result["metadata"] == {"a": 1}
 
-    def test_convert_blocking_simple_response_with_dict_metadata(self):
+    def test_convert_blocking_simple_response_with_dict_metadata(self) -> None:
         blocking = ChatbotAppBlockingResponse(
             task_id="task",
             data=ChatbotAppBlockingResponse.Data(
@@ -77,7 +77,7 @@ class TestAgentChatAppGenerateResponseConverterBlocking:
         assert "annotation_reply" not in result["metadata"]
         assert "usage" not in result["metadata"]
 
-    def test_convert_blocking_simple_response_with_non_dict_metadata(self):
+    def test_convert_blocking_simple_response_with_non_dict_metadata(self) -> None:
         blocking = ChatbotAppBlockingResponse.model_construct(
             task_id="task",
             data=ChatbotAppBlockingResponse.Data.model_construct(
@@ -98,7 +98,7 @@ class TestAgentChatAppGenerateResponseConverterBlocking:
 
 class TestAgentChatAppGenerateResponseConverterStream:
     def build_stream(self) -> Generator[ChatbotAppStreamResponse]:
-        def _gen():
+        def _gen() -> Generator[ChatbotAppStreamResponse]:
             yield ChatbotAppStreamResponse(
                 conversation_id="conv",
                 message_id="msg",
@@ -158,20 +158,25 @@ class TestAgentChatAppGenerateResponseConverterStream:
 
         return _gen()
 
-    def test_convert_stream_full_response(self):
+    def test_convert_stream_full_response(self) -> None:
         items = list(AgentChatAppGenerateResponseConverter.convert_stream_full_response(self.build_stream()))
         assert items[0] == "ping"
+        assert isinstance(items[1], dict)
         assert items[1]["event"] == "message"
         assert "answer" in items[1]
+        assert isinstance(items[2], dict)
         assert items[2]["event"] == "message_end"
+        assert isinstance(items[3], dict)
         assert items[3]["event"] == "error"
 
-    def test_convert_stream_simple_response(self):
+    def test_convert_stream_simple_response(self) -> None:
         items = list(AgentChatAppGenerateResponseConverter.convert_stream_simple_response(self.build_stream()))
         assert items[0] == "ping"
         # Assert the message event structure and content at items[1]
+        assert isinstance(items[1], dict)
         assert items[1]["event"] == "message"
         assert items[1]["answer"] == "hi" or "hi" in items[1]["answer"]
+        assert isinstance(items[2], dict)
         assert items[2]["event"] == "message_end"
         assert "metadata" in items[2]
         metadata = items[2]["metadata"]
@@ -202,4 +207,5 @@ class TestAgentChatAppGenerateResponseConverterStream:
                 "summary": "summary",
             }
         ]
+        assert isinstance(items[3], dict)
         assert items[3]["event"] == "error"

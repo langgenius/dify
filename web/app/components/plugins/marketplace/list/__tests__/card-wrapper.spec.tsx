@@ -1,12 +1,12 @@
 import type { ComponentProps } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ThemeProvider } from 'next-themes'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   createPluginInstallPermissionStore,
   PluginInstallPermissionContext,
 } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
+import { ThemeProvider } from '@/features/theme/provider'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
@@ -65,7 +65,7 @@ describe('CardWrapper', () => {
     seedModelProviderQueries(queryClient)
     const store = createPluginInstallPermissionStore({ canInstallPlugin })
     return renderWithConsoleQuery(
-      <ThemeProvider defaultTheme="dark" enableSystem={false}>
+      <ThemeProvider defaultPreference="dark">
         <PluginInstallPermissionContext value={store}>
           <CardWrapper plugin={plugin} {...props} />
         </PluginInstallPermissionContext>
