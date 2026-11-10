@@ -175,13 +175,13 @@ def flow(harness: _Harness) -> _Flow:
     with harness.app.app_context():
         services = application_services()
         oauth = TriggerOAuthService(
-            clients=services.workspaces.trigger_oauth_clients,
+            clients=services.triggers.oauth_clients,
             providers=plugin,
             contexts=contexts,
             builders=builders,
         )
         harness.app.extensions["application_services"] = replace(
-            services, workspaces=replace(services.workspaces, trigger_oauth=oauth)
+            services, triggers=replace(services.triggers, oauth=oauth)
         )
     return _Flow(harness, plugin, contexts, builders)
 
