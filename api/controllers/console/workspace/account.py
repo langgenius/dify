@@ -10,7 +10,14 @@ from pydantic import BaseModel, Field, RootModel, field_validator, model_validat
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
-from controllers.common.account import AccountProfilePatchPayload
+from controllers.common.account import (
+    AccountAvatarQuery,
+    AccountProfilePatchPayload,
+    ChangeEmailResetPayload,
+    ChangeEmailSendPayload,
+    ChangeEmailValidityPayload,
+    CheckEmailUniquePayload,
+)
 from controllers.common.fields import (
     AvatarUrlResponse,
     SimpleResultDataResponse,
@@ -88,10 +95,6 @@ class AccountInitPayload(BaseModel):
         return timezone(value)
 
 
-class AccountAvatarQuery(BaseModel):
-    avatar: str = Field(..., description="Avatar file ID")
-
-
 class AccountPasswordPayload(BaseModel):
     password: str | None = None
     new_password: str
@@ -124,28 +127,6 @@ class EducationAutocompleteQuery(BaseModel):
     keywords: str
     page: int = 0
     limit: int = 20
-
-
-class ChangeEmailSendPayload(BaseModel):
-    email: EmailStr
-    language: str | None = None
-    phase: str | None = None
-    token: str | None = None
-
-
-class ChangeEmailValidityPayload(BaseModel):
-    email: EmailStr
-    code: str
-    token: str
-
-
-class ChangeEmailResetPayload(BaseModel):
-    new_email: EmailStr
-    token: str
-
-
-class CheckEmailUniquePayload(BaseModel):
-    email: EmailStr
 
 
 register_schema_models(

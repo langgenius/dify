@@ -1,19 +1,27 @@
 """Exercise Account settings through real cookie verification, services and persistence."""
 
 from collections.abc import Iterator
+from io import BytesIO
+from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from controllers.web import account, account_admission, bp
 from extensions.ext_application_services import ApplicationServices
+from extensions.ext_storage import storage
+from extensions.storage.opendal_storage import OpenDALStorage
 from libs.passport import PassportService
 from models.account import Account, AccountStatus, TenantAccountJoin
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -257,3 +265,130 @@ def test_profile_resolves_avatar_urls(
         assert "sign=" in profile["avatar_url"]
     else:
         assert profile["avatar_url"] == avatar
+
+
+@pytest.fixture
+def avatar_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    monkeypatch.setattr(storage, "storage_runner", OpenDALStorage("fs", root=str(tmp_path)), raising=False)
+    return tmp_path
+
+
+def _avatar_image() -> bytes:
+    output = BytesIO()
+    Image.new("RGB", (8, 8), "blue").save(output, format="PNG")
+    return output.getvalue()
+
+
+def test_avatar_upload_is_account_owned_without_a_workspace(
+    client: FlaskClient,
+    sqlite_session_factory: sessionmaker[Session],
+    avatar_storage: Path,
+    account_application_services: ApplicationServices,
+) -> None:
+    content = _avatar_image()
+    response = client.post("/api/account/avatar", data={"file": (BytesIO(content), "avatar.png")})
+    assert response.status_code == 201
+    assert response.headers["Cache-Control"] == "no-store"
+    uploaded = response.get_json()
+    assert set(uploaded) == {"id", "avatar_url"}
+    assert f"/files/{uploaded['id']}/" in uploaded["avatar_url"]
+    signature = parse_qs(urlsplit(uploaded["avatar_url"]).query)
+    delivery = account_application_services.upload_file_delivery.get_signed_file_preview(
+        file_id=uploaded["id"],
+        timestamp=signature["timestamp"][0],
+        nonce=signature["nonce"][0],
+        sign=signature["sign"][0],
+    )
+    assert not isinstance(delivery.content, bytes)
+    assert b"".join(delivery.content) == content
+    with sqlite_session_factory() as session:
+        stored = session.get_one(UploadFile, uploaded["id"])
+        assert stored.tenant_id is None
+        assert stored.created_by == ACCOUNT_ID
+        assert stored.created_by_role == CreatorUserRole.ACCOUNT
+        assert stored.mime_type == "image/png"
+        assert (avatar_storage / stored.key).read_bytes() == content
+        assert session.get_one(Account, ACCOUNT_ID).avatar is None
+        assert session.scalar(select(func.count()).select_from(TenantAccountJoin)) == 0
+    resolved = client.get("/api/account/avatar", query_string={"avatar": uploaded["id"]})
+    assert resolved.status_code == 200
+    assert resolved.headers["Cache-Control"] == "no-store"
+    assert f"/files/{uploaded['id']}/" in resolved.get_json()["avatar_url"]
+    assert client.patch("/api/account/profile", json={"avatar": uploaded["id"]}).status_code == 200
+    assert client.get("/api/account/profile").get_json()["avatar"] == uploaded["id"]
+
+
+@pytest.mark.usefixtures("avatar_storage")
+def test_avatar_resolution_rejects_another_accounts_file(
+    client: FlaskClient, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    response = client.post("/api/account/avatar", data={"file": (BytesIO(_avatar_image()), "avatar.png")})
+    file_id = response.get_json()["id"]
+    with sqlite_session_factory.begin() as session:
+        session.get_one(UploadFile, file_id).created_by = str(uuid4())
+    assert client.get("/api/account/avatar", query_string={"avatar": file_id}).status_code == 404
+    assert client.get("/api/account/avatar", query_string={"avatar": str(uuid4())}).status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("filename", "content", "error_code"),
+    [
+        ("avatar.txt", b"not an image", "unsupported_file_type"),
+        ("avatar.png", b"not an image", "unsupported_file_type"),
+        ("avatar.jpg", b"", "unsupported_file_type"),
+        ("", b"", "filename_not_exists_error"),
+    ],
+)
+def test_invalid_avatar_uploads_have_no_side_effects(
+    client: FlaskClient,
+    sqlite_session_factory: sessionmaker[Session],
+    avatar_storage: Path,
+    filename: str,
+    content: bytes,
+    error_code: str,
+) -> None:
+    response = client.post("/api/account/avatar", data={"file": (BytesIO(content), filename)})
+    assert response.status_code == (400 if not filename else 415)
+    assert response.get_json()["code"] == error_code
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(func.count()).select_from(UploadFile)) == 0
+        assert session.get_one(Account, ACCOUNT_ID).avatar is None
+    assert list(avatar_storage.rglob("*")) == []
+
+
+@pytest.mark.usefixtures("avatar_storage")
+def test_avatar_upload_enforces_size_blacklist_and_multipart_shape(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert client.post("/api/account/avatar", data={}).get_json()["code"] == "no_file_uploaded"
+    response = client.post(
+        "/api/account/avatar",
+        data={"file": [(BytesIO(_avatar_image()), "one.png"), (BytesIO(_avatar_image()), "two.png")]},
+    )
+    assert response.get_json()["code"] == "too_many_files"
+    apply_config_overrides(monkeypatch, UPLOAD_IMAGE_FILE_SIZE_LIMIT=0)
+    response = client.post("/api/account/avatar", data={"file": (BytesIO(_avatar_image()), "avatar.png")})
+    assert response.get_json()["code"] == "file_too_large"
+    apply_config_overrides(monkeypatch, inner_UPLOAD_FILE_EXTENSION_BLACKLIST="png")
+    response = client.post("/api/account/avatar", data={"file": (BytesIO(_avatar_image()), "avatar.png")})
+    assert response.get_json()["code"] == "file_extension_blocked"
+
+
+@pytest.mark.parametrize("origin", [None, "https://evil.example"])
+def test_avatar_upload_rejects_foreign_origin_before_writing(
+    client: FlaskClient, avatar_storage: Path, origin: str | None
+) -> None:
+    client.environ_base.pop("HTTP_ORIGIN")
+    headers: dict[str, str] = {} if origin is None else {"Origin": origin}
+    response = client.post(
+        "/api/account/avatar", headers=headers, data={"file": (BytesIO(_avatar_image()), "avatar.png")}
+    )
+    assert response.status_code == 403
+    assert list(avatar_storage.rglob("*")) == []
+
+
+def test_avatar_upload_requires_account_cookie(client: FlaskClient, avatar_storage: Path) -> None:
+    client.delete_cookie(COOKIE_NAME_WEBAPP_ACCESS_TOKEN)
+    response = client.post("/api/account/avatar", data={"file": (BytesIO(_avatar_image()), "avatar.png")})
+    assert response.status_code == 401
+    assert list(avatar_storage.rglob("*")) == []

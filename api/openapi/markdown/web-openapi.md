@@ -12,6 +12,113 @@ Bearer format: API_KEY
 ## web
 Web application API operations
 
+### [GET] /account/avatar
+**Resolve an admitted Account's avatar; foreign and missing upload IDs return 404**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| avatar | query | Avatar file ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Owned avatar URL | **application/json**: [AvatarUrlResponse](#avatarurlresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/avatar
+**Upload one image for a same-origin Account cookie; failures leave the profile unchanged**
+
+Upload an Account-owned image without a workspace. Assign its ID with PATCH /account/profile.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Avatar uploaded | **application/json**: [WebAccountAvatarUploadResponse](#webaccountavataruploadresponse)<br> |
+| 400 | Bad Request | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/change-email
+**Send an old/new-email challenge for the cookie Account; no profile changes occur**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChangeEmailSendPayload](#changeemailsendpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Verification challenge | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailChangeRateLimitExceededError](#emailchangeratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/change-email/check-email-unique
+**Check email availability for an admitted Account; do not mutate accounts or tokens**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CheckEmailUniquePayload](#checkemailuniquepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Email available | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailAlreadyInUseError](#emailalreadyinuseerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/change-email/reset
+**Change only the admitted Account's verified address; failures preserve identity and memberships**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChangeEmailResetPayload](#changeemailresetpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Updated Account settings | **application/json**: [WebAccountResponse](#webaccountresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailAlreadyInUseError](#emailalreadyinuseerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /account/change-email/validity
+**Verify this Account's challenge and promote its token without changing identity**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChangeEmailValidityPayload](#changeemailvaliditypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Verified challenge | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
+| 400 | Bad Request | **application/json**: [EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailChangeLimitError](#emailchangelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /account/password
 **Set or change the admitted Account's password when password login is enabled**
 
@@ -1724,6 +1831,12 @@ Returns Server-Sent Events stream.
 | data | [AccessTokenData](#accesstokendata) |  | Yes |
 | result | string |  | Yes |
 
+#### AccountAvatarQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string | Avatar file ID | Yes |
+
 #### AccountBannedError
 
 Account is banned.
@@ -1731,6 +1844,14 @@ Account is banned.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AccountBannedError |  | Account is banned. |  |
+
+#### AccountInFreezeError
+
+This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AccountInFreezeError |  | This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration. |  |
 
 #### AccountProfilePatchPayload
 
@@ -1864,6 +1985,12 @@ Invalid email or password.
 | ---- | ---- | ----------- | -------- |
 | AuthenticationFailedError |  | Invalid email or password. |  |
 
+#### AvatarUrlResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar_url | string |  | Yes |
+
 #### BinaryFileResponse
 
 | Name | Type | Description | Required |
@@ -1894,6 +2021,30 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | ButtonStyle | string | Button styles for user actions. |  |
 
+#### ChangeEmailResetPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| new_email | string |  | Yes |
+| token | string |  | Yes |
+
+#### ChangeEmailSendPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| language | string |  | No |
+| phase | string |  | No |
+| token | string |  | No |
+
+#### ChangeEmailValidityPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| email | string |  | Yes |
+| token | string |  | Yes |
+
 #### ChatMessagePayload
 
 | Name | Type | Description | Required |
@@ -1907,6 +2058,12 @@ Button styles for user actions.
 | query | string | User query/message | Yes |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
+
+#### CheckEmailUniquePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
 
 #### ClaimablePassportResponse
 
@@ -2284,6 +2441,30 @@ Enum representing the deployment edition of the platform.
 | ---- | ---- | ----------- | -------- |
 | DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
 
+#### EmailAlreadyInUseError
+
+A user with this email already exists.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailAlreadyInUseError |  | A user with this email already exists. |  |
+
+#### EmailChangeLimitError
+
+Too many failed email change attempts. Please try again in 24 hours.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailChangeLimitError |  | Too many failed email change attempts. Please try again in 24 hours. |  |
+
+#### EmailChangeRateLimitExceededError
+
+Too many email change emails have been sent. Please try again in {minutes} minutes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailChangeRateLimitExceededError |  | Too many email change emails have been sent. Please try again in {minutes} minutes. |  |
+
 #### EmailCodeError
 
 Email code is invalid or expired.
@@ -2306,6 +2487,14 @@ Email code is invalid or expired.
 | code | string |  | Yes |
 | email | string |  | Yes |
 | token | string |  | Yes |
+
+#### EmailDomainSuspendedError
+
+This email domain has been suspended.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmailDomainSuspendedError |  | This email domain has been suspended. |  |
 
 #### EmailPasswordResetLimitError
 
@@ -3536,6 +3725,13 @@ in form definition, or a variable while the workflow is running.
 | email | string |  | Yes |
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
+
+#### WebAccountAvatarUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar_url | string |  | Yes |
+| id | string |  | Yes |
 
 #### WebAccountPasswordPayload
 

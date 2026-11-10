@@ -1,6 +1,6 @@
 """Application service implementing the account change-email state machine."""
 
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext, RequestContext
 from services.account_change_email_ports import (
     AccountEmailPolicyGateway,
     ChangeEmailCodeGenerator,
@@ -56,7 +56,7 @@ class AccountChangeEmailService:
 
     def send_code(
         self,
-        context: RequestContext,
+        context: AccountRequestContext | RequestContext,
         *,
         requested_email: str,
         language: str,
@@ -64,6 +64,11 @@ class AccountChangeEmailService:
         predecessor_token: str | None,
         ip_address: str,
     ) -> str:
+        """Send a rate-limited challenge for the admitted Account and requested phase.
+
+        New-address challenges require this Account's verified old-address token;
+        rejected requests never change identity or workspace membership.
+        """
         if self._security.is_ip_limited(ip_address):
             raise ChangeEmailSendIPLimitedError
 
@@ -122,12 +127,17 @@ class AccountChangeEmailService:
 
     def verify_code(
         self,
-        context: RequestContext,
+        context: AccountRequestContext | RequestContext,
         *,
         email: str,
         code: str,
         token: str,
     ) -> ChangeEmailVerification:
+        """Promote an Account-bound challenge after a matching email and code.
+
+        Invalid phases, owners and codes cannot produce a verified token. Successful
+        verification revokes the challenge and leaves the Account unchanged.
+        """
         normalized_email = email.lower()
         if self._security.is_verification_limited(normalized_email):
             raise ChangeEmailVerificationLimitError
@@ -154,11 +164,16 @@ class AccountChangeEmailService:
 
     def reset(
         self,
-        context: RequestContext,
+        context: AccountRequestContext | RequestContext,
         *,
         new_email: str,
         token: str,
     ) -> AccountSnapshot:
+        """Apply a verified new address only to its Account and expected old address.
+
+        Policy and token failures preserve the Account; success consumes the token,
+        removes old integrations and sends a completion notification after commit.
+        """
         normalized_new_email = new_email.lower()
         freeze_type = self._email_policy.is_frozen(normalized_new_email)
         if freeze_type == "email_domain_suspended":

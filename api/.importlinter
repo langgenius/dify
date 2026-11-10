@@ -214,6 +214,7 @@ type = forbidden
 source_modules =
     controllers.web.me
     controllers.web.account
+    controllers.web.account_email
     controllers.web.account_admission
 forbidden_modules =
     repositories

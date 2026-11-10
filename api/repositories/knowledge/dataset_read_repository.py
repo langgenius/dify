@@ -71,6 +71,7 @@ def load_document_read_batch(documents: Sequence[Document], *, session: Session)
             for file in session.scalars(
                 select(UploadFile).where(tuple_(UploadFile.tenant_id, UploadFile.id).in_(upload_owners))
             )
+            if file.tenant_id is not None
         }
         if upload_owners
         else {}

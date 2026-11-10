@@ -5,11 +5,35 @@ import {
 } from './generated/api/console/account/zod.gen.ts'
 import {
   zAccountProfilePatchPayload as zWebAccountProfilePatchPayload,
+  zChangeEmailResetPayload,
+  zChangeEmailSendPayload,
+  zChangeEmailValidityPayload,
+  zWebAccountAvatarUploadResponse,
   zWebAccountPasswordPayload,
   zWebAccountProfileResponse,
 } from './generated/api/web/zod.gen.ts'
 
 describe('generated account profile schema', () => {
+  it('returns a personal avatar upload without requiring workspace metadata', () => {
+    const uploaded = { id: 'avatar-id', avatar_url: 'https://example.com/signed-avatar' }
+    expect(zWebAccountAvatarUploadResponse.parse(uploaded)).toEqual(uploaded)
+    expect(zWebAccountAvatarUploadResponse.safeParse({ id: 'avatar-id' }).success).toBe(false)
+  })
+
+  it('requires verification tokens before confirming an email change', () => {
+    expect(zChangeEmailSendPayload.safeParse({ email: 'jane@example.com' }).success).toBe(true)
+    expect(
+      zChangeEmailValidityPayload.safeParse({ email: 'jane@example.com', code: '123456' }).success,
+    ).toBe(false)
+    expect(zChangeEmailResetPayload.safeParse({ new_email: 'new@example.com' }).success).toBe(false)
+    expect(
+      zChangeEmailResetPayload.parse({ new_email: 'new@example.com', token: 'verified' }),
+    ).toEqual({
+      new_email: 'new@example.com',
+      token: 'verified',
+    })
+  })
+
   it('matches the server rules for partial updates', () => {
     expect(zAccountProfilePatchPayload.safeParse({ name: 'Jane' }).success).toBe(true)
     expect(zAccountProfilePatchPayload.safeParse({}).success).toBe(true)
