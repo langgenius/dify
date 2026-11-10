@@ -2,7 +2,7 @@
 Tool catalogue for the workflow generator.
 
 Returns a compact, LLM-readable inventory of the tools currently installed for
-a tenant (hardcoded built-in, plugin and native API providers). The planner
+a tenant (hardcoded built-in, plugin, native API and cached MCP providers). The planner
 uses this to recommend ``tool`` nodes by exact ``provider/tool`` identifier;
 the builder consumes the same list so it can emit a syntactically correct
 ``tool`` node ``data`` block (provider_id, provider_type, tool_name,
@@ -34,6 +34,7 @@ from core.tools.entities.tool_entities import ToolDescription
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from repositories.api_tool_catalogue import list_api_tool_metadata
+from repositories.mcp_tool_catalogue import list_mcp_tool_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,8 @@ class ToolCatalogueEntry(TypedDict):
     tool_label: str
     description: str  # one-line LLM-friendly description
     # Builtin/plugin: provider_controller.need_credentials. API: conservative
-    # unknown-auth flag; authorization_metadata must take precedence.
+    # unknown-auth flag; authorization_metadata must take precedence. MCP
+    # configuration uses mcp_cached_auth, never builtin credential ownership.
     needs_credentials: bool
     authorization_metadata: NotRequired[str]
     # Provider declaration metadata, searched with a low weight so a tool whose
@@ -88,7 +90,10 @@ class ToolCatalogueEntry(TypedDict):
     provider_description: NotRequired[str]
     provider_tags: NotRequired[list[str]]
     parameters: NotRequired[list[dict[str, Any]]]
+    input_schema: NotRequired[dict[str, Any]]
     output_schema: NotRequired[dict[str, Any]]
+    # Cached native MCP configuration only; never evidence of runtime access.
+    mcp_cached_auth: NotRequired[bool]
     # Direct public HTTP response declarations, distinct from native outputs.
     response_contracts: NotRequired[dict[str, object]]
 
@@ -127,8 +132,8 @@ def build_tool_catalogue(
     Failures inside a single provider (mis-declared tool, plugin runtime
     error) are logged and skipped — one bad provider must not break the
     whole generator. A failed plugin inventory fetch is logged and leaves the
-    hardcoded built-in tools in place. Native API public metadata is read
-    independently and never constructs credential-bearing controllers.
+    hardcoded built-in tools in place. Native API and cached MCP public metadata
+    are read independently without constructing credential-bearing controllers.
     Returns the complete installed
     inventory; prompt-specific truncation belongs to ``format_tool_catalogue``.
     """
@@ -213,6 +218,13 @@ def build_tool_catalogue(
             on_source_error("api_tool_inventory")
         logger.exception("Workflow generator: failed to list public API tool metadata; keeping other tools")
 
+    try:
+        entries.extend(list_mcp_tool_metadata(tenant_id))
+    except Exception:
+        if on_source_error is not None:
+            on_source_error("mcp_tool_inventory")
+        logger.exception("Workflow generator: failed to list public cached MCP metadata; keeping other tools")
+
     entries.sort(key=itemgetter("provider_name", "tool_name"))
     return entries
 
@@ -258,8 +270,8 @@ def format_tool_catalogue(entries: list[ToolCatalogueEntry], *, max_tools: int |
             f" [provider_id={json.dumps(e['provider_name'], ensure_ascii=False)}; "
             f"tool_name={json.dumps(e['tool_name'], ensure_ascii=False)}"
         )
-        if e["provider_type"] == "api":
-            identity_fields += '; provider_type="api"'
+        if e["provider_type"] in {"api", "mcp"}:
+            identity_fields += f"; provider_type={json.dumps(e['provider_type'])}"
         line += identity_fields + "]"
         if desc:
             line += f" — {desc}"
@@ -600,6 +612,9 @@ def format_tool_builder_context(entry: ToolCatalogueEntry) -> str:
                 suffixes.append(detail[:160])
             suffix = " — " + "; ".join(suffixes) if suffixes else ""
             lines.append(f"- {name}: {type_}, form={form}, {requirement}{suffix}")
+
+    if "input_schema" in entry:
+        lines.extend(["", "Declared MCP input schema:", json.dumps(entry["input_schema"], ensure_ascii=False)])
 
     lines.extend(
         [

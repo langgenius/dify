@@ -23,7 +23,7 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from core.dify_builder.credentials import is_credential_param_key
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from domain.workflow.agent_node import is_dify_agent_node_data
 from services.dify_builder.revision import node_config_digest, normalize_execution_graph
 
 EffectTier = Literal["pure", "sandboxed", "read", "side_effect", "destructive"]
@@ -608,6 +608,10 @@ def _tool(data: Mapping[str, Any]) -> tuple[EffectTier, str, str]:
     if words & _DESTRUCTIVE_WORDS:
         return "destructive", target, obj
     if words & _WRITE_WORDS:
+        return "side_effect", target, obj
+    if provider_type == "mcp":
+        # Remote names and cached annotations cannot authorize opaque actions.
+        # Retain explicit confirmation even for names such as docs_search.
         return "side_effect", target, obj
     if words & _READ_WORDS or provider_type == "dataset-retrieval":
         return "read", target, obj
