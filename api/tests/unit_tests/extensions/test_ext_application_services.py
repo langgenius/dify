@@ -615,6 +615,7 @@ def test_build_application_services_wires_workflow_run_archives(
 def test_build_application_services_wires_human_input_file_uploads(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
+    """Compose real persistence; both upload paths must share the configured quota-aware gateway."""
     services = ext_application_services.build_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
@@ -627,8 +628,8 @@ def test_build_application_services_wires_human_input_file_uploads(
     assert isinstance(human_input_file_uploads._uploads, SQLAlchemyHumanInputFileUploadRepository)
     assert human_input_file_uploads._uploads._session_factory is sqlite_session_factory
     assert human_input_file_uploads._remote_files is services.remote_files
-    assert human_input_file_uploads._files is services.files
-    assert services.remote_files._files is services.files
+    assert human_input_file_uploads._files is services.file_uploads
+    assert services.remote_files._files is services.file_uploads
 
 
 def test_build_application_services_wires_app_site_boundary(
