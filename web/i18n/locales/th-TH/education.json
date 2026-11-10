@@ -6,7 +6,7 @@
   "applied.step1.description": "คุณได้สมัครรับส่วนลดการศึกษาสำเร็จแล้ว",
   "applied.step2.description": "เลือกพื้นที่ทำงานที่คุณต้องการใช้กับส่วนลดการศึกษา",
   "currentSigned": "ลงชื่อเข้าใช้ในฐานะ",
-  "educationPricingConfirm.cancel": "ใช้แผนปัจจุบันต่อ",
+  "educationPricingConfirm.cancel": "ดำเนินการต่อโดยไม่ใช้ส่วนลด",
   "educationPricingConfirm.continue": "เปลี่ยนเป็น Professional รายปี",
   "educationPricingConfirm.description": "ส่วนลดการศึกษาใช้ได้เฉพาะกับแผน Professional รายปีเท่านั้น หากใช้แผนปัจจุบันต่อ จะไม่มีส่วนลดนี้รวมอยู่ด้วย",
   "educationPricingConfirm.title": "แผนที่คุณเลือกไม่รองรับส่วนลดการศึกษา",

@@ -54,10 +54,12 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
     isCurrentPaidPlan && billingInterval === billing?.currentBillingInterval
   const isPlanDisabled =
     !billing ||
-    (!isCurrentSubscription && billing.isEducationDiscountEligible === undefined) ||
+    (!isCurrentPaidPlan && billing.isEducationDiscountEligible === undefined) ||
     (!isCurrentPaidPlan && planInfo.level <= ALL_PLANS[billing.currentPlan].level)
   const isEducationDiscountSupportedPlan = plan === 'professional' && isYearly
   const educationDiscountWarningText =
+    currentPlan === 'sandbox' &&
+    !billing?.isEducationDiscountActivated &&
     canManageBilling &&
     isEducationDiscountEligible &&
     !isFreePlan &&
@@ -68,11 +70,21 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const [showEducationPricingConfirm, setShowEducationPricingConfirm] = React.useState(false)
 
-  const buttonLabel = {
-    sandbox: t(($) => $['plansCommon.startForFree'], { ns: 'billing' }),
-    professional: t(($) => $['plansCommon.startBuilding'], { ns: 'billing' }),
-    team: t(($) => $['plansCommon.getStarted'], { ns: 'billing' }),
-  }[plan]
+  const showPlanButton =
+    !canManageBilling ||
+    (!isFreePlan &&
+      (!billing || isCurrentPaidPlan || planInfo.level > ALL_PLANS[billing.currentPlan].level))
+  const buttonLabel = !canManageBilling
+    ? {
+        sandbox: t(($) => $['plansCommon.startForFree'], { ns: 'billing' }),
+        professional: t(($) => $['plansCommon.startBuilding'], { ns: 'billing' }),
+        team: t(($) => $['plansCommon.getStarted'], { ns: 'billing' }),
+      }[plan]
+    : isCurrentPaidPlan
+      ? t(($) => $['plansCommon.manageSubscription'], { ns: 'billing' })
+      : plan === 'team'
+        ? t(($) => $['plansCommon.upgradeToTeam'], { ns: 'billing' })
+        : t(($) => $['plansCommon.upgradeToProfessional'], { ns: 'billing' })
 
   const runPlanAction = async () => {
     if (isPlanActionPending || isEducationDiscountLoading) return
@@ -111,7 +123,12 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
         return
       }
 
-      if (isEducationDiscountEligible && isEducationDiscountSupportedPlan) {
+      if (
+        currentPlan === 'sandbox' &&
+        !billing.isEducationDiscountActivated &&
+        isEducationDiscountEligible &&
+        isEducationDiscountSupportedPlan
+      ) {
         await handleEducationDiscount()
         return
       }
@@ -129,7 +146,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
     }
   }
   const handlePlanButtonClick = async () => {
-    if (educationDiscountWarningText && !billing?.isEducationDiscountActivated && !isPlanDisabled) {
+    if (educationDiscountWarningText && !isPlanDisabled) {
       setShowEducationPricingConfirm(true)
       return
     }
@@ -152,6 +169,9 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
               <h3 className={styles.planName}>
                 {t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })}
               </h3>
+              {canManageBilling && (isCurrentSubscription || (isCurrent && isFreePlan)) && (
+                <span>{t(($) => $['plansCommon.currentPlan'], { ns: 'billing' })}</span>
+              )}
               {isMostPopularPlan && (
                 <div className={styles.badge}>
                   <span>{t(($) => $['plansCommon.mostPopular'], { ns: 'billing' })}</span>
@@ -195,23 +215,25 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             </>
           )}
         </div>
-        <div className="relative">
-          <Button
-            data-plan={plan}
-            variant="tertiary"
-            size={null}
-            disabled={isPlanDisabled}
-            className={styles.planButton}
-            onClick={handlePlanButtonClick}
-          >
-            <span className="min-w-0">{buttonLabel}</span>
-          </Button>
-          {educationDiscountWarningText && (
-            <div className="absolute inset-x-0 top-full mt-1.5 text-start system-2xs-medium text-text-tertiary">
-              {educationDiscountWarningText}
-            </div>
-          )}
-        </div>
+        {showPlanButton && (
+          <div className="relative">
+            <Button
+              data-plan={plan}
+              variant="tertiary"
+              size={null}
+              disabled={isPlanDisabled}
+              className={styles.planButton}
+              onClick={handlePlanButtonClick}
+            >
+              <span className="min-w-0">{buttonLabel}</span>
+            </Button>
+            {educationDiscountWarningText && (
+              <div className="absolute inset-x-0 top-full mt-1.5 text-start system-2xs-medium text-text-tertiary">
+                {educationDiscountWarningText}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <CloudPlanFeatures plan={plan} />
       <Dialog open={showEducationPricingConfirm} onOpenChange={setShowEducationPricingConfirm}>

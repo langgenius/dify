@@ -84,8 +84,8 @@ afterEach(() => {
 
 describe('Cloud plan payment flow', () => {
   it.each([
-    { plan: 'professional', interval: 'month', label: 'startBuilding' },
-    { plan: 'team', interval: 'year', label: 'getStarted' },
+    { plan: 'professional', interval: 'month', label: 'upgradeToProfessional' },
+    { plan: 'team', interval: 'year', label: 'upgradeToTeam' },
   ] as const)(
     'displays $plan pricing and redirects to its $interval checkout',
     async ({ plan, interval, label }) => {
@@ -115,7 +115,7 @@ describe('Cloud plan payment flow', () => {
       }),
     )
     renderPlan()
-    const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
+    const button = screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' })
     await user.click(button)
     expect(await screen.findByText('billing.errors.requestInProgress')).toBeInTheDocument()
     expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
@@ -124,30 +124,25 @@ describe('Cloud plan payment flow', () => {
   })
 
   it.each([
-    { currentPlan: 'sandbox', plan: 'sandbox', label: 'startForFree' },
-    { currentPlan: 'professional', plan: 'sandbox', label: 'startForFree' },
-    { currentPlan: 'team', plan: 'sandbox', label: 'startForFree' },
-    { currentPlan: 'team', plan: 'professional', label: 'startBuilding' },
-  ] as const)(
-    'prevents purchasing $plan from $currentPlan',
-    async ({ currentPlan, plan, label }) => {
-      const user = userEvent.setup()
-      renderPlan({ currentPlan, plan })
-      const button = screen.getByRole('button', { name: `billing.plansCommon.${label}` })
-      expect(button).toBeDisabled()
-      await user.click(button)
-      expect(mockGetSubscription).not.toHaveBeenCalled()
-      expect(mockGetInvoices).not.toHaveBeenCalled()
-      expect(window.open).not.toHaveBeenCalled()
-    },
-  )
+    ['sandbox', 'sandbox'],
+    ['professional', 'sandbox'],
+    ['team', 'sandbox'],
+    ['team', 'professional'],
+  ] as const)('hides the purchase action for %s viewing %s', (currentPlan, plan) => {
+    renderPlan({ currentPlan, plan })
+    expect(
+      screen.queryByRole('button', {
+        name: /billing\.plansCommon\.(startForFree|startBuilding|getStarted|upgradeToProfessional|upgradeToTeam|manageSubscription)$/,
+      }),
+    ).not.toBeInTheDocument()
+  })
 
   it('opens the billing portal for the current paid subscription after resolving its URL', async () => {
     const user = userEvent.setup()
     const request = createDeferred<{ url: string }>()
     mockGetInvoices.mockReturnValue(request.promise)
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
     expect(window.open).toHaveBeenCalledWith('about:blank', '_blank', undefined)
     expect(popup.opener).toBeNull()
     expect(popup.location.href).toBe('')
@@ -163,7 +158,7 @@ describe('Cloud plan payment flow', () => {
       new ORPCError('billing_unavailable', { defined: true, status: 503, message: 'Backend text' }),
     )
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
-    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
     expect(await screen.findByText('billing.errors.unavailable')).toBeInTheDocument()
     expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
     expect(popup.close).toHaveBeenCalledOnce()
@@ -175,7 +170,7 @@ describe('Cloud plan payment flow', () => {
     mockGetSubscription.mockReturnValue(request.promise)
     const user = userEvent.setup()
     renderPlan()
-    const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
+    const button = screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' })
     await user.click(button)
     await user.click(button)
     expect(mockGetSubscription).toHaveBeenCalledOnce()

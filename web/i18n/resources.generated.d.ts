@@ -1557,7 +1557,7 @@ export default interface Resources {
     'plansCommon.buildApps': '{{count,number}} Apps'
     'plansCommon.cloud': 'Cloud Service'
     'plansCommon.comparePlanAndFeatures': 'Compare plans & features'
-    'plansCommon.currentPlan': 'Current Plan'
+    'plansCommon.currentPlan': 'Current plan'
     'plansCommon.days': 'Days'
     'plansCommon.discountedAnnualPrice': 'Discounted annual price: '
     'plansCommon.documentProcessingPriority': ' document processing'
@@ -1570,6 +1570,7 @@ export default interface Resources {
     'plansCommon.free': 'Free'
     'plansCommon.getStarted': 'Get Started'
     'plansCommon.logsHistory': '{{days}} Log history'
+    'plansCommon.manageSubscription': 'Manage subscription'
     'plansCommon.member': 'Member'
     'plansCommon.memberAfter': 'Member'
     'plansCommon.messageRequest.title': '{{count,number}} message credits'
@@ -1601,6 +1602,8 @@ export default interface Resources {
     'plansCommon.unavailable': 'Unavailable'
     'plansCommon.unlimited': 'Unlimited'
     'plansCommon.unlimitedApiRate': 'No Dify API Rate Limit'
+    'plansCommon.upgradeToProfessional': 'Upgrade to Professional'
+    'plansCommon.upgradeToTeam': 'Upgrade to Team'
     'plansCommon.vectorSpace': '{{size}} knowledge storage'
     'plansCommon.vectorSpaceTooltip': 'Documents with the High Quality indexing mode will consume Knowledge Data Storage resources. When Knowledge Data Storage reaches the limit, new documents will not be uploaded.'
     'plansCommon.workflowExecution.faster': 'Faster workflow execution'
@@ -3285,7 +3288,7 @@ export default interface Resources {
     'applied.step1.description': "You've successfully applied for the education discount."
     'applied.step2.description': 'Select the workspace you want to use the education discount with.'
     currentSigned: 'CURRENTLY SIGNED IN AS'
-    'educationPricingConfirm.cancel': 'Keep current plan'
+    'educationPricingConfirm.cancel': 'Continue without discount'
     'educationPricingConfirm.continue': 'Switch to Professional Annual'
     'educationPricingConfirm.description': "The education discount applies to the Professional annual plan only. Keeping your current plan won't include the discount."
     'educationPricingConfirm.title': "Your selected plan doesn't support the education discount"

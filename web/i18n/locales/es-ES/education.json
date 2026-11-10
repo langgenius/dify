@@ -6,7 +6,7 @@
   "applied.step1.description": "Has solicitado exitosamente el descuento educativo.",
   "applied.step2.description": "Selecciona el workspace que deseas usar con el descuento educativo.",
   "currentSigned": "ACTUALMENTE CONECTADO COMO",
-  "educationPricingConfirm.cancel": "Mantener el plan actual",
+  "educationPricingConfirm.cancel": "Continuar sin descuento",
   "educationPricingConfirm.continue": "Cambiar a Professional anual",
   "educationPricingConfirm.description": "El descuento educativo solo se aplica al plan Professional anual. Si mantienes tu plan actual, no se incluirá el descuento.",
   "educationPricingConfirm.title": "El plan seleccionado no admite el descuento educativo",

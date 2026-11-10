@@ -6,7 +6,7 @@
   "applied.step1.description": "Ai aplicat cu succes pentru reducerea educațională.",
   "applied.step2.description": "Selectează workspace-ul pe care dorești să-l utilizezi cu reducerea educațională.",
   "currentSigned": "CONEXIUNE ÎN PREZENT CA",
-  "educationPricingConfirm.cancel": "Păstrează planul curent",
+  "educationPricingConfirm.cancel": "Continuă fără reducere",
   "educationPricingConfirm.continue": "Treci la Professional anual",
   "educationPricingConfirm.description": "Reducerea educațională se aplică doar planului Professional anual. Dacă păstrezi planul curent, reducerea nu va fi inclusă.",
   "educationPricingConfirm.title": "Planul selectat nu acceptă reducerea educațională",

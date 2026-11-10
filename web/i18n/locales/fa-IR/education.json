@@ -6,7 +6,7 @@
   "applied.step1.description": "درخواست تخفیف آموزشی شما با موفقیت ثبت شد.",
   "applied.step2.description": "workspace‌ای را که می‌خواهید با تخفیف آموزشی استفاده کنید انتخاب کنید.",
   "currentSigned": "اکنون به عنوان",
-  "educationPricingConfirm.cancel": "حفظ طرح فعلی",
+  "educationPricingConfirm.cancel": "ادامه بدون تخفیف",
   "educationPricingConfirm.continue": "تغییر به Professional سالانه",
   "educationPricingConfirm.description": "تخفیف آموزشی فقط برای طرح سالانه Professional اعمال می‌شود. با حفظ طرح فعلی، این تخفیف شامل نمی‌شود.",
   "educationPricingConfirm.title": "طرح انتخاب‌شده شما از تخفیف آموزشی پشتیبانی نمی‌کند",

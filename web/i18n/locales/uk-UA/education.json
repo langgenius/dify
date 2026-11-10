@@ -6,7 +6,7 @@
   "applied.step1.description": "Ви успішно подали заявку на освітню знижку.",
   "applied.step2.description": "Виберіть робочий простір, який ви хочете використовувати з освітньою знижкою.",
   "currentSigned": "В даний момент ви підписані як",
-  "educationPricingConfirm.cancel": "Залишити поточний план",
+  "educationPricingConfirm.cancel": "Продовжити без знижки",
   "educationPricingConfirm.continue": "Перейти на Professional річний",
   "educationPricingConfirm.description": "Освітня знижка застосовується лише до річного плану Professional. Якщо залишити поточний план, знижку не буде включено.",
   "educationPricingConfirm.title": "Вибраний план не підтримує освітню знижку",

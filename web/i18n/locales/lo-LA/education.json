@@ -6,7 +6,7 @@
   "applied.step1.description": "ທ່ານໄດ້ສະໝັກຂໍສ່ວນຫຼຸດເພື່ອການສຶກສາສຳເລັດແລ້ວ.",
   "applied.step2.description": "ເລືອກພື້ນທີ່ເຮັດວຽກທີ່ທ່ານຕ້ອງການໃຊ້ສ່ວນຫຼຸດເພື່ອການສຶກສາ.",
   "currentSigned": "ເຂົ້າສູ່ລະບົບໃນປັດຈຸບັນໃນນາມ",
-  "educationPricingConfirm.cancel": "ໃຊ້ແພັກເກດປັດຈຸບັນຕໍ່ໄປ",
+  "educationPricingConfirm.cancel": "ດຳເນີນການຕໍ່ໂດຍບໍ່ໃຊ້ສ່ວນຫຼຸດ",
   "educationPricingConfirm.continue": "ປ່ຽນເປັນ Professional ແບບລາຍປີ",
   "educationPricingConfirm.description": "ສ່ວນຫຼຸດເພື່ອການສຶກສານຳໃຊ້ໄດ້ກັບແພັກເກດ Professional ແບບລາຍປີເທົັ້ນັ້ນ. ການໃຊ້ແພັກເກດປັດຈຸບັນຂອງທ່ານຕໍ່ໄປຈະບໍ່ລວມເອົາສ່ວນຫຼຸດນີ້.",
   "educationPricingConfirm.title": "ແພັກເກດທີ່ທ່ານເລືອກບໍ່ຮອງຮັບສ່ວນຫຼຸດເພື່ອການສຶກສາ",

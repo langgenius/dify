@@ -6,7 +6,7 @@
   "applied.step1.description": "교육 할인 신청이 성공적으로 완료되었습니다.",
   "applied.step2.description": "교육 할인을 사용할 워크스페이스를 선택하세요.",
   "currentSigned": "현재 로그인 중입니다",
-  "educationPricingConfirm.cancel": "현재 플랜 유지",
+  "educationPricingConfirm.cancel": "할인 없이 계속",
   "educationPricingConfirm.continue": "Professional 연간으로 전환",
   "educationPricingConfirm.description": "교육 할인은 Professional 연간 플랜에만 적용됩니다. 현재 플랜을 유지하면 할인이 포함되지 않습니다.",
   "educationPricingConfirm.title": "선택한 플랜은 교육 할인을 지원하지 않습니다",
