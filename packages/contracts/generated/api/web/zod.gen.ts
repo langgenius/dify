@@ -24,6 +24,19 @@ export const zAccessTokenResultResponse = z.object({
   result: z.string(),
 })
 
+/**
+ * AccountProfilePatchPayload
+ */
+export const zAccountProfilePatchPayload = z
+  .object({
+    avatar: z.string().optional(),
+    interface_language: z.string().optional(),
+    interface_theme: z.enum(['dark', 'light']).optional(),
+    name: z.string().min(3).max(30).optional(),
+    timezone: z.string().optional(),
+  })
+  .strict()
+
 export const zAnyJsonValue = z.unknown()
 
 /**
@@ -814,6 +827,18 @@ export const zCredentialCheckUnavailableError = zErrorResponse.and(
 )
 
 /**
+ * CurrentPasswordIncorrectError
+ *
+ * Current password is incorrect.
+ */
+export const zCurrentPasswordIncorrectError = zErrorResponse.and(
+  z.object({
+    code: z.literal('current_password_incorrect'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * EmailCodeError
  *
  * Email code is invalid or expired.
@@ -1213,6 +1238,18 @@ export const zI18nObject = z.object({
   pt_BR: z.string().nullish(),
   zh_Hans: z.string().nullish(),
 })
+
+/**
+ * InvalidAccountPasswordError
+ *
+ * The password does not satisfy the account password policy.
+ */
+export const zInvalidAccountPasswordError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_account_password'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * InvalidEmailError
@@ -1822,6 +1859,18 @@ export const zRemoteFileUrlBlockedError = zErrorResponse.and(
 )
 
 /**
+ * RepeatPasswordNotMatchError
+ *
+ * New password and repeat password does not match.
+ */
+export const zRepeatPasswordNotMatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('repeat_password_not_match'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ResultResponse
  */
 export const zResultResponse = z.object({
@@ -2254,14 +2303,46 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
+ * WebAccountPasswordPayload
+ */
+export const zWebAccountPasswordPayload = z
+  .object({
+    new_password: z.string(),
+    password: z.string().optional().default(''),
+    repeat_new_password: z.string(),
+  })
+  .strict()
+
+/**
  * WebAccountProfileResponse
  */
 export const zWebAccountProfileResponse = z.object({
   avatar: z.string().nullable(),
   avatar_url: z.string().nullable(),
+  email: z.string(),
   has_owned_tenant: z.boolean().nullish(),
   has_tenant: z.boolean().nullish(),
+  interface_language: z.string().nullable(),
+  interface_theme: z.string().nullable(),
+  is_password_set: z.boolean(),
   name: z.string(),
+  timezone: z.string().nullable(),
+})
+
+/**
+ * WebAccountResponse
+ *
+ * Personal settings only; credentials, login IPs and Builder lifecycle stay private.
+ */
+export const zWebAccountResponse = z.object({
+  avatar: z.string().nullable(),
+  avatar_url: z.string().nullable(),
+  email: z.string(),
+  interface_language: z.string().nullable(),
+  interface_theme: z.string().nullable(),
+  is_password_set: z.boolean(),
+  name: z.string(),
+  timezone: z.string().nullable(),
 })
 
 /**
@@ -2922,9 +3003,29 @@ export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unkn
  */
 export const zWebAccountProfileResponseWritable = z.object({
   avatar: z.string().nullable(),
+  email: z.string(),
   has_owned_tenant: z.boolean().nullish(),
   has_tenant: z.boolean().nullish(),
+  interface_language: z.string().nullable(),
+  interface_theme: z.string().nullable(),
+  is_password_set: z.boolean(),
   name: z.string(),
+  timezone: z.string().nullable(),
+})
+
+/**
+ * WebAccountResponse
+ *
+ * Personal settings only; credentials, login IPs and Builder lifecycle stay private.
+ */
+export const zWebAccountResponseWritable = z.object({
+  avatar: z.string().nullable(),
+  email: z.string(),
+  interface_language: z.string().nullable(),
+  interface_theme: z.string().nullable(),
+  is_password_set: z.boolean(),
+  name: z.string(),
+  timezone: z.string().nullable(),
 })
 
 /**
@@ -2970,10 +3071,24 @@ export const zWebMessageInfiniteScrollPaginationWritable = z.object({
   limit: z.int(),
 })
 
+export const zPostAccountPasswordBody = zWebAccountPasswordPayload
+
+/**
+ * Updated Account settings
+ */
+export const zPostAccountPasswordResponse = zWebAccountResponse
+
 /**
  * Account profile
  */
 export const zGetAccountProfileResponse = zWebAccountProfileResponse
+
+export const zPatchAccountProfileBody = zAccountProfilePatchPayload
+
+/**
+ * Updated Account settings
+ */
+export const zPatchAccountProfileResponse = zWebAccountResponse
 
 /**
  * Success

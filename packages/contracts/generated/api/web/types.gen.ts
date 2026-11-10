@@ -22,6 +22,14 @@ export type AccountBannedError = ErrorResponse & {
   status: 400
 }
 
+export type AccountProfilePatchPayload = {
+  avatar?: string
+  interface_language?: string
+  interface_theme?: 'dark' | 'light'
+  name?: string
+  timezone?: string
+}
+
 export type AgentNotPublishedError = ErrorResponse & {
   code: 'agent_not_published'
   status: 400
@@ -426,6 +434,11 @@ export type CredentialCheckResult = {
 export type CredentialCheckUnavailableError = ErrorResponse & {
   code: 'credential_check_unavailable'
   status: 503
+}
+
+export type CurrentPasswordIncorrectError = ErrorResponse & {
+  code: 'current_password_incorrect'
+  status: 400
 }
 
 export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
@@ -847,6 +860,11 @@ export type I18nObject = {
   zh_Hans?: string | null
 }
 
+export type InvalidAccountPasswordError = ErrorResponse & {
+  code: 'invalid_account_password'
+  status: 400
+}
+
 export type InvalidEmailError = ErrorResponse & {
   code: 'invalid_email'
   status: 400
@@ -1138,6 +1156,11 @@ export type RemoteFileUrlBlockedError = ErrorResponse & {
   status: 400
 }
 
+export type RepeatPasswordNotMatchError = ErrorResponse & {
+  code: 'repeat_password_not_match'
+  status: 400
+}
+
 export type ResolvedForm = {
   actions: Array<UserAction>
   legacy_form_content: string
@@ -1343,12 +1366,34 @@ export type VerificationTokenResponse = {
   token: string
 }
 
+export type WebAccountPasswordPayload = {
+  new_password: string
+  password?: string
+  repeat_new_password: string
+}
+
 export type WebAccountProfileResponse = {
   avatar: string | null
   readonly avatar_url: string | null
+  email: string
   has_owned_tenant?: boolean | null
   has_tenant?: boolean | null
+  interface_language: string | null
+  interface_theme: string | null
+  is_password_set: boolean
   name: string
+  timezone: string | null
+}
+
+export type WebAccountResponse = {
+  avatar: string | null
+  readonly avatar_url: string | null
+  email: string
+  interface_language: string | null
+  interface_theme: string | null
+  is_password_set: boolean
+  name: string
+  timezone: string | null
 }
 
 export type WebAppAuthModel = {
@@ -1906,9 +1951,24 @@ export type HumanInputFormSubmitResponseWritable = {
 
 export type WebAccountProfileResponseWritable = {
   avatar: string | null
+  email: string
   has_owned_tenant?: boolean | null
   has_tenant?: boolean | null
+  interface_language: string | null
+  interface_theme: string | null
+  is_password_set: boolean
   name: string
+  timezone: string | null
+}
+
+export type WebAccountResponseWritable = {
+  avatar: string | null
+  email: string
+  interface_language: string | null
+  interface_theme: string | null
+  is_password_set: boolean
+  name: string
+  timezone: string | null
 }
 
 export type WebAppHumanInputV2SubmitResponseWritable = {
@@ -1946,6 +2006,31 @@ export type WebMessageListItemWritable = {
   total_price?: string | null
 }
 
+export type PostAccountPasswordData = {
+  body: WebAccountPasswordPayload
+  path?: never
+  query?: never
+  url: '/account/password'
+}
+
+export type PostAccountPasswordErrors = {
+  400:
+    | CurrentPasswordIncorrectError
+    | InvalidAccountPasswordError
+    | RepeatPasswordNotMatchError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountPasswordError = PostAccountPasswordErrors[keyof PostAccountPasswordErrors]
+
+export type PostAccountPasswordResponses = {
+  200: WebAccountResponse
+}
+
+export type PostAccountPasswordResponse =
+  PostAccountPasswordResponses[keyof PostAccountPasswordResponses]
+
 export type GetAccountProfileData = {
   body?: never
   path?: never
@@ -1964,6 +2049,26 @@ export type GetAccountProfileResponses = {
 }
 
 export type GetAccountProfileResponse = GetAccountProfileResponses[keyof GetAccountProfileResponses]
+
+export type PatchAccountProfileData = {
+  body: AccountProfilePatchPayload
+  path?: never
+  query?: never
+  url: '/account/profile'
+}
+
+export type PatchAccountProfileErrors = {
+  default: ErrorResponse
+}
+
+export type PatchAccountProfileError = PatchAccountProfileErrors[keyof PatchAccountProfileErrors]
+
+export type PatchAccountProfileResponses = {
+  200: WebAccountResponse
+}
+
+export type PatchAccountProfileResponse =
+  PatchAccountProfileResponses[keyof PatchAccountProfileResponses]
 
 export type PostAudioToTextData = {
   body?: never

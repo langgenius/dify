@@ -11,7 +11,7 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants import COOKIE_NAME_WEBAPP_ACCESS_TOKEN
-from controllers.web import bp, me
+from controllers.web import account_admission, bp, me
 from models.end_user_connection import AppConnection
 from models.model import AppMode
 from tests.helpers.consumer import (
@@ -32,6 +32,7 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
 @pytest.fixture
 def client(harness: ConsumerHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[FlaskClient]:
     monkeypatch.setattr(me, "application_services", lambda: SimpleNamespace(consumer=harness.service))
+    monkeypatch.setattr(account_admission, "application_services", lambda: SimpleNamespace(consumer=harness.service))
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
     app.register_blueprint(bp)
