@@ -882,7 +882,7 @@ def test_resource_candidate_cursor_visits_each_matching_type_once(
 
 
 @pytest.mark.parametrize("rbac_enabled", [True], indirect=True)
-def test_current_rbac_changes_affect_candidates_saved_status_and_the_next_business_request(
+def test_studio_rbac_controls_visibility_without_blocking_published_pat_runs(
     client: FlaskClient,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
@@ -935,9 +935,10 @@ def test_current_rbac_changes_affect_candidates_saved_status_and_the_next_busine
     url = f"/openapi/v1/apps/{app.id}/chat:run"
     domain.transport.requests.clear()
     assert client.post(url, json={}, headers=headers).status_code == 422
-    assert [r.endpoint for r in domain.transport.requests] == ["/rbac/check-access"]
+    assert domain.transport.requests == []
     domain.transport.response = {"allowed": False}
-    assert client.post(url, json={}, headers=headers).status_code == 403
+    assert client.post(url, json={}, headers=headers).status_code == 422
+    assert domain.transport.requests == []
     # Existing account read visibility still controls discovery independently of run rights.
     listing = client.get("/openapi/v1/apps", query_string={"workspace_id": workspace.id}, headers=headers)
     assert [item["id"] for item in listing.get_json()["data"]] == [app.id]
@@ -945,7 +946,7 @@ def test_current_rbac_changes_affect_candidates_saved_status_and_the_next_busine
     domain.transport.requests.clear()
     assert client.post(f"/openapi/v1/apps/{app.id}/files", headers=headers).status_code == 422
     assert domain.transport.requests == []
-    # Losing invocation permission does not revoke a visible configuration selection.
+    # Losing Studio test permission does not revoke a visible configuration selection.
     assert (
         client.get("/console/api/account/personal-access-token-resources").get_json()["data"][0]["resource_id"]
         == app.id
@@ -1133,12 +1134,19 @@ def test_expiration_rejects_new_business_requests_at_the_exact_boundary(
     assert client.patch(f"{BASE}/{token['id']}", json={"name": "late", "version": token["version"]}).status_code == 403
 
 
+@pytest.mark.parametrize("rbac_enabled", [True], indirect=True)
+@pytest.mark.parametrize("operation", ["workflow:run", "chat:run", "advanced-chat:run", "completion:run"])
 def test_enterprise_private_app_permission_is_rechecked_on_each_business_request(
     client: FlaskClient,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    operation: str,
 ) -> None:
     from services.enterprise.base import EnterpriseRequest
+    from tests.helpers.unit.rbac_fakes import build_rbac_domain
+
+    domain = build_rbac_domain(sqlite_session_factory, monkeypatch)
+    domain.transport.response = {"allowed": False}
 
     account = client.application.config["TEST_BROWSER_ACCOUNT"]
     workspace = make_tenant(tenant_id=str(uuid4()))
@@ -1152,7 +1160,7 @@ def test_enterprise_private_app_permission_is_rechecked_on_each_business_request
                     current=True,
                     tenant_id=workspace.id,
                     account_id=account.id,
-                    role=TenantAccountRole.OWNER,
+                    role=TenantAccountRole.NORMAL,
                 ),
             ]
         )
@@ -1175,17 +1183,19 @@ def test_enterprise_private_app_permission_is_rechecked_on_each_business_request
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
     }
-    url = f"/openapi/v1/apps/{app.id}/chat:run"
-    assert client.post(url, json={}, headers=headers).status_code == 422
+    url = f"/openapi/v1/apps/{app.id}/{operation}"
+    assert client.post(url, json={"inputs": "invalid"}, headers=headers).status_code == 422
     permission["allowed"] = False
-    assert client.post(url, json={}, headers=headers).status_code == 403
+    assert client.post(url, json={"inputs": "invalid"}, headers=headers).status_code == 403
     permission["allowed"] = True
-    assert client.post(url, json={}, headers=headers).status_code == 422
+    assert client.post(url, json={"inputs": "invalid"}, headers=headers).status_code == 422
     permission["mode"] = "public"
     permission["allowed"] = False
-    assert client.post(url, json={}, headers=headers).status_code == 422
+    assert client.post(url, json={"inputs": "invalid"}, headers=headers).status_code == 422
     permission["mode"] = "unknown-mode"
-    assert client.post(url, json={}, headers=headers).status_code == 403
+    assert client.post(url, json={"inputs": "invalid"}, headers=headers).status_code == 403
+
+    assert domain.transport.requests == []
 
 
 def test_workspace_candidates_are_searchable_and_paginated_across_current_memberships(
