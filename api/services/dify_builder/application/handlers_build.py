@@ -1443,12 +1443,17 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 
     fc.verify_run_id = run.id
 
-    from services.dify_builder.execution_messages import native_service_failure
+    from services.dify_builder.execution_messages import native_service_failure, tool_credential_failure_message
 
-    if is_execution_policy_blocker(run) or native_service_failure(run):
+    credential_message = tool_credential_failure_message(
+        run, graph=graph, graph_revision=env.dify.graph_revision(graph), reply_language=fc.reply_language
+    )
+    if is_execution_policy_blocker(run) or native_service_failure(run) or credential_message is not None:
         fc.diagnosis = None
         fc.staged_repair = []
         card = result_card(run, reply_language=fc.reply_language)
+        if credential_message is not None:
+            card = replace(card, failure_reason=credential_message)
         items = append_card(fc, card)
         execution = progress.finish()
         items += append_assistant(
