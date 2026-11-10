@@ -787,7 +787,7 @@ def test_bind_resources_tool_suffix_carries_the_id_the_generator_pins_on(
     assert out[2] == tool_step + " (using Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx])"
     assert _find_explicit_tool_keys(entries, "\n".join(plan)) == set()
     assert _find_explicit_tool_keys(entries, "\n".join(out)) == {
-        ("bowenliang123/md_exporter/md_exporter", "md_to_pptx")
+        ("bowenliang123/md_exporter/md_exporter", "md_to_pptx", "builtin")
     }
 
 

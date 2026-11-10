@@ -36,7 +36,10 @@ class TestPlannerSystemPrompt:
     def test_prioritizes_installed_tools_and_requires_structured_selection(self) -> None:
         assert "INSTALLED-TOOL-FIRST" in PLANNER_SYSTEM_PROMPT
         assert 'you MUST use a "tool" node' in PLANNER_SYSTEM_PROMPT
-        assert '"tool": {"provider_id": "<provider>", "tool_name": "<tool>"}' in PLANNER_SYSTEM_PROMPT
+        assert (
+            '"tool": {"provider_id": "<provider>", "tool_name": "<tool>", "provider_type": "<type>"}'
+            in PLANNER_SYSTEM_PROMPT
+        )
 
     def test_declares_each_producers_output_names(self) -> None:
         """B1 root cause: node configs are generated in isolated parallel calls
