@@ -5,7 +5,7 @@ native execution uses a recording local transport, never a live MCP service.
 """
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import NoReturn, NotRequired, TypedDict
 from uuid import uuid4
@@ -667,17 +667,17 @@ def alternate_builtin_graph() -> GraphDict:
 class AlternateBuiltinModel:
     """Injected cognition transport returning a valid alternate Tool configuration."""
 
-    def __init__(self, selector: dict[str, str] | None) -> None:
+    def __init__(self, selector: Mapping[str, object] | None, *, purpose: str = "Choose an installed clock") -> None:
         self.graph = alternate_builtin_graph()
         self.builder_calls: list[str] = []
         self.planner_calls = 0
         nodes: list[dict[str, object]] = [
             {"id": "start", "label": "Start", "node_type": "start", "purpose": "Start"},
-            {"id": "clock", "label": "Clock", "node_type": "tool", "purpose": "Choose an installed clock"},
+            {"id": "clock", "label": "Clock", "node_type": "tool", "purpose": purpose},
             {"id": "end", "label": "End", "node_type": "end", "purpose": "Return the clock output"},
         ]
         if selector is not None:
-            nodes[1]["tool"] = selector
+            nodes[1]["tool"] = dict(selector)
         self.plan: dict[str, object] = {
             "title": "Clock",
             "description": "Return the clock output",
@@ -803,3 +803,71 @@ def test_generic_tool_choice_without_selector_still_generates_installed_tool(nat
         "current_time",
     )
     assert set(model.builder_calls) == {"start", "clock", "end"}
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        {"provider_id": " time ", "tool_name": " current_time "},
+        {"provider_id": "time", "tool_name": "weekday", "provider_type": None},
+        {"provider_id": "time", "tool_name": "weekday", "provider_type": "  "},
+        {"provider_id": "time", "tool_name": "weekday", "provider_type": ["builtin"]},
+    ],
+    ids=["whitespace_ambiguous", "null_type", "blank_type", "non_string_type"],
+)
+def test_normalized_authoritative_selectors_never_fall_back_to_prose(
+    native_inventory: Engine, selector: dict[str, object]
+) -> None:
+    from services.workflow_generation.runner import WorkflowGenerator, _find_planned_tool_entry, _StageSchemaError
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    entries = build_tool_catalogue(TENANT_ID)
+    assert find_tool_entry(entries, "time", "weekday", provider_type="builtin") is not None
+    node = {"id": "clock", "node_type": "tool", "tool": selector, "purpose": "Use time/weekday"}
+    graph = alternate_builtin_graph()
+    before = deepcopy(graph)
+    with pytest.raises(_StageSchemaError, match="unavailable or ambiguous"):
+        WorkflowGenerator._hydrate_tool_nodes(graph=graph, plan_nodes=[node], tool_catalogue_entries=entries)
+    assert graph == before
+    assert _find_planned_tool_entry(node, entries) is None
+    model = AlternateBuiltinModel(selector, purpose="Use time/weekday")
+    result = WorkflowGenerator.generate_workflow_graph(
+        model_instance=model,
+        model_parameters={},
+        provider="controlled",
+        model_name="controlled",
+        model_mode="chat",
+        mode="workflow",
+        instruction="Use the selected tool",
+        tool_catalogue_entries=entries,
+        installed_tools={("time", "current_time"), ("time", "weekday")},
+    )
+    assert [(error["code"], error.get("node_id")) for error in result["errors"]] == [("UNKNOWN_TOOL", "clock")]
+    assert result["graph"]["nodes"] == []
+    assert model.builder_calls == []
+
+
+def test_normalized_valid_typed_selector_binds_exact_identity_despite_unrelated_prose(native_inventory: Engine) -> None:
+    from services.workflow_generation.runner import (
+        WorkflowGenerator,
+        _find_planned_tool_entry,
+        _planned_tool_selector_errors,
+    )
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    entries = build_tool_catalogue(TENANT_ID)
+    selector = {"provider_id": " time ", "tool_name": " current_time ", "provider_type": " mcp "}
+    node = {"id": "clock", "node_type": "tool", "tool": selector, "purpose": "Use time/weekday"}
+    assert _planned_tool_selector_errors([node], entries) == []
+    entry = _find_planned_tool_entry(node, entries)
+    assert entry is not None
+    assert (entry["provider_type"], entry["provider_name"], entry["tool_name"]) == ("mcp", "time", "current_time")
+    graph = alternate_builtin_graph()
+    WorkflowGenerator._hydrate_tool_nodes(graph=graph, plan_nodes=[node], tool_catalogue_entries=entries)
+    clock = graph["nodes"][1]["data"]
+    assert (clock["provider_type"], clock["provider_id"], clock["tool_name"]) == ("mcp", "time", "current_time")
+    assert clock["output_schema"] == OUTPUT
