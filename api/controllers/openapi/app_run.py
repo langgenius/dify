@@ -22,7 +22,7 @@ import services
 from constants.oauth_bearer import Scope
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.fields import EventStreamResponse
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
+from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Effect, Example, Kind, endpoint
@@ -44,7 +44,6 @@ from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
     CheckAppAccess,
     CheckAppApiEnabled,
-    CheckRBACPermission,
     CheckScope,
     CheckSubject,
     CheckWorkspaceMember,
@@ -142,7 +141,6 @@ _RUN_GUARDS: Final = (
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
     CheckScope(Scope.APPS_RUN),
-    CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
     CheckAppAccess(),
 )
 _DRAFT_FORM_NOTE: Final = "A human-input pause in a draft run cannot be resumed over openapi."
