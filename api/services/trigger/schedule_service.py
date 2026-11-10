@@ -180,23 +180,24 @@ class TriggerScheduleService:
 
     def poll(self) -> int:
         total_dispatched = 0
-        while True:
+        has_more = True
+        while has_more:
             with self._schedules.claim_due(now=self._now(), limit=self._batch_size) as claimed:
                 schedules = claimed.schedules
-                if not schedules:
-                    break
-                next_run_times = {
-                    schedule.id: calculate_next_run_at(schedule.cron_expression, schedule.timezone, self._now())
-                    for schedule in schedules
-                }
-                claimed.advance(next_run_times)
-                self._publish(tuple(schedule.id for schedule in schedules))
+                if schedules:
+                    next_run_times = {
+                        schedule.id: calculate_next_run_at(schedule.cron_expression, schedule.timezone, self._now())
+                        for schedule in schedules
+                    }
+                    claimed.advance(next_run_times)
+                    self._publish(tuple(schedule.id for schedule in schedules))
             total_dispatched += len(schedules)
-            if 0 < self._max_dispatch_per_tick <= total_dispatched:
+            limit_reached = 0 < self._max_dispatch_per_tick <= total_dispatched
+            if limit_reached:
                 logger.warning(
                     "Schedule dispatch limit reached after %d schedules; continuing next tick", total_dispatched
                 )
-                break
+            has_more = bool(schedules) and not limit_reached
         if total_dispatched:
             logger.info("Total processed: %d workflow schedule(s) dispatched", total_dispatched)
         return total_dispatched
