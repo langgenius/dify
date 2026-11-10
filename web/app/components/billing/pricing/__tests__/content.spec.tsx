@@ -10,6 +10,7 @@ import {
   seedFeatures,
 } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
+import { createDeferred } from '@/test/deferred'
 import { PricingContent } from '../content'
 
 let billingPopup: {
@@ -219,11 +220,8 @@ it('offers education pricing before Team checkout when the discount has not been
   const { queryClient, show } = setup()
   seedFeatures(queryClient, { education: { enabled: true, activated: false } })
   seedEducationStatus(queryClient, { is_student: true })
-  const checkout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-    new Response(JSON.stringify({ url: 'https://billing.example.com/team-checkout' }), {
-      headers: { 'Content-Type': 'application/json' },
-    }),
-  )
+  const pending = createDeferred<Response>()
+  const checkout = vi.spyOn(globalThis, 'fetch').mockReturnValue(pending.promise)
   show()
 
   await user.click(screen.getByRole('button', { name: 'billing.plansCommon.upgradeToTeam' }))
@@ -234,6 +232,19 @@ it('offers education pricing before Team checkout when the discount has not been
   expect(checkout).not.toHaveBeenCalled()
   const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
   await user.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))
+  const switchPlan = screen.getByRole('button', {
+    name: 'education.educationPricingConfirm.continue',
+  })
+  expect(switchPlan).toBeDisabled()
+  await user.click(switchPlan)
+  expect(checkout).toHaveBeenCalledTimes(1)
+  await act(async () =>
+    pending.resolve(
+      new Response(JSON.stringify({ url: 'https://billing.example.com/team-checkout' }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    ),
+  )
   await waitFor(() =>
     expect(navigate).toHaveBeenCalledWith('https://billing.example.com/team-checkout'),
   )

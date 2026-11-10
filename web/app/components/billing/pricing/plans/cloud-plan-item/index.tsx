@@ -157,9 +157,6 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
 
     await runPlanAction()
   }
-  const handleUseEducationDiscount = async () => {
-    await handleEducationDiscount()
-  }
   const handleContinueWithoutEducationDiscount = async () => {
     await runPlanAction()
     setShowEducationPricingConfirm(false)
@@ -223,6 +220,10 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
                 variant="tertiary"
                 size={null}
                 disabled={isPlanDisabled}
+                loading={
+                  !showEducationPricingConfirm &&
+                  (isPlanActionPending || isEducationDiscountLoading)
+                }
                 className={cn(
                   'h-auto min-h-15 w-full rounded-lg border p-3 text-2xl leading-[30px] font-medium whitespace-normal shadow-none disabled:cursor-default',
                   isPrimaryAction
@@ -236,7 +237,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
                 <span className="min-w-0">{buttonLabel}</span>
               </Button>
               {educationDiscountWarningText && (
-                <div className="absolute inset-x-0 top-full mt-1.5 text-start system-2xs-medium text-text-tertiary">
+                <div className="mt-1.5 text-start system-2xs-medium text-text-tertiary">
                   {educationDiscountWarningText}
                 </div>
               )}
@@ -258,22 +259,23 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             />
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="max-sm:flex-col max-sm:items-stretch">
             <Button
               size="large"
               onClick={handleContinueWithoutEducationDiscount}
               disabled={isEducationDiscountLoading}
               loading={isPlanActionPending}
-              className="min-w-38"
+              className="h-auto min-h-9 w-full whitespace-normal sm:w-auto sm:min-w-38"
             >
               {t(($) => $['educationPricingConfirm.cancel'], { ns: 'education' })}
             </Button>
             <Button
               variant="primary"
               size="large"
-              onClick={handleUseEducationDiscount}
+              onClick={handleEducationDiscount}
+              disabled={isPlanActionPending}
               loading={isEducationDiscountLoading}
-              className="min-w-61"
+              className="h-auto min-h-9 w-full whitespace-normal sm:w-auto sm:min-w-61"
             >
               {t(($) => $['educationPricingConfirm.continue'], { ns: 'education' })}
             </Button>
