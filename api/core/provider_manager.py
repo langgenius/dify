@@ -876,17 +876,17 @@ class ProviderManager:
         )
 
     def get_first_provider_first_model(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
-        """
-        Get names of first model and its provider
+        """Return the first active model of the requested type in this workspace.
 
-        :param tenant_id: workspace id
-        :param model_type: model type
-        :return: provider name, model name
+        Precondition: ``tenant_id`` identifies the workspace whose provider catalog
+        is being read. Postcondition: a returned provider/model pair is active in
+        that catalog; if none is active, return ``(None, None)``. This read does not
+        create or update the workspace's saved default model.
         """
         provider_configurations = self.get_configurations(tenant_id)
 
         # get available models from provider_configurations
-        all_models = provider_configurations.get_models(model_type=model_type, only_active=False)
+        all_models = provider_configurations.get_models(model_type=model_type, only_active=True)
 
         if not all_models:
             return None, None
