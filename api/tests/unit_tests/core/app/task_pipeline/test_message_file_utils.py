@@ -1,22 +1,20 @@
-from types import SimpleNamespace
-from typing import cast
-
 from core.app.task_pipeline.message_file_utils import prepare_file_dict
 from graphon.file import FileTransferMethod
+from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 
 
 def _message_file(url: str, transfer_method: FileTransferMethod) -> MessageFile:
-    return cast(
-        MessageFile,
-        SimpleNamespace(
-            id="message-file-1",
-            type="document",
-            transfer_method=transfer_method,
-            url=url,
-            upload_file_id=None,
-        ),
+    message_file = MessageFile(
+        message_id="message-1",
+        type="document",
+        transfer_method=transfer_method,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-id",
+        url=url,
     )
+    message_file.id = "message-file-1"
+    return message_file
 
 
 def _remote_file(url: str) -> MessageFile:
