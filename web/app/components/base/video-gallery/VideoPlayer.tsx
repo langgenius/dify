@@ -104,6 +104,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   })
   const toggleMuteLabel = t(($) => $['operation.toggleMute'], { ns: 'common' })
   const toggleFullscreenLabel = t(($) => $['operation.toggleFullscreen'], { ns: 'common' })
+  const sourceSignature = `${src ?? ''}\n${srcs?.join('\n') ?? ''}`
 
   useEffect(() => {
     const video = videoRef.current
@@ -132,7 +133,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
       video.removeEventListener('timeupdate', setVideoTime)
       video.removeEventListener('ended', handleEnded)
     }
-  }, [src, srcs])
+  }, [sourceSignature])
+
+  useEffect(() => {
+    setIsPlaying(false)
+    setCurrentTime(0)
+    setDuration(0)
+    setHoverTime(null)
+    setIsDragging(false)
+  }, [sourceSignature])
 
   useEffect(() => {
     return () => {
