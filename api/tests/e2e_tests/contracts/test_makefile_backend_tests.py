@@ -2,7 +2,7 @@ import subprocess
 from pathlib import Path
 
 
-def test_default_make_test_runs_backend_unit_suites():
+def test_default_make_test_runs_backend_unit_suites() -> None:
     repo_root = Path(__file__).resolve().parents[4]
 
     completed = subprocess.run(["make", "-n", "test"], cwd=repo_root, check=True, capture_output=True, text=True)
@@ -20,7 +20,7 @@ def test_default_make_test_runs_backend_unit_suites():
     assert "api/providers/vdb/vdb-chroma/tests/e2e_tests" not in dry_run_output
 
 
-def test_make_test_all_runs_backend_pytest_suites():
+def test_make_test_all_runs_backend_pytest_suites() -> None:
     repo_root = Path(__file__).resolve().parents[4]
 
     completed = subprocess.run(["make", "-n", "test-all"], cwd=repo_root, check=True, capture_output=True, text=True)

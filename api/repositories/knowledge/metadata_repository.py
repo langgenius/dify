@@ -65,8 +65,11 @@ class SQLAlchemyMetadataRepository:
         )
 
     @classmethod
-    def _check_name(cls, session: Session, ref: DatasetRef, name: str) -> None:
-        if session.scalar(cls._fields(ref).where(DatasetMetadata.name == name).limit(1)) is not None:
+    def _check_name(cls, session: Session, ref: DatasetRef, name: str, exclude_id: str | None = None) -> None:
+        stmt = cls._fields(ref).where(DatasetMetadata.name == name)
+        if exclude_id is not None:
+            stmt = stmt.where(DatasetMetadata.id != exclude_id)
+        if session.scalar(stmt.limit(1)) is not None:
             raise ValueError("Metadata name already exists.")
 
     def create(self, ref: DatasetRef, *, name: str, field_type: str, actor_id: str) -> MetadataRecord:
@@ -83,7 +86,7 @@ class SQLAlchemyMetadataRepository:
     def rename(self, ref: DatasetRef, metadata_id: str, *, name: str, actor_id: str) -> MetadataRecord:
         with self._sessions.begin() as session:
             self._dataset(session, ref, write=True)
-            self._check_name(session, ref, name)
+            self._check_name(session, ref, name, exclude_id=metadata_id)
             row = session.scalar(self._fields(ref).where(DatasetMetadata.id == metadata_id))
             if row is None:
                 raise MetadataResourceNotFoundError("Metadata not found.")

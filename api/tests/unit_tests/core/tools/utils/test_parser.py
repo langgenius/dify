@@ -495,3 +495,19 @@ def test_parse_openapi_to_tool_bundle_request_env_matches_env_key(app: Flask):
 
     assert len(tool_bundles) == 1
     assert tool_bundles[0].server_url == "http://prod.example.com/"
+
+
+def test_openapi_31_nullable_union_parameter_type_is_parsed():
+    parameter = {
+        "name": "limit",
+        "in": "query",
+        "schema": {"type": ["integer", "null"]},
+    }
+
+    assert ApiBasedToolSchemaParser._get_tool_parameter_type(parameter) == ToolParameter.ToolParameterType.NUMBER
+
+
+def test_openapi_31_union_with_only_null_returns_none():
+    parameter = {"name": "value", "schema": {"type": ["null"]}}
+
+    assert ApiBasedToolSchemaParser._get_tool_parameter_type(parameter) is None

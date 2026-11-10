@@ -564,7 +564,7 @@ function ActivityDrawer({
         <DrawerBackdrop className="bg-transparent" />
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:w-120 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
-            <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
+            <DrawerContent className="bg-components-panel-bg">
               <header className="flex h-16 shrink-0 items-center px-5">
                 <div className="flex w-full items-center justify-between gap-3">
                   <DrawerTitle className="system-lg-semibold text-text-primary">
@@ -646,12 +646,12 @@ function ActivityDrawer({
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {loading ? (
                   <div className="px-5 pt-3">
-                    <Skeleton className="ml-5 h-3 w-14" />
+                    <Skeleton className="ms-5 h-3 w-14" />
                     <div className="mt-2 space-y-0">
                       {[248, 300, 210, 280, 236, 264].map((width) => (
                         <div key={width} className="flex h-13.5 items-center px-5">
                           <Skeleton className="size-6 shrink-0 rounded-full" />
-                          <div className="ml-3 min-w-0 flex-1">
+                          <div className="ms-3 min-w-0 flex-1">
                             <Skeleton className="h-3" style={{ width }} />
                             <Skeleton className="mt-1.5 h-2.5 w-37" />
                           </div>
@@ -726,7 +726,7 @@ function ActivityDrawer({
                           onClick={() => void activityQuery.fetchNextPage()}
                         >
                           {t(($) => $['overview.loadMore'], { ns: 'knowledgeOverview' })}
-                          <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4" />
+                          <span aria-hidden className="ms-1 i-ri-arrow-down-s-line size-4" />
                         </Button>
                       )}
                     </div>

@@ -40,6 +40,15 @@ def _notion_database_response(data: Mapping[str, object]) -> httpx.Response:
     )
 
 
+def _notion_table_response(data: Mapping[str, object]) -> httpx.Response:
+    """Attach table fixtures to their GET request so HTTP status checks run normally."""
+    return httpx.Response(
+        200,
+        json=data,
+        request=httpx.Request("GET", notion_extractor_module.BLOCK_CHILD_URL_TMPL.format(block_id="table-block-123")),
+    )
+
+
 class TestOnlineDocumentProviderCases:
     class TestOnlineDocumentDatasourcePluginProviderController:
         def test_init(self) -> None:
@@ -782,7 +791,7 @@ class TestNotionProviderCases:
                 "next_cursor": None,
                 "has_more": False,
             }
-            mock_request.return_value = httpx.Response(200, json=mock_data)
+            mock_request.return_value = _notion_table_response(mock_data)
 
             # Act
             result = extractor._read_table_rows("table-block-123")
@@ -814,7 +823,7 @@ class TestNotionProviderCases:
                 "next_cursor": None,
                 "has_more": False,
             }
-            mock_request.return_value = httpx.Response(200, json=mock_data)
+            mock_request.return_value = _notion_table_response(mock_data)
 
             # Act
             result = extractor._read_table_rows("table-block-123")
@@ -853,7 +862,7 @@ class TestNotionProviderCases:
                 "next_cursor": None,
                 "has_more": False,
             }
-            mock_request.side_effect = [httpx.Response(200, json=first_page), httpx.Response(200, json=second_page)]
+            mock_request.side_effect = [_notion_table_response(first_page), _notion_table_response(second_page)]
 
             # Act
             result = extractor._read_table_rows("table-block-123")
@@ -1881,7 +1890,7 @@ class TestNotionProviderCases:
                 "next_cursor": None,
                 "has_more": False,
             }
-            mock_request.return_value = httpx.Response(200, json=mock_data)
+            mock_request.return_value = _notion_table_response(mock_data)
 
             # Act
             result = extractor._read_table_rows("table-block-123")

@@ -1,16 +1,25 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
 
 from controllers.console.app import message as message_module
-from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import MessageResponseSource
 from models.account import Account
-from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
+from models.enums import (
+    ConversationFromSource,
+    ConversationStatus,
+    CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
+)
+from models.enums import (
+    InvokeFrom as ModelInvokeFrom,
+)
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -55,8 +64,8 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
-        status="normal",
-        invoke_from=InvokeFrom.DEBUGGER,
+        status=ConversationStatus.NORMAL,
+        invoke_from=ModelInvokeFrom.DEBUGGER,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id="account-1",
@@ -69,16 +78,16 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         query="query",
         message="",
         message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="answer",
         answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         provider_response_latency=0,
-        total_price=0,
+        total_price=Decimal(0),
         currency="USD",
-        invoke_from=InvokeFrom.DEBUGGER,
+        invoke_from=ModelInvokeFrom.DEBUGGER,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id="account-1",
@@ -141,12 +150,16 @@ class TestMessageApiCases:
 
         assert source.inputs == {"topic": "support"}
         assert source.user_feedback is feedback
-        assert source.feedbacks[0].from_account.id == "account-1"
+        feedback_source = source.feedbacks[0]
+        assert feedback_source.from_account is not None
+        assert feedback_source.from_account.id == "account-1"
         annotation_source = source.annotation
         assert annotation_source is not None
+        assert annotation_source.account is not None
         assert annotation_source.account.id == "account-1"
         annotation_hit_history_source = source.annotation_hit_history
         assert annotation_hit_history_source is not None
+        assert annotation_hit_history_source.annotation_create_account is not None
         assert annotation_hit_history_source.annotation_create_account.id == "account-1"
         assert source.agent_thoughts == [thought]
         assert source.message_files == []

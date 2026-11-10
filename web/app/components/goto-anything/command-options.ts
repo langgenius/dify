@@ -4,14 +4,22 @@ import { useTranslation } from 'react-i18next'
 import { MAIN_NAV_ROUTES } from '@/app/components/main-nav/routes'
 import { slashCommandRegistry } from './actions/commands/catalog'
 
+export type SearchScope = Exclude<ActionItem['key'], '/'>
+
+export type ScopeSelection = SearchScope | 'all'
+
 export type CommandOption = {
   kind: 'command-option'
   shortcut: string
   title: string
   description?: string
   icon: string
+  opensPage?: boolean
+  scope?: SearchScope
   result?: CommandSearchResult
 }
+
+export type ScopeOption = CommandOption & { scope: SearchScope }
 
 export type GotoAnythingOption = CommandOption | SearchResult
 
@@ -38,14 +46,12 @@ const scopeRoutes = {
   '@agents': 'roster',
 } as const
 
-const scopeDescriptions = {
-  '@app': 'gotoAnything.actions.searchApplicationsDesc',
-  '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
-  '@plugin': 'gotoAnything.actions.searchPluginsDesc',
-  '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
-} as const
+const featuredCommands = ['refine', 'create', 'go', 'models', 'theme', 'language']
 
-const featuredCommands = ['refine', 'create', 'models', 'go', 'theme']
+function commandRank(name: string) {
+  const rank = featuredCommands.indexOf(name)
+  return rank === -1 ? featuredCommands.length : rank
+}
 
 function matches(query: string, values: (string | undefined)[]) {
   const text = values.filter(Boolean).join(' ').toLocaleLowerCase()
@@ -73,39 +79,49 @@ export function useCommandOptions(
     '@skill': t(($) => $['skillManagement.title'], { ns: 'skill' }),
     '@agents': t(($) => $['roster.title'], { ns: 'agentRoster' }),
   }
-  const scopeOptions: CommandOption[] = Object.values(actions).flatMap((action) => {
+  const allScopeOptions: ScopeOption[] = Object.values(actions).flatMap((action) => {
     if (action.key === '/') return []
     const routeKey = scopeRoutes[action.key as keyof typeof scopeRoutes]
-    const descriptionKey = scopeDescriptions[action.key as keyof typeof scopeDescriptions]
-    const option: CommandOption = {
-      kind: 'command-option',
-      shortcut: action.shortcut,
-      title: scopeTitles[action.key],
-      description: descriptionKey ? t(($) => $[descriptionKey], { ns: 'app' }) : action.description,
-      icon: MAIN_NAV_ROUTES.find((route) => route.key === routeKey)?.icon ?? 'i-ri-node-tree',
-    }
-    return !trimmed || matches(filter, [option.title, option.shortcut, action.key]) ? [option] : []
+    return [
+      {
+        kind: 'command-option',
+        shortcut: action.shortcut,
+        title: scopeTitles[action.key],
+        icon: MAIN_NAV_ROUTES.find((route) => route.key === routeKey)?.icon ?? 'i-ri-node-tree',
+        scope: action.key,
+      },
+    ]
   })
+  const scopeOptions = trimmed
+    ? allScopeOptions.filter((option) =>
+        matches(filter, [option.title, option.shortcut, option.scope]),
+      )
+    : allScopeOptions
 
-  if (trimmed.startsWith('@')) return { scopeOptions, commandOptions: [] }
+  const commandEntries = commands
+    .map((command) => {
+      const presentation = commandPresentation[command.name as keyof typeof commandPresentation]
+      const option: CommandOption = {
+        kind: 'command-option',
+        shortcut: `/${command.name}`,
+        title:
+          command.name === 'models'
+            ? t(($) => $['modelProvider.systemModelSettings'], { ns: 'modelProvider' })
+            : presentation
+              ? t(($) => $[presentation[0]], { ns: 'app' })
+              : command.description,
+        icon: presentation?.[1] ?? 'i-ri-brain-2-line',
+        opensPage: command.mode === 'submenu',
+      }
+      return { command, option }
+    })
+    .sort((a, b) => commandRank(a.command.name) - commandRank(b.command.name))
+  const allCommandOptions = commandEntries.map(({ option }) => option)
+  const result = { scopeOptions, allScopeOptions, allCommandOptions }
 
-  const commandOptions = commands.flatMap<CommandOption>((command) => {
-    const presentation = commandPresentation[command.name as keyof typeof commandPresentation]
-    const option: CommandOption = {
-      kind: 'command-option',
-      shortcut: `/${command.name}`,
-      title:
-        command.name === 'models'
-          ? t(($) => $['modelProvider.systemModelSettings'], { ns: 'modelProvider' })
-          : presentation
-            ? t(($) => $[presentation[0]], { ns: 'app' })
-            : command.description,
-      description:
-        command.name === 'models'
-          ? t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })
-          : undefined,
-      icon: presentation?.[1] ?? 'i-ri-brain-2-line',
-    }
+  if (trimmed.startsWith('@')) return { ...result, commandOptions: [] }
+
+  const commandOptions = commandEntries.flatMap<CommandOption>(({ command, option }) => {
     if (
       !filter ||
       matches(filter, [option.title, option.description, command.name, ...(command.aliases ?? [])])
@@ -115,32 +131,15 @@ export function useCommandOptions(
 
     return slashCommandRegistry
       .search(`/${command.name}`, context)
-      .filter((result) => matches(filter, [result.title, result.description, result.id]))
-      .map((result) => ({
+      .filter((match) => matches(filter, [match.title, match.description, match.id]))
+      .map((match) => ({
         ...option,
-        title: result.title,
+        title: match.title,
         description: option.title,
-        result,
+        opensPage: false,
+        result: match,
       }))
   })
 
-  if (!trimmed) {
-    const featured = featuredCommands
-      .flatMap((name) => commandOptions.filter((option) => option.shortcut === `/${name}`))
-      .slice(0, 3)
-    return {
-      scopeOptions,
-      commandOptions: [
-        ...featured,
-        {
-          kind: 'command-option' as const,
-          shortcut: '/',
-          title: t(($) => $['gotoAnything.allCommands'], { ns: 'app' }),
-          icon: 'i-ri-terminal-box-line',
-        },
-      ],
-    }
-  }
-
-  return { scopeOptions, commandOptions }
+  return { ...result, commandOptions }
 }

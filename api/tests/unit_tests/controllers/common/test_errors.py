@@ -92,7 +92,7 @@ def test_refresh_unavailability_has_one_documented_response(source_api: External
 
 
 class TestFilenameNotExistsError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = FilenameNotExistsError()
 
         assert error.code == 400
@@ -106,7 +106,7 @@ class TestFilenameNotExistsError:
 
 
 class TestRemoteFileUploadError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = RemoteFileUploadError()
 
         assert error.code == 400
@@ -160,7 +160,7 @@ def test_remote_file_errors(
 
 
 class TestFileTooLargeError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = FileTooLargeError()
 
         assert error.code == 413
@@ -169,7 +169,7 @@ class TestFileTooLargeError:
 
 
 class TestUnsupportedFileTypeError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = UnsupportedFileTypeError()
 
         assert error.code == 415
@@ -178,7 +178,7 @@ class TestUnsupportedFileTypeError:
 
 
 class TestBlockedFileExtensionError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = BlockedFileExtensionError()
 
         assert error.code == 400
@@ -187,7 +187,7 @@ class TestBlockedFileExtensionError:
 
 
 class TestTooManyFilesError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = TooManyFilesError()
 
         assert error.code == 400
@@ -196,7 +196,7 @@ class TestTooManyFilesError:
 
 
 class TestNoFileUploadedError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = NoFileUploadedError()
 
         assert error.code == 400

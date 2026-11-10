@@ -216,6 +216,38 @@ describe('DateTimePicker', () => {
     await screen.getByRole('button', { name: 'OK' }).click()
     expect(onValueChange).not.toHaveBeenCalled()
   })
+
+  it('opens a read-only picker for browsing both views without editing', async () => {
+    const onValueChange = vi.fn()
+    const screen = await render(
+      <DateTimePicker
+        readOnly
+        timeZone="UTC"
+        defaultValue={new Date('2025-01-15T13:30:00Z')}
+        onValueChange={onValueChange}
+      >
+        <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
+        <DateTimePickerTrigger />
+        <DateTimePickerContent />
+      </DateTimePicker>,
+    )
+    await screen.getByRole('button', { name: 'Meeting Jan 15, 2025, 1:30 PM' }).click()
+    await expect.element(screen.getByRole('grid')).toHaveAttribute('aria-readonly', 'true')
+    await screen.getByRole('button', { name: /January 20th/ }).click()
+    await expect
+      .element(screen.getByRole('button', { name: /January 15th, 2025, selected/ }))
+      .toBeInTheDocument()
+    await expect.element(screen.getByRole('button', { name: 'OK' })).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('button', { name: 'Now' })).not.toBeInTheDocument()
+
+    await screen.getByRole('button', { name: 'Pick Time: 1:30 PM' }).click()
+    await expect
+      .element(screen.getByRole('listbox', { name: 'Hour' }))
+      .toHaveAttribute('aria-readonly', 'true')
+    await expect.element(screen.getByRole('button', { name: 'OK' })).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('button', { name: 'Pick Date' })).toBeInTheDocument()
+    expect(onValueChange).not.toHaveBeenCalled()
+  })
 })
 
 it('rejects a daylight-saving gap and lets the user repair it before committing', async () => {

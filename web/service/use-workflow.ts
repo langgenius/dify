@@ -93,7 +93,7 @@ export const useResetWorkflowVersionHistory = () => {
 
 type UpdateVersionParams = {
   resource:
-    | Omit<Extract<EditorResource, { kind: 'app' }>, 'mode'>
+    | Omit<Extract<EditorResource, { kind: 'app' }>, 'mode' | 'collaborationEnabled'>
     | Exclude<EditorResource, { kind: 'app' }>
   versionId: string
   title: string

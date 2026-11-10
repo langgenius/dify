@@ -854,14 +854,14 @@ class WorkflowRun(TypeBase):
     inputs: Mapped[str | None] = mapped_column(LongText, default=None)
     outputs: Mapped[str | None] = mapped_column(LongText, default="{}")
     error: Mapped[str | None] = mapped_column(LongText, default=None)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"), default=0)
-    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"), default=0)
-    total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True, default=0)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, default=0)
+    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, default=0)
+    total_steps: Mapped[int] = mapped_column(sa.Integer, nullable=True, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True, default=0)
+    exceptions_count: Mapped[int] = mapped_column(sa.Integer, nullable=True, default=0)
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
         lambda: WorkflowPause,
@@ -1085,7 +1085,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     process_data: Mapped[str | None] = mapped_column(LongText, default=None)
     outputs: Mapped[str | None] = mapped_column(LongText, default=None)
     error: Mapped[str | None] = mapped_column(LongText, default=None)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"), default=0)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, default=0)
     execution_metadata: Mapped[str | None] = mapped_column(LongText, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), init=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
@@ -1401,19 +1401,6 @@ class WorkflowAppLog(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-
-    @property
-    def workflow_run(self):
-        if self.workflow_run_id:
-            from sqlalchemy.orm import sessionmaker
-
-            from repositories.factory import DifyAPIRepositoryFactory
-
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-            return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
-
-        return None
 
     def created_by_account(self, session: orm.Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)

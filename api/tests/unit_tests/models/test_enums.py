@@ -1,5 +1,7 @@
 import ast
 import inspect
+import os
+from functools import cache
 from pathlib import Path
 
 import pytest
@@ -10,6 +12,25 @@ from models.types import EnumText
 from services.app_scoped_end_user_service import AppScopedEndUserService
 
 API_ROOT = Path(__file__).resolve().parents[3]
+
+
+@cache
+def _production_calls() -> tuple[tuple[Path, ast.Call], ...]:
+    """Every call expression in the API's production sources, with its path relative to ``API_ROOT``.
+
+    Parsed once for all source-scanning tests; ``tests`` and ``.venv`` directories are pruned
+    during the walk instead of being traversed and filtered afterwards.
+    """
+    calls: list[tuple[Path, ast.Call]] = []
+    for directory, subdirectories, filenames in os.walk(API_ROOT):
+        subdirectories[:] = [name for name in subdirectories if name not in {"tests", ".venv"}]
+        for filename in filenames:
+            if filename.endswith(".py"):
+                source_path = Path(directory) / filename
+                tree = ast.parse(source_path.read_text(), filename=str(source_path))
+                relative_path = source_path.relative_to(API_ROOT)
+                calls.extend((relative_path, node) for node in ast.walk(tree) if isinstance(node, ast.Call))
+    return tuple(calls)
 
 
 def test_end_user_type_covers_persisted_creation_values() -> None:
@@ -50,28 +71,21 @@ def test_end_user_service_callers_pass_end_user_type() -> None:
     method_names = {"get_or_create_end_user_by_type", "create_end_user_batch"}
     checked_calls = 0
 
-    for source_path in API_ROOT.rglob("*.py"):
-        if "tests" in source_path.parts or ".venv" in source_path.parts:
+    for relative_path, node in _production_calls():
+        if not isinstance(node.func, ast.Attribute) or node.func.attr not in method_names:
             continue
+        checked_calls += 1
 
-        tree = ast.parse(source_path.read_text(), filename=str(source_path))
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            if not isinstance(node.func, ast.Attribute) or node.func.attr not in method_names:
-                continue
-            checked_calls += 1
+        type_arg = next((keyword.value for keyword in node.keywords if keyword.arg == "type"), None)
+        if type_arg is None and node.args:
+            type_arg = node.args[0]
 
-            type_arg = next((keyword.value for keyword in node.keywords if keyword.arg == "type"), None)
-            if type_arg is None and node.args:
-                type_arg = node.args[0]
-
-            if not (
-                isinstance(type_arg, ast.Attribute)
-                and isinstance(type_arg.value, ast.Name)
-                and type_arg.value.id == "EndUserType"
-            ):
-                violations.append(f"{source_path.relative_to(API_ROOT)}:{node.lineno}")
+        if not (
+            isinstance(type_arg, ast.Attribute)
+            and isinstance(type_arg.value, ast.Name)
+            and type_arg.value.id == "EndUserType"
+        ):
+            violations.append(f"{relative_path}:{node.lineno}")
 
     assert checked_calls > 0
     assert violations == []
@@ -87,31 +101,24 @@ def test_end_user_type_column_uses_enum_text() -> None:
 def test_production_end_user_constructors_use_end_user_type_enum() -> None:
     violations: list[str] = []
 
-    for source_path in API_ROOT.rglob("*.py"):
-        if "tests" in source_path.parts or ".venv" in source_path.parts:
+    for relative_path, node in _production_calls():
+        if not isinstance(node.func, ast.Name) or node.func.id != "EndUser":
             continue
 
-        tree = ast.parse(source_path.read_text(), filename=str(source_path))
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
+        for keyword in node.keywords:
+            if keyword.arg != "type":
                 continue
-            if not isinstance(node.func, ast.Name) or node.func.id != "EndUser":
-                continue
-
-            for keyword in node.keywords:
-                if keyword.arg != "type":
-                    continue
-                value = keyword.value
-                uses_end_user_type_member = (
-                    isinstance(value, ast.Attribute)
-                    and isinstance(value.value, ast.Name)
-                    and value.value.id == "EndUserType"
-                )
-                uses_end_user_type_conversion = (
-                    isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id == "EndUserType"
-                )
-                if not (uses_end_user_type_member or uses_end_user_type_conversion):
-                    violations.append(f"{source_path.relative_to(API_ROOT)}:{node.lineno}")
+            value = keyword.value
+            uses_end_user_type_member = (
+                isinstance(value, ast.Attribute)
+                and isinstance(value.value, ast.Name)
+                and value.value.id == "EndUserType"
+            )
+            uses_end_user_type_conversion = (
+                isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id == "EndUserType"
+            )
+            if not (uses_end_user_type_member or uses_end_user_type_conversion):
+                violations.append(f"{relative_path}:{node.lineno}")
 
     assert violations == []
 

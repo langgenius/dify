@@ -9,11 +9,11 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { Fragment, memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowReadOnly } from '../hooks/use-workflow'
 import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
@@ -59,10 +59,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   const { zoom } = useViewport()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { workflowReadOnly, getWorkflowReadOnly } = useWorkflowReadOnly()
-  const { data: isCollaborationEnabled } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_collaboration_mode,
-  })
+  const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
 
   const zoomOptions = [
     [

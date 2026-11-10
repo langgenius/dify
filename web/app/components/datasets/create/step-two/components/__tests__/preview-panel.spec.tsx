@@ -16,7 +16,7 @@ const estimateBase: IndexingEstimateResponse = {
 
 describe('PreviewPanel', () => {
   const defaultProps = {
-    isMobile: false,
+    isBelowSm: false,
     isOpen: false,
     onClose: vi.fn(),
     dataSourceType: DataSourceType.FILE,
@@ -59,7 +59,7 @@ describe('PreviewPanel', () => {
           </button>
           <PreviewPanel
             {...defaultProps}
-            isMobile
+            isBelowSm
             isOpen={isOpen}
             onClose={() => setIsOpen(false)}
             finalFocus={triggerRef}

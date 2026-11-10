@@ -2002,9 +2002,10 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /workspaces/{workspace_id}/skills/imports
-**Import never publishes**
+**Import an admitted editor's validated folder, returning a count of file entries only**
 
-``draft_hash`` is the draft's ``updated_at`` in whole seconds,
+Creates a draft (201) or overwrites it (200), relaying archive and service errors.
+Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
 so an edit made in the same second as the export is not detected.
 
 #### Parameters

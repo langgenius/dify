@@ -56,6 +56,9 @@ ENV APP_API_URL=http://127.0.0.1:5001
 ENV MARKETPLACE_API_URL=https://marketplace.dify.ai
 ENV MARKETPLACE_URL=https://marketplace.dify.ai
 ENV PORT=3000
+# Next.js standalone binds to HOSTNAME. Docker defaults it to the container ID, and
+# net.Server.listen() takes an ID like 30889528e495 as a numeric backlog, not a host.
+ENV HOSTNAME=0.0.0.0
 ENV EXPERIMENTAL_ENABLE_VINEXT=false
 ENV NEXT_TELEMETRY_DISABLED=1
 
