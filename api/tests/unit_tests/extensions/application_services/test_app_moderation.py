@@ -43,6 +43,7 @@ from core.moderation.openai_moderation.openai_moderation import OpenAIModeration
 from core.moderation.output_moderation import ModerationRule as OutputModerationRule
 from core.moderation.output_moderation import OutputModeration
 from enums import DeploymentEdition
+from events.message_event import message_was_created
 from extensions.application_services.app_moderation import (
     DEFAULT_CHAT_MODERATION_REPLY,
     app_moderation_scope,
@@ -894,7 +895,7 @@ def test_default_chat_reply_finishes_and_persists_without_app_configuration(
     )
     pipeline: AdvancedChatAppGenerateTaskPipeline | EasyUIBasedGenerateTaskPipeline
     flask_app = Flask(__name__)
-    with flask_app.app_context():
+    with flask_app.app_context(), message_was_created.muted():
         with app_moderation_scope("tenant-1", "app-1"):
             if advanced:
                 advanced_entity = AdvancedChatAppGenerateEntity(
