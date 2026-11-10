@@ -1,4 +1,5 @@
 from contextlib import nullcontext
+from dataclasses import dataclass
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,7 +23,17 @@ from models.agent import (
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
+
+
+@dataclass(frozen=True)
+class _OrphanAggregateIds:
+    agent_id: str
+    app_id: str
+    home_id: str
+    workspace_id: str
+    binding_id: str
 
 
 def test_db_phase_failure_persists_nothing_and_publishes_nothing(
@@ -85,8 +96,11 @@ def _seed_orphan_aggregate(
     suffix: str = "1",
     app_mode: AppMode = AppMode.AGENT,
     scope: AgentScope = AgentScope.WORKFLOW_ONLY,
-) -> SimpleNamespace:
-    """Seed one complete unowned Agent aggregate (agent + hidden App + home + workspace + binding)."""
+) -> _OrphanAggregateIds:
+    """Commit one complete unowned aggregate with unused ids in the supplied session.
+
+    Return immutable ids that remain valid after retirement deletes the hidden App.
+    """
     agent = Agent(
         id=f"agent-{suffix}",
         tenant_id=tenant_id,
@@ -142,7 +156,7 @@ def _seed_orphan_aggregate(
     session.commit()
     # Return plain ids: the service commits (and may delete rows) in its own session,
     # so holding ORM instances here would raise on refresh after expire_all().
-    return SimpleNamespace(
+    return _OrphanAggregateIds(
         agent_id=agent.id,
         app_id=app.id,
         home_id=home.id,
@@ -181,7 +195,8 @@ def _celery_boundary_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, 
     return cleanup_app, collect
 
 
-def _assert_aggregate_untouched(session: Session, seeded: SimpleNamespace) -> None:
+def _assert_aggregate_untouched(session: Session, seeded: _OrphanAggregateIds) -> None:
+    """Given a committed aggregate, reload and assert that all its rows remain active."""
     session.expire_all()
     agent = session.get(Agent, seeded.agent_id)
     assert agent is not None
@@ -379,8 +394,10 @@ def test_hidden_app_cleanup_failure_blocks_collector_and_keeps_committed_state(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
-    """C6: every hidden-App cleanup publishes before the collector; a cleanup failure blocks
-    the collector and propagates, while the already-committed database state is kept."""
+    """C6: given two unowned aggregates, a failed second cleanup blocks collection.
+
+    The broker error propagates while both database retirements remain committed.
+    """
     first = _seed_orphan_aggregate(sqlite_session, suffix="1")
     second = _seed_orphan_aggregate(sqlite_session, suffix="2")
     error = RuntimeError("broker unavailable")
