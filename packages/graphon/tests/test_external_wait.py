@@ -89,7 +89,9 @@ def test_boolean_node_defaults_are_supported_without_scalar_coercion() -> None:
     from graphon.entities.base_node_data import DefaultValue
 
     assert DefaultValue(type="boolean", key="accepted", value=False).value is False
-    assert DefaultValue(type="array[boolean]", key="flags", value=[True, False]).value == [True, False]
+    assert DefaultValue(
+        type="array[boolean]", key="flags", value=[True, False]
+    ).value == [True, False]
     with pytest.raises(ValueError):
         DefaultValue(type="boolean", key="accepted", value="false")
     # Existing Native compatibility remains unchanged.
