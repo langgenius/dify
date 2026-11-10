@@ -82,8 +82,10 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
 6. Each node "label" must be a short, human-readable, Title-Case name (≤ 25 chars).
 7. Each node "purpose" is one sentence explaining what it does in this workflow.
    Every "tool" node MUST also include
-   ``"tool": {"provider_id": "<provider>", "tool_name": "<tool>"}``, copied
-   exactly from Relevant installed tools, and name the same provider/tool in its purpose.
+   ``"tool": {"provider_id": "<provider>", "tool_name": "<tool>", "provider_type": "<type>"}``, copied
+   exactly from Relevant installed tools (type is builtin unless explicitly api or mcp).
+   Preserve a selected MCP resource's mcp: namespace in its purpose, but never add it to provider_id.
+   Name the same exact tool identifier in its purpose.
    Example: ``"purpose": "Search the web using google/search."``.
 8. For "iteration" and "loop" nodes (containers), list the container node first
    and then EACH inner-pipeline step as its own entry tagged with

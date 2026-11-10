@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from core.workflow.generator.prompts.builder_prompts import TOOL_OUTPUT_SEMANTICS_RULES
-from core.workflow.generator.tool_catalogue import find_tool_entry, text_mentions_tool_identifier
+from core.workflow.generator.tool_catalogue import resolve_tool_entry
 
 if TYPE_CHECKING:
     from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
@@ -117,24 +117,7 @@ def _upstream_tool_entries(
         node_id = node.get("id")
         if not isinstance(node_id, str) or node_id.strip() not in relevant:
             continue
-        selector = node.get("tool")
-        entry = None
-        if isinstance(selector, dict):
-            entry = find_tool_entry(
-                list(entries),
-                str(selector.get("provider_id") or selector.get("provider_name") or ""),
-                str(selector.get("tool_name") or ""),
-            )
-        if entry is None:
-            purpose = str(node.get("purpose") or "")
-            entry = next(
-                (
-                    candidate
-                    for candidate in entries
-                    if text_mentions_tool_identifier(purpose, candidate["provider_name"], candidate["tool_name"])
-                ),
-                None,
-            )
+        entry = resolve_tool_entry(list(entries), node.get("tool"), purpose=str(node.get("purpose") or ""))
         if entry is not None:
             selected.append((node_id.strip(), entry))
     return selected
@@ -147,8 +130,9 @@ def format_api_tool_output_context(
     selected = _upstream_tool_entries(
         plan_json=plan_json,
         target_node_id=target_node_id,
-        entries=[entry for entry in entries if entry["provider_type"] == "api"],
+        entries=entries,
     )
+    selected = [(node_id, entry) for node_id, entry in selected if entry["provider_type"] == "api"]
     if not selected:
         return ""
     tools: list[dict[str, object]] = []
@@ -197,8 +181,9 @@ def format_plugin_tool_output_context(
     selected = _upstream_tool_entries(
         plan_json=plan_json,
         target_node_id=target_node_id,
-        entries=[entry for entry in entries if entry["provider_type"] != "api"],
+        entries=entries,
     )
+    selected = [(node_id, entry) for node_id, entry in selected if entry["provider_type"] != "api"]
     return format_selected_plugin_tool_output_context(selected)
 
 
