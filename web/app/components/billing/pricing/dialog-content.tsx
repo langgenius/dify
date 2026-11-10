@@ -21,7 +21,7 @@ export function PricingDialogContent() {
   return (
     <>
       <DialogBackdrop className="transition-none" />
-      <DialogPopup className="fixed inset-0 size-full overflow-hidden bg-white transition-none data-ending-style:scale-100 data-ending-style:opacity-100 data-starting-style:scale-100 data-starting-style:opacity-100">
+      <DialogPopup className="fixed inset-0 size-full overflow-hidden bg-background-default transition-none data-ending-style:scale-100 data-ending-style:opacity-100 data-starting-style:scale-100 data-starting-style:opacity-100">
         <DialogClose
           render={
             <IconButton

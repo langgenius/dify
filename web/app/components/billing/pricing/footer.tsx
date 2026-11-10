@@ -25,7 +25,7 @@ export function PricingFooter() {
         </div>
         <Link
           href={pricingPageURL}
-          className="group flex h-fit min-w-0 items-center gap-x-1 rounded-xs system-md-regular text-saas-dify-blue-accessible focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid xl:shrink-0"
+          className="group flex h-fit min-w-0 items-center gap-x-1 rounded-xs system-md-regular text-text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid xl:shrink-0"
           target="_blank"
           rel="noopener noreferrer"
         >

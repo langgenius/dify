@@ -215,25 +215,32 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             </>
           )}
         </div>
-        {showPlanButton && (
-          <div className="relative">
-            <Button
-              data-plan={plan}
-              variant="tertiary"
-              size={null}
-              disabled={isPlanDisabled}
-              className={styles.planButton}
-              onClick={handlePlanButtonClick}
-            >
-              <span className="min-w-0">{buttonLabel}</span>
-            </Button>
-            {educationDiscountWarningText && (
-              <div className="absolute inset-x-0 top-full mt-1.5 text-start system-2xs-medium text-text-tertiary">
-                {educationDiscountWarningText}
-              </div>
-            )}
-          </div>
-        )}
+        <div className={styles.actionSlot}>
+          {showPlanButton && (
+            <>
+              <Button
+                data-plan={plan}
+                data-promoted={
+                  (currentPlan === 'sandbox' && plan === 'professional') ||
+                  (currentPlan === 'professional' && plan === 'team') ||
+                  undefined
+                }
+                variant="tertiary"
+                size={null}
+                disabled={isPlanDisabled}
+                className={styles.planButton}
+                onClick={handlePlanButtonClick}
+              >
+                <span className="min-w-0">{buttonLabel}</span>
+              </Button>
+              {educationDiscountWarningText && (
+                <div className="absolute inset-x-0 top-full mt-1.5 text-start system-2xs-medium text-text-tertiary">
+                  {educationDiscountWarningText}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
       <CloudPlanFeatures plan={plan} />
       <Dialog open={showEducationPricingConfirm} onOpenChange={setShowEducationPricingConfirm}>
