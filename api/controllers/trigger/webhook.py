@@ -46,7 +46,11 @@ def _prepare_webhook_execution(webhook_id: str, is_debug: bool = False):
     webhook_data: RawWebhookDataDict
     try:
         # Use new unified extraction and validation
-        webhook_data = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+        webhook_data = WebhookService.extract_and_validate_webhook_data(
+            webhook_trigger,
+            node_config,
+            end_users=application_services().app_scoped_end_users.commands,
+        )
         return webhook_trigger, workflow, node_config, webhook_data, None
     except ValueError as e:
         # Provide minimal context for error reporting without risking another parse failure
@@ -79,6 +83,8 @@ def handle_webhook(webhook_id: str):
             webhook_data,
             workflow,
             end_users=application_services().app_scoped_end_users.commands,
+            trigger_status=application_services().apps.trigger_status,
+            workflow_dispatch=application_services().workspaces.workflow_dispatch,
         )
 
         # Return configured response

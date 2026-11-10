@@ -9,8 +9,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
-from models.annotation_reply import AnnotationReply
+from models.annotation_reply import AnnotationMatch, AnnotationReply, AnnotationSearch
 from models.base import TypeBase
 from models.dataset import Dataset, DatasetCollectionBinding
 from models.enums import CollectionBindingType, ConversationFromSource
@@ -32,6 +33,49 @@ class AnnotationStore:
     engine: Engine
     pool: QueuePool
     sessions: sessionmaker[Session]
+
+
+@dataclass
+class InMemoryAnnotationRecords:
+    search_context: AnnotationSearch
+    match: AnnotationMatch
+    reply: AnnotationReply
+    recorded: bool = False
+
+    def prepare(self, *, tenant_id: str, app_id: str) -> AnnotationSearch:
+        assert (tenant_id, app_id) == (self.search_context.tenant_id, self.search_context.app_id)
+        return self.search_context
+
+    def record_hit(
+        self,
+        search: AnnotationSearch,
+        match: AnnotationMatch,
+        *,
+        message_id: str,
+        query: str,
+        user_id: str,
+        from_source: ConversationFromSource,
+    ) -> AnnotationReply:
+        assert search == self.search_context
+        assert match == self.match
+        assert (message_id, query, user_id, from_source) == (
+            "msg-1",
+            "hi",
+            "user",
+            ConversationFromSource.API,
+        )
+        self.recorded = True
+        return self.reply
+
+
+@dataclass(frozen=True)
+class InMemoryAnnotationRetrieval:
+    search_context: AnnotationSearch
+    match: AnnotationMatch
+
+    def search(self, context: AnnotationSearch, query: str) -> AnnotationMatch:
+        assert (context, query) == (self.search_context, "hi")
+        return self.match
 
 
 type OwnershipChange = Literal["disable", "foreign_annotation", "foreign_message", "binding"]
@@ -111,6 +155,45 @@ def query(service: AnnotationReplyService) -> AnnotationReply | None:
     )
 
 
+def test_query_supports_persistence_neutral_ports() -> None:
+    context = AnnotationSearch(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        embedding_model_provider="provider",
+        embedding_model="model",
+        collection_binding_id="binding-1",
+        configuration=VectorConfiguration("qdrant", "annotations"),
+        setting_id="setting-1",
+        score_threshold=0.5,
+    )
+    match = AnnotationMatch(annotation_id="annotation-1", score=0.8)
+    expected_reply = AnnotationReply(id="annotation-1", content="answer")
+    records = InMemoryAnnotationRecords(context, match, expected_reply)
+    service = AnnotationReplyService(records, InMemoryAnnotationRetrieval(context, match))
+
+    assert query(service) == expected_reply
+    assert records.recorded
+
+
+def test_prepare_returns_persistence_neutral_search(annotation_store: AnnotationStore) -> None:
+    repository = AnnotationReplyRepository(annotation_store.sessions)
+
+    search = repository.prepare(tenant_id="tenant-1", app_id="app-1")
+
+    assert search is not None
+    assert search == AnnotationSearch(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        embedding_model_provider="provider",
+        embedding_model="model",
+        collection_binding_id="binding-1",
+        configuration=VectorConfiguration("qdrant", "annotations"),
+        setting_id="setting-1",
+        score_threshold=0.5,
+    )
+    assert all(not isinstance(value, Dataset) for value in vars(search).values())
+
+
 def _noop() -> None:
     pass
 
@@ -132,10 +215,24 @@ def install_vector(
             session: Session | None,
             configuration: VectorConfiguration,
         ) -> None:
-            assert dataset.tenant_id == "tenant-1"
+            assert (
+                dataset.id,
+                dataset.tenant_id,
+                dataset.indexing_technique,
+                dataset.embedding_model_provider,
+                dataset.embedding_model,
+                dataset.collection_binding_id,
+            ) == (
+                "app-1",
+                "tenant-1",
+                IndexTechniqueType.HIGH_QUALITY,
+                "provider",
+                "model",
+                "binding-1",
+            )
             assert session is None
             assert pool.checkedout() == 0
-            assert configuration.collection_name == "annotations"
+            assert configuration == VectorConfiguration("qdrant", "annotations")
             assert attributes == ["doc_id", "annotation_id", "app_id"]
 
         def search_by_vector(

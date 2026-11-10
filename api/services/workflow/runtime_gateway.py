@@ -10,7 +10,11 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.plugin.impl.exc import PluginInvokeError
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from core.trigger.debug.event_selectors import create_event_poller, select_trigger_debug_events
+from core.trigger.debug.event_selectors import (
+    PluginTriggerEventInvoker,
+    create_event_poller,
+    select_trigger_debug_events,
+)
 from factories import file_factory
 from graphon.file import File
 from machinery.context import RequestContext
@@ -64,6 +68,7 @@ class WorkflowRuntimeGateway:
         file_access: DatabaseFileAccessController,
         variables: WorkflowExecutionVariables,
         runtime: AppGenerationRuntime,
+        invoke_plugin_event: PluginTriggerEventInvoker,
     ) -> None:
         self._sessions = session_factory
         self._workflows = workflows
@@ -75,6 +80,7 @@ class WorkflowRuntimeGateway:
         self._file_access = file_access
         self._variables = variables
         self._runtime = runtime
+        self._invoke_plugin_event = invoke_plugin_event
 
     def generate(
         self,
@@ -238,7 +244,11 @@ class WorkflowRuntimeGateway:
         try:
             if select_all:
                 event = select_trigger_debug_events(
-                    draft_workflow=workflow, app_model=app, user_id=context.account_id, node_ids=node_ids
+                    draft_workflow=workflow,
+                    app_model=app,
+                    user_id=context.account_id,
+                    node_ids=node_ids,
+                    invoke_plugin_event=self._invoke_plugin_event,
                 )
             else:
                 event = create_event_poller(
@@ -247,6 +257,7 @@ class WorkflowRuntimeGateway:
                     user_id=context.account_id,
                     app_id=app_id,
                     node_id=node_ids[0],
+                    invoke_plugin_event=self._invoke_plugin_event,
                 ).poll()
         except Exception as error:
             self._cancel_trigger_debug(snapshot, context.account_id)
