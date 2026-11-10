@@ -80,7 +80,7 @@ const PermissionSetModalBody = ({
   }
 
   return (
-    <DialogContent className="h-[85vh] w-140" backdropProps={{ forceRender: true }}>
+    <DialogContent className="h-[85dvh] w-140" backdropProps={{ forceRender: true }}>
       <form
         className="contents"
         onSubmit={(event) => {

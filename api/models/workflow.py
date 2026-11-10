@@ -24,6 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from constants.workflow import EDITABLE_SYSTEM_VARIABLE_NAMES
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
@@ -871,14 +872,14 @@ class WorkflowRun(TypeBase):
     inputs: Mapped[str | None] = mapped_column(LongText, default=None)
     outputs: Mapped[str | None] = mapped_column(LongText, default="{}")
     error: Mapped[str | None] = mapped_column(LongText, default=None)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"), default=0)
-    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"), default=0)
-    total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True, default=0)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, default=0)
+    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, default=0)
+    total_steps: Mapped[int] = mapped_column(sa.Integer, nullable=True, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True, default=0)
+    exceptions_count: Mapped[int] = mapped_column(sa.Integer, nullable=True, default=0)
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
         lambda: WorkflowPause,
@@ -1102,7 +1103,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     process_data: Mapped[str | None] = mapped_column(LongText, default=None)
     outputs: Mapped[str | None] = mapped_column(LongText, default=None)
     error: Mapped[str | None] = mapped_column(LongText, default=None)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"), default=0)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, default=0)
     execution_metadata: Mapped[str | None] = mapped_column(LongText, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), init=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
@@ -1593,10 +1594,6 @@ class ConversationVariable(TypeBase):
     def to_variable(self) -> Variable:
         mapping = json.loads(self.data)
         return variable_factory.build_conversation_variable_from_mapping(mapping)
-
-
-# Only `sys.query` and `sys.files` could be modified.
-_EDITABLE_SYSTEM_VARIABLE = frozenset(("query", "files"))
 
 
 class WorkflowDraftVariable(TypeBase):
@@ -2152,7 +2149,8 @@ class WorkflowDraftVariableFile(TypeBase):
 
 
 def is_system_variable_editable(name: str) -> bool:
-    return name in _EDITABLE_SYSTEM_VARIABLE
+    """Preserve the legacy model helper using the shared editable-system-variable names."""
+    return name in EDITABLE_SYSTEM_VARIABLE_NAMES
 
 
 class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
