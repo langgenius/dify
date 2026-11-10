@@ -20,7 +20,6 @@
   "selectedFiles": "選択したファイル（{{total}}件中{{valid}}件が有効）",
   "startWith": "作成方法",
   "startWithHelp": "いつでもソースやドキュメントを追加できます。",
-  "uploadCharactersUnavailable": "文字数：—",
   "uploadCompleted": "追加済み",
   "uploadDocuments": "ドキュメントのアップロード",
   "uploadDropZoneTitle": "ファイルをドラッグ＆ドロップするか、参照",
