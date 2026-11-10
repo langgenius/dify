@@ -12,7 +12,6 @@ from werkzeug.exceptions import BadRequest
 
 from constants import HIDDEN_VALUE
 from constants.oauth_bearer import Scope
-from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
@@ -114,7 +113,6 @@ class AppRunListApi(Resource):
                 input={"app_id": "<app_id>", "triggered_from": "debugging", "limit": 1},
             ),
         ),
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=_RUN_READ_GUARDS,
         query=RunListQuery,
         returns=(HTTPStatus.OK, RunListResponse, "Run list"),
@@ -148,7 +146,6 @@ class AppRunDescribeApi(Resource):
         kind=Kind.OBJECT,
         summary="One run: inputs, outputs, error, tokens and timing",
         examples=(Example(title="Read one run", input={"app_id": "<app_id>", "run_id": "<run_id>"}),),
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=_RUN_READ_GUARDS,
         returns=(HTTPStatus.OK, WorkflowRunDetailResponse, "Run detail"),
     )
@@ -164,7 +161,6 @@ class AppRunNodeListApi(Resource):
         kind=Kind.OBJECT,
         summary="Each node step of a run, to find the one that failed",
         examples=(Example(title="Node steps of one run", input={"app_id": "<app_id>", "run_id": "<run_id>"}),),
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=_RUN_READ_GUARDS,
         returns=(HTTPStatus.OK, WorkflowRunNodeExecutionListResponse, "Node steps"),
     )
@@ -226,7 +222,6 @@ class AppVersionListApi(Resource):
             Example(title="Latest versions", input={"app_id": "<app_id>"}),
             Example(title="Only named versions", input={"app_id": "<app_id>", "named_only": True}),
         ),
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=VERSION_READ_GUARDS,
         query=VersionListQuery,
         returns=(HTTPStatus.OK, VersionListResponse, "Version list"),
@@ -330,7 +325,6 @@ class AppEnvListApi(Resource):
         summary="Environment variables of the draft. Each has an id, which set and delete take, "
         "and a name, which nodes use. Secrets with a value are masked; empty secrets read as empty",
         examples=(Example(title="List environment variables", input={"app_id": "<app_id>"}),),
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=VERSION_READ_GUARDS,
         returns=(HTTPStatus.OK, EnvVariableListResponse, "Environment variables"),
     )

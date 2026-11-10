@@ -2516,6 +2516,34 @@ class TestAuthMatrixCases:
             assert body.get("message") == expected.message
 
     @staticmethod
+    def test_pat_workspace_management_is_limited_to_phase_one_routes(matrix_app: Flask) -> None:
+        from constants.personal_access_token import PersonalAccessTokenPolicy
+
+        supported = {
+            route.id
+            for route in ROUTES
+            if (spec := _spec_for(matrix_app, route)) is not None
+            and spec.pat_policy is PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS
+        }
+        assert supported == {
+            "plugins.marketplace",
+            "plugins.list",
+            "plugins.install",
+            "plugins.task",
+            "plugins.delete",
+            "model_providers.describe",
+            "model_providers.credential.create",
+            "model_providers.credential.set",
+            "models.list",
+            "models.credential.create",
+            "models.credential.set",
+            "tools.list",
+            "tool_providers.describe",
+            "tool_providers.credential.create",
+            "tool_providers.credential.set",
+        }
+
+    @staticmethod
     def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:
         """Every guarded /openapi/v1 route is in the table, and nothing else is.
 

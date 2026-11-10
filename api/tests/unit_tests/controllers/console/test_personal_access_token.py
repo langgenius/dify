@@ -23,7 +23,7 @@ from extensions.ext_redis import RedisClientWrapper
 from libs import rate_limit
 from libs.passport import PassportService
 from libs.token import generate_csrf_token
-from models import App
+from models import App, AppMode
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
@@ -536,7 +536,98 @@ def test_app_scope_filters_discovery_and_workspace_scope_cannot_bypass_it(
     assert listed.get_json()["total"] == 1
 
 
-def test_selected_workspace_permits_member_reads_only_in_that_workspace(
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/workspaces/{id}"),
+        ("POST", "/workspaces/{id}:switch"),
+        ("GET", "/workspaces/{id}/members"),
+        ("POST", "/workspaces/{id}/members"),
+        ("PATCH", "/workspaces/{id}/members/{id}"),
+        ("DELETE", "/workspaces/{id}/members/{id}"),
+        ("POST", "/workspaces/{id}/apps/workflow"),
+        ("POST", "/workspaces/{id}/apps/imports"),
+        ("GET", "/workspaces/{id}/knowledge-bases"),
+        ("PATCH", "/apps/{id}/app-info/workflow"),
+        ("POST", "/apps/{id}:publish"),
+        ("GET", "/apps/{id}/dsl"),
+        ("GET", "/apps/{id}/versions"),
+    ],
+)
+def test_pat_rejects_management_outside_phase_one(
+    client: FlaskClient, sqlite_session_factory: sessionmaker[Session], method: str, path: str
+) -> None:
+    account = client.application.config["TEST_BROWSER_ACCOUNT"]
+    target_id = str(uuid4())
+    workspace = make_tenant(tenant_id=target_id)
+    app = make_app(app_id=target_id, tenant_id=target_id, mode=AppMode.WORKFLOW)
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                workspace,
+                app,
+                TenantAccountJoin(
+                    current=True, tenant_id=workspace.id, account_id=account.id, role=TenantAccountRole.OWNER
+                ),
+            ]
+        )
+    token = client.post(BASE, json={"name": "all scopes"}).get_json()
+    headers = {
+        "Authorization": f"Bearer {token['secret']}",
+        CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
+    }
+    response = client.open("/openapi/v1" + path.format(id=target_id), method=method, json={}, headers=headers)
+    assert response.status_code == 403, response.get_json()
+    assert response.get_json()["message"] == "personal_access_token_not_supported"
+
+
+@pytest.mark.parametrize("rbac_enabled", [True], indirect=True)
+@pytest.mark.parametrize("allowed", [True, False])
+@pytest.mark.parametrize(
+    ("method", "suffix"),
+    [
+        ("POST", "model-providers/openai/credentials"),
+        ("PATCH", "model-providers/openai/credentials/credential"),
+        ("POST", "model-providers/openai/models/credentials"),
+        ("PATCH", "model-providers/openai/models/credentials/credential"),
+        ("POST", "tool-providers/custom/credentials"),
+        ("PATCH", "tool-providers/custom/credentials/credential"),
+    ],
+)
+def test_pat_credential_management_still_requires_rbac(
+    client: FlaskClient,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    suffix: str,
+    allowed: bool,
+) -> None:
+    from tests.helpers.unit.rbac_fakes import build_rbac_domain
+
+    domain = build_rbac_domain(sqlite_session_factory, monkeypatch)
+    domain.transport.response = {"allowed": allowed}
+    account = client.application.config["TEST_BROWSER_ACCOUNT"]
+    workspace = make_tenant(tenant_id=str(uuid4()))
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                workspace,
+                TenantAccountJoin(
+                    current=True, tenant_id=workspace.id, account_id=account.id, role=TenantAccountRole.NORMAL
+                ),
+            ]
+        )
+    token = client.post(BASE, json={"name": "credentials", "resource_scope": {"mode": "none"}}).get_json()
+    headers = {
+        "Authorization": f"Bearer {token['secret']}",
+        CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
+    }
+    response = client.open(f"/openapi/v1/workspaces/{workspace.id}/{suffix}", method=method, json={}, headers=headers)
+    assert response.status_code == (422 if allowed else 403), response.get_json()
+    assert [request.endpoint for request in domain.transport.requests] == ["/rbac/check-access"]
+
+
+def test_selected_workspace_permits_model_requests_only_in_that_workspace(
     client: FlaskClient,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -571,16 +662,14 @@ def test_selected_workspace_permits_member_reads_only_in_that_workspace(
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
     }
-    members = client.get(f"/openapi/v1/workspaces/{first.id}/members", headers=headers)
-    assert members.status_code == 200, members.get_json()
-    assert client.get(f"/openapi/v1/workspaces/{second.id}/members", headers=headers).status_code == 403
+    models = client.get(f"/openapi/v1/workspaces/{first.id}/models?limit=0", headers=headers)
+    assert models.status_code == 422, models.get_json()
+    assert client.get(f"/openapi/v1/workspaces/{second.id}/models?limit=0", headers=headers).status_code == 403
     listed = client.get("/openapi/v1/workspaces", headers=headers)
     assert [row["id"] for row in listed.get_json()["data"]] == [first.id]
 
 
-@pytest.mark.parametrize(
-    "operation", ["workflow:run", "chat:run", "advanced-chat:run", "completion:run", "files", "dsl-import"]
-)
+@pytest.mark.parametrize("operation", ["workflow:run", "chat:run", "advanced-chat:run", "completion:run", "files"])
 def test_authorized_pat_reaches_existing_business_request_validation(
     client: FlaskClient,
     sqlite_session_factory: sessionmaker[Session],
@@ -608,11 +697,7 @@ def test_authorized_pat_reaches_existing_business_request_validation(
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
     }
-    url = (
-        f"/openapi/v1/workspaces/{workspace.id}/apps/imports"
-        if operation == "dsl-import"
-        else f"/openapi/v1/apps/{app.id}/{operation}"
-    )
+    url = f"/openapi/v1/apps/{app.id}/{operation}"
     # Invalid input must be rejected by the existing contract after PAT admission,
     # without executing workflows, invoking models or performing an upload/import.
     response = client.post(url, json={}, headers=headers)

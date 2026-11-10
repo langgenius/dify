@@ -149,6 +149,7 @@ def _provider_hints(workspace_id: str, plugin_ids: Sequence[str]) -> list[Hint]:
 class MarketplacePluginsApi(Resource):
     @endpoint(
         op="get.marketplace.plugin",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.LIST,
         summary="Search the marketplace for plugins to install; each hit says if it is installed here",
         examples=(
@@ -194,10 +195,10 @@ class MarketplacePluginsApi(Resource):
 class PluginsApi(Resource):
     @endpoint(
         op="get.plugin",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Plugins installed in the workspace, with the provider ids each one adds",
         examples=(Example(title="Installed model plugins", input={"category": "model"}),),
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=WORKSPACE_READ_GUARDS,
         query=PluginListQuery,
         returns=(HTTPStatus.OK, PluginListResponse, "Installed plugins"),
@@ -232,6 +233,7 @@ class PluginsApi(Resource):
 class PluginInstallApi(Resource):
     @endpoint(
         op="install.plugin",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Start installing marketplace plugins; finishes in the background, check describe.plugin.task",
         examples=(Example(title="Install one plugin", input={"identifiers": ["langgenius/openai:0.2.1@<sha256>"]}),),
@@ -253,6 +255,7 @@ class PluginInstallApi(Resource):
 class PluginTaskApi(Resource):
     @endpoint(
         op="describe.plugin.task",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Progress of a plugin install or upgrade; check again while pending or running",
         examples=(Example(title="Check an install", input={"task_id": "<task_id>"}),),
@@ -288,6 +291,7 @@ class PluginTaskApi(Resource):
 class PluginApi(Resource):
     @endpoint(
         op="delete.plugin",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Uninstall a plugin from the workspace",
         examples=(Example(title="Uninstall OpenAI", input={"plugin_id": "langgenius/openai"}),),

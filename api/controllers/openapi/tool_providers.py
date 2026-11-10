@@ -192,13 +192,13 @@ def tool_rows(
 class ToolsApi(Resource):
     @endpoint(
         op="get.tool",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.LIST,
         summary="Tools a workflow can call here, each with a ready tool node data",
         examples=(
             Example(title="Find GitHub tools", input={"query": "github"}),
             Example(title="Workflows published as tools", input={"provider_type": "workflow"}),
         ),
-        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=WORKSPACE_READ_GUARDS,
         query=ToolListQuery,
         returns=(HTTPStatus.OK, ToolListResponse, "Tools"),
@@ -224,6 +224,7 @@ class ToolsApi(Resource):
 class ToolProviderApi(Resource):
     @endpoint(
         op="describe.tool_provider",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="One tool provider with its API-key form and saved credentials (names only)",
         examples=(Example(title="Tavily", input={"provider": _PROVIDER_EXAMPLE}),),
@@ -276,6 +277,7 @@ class ToolProviderApi(Resource):
 class ToolProviderCredentialsApi(Resource):
     @endpoint(
         op="create.tool_provider.credential",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Save an API-key credential for a tool provider; the provider checks it first",
         examples=(
@@ -307,6 +309,7 @@ class ToolProviderCredentialsApi(Resource):
 class ToolProviderCredentialApi(Resource):
     @endpoint(
         op="set.tool_provider.credential",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Replace a saved tool provider credential",
         examples=(
