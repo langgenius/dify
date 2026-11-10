@@ -160,6 +160,7 @@ from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
 from services.message_feedback_service import MessageFeedbackService
 from services.message_file_preview_service import MessageFilePreviewService
@@ -218,6 +219,7 @@ from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing.adapters import StoredPolicyTraceScopes
+from services.trigger.workflow_dispatch_gateway import AppScopedTriggerEndUsers
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_authentication_adapters import (
@@ -574,6 +576,7 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
         activation_accounts=activation_accounts,
     )
+    credential_queries = CredentialQueryRepository(session_factory=database_client)
     workspace_services = build_workspace_services(
         database_client=database_client,
         workspaces=workspace_repository,
@@ -584,6 +587,12 @@ def build_application_services(
         provisioning=workspace_provisioning,
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
+        credentials=credential_queries,
+        workflow_queries=app_definition_repository,
+        mark_rate_limited=apps.trigger_status.mark_tenant_triggers_rate_limited,
+        trigger_end_users=AppScopedTriggerEndUsers(
+            end_users=AppScopedEndUserService(end_users=app_scoped_end_user_repository)
+        ),
     )
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(
@@ -638,7 +647,7 @@ def build_application_services(
         conversation_queries=conversation_queries,
         accounts=account_services,
         apps=apps,
-        credential_queries=CredentialQueryRepository(session_factory=database_client),
+        credential_queries=credential_queries,
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
@@ -876,7 +885,9 @@ def init_app(app: Flask) -> None:
     from extensions.ext_login import bind_account_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
-    ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    # The Agent Knowledge Base tool cannot run without KnowledgeFS, so keep it out of tool lists when disabled.
+    if get_knowledge_fs_features().enabled:
+        ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
     ToolManager.configure_credential_resolver(resolve_tool_credentials)
     services = build_application_services(
         database_client=get_session_maker(),

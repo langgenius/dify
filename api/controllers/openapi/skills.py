@@ -406,7 +406,10 @@ class SkillImportApi(Resource):
         ),
     )
     def post(self, ctx: RequestContext, workspace_id: str, *, body: SkillImportPayload):
-        """Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
+        """Import an admitted editor's validated folder, returning a count of file entries only.
+
+        Creates a draft (201) or overwrites it (200), relaying archive and service errors.
+        Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
         so an edit made in the same second as the export is not detected.
         """
         content = _archive_of(body.files)
@@ -438,7 +441,7 @@ class SkillImportApi(Resource):
                 id=record["id"],
                 name=record["name"],
                 draft_hash=_draft_hash(record["updated_at"]),
-                file_count=len(record["files"]),
+                file_count=sum(file["kind"] == "file" for file in record["files"]),
                 hints=[
                     Hint(
                         summary="Publish so agents use it",

@@ -37,7 +37,7 @@ function FormOwner({ initiallyCollapsed = false }: { initiallyCollapsed?: boolea
   const contextValue: EmbeddedChatbotContextValue = {
     ...owner,
     appData: (owner.appData as AppData | undefined) ?? null,
-    isMobile: false,
+    isBelowSm: false,
   }
 
   return (

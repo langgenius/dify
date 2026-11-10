@@ -27,7 +27,7 @@ type CollapseHeaderProps = {
 }
 
 export function CollapseHeader({ children }: CollapseHeaderProps) {
-  return <div className="group/collapse flex items-center">{children}</div>
+  return <div className="group/collapse flex items-center gap-0.5">{children}</div>
 }
 
 type CollapseActionsProps = {
@@ -35,7 +35,7 @@ type CollapseActionsProps = {
 }
 
 export function CollapseActions({ children }: CollapseActionsProps) {
-  return <div className="ml-auto shrink-0">{children}</div>
+  return <div className="ms-auto shrink-0">{children}</div>
 }
 
 type CollapseTriggerProps = Omit<CollapsibleTriggerProps, 'className'> & {
@@ -46,7 +46,7 @@ export function CollapseTrigger({ className, ...props }: CollapseTriggerProps) {
   return (
     <CollapsibleTrigger
       className={cn(
-        'group/collapse ml-4 flex h-6 min-h-0 min-w-0 shrink-0 touch-manipulation items-center justify-start gap-0 rounded-md text-start system-sm-medium text-text-secondary select-none hover:not-data-disabled:text-text-secondary data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-panel-open:text-text-secondary',
+        'group/collapse ms-4 flex h-6 min-h-0 min-w-0 shrink-0 touch-manipulation items-center justify-start gap-0 rounded-md text-start system-sm-medium text-text-secondary select-none hover:not-data-disabled:text-text-secondary data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-panel-open:text-text-secondary',
         className,
       )}
       {...props}

@@ -23,7 +23,7 @@ from dify_trace_sdk.events import (
 )
 from dify_trace_sdk.ids import span_id_for
 from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
-from dify_trace_sdk.testing import RecordingEgress, response
+from dify_trace_sdk.testing import RecordingEgress, otlp_attributes, otlp_spans, response
 from flask import Flask
 from sqlalchemy import URL, Engine, create_engine, delete, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -201,27 +201,11 @@ def exported() -> RecordingEgress:
     return RecordingEgress([response(200, {})], grpc_target=None)
 
 
-def ingested(destination: RecordingEgress) -> list[dict[str, object]]:
-    """The Langfuse ingestion events the provider sent."""
-    events: list[dict[str, object]] = []
-    for request in destination.requests:
-        body = request.json()
-        assert isinstance(body, dict)
-        batch = body.get("batch")
-        assert isinstance(batch, list)
-        events.extend(item for item in batch if isinstance(item, dict))
-    return events
-
-
-def observations(destination: RecordingEgress) -> list[dict[str, object]]:
-    """The Langfuse observations the provider sent: every span except the trace's root."""
-    bodies: list[dict[str, object]] = []
-    for item in ingested(destination):
-        body = item["body"]
-        assert isinstance(body, dict)
-        if item["type"] != "trace-create":
-            bodies.append(body)
-    return bodies
+def root_metadata(destination: RecordingEgress) -> dict[str, object]:
+    """The Langfuse metadata of the root observation the provider sent."""
+    root = next(span for span in otlp_spans(destination) if not span.parent_span_id)
+    prefix = "langfuse.observation.metadata."
+    return {key.removeprefix(prefix): value for key, value in otlp_attributes(root).items() if key.startswith(prefix)}
 
 
 def run_count(sessions: sessionmaker[Session]) -> int | None:
@@ -654,12 +638,10 @@ class TestApplicationTraceHandoffCases:
         assert child_case.service.link_managed_parent(tenant_id=child.tenant_id, info=record) is record
         destination = exported()
         deliver(child_case, event, destination)
-        trace = next(item for item in ingested(destination) if item["type"] == "trace-create")
-        body = trace["body"]
-        assert isinstance(body, dict)
-        assert body["metadata"]["parent_workflow_run_id"] == parent.id
-        assert body["metadata"]["parent_node_execution_id"] == identifier("parent-tool-node")
-        assert "linked_parent_workflow_run_id" not in body["metadata"]
+        metadata = root_metadata(destination)
+        assert metadata["parent_workflow_run_id"] == parent.id
+        assert metadata["parent_node_execution_id"] == identifier("parent-tool-node")
+        assert "linked_parent_workflow_run_id" not in metadata
         assert run_count(sqlite_session_factory) == 0
 
     @staticmethod
@@ -706,11 +688,9 @@ class TestApplicationTraceHandoffCases:
         add_app_owner(child_case.collection, "provider-child")
         destination = exported()
         deliver(child_case, workflow_event(child, parent), destination)
-        trace = next(item for item in ingested(destination) if item["type"] == "trace-create")
-        body = trace["body"]
-        assert isinstance(body, dict)
-        assert body["metadata"]["linked_parent_trace_id"] == parent_trace.trace_id
-        assert "parent_workflow_run_id" not in body["metadata"]
+        metadata = root_metadata(destination)
+        assert metadata["linked_parent_trace_id"] == parent_trace.trace_id
+        assert "parent_workflow_run_id" not in metadata
 
     @staticmethod
     def test_collector_database_failure_redelivers_without_provider_fallback(
@@ -834,12 +814,17 @@ class TestApplicationTraceHandoffCases:
         delivered = case.collection.repository.get(managed.id)
         assert delivered is not None
         assert delivered.state is TraceRunState.ACCEPTED
-        assert [request.url for request in destination.requests] == ["https://langfuse.test/api/public/ingestion"]
-        generations = [item["body"] for item in ingested(destination) if item["type"] == "generation-create"]
-        usages = [body["usage"] for body in generations if isinstance(body, dict)]
+        assert [request.url for request in destination.requests] == ["https://langfuse.test/api/public/otel/v1/traces"]
+        generations = [
+            attributes
+            for attributes in map(otlp_attributes, otlp_spans(destination))
+            if attributes["langfuse.observation.type"] == "generation"
+        ]
+        usages = [json.loads(str(attributes["langfuse.observation.usage_details"])) for attributes in generations]
+        costs = [json.loads(str(attributes["langfuse.observation.cost_details"])) for attributes in generations]
         assert len(usages) == 3
         assert sum(usage["total"] for usage in usages) == 25
-        assert sum(usage["totalCost"] for usage in usages) == pytest.approx(0.04)
+        assert sum(cost["total"] for cost in costs) == pytest.approx(0.04)
 
 
 """Verify execution hook ownership, policy gating, and fail-open business behavior."""
@@ -1462,10 +1447,12 @@ class TestWorkflowToolTracingBoundaryCases:
         assert current is not None
         # Assembly rejects any span whose parent is missing, so acceptance proves a complete tree.
         assert current.state is TraceRunState.ACCEPTED
-        assert [request.url for request in destination.requests] == ["https://tracing.test/root/api/public/ingestion"]
-        sent = observations(destination)
-        emitted = {body["id"] for body in sent}
-        assert all(body["parentObservationId"] in emitted for body in sent if "parentObservationId" in body)
+        assert [request.url for request in destination.requests] == [
+            "https://tracing.test/root/api/public/otel/v1/traces"
+        ]
+        sent = otlp_spans(destination)
+        emitted = {span.span_id for span in sent}
+        assert all(span.parent_span_id in emitted for span in sent if span.parent_span_id)
         assert current.provider_config == frozen
         assert current.provider == "langfuse"
         assert current.capture_content is False

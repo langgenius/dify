@@ -106,7 +106,7 @@ function SelectTrigger({ className, children, size, ...props }: SelectTriggerPro
       {...props}
     >
       <span className="min-w-0 grow truncate">{children}</span>
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary group-data-readonly/select-trigger:hidden group-[:hover:not([data-disabled])]/select-trigger:text-text-secondary data-popup-open:text-text-secondary">
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary group-[:hover:not([data-disabled],[data-readonly])]/select-trigger:text-text-secondary data-popup-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
     </BaseSelect.Trigger>

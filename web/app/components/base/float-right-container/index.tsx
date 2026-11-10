@@ -15,7 +15,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 
 type IFloatRightContainerProps = Pick<DrawerPopupProps, 'finalFocus'> & {
-  isMobile: boolean
+  presentation: 'drawer' | 'inline'
   isOpen: boolean
   onClose: () => void
   children?: React.ReactNode
@@ -26,7 +26,7 @@ type IFloatRightContainerProps = Pick<DrawerPopupProps, 'finalFocus'> & {
 }
 
 const FloatRightContainer = ({
-  isMobile,
+  presentation,
   children,
   isOpen,
   onClose,
@@ -40,7 +40,7 @@ const FloatRightContainer = ({
 
   return (
     <>
-      {isMobile && (
+      {presentation === 'drawer' && (
         <Drawer
           open={isOpen}
           modal
@@ -59,7 +59,7 @@ const FloatRightContainer = ({
                   panelClassName,
                 )}
               >
-                <DrawerContent className="flex min-h-0 flex-1 flex-col">
+                <DrawerContent className="p-6">
                   {(title || showClose) && (
                     <div className="mb-4 flex shrink-0 items-center justify-between">
                       {title && (
@@ -88,7 +88,7 @@ const FloatRightContainer = ({
           </DrawerPortal>
         </Drawer>
       )}
-      {!isMobile && isOpen && <>{children}</>}
+      {presentation === 'inline' && isOpen && <>{children}</>}
     </>
   )
 }

@@ -1,6 +1,6 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -39,7 +39,7 @@ export const useWorkflowNodeCatalog = () => {
   // Chatflow (advanced-chat) keeps Agent v2 hidden by default; opt in via
   // NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW. Pure workflows are unaffected.
   const shouldUseAgentV2 = agentV2Enabled && (!isChatflow || isAgentV2InChatflowEnabled())
-  const { data: knowledgeFsEnabled } = useSuspenseQuery(
+  const { data: knowledgeFsEnabled = false } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.enable_knowledge_fs,
     }),

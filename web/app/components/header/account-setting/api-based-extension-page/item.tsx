@@ -91,7 +91,7 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
                 disabled={!canManage || deleteApiBasedExtensionMutation.isPending}
                 onClick={handleDeleteApiBasedExtension}
               >
-                {t(($) => $['operation.delete'], { ns: 'common' }) || ''}
+                {t(($) => $['operation.delete'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -121,18 +121,18 @@ function GraphApi({ apiRef }: { apiRef: RefObject<ReactFlowInstance | null> }) {
 
 function renderSubject({
   initialStoreState,
+  collaborationEnabled = false,
   graphNodes = nodes,
   edges = [],
   isCollaborationEnabled = false,
 }: {
   initialStoreState?: Partial<Shape>
+  collaborationEnabled?: boolean
   isCollaborationEnabled?: boolean
   graphNodes?: WorkflowProps['nodes']
   edges?: WorkflowProps['edges']
 } = {}) {
-  const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: true },
-  })
+  const { queryClient } = createConsoleQueryWrapper()
   seedAppDslVersion(queryClient)
   seedModelProviderQueries(queryClient)
   seedToolProviders(queryClient, {
@@ -167,6 +167,7 @@ function renderSubject({
   )
   const view = renderWorkflowComponent(subject(), {
     queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled },
     initialStoreState,
     hooksStoreProps: {
       doSyncWorkflowDraft: saveDraft,
@@ -383,7 +384,13 @@ it('navigates unresolved comments and deletes a thread only after confirmation',
     comments = comments.filter((item) => item.id !== params.comment_id)
     return { result: 'success' }
   })
-  renderSubject({ initialStoreState: { showUserComments: true, showResolvedComments: false } })
+  renderSubject({
+    collaborationEnabled: true,
+    initialStoreState: {
+      showUserComments: true,
+      showResolvedComments: false,
+    },
+  })
   await user.click(
     await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
   )
@@ -443,7 +450,7 @@ it('deletes a reply through the real thread confirmation and refreshes its conte
     detail.replies = []
     return { result: 'success' }
   })
-  renderSubject({ initialStoreState: { showUserComments: true } })
+  renderSubject({ collaborationEnabled: true, initialStoreState: { showUserComments: true } })
   await user.click(
     await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
   )

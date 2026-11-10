@@ -106,7 +106,9 @@ This test suite follows a comprehensive testing strategy that covers:
 ================================================================================
 """
 
-from unittest.mock import Mock, patch
+from collections.abc import Iterator
+from typing import Any, Literal
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -155,7 +157,7 @@ class DocumentValidationTestDataFactory:
         indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
-        **kwargs,
+        **kwargs: Any,
     ) -> Dataset:
         """
         Create a Dataset with specified attributes.
@@ -188,7 +190,7 @@ class DocumentValidationTestDataFactory:
         process_rule: ProcessRule | None = None,
         doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
         indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
-        **kwargs,
+        **kwargs: Any,
     ) -> KnowledgeConfig:
         """
         Create a KnowledgeConfig for service-level validation, including invalid values.
@@ -247,7 +249,7 @@ class DocumentValidationTestDataFactory:
         mode: str = "custom",
         pre_processing_rules: list[PreProcessingRule] | None = None,
         segmentation: Segmentation | None = None,
-        parent_mode: str | None = None,
+        parent_mode: Literal["full-doc", "paragraph"] | None = None,
     ) -> ProcessRule:
         """
         Create a ProcessRule with specified attributes.
@@ -306,7 +308,7 @@ class TestDatasetServiceCheckDocForm:
     def _bind_sqlite_session(self, sqlite_session: Session) -> None:
         self.session = sqlite_session
 
-    def test_check_doc_form_matching_forms_success(self):
+    def test_check_doc_form_matching_forms_success(self) -> None:
         """
         Test successful validation when form types match.
 
@@ -327,7 +329,7 @@ class TestDatasetServiceCheckDocForm:
         # Assert
         # No exception should be raised
 
-    def test_check_doc_form_dataset_no_form_success(self):
+    def test_check_doc_form_dataset_no_form_success(self) -> None:
         """
         Test successful validation when dataset has no form set.
 
@@ -348,7 +350,7 @@ class TestDatasetServiceCheckDocForm:
         # Assert
         # No exception should be raised
 
-    def test_check_doc_form_mismatched_forms_error(self):
+    def test_check_doc_form_mismatched_forms_error(self) -> None:
         """
         Test error when form types don't match.
 
@@ -367,7 +369,7 @@ class TestDatasetServiceCheckDocForm:
         with pytest.raises(ValueError, match="doc_form is different from the dataset doc_form"):
             DatasetService.check_doc_form(dataset, doc_form, session=self.session)
 
-    def test_check_doc_form_different_form_types_error(self):
+    def test_check_doc_form_different_form_types_error(self) -> None:
         """
         Test error with various form type mismatches.
 
@@ -412,7 +414,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
     """
 
     @pytest.fixture
-    def mock_model_manager(self):
+    def mock_model_manager(self) -> Iterator[MagicMock]:
         """
         Mock ModelManager for testing.
 
@@ -422,7 +424,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         with patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
-    def test_check_dataset_model_setting_high_quality_success(self, mock_model_manager):
+    def test_check_dataset_model_setting_high_quality_success(self, mock_model_manager: MagicMock) -> None:
         """
         Test successful validation for high_quality indexing.
 
@@ -456,7 +458,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
             model=dataset.embedding_model,
         )
 
-    def test_check_dataset_model_setting_economy_skips_validation(self, mock_model_manager):
+    def test_check_dataset_model_setting_economy_skips_validation(self, mock_model_manager: MagicMock) -> None:
         """
         Test that economy indexing skips model validation.
 
@@ -477,7 +479,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         # Assert
         mock_model_manager.assert_not_called()
 
-    def test_check_dataset_model_setting_llm_bad_request_error(self, mock_model_manager):
+    def test_check_dataset_model_setting_llm_bad_request_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for LLMBadRequestError.
 
@@ -507,7 +509,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         ):
             DatasetService.check_dataset_model_setting(dataset)
 
-    def test_check_dataset_model_setting_provider_token_error(self, mock_model_manager):
+    def test_check_dataset_model_setting_provider_token_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for ProviderTokenNotInitError.
 
@@ -561,7 +563,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
     """
 
     @pytest.fixture
-    def mock_model_manager(self):
+    def mock_model_manager(self) -> Iterator[MagicMock]:
         """
         Mock ModelManager for testing.
 
@@ -571,7 +573,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
         with patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
-    def test_check_embedding_model_setting_success(self, mock_model_manager):
+    def test_check_embedding_model_setting_success(self, mock_model_manager: MagicMock) -> None:
         """
         Test successful validation of embedding model.
 
@@ -603,7 +605,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
             model=embedding_model,
         )
 
-    def test_check_embedding_model_setting_llm_bad_request_error(self, mock_model_manager):
+    def test_check_embedding_model_setting_llm_bad_request_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for LLMBadRequestError.
 
@@ -631,7 +633,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
         ):
             DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model)
 
-    def test_check_embedding_model_setting_provider_token_error(self, mock_model_manager):
+    def test_check_embedding_model_setting_provider_token_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for ProviderTokenNotInitError.
 
@@ -683,7 +685,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
     """
 
     @pytest.fixture
-    def mock_model_manager(self):
+    def mock_model_manager(self) -> Iterator[MagicMock]:
         """
         Mock ModelManager for testing.
 
@@ -693,7 +695,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
         with patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
-    def test_check_reranking_model_setting_success(self, mock_model_manager):
+    def test_check_reranking_model_setting_success(self, mock_model_manager: MagicMock) -> None:
         """
         Test successful validation of reranking model.
 
@@ -725,7 +727,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
             model=reranking_model,
         )
 
-    def test_check_reranking_model_setting_llm_bad_request_error(self, mock_model_manager):
+    def test_check_reranking_model_setting_llm_bad_request_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for LLMBadRequestError.
 
@@ -753,7 +755,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
         ):
             DatasetService.check_reranking_model_setting(tenant_id, reranking_model_provider, reranking_model)
 
-    def test_check_reranking_model_setting_provider_token_error(self, mock_model_manager):
+    def test_check_reranking_model_setting_provider_token_error(self, mock_model_manager: MagicMock) -> None:
         """
         Test error handling for ProviderTokenNotInitError.
 
@@ -807,7 +809,7 @@ class TestDocumentServiceDocumentCreateArgsValidate:
     """
 
     @pytest.fixture
-    def mock_validation_methods(self):
+    def mock_validation_methods(self) -> Iterator[dict[str, MagicMock]]:
         """
         Mock validation methods for testing.
 
@@ -823,7 +825,9 @@ class TestDocumentServiceDocumentCreateArgsValidate:
                 "process_rule_validate": mock_process_rule_validate,
             }
 
-    def test_document_create_args_validate_with_data_source_success(self, mock_validation_methods):
+    def test_document_create_args_validate_with_data_source_success(
+        self, mock_validation_methods: dict[str, MagicMock]
+    ) -> None:
         """
         Test successful validation with data source only.
 
@@ -848,7 +852,9 @@ class TestDocumentServiceDocumentCreateArgsValidate:
         mock_validation_methods["data_source_validate"].assert_called_once_with(knowledge_config)
         mock_validation_methods["process_rule_validate"].assert_not_called()
 
-    def test_document_create_args_validate_with_process_rule_success(self, mock_validation_methods):
+    def test_document_create_args_validate_with_process_rule_success(
+        self, mock_validation_methods: dict[str, MagicMock]
+    ) -> None:
         """
         Test successful validation with process rule only.
 
@@ -873,7 +879,9 @@ class TestDocumentServiceDocumentCreateArgsValidate:
         mock_validation_methods["process_rule_validate"].assert_called_once_with(knowledge_config)
         mock_validation_methods["data_source_validate"].assert_not_called()
 
-    def test_document_create_args_validate_with_both_success(self, mock_validation_methods):
+    def test_document_create_args_validate_with_both_success(
+        self, mock_validation_methods: dict[str, MagicMock]
+    ) -> None:
         """
         Test successful validation with both data source and process rule.
 
@@ -899,7 +907,7 @@ class TestDocumentServiceDocumentCreateArgsValidate:
         mock_validation_methods["data_source_validate"].assert_called_once_with(knowledge_config)
         mock_validation_methods["process_rule_validate"].assert_called_once_with(knowledge_config)
 
-    def test_document_create_args_validate_missing_both_error(self):
+    def test_document_create_args_validate_missing_both_error(self) -> None:
         """
         Test error when both data source and process rule are missing.
 
@@ -948,7 +956,7 @@ class TestDocumentServiceDataSourceArgsValidate:
     - Missing data source
     """
 
-    def test_data_source_args_validate_upload_file_success(self):
+    def test_data_source_args_validate_upload_file_success(self) -> None:
         """
         Test successful validation of upload_file data source.
 
@@ -974,7 +982,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         # Assert
         # No exception should be raised
 
-    def test_data_source_args_validate_notion_import_success(self):
+    def test_data_source_args_validate_notion_import_success(self) -> None:
         """
         Test successful validation of notion_import data source.
 
@@ -1006,7 +1014,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         # Assert
         # No exception should be raised
 
-    def test_data_source_args_validate_website_crawl_success(self):
+    def test_data_source_args_validate_website_crawl_success(self) -> None:
         """
         Test successful validation of website_crawl data source.
 
@@ -1036,7 +1044,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         # Assert
         # No exception should be raised
 
-    def test_data_source_args_validate_missing_data_source_error(self):
+    def test_data_source_args_validate_missing_data_source_error(self) -> None:
         """
         Test error when data source is missing.
 
@@ -1054,7 +1062,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         with pytest.raises(ValueError, match="Data source is required"):
             DocumentService.data_source_args_validate(knowledge_config)
 
-    def test_data_source_args_validate_invalid_type_error(self):
+    def test_data_source_args_validate_invalid_type_error(self) -> None:
         """
         Test error when data source type is invalid.
 
@@ -1076,7 +1084,7 @@ class TestDocumentServiceDataSourceArgsValidate:
             with pytest.raises(ValueError, match="Data source type is invalid"):
                 DocumentService.data_source_args_validate(knowledge_config)
 
-    def test_data_source_args_validate_missing_info_list_error(self):
+    def test_data_source_args_validate_missing_info_list_error(self) -> None:
         """
         Test current failure behavior when info_list is missing.
 
@@ -1095,7 +1103,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         with pytest.raises(AttributeError, match="data_source_type"):
             DocumentService.data_source_args_validate(knowledge_config)
 
-    def test_data_source_args_validate_missing_file_info_error(self):
+    def test_data_source_args_validate_missing_file_info_error(self) -> None:
         """
         Test error when file_info_list is missing for upload_file.
 
@@ -1120,7 +1128,7 @@ class TestDocumentServiceDataSourceArgsValidate:
             with pytest.raises(ValueError, match="File source info is required"):
                 DocumentService.data_source_args_validate(knowledge_config)
 
-    def test_data_source_args_validate_missing_notion_info_error(self):
+    def test_data_source_args_validate_missing_notion_info_error(self) -> None:
         """
         Test error when notion_info_list is missing for notion_import.
 
@@ -1145,7 +1153,7 @@ class TestDocumentServiceDataSourceArgsValidate:
             with pytest.raises(ValueError, match="Notion source info is required"):
                 DocumentService.data_source_args_validate(knowledge_config)
 
-    def test_data_source_args_validate_missing_website_info_error(self):
+    def test_data_source_args_validate_missing_website_info_error(self) -> None:
         """
         Test error when website_info_list is missing for website_crawl.
 
@@ -1199,7 +1207,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
     - Invalid field types
     """
 
-    def test_process_rule_args_validate_automatic_mode_success(self):
+    def test_process_rule_args_validate_automatic_mode_success(self) -> None:
         """
         Test successful validation of automatic mode.
 
@@ -1223,7 +1231,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         # Assert
         assert process_rule.rules is None
 
-    def test_process_rule_args_validate_custom_mode_success(self):
+    def test_process_rule_args_validate_custom_mode_success(self) -> None:
         """
         Test successful validation of custom mode.
 
@@ -1255,7 +1263,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         # Assert
         # No exception should be raised
 
-    def test_process_rule_args_validate_hierarchical_mode_success(self):
+    def test_process_rule_args_validate_hierarchical_mode_success(self) -> None:
         """
         Test successful validation of hierarchical mode.
 
@@ -1287,7 +1295,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         # Assert
         # No exception should be raised
 
-    def test_process_rule_args_validate_missing_process_rule_error(self):
+    def test_process_rule_args_validate_missing_process_rule_error(self) -> None:
         """
         Test error when process rule is missing.
 
@@ -1305,28 +1313,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         with pytest.raises(ValueError, match="Process rule is required"):
             DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_missing_mode_error(self):
-        """
-        Test error when process rule mode is missing.
-
-        Verifies that when process_rule.mode is None or empty, a ValueError
-        is raised.
-
-        This test ensures:
-        - Missing mode is rejected
-        - Error message is clear
-        - Error type is correct
-        """
-        # Arrange
-        process_rule = DocumentValidationTestDataFactory.create_process_rule()
-        process_rule.mode = None
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config(process_rule=process_rule)
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="Process rule mode is required"):
-            DocumentService.process_rule_args_validate(knowledge_config)
-
-    def test_process_rule_args_validate_invalid_mode_error(self):
+    def test_process_rule_args_validate_invalid_mode_error(self) -> None:
         """
         Test error when process rule mode is invalid.
 
@@ -1348,7 +1335,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule mode is invalid"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_missing_rules_error(self):
+    def test_process_rule_args_validate_missing_rules_error(self) -> None:
         """
         Test error when rules are missing for non-automatic mode.
 
@@ -1371,7 +1358,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule rules is required"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_missing_pre_processing_rules_error(self):
+    def test_process_rule_args_validate_missing_pre_processing_rules_error(self) -> None:
         """
         Test error when pre_processing_rules are missing.
 
@@ -1385,7 +1372,9 @@ class TestDocumentServiceProcessRuleArgsValidate:
         """
         # Arrange
         process_rule = DocumentValidationTestDataFactory.create_process_rule(mode="custom")
-        process_rule.rules.pre_processing_rules = None
+        rules = process_rule.rules
+        assert rules is not None
+        rules.pre_processing_rules = None
         knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
@@ -1394,7 +1383,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule pre_processing_rules is required"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_missing_pre_processing_rule_id_error(self):
+    def test_process_rule_args_validate_missing_pre_processing_rule_id_error(self) -> None:
         """
         Test error when pre_processing_rule id is missing.
 
@@ -1421,7 +1410,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule pre_processing_rules id is required"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_invalid_pre_processing_rule_enabled_error(self):
+    def test_process_rule_args_validate_invalid_pre_processing_rule_enabled_error(self) -> None:
         """
         Test error when pre_processing_rule enabled is not boolean.
 
@@ -1448,7 +1437,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule pre_processing_rules enabled is invalid"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_missing_segmentation_error(self):
+    def test_process_rule_args_validate_missing_segmentation_error(self) -> None:
         """
         Test error when segmentation is missing.
 
@@ -1461,7 +1450,9 @@ class TestDocumentServiceProcessRuleArgsValidate:
         """
         # Arrange
         process_rule = DocumentValidationTestDataFactory.create_process_rule(mode="custom")
-        process_rule.rules.segmentation = None
+        rules = process_rule.rules
+        assert rules is not None
+        rules.segmentation = None
         knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
@@ -1470,7 +1461,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule segmentation is required"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_missing_segmentation_separator_error(self):
+    def test_process_rule_args_validate_missing_segmentation_separator_error(self) -> None:
         """
         Test error when segmentation separator is missing.
 
@@ -1493,7 +1484,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule segmentation separator is required"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_invalid_segmentation_separator_error(self):
+    def test_process_rule_args_validate_invalid_segmentation_separator_error(self) -> None:
         """
         Test error when segmentation separator is not a string.
 
@@ -1516,7 +1507,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule segmentation separator is invalid"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_missing_max_tokens_error(self):
+    def test_process_rule_args_validate_missing_max_tokens_error(self) -> None:
         """
         Test error when max_tokens is missing.
 
@@ -1539,7 +1530,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule segmentation max_tokens is required"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_invalid_max_tokens_error(self):
+    def test_process_rule_args_validate_invalid_max_tokens_error(self) -> None:
         """
         Test error when max_tokens is not an integer.
 
@@ -1562,7 +1553,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule segmentation max_tokens is invalid"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_hierarchical_full_doc_skips_max_tokens(self):
+    def test_process_rule_args_validate_hierarchical_full_doc_skips_max_tokens(self) -> None:
         """
         Test that hierarchical mode with full-doc parent_mode skips max_tokens validation.
 

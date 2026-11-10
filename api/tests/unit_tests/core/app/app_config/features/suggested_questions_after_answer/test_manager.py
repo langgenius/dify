@@ -12,13 +12,13 @@ from core.app.app_config.features.text_to_speech.manager import TextToSpeechConf
 
 
 class TestAdditionalFeatureManagers:
-    def test_opening_statement_validate_defaults(self):
+    def test_opening_statement_validate_defaults(self) -> None:
         config, keys = OpeningStatementConfigManager.validate_and_set_defaults({})
         assert config["opening_statement"] == ""
         assert config["suggested_questions"] == []
         assert set(keys) == {"opening_statement", "suggested_questions"}
 
-    def test_opening_statement_validate_types(self):
+    def test_opening_statement_validate_types(self) -> None:
         with pytest.raises(ValueError, match="opening_statement must be of string type"):
             OpeningStatementConfigManager.validate_and_set_defaults({"opening_statement": 123})
         with pytest.raises(ValueError, match="suggested_questions must be of list type"):
@@ -30,14 +30,14 @@ class TestAdditionalFeatureManagers:
                 {"opening_statement": "hi", "suggested_questions": [1]}
             )
 
-    def test_opening_statement_convert(self):
+    def test_opening_statement_convert(self) -> None:
         opening, questions = OpeningStatementConfigManager.convert(
             {"opening_statement": "hello", "suggested_questions": ["q1"]}
         )
         assert opening == "hello"
         assert questions == ["q1"]
 
-    def test_retrieval_resource_validate(self):
+    def test_retrieval_resource_validate(self) -> None:
         config, keys = RetrievalResourceConfigManager.validate_and_set_defaults({})
         assert config["retriever_resource"]["enabled"] is False
         assert keys == ["retriever_resource"]
@@ -47,11 +47,11 @@ class TestAdditionalFeatureManagers:
         with pytest.raises(ValueError, match="enabled in retriever_resource must be of boolean type"):
             RetrievalResourceConfigManager.validate_and_set_defaults({"retriever_resource": {"enabled": "yes"}})
 
-    def test_retrieval_resource_convert(self):
+    def test_retrieval_resource_convert(self) -> None:
         assert RetrievalResourceConfigManager.convert({"retriever_resource": {"enabled": True}}) is True
         assert RetrievalResourceConfigManager.convert({"retriever_resource": {"enabled": False}}) is False
 
-    def test_speech_to_text_validate_and_convert(self):
+    def test_speech_to_text_validate_and_convert(self) -> None:
         config, keys = SpeechToTextConfigManager.validate_and_set_defaults({})
         assert config["speech_to_text"]["enabled"] is False
         assert keys == ["speech_to_text"]
@@ -64,7 +64,7 @@ class TestAdditionalFeatureManagers:
         assert SpeechToTextConfigManager.convert({"speech_to_text": {"enabled": True}}) is True
         assert SpeechToTextConfigManager.convert({"speech_to_text": {"enabled": False}}) is False
 
-    def test_suggested_questions_after_answer_validate_and_convert(self):
+    def test_suggested_questions_after_answer_validate_and_convert(self) -> None:
         config, keys = SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults({})
         assert config["suggested_questions_after_answer"]["enabled"] is False
         assert keys == ["suggested_questions_after_answer"]
@@ -123,7 +123,7 @@ class TestAdditionalFeatureManagers:
             is False
         )
 
-    def test_text_to_speech_validate_and_convert(self):
+    def test_text_to_speech_validate_and_convert(self) -> None:
         config, keys = TextToSpeechConfigManager.validate_and_set_defaults({})
         assert config["text_to_speech"]["enabled"] is False
         assert keys == ["text_to_speech"]
@@ -150,7 +150,7 @@ class TestAdditionalFeatureManagers:
         assert result.voice == "v"
         assert result.language == "en"
 
-    def test_more_like_this_convert_and_validate(self):
+    def test_more_like_this_convert_and_validate(self) -> None:
         config, keys = MoreLikeThisConfigManager.validate_and_set_defaults({})
         assert config["more_like_this"]["enabled"] is False
         assert keys == ["more_like_this"]

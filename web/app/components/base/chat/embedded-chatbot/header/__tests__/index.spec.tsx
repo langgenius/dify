@@ -212,7 +212,7 @@ describe('EmbeddedChatbot Header', () => {
         ...defaultContext,
         currentConversationId: '',
       })
-      render(<Header title="Mobile Chatbot" isMobile allowResetChat />)
+      render(<Header title="Mobile Chatbot" isBelowSm allowResetChat />)
 
       expect(screen.queryByRole('button', { name: 'share.chat.resetChat' })).not.toBeInTheDocument()
     })
@@ -220,7 +220,7 @@ describe('EmbeddedChatbot Header', () => {
     it('should handle mobile expand button', async () => {
       const user = userEvent.setup()
       const mockPostMessage = setupIframe()
-      render(<Header title="Mobile Chatbot" isMobile />)
+      render(<Header title="Mobile Chatbot" isBelowSm />)
 
       await dispatchChatbotConfigMessage('https://parent.com', {
         isToggledByButton: true,
