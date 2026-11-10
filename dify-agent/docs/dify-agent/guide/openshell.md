@@ -62,8 +62,9 @@ releasing one lease does not interrupt another lease on the same Binding.
 There is no automatic idle-stop or sandbox TTL in this adapter. After a
 successful acquire/release cycle, the sandbox remains running until explicitly
 stopped or destroyed, or a runtime failure stops it. Operators must account for
-these running resources. Binding creation and failed-acquire cleanup retain
-their existing stop behavior; this change only makes lease release lightweight.
+these running resources. Binding creation still stops the newly initialized
+sandbox; a failed acquire closes only that attempt's lease-local clients and
+does not stop the sandbox or interrupt other leases on it.
 Explicitly stopped sandboxes are restarted on the next acquire.
 
 Backend selection lives in `docker/.env`; create it from the template first if

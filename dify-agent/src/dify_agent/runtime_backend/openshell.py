@@ -450,7 +450,11 @@ class OpenShellExecutionBindingBackend:
             _reraise_as(exc, error=BindingCreateError)
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
-        """Start the sandbox when needed, bootstrap shellctl, and refresh its exposed service."""
+        """Start the sandbox when needed, bootstrap shellctl, and refresh its exposed service.
+
+        A failed acquisition closes only the attempt's lease-local clients; it
+        does not stop the shared sandbox or interrupt other leases on it.
+        """
         data_plane: ShellctlRuntimeLease | None = None
         try:
             await self.control_plane.start_sandbox(binding_ref)
@@ -486,11 +490,6 @@ class OpenShellExecutionBindingBackend:
                     message="failed to close OpenShell RuntimeLease after acquisition failed",
                     binding_ref=binding_ref,
                 )
-            await _best_effort(
-                lambda: self.control_plane.stop_sandbox(binding_ref),
-                message="failed to stop OpenShell sandbox after acquisition failed",
-                binding_ref=binding_ref,
-            )
             _reraise_as(exc, error=BindingAcquireError, passthrough=(BindingLostError,))
 
     async def release(self, lease: RuntimeLease) -> None:

@@ -64,6 +64,7 @@ class _ControlPlane:
     missing: set[str] = field(default_factory=set)
     exec_results: list[tuple[int, str]] = field(default_factory=list)
     stop_error: Exception | None = None
+    service_clients: list[httpx.AsyncClient] = field(default_factory=list)
 
     async def create_sandbox(
         self,
@@ -115,12 +116,14 @@ class _ControlPlane:
         # The deployment gateway credential never leaves the gRPC control
         # plane, so the service client starts with no auth headers; the
         # shellctl bearer is attached per request by the shellctl SDK.
-        return openshell_module.httpx.AsyncClient(
+        client = openshell_module.httpx.AsyncClient(
             base_url=base_url,
             follow_redirects=False,
             trust_env=False,
             timeout=httpx.Timeout(60.0),
         )
+        self.service_clients.append(client)
+        return client
 
     def _require(self, name: str) -> None:
         if name in self.missing or name not in self.generation:
@@ -529,13 +532,13 @@ async def test_openshell_acquire_cleans_up_when_bootstrap_fails() -> None:
 
     with pytest.raises(BindingAcquireError, match="no shellctl"):
         _ = await backend.acquire(_BINDING_NAME)
-    # Sandbox is stopped again after the failed acquisition; no data plane leaks.
-    assert control.stopped == [_BINDING_NAME, _BINDING_NAME]
+    # A failed acquisition leaves the shared sandbox running; no data plane leaks.
+    assert control.stopped == [_BINDING_NAME]
     assert control.exposed == []
 
 
 @pytest.mark.anyio
-async def test_openshell_acquire_stops_sandbox_when_expose_fails() -> None:
+async def test_openshell_acquire_leaves_sandbox_running_when_expose_fails() -> None:
     control = _ControlPlane()
     backend = _backend(control)
     _ = await backend.create_binding(_create_spec())
@@ -543,8 +546,108 @@ async def test_openshell_acquire_stops_sandbox_when_expose_fails() -> None:
 
     with pytest.raises(BindingAcquireError, match="service store unavailable"):
         _ = await backend.acquire(_BINDING_NAME)
-    assert control.stopped == [_BINDING_NAME, _BINDING_NAME]
+    assert control.stopped == [_BINDING_NAME]
     assert control.exposed == []
+
+
+@pytest.mark.anyio
+async def test_openshell_failed_acquire_refresh_does_not_interrupt_running_lease(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output_path = "/tmp/job-1/output"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST" and request.url.path == "/v1/jobs/run":
+            return httpx.Response(
+                200,
+                json={
+                    "job_id": "job-1",
+                    "status": "running",
+                    "done": False,
+                    "exit_code": None,
+                    "output_path": output_path,
+                    "output": "",
+                    "offset": 0,
+                    "truncated": False,
+                },
+            )
+        if request.method == "POST" and request.url.path == "/v1/jobs/job-1/wait":
+            if len(control.stopped) > 1:
+                return httpx.Response(
+                    500,
+                    json={"error": {"code": "job_lost", "message": "sandbox stopped"}},
+                )
+            return httpx.Response(
+                200,
+                json={
+                    "job_id": "job-1",
+                    "status": "exited",
+                    "done": True,
+                    "exit_code": 0,
+                    "output_path": output_path,
+                    "output": "done",
+                    "offset": 4,
+                    "truncated": False,
+                },
+            )
+        return _healthy_handler(request)
+
+    _mock_http(monkeypatch, handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+    first = await backend.acquire(_BINDING_NAME)
+    try:
+        assert isinstance(first, OpenShellRuntimeLease)
+        started = await first.commands.run("sleep 30; printf done", timeout=0.01, mode="stdio")
+        assert not started.done
+
+        control.expose_error = RuntimeError("service store unavailable")
+        with pytest.raises(BindingAcquireError, match="service store unavailable"):
+            _ = await backend.acquire(_BINDING_NAME)
+
+        assert control.stopped == [_BINDING_NAME]
+        assert control.deleted == []
+        assert control.exposed == [(_BINDING_NAME, 5004)]
+        assert isinstance(first.data_plane.owned_transport, AsyncClient)
+        assert not first.data_plane.owned_transport.is_closed
+
+        finished = await first.commands.wait(started.job_id, offset=0, timeout=0.01)
+        assert finished.done
+        assert finished.exit_code == 0
+        assert finished.output == "done"
+        assert finished.offset == 4
+    finally:
+        await backend.release(first)
+
+    assert isinstance(first.data_plane.owned_transport, AsyncClient)
+    assert first.data_plane.owned_transport.is_closed
+
+
+@pytest.mark.anyio
+async def test_openshell_failed_acquire_closes_attempt_transport_when_readiness_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/healthz":
+            return httpx.Response(
+                401,
+                json={"error": {"code": "unauthorized", "message": "invalid token"}},
+            )
+        return _healthy_handler(request)
+
+    _mock_http(monkeypatch, handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+
+    with pytest.raises(BindingAcquireError):
+        _ = await backend.acquire(_BINDING_NAME)
+
+    assert len(control.service_clients) == 1
+    assert control.service_clients[0].is_closed
+    assert control.stopped == [_BINDING_NAME]
+    assert control.deleted == []
 
 
 @pytest.mark.anyio
@@ -721,7 +824,7 @@ async def test_openshell_acquire_maps_missing_layout_to_binding_lost(
     with pytest.raises(BindingLostError, match="Home or Workspace"):
         _ = await backend.acquire(_BINDING_NAME)
     assert control.exposed == []
-    assert control.stopped == [_BINDING_NAME, _BINDING_NAME]
+    assert control.stopped == [_BINDING_NAME]
 
 
 class _FakeRpcError(grpc.RpcError, grpc.Call):
