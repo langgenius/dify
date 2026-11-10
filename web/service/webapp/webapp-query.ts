@@ -6,6 +6,24 @@ export function createWebAppQuery(client: WebAppClient) {
   const query: RouterUtils<WebAppClient> = createTanstackQueryUtils(client, {
     path: ['webapp'],
     experimental_defaults: {
+      account: {
+        profile: {
+          patch: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _result, context) =>
+                context.client.invalidateQueries({ queryKey: query.account.profile.get.key() }),
+            },
+          },
+        },
+        password: {
+          post: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _result, context) =>
+                context.client.invalidateQueries({ queryKey: query.account.profile.get.key() }),
+            },
+          },
+        },
+      },
       me: {
         apps: {
           byAppId: {

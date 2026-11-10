@@ -221,7 +221,9 @@ describe('TextGenerationMenu', () => {
     expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeEnabled()
     expect(screen.getByAltText('')).not.toHaveAttribute('src', profile.avatar_url)
 
-    resolveNextProfile(Response.json({ name: 'Bob Smith', avatar: null, avatar_url: null }))
+    resolveNextProfile(
+      Response.json({ ...profile, name: 'Bob Smith', avatar: null, avatar_url: null }),
+    )
     const nextAccountMenu = await screen.findByRole('button', { name: 'Bob Smith' })
     expect(within(nextAccountMenu).getByText('B')).toBeInTheDocument()
   })
