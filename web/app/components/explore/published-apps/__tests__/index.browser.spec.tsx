@@ -1,4 +1,5 @@
 import type {
+  GetInstalledAppsData,
   InstalledAppListResponse,
   InstalledAppParametersResponse,
   InstalledAppResponse,
@@ -56,7 +57,11 @@ vi.mock('@/app/components/base/chat/chat-with-history', async () => {
   }
 })
 
-function createApp(id: string, isPinned = false): InstalledAppResponse {
+function createApp(
+  id: string,
+  isPinned = false,
+  mode: InstalledAppResponse['app']['mode'] = 'chat',
+): InstalledAppResponse {
   return {
     id,
     app_owner_tenant_id: 'tenant-1',
@@ -65,7 +70,7 @@ function createApp(id: string, isPinned = false): InstalledAppResponse {
     is_pinned: isPinned,
     app: {
       id: `app-${id}`,
-      mode: 'chat',
+      mode,
       icon_type: 'emoji',
       icon: '🤖',
       icon_background: '#fff',
@@ -199,7 +204,9 @@ it('loads subsequent installed-app pages before showing all starred applications
   await expect
     .element(screen.getByRole('button', { name: 'Assistant first', exact: true }))
     .not.toBeInTheDocument()
-  expect(service.list).toHaveBeenCalledWith({ query: { limit: 100, cursor: 'next-page' } })
+  expect(service.list).toHaveBeenCalledWith({
+    query: { limit: 100, cursor: 'next-page', mode: 'all', sort_by: 'last_modified' },
+  })
 })
 
 it('shows an empty state without opening a runtime when no apps are installed', async () => {
@@ -224,38 +231,92 @@ it('keeps a failed list retryable rather than showing an empty result', async ()
   await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
 })
 
-it('reuses the Studio type and sort controls without sending unsupported filters', async () => {
+it('requests the selected sort and type, updates the URL and displays the server result order', async () => {
+  const first = createApp('first')
+  const second = createApp('second')
+  const workflow = createApp('workflow', false, 'workflow')
+  service.list.mockImplementation(
+    async ({ query }: { query: NonNullable<GetInstalledAppsData['query']> }) => {
+      if (query.mode === 'workflow') return page([workflow])
+      return query.sort_by === 'recently_created'
+        ? page([workflow, second, first])
+        : page([first, second, workflow])
+    },
+  )
   const screen = await renderPublished()
+  const cardOrder = () =>
+    screen
+      .getByRole('button', { name: /^Assistant / })
+      .elements()
+      .map((card) => card.getAttribute('aria-label'))
   await expect
-    .element(screen.getByRole('button', { name: 'Assistant first', exact: true }))
-    .toBeVisible()
+    .poll(cardOrder)
+    .toEqual(['Assistant first', 'Assistant second', 'Assistant workflow'])
+
   const sort = screen.getByRole('combobox', { name: 'app.studio.sort.sortBy' })
   await sort.click()
-  const sortOptions = screen.getByRole('listbox')
+  await screen.getByRole('option', { name: 'app.studio.sort.recentlyCreated' }).click()
   await expect
-    .element(sortOptions.getByRole('option', { name: 'app.studio.sort.lastModified' }))
-    .toBeVisible()
-  await expect
-    .element(sortOptions.getByRole('option', { name: 'app.studio.sort.recentlyCreated' }))
-    .toBeVisible()
-  await expect
-    .element(sortOptions.getByRole('option', { name: 'app.studio.sort.earliestCreated' }))
-    .toBeVisible()
-  await expect.element(screen.getByText('app.endUser.lastUsed')).not.toBeInTheDocument()
-  await sortOptions.getByRole('option', { name: 'app.studio.sort.recentlyCreated' }).click()
+    .poll(cardOrder)
+    .toEqual(['Assistant workflow', 'Assistant second', 'Assistant first'])
   await expect
     .element(sort)
-    .toHaveTextContent('app.studio.sort.sortBy app.studio.sort.lastModified')
+    .toHaveTextContent('app.studio.sort.sortBy app.studio.sort.recentlyCreated')
+  expect(service.list).toHaveBeenLastCalledWith({
+    query: { limit: 100, cursor: undefined, mode: 'all', sort_by: 'recently_created' },
+  })
+  expect(service.urlUpdate.mock.lastCall?.[0].searchParams.get('sort_by')).toBe('recently_created')
 
   const types = screen.getByRole('combobox', { name: 'app.studio.filters.types' })
   await types.click()
-  const typeOptions = screen.getByRole('listbox')
+  await screen.getByRole('option', { name: 'app.types.workflow' }).click()
+  await expect.poll(cardOrder).toEqual(['Assistant workflow'])
+  await expect.element(types).toHaveTextContent('app.types.workflow')
+  expect(service.list).toHaveBeenLastCalledWith({
+    query: { limit: 100, cursor: undefined, mode: 'workflow', sort_by: 'recently_created' },
+  })
+  const url = service.urlUpdate.mock.lastCall?.[0].searchParams
+  expect(url?.get('category')).toBe('workflow')
+  expect(url?.get('sort_by')).toBe('recently_created')
+})
+
+it('initializes filters from the URL and starts a fresh pagination cursor when the sort changes', async () => {
+  const first = createApp('first')
+  const second = createApp('second')
+  service.list.mockImplementation(
+    async ({ query }: { query: NonNullable<GetInstalledAppsData['query']> }) => {
+      if (query.mode !== 'chat') throw new Error('Expected the URL-selected Chatbot category')
+      if (query.sort_by === 'earliest_created')
+        return query.cursor ? page([second]) : page([first], 'earliest-next')
+      if (query.sort_by === 'recently_created')
+        return query.cursor ? page([first]) : page([second], 'recent-next')
+      throw new Error('Unexpected sort')
+    },
+  )
+  const screen = await renderPublished('category=chat&sort_by=earliest_created')
+  const cardOrder = () =>
+    screen
+      .getByRole('button', { name: /^Assistant / })
+      .elements()
+      .map((card) => card.getAttribute('aria-label'))
+  await expect.poll(cardOrder).toEqual(['Assistant first', 'Assistant second'])
   await expect
-    .element(typeOptions.getByRole('option', { name: 'app.types.workflow' }))
-    .toBeVisible()
-  await expect.element(typeOptions.getByRole('option', { name: 'app.types.chatbot' })).toBeVisible()
-  await typeOptions.getByRole('option', { name: 'app.types.workflow' }).click()
-  await expect.element(types).toHaveTextContent('app.studio.filters.types')
-  expect(service.list).toHaveBeenCalledOnce()
-  expect(service.urlUpdate).not.toHaveBeenCalled()
+    .element(screen.getByRole('combobox', { name: 'app.studio.filters.types' }))
+    .toHaveTextContent('app.types.chatbot')
+  expect(service.list.mock.calls).toEqual([
+    [{ query: { limit: 100, cursor: undefined, mode: 'chat', sort_by: 'earliest_created' } }],
+    [{ query: { limit: 100, cursor: 'earliest-next', mode: 'chat', sort_by: 'earliest_created' } }],
+  ])
+
+  const sort = screen.getByRole('combobox', { name: 'app.studio.sort.sortBy' })
+  await sort.click()
+  await screen.getByRole('option', { name: 'app.studio.sort.recentlyCreated' }).click()
+  await expect.poll(cardOrder).toEqual(['Assistant second', 'Assistant first'])
+  expect(service.list.mock.calls.slice(2)).toEqual([
+    [{ query: { limit: 100, cursor: undefined, mode: 'chat', sort_by: 'recently_created' } }],
+    [{ query: { limit: 100, cursor: 'recent-next', mode: 'chat', sort_by: 'recently_created' } }],
+  ])
+  const url = service.urlUpdate.mock.lastCall?.[0].searchParams
+  expect(url?.get('category')).toBe('chat')
+  expect(url?.get('sort_by')).toBe('recently_created')
 })

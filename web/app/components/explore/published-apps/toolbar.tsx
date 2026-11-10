@@ -1,17 +1,28 @@
 'use client'
 
+import type { AppListUrlQuery } from '@/app/components/apps/query-params'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import { AppSortFilter } from '@/app/components/apps/app-sort-filter'
 import { AppTypeFilter } from '@/app/components/apps/app-type-filter'
 
 type Props = {
   view: 'all' | 'starred'
+  category: AppListUrlQuery['category']
+  sortBy: AppListUrlQuery['sort_by']
   onViewChange: (view: Props['view']) => void
+  onCategoryChange: (category: Props['category']) => void
+  onSortChange: (sortBy: Props['sortBy']) => void
 }
 
-export default function PublishedAppsToolbar({ view, onViewChange }: Props) {
+export default function PublishedAppsToolbar({
+  view,
+  category,
+  sortBy,
+  onViewChange,
+  onCategoryChange,
+  onSortChange,
+}: Props) {
   const { t } = useTranslation(['app', 'navigation'])
 
   return (
@@ -28,8 +39,8 @@ export default function PublishedAppsToolbar({ view, onViewChange }: Props) {
           {t(($) => $['endUser.starred'], { ns: 'app' })}
         </SegmentedControlItem>
       </SegmentedControl>
-      <AppTypeFilter value="all" onValueChange={noop} />
-      <AppSortFilter value="last_modified" onChange={noop} />
+      <AppTypeFilter value={category} onValueChange={onCategoryChange} />
+      <AppSortFilter value={sortBy} onChange={onSortChange} />
     </div>
   )
 }

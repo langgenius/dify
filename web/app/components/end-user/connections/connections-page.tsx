@@ -4,6 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
 import Connections from '.'
 import EmptyState from '../empty-state'
@@ -23,17 +24,7 @@ export default function ConnectionsPage() {
     <>
       <Connections providers={providers} />
       <div className="px-5 pb-8 sm:px-8">
-        {list.isPending && <p role="status">{t(($) => $.loading, { ns: 'common' })}</p>}
-        {list.isError && (
-          <div className="space-y-2">
-            <p role="alert" className="system-sm-regular text-text-destructive">
-              {list.error.message || t(($) => $['api.actionFailed'], { ns: 'common' })}
-            </p>
-            <Button onClick={() => list.refetch()}>
-              {t(($) => $['operation.retry'], { ns: 'common' })}
-            </Button>
-          </div>
-        )}
+        {list.isPending && <LoadingPlaceholder className="py-8" />}
         {list.isSuccess && providers.length === 0 && (
           <EmptyState
             title={t(($) => $['endUser.noProviderConnections'], { ns: 'app' })}

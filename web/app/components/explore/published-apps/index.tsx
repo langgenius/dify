@@ -4,11 +4,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { createDialogHandle, Dialog } from '@langgenius/dify-ui/dialog'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { parseAsStringLiteral, useQueryState } from 'nuqs'
+import { parseAsStringLiteral, useQueryState, useQueryStates } from 'nuqs'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppCardSkeleton } from '@/app/components/apps/app-card-skeleton'
 import { APP_LIST_GRID_CLASS_NAME } from '@/app/components/apps/constants'
+import { appListQueryParsers } from '@/app/components/apps/query-params'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import InstalledAppDialogContent from '@/app/components/explore/installed-app/dialog'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -23,10 +24,17 @@ function PublishedAppsList() {
     'view',
     parseAsStringLiteral(['all', 'starred']).withDefault('all'),
   )
+  const [filters, setFilters] = useQueryStates({
+    category: appListQueryParsers.category,
+    sort_by: appListQueryParsers.sort_by,
+  })
+  const { category, sort_by: sortBy } = filters
   const [dialog] = useState(() => createDialogHandle<string>())
   const list = useInfiniteQuery(
     consoleQuery.installedApps.get.infiniteOptions({
-      input: (cursor: string | undefined) => ({ query: { limit: 100, cursor } }),
+      input: (cursor: string | undefined) => ({
+        query: { limit: 100, cursor, mode: category, sort_by: sortBy },
+      }),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (page, _pages, cursor, cursors) => {
         const next = page.has_more ? page.next_cursor : null
@@ -54,6 +62,14 @@ function PublishedAppsList() {
       </header>
       <PublishedAppsToolbar
         view={view}
+        category={category}
+        sortBy={sortBy}
+        onCategoryChange={(next) => {
+          void setFilters({ category: next })
+        }}
+        onSortChange={(next) => {
+          void setFilters({ sort_by: next })
+        }}
         onViewChange={(next) => {
           void setView(next)
         }}
