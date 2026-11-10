@@ -319,6 +319,7 @@ class TestExcelExtractor:
         path = tmp_path / "late_header.xlsx"
         workbook = Workbook()
         sheet = workbook.active
+        assert sheet is not None
         sheet.cell(row=1, column=1, value="Quarterly Sales Report")
         for column, name in enumerate(["Region", "Revenue", "Units"], start=1):
             sheet.cell(row=12, column=column, value=name)
@@ -347,6 +348,7 @@ class TestExcelExtractor:
         path = tmp_path / "late_header_columns.xlsx"
         workbook = Workbook()
         sheet = workbook.active
+        assert sheet is not None
         for column, name in enumerate(["Region", "Revenue", "Units"], start=1):
             sheet.cell(row=11, column=column, value=name)
         for column, value in enumerate(["APAC", 4200, 42], start=1):
@@ -361,15 +363,38 @@ class TestExcelExtractor:
         assert "Units" in text
         assert "42" in text
 
-    def test_sheet_without_a_header_row_is_reported(self, caplog):
-        """A skipped sheet with values must leave a trace in the log."""
-        extractor = ExcelExtractor("dummy.xlsx")
-        sheet = _FakeSheet(header_rows=[(None, None)], data_rows=[])
+    def test_sheet_without_a_header_row_is_reported(self, tmp_path, caplog) -> None:
+        """A populated sheet that yields no header must leave a trace.
 
-        assert extractor._sheet_has_values(sheet) is False
+        The workbook has its only value at row 101, past the header scan
+        window, so no header is found. An empty sheet is the control: it is
+        expected to produce nothing and must stay quiet.
+        """
+        from openpyxl import Workbook
 
-        populated = _FakeSheet(header_rows=[("value",)], data_rows=[])
-        assert extractor._sheet_has_values(populated) is True
+        populated_path = tmp_path / "too_late.xlsx"
+        populated_book = Workbook()
+        populated_sheet = populated_book.active
+        assert populated_sheet is not None
+        populated_sheet.cell(row=101, column=1, value="only value")
+        populated_book.save(populated_path)
+
+        with caplog.at_level(logging.WARNING, logger=excel_module.__name__):
+            documents = ExcelExtractor(str(populated_path)).extract()
+
+        assert documents == []
+        assert "No header row found in sheet" in caplog.text
+        assert populated_book.active.title in caplog.text
+
+        empty_path = tmp_path / "empty.xlsx"
+        Workbook().save(empty_path)
+        caplog.clear()
+
+        with caplog.at_level(logging.WARNING, logger=excel_module.__name__):
+            empty_documents = ExcelExtractor(str(empty_path)).extract()
+
+        assert empty_documents == []
+        assert "No header row found in sheet" not in caplog.text
 
     def test_extract_warns_when_a_populated_sheet_has_no_header(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
@@ -400,6 +425,7 @@ class TestExcelExtractor:
         path = tmp_path / "merged_header.xlsx"
         workbook = Workbook()
         sheet = workbook.active
+        assert sheet is not None
         sheet["A1"] = "Customer"
         sheet["B1"] = "Contact"
         sheet.merge_cells("B1:C1")
@@ -423,6 +449,7 @@ class TestExcelExtractor:
         path = tmp_path / "merged_header_names.xlsx"
         workbook = Workbook()
         sheet = workbook.active
+        assert sheet is not None
         sheet["A1"] = "Group"
         sheet["B1"] = "Value"
         sheet.merge_cells("B1:D1")
