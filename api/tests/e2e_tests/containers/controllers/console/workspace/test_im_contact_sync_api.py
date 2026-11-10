@@ -23,6 +23,7 @@ from core.human_input_v2.im_integration import (
     SyncIdentitySnapshot,
     SyncResultFact,
 )
+from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -275,7 +276,7 @@ def test_latest_result_http_projection_reads_every_persisted_bucket(
             sync_run_id=IMSyncRunId("00000000-0000-0000-0000-000000000501"),
             channel_revision=IMChannelRevision(str(channel.id), channel.config_version),
             provider=channel.provider,
-            started_by_account_id=AccountId(account.id),
+            started_by=AccountIMSyncInitiator(AccountId(account.id)),
             now=_NOW,
         ),
         status=IMSyncRunStatus.SUCCEEDED,

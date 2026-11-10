@@ -7,6 +7,7 @@ with appropriate retry policies and error handling.
 
 import logging
 from datetime import UTC, datetime
+from functools import partial
 from typing import Any
 from uuid import UUID
 
@@ -30,6 +31,7 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, Workfl
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_task_service import AppTaskService
 from services.errors.app import WorkflowNotFoundError
+from services.human_input_v2.submission_service import HumanInputSubmissionService
 from services.trigger.execution_layer import TriggerPostLayer
 from services.workflow.entities import (
     WorkflowResumeTaskData,
@@ -184,6 +186,11 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         graph_engine_layers=graph_engine_layers,
         pause_state_config=pause_config,
         response_stream_filter=response_stream_filter,
+        restore_file_access=partial(
+            HumanInputSubmissionService(session_factory=session_factory).grant_submitted_file_access,
+            app_id=app_model.id,
+            workflow_run_id=workflow_run.id,
+        ),
     )
     workflow_run_repo.delete_workflow_pause(pause_entity)
 

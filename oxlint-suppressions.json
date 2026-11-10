@@ -1562,22 +1562,12 @@
       "count": 2
     }
   },
-  "web/app/components/base/prompt-editor/plugins/hitl-input-block/component-ui.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/hitl-input-block/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
     },
     "react/only-export-components": {
       "count": 2
-    }
-  },
-  "web/app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/base/prompt-editor/plugins/hitl-input-block/pre-populate.tsx": {
@@ -2920,11 +2910,6 @@
   },
   "web/app/components/plugins/marketplace/empty/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/plugins/marketplace/home/__tests__/home-trending.spec.tsx": {
-    "typescript/no-deprecated": {
       "count": 4
     }
   },
