@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 @font-face {
   font-family: PricingInter;
   src: url('/pricing/inter-variable.woff2') format('woff2');
@@ -150,9 +152,7 @@
   font-weight: 600;
 }
 .plans {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  @apply grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3;
 }
 .card {
   min-width: 0;
@@ -306,12 +306,9 @@
   font-family: PricingInter, sans-serif;
 }
 
-@media (width < 1200px) {
+@variant max-xl {
   .content {
     padding: 24px;
-  }
-  .plans {
-    grid-template-columns: 1fr;
   }
   .card {
     min-height: auto;
@@ -326,7 +323,7 @@
   }
 }
 
-@media (width < 480px) {
+@variant max-sm {
   .content {
     padding-inline: 16px;
   }
