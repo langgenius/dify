@@ -1,3 +1,5 @@
+"""Strict request base shared by Human Input v2 credential contracts."""
+
 from pydantic import BaseModel, ConfigDict
 
 

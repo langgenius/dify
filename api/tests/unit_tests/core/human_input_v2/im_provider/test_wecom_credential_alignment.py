@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from controllers.console.human_input_v2.providers import WeComCredentialsInput as WeComCredentialUpdate
+from controllers.common.human_input_v2.providers import WeComCredentialsInput as WeComCredentialUpdate
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import adapters as im_adapters
 
