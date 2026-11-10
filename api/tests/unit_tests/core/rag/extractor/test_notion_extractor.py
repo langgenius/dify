@@ -526,7 +526,12 @@ class TestNotionExtractorCases:
                 extractor._read_block("root")
 
         def test_read_block_loses_nothing_when_a_child_fetch_fails(self, mocker: MockerFixture) -> None:
-            """The failure surfaces instead of returning a partial page."""
+            """A failure on a later page must not return the partial text.
+
+            The first page succeeds and carries a cursor, so the reader has
+            already collected content when the second page fails. Returning
+            what it has would index a silently truncated page.
+            """
             extractor = notion_extractor.NotionExtractor(
                 notion_workspace_id="ws",
                 notion_obj_id="obj",
@@ -535,7 +540,7 @@ class TestNotionExtractorCases:
                 notion_access_token="token",
                 notion_token_loader=lambda: "token",
             )
-            root_page = {
+            first_page = {
                 "results": [
                     {
                         "type": "paragraph",
@@ -544,11 +549,18 @@ class TestNotionExtractorCases:
                         "paragraph": {"rich_text": [{"plain_text": "Intro paragraph"}]},
                     },
                 ],
-                "next_cursor": None,
+                "next_cursor": "cursor-1",
             }
             mocker.patch(
                 "httpx.request",
-                return_value=_notion_extractor_mock_response(root_page, status_code=500, text="server error"),
+                side_effect=[
+                    _notion_extractor_mock_response(first_page),
+                    _notion_extractor_mock_response(
+                        {"message": "server error"},
+                        status_code=500,
+                        text="server error",
+                    ),
+                ],
             )
 
             with pytest.raises(ValueError, match="block children"):
