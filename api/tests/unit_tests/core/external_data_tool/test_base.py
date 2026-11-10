@@ -17,11 +17,11 @@ class TestExternalDataTool:
             @classmethod
             @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
-                return super().validate_config(tenant_id, config)
+                return ExternalDataTool.__dict__["validate_config"].__func__(cls, tenant_id, config)
 
             @override
             def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
-                return super().query(inputs, query)
+                return ExternalDataTool.query(self, inputs, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1", config={"key": "value"})
         assert tool.tenant_id == "tenant_1"
@@ -52,7 +52,7 @@ class TestExternalDataTool:
             @classmethod
             @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
-                return super().validate_config(tenant_id, config)
+                return ExternalDataTool.__dict__["validate_config"].__func__(cls, tenant_id, config)
 
             @override
             def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
@@ -70,7 +70,7 @@ class TestExternalDataTool:
 
             @override
             def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
-                return super().query(inputs, query)
+                return ExternalDataTool.query(self, inputs, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")
         with pytest.raises(NotImplementedError):

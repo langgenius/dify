@@ -39,6 +39,7 @@ from models.enums import ConversationFromSource, CustomizeTokenStrategy
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, Site
 from models.provider import Provider
 from models.workflow import Workflow
+from tests.helpers.unit.log_records import logged_exception
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 
 
@@ -405,9 +406,9 @@ def test_incomplete_historical_model_reaches_generic_error_without_exposing_conf
     assert response.get_json()["code"] == "internal_server_error"
     assert b"private-model-name" not in response.data
     failures = [
-        record.exc_info[1]
+        exception
         for record in caplog.records
-        if record.name == "controllers.web.message" and record.exc_info is not None
+        if record.name == "controllers.web.message" and (exception := logged_exception(record)) is not None
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], KeyError)

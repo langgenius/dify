@@ -7,6 +7,14 @@ from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 
 
+def _document_without_metadata(page_content: str) -> Document:
+    """Build a document whose metadata is absent, matching legacy stored rows."""
+
+    document = Document(page_content=page_content)
+    object.__setattr__(document, "metadata", None)
+    return document
+
+
 class _DummyVector(BaseVector):
     def __init__(self, collection_name: str, existing_ids: set[str] | None = None) -> None:
         super().__init__(collection_name)
@@ -76,7 +84,7 @@ def test_base_vector_default_methods_raise_not_implemented(
 def test_filter_duplicate_texts_removes_existing_docs() -> None:
     vector = _DummyVector("collection_1", existing_ids={"dup"})
     docs = [
-        Document.model_construct(page_content="keep-no-meta", metadata=None),
+        _document_without_metadata("keep-no-meta"),
         Document(page_content="keep-no-doc-id", metadata={"document_id": "d1"}),
         Document(page_content="remove-dup", metadata={"doc_id": "dup"}),
         Document(page_content="keep-unique", metadata={"doc_id": "unique"}),
@@ -91,7 +99,7 @@ def test_get_uuids_and_collection_name_property() -> None:
     vector = _DummyVector("collection_1")
     docs = [
         Document(page_content="a", metadata={"doc_id": "id-1"}),
-        Document.model_construct(page_content="b", metadata=None),
+        _document_without_metadata("b"),
         Document(page_content="c", metadata={"document_id": "d-1"}),
         Document(page_content="d", metadata={"doc_id": "id-2"}),
     ]

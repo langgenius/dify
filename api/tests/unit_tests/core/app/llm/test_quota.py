@@ -868,25 +868,38 @@ def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceed
     assert quota_used == 15
 
 
+def _unexpected_quota_configuration() -> SystemConfiguration:
+    """Build a system configuration whose quota type is outside the enum.
+
+    Preconditions: none.
+    Postconditions: ``current_quota_type`` and the nested quota type are the
+    raw string ``unexpected`` so the deduction path can ignore it.
+    """
+
+    quota = QuotaConfiguration.model_construct(
+        quota_used=0,
+        is_valid=True,
+        quota_type=ProviderQuotaType.TRIAL,
+        quota_unit=QuotaUnit.TOKENS,
+        quota_limit=100,
+    )
+    object.__setattr__(quota, "quota_type", "unexpected")
+    configuration = SystemConfiguration.model_construct(
+        enabled=True,
+        current_quota_type=ProviderQuotaType.TRIAL,
+        quota_configurations=[quota],
+    )
+    object.__setattr__(configuration, "current_quota_type", "unexpected")
+    return configuration
+
+
 def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 2
     provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         # Bypass validation only to exercise defensive handling of an invalid quota type.
-        system_configuration=SystemConfiguration.model_construct(
-            enabled=True,
-            current_quota_type="unexpected",
-            quota_configurations=[
-                QuotaConfiguration.model_construct(
-                    quota_used=0,
-                    is_valid=True,
-                    quota_type="unexpected",
-                    quota_unit=QuotaUnit.TOKENS,
-                    quota_limit=100,
-                )
-            ],
-        ),
+        system_configuration=_unexpected_quota_configuration(),
     )
     provider_manager = _provider_manager(provider_configuration)
 

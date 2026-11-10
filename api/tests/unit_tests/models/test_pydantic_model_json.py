@@ -171,7 +171,8 @@ def test_bind_processor_does_not_double_encode_model_json() -> None:
 
 
 def test_bind_treats_serialization_warnings_as_errors() -> None:
-    invalid_model = _FrozenStrictPayload.model_construct(name=42, attributes={})
+    invalid_model = _FrozenStrictPayload.model_construct(name="invalid", attributes={})
+    object.__setattr__(invalid_model, "name", 42)
 
     with pytest.raises(PydanticSerializationError):
         _PAYLOAD_TYPE.process_bind_param(invalid_model, sqlite.dialect())

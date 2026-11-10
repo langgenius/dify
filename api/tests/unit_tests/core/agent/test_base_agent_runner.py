@@ -38,7 +38,7 @@ from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import Data
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
-from graphon.file import FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
@@ -143,13 +143,14 @@ def _app_config(
 def _app_generate(
     *,
     app_config: AgentChatAppConfig | None = None,
-    files: list[str] | None = None,
+    files: list[File] | None = None,
 ) -> AgentChatAppGenerateEntity:
     """Build the real generate entity with only the fields used by these unit tests."""
 
     return AgentChatAppGenerateEntity.model_construct(
         task_id="task",
         app_config=app_config or _app_config(),
+        model_conf=make_model_config(provider="provider", model="model", mode="chat"),
         inputs={},
         files=files or [],
         user_id="user",
@@ -743,7 +744,13 @@ def test_init_uses_real_session_for_count_and_dependencies(
         ),
         additional_features=AppAdditionalFeatures(show_retrieve_source=True),
     )
-    app_generate = _app_generate(app_config=app_config, files=["file1"])
+    uploaded = File(
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.com/file1",
+        filename="file1",
+    )
+    app_generate = _app_generate(app_config=app_config, files=[uploaded])
     message = _message(message_id="msg1")
 
     initialized = BaseAgentRunner(
@@ -762,7 +769,7 @@ def test_init_uses_real_session_for_count_and_dependencies(
     )
 
     assert initialized.stream_tool_call is True
-    assert initialized.files == ["file1"]
+    assert initialized.files == [uploaded]
     assert initialized.dataset_tools == ["ds_tool"]
     assert initialized.agent_thought_count == 2
     assert initialized.history_prompt_messages == []

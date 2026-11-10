@@ -44,6 +44,7 @@ from services.message_suggested_questions_service import (
     MessageSuggestedQuestionsService,
 )
 from services.resource_access_token_service import ResourceAccessTokenService
+from tests.helpers.unit.log_records import logged_exception
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
@@ -252,9 +253,10 @@ def test_admitted_identity_and_mode_return_empty_questions_for_invalid_provider_
     assert response.json == {"result": "success", "data": []}
     assert response.headers["Content-Type"] == "application/json"
     failures = [
-        record.exc_info[1]
+        exception
         for record in caplog.records
-        if record.name == "services.message_suggested_questions_generator" and record.exc_info is not None
+        if record.name == "services.message_suggested_questions_generator"
+        and (exception := logged_exception(record)) is not None
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ValueError)

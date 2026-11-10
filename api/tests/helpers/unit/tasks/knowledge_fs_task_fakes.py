@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import TypeVar, cast
+from datetime import datetime
+from typing import Literal, TypeVar, cast
 
 from celery.exceptions import Retry
 
@@ -157,14 +158,19 @@ class FacadeRuntime:
     facade: RecordingKnowledgeFSFacade
 
 
-# Response builders construct real DTOs with only the fields a test exercises.
+_TIMESTAMP = datetime(2026, 1, 1)
+_SourceStatus = Literal["active", "disabled", "error", "syncing"]
+_ConnectionStatus = Literal["provisioning", "active", "expired", "error", "revoked"]
+
+
+# Response builders construct real DTOs with every required field populated.
 # ``model_construct`` keeps arbitrary remote error codes and messages verbatim.
 
 
 def source_response(
     *,
     metadata: dict[str, object],
-    status: str,
+    status: _SourceStatus,
     version: int,
     source_id: str = "source-1",
     connection_id: str | None = None,
@@ -172,8 +178,15 @@ def source_response(
     return KnowledgeFSSourceResponse.model_construct(
         id=source_id,
         connection_id=connection_id,
+        created_at=_TIMESTAMP,
+        knowledge_space_id="space-1",
         metadata=metadata,
+        name=source_id,
+        permission_scope=[],
         status=status,
+        type="connector",
+        updated_at=_TIMESTAMP,
+        uri=f"knowledge-fs://{source_id}",
         version=version,
     )
 
@@ -193,25 +206,63 @@ def source_workflow_response(
     last_error_code: str | None = None,
 ) -> KnowledgeFSSourceWorkflowResponse:
     failure = (
-        None if failure_message is None else KnowledgeFSPublicFailureResponse.model_construct(message=failure_message)
+        None
+        if failure_message is None
+        else KnowledgeFSPublicFailureResponse.model_construct(
+            category="internal",
+            code="SOURCE_WORKFLOW_FAILED",
+            message=failure_message,
+            retry_policy="manual",
+        )
     )
-    return KnowledgeFSSourceWorkflowResponse.model_construct(
+    workflow = KnowledgeFSSourceWorkflowResponse.model_construct(
         id=workflow_id,
-        state=state,
-        source_id=source_id,
+        checkpoint="finished",
+        created_at=_TIMESTAMP,
+        execution_attempts=1,
         failure=failure,
-        last_error_code=last_error_code,
+        knowledge_space_id="space-1",
+        kind="source-import",
+        last_error_code=None,
+        max_execution_attempts=3,
+        progress_completed=0,
+        progress_failed=0,
+        progress_skipped=0,
+        source_id=source_id,
+        state=state,
+        updated_at=_TIMESTAMP,
     )
+    # Remote codes are not limited to the public enum. Keep the raw string after construction.
+    if last_error_code is not None:
+        object.__setattr__(workflow, "last_error_code", last_error_code)
+    return workflow
 
 
 def sync_policy_response(*, revision: int) -> KnowledgeFSSourceSyncPolicyResponse:
-    return KnowledgeFSSourceSyncPolicyResponse.model_construct(revision=revision)
+    return KnowledgeFSSourceSyncPolicyResponse.model_construct(
+        created_at=_TIMESTAMP,
+        enabled=True,
+        expected_source_version=1,
+        id="policy-1",
+        knowledge_space_id="space-1",
+        mode="interval",
+        revision=revision,
+        source_id="source-1",
+        updated_at=_TIMESTAMP,
+    )
 
 
 def source_provider_list_response(*available_provider_ids: str) -> KnowledgeFSSourceProviderListResponse:
     return KnowledgeFSSourceProviderListResponse.model_construct(
         data=[
-            KnowledgeFSSourceProviderResponse.model_construct(id=provider_id, available=True)
+            KnowledgeFSSourceProviderResponse.model_construct(
+                id=provider_id,
+                auth_kinds=["api-key"],
+                available=True,
+                capabilities=["website-crawl"],
+                configuration=[],
+                display_name=provider_id,
+            )
             for provider_id in available_provider_ids
         ]
     )
@@ -221,14 +272,21 @@ def source_connection_response(
     *,
     connection_id: str,
     provider_id: str,
-    status: str,
+    status: _ConnectionStatus,
     configuration: dict[str, bool | int | str] | None = None,
 ) -> KnowledgeFSSourceConnectionResponse:
     return KnowledgeFSSourceConnectionResponse.model_construct(
         id=connection_id,
-        provider_id=provider_id,
-        status=status,
+        auth_kind="api-key",
         configuration=configuration or {},
+        created_at=_TIMESTAMP,
+        knowledge_space_id="space-1",
+        name=connection_id,
+        provider_id=provider_id,
+        scopes=[],
+        status=status,
+        updated_at=_TIMESTAMP,
+        version=1,
     )
 
 

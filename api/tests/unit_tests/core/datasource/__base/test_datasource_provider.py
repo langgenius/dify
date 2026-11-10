@@ -257,9 +257,10 @@ class TestDatasourcePluginProviderController:
         config_other = ProviderConfig.model_construct(
             name="other_def",
             required=False,
-            type="OTHER",
+            type=ProviderConfigType.TEXT_INPUT,
             default="fallback",
         )
+        object.__setattr__(config_other, "type", "OTHER")
 
         entity = provider_entity(DatasourceProviderType.LOCAL_FILE)
         entity.credentials_schema = [config_text, config_other]

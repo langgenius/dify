@@ -33,6 +33,7 @@ from core.entities.parameter_entities import (
     ToolSelectorScope,
 )
 from core.entities.provider_entities import ProviderConfigType
+from core.plugin.entities.endpoint import EndpointEntityWithInstance
 from core.plugin.impl.exc import PluginPermissionDeniedError
 from fields.base import ResponseModel
 from libs.login import login_required
@@ -145,6 +146,19 @@ class EndpointListItemResponse(ResponseModel):
 
 class EndpointListResponse(ResponseModel):
     endpoints: list[EndpointListItemResponse] = Field(description="Endpoint information")
+
+
+def _endpoint_list_payload(endpoints: list[EndpointEntityWithInstance]) -> dict[str, Any]:
+    """Serialize daemon endpoint entities as the console list response.
+
+    Preconditions: each entity is a validated plugin-daemon endpoint.
+    Postconditions: the payload is the JSON form of ``EndpointListResponse``,
+    with each item validated as ``EndpointListItemResponse``.
+    """
+
+    return EndpointListResponse(
+        endpoints=[EndpointListItemResponse.model_validate(endpoint.model_dump(mode="json")) for endpoint in endpoints]
+    ).model_dump(mode="json")
 
 
 register_schema_models(
@@ -307,7 +321,7 @@ class EndpointListApi(Resource):
             page_size=req_data.page_size,
         )
 
-        return EndpointListResponse(endpoints=endpoints).model_dump(mode="json")
+        return _endpoint_list_payload(endpoints)
 
 
 @console_ns.route("/workspaces/current/endpoints/list/plugin")
@@ -337,7 +351,7 @@ class EndpointListForSinglePluginApi(Resource):
             page_size=req_data.page_size,
         )
 
-        return EndpointListResponse(endpoints=endpoints).model_dump(mode="json")
+        return _endpoint_list_payload(endpoints)
 
 
 @console_ns.route("/workspaces/current/endpoints/<string:id>")

@@ -653,6 +653,21 @@ def test_unknown_billing_plan_is_not_logged(caplog: pytest.LogCaptureFixture) ->
     assert upstream_plan not in caplog.text
 
 
+def _raw_vector_space_quota(quota: dict[str, object]) -> billing.VectorSpaceQuota:
+    """Build a quota object that keeps observe-mode values exactly as received.
+
+    Preconditions: ``quota`` may omit fields or hold values the schema rejects.
+    Postconditions: ``size``, ``limit``, and ``usage_unknown`` equal the mapping
+    values, including ``None`` and non-numeric inputs.
+    """
+
+    observed = billing.VectorSpaceQuota.model_construct(size=0.0, limit=0, usage_unknown=None)
+    object.__setattr__(observed, "size", quota.get("size"))
+    object.__setattr__(observed, "limit", quota.get("limit"))
+    object.__setattr__(observed, "usage_unknown", quota.get("usage_unknown"))
+    return observed
+
+
 @pytest.mark.parametrize(
     "quota",
     [
@@ -682,9 +697,7 @@ def test_unavailable_billing_quota_fails_before_embedding_or_reservation(
         patch(
             "services.vector_space_admission_service.BillingService.get_vector_space",
             # Observe-mode validation keeps invalid values raw and reads missing fields as None.
-            return_value=billing.VectorSpaceQuota.model_construct(
-                size=quota.get("size"), limit=quota.get("limit"), usage_unknown=quota.get("usage_unknown")
-            ),
+            return_value=_raw_vector_space_quota(quota),
         ),
         patch.object(service, "_get_embedding_dimension") as dimension,
         patch.object(service, "_reserve_projected_usage") as reserve,

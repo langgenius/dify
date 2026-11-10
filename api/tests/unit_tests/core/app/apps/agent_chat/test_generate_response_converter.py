@@ -78,17 +78,19 @@ class TestAgentChatAppGenerateResponseConverterBlocking:
         assert "usage" not in result["metadata"]
 
     def test_convert_blocking_simple_response_with_non_dict_metadata(self) -> None:
+        data = ChatbotAppBlockingResponse.Data.model_construct(
+            id="id",
+            mode="agent-chat",
+            conversation_id="conv",
+            message_id="msg",
+            answer="answer",
+            metadata={},
+            created_at=123,
+        )
+        object.__setattr__(data, "metadata", "bad")
         blocking = ChatbotAppBlockingResponse.model_construct(
             task_id="task",
-            data=ChatbotAppBlockingResponse.Data.model_construct(
-                id="id",
-                mode="agent-chat",
-                conversation_id="conv",
-                message_id="msg",
-                answer="answer",
-                metadata="bad",
-                created_at=123,
-            ),
+            data=data,
         )
 
         result = AgentChatAppGenerateResponseConverter.convert_blocking_simple_response(blocking)

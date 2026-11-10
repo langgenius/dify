@@ -41,6 +41,7 @@ from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
     MessageSuggestedQuestionsService,
 )
+from tests.helpers.unit.log_records import logged_exception
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
@@ -245,9 +246,10 @@ def test_chat_modes_return_empty_questions_when_stored_provider_config_is_invali
     assert response.headers["Content-Type"] == "application/json"
     assert response.get_json() == {"data": []}
     failures = [
-        record.exc_info[1]
+        exception
         for record in caplog.records
-        if record.name == "services.message_suggested_questions_generator" and record.exc_info is not None
+        if record.name == "services.message_suggested_questions_generator"
+        and (exception := logged_exception(record)) is not None
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ValueError)

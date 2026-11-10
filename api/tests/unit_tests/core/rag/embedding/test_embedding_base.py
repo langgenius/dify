@@ -34,19 +34,19 @@ class _SuperCallingEmbeddings(Embeddings):
 
     @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return super().embed_documents(texts)
+        return Embeddings.embed_documents(self, texts)
 
     @override
     def embed_multimodal_documents(self, multimodel_documents: list[dict[str, object]]) -> list[list[float]]:
-        return super().embed_multimodal_documents(multimodel_documents)
+        return Embeddings.embed_multimodal_documents(self, multimodel_documents)
 
     @override
     def embed_query(self, text: str) -> list[float]:
-        return super().embed_query(text)
+        return Embeddings.embed_query(self, text)
 
     @override
     def embed_multimodal_query(self, multimodel_document: dict[str, object]) -> list[float]:
-        return super().embed_multimodal_query(multimodel_document)
+        return Embeddings.embed_multimodal_query(self, multimodel_document)
 
 
 class TestEmbeddingsBase:

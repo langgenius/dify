@@ -5,7 +5,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 
 class _CallsBaseExtractor(BaseExtractor):
     def extract(self) -> object:
-        return super().extract()
+        return BaseExtractor.extract(self)
 
 
 class _ConcreteExtractor(BaseExtractor):

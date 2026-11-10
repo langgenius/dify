@@ -23,6 +23,7 @@ from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_service import InstalledAppService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from tests.helpers.unit.log_records import logged_exception
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
@@ -773,7 +774,7 @@ def test_management_dependency_failure_preserves_cause_and_request_context(
     records = [record for record in caplog.records if record.name.startswith("controllers.console.explore.")]
     assert len(records) == 1
     assert records[0].exc_info is not None
-    assert records[0].exc_info[1] is failure
+    assert logged_exception(records[0]) is failure
     assert management.harness.installed_app.tenant_id in records[0].getMessage()
     assert management.harness.account.id in records[0].getMessage()
     assert "request-1" in records[0].getMessage()

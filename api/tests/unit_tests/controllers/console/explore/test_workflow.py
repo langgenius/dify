@@ -25,6 +25,7 @@ from services.app_task_service import AppTaskControlService
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
+from tests.helpers.unit.log_records import logged_exception
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
@@ -506,5 +507,5 @@ def test_workflow_stop_keeps_legacy_flag_and_success_when_graph_command_fails(
     assert stop_redis.operations == ["legacy_flag", "graph_command"]
     assert stop_redis.reads == []
     assert stop_redis.values[_STOP_KEY] == b"1"
-    assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+    assert any(logged_exception(record) is failure for record in caplog.records)
     runtime.assert_usage_unchanged()

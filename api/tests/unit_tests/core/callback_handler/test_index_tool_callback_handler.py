@@ -154,7 +154,8 @@ class TestOnToolEnd:
         handler: DatasetIndexToolCallbackHandler,
         caller_session_boundary: _CallerSessionBoundary,
     ) -> None:
-        document = Document.model_construct(page_content="content", metadata=None, provider="dify")
+        document = Document(page_content="content", provider="dify")
+        object.__setattr__(document, "metadata", None)
 
         handler.on_tool_end([document], caller_session_boundary.session)
 

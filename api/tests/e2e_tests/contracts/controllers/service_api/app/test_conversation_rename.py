@@ -34,6 +34,7 @@ from services.auth.resource_access_token_contracts import ResourceAccessTokenRes
 from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
 from services.resource_access_token_service import ResourceAccessTokenService
+from tests.helpers.unit.log_records import logged_exception
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
@@ -285,9 +286,9 @@ def test_auto_name_ignores_manual_name_and_preserves_current_name_on_provider_fa
     assert response.json["name"] == "Original name"
     assert response.json["updated_at"] == int(_UPDATED_AT.timestamp())
     failures = [
-        record.exc_info[1]
+        exception
         for record in caplog.records
-        if record.name == "services.conversation_name_service" and record.exc_info is not None
+        if record.name == "services.conversation_name_service" and (exception := logged_exception(record)) is not None
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ProviderTokenNotInitError)

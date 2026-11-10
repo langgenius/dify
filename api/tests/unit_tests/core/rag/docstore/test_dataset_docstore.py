@@ -283,7 +283,8 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         """Test that document with None metadata raises ValueError."""
 
         # Bypass model validation to exercise the store's legacy malformed-metadata guard.
-        document = Document.model_construct(page_content="Test content", metadata=None)
+        document = Document(page_content="Test content")
+        object.__setattr__(document, "metadata", None)
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID, document_id=DOCUMENT_ID)
 
         with pytest.raises(ValueError, match="metadata must be a dict"):

@@ -40,6 +40,7 @@ from services.app_task_service import AppTaskControlService
 from services.installed_app_access_service import InstalledAppAccessService, InstalledAppRef
 from services.saved_message_service import SavedMessageActor, SavedMessagePage, SavedMessageRecord, SavedMessageService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from tests.helpers.unit.log_records import logged_exception
 from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
 
@@ -363,7 +364,7 @@ def test_permission_dependency_failure_preserves_cause_without_leaking_details(
     records = [record for record in caplog.records if record.name == admission_module.__name__]
     assert len(records) == 1
     assert records[0].exc_info is not None
-    assert records[0].exc_info[1] is failure
+    assert logged_exception(records[0]) is failure
     assert harness.installed_app.id in records[0].getMessage()
     assert harness.installed_app.tenant_id in records[0].getMessage()
     assert harness.account.id in records[0].getMessage()
@@ -880,7 +881,7 @@ def test_chat_stop_preserves_success_and_legacy_flag_when_graph_redis_fails(
     assert stop_redis.values[f"generate_task_stopped:{_WORKFLOW_TASK_ID}"] == b"1"
     assert stop_redis.expirations[f"generate_task_stopped:{_WORKFLOW_TASK_ID}"] == 600
     assert stop_redis.commands == {}
-    assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+    assert any(logged_exception(record) is failure for record in caplog.records)
     with sqlite_session_factory() as session:
         run = session.get(WorkflowRun, running_workflow.id)
         assert run is not None

@@ -111,6 +111,7 @@ from typing import Any, Literal
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -118,6 +119,7 @@ from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, DatasetProcessRule, Document
+from models.enums import ProcessRuleMode
 from services.knowledge.dataset_service import DatasetService, DocumentService
 from services.knowledge.entities.knowledge_entities import (
     DataSource,
@@ -129,6 +131,20 @@ from services.knowledge.entities.knowledge_entities import (
     ProcessRule,
     WebsiteInfo,
 )
+
+
+def _preserve_invalid[ModelT: BaseModel](model: ModelT, **fields: object) -> ModelT:
+    """Overwrite fields after a valid construct so service tests can pass rejected values.
+
+    Preconditions: ``model`` is already constructed and each name is one of its fields.
+    Postconditions: each named field equals the given runtime value. The declared
+    field type is unchanged. Returns the same model.
+    """
+
+    for name, value in fields.items():
+        object.__setattr__(model, name, value)
+    return model
+
 
 # ============================================================================
 # Test Data Factory
@@ -206,13 +222,14 @@ class DocumentValidationTestDataFactory:
             KnowledgeConfig instance without request-schema validation
         """
         # These tests exercise service validation after the request-schema boundary.
-        return KnowledgeConfig.model_construct(
+        config = KnowledgeConfig.model_construct(
             data_source=data_source,
             process_rule=process_rule,
             doc_form=doc_form,
-            indexing_technique=indexing_technique,
+            indexing_technique="high_quality",
             **kwargs,
         )
+        return _preserve_invalid(config, indexing_technique=indexing_technique)
 
     @staticmethod
     def create_data_source(
@@ -234,7 +251,10 @@ class DocumentValidationTestDataFactory:
             DataSource instance, preserving invalid source types for service validation
         """
         # Preserve invalid source types so the service owns the validation under test.
-        info_list = InfoList.model_construct(data_source_type=data_source_type)
+        info_list = _preserve_invalid(
+            InfoList.model_construct(data_source_type="upload_file"),
+            data_source_type=data_source_type,
+        )
         if data_source_type == "upload_file":
             info_list.file_info_list = FileInfo(file_ids=file_ids if file_ids is not None else ["file-123"])
         elif data_source_type == "notion_import":
@@ -277,7 +297,7 @@ class DocumentValidationTestDataFactory:
             parent_mode=parent_mode,
         )
         # Preserve invalid modes so request-schema validation does not mask service errors.
-        return ProcessRule.model_construct(mode=mode, rules=rule)
+        return _preserve_invalid(ProcessRule.model_construct(mode=ProcessRuleMode.CUSTOM, rules=rule), mode=mode)
 
 
 # ============================================================================
@@ -1096,7 +1116,10 @@ class TestDocumentServiceDataSourceArgsValidate:
         """
         # Arrange
         # Deliberately bypass the request schema to test the service's missing-info guard.
-        data_source = DataSource.model_construct(info_list=None)
+        data_source = _preserve_invalid(
+            DataSource.model_construct(info_list=InfoList.model_construct(data_source_type="upload_file")),
+            info_list=None,
+        )
         knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config(data_source=data_source)
 
         # Act & Assert
@@ -1397,7 +1420,10 @@ class TestDocumentServiceProcessRuleArgsValidate:
         """
         # Arrange
         pre_processing_rules = [
-            PreProcessingRule.model_construct(id=None, enabled=True)  # Missing id
+            _preserve_invalid(
+                PreProcessingRule.model_construct(id="remove_extra_spaces", enabled=True),
+                id=None,
+            )
         ]
         process_rule = DocumentValidationTestDataFactory.create_process_rule(
             mode="custom", pre_processing_rules=pre_processing_rules
@@ -1424,7 +1450,10 @@ class TestDocumentServiceProcessRuleArgsValidate:
         """
         # Arrange
         pre_processing_rules = [
-            PreProcessingRule.model_construct(id="remove_extra_spaces", enabled="true")  # Not boolean
+            _preserve_invalid(
+                PreProcessingRule.model_construct(id="remove_extra_spaces", enabled=True),
+                enabled="true",
+            )
         ]
         process_rule = DocumentValidationTestDataFactory.create_process_rule(
             mode="custom", pre_processing_rules=pre_processing_rules
@@ -1474,7 +1503,10 @@ class TestDocumentServiceProcessRuleArgsValidate:
         - Error type is correct
         """
         # Arrange
-        segmentation = Segmentation.model_construct(separator=None, max_tokens=1024, chunk_overlap=50)
+        segmentation = _preserve_invalid(
+            Segmentation.model_construct(separator="\n", max_tokens=1024, chunk_overlap=50),
+            separator=None,
+        )
         process_rule = DocumentValidationTestDataFactory.create_process_rule(mode="custom", segmentation=segmentation)
         knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config(process_rule=process_rule)
 
@@ -1497,7 +1529,10 @@ class TestDocumentServiceProcessRuleArgsValidate:
         - Error type is correct
         """
         # Arrange
-        segmentation = Segmentation.model_construct(separator=123, max_tokens=1024, chunk_overlap=50)  # Not string
+        segmentation = _preserve_invalid(
+            Segmentation.model_construct(separator="\n", max_tokens=1024, chunk_overlap=50),
+            separator=123,
+        )
         process_rule = DocumentValidationTestDataFactory.create_process_rule(mode="custom", segmentation=segmentation)
         knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config(process_rule=process_rule)
 
@@ -1520,7 +1555,10 @@ class TestDocumentServiceProcessRuleArgsValidate:
         - Error type is correct
         """
         # Arrange
-        segmentation = Segmentation.model_construct(separator="\n", max_tokens=None, chunk_overlap=50)
+        segmentation = _preserve_invalid(
+            Segmentation.model_construct(separator="\n", max_tokens=1024, chunk_overlap=50),
+            max_tokens=None,
+        )
         process_rule = DocumentValidationTestDataFactory.create_process_rule(mode="custom", segmentation=segmentation)
         knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config(process_rule=process_rule)
 
@@ -1543,7 +1581,10 @@ class TestDocumentServiceProcessRuleArgsValidate:
         - Error type is correct
         """
         # Arrange
-        segmentation = Segmentation.model_construct(separator="\n", max_tokens="1024", chunk_overlap=50)  # Not int
+        segmentation = _preserve_invalid(
+            Segmentation.model_construct(separator="\n", max_tokens=1024, chunk_overlap=50),
+            max_tokens="1024",
+        )
         process_rule = DocumentValidationTestDataFactory.create_process_rule(mode="custom", segmentation=segmentation)
         knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config(process_rule=process_rule)
 
@@ -1566,7 +1607,10 @@ class TestDocumentServiceProcessRuleArgsValidate:
         - No errors are raised
         """
         # Arrange
-        segmentation = Segmentation.model_construct(separator="\n", max_tokens=None, chunk_overlap=50)
+        segmentation = _preserve_invalid(
+            Segmentation.model_construct(separator="\n", max_tokens=1024, chunk_overlap=50),
+            max_tokens=None,
+        )
         process_rule = DocumentValidationTestDataFactory.create_process_rule(
             mode="hierarchical", segmentation=segmentation, parent_mode="full-doc"
         )

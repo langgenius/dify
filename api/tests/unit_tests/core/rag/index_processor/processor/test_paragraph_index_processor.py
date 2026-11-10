@@ -832,8 +832,9 @@ class TestParagraphIndexProcessor:
             ParagraphIndexProcessor._extract_images_from_text("tenant-1", text, session)
 
         record = next(r for r in caplog.records if r.levelno == logging.WARNING)
-        assert record.exc_info is not None
-        _, exc_value, exc_traceback = record.exc_info
+        exc_info = record.exc_info
+        assert isinstance(exc_info, tuple)
+        _, exc_value, exc_traceback = exc_info
         assert isinstance(exc_value, RuntimeError)
         assert exc_traceback is not None
         # The formatted output carries the call chain, and the message itself no longer inlines the exception.

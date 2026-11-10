@@ -38,6 +38,7 @@ from models.workflow import WorkflowType
 from repositories.conversation_repository import ConversationRepository
 from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
+from tests.helpers.unit.log_records import logged_exception
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message, make_workflow
 from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
@@ -312,9 +313,9 @@ def test_auto_rename_preserves_existing_name_when_real_provider_lookup_fails(
     assert response.get_json()["name"] == "Original title"
     assert response.get_json()["updated_at"] == int(_UPDATED_AT.timestamp())
     failures = [
-        record.exc_info[1]
+        exception
         for record in caplog.records
-        if record.name == "services.conversation_name_service" and record.exc_info is not None
+        if record.name == "services.conversation_name_service" and (exception := logged_exception(record)) is not None
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ProviderTokenNotInitError)
