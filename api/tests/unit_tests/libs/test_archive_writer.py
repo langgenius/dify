@@ -10,6 +10,7 @@ from libs.archive_writer import (
     ArchiveCompression,
     ArchiveEmptyError,
     ArchiveEntry,
+    ArchiveLimitKind,
     ArchiveLimits,
     ArchiveOptions,
     ArchivePathError,
@@ -87,3 +88,8 @@ def test_folder_source_drops_exact_junk_names_before_counting_and_normalizes() -
         assert [entry.path for entry in result.entries] == [_NFC_CAFE, "x.DS_Store"]
     with pytest.raises(ArchiveEmptyError):
         write_archive(entries_from_folder({".DS_Store": io.BytesIO(b"")}), _options())
+
+
+def test_limit_kinds_describe_the_limit_they_exceeded() -> None:
+    assert ArchiveLimitKind.ENTRIES.exceeded(5000) == "has more than 5000 files"
+    assert ArchiveLimitKind.BYTES.exceeded(512 * 1024 * 1024) == "is over 512 MiB"
