@@ -72,9 +72,9 @@ from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import CommandSubmission, DifyBuilderService, SessionView
 from services.enterprise.rbac_service import RBACService
 from services.entities.feature_entities import FeatureModel
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_tenant
 from tests.unit_tests.installed_spies import installed_mock
-from tests.unit_tests.model_factories import make_tenant
 
 
 @dataclass
@@ -791,9 +791,9 @@ def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(
     with app.test_request_context():
         response = _assert_event_stream(mod._stream("s1", _actor()))
 
-    chunks = iter(response.response)
-    assert json.loads(next(chunks).splitlines()[1].removeprefix("data: "))["event"] == "session_ready"
-    event = json.loads(next(chunks).splitlines()[1].removeprefix("data: "))
+    chunks = response.iter_encoded()
+    assert json.loads(next(chunks).splitlines()[1].removeprefix(b"data: "))["event"] == "session_ready"
+    event = json.loads(next(chunks).splitlines()[1].removeprefix(b"data: "))
     assert event["event"] == "session_state"
     assert event["data"]["run_status"] == "waiting_input"
     assert event["data"]["last_command_id"] == "command-1"
