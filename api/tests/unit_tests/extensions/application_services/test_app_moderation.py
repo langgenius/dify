@@ -1,9 +1,14 @@
 from collections.abc import Callable, Generator
 from contextvars import copy_context
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from threading import Thread
+from threading import Event, Thread
+from time import perf_counter
+from typing import override
 
 import pytest
+from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
     AppConfig,
@@ -14,15 +19,27 @@ from core.app.app_config.entities import (
     SensitiveWordAvoidanceEntity,
     WorkflowUIBasedAppConfig,
 )
+from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
+from core.app.apps.advanced_chat.generate_task_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
+from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, ChatAppGenerateEntity, InvokeFrom
+from core.app.entities.queue_entities import QueueAdvancedChatMessageEndEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from core.app.entities.task_entities import MessageReplaceStreamResponse, MessageStreamResponse
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.model_context import get_app_moderation_runtime
 from core.moderation.base import ModerationAction
 from core.moderation.input_moderation import InputModeration
 from core.moderation.openai_moderation.openai_moderation import OpenAIModeration
+from core.moderation.output_moderation import ModerationRule as OutputModerationRule
+from core.moderation.output_moderation import OutputModeration
 from enums import DeploymentEdition
 from extensions.application_services.app_moderation import (
     app_moderation_scope,
@@ -38,7 +55,9 @@ from extensions.application_services.app_moderation import (
 from extensions.application_services.moderation import build_llm_moderation_guard
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
+from graphon.runtime import RuntimeState
 from machinery.context import AppRequestContext
+from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
@@ -54,6 +73,8 @@ from services.moderation_service import (
     ModerationVerdict,
 )
 from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.model_factories import make_account, make_conversation, make_message
+from tests.workflow_test_utils import build_test_variable_pool
 
 
 class RecordingGateway:
@@ -94,6 +115,43 @@ class RecordingAppService:
                 text="rewritten output",
             ),
         )
+
+
+class TransientOutputFailureGateway:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def check(
+        self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
+    ) -> ModerationVerdict:
+        assert context.tenant_id == "tenant-1"
+        assert rule.type == "api"
+        assert isinstance(request.text, str)
+        assert phase == "output"
+        self.calls += 1
+        if self.calls == 1:
+            raise ValueError("request timeout: private backend diagnostic")
+        return ModerationVerdict(flagged=False, message="")
+
+
+class BlockingOutputFailureGateway(TransientOutputFailureGateway):
+    def __init__(self) -> None:
+        super().__init__()
+        self.entered = Event()
+        self.release = Event()
+
+    @override
+    def check(
+        self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
+    ) -> ModerationVerdict:
+        self.entered.set()
+        assert self.release.wait(5)
+        return super().check(context, rule=rule, request=request, phase=phase)
+
+
+@dataclass(frozen=True)
+class ModerationServices:
+    moderation: ModerationService
 
 
 def app_config(backend: str = "openai_moderation") -> AppConfig:
@@ -379,3 +437,197 @@ def test_chat_pipeline_renders_platform_rejection_with_existing_app_reply_events
         assert pipeline.output_moderation_handler is None
     finally:
         response.close()
+
+
+@pytest.mark.parametrize("advanced", [False, True])
+@pytest.mark.parametrize("background", [False, True])
+@pytest.mark.parametrize("stream", [False, True])
+def test_output_failure_emits_safe_error_and_persists_message_status(
+    sqlite_session_factory: sessionmaker[Session], advanced: bool, background: bool, stream: bool
+) -> None:
+    gateway = TransientOutputFailureGateway()
+    flask_app = Flask(__name__)
+    flask_app.extensions["application_services"] = ModerationServices(ModerationService(gateway=gateway))
+    mode = AppMode.ADVANCED_CHAT if advanced else AppMode.CHAT
+    config = app_config("api").model_copy(update={"app_mode": mode})
+    conversation = make_conversation(mode=mode, from_source=ConversationFromSource.CONSOLE)
+    message = make_message(
+        query="query", message={}, answer="", from_source=ConversationFromSource.CONSOLE, created_at=datetime.now(UTC)
+    )
+    with sqlite_session_factory() as database:
+        database.add_all([conversation, message])
+        database.commit()
+    queue = MessageBasedAppQueueManager(
+        task_id="task-1",
+        user_id="account-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        conversation_id="conversation-1",
+        app_mode=mode,
+        message_id="message-1",
+    )
+    with flask_app.app_context(), app_moderation_scope("tenant-1", "app-1"):
+        if advanced:
+            entity = AdvancedChatAppGenerateEntity(
+                task_id="task-1",
+                app_config=WorkflowUIBasedAppConfig(**config.model_dump(), workflow_id="workflow-1"),
+                query="query",
+                inputs={},
+                files=[],
+                user_id="account-1",
+                stream=stream,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+            queue.graph_runtime_state = RuntimeState(
+                workflow_id="workflow-1", variable_pool=build_test_variable_pool(), start_at=perf_counter()
+            )
+            pipeline = AdvancedChatAppGenerateTaskPipeline(
+                application_generate_entity=entity,
+                workflow=WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={}),
+                queue_manager=queue,
+                conversation=ConversationSnapshot.from_conversation(conversation),
+                message=MessageSnapshot.from_message(message),
+                user=make_account(),
+                stream=stream,
+                dialogue_count=1,
+                draft_var_saver_factory=BaseAppGenerator._get_draft_var_saver_factory(
+                    InvokeFrom.DEBUGGER, make_account(), tenant_id="tenant-1"
+                ),
+            )
+            pipeline._task_state.answer = "model output"
+            handler = pipeline._base_task_pipeline.output_moderation_handler
+        else:
+            entity = ChatAppGenerateEntity(
+                task_id="task-1",
+                app_config=EasyUIBasedAppConfig(
+                    **config.model_dump(),
+                    app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+                    app_model_config_dict={},
+                    model=ModelConfigEntity(provider="test-provider", model="test-model"),
+                    prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+                ),
+                model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
+                query="query",
+                inputs={},
+                files=[],
+                user_id="account-1",
+                stream=stream,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+            pipeline = EasyUIBasedGenerateTaskPipeline(
+                application_generate_entity=entity,
+                queue_manager=queue,
+                conversation=conversation,
+                message=message,
+                stream=stream,
+            )
+            handler = pipeline.output_moderation_handler
+    assert handler is not None
+    if background:
+        queue.publish(
+            QueueLLMChunkEvent(
+                chunk=LLMResultChunk(
+                    model="test-model",
+                    delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="must not be delivered")),
+                )
+            ),
+            PublishFrom.TASK_PIPELINE,
+        )
+        handler.buffer = "output being checked"
+        handler.worker(flask_app, 1)
+        assert not handler.thread_running
+        with pytest.raises(ModerationUnavailableInvocationError):
+            handler.moderation_completion("later safe output")
+    else:
+        terminal = (
+            QueueAdvancedChatMessageEndEvent()
+            if advanced
+            else QueueMessageEndEvent(
+                llm_result=LLMResult(
+                    model="test-model",
+                    message=AssistantPromptMessage(content="model output"),
+                    usage=LLMUsage.empty_usage(),
+                )
+            )
+        )
+        queue.publish(terminal, PublishFrom.TASK_PIPELINE)
+
+    with flask_app.app_context():
+        responses = pipeline._process_stream_response(None)
+        if stream:
+            converter = AdvancedChatAppGenerateResponseConverter if advanced else ChatAppGenerateResponseConverter
+            chunks = list(converter.convert_stream_full_response(pipeline._to_stream_response(responses)))
+            assert len(chunks) == 1
+            assert isinstance(chunks[0], dict)
+            assert chunks[0]["event"] == "error"
+            assert chunks[0]["code"] == "moderation_unavailable"
+            assert chunks[0]["status"] == 503
+            assert chunks[0]["message"] == str(ModerationUnavailableInvocationError())
+        else:
+            with pytest.raises(ModerationUnavailableInvocationError):
+                pipeline._to_blocking_response(responses)
+    assert gateway.calls == 1
+    with sqlite_session_factory() as database:
+        saved = database.get(Message, "message-1")
+        assert saved is not None
+        assert saved.status == MessageStatus.ERROR
+        assert saved.error == str(ModerationUnavailableInvocationError())
+
+
+def test_final_output_cannot_approve_a_racing_background_failure() -> None:
+    gateway = BlockingOutputFailureGateway()
+    flask_app = Flask(__name__)
+    flask_app.extensions["application_services"] = ModerationServices(ModerationService(gateway=gateway))
+    config = app_config("api")
+    rule = config.sensitive_word_avoidance
+    assert rule is not None
+    queue = MessageBasedAppQueueManager(
+        task_id="task-1",
+        user_id="account-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        conversation_id="conversation-1",
+        app_mode=AppMode.CHAT,
+        message_id="message-1",
+    )
+    with app_moderation_scope("tenant-1", "app-1"):
+        handler = OutputModeration(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            rule=OutputModerationRule(type=rule.type, config=rule.config),
+            queue_manager=queue,
+            output_evaluator=app_output_evaluator(config),
+            buffer="pending output",
+        )
+    final_entered = Event()
+    final_finished = Event()
+    final_errors: list[ModerationUnavailableInvocationError] = []
+
+    def finalize() -> None:
+        with flask_app.app_context():
+            final_entered.set()
+            try:
+                handler.moderation_completion("final output")
+            except ModerationUnavailableInvocationError as error:
+                final_errors.append(error)
+            finally:
+                final_finished.set()
+
+    worker = Thread(target=handler.worker, args=(flask_app, 1))
+    handler.thread = worker
+    worker.start()
+    final_worker = Thread(target=finalize)
+    try:
+        assert gateway.entered.wait(5)
+        final_worker.start()
+        assert final_entered.wait(5)
+        assert not final_finished.wait(0.05)
+    finally:
+        gateway.release.set()
+        handler.stop_thread()
+        worker.join(5)
+        if final_worker.ident is not None:
+            final_worker.join(5)
+    assert not worker.is_alive()
+    assert not final_worker.is_alive()
+    assert gateway.calls == 1
+    assert len(final_errors) == 1
+    assert handler.error is final_errors[0]

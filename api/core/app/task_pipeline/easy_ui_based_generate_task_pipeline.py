@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
@@ -269,11 +270,27 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 publisher.cancel()
 
     def _process_stream_response(self, publisher: AppGeneratorTTSPublisher | None) -> Generator[StreamResponse]:
+        """Translate invocation failures into persisted error events for streaming and blocking consumers."""
+        try:
+            yield from self._process_stream_events(publisher)
+        except AppGenerateError as error:
+            yield from self._handle_error_event(QueueErrorEvent(error=error))
+
+    def _handle_error_event(self, event: QueueErrorEvent) -> Generator[ErrorStreamResponse]:
+        """Persist the message error before exposing its existing transport classification."""
+        with session_factory.create_session() as session:
+            err = self.handle_error(event=event, session=session, message_id=self._message_id)
+            session.commit()
+        self._emit_message_trace()
+        yield self.error_to_stream_response(err)
+
+    def _process_stream_events(self, publisher: AppGeneratorTTSPublisher | None) -> Generator[StreamResponse]:
         """
         Process stream response.
         :return:
         """
         for message in self.queue_manager.listen():
+            self.raise_output_moderation_error()
             if publisher:
                 publisher.publish(message)
             event = message.event
@@ -298,12 +315,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
             match event:
                 case QueueErrorEvent():
-                    with session_factory.create_session() as session:
-                        err = self.handle_error(event=event, session=session, message_id=self._message_id)
-                        session.commit()
-                    self._emit_message_trace()
-
-                    yield self.error_to_stream_response(err)
+                    yield from self._handle_error_event(event)
                     break
                 case QueueStopEvent() | QueueMessageEndEvent():
                     if isinstance(event, QueueMessageEndEvent):

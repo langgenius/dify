@@ -55,6 +55,9 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         self.stream = stream
 
     def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+        """Stop output checks and retain error typing; mark an existing message failed in the caller's transaction."""
+        if self.output_moderation_handler is not None:
+            self.output_moderation_handler.stop_thread()
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -177,3 +180,9 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
                 return completion
 
         return None
+
+    def raise_output_moderation_error(self) -> None:
+        """Stop response consumption after a failed background check, including already queued output."""
+        handler = self.output_moderation_handler
+        if handler is not None and handler.error is not None:
+            raise handler.error

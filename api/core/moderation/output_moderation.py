@@ -5,7 +5,7 @@ from collections.abc import Callable
 from typing import Any
 
 from flask import Flask, current_app
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -22,6 +22,12 @@ class ModerationRule(BaseModel):
 
 
 class OutputModeration(BaseModel):
+    """Coordinate app output checks across the response consumer and moderation worker.
+
+    Injected evaluation failures are terminal for this handler. Serialized checks
+    prevent a final approval from racing past a failed background check.
+    """
+
     tenant_id: str
     app_id: str
 
@@ -40,6 +46,13 @@ class OutputModeration(BaseModel):
         description="Injected app moderation use case; None preserves the legacy factory fallback",
     )
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    _evaluation_lock: threading.RLock = PrivateAttr(default_factory=threading.RLock)
+    _error: Exception | None = PrivateAttr(default=None)
+
+    @property
+    def error(self) -> Exception | None:
+        """Return the latched evaluation failure, or None before any failed check."""
+        return self._error
 
     def should_direct_output(self) -> bool:
         return self.final_output is not None
@@ -93,6 +106,7 @@ class OutputModeration(BaseModel):
             self.thread_running = False
 
     def worker(self, flask_app: Flask, buffer_size: int):
+        """Check growing output until stopped; publish failed evaluation as a terminal queue error."""
         with flask_app.app_context():
             current_length = 0
             while self.thread_running:
@@ -106,9 +120,14 @@ class OutputModeration(BaseModel):
 
                 current_length = buffer_length
 
-                result = self.moderation(
-                    tenant_id=self.tenant_id, app_id=self.app_id, moderation_buffer=moderation_buffer
-                )
+                try:
+                    result = self.moderation(
+                        tenant_id=self.tenant_id, app_id=self.app_id, moderation_buffer=moderation_buffer
+                    )
+                except Exception as error:
+                    self.thread_running = False
+                    self.queue_manager.publish_error(error, PublishFrom.TASK_PIPELINE)
+                    return
 
                 if not result or not result.flagged:
                     continue
@@ -132,8 +151,16 @@ class OutputModeration(BaseModel):
                     break
 
     def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> ModerationOutputsResult | None:
+        """Evaluate output with terminal failure retention; unbound legacy callers keep their existing fallback."""
         if self.output_evaluator is not None:
-            return self.output_evaluator(moderation_buffer)
+            with self._evaluation_lock:
+                if self._error is not None:
+                    raise self._error
+                try:
+                    return self.output_evaluator(moderation_buffer)
+                except Exception as error:
+                    self._error = error
+                    raise
         try:
             moderation_factory = ModerationFactory(
                 name=self.rule.type, app_id=app_id, tenant_id=tenant_id, config=self.rule.config

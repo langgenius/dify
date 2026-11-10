@@ -90,6 +90,11 @@ App generation binds the shared scope before input and output work starts. A
 direct legacy caller without a bound scope retains the factory fallback; it is
 not used by app generation and cannot share platform verdicts.
 
+The plugin `/invoke/app` entry also binds a fresh scope before dispatching to
+the app generator. Invocation validates tenant ownership before model work;
+copied producer contexts and captured output evaluators retain that scope after
+dispatch returns. Nested or subsequent requests never inherit its verdicts.
+
 Sharing is process-local. Remote Agent LLM gateway calls do not inherit the app
 session, so their outputs retain independent app checks unless trusted delivery
 provenance is available locally. A client-provided approval flag must never be
@@ -126,6 +131,14 @@ never expose platform credentials or plugin diagnostics to clients. Provider
 generation failures retain their existing classification. Approved segments
 remain visible; neither error delivers the rejected or unchecked segment.
 An enabled matching app rule may render a rejection as described above.
+
+App output evaluation failures use the same `moderation_unavailable` contract.
+The background worker publishes a terminal error and the response pipeline stops
+consuming queued output, persists the message's error status, and emits the
+existing error event. Final checks share a serialized evaluator and retain the
+first failure: a later successful retry cannot turn an unavailable check into
+approval. Already delivered app-level output is not retracted by this error;
+platform model guards continue to check segments before delivery.
 
 ## Model invocation
 

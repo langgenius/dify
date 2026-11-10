@@ -289,13 +289,27 @@ def evaluate_app_output(session: ModerationSession, app_config: AppConfig, text:
 
 
 def app_output_evaluator(app_config: AppConfig) -> Callable[[str], ModerationOutputsResult | None] | None:
-    """Capture an active scope for the app output worker; unrelated apps retain their own checks."""
+    """Capture an active scope and adapt output failures to a safe invocation error.
+
+    Unrelated apps receive no evaluator. Backend and configuration failures are
+    never approvals or preset replies; provider diagnostics remain in logs only.
+    """
     session = current_moderation_session(app_config.tenant_id)
     rule = app_config.sensitive_word_avoidance
     if session is None or session.app_id != app_config.app_id or rule is None:
         return None
 
-    return lambda text: evaluate_app_output(session, app_config, text)
+    def evaluate(text: str) -> ModerationOutputsResult | None:
+        """Evaluate the captured app rule and preserve its verdict or safe failure classification."""
+        try:
+            return evaluate_app_output(session, app_config, text)
+        except ModerationUnavailableInvocationError:
+            raise
+        except Exception as error:
+            logger.exception("App output moderation failed. tenant_id=%s app_id=%s", session.tenant_id, session.app_id)
+            raise ModerationUnavailableInvocationError() from error
+
+    return evaluate
 
 
 def app_rejection_replacement(app_config: AppConfig, error: Exception) -> tuple[str, str] | None:
