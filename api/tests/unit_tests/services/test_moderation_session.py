@@ -63,3 +63,29 @@ def test_approved_output_is_an_exact_stream_prefix_not_a_substring_or_compositio
     assert not session.approved_output("safe answerother")
     assert not session.approved_output("unsafe")
     assert not ModerationSession("tenant-2", "app-1").approved_output("safe")
+
+
+def test_cached_verdicts_do_not_approve_unknown_or_failed_checks() -> None:
+    session = ModerationSession("tenant-1", "app-1")
+    session.check("approved", "input", lambda: None)
+    assert session.cached_verdict("approved", "input") is False
+    assert session.cached_verdict("approved", "output") is None
+    assert session.cached_verdict("unknown", "input") is None
+
+    def reject() -> None:
+        raise ModerationRejectedError("output", "Blocked")
+
+    with pytest.raises(ModerationRejectedError):
+        session.check("blocked", "output", reject)
+    assert session.cached_verdict("blocked", "output") is True
+    assert session.cached_verdict("blocked", "input") is None
+
+    def unavailable() -> None:
+        raise RuntimeError("Unavailable")
+
+    with pytest.raises(RuntimeError):
+        session.check("unchecked", "output", unavailable)
+    assert session.cached_verdict("unchecked", "output") is None
+    session.record_output(object(), "safe answer")
+    assert session.cached_verdict("safe", "output") is False
+    assert session.cached_verdict("answer", "output") is None

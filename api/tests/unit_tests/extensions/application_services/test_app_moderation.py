@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from threading import Event, Thread
 from time import perf_counter
 from typing import override
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
@@ -34,7 +35,9 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.queue_entities import QueueAdvancedChatMessageEndEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from core.app.entities.task_entities import MessageReplaceStreamResponse, MessageStreamResponse
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
+from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
 from core.model_context import get_app_moderation_runtime
+from core.model_manager import ModelInstance, ModelManager
 from core.moderation.base import ModerationAction, ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.moderation.openai_moderation.openai_moderation import OpenAIModeration
@@ -60,6 +63,7 @@ from graphon.runtime import RuntimeState
 from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
+from models.provider import ProviderType
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
@@ -362,7 +366,8 @@ def test_shared_app_checks_use_default_replies_for_blank_presets(
     rule = config.sensitive_word_avoidance
     assert rule is not None
     rule.config[f"{phase}s_config"]["preset_response"] = response
-    with app_moderation_scope("tenant-1", "app-1"):
+    with app_moderation_scope("tenant-1", "app-1") as session:
+        session.app_platform_checks_enabled = True
         build_llm_moderation_guard(
             AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
             service=service,
@@ -418,7 +423,7 @@ def test_scope_is_isolated_and_shared_with_copied_worker_contexts() -> None:
     "edition", [DeploymentEdition.CLOUD, DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE]
 )
 @pytest.mark.parametrize("enabled", [False, True])
-def test_workflow_app_sharing_requires_cloud_and_the_global_switch(
+def test_workflow_app_configuration_never_admits_hosted_checks(
     config_overrides: Callable[..., None], edition: DeploymentEdition, enabled: bool
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=edition, HOSTED_MODERATION_ENABLED=enabled)
@@ -438,9 +443,137 @@ def test_workflow_app_sharing_requires_cloud_and_the_global_switch(
     )
     with app_moderation_scope("tenant-1", "app-1") as session:
         configure_app_moderation(entity)
-        expected = enabled and edition == DeploymentEdition.CLOUD
-        assert session.enabled is expected
+        assert not session.enabled
+        assert not session.app_platform_checks_enabled
         assert (app_output_evaluator(config) is not None) is True
+
+
+@pytest.mark.parametrize("advanced", [False, True])
+@pytest.mark.parametrize("credit_model", [False, True])
+@pytest.mark.parametrize("enabled", [False, True])
+@pytest.mark.parametrize(
+    "edition", [DeploymentEdition.CLOUD, DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE]
+)
+def test_app_moderation_silently_skips_ineligible_checks_without_tenant_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    advanced: bool,
+    credit_model: bool,
+    enabled: bool,
+    edition: DeploymentEdition,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition, HOSTED_MODERATION_ENABLED=enabled)
+    platform_model = credit_model and enabled and edition == DeploymentEdition.CLOUD
+    tenant_factory = Mock(side_effect=AssertionError("App moderation must not resolve a tenant provider"))
+    monkeypatch.setattr(ModelManager, "for_tenant", tenant_factory)
+    tenant_service_factory = Mock(side_effect=AssertionError("App model moderation must not use the tenant backend"))
+    monkeypatch.setattr("extensions.application_services.app_moderation._app_service", tenant_service_factory)
+    gateway = RecordingGateway()
+    hosted_factory = Mock(return_value=ModerationService(gateway=gateway))
+    monkeypatch.setattr("extensions.application_services.moderation.build_platform_moderation_service", hosted_factory)
+    model = make_model_config(provider="test-provider", model="test-model", mode="chat")
+    model.provider_model_bundle.configuration.tenant_id = "tenant-1"
+    if credit_model:
+        provider = model.provider_model_bundle.configuration
+        provider.using_provider_type = ProviderType.SYSTEM
+        provider.system_configuration.current_quota_type = ProviderQuotaType.PAID
+        provider.system_configuration.quota_configurations = [
+            QuotaConfiguration(
+                quota_type=ProviderQuotaType.PAID,
+                quota_unit=QuotaUnit.CREDITS,
+                quota_limit=100,
+                quota_used=0,
+                is_valid=True,
+            )
+        ]
+    config = app_config()
+    if advanced:
+        config.app_mode = AppMode.ADVANCED_CHAT
+        entity = AdvancedChatAppGenerateEntity(
+            task_id="task-1",
+            app_config=WorkflowUIBasedAppConfig(**config.model_dump(), workflow_id="workflow-1"),
+            query="safe input",
+            inputs={},
+            files=[],
+            user_id="account-1",
+            stream=True,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+    else:
+        entity = ChatAppGenerateEntity(
+            task_id="task-1",
+            app_config=EasyUIBasedAppConfig(
+                **config.model_dump(),
+                app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+                app_model_config_dict={},
+                model=ModelConfigEntity(provider="test-provider", model="test-model"),
+                prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+            ),
+            model_conf=model,
+            query="safe input",
+            inputs={},
+            files=[],
+            user_id="account-1",
+            stream=True,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+    with app_moderation_scope("tenant-1", "app-1") as session:
+        configure_app_moderation(entity)
+        assert session.app_platform_checks_enabled is (platform_model and not advanced)
+        flagged, inputs, query = InputModeration().check(
+            app_id="app-1",
+            tenant_id="tenant-1",
+            app_config=config,
+            inputs={},
+            query="safe input",
+            message_id="message-1",
+            trace_scope=None,
+        )
+        assert not flagged
+        assert inputs == {}
+        assert query == "safe input"
+        runtime = get_app_moderation_runtime()
+        assert runtime is not None
+        if not session.enabled:
+            assert runtime.check_openai("tenant-1", "app-1", {"text": "blocked"}, "input") is False
+            assert runtime.check_openai("tenant-1", "app-1", {"text": "blocked"}, "output") is False
+            rule = config.sensitive_word_avoidance
+            assert rule is not None
+            backend = OpenAIModeration(app_id="app-1", tenant_id="tenant-1", config=rule.config)
+            assert not backend.moderation_for_inputs({}, "blocked").flagged
+            assert not backend.moderation_for_outputs("blocked").flagged
+        if advanced and platform_model:
+            guard = ModelInstance(model.provider_model_bundle, "test-model", credentials={}).moderation
+            assert guard is not None
+            guard.check_inputs([UserPromptMessage(content="credit input")])
+            guard.check_result(
+                LLMResult(
+                    model="test-model",
+                    message=AssistantPromptMessage(content="credit output"),
+                    usage=LLMUsage.empty_usage(),
+                )
+            )
+            assert session.enabled
+            assert not session.app_platform_checks_enabled
+            shared = evaluate_app_output(session, config, "credit output")
+            assert shared is not None
+            assert not shared.flagged
+        evaluator = app_output_evaluator(config)
+        assert evaluator is not None
+        result = evaluator("unrelated custom model output")
+        assert result is not None
+        assert not result.flagged
+        assert result.text == "unrelated custom model output"
+        assert result.preset_response == ""
+    tenant_factory.assert_not_called()
+    tenant_service_factory.assert_not_called()
+    if platform_model and not advanced:
+        assert gateway.calls == [("safe input", "input"), ("unrelated custom model output", "output")]
+    else:
+        if platform_model:
+            assert gateway.calls == [("credit input", "input"), ("credit output", "output")]
+        else:
+            hosted_factory.assert_not_called()
 
 
 def test_runtime_does_not_share_output_checks_or_presets_with_another_app() -> None:

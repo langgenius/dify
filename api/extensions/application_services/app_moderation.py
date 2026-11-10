@@ -11,7 +11,6 @@ from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
 from core.app.entities.app_invoke_entities import AppGenerateEntity, EasyUIBasedAppGenerateEntity
 from core.model_context import get_app_moderation_runtime, use_app_moderation_runtime
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
-from enums import DeploymentEdition
 from machinery.context import AppRequestContext
 from models.model import App, AppMode
 from services.moderation_invocation_errors import (
@@ -107,30 +106,43 @@ def with_app_moderation_scope[**Parameters, ResultT](
 
 
 def check_app_openai(tenant_id: str, app_id: str, inputs: Mapping[str, object], phase: ModerationPhase) -> bool | None:
-    """Reuse an active platform route for an app rule; None preserves independent app moderation."""
+    """Handle a matching app rule without tenant fallback; None denotes an unrelated or unbound caller."""
     session = current_moderation_session(tenant_id)
-    if session is None or not session.enabled or session.app_id != app_id:
+    if session is None or session.app_id != app_id:
         return None
-    check = build_app_openai_checker(session, phase)
-    return any(check(str(value)) for value in inputs.values())
+    return _app_openai_verdict(session, inputs, phase)
+
+
+def _app_openai_verdict(session: ModerationSession, inputs: Mapping[str, object], phase: ModerationPhase) -> bool:
+    """Use hosted credentials only for an admitted app model, otherwise read existing verdicts without I/O.
+
+    Workflow model admission never authorizes new platform checks for unrelated
+    app content. Ineligible app checks silently do nothing, without provider lookup,
+    credit accounting, replacement, or a tenant moderation backend fallback.
+    """
+    if not session.enabled:
+        return False
+    if session.app_platform_checks_enabled:
+        check = build_app_openai_checker(session, phase)
+        return any(check(str(value)) for value in inputs.values())
+    verdicts = [session.cached_verdict(str(value), phase) for value in inputs.values()]
+    return any(verdict is True for verdict in verdicts)
 
 
 def configure_app_moderation(entity: AppGenerateEntity) -> None:
-    """Activate sharing for the trusted main model, or the workflow's explicit app OpenAI rule."""
+    """Admit app-level hosted checks only for a trusted main AI-credit model.
+
+    Workflows have no single admitted model at this boundary. Their model guards
+    may later contribute reusable verdicts, but cannot fund new checks of unrelated app content.
+    """
     from extensions.application_services.moderation import platform_moderation_enabled
 
     session = current_moderation_session(entity.app_config.tenant_id)
     if session is not None and session.app_id == entity.app_config.app_id:
-        if isinstance(entity, EasyUIBasedAppGenerateEntity):
-            session.enabled = platform_moderation_enabled(entity.model_conf.provider_model_bundle)
-        else:
-            rule = entity.app_config.sensitive_word_avoidance
-            session.enabled = (
-                dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
-                and dify_config.HOSTED_MODERATION_ENABLED
-                and rule is not None
-                and rule.type == "openai_moderation"
-            )
+        session.app_platform_checks_enabled = isinstance(entity, EasyUIBasedAppGenerateEntity) and (
+            platform_moderation_enabled(entity.model_conf.provider_model_bundle)
+        )
+        session.enabled = session.app_platform_checks_enabled
 
 
 def build_app_openai_checker(
@@ -242,10 +254,9 @@ def evaluate_app_input(
         return ModerationInputsResult(
             flagged=False, action=ModerationAction.DIRECT_OUTPUT, inputs=dict(inputs), query=query
         )
-    if rule.type == "openai_moderation" and session.enabled:
+    if rule.type == "openai_moderation":
         values = {**inputs, "query__": query} if query else dict(inputs)
-        check = build_app_openai_checker(session, "input")
-        flagged = any(check(str(value)) for value in values.values())
+        flagged = _app_openai_verdict(session, values, "input")
         preset_response = _platform_rejection_response(app_config, "input") if flagged else ""
         return ModerationInputsResult(
             flagged=flagged,
@@ -272,8 +283,8 @@ def evaluate_app_output(session: ModerationSession, app_config: AppConfig, text:
         return None
     if not _phase_enabled(rule, "output"):
         return ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
-    if rule.type == "openai_moderation" and session.enabled:
-        flagged = build_app_openai_checker(session, "output")(text)
+    if rule.type == "openai_moderation":
+        flagged = _app_openai_verdict(session, {"text": text}, "output")
         preset_response = _platform_rejection_response(app_config, "output") if flagged else ""
         return ModerationOutputsResult(
             flagged=flagged,

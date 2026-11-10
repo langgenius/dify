@@ -4,6 +4,10 @@ Only exact input segments and prefixes of approved model streams are reusable.
 Substring matching, cross-invocation reuse, and caching unavailable checks are
 forbidden. A session belongs to one admitted tenant/app and is safe across its
 producer and response-consumer threads.
+
+Platform model admission enables verdict sharing, not platform funding of new
+app checks. Only a trusted main AI-credit model may admit those app checks;
+workflow nodes cannot authorize checks of unrelated app content.
 """
 
 from collections.abc import Callable
@@ -20,6 +24,7 @@ class ModerationSession:
         self.tenant_id = tenant_id
         self.app_id = app_id
         self.enabled = False
+        self.app_platform_checks_enabled = False
         self._lock = RLock()
         self._decisions: dict[tuple[ModerationPhase, str], ModerationRejectedError | None] = {}
         self._streams: dict[object, str] = {}
@@ -45,6 +50,20 @@ class ModerationSession:
         """Record only model text approved before delivery, using one identity per model response."""
         with self._lock:
             self._streams[stream] = self._streams.get(stream, "") + text
+
+    def cached_verdict(self, text: str, phase: ModerationPhase) -> bool | None:
+        """Read a same-phase verdict without I/O; None means the text has no reusable decision.
+
+        Approved output prefixes may reuse their model stream's decision. Other
+        content requires an exact cached check; unavailable checks are never cached.
+        """
+        with self._lock:
+            key = (phase, text)
+            if key in self._decisions:
+                return self._decisions[key] is not None
+            if phase == "output" and self.approved_output(text):
+                return False
+            return None
 
     def approved_output(self, text: str) -> bool:
         """Recognize a prefix of one approved model response, never an arbitrary substring or composition."""

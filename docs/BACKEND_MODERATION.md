@@ -18,8 +18,10 @@ configured replacement behavior.
 defaults to false. It takes effect only when `DEPLOYMENT_EDITION=CLOUD`, matching
 the edition boundary used to assemble AI Credits quotas. Non-Cloud deployments
 ignore the switch. When disabled or outside Cloud, no automatic policy is
-constructed or injected. Explicit model policies and independent app-level
-moderation remain available in every edition.
+constructed or injected. Explicit model policies and app-level keyword/API
+moderation remain available in every edition. App-level Model Moderation is a
+silent no-op when the model is not admitted for automatic AI-credit moderation;
+enabling its app configuration does not select a tenant moderation provider.
 
 When enabled,
 Cloud LLMs using a system provider with a current `TRIAL` or `PAID`
@@ -86,6 +88,17 @@ cause another OpenAI request. Arbitrary substrings, modified outputs, and
 concatenations from unrelated streams are not treated as approved. No verdicts
 are reused across app invocations or tenants.
 
+App-level checks may proactively use platform credentials only when the app's
+trusted main model qualifies for automatic AI-credit moderation. Enabling an
+OpenAI app rule or the Cloud switch alone does not admit hosted checks. A
+workflow has no single main model: each eligible model contributes its own
+verdicts after assembly. Before model admission, or when app content has no
+reusable platform verdict, the app model check silently does nothing. It never
+falls back to a tenant moderation provider, incurs moderation credits, or raises
+missing-plugin/credential errors for these skipped checks. Mixed credit/custom-key
+workflows may reuse existing verdicts, but never use hosted credentials to check
+unrelated content from custom-key nodes. Keyword and API app rules remain unchanged.
+
 App generation binds the shared scope before input and output work starts. A
 direct legacy caller without a bound scope retains the factory fallback; it is
 not used by app generation and cannot share platform verdicts.
@@ -96,9 +109,10 @@ copied producer contexts and captured output evaluators retain that scope after
 dispatch returns. Nested or subsequent requests never inherit its verdicts.
 
 Sharing is process-local. Remote Agent LLM gateway calls do not inherit the app
-session, so their outputs retain independent app checks unless trusted delivery
-provenance is available locally. A client-provided approval flag must never be
-used to skip platform or app checks across that boundary.
+session; local App Model Moderation cannot issue hosted or tenant checks without
+admission and cannot infer reusable verdicts from remote text. Other configured
+app rules remain independent. A client-provided approval flag must never be used
+to skip platform checks across that boundary.
 
 An enabled app OpenAI rule uses its nonblank phase-specific preset when the
 platform rejects content. Chatbot, Chatflow, and legacy Agent Chat use the
