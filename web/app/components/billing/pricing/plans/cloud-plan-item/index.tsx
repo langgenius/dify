@@ -47,9 +47,9 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
   const isYearly = billingInterval === 'year'
   const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === 'sandbox'
-  const isPromotedUpgrade =
+  const isPrimaryAction =
     (currentPlan === 'sandbox' && plan === 'professional') ||
-    (currentPlan === 'professional' && plan === 'team')
+    ((currentPlan === 'professional' || currentPlan === 'team') && plan === 'team')
   const isMostPopularPlan = plan === 'professional'
   const planInfo = ALL_PLANS[plan]
   const isCurrent = plan === currentPlan
@@ -179,7 +179,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
               <span>{t(($) => $['plansCommon.currentPlan'], { ns: 'billing' })}</span>
             )}
             {isMostPopularPlan && (
-              <div className="flex h-[26px] items-center rounded-sm bg-state-accent-hover-alt px-2 text-xs leading-[15px] font-semibold text-text-accent uppercase">
+              <div className="flex h-[26px] items-center rounded-sm bg-state-accent-hover-alt px-2 text-xs leading-[15px] font-semibold text-text-accent uppercase dark:bg-state-accent-hover-alt/85">
                 <span>{t(($) => $['plansCommon.mostPopular'], { ns: 'billing' })}</span>
               </div>
             )}
@@ -225,9 +225,11 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
                 disabled={isPlanDisabled}
                 className={cn(
                   'h-auto min-h-15 w-full rounded-lg border p-3 text-2xl leading-[30px] font-medium whitespace-normal shadow-none disabled:cursor-default',
-                  isPromotedUpgrade
+                  isPrimaryAction
                     ? 'border-saas-dify-blue-static bg-saas-dify-blue-static text-white enabled:hover:bg-saas-dify-blue-static-hover'
-                    : 'border-(--pricing-button-border) bg-(--pricing-button-bg) text-(--pricing-muted) enabled:hover:bg-components-button-secondary-bg-hover',
+                    : canManageBilling
+                      ? 'border-text-accent bg-transparent text-text-accent enabled:hover:bg-state-accent-hover-alt'
+                      : 'border-(--pricing-button-border) bg-(--pricing-button-bg) text-(--pricing-muted) enabled:hover:bg-components-button-secondary-bg-hover',
                 )}
                 onClick={handlePlanButtonClick}
               >

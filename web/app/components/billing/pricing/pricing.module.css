@@ -1,27 +1,27 @@
 @font-face {
   font-family: PricingInter;
-  src: url('/pricing/inter-variable.woff2') format('woff2');
-  font-weight: 100 900;
+  src: url('./assets/inter-variable.woff2') format('woff2');
+  font-weight: 400 600;
   font-display: swap;
 }
 
 @font-face {
   font-family: PricingSohne;
-  src: url('/pricing/soehne-buch.woff2') format('woff2');
+  src: url('./assets/soehne-buch.woff2') format('woff2');
   font-weight: 400;
   font-display: swap;
 }
 
 @font-face {
   font-family: PricingSohne;
-  src: url('/pricing/soehne-kraftig.woff2') format('woff2');
+  src: url('./assets/soehne-kraftig.woff2') format('woff2');
   font-weight: 500;
   font-display: swap;
 }
 
 @font-face {
   font-family: PricingSohne;
-  src: url('/pricing/soehne-halbfett.woff2') format('woff2');
+  src: url('./assets/soehne-halbfett.woff2') format('woff2');
   font-weight: 600 700;
   font-display: swap;
 }
@@ -62,7 +62,14 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: url('/pricing/background.webp') -830px -806px / 3905.51px 2196.849px no-repeat;
+  background: url('./assets/background.webp') -830px -806px / 3905.51px 2196.849px no-repeat;
   content: '';
   pointer-events: none;
+}
+
+.logo {
+  background-image: var(--pricing-logo-light);
+}
+:global(html[data-theme='dark']) .logo {
+  background-image: url('./assets/logo-dark.svg');
 }

@@ -16,7 +16,7 @@ import styles from './pricing.module.css'
 type BillingInterval = GetBillingSubscriptionData['query']['interval']
 
 const intervalOptionClassName =
-  'relative flex min-w-0 flex-1 cursor-pointer flex-wrap items-center justify-center gap-1 rounded-full px-3 py-1 text-lg leading-6 font-medium text-(--pricing-subdued) focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-text-accent data-checked:text-(--pricing-ink) sm:min-w-[190px] sm:flex-none sm:px-6 sm:text-2xl sm:leading-[30px]'
+  'relative flex min-w-0 flex-1 cursor-pointer flex-wrap items-center justify-center gap-1 rounded-full px-3 py-1 text-lg leading-6 font-medium text-(--pricing-subdued) outline-state-accent-solid focus-visible:outline-2 focus-visible:outline-offset-2 forced-colors:data-checked:underline data-checked:text-(--pricing-ink) sm:min-w-[190px] sm:flex-none sm:px-6 sm:text-2xl sm:leading-[30px]'
 
 export function PricingContent() {
   const { t } = useTranslation(['appApi', 'billing', 'common'])
