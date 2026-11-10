@@ -25,13 +25,6 @@ export const zAccessTokenResultResponse = z.object({
 })
 
 /**
- * AccountAvatarQuery
- */
-export const zAccountAvatarQuery = z.object({
-  avatar: z.string(),
-})
-
-/**
  * AccountProfilePatchPayload
  */
 export const zAccountProfilePatchPayload = z
@@ -110,13 +103,6 @@ export const zAppSelectorScope = z.enum(['all', 'chat', 'completion', 'workflow'
  */
 export const zAudioToTextResponse = z.object({
   text: z.string(),
-})
-
-/**
- * AvatarUrlResponse
- */
-export const zAvatarUrlResponse = z.object({
-  avatar_url: z.string(),
 })
 
 /**
@@ -2411,14 +2397,6 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
- * WebAccountAvatarUploadResponse
- */
-export const zWebAccountAvatarUploadResponse = z.object({
-  avatar_url: z.string(),
-  id: z.string(),
-})
-
-/**
  * WebAccountPasswordPayload
  */
 export const zWebAccountPasswordPayload = z
@@ -3186,24 +3164,6 @@ export const zWebMessageInfiniteScrollPaginationWritable = z.object({
   has_more: z.boolean(),
   limit: z.int(),
 })
-
-export const zGetAccountAvatarQuery = z.object({
-  avatar: z.string(),
-})
-
-/**
- * Owned avatar URL
- */
-export const zGetAccountAvatarResponse = zAvatarUrlResponse
-
-export const zPostAccountAvatarBody = z.object({
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-})
-
-/**
- * Avatar uploaded
- */
-export const zPostAccountAvatarResponse = zWebAccountAvatarUploadResponse
 
 export const zPostAccountChangeEmailBody = zChangeEmailSendPayload
 

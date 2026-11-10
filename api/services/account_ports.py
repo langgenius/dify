@@ -11,7 +11,6 @@ from services.entities.account_access_entities import (
 )
 from services.entities.account_entities import (
     AccountAuthenticationSnapshot,
-    AccountAvatarUpload,
     AccountCredentials,
     AccountDeletionChallenge,
     AccountEmailResetResult,
@@ -102,15 +101,6 @@ class AccountTokenCacheInvalidator(Protocol):
 
 class AccountAvatarFileGateway(Protocol):
     def get_owned_signed_url(self, *, account_id: str, upload_file_id: str) -> str | None: ...
-
-    def upload(self, *, account_id: str, filename: str, content: bytes) -> AccountAvatarUpload:
-        """Store a validated image owned only by account_id, without a tenant or profile mutation.
-
-        The adapter enforces image decoding, extension restrictions and size limits
-        before storage. File-policy failures leave persistence unchanged. Each file
-        receives a unique ID, so concurrent uploads never overwrite one another.
-        """
-        ...
 
 
 class AccountPasswordHasher(Protocol):

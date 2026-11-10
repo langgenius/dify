@@ -203,7 +203,7 @@ class FileService:
             mime_type=upload_file.mime_type,
             created_by=upload_file.created_by,
             created_at=upload_file.created_at,
-            tenant_id=resource_tenant_id,
+            tenant_id=upload_file.tenant_id,
             source_url=upload_file.source_url,
         )
 

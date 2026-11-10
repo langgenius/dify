@@ -512,7 +512,6 @@ class TestFileService:
 
         db_session_with_containers.commit()
 
-        assert upload_file.tenant_id is not None
         result = FileService(engine).get_file_preview(file_id=upload_file.id, tenant_id=upload_file.tenant_id)
 
         assert result == "extracted text content"
@@ -547,7 +546,6 @@ class TestFileService:
 
         db_session_with_containers.commit()
 
-        assert upload_file.tenant_id is not None
         with pytest.raises(UnsupportedFileTypeError):
             FileService(engine).get_file_preview(file_id=upload_file.id, tenant_id=upload_file.tenant_id)
 
@@ -572,7 +570,6 @@ class TestFileService:
         long_text = "x" * 5000  # Longer than PREVIEW_WORDS_LIMIT
         mock_external_service_dependencies["extract_processor"].load_from_upload_file.return_value = long_text
 
-        assert upload_file.tenant_id is not None
         result = FileService(engine).get_file_preview(file_id=upload_file.id, tenant_id=upload_file.tenant_id)
 
         assert len(result) == 3000  # PREVIEW_WORDS_LIMIT

@@ -11,7 +11,6 @@ from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
 from controllers.common.account import (
-    AccountAvatarQuery,
     AccountProfilePatchPayload,
     ChangeEmailResetPayload,
     ChangeEmailSendPayload,
@@ -93,6 +92,10 @@ class AccountInitPayload(BaseModel):
     @classmethod
     def validate_timezone(cls, value: str) -> str:
         return timezone(value)
+
+
+class AccountAvatarQuery(BaseModel):
+    avatar: str = Field(..., description="Avatar file ID")
 
 
 class AccountPasswordPayload(BaseModel):

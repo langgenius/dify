@@ -489,7 +489,6 @@ class TestBuildDatasetToolImageContents:
         from core.tools.entities.tool_entities import ToolDescription, ToolEntity, ToolIdentity
         from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool as RetrievalTool
 
-        assert upload_file.tenant_id is not None
         tool = DatasetRetrieverTool(
             entity=ToolEntity(
                 identity=ToolIdentity(

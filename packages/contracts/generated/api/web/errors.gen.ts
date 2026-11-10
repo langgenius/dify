@@ -742,48 +742,39 @@ const zWorkflowNotActiveError = /* @__PURE__ */ (() =>
   ))()
 
 export const postErrors = {
-  file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
-  file_too_large: { status: 413, data: zFileTooLargeError },
-  filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
-  no_file_uploaded: { status: 400, data: zNoFileUploadedError },
-  too_many_files: { status: 400, data: zTooManyFilesError },
-  unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  account_in_freeze: { status: 400, data: zAccountInFreezeError },
+  email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
+  email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
 }
 
 export const post2Errors = {
   account_in_freeze: { status: 400, data: zAccountInFreezeError },
   email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
   email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
-}
-
-export const post3Errors = {
-  account_in_freeze: { status: 400, data: zAccountInFreezeError },
-  email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
-  email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
   invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
 }
 
-export const post4Errors = {
+export const post3Errors = {
   email_change_limit: { status: 429, data: zEmailChangeLimitError },
   email_code_error: { status: 400, data: zEmailCodeError },
   invalid_email: { status: 400, data: zInvalidEmailError },
   invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
 }
 
-export const post5Errors = {
+export const post4Errors = {
   email_change_rate_limit_exceeded: { status: 429, data: zEmailChangeRateLimitExceededError },
   email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
   invalid_email: { status: 400, data: zInvalidEmailError },
   invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
 }
 
-export const post6Errors = {
+export const post5Errors = {
   current_password_incorrect: { status: 400, data: zCurrentPasswordIncorrectError },
   invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
   repeat_password_not_match: { status: 400, data: zRepeatPasswordNotMatchError },
 }
 
-export const post7Errors = {
+export const post6Errors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
   audio_too_large: { status: 413, data: zAudioTooLargeError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
@@ -796,9 +787,9 @@ export const post7Errors = {
   unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
 }
 
-export const post8Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const post7Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
 
-export const post9Errors = {
+export const post8Errors = {
   agent_not_published: { status: 400, data: zAgentNotPublishedError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
@@ -824,9 +815,9 @@ export const post9Errors = {
   webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
 }
 
-export const post10Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
+export const post9Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
 
-export const post11Errors = {
+export const post10Errors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
@@ -835,12 +826,12 @@ export const post11Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get3Errors = {
+export const get2Errors = {
   agent_not_published: { status: 400, data: zAgentNotPublishedError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
 }
 
-export const get4Errors = {
+export const get3Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
 }
@@ -858,14 +849,14 @@ export const putErrors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const get5Errors = {
+export const get4Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
   credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const post12Errors = {
+export const post11Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_credentials_unavailable: { status: 503, data: zConnectionCredentialsUnavailableError },
   connection_oauth_failed: { status: 400, data: zConnectionOauthFailedError },
@@ -878,7 +869,7 @@ export const post12Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const post13Errors = {
+export const post12Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_conflict: { status: 409, data: zConnectionConflictError },
   connection_credentials_unavailable: { status: 503, data: zConnectionCredentialsUnavailableError },
@@ -891,12 +882,12 @@ export const post13Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const get6Errors = {
+export const get5Errors = {
   agent_not_published: { status: 400, data: zAgentNotPublishedError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
 }
 
-export const post14Errors = {
+export const post13Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_credentials_unavailable: { status: 503, data: zConnectionCredentialsUnavailableError },
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
@@ -910,7 +901,7 @@ export const post14Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const get7Errors = {
+export const get6Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
   credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
@@ -924,7 +915,7 @@ export const delete_Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const get8Errors = {
+export const get7Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
@@ -941,12 +932,12 @@ export const patch2Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const get9Errors = {
+export const get8Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const post15Errors = {
+export const post14Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
   connection_credentials_unavailable: { status: 503, data: zConnectionCredentialsUnavailableError },
@@ -955,7 +946,7 @@ export const post15Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const post16Errors = {
+export const post15Errors = {
   conversation_first_message_not_found: {
     status: 404,
     data: zConversationFirstMessageNotFoundError,
@@ -979,24 +970,24 @@ export const delete2Errors = {
   not_chat_app: { status: 400, data: zNotChatAppError },
 }
 
-export const get10Errors = {
+export const get9Errors = {
   conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
   conversation_not_found: { status: 404, data: zConversationNotFoundError },
   not_chat_app: { status: 400, data: zNotChatAppError },
 }
 
-export const post17Errors = {
+export const post16Errors = {
   account_banned: { status: 400, data: zAccountBannedError },
   authentication_failed: { status: 401, data: zAuthenticationFailedError },
   email_code_error: { status: 400, data: zEmailCodeError },
   invalid_email: { status: 400, data: zInvalidEmailError },
 }
 
-export const post18Errors = {
+export const post17Errors = {
   authentication_failed: { status: 401, data: zAuthenticationFailedError },
 }
 
-export const post19Errors = {
+export const post18Errors = {
   file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
   file_too_large: { status: 413, data: zFileTooLargeError },
   filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
@@ -1005,26 +996,26 @@ export const post19Errors = {
   unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
 }
 
-export const post20Errors = {
+export const post19Errors = {
   authentication_failed: { status: 401, data: zAuthenticationFailedError },
   invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
   password_mismatch: { status: 400, data: zPasswordMismatchError },
 }
 
-export const post21Errors = {
+export const post20Errors = {
   email_code_error: { status: 400, data: zEmailCodeError },
   email_password_reset_limit: { status: 429, data: zEmailPasswordResetLimitError },
   invalid_email: { status: 400, data: zInvalidEmailError },
   invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
 }
 
-export const post22Errors = {
+export const post21Errors = {
   authentication_failed: { status: 401, data: zAuthenticationFailedError },
   email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
   password_reset_rate_limit_exceeded: { status: 429, data: zPasswordResetRateLimitExceededError },
 }
 
-export const post23Errors = {
+export const post22Errors = {
   human_input_access_delivery_failed: { status: 503, data: zHumanInputAccessDeliveryFailedError },
   human_input_access_rate_limit_exceeded: {
     status: 429,
@@ -1036,20 +1027,20 @@ export const post23Errors = {
   human_input_v2_unavailable: { status: 503, data: zHumanInputV2UnavailableError },
 }
 
-export const post24Errors = {
+export const post23Errors = {
   human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
   human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
   human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
   invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
 }
 
-export const get11Errors = {
+export const get10Errors = {
   human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
   human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
   human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
 }
 
-export const post25Errors = {
+export const post24Errors = {
   human_input_challenge_expired: { status: 400, data: zHumanInputChallengeExpiredError },
   human_input_challenge_stale: { status: 400, data: zHumanInputChallengeStaleError },
   human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
@@ -1061,35 +1052,55 @@ export const post25Errors = {
   workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
 }
 
-export const get12Errors = {
+export const get11Errors = {
   already_submitted: { status: 409, data: zAlreadySubmittedError },
   expired: { status: 410, data: zExpiredError },
 }
 
-export const post26Errors = {
+export const post25Errors = {
   already_submitted: { status: 409, data: zAlreadySubmittedError },
   expired: { status: 410, data: zExpiredError },
   invalid_input: { status: 400, data: zInvalidInputError },
   workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
 }
 
+export const post26Errors = {
+  human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+  human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+  web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+}
+
+export const get12Errors = {
+  human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+  human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+  web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+}
+
 export const post27Errors = {
-  human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
-  human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
-  web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
-}
-
-export const get13Errors = {
-  human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
-  human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
-  web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
-}
-
-export const post28Errors = {
   human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
   human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
   invalid_form_data: { status: 400, data: zInvalidFormDataError },
   web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+}
+
+export const post28Errors = {
+  file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+  file_too_large: { status: 413, data: zFileTooLargeError },
+  filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+  human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+  human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+  invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+  malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+  no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+  remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+  remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+  remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+  remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+  remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+  remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+  too_many_files: { status: 400, data: zTooManyFilesError },
+  unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  upload_token_required: { status: 401, data: zUploadTokenRequiredError },
 }
 
 export const post29Errors = {
@@ -1097,6 +1108,7 @@ export const post29Errors = {
   file_too_large: { status: 413, data: zFileTooLargeError },
   filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
   human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+  human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
   human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
   invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
   malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
@@ -1134,44 +1146,23 @@ export const post30Errors = {
 }
 
 export const post31Errors = {
-  file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
-  file_too_large: { status: 413, data: zFileTooLargeError },
-  filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
-  human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
-  human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
-  human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
-  invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
-  malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
-  no_file_uploaded: { status: 400, data: zNoFileUploadedError },
-  remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
-  remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
-  remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
-  remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
-  remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
-  remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
-  too_many_files: { status: 400, data: zTooManyFilesError },
-  unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
-  upload_token_required: { status: 401, data: zUploadTokenRequiredError },
-}
-
-export const post32Errors = {
   account_banned: { status: 400, data: zAccountBannedError },
   authentication_failed: { status: 401, data: zAuthenticationFailedError },
 }
 
-export const get17Errors = { connection_not_found: { status: 404, data: zConnectionNotFoundError } }
+export const get16Errors = { connection_not_found: { status: 404, data: zConnectionNotFoundError } }
 
 export const delete5Errors = {
   connection_conflict: { status: 409, data: zConnectionConflictError },
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
 }
 
-export const post34Errors = {
+export const post33Errors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
   message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
 }
 
-export const get19Errors = {
+export const get18Errors = {
   app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
@@ -1181,7 +1172,7 @@ export const get19Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get20Errors = {
+export const get19Errors = {
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   app_suggested_questions_after_answer_disabled: {
     status: 403,
@@ -1195,34 +1186,34 @@ export const get20Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get21Errors = {
+export const get20Errors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
   not_chat_app: { status: 400, data: zNotChatAppError },
 }
 
-export const get22Errors = { app_unavailable: { status: 400, data: zAppUnavailableError } }
+export const get21Errors = { app_unavailable: { status: 400, data: zAppUnavailableError } }
 
-export const post35Errors = {
+export const post34Errors = {
   connection_claim_preflight_failed: { status: 400, data: zConnectionClaimPreflightFailedError },
   connection_claim_unavailable: { status: 503, data: zConnectionClaimUnavailableError },
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const get23Errors = {
+export const get22Errors = {
   agent_not_published: { status: 400, data: zAgentNotPublishedError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
 }
 
-export const get24Errors = {
+export const get23Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const post37Errors = {
+export const post36Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
   web_login_unavailable: { status: 503, data: zWebLoginUnavailableError },
 }
 
-export const post38Errors = {
+export const post37Errors = {
   file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
   file_too_large: { status: 413, data: zFileTooLargeError },
   remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
@@ -1234,7 +1225,7 @@ export const post38Errors = {
   unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
 }
 
-export const get25Errors = {
+export const get24Errors = {
   remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
   remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
   remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
@@ -1245,11 +1236,11 @@ export const get25Errors = {
 
 export const delete6Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
 
-export const get26Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
+export const get25Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
 
-export const post39Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
+export const post38Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
 
-export const post40Errors = {
+export const post39Errors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
@@ -1257,11 +1248,11 @@ export const post40Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get29Errors = { invalid_param: { status: 400, data: zInvalidParamError } }
+export const get28Errors = { invalid_param: { status: 400, data: zInvalidParamError } }
 
-export const get31Errors = { invalid_param: { status: 400, data: zInvalidParamError } }
+export const get30Errors = { invalid_param: { status: 400, data: zInvalidParamError } }
 
-export const post41Errors = {
+export const post40Errors = {
   completion_request_error: { status: 400, data: zCompletionRequestError },
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_conflict: { status: 409, data: zConnectionConflictError },
@@ -1289,4 +1280,4 @@ export const post41Errors = {
   webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
 }
 
-export const post42Errors = { not_workflow_app: { status: 400, data: zNotWorkflowAppError } }
+export const post41Errors = { not_workflow_app: { status: 400, data: zNotWorkflowAppError } }

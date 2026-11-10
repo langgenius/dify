@@ -10,10 +10,6 @@ from libs.helper import EmailStr, timezone
 from services.entities.account_entities import AccountProfileChanges
 
 
-class AccountAvatarQuery(BaseModel):
-    avatar: str = Field(..., description="Avatar file ID")
-
-
 class ChangeEmailSendPayload(BaseModel):
     email: EmailStr
     language: str | None = None

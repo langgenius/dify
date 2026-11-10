@@ -217,3 +217,12 @@ def test_email_uniqueness_and_freeze_policy(client: FlaskClient, transports: Acc
     transports.frozen["other@example.com"] = "frozen"
     assert client.post(PATHS[3], json={"email": "other@example.com"}).get_json()["code"] == "account_in_freeze"
     assert transports.completed == []
+
+
+def test_account_avatar_routes_are_not_exposed(client: FlaskClient) -> None:
+    """Keep personal avatar uploads and resolution outside the WebApp Account API."""
+    assert client.get("/api/account/avatar").status_code == 404
+    assert client.post("/api/account/avatar", data={}).status_code == 404
+    schema = client.get("/api/openapi.json").get_json()
+    assert "/account/avatar" not in schema["paths"]
+    assert "WebAccountAvatarUploadResponse" not in schema["components"]["schemas"]

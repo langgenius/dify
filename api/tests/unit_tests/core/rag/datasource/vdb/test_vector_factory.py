@@ -449,7 +449,6 @@ def test_create_multimodal_filters_missing_uploads(
     vector._embeddings.embed_multimodal_documents.return_value = [[0.1, 0.2]]
     vector._vector_processor = MagicMock()
     vector._session = sqlite_session
-    assert upload_file.tenant_id is not None
     vector._dataset = Dataset(tenant_id=upload_file.tenant_id, name="dataset", created_by=upload_file.created_by)
     monkeypatch.setattr(vector_factory_module.storage, "load_once", MagicMock(return_value=b"abc"))
 

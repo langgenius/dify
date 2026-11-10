@@ -97,11 +97,6 @@ Personal settings use the WebApp Account cookie, not an App passport or a Consol
 session. Mutations require the configured WebApp Origin. No workspace membership
 or Builder initialization is required.
 
-`POST /api/account/avatar` accepts one multipart image and returns its `id` and
-signed `avatar_url`; assign that ID with `PATCH /api/account/profile`. Personal
-uploads have no tenant ownership and remain readable through signed file URLs.
-Apply database migration `d72a3c8e519f` before using personal uploads.
-
 Email changes use `/api/account/change-email`, `/validity`, `/reset`, and
 `/check-email-unique`, with the same payloads and deployment policy as Console.
 Verify the current email before requesting a `new_email` challenge, verify that

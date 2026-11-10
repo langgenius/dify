@@ -9,14 +9,6 @@ from typing import Literal
 
 
 @dataclass(frozen=True, slots=True)
-class AccountAvatarUpload:
-    """An Account-owned image ready to be assigned through the profile endpoint."""
-
-    id: str
-    avatar_url: str
-
-
-@dataclass(frozen=True, slots=True)
 class AccountSnapshot:
     """Account data with independent profile and Builder lifecycle timestamps.
 

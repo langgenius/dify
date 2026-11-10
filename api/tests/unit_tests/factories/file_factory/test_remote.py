@@ -355,7 +355,6 @@ class TestBuildFromDatasourceFile:
         datasource_file = self._make_datasource_file(key="folder/data.csv", mime_type="text/csv")
         sqlite_session.add(datasource_file)
         sqlite_session.commit()
-        assert datasource_file.tenant_id is not None
         self._bind_session_factory(monkeypatch, sqlite_engine)
 
         access_controller = MagicMock()
@@ -389,7 +388,6 @@ class TestBuildFromDatasourceFile:
         datasource_file = self._make_datasource_file(key="dotless-key", mime_type="application/octet-stream")
         sqlite_session.add(datasource_file)
         sqlite_session.commit()
-        assert datasource_file.tenant_id is not None
         self._bind_session_factory(monkeypatch, sqlite_engine)
 
         access_controller = MagicMock()

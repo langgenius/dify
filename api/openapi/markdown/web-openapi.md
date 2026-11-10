@@ -12,43 +12,6 @@ Bearer format: API_KEY
 ## web
 Web application API operations
 
-### [GET] /account/avatar
-**Resolve an admitted Account's avatar; foreign and missing upload IDs return 404**
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| avatar | query | Avatar file ID | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Owned avatar URL | **application/json**: [AvatarUrlResponse](#avatarurlresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /account/avatar
-**Upload one image for a same-origin Account cookie; failures leave the profile unchanged**
-
-Upload an Account-owned image without a workspace. Assign its ID with PATCH /account/profile.
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Avatar uploaded | **application/json**: [WebAccountAvatarUploadResponse](#webaccountavataruploadresponse)<br> |
-| 400 | Bad Request | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
-| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [POST] /account/change-email
 **Send an old/new-email challenge for the cookie Account; no profile changes occur**
 
@@ -1831,12 +1794,6 @@ Returns Server-Sent Events stream.
 | data | [AccessTokenData](#accesstokendata) |  | Yes |
 | result | string |  | Yes |
 
-#### AccountAvatarQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar | string | Avatar file ID | Yes |
-
 #### AccountBannedError
 
 Account is banned.
@@ -1984,12 +1941,6 @@ Invalid email or password.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AuthenticationFailedError |  | Invalid email or password. |  |
-
-#### AvatarUrlResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | string |  | Yes |
 
 #### BinaryFileResponse
 
@@ -3725,13 +3676,6 @@ in form definition, or a variable while the workflow is running.
 | email | string |  | Yes |
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
-
-#### WebAccountAvatarUploadResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | string |  | Yes |
-| id | string |  | Yes |
 
 #### WebAccountPasswordPayload
 

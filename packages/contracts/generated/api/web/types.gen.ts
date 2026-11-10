@@ -17,10 +17,6 @@ export type AccessTokenResultResponse = {
   result: string
 }
 
-export type AccountAvatarQuery = {
-  avatar: string
-}
-
 export type AccountBannedError = ErrorResponse & {
   code: 'account_banned'
   status: 400
@@ -125,10 +121,6 @@ export type AudioTooLargeError = ErrorResponse & {
 export type AuthenticationFailedError = ErrorResponse & {
   code: 'authentication_failed'
   status: 401
-}
-
-export type AvatarUrlResponse = {
-  avatar_url: string
 }
 
 export type BinaryFileResponse = Blob | File
@@ -1421,11 +1413,6 @@ export type VerificationTokenResponse = {
   token: string
 }
 
-export type WebAccountAvatarUploadResponse = {
-  avatar_url: string
-  id: string
-}
-
 export type WebAccountPasswordPayload = {
   new_password: string
   password?: string
@@ -2065,56 +2052,6 @@ export type WebMessageListItemWritable = {
   status: string
   total_price?: string | null
 }
-
-export type GetAccountAvatarData = {
-  body?: never
-  path?: never
-  query: {
-    avatar: string
-  }
-  url: '/account/avatar'
-}
-
-export type GetAccountAvatarErrors = {
-  default: ErrorResponse
-}
-
-export type GetAccountAvatarError = GetAccountAvatarErrors[keyof GetAccountAvatarErrors]
-
-export type GetAccountAvatarResponses = {
-  200: AvatarUrlResponse
-}
-
-export type GetAccountAvatarResponse = GetAccountAvatarResponses[keyof GetAccountAvatarResponses]
-
-export type PostAccountAvatarData = {
-  body: {
-    file: Blob | File
-  }
-  path?: never
-  query?: never
-  url: '/account/avatar'
-}
-
-export type PostAccountAvatarErrors = {
-  400:
-    | FileExtensionBlockedError
-    | FilenameNotExistsError
-    | NoFileUploadedError
-    | TooManyFilesError
-    | ErrorResponse
-  413: FileTooLargeError | ErrorResponse
-  415: UnsupportedFileTypeError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountAvatarError = PostAccountAvatarErrors[keyof PostAccountAvatarErrors]
-
-export type PostAccountAvatarResponses = {
-  201: WebAccountAvatarUploadResponse
-}
-
-export type PostAccountAvatarResponse = PostAccountAvatarResponses[keyof PostAccountAvatarResponses]
 
 export type PostAccountChangeEmailData = {
   body: ChangeEmailSendPayload

@@ -2306,8 +2306,6 @@ class DatasetApiTokenBinding(Base):
 
 
 class UploadFile(TypeBase):
-    """Stored file metadata; a NULL tenant identifies an Account-owned personal upload."""
-
     __tablename__ = "upload_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="upload_file_pkey"),
@@ -2321,7 +2319,7 @@ class UploadFile(TypeBase):
         init=False,
         default_factory=lambda: str(uuid4()),
     )
-    tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     storage_type: Mapped[StorageType] = mapped_column(EnumText(StorageType, length=255), nullable=False)
     key: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -2362,7 +2360,7 @@ class UploadFile(TypeBase):
     def __init__(
         self,
         *,
-        tenant_id: str | None,
+        tenant_id: str,
         storage_type: StorageType,
         key: str,
         name: str,
