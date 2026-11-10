@@ -39,7 +39,8 @@ from services.file_service import FileService
 from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.quota_service import QuotaService
-from services.trigger.debug_service import TriggerDebugEventStore, TriggerDebugService
+from services.trigger.debug_service import TriggerDebugService
+from services.trigger.debug_store import TriggerDebugEventStore
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.event_gateway import PluginTriggerEventGateway

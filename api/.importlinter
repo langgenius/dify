@@ -1523,3 +1523,14 @@ forbidden_modules =
     core.db
     models.engine
 allow_indirect_imports = True
+
+[importlinter:contract:trigger-debug-repository-boundary]
+name = Trigger debug persistence depends on contracts rather than service implementations
+type = forbidden
+source_modules =
+    repositories.trigger.debug_repository
+forbidden_modules =
+    services.trigger.debug_service
+    services.trigger.schedule_service
+    services.trigger.webhook_service
+allow_indirect_imports = True
