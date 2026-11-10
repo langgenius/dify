@@ -120,6 +120,7 @@ const CONNECTION_PAGE_SIZE = 200
 const RESOURCE_PAGE_SIZE = 200
 const GITHUB_ROOT_PAGE_SIZE = 10
 const GITHUB_CHILD_PAGE_SIZE = 30
+const GITHUB_DIRECTORY_PAGE_SIZE = 100
 const MAX_SELECTION = 200
 const MAX_SOURCE_CURSOR_PAGES = 100
 
@@ -817,7 +818,10 @@ function ResourceConfiguration({
               source_id: previewSource?.id ?? '',
             },
             query: {
-              limit: GITHUB_CHILD_PAGE_SIZE,
+              limit:
+                parentId.startsWith('contents:') || parentId.startsWith('dir:')
+                  ? GITHUB_DIRECTORY_PAGE_SIZE
+                  : GITHUB_CHILD_PAGE_SIZE,
               parentId,
               view: 'tree',
               ...(cursor ? { cursor } : {}),
