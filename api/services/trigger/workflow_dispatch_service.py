@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 class TriggerEndUserProvisioner(Protocol):
+    def get_or_create_trigger_end_user(self, *, tenant_id: str, app_id: str) -> TriggerActor: ...
+
     def create_trigger_end_users(
         self,
         *,
