@@ -232,15 +232,16 @@ class TestDebugEventSelectorsCases:
             )
             mock_bus.poll.return_value = event
 
-            with patch("services.trigger.webhook_service.WebhookService") as mock_webhook_svc:
-                mock_webhook_svc.build_workflow_inputs.return_value = {"parsed": "data"}
-
-                poller = WebhookTriggerDebugEventPoller(**_make_poller_args())
-                result = poller.poll()
+            poller = WebhookTriggerDebugEventPoller(**_make_poller_args())
+            result = poller.poll()
 
             assert result is not None
-            assert result.workflow_args["inputs"] == {"parsed": "data"}
-            mock_webhook_svc.build_workflow_inputs.assert_called_once_with({"body": "raw"})
+            assert result.workflow_args["inputs"] == {
+                "webhook_data": {"body": "raw"},
+                "webhook_headers": {},
+                "webhook_query_params": {},
+                "webhook_body": "raw",
+            }
 
         @patch("core.trigger.debug.event_selectors.TriggerDebugEventBus")
         def test_returns_none_when_no_event(self, mock_bus: MagicMock) -> None:
