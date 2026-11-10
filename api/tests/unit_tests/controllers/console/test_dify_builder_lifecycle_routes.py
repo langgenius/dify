@@ -1,6 +1,5 @@
 """Lifecycle wire contracts use explicit confirmation and no graph revision."""
 
-import json
 from datetime import UTC, datetime
 from inspect import unwrap
 from uuid import uuid4
@@ -199,8 +198,9 @@ def test_real_http_action_and_fix_receipt_share_decision_namespace(request_sql_w
         },
     )
     assert decided.status_code == 200, decided.get_data(as_text=True)
-    frames = [json.loads(line[6:]) for line in decided.get_data(as_text=True).splitlines() if line.startswith("data: ")]
-    command_id = next(frame["data"]["command_id"] for frame in frames if frame["event"] == "command_finished")
+    receipt = decided.get_json()
+    assert receipt["pending"] is False
+    command_id = receipt["command_id"]
     assert command_id != raw_decision
     assert intents.get(actor, _SESSION_ID, intent_id).decision_id == command_id
     query = {
