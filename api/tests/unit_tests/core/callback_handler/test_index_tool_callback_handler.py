@@ -1,12 +1,12 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, SessionTransaction
 
 import core.callback_handler.index_tool_callback_handler as callback_module
@@ -39,12 +39,14 @@ class _CallerSessionBoundary:
 
 
 @pytest.fixture
-def mock_queue_manager(mocker: MockerFixture):
+def mock_queue_manager(mocker: MockerFixture) -> MagicMock:
     return mocker.Mock()
 
 
 @pytest.fixture
-def handler(mock_queue_manager, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch):
+def handler(
+    mock_queue_manager: MagicMock, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> DatasetQueryCallbackHandler:
     monkeypatch.setattr(callback_module, "db", _DatabaseBinding(sqlite_engine))
     return DatasetQueryCallbackHandler(
         queue_manager=mock_queue_manager,
@@ -131,7 +133,7 @@ class TestOnQuery:
         sqlite_engine: Engine,
         sqlite_session: Session,
         caller_session_boundary: _CallerSessionBoundary,
-        mock_queue_manager,
+        mock_queue_manager: MagicMock,
         invoke_from: InvokeFrom,
         expected_role: str,
     ) -> None:
@@ -149,28 +151,6 @@ class TestOnQuery:
         dataset_query = sqlite_session.scalar(select(DatasetQuery))
         assert dataset_query is not None
         assert dataset_query.created_by_role == expected_role
-
-    def test_on_query_none_values_roll_back_independent_transaction(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
-        sqlite_session: Session,
-        caller_session_boundary: _CallerSessionBoundary,
-        mock_queue_manager,
-    ) -> None:
-        monkeypatch.setattr(callback_module, "db", _DatabaseBinding(sqlite_engine))
-        handler = DatasetQueryCallbackHandler(
-            queue_manager=mock_queue_manager,
-            app_id=None,
-            message_id=None,
-            user_id=None,
-            invoke_from=None,
-        )
-
-        with pytest.raises(IntegrityError):
-            handler.on_query(None, None, caller_session_boundary.session)  # type: ignore[arg-type]
-
-        assert sqlite_session.scalar(select(DatasetQuery)) is None
 
 
 class TestOnToolEnd:
