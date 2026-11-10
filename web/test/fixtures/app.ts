@@ -3,6 +3,8 @@ import type {
   AppDetailWithSite,
   AppModelConfigResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
+import { zTrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/zod.gen'
 
 export function createAppModelConfigFixture(
   overrides: Partial<AppModelConfigResponse> = {},
@@ -103,4 +105,15 @@ export function createAppDetailFixture(
     workflow: null,
     ...overrides,
   }
+}
+
+export function createTrialAppDetailFixture(overrides: Partial<TrialAppDetailResponse> = {}) {
+  return zTrialAppDetailResponse.parse({
+    ...createAppDetailFixture(),
+    site: createAppSiteFixture(),
+    model_config: createAppModelConfigFixture({
+      model: { provider: 'openai', name: 'gpt-4', mode: 'chat' },
+    }),
+    ...overrides,
+  })
 }

@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "ID mübadilə buferinə kopyalandı",
   "versionHistory.action.deleteDeployedVersionError": "Bu iş axını versiyası bir və ya bir neçə mühitdə yerləşdirilib və ya yerləşdirilir. Versiyanı silməzdən əvvəl onu bütün mühitlərdən çıxarın.",
   "versionHistory.action.deleteFailure": "Versiyanı silmək mümkün olmadı",
-  "versionHistory.action.deleteSuccess": "Versiya silindi",
   "versionHistory.action.restoreFailure": "Versiyanı bərpa etmək mümkün olmadı",
   "versionHistory.action.restoreInProgress": "{{userName}} {{versionName}} versiyasını bərpa edir...",
   "versionHistory.action.restoreSuccess": "Versiya bərpa edildi",

@@ -4,7 +4,7 @@ import { hydrateRoot } from 'react-dom/client'
 import { renderToReadableStream } from 'react-dom/server.browser'
 import { useTranslation } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
-import { CreateAppDropdown } from '@/app/components/app/create-app-dropdown'
+import { CreateAppMenu } from '@/app/components/app/create-app-menu'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import { serializeResourceUpdate } from '@/i18n/streamed-resources'
 
@@ -32,7 +32,7 @@ function FeaturePage() {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <CreateAppDropdown onCreateBlank={() => {}} />
+      <CreateAppMenu onCreateBlank={() => {}} />
       <button onClick={() => setOpen(true)}>Show deferred feature</button>
       {open && <DeferredFeature />}
     </>
@@ -49,6 +49,7 @@ function executeResourceScript(source: string) {
 // A real mouse click on SSR markup reproduces the interaction lost when
 // client translation loading suspends hydration. No disabled trigger or retry.
 it('hydrates the menu from automatically collected SSR resources before the first click', async () => {
+  mocks.server = true
   mocks.callbacks = []
   delete window.__difyI18nResources
   const app = { 'newApp.startFromBlank': 'Create from Blank' }

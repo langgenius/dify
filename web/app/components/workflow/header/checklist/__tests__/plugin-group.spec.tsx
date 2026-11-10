@@ -1,6 +1,7 @@
 import type { ChecklistItem } from '../../../hooks/use-checklist'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import { useStore as usePluginDependencyStore } from '../../../plugin-dependency/store'
 import { BlockEnum } from '../../../types'
@@ -18,11 +19,8 @@ const createChecklistItem = (overrides: Partial<ChecklistItem> = {}): ChecklistI
 })
 
 describe('ChecklistPluginGroup', () => {
-  const getInstallButton = () => {
-    return screen
-      .getByText('workflowAgent.nodes.agent.pluginInstaller.install')
-      .closest('button') as HTMLButtonElement
-  }
+  const getInstallButton = () =>
+    screen.getByRole('button', { name: 'workflowAgent.nodes.agent.pluginInstaller.install' })
 
   const renderInPopover = (items: ChecklistItem[]) => {
     return render(
@@ -38,7 +36,8 @@ describe('ChecklistPluginGroup', () => {
     usePluginDependencyStore.setState({ dependencies: [] })
   })
 
-  it('should set marketplace dependencies when install button is clicked', () => {
+  it('should set marketplace dependencies when install button is clicked', async () => {
+    const user = userEvent.setup()
     const items: ChecklistItem[] = [
       createChecklistItem({
         id: 'node-1',
@@ -56,7 +55,7 @@ describe('ChecklistPluginGroup', () => {
 
     renderInPopover(items)
 
-    fireEvent.click(getInstallButton())
+    await user.click(getInstallButton())
 
     expect(usePluginDependencyStore.getState().dependencies).toEqual([
       {
@@ -78,22 +77,24 @@ describe('ChecklistPluginGroup', () => {
     ])
   })
 
-  it('should keep install button disabled when no identifier is available', () => {
+  it('should keep install button disabled when no identifier is available', async () => {
+    const user = userEvent.setup()
     renderInPopover([createChecklistItem({ pluginUniqueIdentifier: undefined })])
 
     const installButton = getInstallButton()
     expect(installButton).toBeDisabled()
 
-    fireEvent.click(installButton)
+    await user.click(installButton)
     expect(usePluginDependencyStore.getState().dependencies).toEqual([])
   })
 
-  it('should omit the version when the marketplace identifier does not include one', () => {
+  it('should omit the version when the marketplace identifier does not include one', async () => {
+    const user = userEvent.setup()
     renderInPopover([
       createChecklistItem({ pluginUniqueIdentifier: 'langgenius/test-plugin@sha256' }),
     ])
 
-    fireEvent.click(getInstallButton())
+    await user.click(getInstallButton())
 
     expect(usePluginDependencyStore.getState().dependencies).toEqual([
       {

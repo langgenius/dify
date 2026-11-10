@@ -17,14 +17,18 @@ const Header = () => {
           </div>
           <DialogTitle
             className={cn(
-              'min-w-0 bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] leading-[1.2] wrap-anywhere text-transparent',
+              // oxlint-disable-next-line shadcn/no-restyle -- Pricing hero keeps its serif display title.
+              'min-w-0 bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] leading-[1.2] font-normal wrap-anywhere text-transparent',
               styles.instrumentSerif,
             )}
           >
             {t(($) => $['plansCommon.title.plans'], { ns: 'billing' })}
           </DialogTitle>
         </div>
-        <DialogDescription className="system-sm-regular text-text-tertiary">
+        <DialogDescription
+          // oxlint-disable-next-line shadcn/no-restyle -- Pricing hero keeps its 13px subtitle.
+          className="text-[13px]/4 text-text-tertiary"
+        >
           {t(($) => $['plansCommon.title.description'], { ns: 'billing' })}
         </DialogDescription>
       </div>

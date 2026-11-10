@@ -1,12 +1,14 @@
 import type { TFunction } from 'i18next'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelConfig } from '@/models/debug'
 import type { VisionSettings } from '@/types/app'
 import { produce } from 'immer'
 import { useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import { getErrorMessage } from '@/utils/error-message'
 
 type ModelChangeHandlerOptions = {
   chatPromptLength: number
@@ -23,7 +25,7 @@ type ModelChangeHandlerOptions = {
   handleSetVisionConfig: (config: VisionSettings, notNoticeFormattingChanged?: boolean) => void
   isAdvancedMode: boolean
   migrateToDefaultPrompt: (force?: boolean, modelModeType?: ModelModeType) => Promise<void>
-  mode: AppModeEnum
+  mode: ConfigurationAppMode
   modelConfig: ModelConfig
   resolvedModelModeType: ModelModeType
   setCompletionParams: (value: FormValue) => void
@@ -61,7 +63,7 @@ export const createModelChangeHandler =
   }) => {
     if (isAdvancedMode) {
       if (nextModelMode === ModelModeType.completion) {
-        if (mode !== AppModeEnum.COMPLETION) {
+        if (mode !== 'completion') {
           if (
             !completionPromptConfig.prompt?.text ||
             !completionPromptConfig.conversation_histories_role.assistant_prefix ||
@@ -110,8 +112,8 @@ export const createModelChangeHandler =
         )
 
       setCompletionParams(filtered)
-    } catch {
-      toast.error(t(($) => $.error, { ns: 'common' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
       setCompletionParams({})
     }
   }

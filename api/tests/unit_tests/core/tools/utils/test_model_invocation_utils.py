@@ -20,6 +20,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.model_manager import ModelManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -29,7 +31,7 @@ from graphon.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from models.tools import ToolModelInvoke
-from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 USER_ID = "22222222-2222-2222-2222-222222222222"
@@ -204,7 +206,3 @@ def test_invoke_error_mappings(exc, expected, sqlite_session: Session):
     assert persisted.prompt_tokens == 5
     assert persisted.answer_tokens == 0
     mock_factory.assert_called_once_with(tenant_id=TENANT_ID, user_id=USER_ID)
-
-
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage

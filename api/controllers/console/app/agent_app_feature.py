@@ -21,6 +21,7 @@ from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, validate_request
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from models.agent_config_entities import (
@@ -63,6 +64,7 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 
 @console_ns.route("/agent/<uuid:agent_id>/features")
 class AgentAppFeatureConfigResource(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("update_agent_app_features")
     @console_ns.doc(description="Update an Agent App's presentation features (opener, follow-up, citations, ...)")
     @console_ns.doc(params={"agent_id": "Agent ID"})

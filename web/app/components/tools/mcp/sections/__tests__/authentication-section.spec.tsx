@@ -1,157 +1,45 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { API_PREFIX } from '@/config'
 import AuthenticationSection from '../authentication-section'
 
-describe('AuthenticationSection', () => {
-  const defaultProps = {
-    isDynamicRegistration: true,
-    onDynamicRegistrationChange: vi.fn(),
-    clientID: '',
-    onClientIDChange: vi.fn(),
-    credentials: '',
-    onCredentialsChange: vi.fn(),
+it('enables manual OAuth credentials with callback guidance and preserves them when switching modes', async () => {
+  const user = userEvent.setup()
+  const Harness = () => {
+    const [dynamic, setDynamic] = useState(true)
+    const [clientID, setClientID] = useState('')
+    const [credentials, setCredentials] = useState('')
+    return (
+      <AuthenticationSection
+        isDynamicRegistration={dynamic}
+        onDynamicRegistrationChange={setDynamic}
+        clientID={clientID}
+        onClientIDChange={setClientID}
+        credentials={credentials}
+        onCredentialsChange={setCredentials}
+      />
+    )
   }
-
-  describe('Rendering', () => {
-    it('should render switch for dynamic registration', () => {
-      render(<AuthenticationSection {...defaultProps} />)
-      expect(screen.getByRole('switch'))!.toBeInTheDocument()
-    })
-
-    it('should render client ID input', () => {
-      render(<AuthenticationSection {...defaultProps} clientID="test-client-id" />)
-      expect(screen.getByDisplayValue('test-client-id'))!.toBeInTheDocument()
-    })
-
-    it('should render credentials input', () => {
-      render(<AuthenticationSection {...defaultProps} credentials="test-secret" />)
-      expect(screen.getByDisplayValue('test-secret'))!.toBeInTheDocument()
-    })
-
-    it('should render labels for all fields', () => {
-      render(<AuthenticationSection {...defaultProps} />)
-      expect(screen.getByText('tools.mcp.modal.useDynamicClientRegistration'))!.toBeInTheDocument()
-      expect(screen.getByText('tools.mcp.modal.clientID'))!.toBeInTheDocument()
-      expect(screen.getByText('tools.mcp.modal.clientSecret'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Dynamic Registration Toggle', () => {
-    it('should not show warning when isDynamicRegistration is true', () => {
-      render(<AuthenticationSection {...defaultProps} isDynamicRegistration={true} />)
-      expect(screen.queryByText('tools.mcp.modal.redirectUrlWarning')).not.toBeInTheDocument()
-    })
-
-    it('should show warning when isDynamicRegistration is false', () => {
-      render(<AuthenticationSection {...defaultProps} isDynamicRegistration={false} />)
-      expect(screen.getByText('tools.mcp.modal.redirectUrlWarning'))!.toBeInTheDocument()
-    })
-
-    it('should show OAuth callback URL in warning', () => {
-      render(<AuthenticationSection {...defaultProps} isDynamicRegistration={false} />)
-      expect(screen.getByText(/\/mcp\/oauth\/callback/))!.toBeInTheDocument()
-    })
-
-    it('should disable inputs when isDynamicRegistration is true', () => {
-      render(<AuthenticationSection {...defaultProps} isDynamicRegistration={true} />)
-      const inputs = screen.getAllByRole('textbox')
-      inputs.forEach((input) => {
-        expect(input)!.toBeDisabled()
-      })
-    })
-
-    it('should enable inputs when isDynamicRegistration is false', () => {
-      render(<AuthenticationSection {...defaultProps} isDynamicRegistration={false} />)
-      const inputs = screen.getAllByRole('textbox')
-      inputs.forEach((input) => {
-        expect(input).not.toBeDisabled()
-      })
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onDynamicRegistrationChange when switch is toggled', () => {
-      const onDynamicRegistrationChange = vi.fn()
-      render(
-        <AuthenticationSection
-          {...defaultProps}
-          onDynamicRegistrationChange={onDynamicRegistrationChange}
-        />,
-      )
-
-      const switchElement = screen.getByRole('switch')
-      fireEvent.click(switchElement)
-
-      expect(onDynamicRegistrationChange).toHaveBeenCalled()
-    })
-
-    it('should call onClientIDChange when client ID input changes', () => {
-      const onClientIDChange = vi.fn()
-      render(
-        <AuthenticationSection
-          {...defaultProps}
-          isDynamicRegistration={false}
-          onClientIDChange={onClientIDChange}
-        />,
-      )
-
-      const inputs = screen.getAllByRole('textbox')
-      const clientIDInput = inputs[0]
-      fireEvent.change(clientIDInput!, { target: { value: 'new-client-id' } })
-
-      expect(onClientIDChange).toHaveBeenCalledWith('new-client-id')
-    })
-
-    it('should call onCredentialsChange when credentials input changes', () => {
-      const onCredentialsChange = vi.fn()
-      render(
-        <AuthenticationSection
-          {...defaultProps}
-          isDynamicRegistration={false}
-          onCredentialsChange={onCredentialsChange}
-        />,
-      )
-
-      const inputs = screen.getAllByRole('textbox')
-      const credentialsInput = inputs[1]
-      fireEvent.change(credentialsInput!, { target: { value: 'new-secret' } })
-
-      expect(onCredentialsChange).toHaveBeenCalledWith('new-secret')
-    })
-  })
-
-  describe('Props', () => {
-    it('should display provided clientID value', () => {
-      render(<AuthenticationSection {...defaultProps} clientID="my-client-123" />)
-      expect(screen.getByDisplayValue('my-client-123'))!.toBeInTheDocument()
-    })
-
-    it('should display provided credentials value', () => {
-      render(<AuthenticationSection {...defaultProps} credentials="secret-456" />)
-      expect(screen.getByDisplayValue('secret-456'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty string values', () => {
-      render(<AuthenticationSection {...defaultProps} clientID="" credentials="" />)
-      const inputs = screen.getAllByRole('textbox')
-      expect(inputs).toHaveLength(2)
-      inputs.forEach((input) => {
-        expect(input)!.toHaveValue('')
-      })
-    })
-
-    it('should handle special characters in values', () => {
-      render(
-        <AuthenticationSection
-          {...defaultProps}
-          clientID="client@123!#$"
-          credentials="secret&*()_+"
-        />,
-      )
-      expect(screen.getByDisplayValue('client@123!#$'))!.toBeInTheDocument()
-      expect(screen.getByDisplayValue('secret&*()_+'))!.toBeInTheDocument()
-    })
-  })
+  render(<Harness />)
+  const mode = screen.getByRole('switch', { name: 'tools.mcp.modal.useDynamicClientRegistration' })
+  const id = screen.getByRole('textbox', { name: 'tools.mcp.modal.clientID' })
+  const secret = screen.getByRole('textbox', { name: 'tools.mcp.modal.clientSecret' })
+  expect(mode).toBeChecked()
+  expect(id).toBeDisabled()
+  expect(secret).toBeDisabled()
+  expect(screen.queryByText('tools.mcp.modal.redirectUrlWarning')).not.toBeInTheDocument()
+  await user.click(mode)
+  expect(id).toBeEnabled()
+  expect(secret).toBeEnabled()
+  expect(screen.getByText(`${API_PREFIX}/mcp/oauth/callback`)).toBeInTheDocument()
+  await user.type(id, 'client-id')
+  await user.type(secret, 'client-secret')
+  await user.click(mode)
+  expect(id).toBeDisabled()
+  expect(secret).toBeDisabled()
+  expect(screen.queryByText('tools.mcp.modal.redirectUrlWarning')).not.toBeInTheDocument()
+  await user.click(mode)
+  expect(id).toHaveValue('client-id')
+  expect(secret).toHaveValue('client-secret')
 })

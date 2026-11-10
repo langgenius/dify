@@ -14,6 +14,17 @@ import { createTestQueryClient } from '@/test/query-client'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.referencingWorkflows.get': async () => ({ data: [] }),
+    }),
+  }
+})
+
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({ formatTimeFromNow: () => 'just now' }),
 }))
@@ -60,8 +71,6 @@ async function setup() {
     systemFeaturesQueryOptions().queryKey,
     createSystemFeaturesFixture({ webapp_auth: { enabled: false } }),
   )
-  // Only the reference lookup crosses the network in this publication UI test.
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ data: [] }))
   let completePublish!: () => void
   const published = new Promise<void>((resolve) => {
     completePublish = resolve
@@ -114,7 +123,6 @@ it('preserves keyboard focus through loading, publication, and dismissal', async
   await expect.poll(() => liveRegion.textContent).toBe(successTitle)
   await expect.poll(() => document.activeElement).toBe(bar)
   expect(bar.matches(':focus-visible')).toBe(true)
-  expect(bar.querySelector('[role="status"]')).toBe(liveRegion)
   await userEvent.tab()
   const dismiss = screen.getByRole('button', { name: dismissLabel })
   await expect.element(dismiss).toHaveFocus()

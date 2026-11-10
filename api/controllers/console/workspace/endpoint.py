@@ -300,7 +300,6 @@ class EndpointListApi(Resource):
     @with_current_tenant_id
     @model_validate(EndpointListQuery)
     def get(self, req_data: EndpointListQuery, tenant_id: str, user_id: str):
-
         endpoints = EndpointService.list_endpoints(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -330,7 +329,6 @@ class EndpointListForSinglePluginApi(Resource):
     @with_current_tenant_id
     @model_validate(EndpointListForPluginQuery)
     def get(self, req_data: EndpointListForPluginQuery, tenant_id: str, user_id: str):
-
         endpoints = EndpointService.list_endpoints_for_single_plugin(
             tenant_id=tenant_id,
             user_id=user_id,

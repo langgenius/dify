@@ -63,3 +63,44 @@ it('keeps the portalled preview fullscreen and owns arrows only while open', asy
   expect(onNext).toHaveBeenCalledTimes(2)
   expect(onCancel).toHaveBeenCalledOnce()
 })
+
+it('zooms and pans without exposing blank edges, then recenters when zoomed out', async () => {
+  // Native wheel/drag events and actual image bounds catch pan math hidden by mocked rectangles.
+  await page.viewport(480, 320)
+  const largeImage = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="1200" height="800" fill="teal" /></svg>')}`
+  const screen = await render(
+    <ImagePreview url={largeImage} title="Pan preview" onCancel={vi.fn()} />,
+  )
+  const dialog = screen.getByRole('dialog', { name: 'Pan preview' })
+  const image = dialog.getByRole('img', { name: 'Pan preview' })
+  await expect.poll(() => image.element().getBoundingClientRect().width).toBeGreaterThan(0)
+  const initial = image.element().getBoundingClientRect()
+  await screen.getByRole('button', { name: 'common.operation.zoomIn' }).click()
+  await expect
+    .poll(() => image.element().getBoundingClientRect().width)
+    .toBeCloseTo(initial.width * 1.2)
+  await dialog.wheel({ direction: 'up', times: 2 })
+  await expect
+    .poll(() => image.element().getBoundingClientRect().width)
+    .toBeCloseTo(initial.width * 1.2 ** 3)
+  const zoomed = image.element().getBoundingClientRect()
+  await userEvent.dragAndDrop(image, dialog, {
+    sourcePosition: { x: zoomed.width / 2, y: zoomed.height / 2 },
+    targetPosition: { x: 445, y: 280 },
+    steps: 8,
+  })
+  await expect.poll(() => image.element().getBoundingClientRect().left).toBeCloseTo(32)
+  await expect.poll(() => image.element().getBoundingClientRect().top).toBeCloseTo(32)
+  const panned = image.element().getBoundingClientRect()
+  expect(panned.left).toBeLessThanOrEqual(32)
+  expect(panned.right).toBeGreaterThanOrEqual(448)
+  await dialog.hover({ position: { x: 240, y: 160 } })
+  await expect.poll(() => image.element().getBoundingClientRect().left).toBeCloseTo(panned.left)
+  await dialog.wheel({ direction: 'down', times: 2 })
+  await expect
+    .poll(() => image.element().getBoundingClientRect().width)
+    .toBeCloseTo(initial.width * 1.2)
+  await screen.getByRole('button', { name: 'common.operation.zoomOut' }).click()
+  await expect.poll(() => image.element().getBoundingClientRect().left).toBeCloseTo(initial.left)
+  await expect.poll(() => image.element().getBoundingClientRect().width).toBeCloseTo(initial.width)
+})

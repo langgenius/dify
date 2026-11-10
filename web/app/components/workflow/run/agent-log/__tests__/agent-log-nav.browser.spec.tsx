@@ -26,12 +26,16 @@ it('keeps a long current log name readable inside the result panel', async () =>
       />
     </div>,
   )
+  await expect.element(screen.getByRole('navigation')).toBeVisible()
+  await expect.element(screen.getByText(label)).toBeVisible()
   const navigation = screen.getByRole('navigation').element()
   const current = screen.getByText(label).element()
   const text = document.createRange()
   text.selectNodeContents(current)
   const bounds = navigation.getBoundingClientRect()
-  for (const line of text.getClientRects()) {
+  const lines = Array.from(text.getClientRects())
+  expect(lines.length).toBeGreaterThan(0)
+  for (const line of lines) {
     expect(line.right).toBeLessThanOrEqual(bounds.right)
     expect(line.bottom).toBeLessThanOrEqual(bounds.bottom)
   }

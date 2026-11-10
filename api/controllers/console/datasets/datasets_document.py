@@ -12,13 +12,14 @@ from controllers.common.controller_schemas import DocumentBatchDownloadZipPayloa
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.rbac import DatasetByDocument, DatasetId, RBACCheck, enforce_rbac_checks
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.datasets.datasets import IndexingEstimateResponse
 from controllers.console.datasets.error import (
     ArchivedDocumentImmutableError,
     DatasetAccessDeniedRequestError,
@@ -42,11 +43,14 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentMetadataResponse,
+    DocumentProcessRuleResponse,
     DocumentResponse,
+    DocumentSourceDetailResponse,
     DocumentStatusListResponse,
     DocumentStatusResponse,
     normalize_enum,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
@@ -82,25 +86,46 @@ _DATASET_EDIT_ROLES = frozenset(
 
 
 def _raise_document_error(error: Exception) -> Never:
+    """Translate the scope errors every document operation can raise."""
     if isinstance(error, DatasetNotFoundError):
         raise NotFound("Dataset not found.") from error
     if isinstance(error, DocumentNotFoundError):
         raise NotFound(str(error)) from error
     if isinstance(error, DatasetAccessDeniedError):
         raise Forbidden(str(error)) from error
-    if isinstance(error, DocumentArchivedError):
-        raise ArchivedDocumentImmutableError() from error
+    raise error
+
+
+def _raise_document_indexing_error(error: Exception) -> Never:
+    """Operations that (re)index documents also depend on the indexing state and the model provider."""
     if isinstance(error, DocumentIndexingStateError):
         raise DocumentIndexingError(str(error)) from error
-    if isinstance(error, DocumentInvalidActionError):
-        raise InvalidActionError(str(error)) from error
     if isinstance(error, DocumentProviderError):
         if error.kind == "quota":
             raise ProviderQuotaExceededError() from error
         if error.kind == "unsupported":
             raise ProviderModelCurrentlyNotSupportError() from error
         raise ProviderNotInitializeError(str(error)) from error
-    raise error
+    _raise_document_error(error)
+
+
+def _raise_document_action_error(error: Exception) -> Never:
+    if isinstance(error, DocumentInvalidActionError):
+        raise InvalidActionError(str(error)) from error
+    _raise_document_error(error)
+
+
+def _raise_document_status_error(error: Exception) -> Never:
+    if isinstance(error, DocumentInvalidActionError):
+        raise InvalidActionError(str(error)) from error
+    _raise_document_indexing_error(error)
+
+
+def _raise_document_archive_error(error: Exception) -> Never:
+    """Pausing, resuming and syncing refuse archived documents before touching the index."""
+    if isinstance(error, DocumentArchivedError):
+        raise ArchivedDocumentImmutableError() from error
+    _raise_document_indexing_error(error)
 
 
 class DatasetResponse(ResponseModel):
@@ -125,7 +150,7 @@ class DatasetResponse(ResponseModel):
 
 
 class DocumentWithSegmentsResponse(DocumentResponse):
-    process_rule_dict: Any = None
+    process_rule_dict: DocumentProcessRuleResponse | None = None
     completed_segments: int | None = Field(default=None, exclude_if=lambda value: value is None)
     total_segments: int | None = Field(default=None, exclude_if=lambda value: value is None)
 
@@ -162,18 +187,16 @@ class DocumentDatasetListParam(BaseModel):
     fetch_val: str = Field("false", alias="fetch")
 
 
+class DocumentIdListQuery(BaseModel):
+    document_id: list[str] = Field(default_factory=list, description="Document IDs")
+
+
 class DocumentWithSegmentsListResponse(ResponseModel):
     data: list[DocumentWithSegmentsResponse]
     has_more: bool
     limit: int
     total: int
     page: int
-
-
-class IndexingEstimateResponse(IndexingEstimate):
-    tokens: int
-    total_price: float | int
-    currency: str
 
 
 def _serialize_indexing_estimate(estimate: IndexingEstimate) -> tuple[dict[str, object], int]:
@@ -194,11 +217,11 @@ class DocumentDetailResponse(ResponseModel):
     id: str
     position: int | None = None
     data_source_type: str | None = None
-    data_source_info: Any = None
-    data_source_detail_dict: Any = None
+    data_source_info: dict[str, JsonValue] | None = None
+    data_source_detail_dict: DocumentSourceDetailResponse | None = None
     dataset_process_rule_id: str | None = None
-    dataset_process_rule: Any = None
-    document_process_rule: Any = None
+    dataset_process_rule: DocumentProcessRuleResponse | None = None
+    document_process_rule: DocumentProcessRuleResponse | None = None
     name: str | None = None
     created_from: str | None = None
     created_by: str | None = None
@@ -258,10 +281,14 @@ class DocumentSummaryStatusResponse(ResponseModel):
     summaries: list[SummaryEntryResponse]
 
 
+class ProcessRuleLimitsResponse(ResponseModel):
+    indexing_max_segmentation_tokens_length: int
+
+
 class ProcessRuleResponse(ResponseModel):
     mode: ProcessRuleMode
     rules: Rule | None = None
-    limits: dict[str, Any]
+    limits: ProcessRuleLimitsResponse
 
 
 class DocumentPipelineExecutionLogResponse(ResponseModel):
@@ -330,17 +357,7 @@ class GetProcessRuleApi(Resource):
 class DatasetDocumentListApi(Resource):
     @console_ns.doc("get_dataset_documents")
     @console_ns.doc(description="Get documents in a dataset")
-    @console_ns.doc(
-        params={
-            "dataset_id": "Dataset ID",
-            "page": "Page number (default: 1)",
-            "limit": "Number of items per page (default: 20)",
-            "keyword": "Search keyword",
-            "sort": "Sort order (default: -created_at)",
-            "fetch": "Fetch full details (default: false)",
-            "status": "Filter documents by display status",
-        }
-    )
+    @console_ns.doc(params={"dataset_id": "Dataset ID", **query_params_from_model(DocumentDatasetListParam)})
     @console_ns.response(
         200,
         "Documents retrieved successfully",
@@ -366,6 +383,7 @@ class DatasetDocumentListApi(Resource):
             _raise_document_error(error)
         return dump_response(DocumentWithSegmentsListResponse, result)
 
+    @error_responses(ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError, ProviderQuotaExceededError)
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
     @console_account_admission(
@@ -380,9 +398,10 @@ class DatasetDocumentListApi(Resource):
                 request_context, dataset_id=str(dataset_id), settings=config.model_dump()
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         return dump_response(DatasetAndDocumentResponse, result)
 
+    @console_ns.doc(params=query_params_from_model(DocumentIdListQuery))
     @console_ns.response(204, "Documents deleted successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -395,12 +414,13 @@ class DatasetDocumentListApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_ids=request.args.getlist("document_id")
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         return "", 204
 
 
 @console_ns.route("/datasets/init")
 class DatasetInitApi(Resource):
+    @error_responses(ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError, ProviderQuotaExceededError)
     @console_ns.doc("init_dataset")
     @console_ns.doc(description="Initialize dataset with documents")
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
@@ -418,12 +438,15 @@ class DatasetInitApi(Resource):
                 request_context, settings=config.model_dump()
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         return dump_response(DatasetAndDocumentResponse, result)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate")
 class DocumentIndexingEstimateApi(Resource):
+    @error_responses(
+        DatasetAccessDeniedRequestError, DocumentAlreadyFinishedError, IndexingEstimateError, ProviderNotInitializeError
+    )
     @console_ns.doc("estimate_document_indexing")
     @console_ns.doc(description="Estimate document indexing cost")
     @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
@@ -466,6 +489,9 @@ class DocumentIndexingEstimateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
 class DocumentBatchIndexingEstimateApi(Resource):
+    @error_responses(
+        DatasetAccessDeniedRequestError, DocumentAlreadyFinishedError, IndexingEstimateError, ProviderNotInitializeError
+    )
     @console_ns.response(
         200,
         "Indexing estimate calculated successfully",
@@ -541,6 +567,7 @@ class DocumentIndexingStatusApi(Resource):
 class DocumentApi(Resource):
     METADATA_CHOICES = {"all", "only", "without"}
 
+    @error_responses(InvalidMetadataError)
     @console_ns.doc("get_document")
     @console_ns.doc(description="Get document details")
     @console_ns.doc(
@@ -588,7 +615,7 @@ class DocumentApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         return "", 204
 
 
@@ -607,7 +634,7 @@ class DocumentDownloadApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         return UrlResponse(url=result).model_dump(mode="json")
 
 
@@ -642,13 +669,14 @@ class DocumentBatchDownloadZipApi(Resource):
                 cleanup = stack.pop_all()
                 response.call_on_close(cleanup.close)
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         # response-contract:ignore binary ZIP download response
         return response
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>")
 class DocumentProcessingApi(Resource):
+    @error_responses(InvalidActionError)
     @console_ns.doc("update_document_processing")
     @console_ns.doc(description="Update document processing status (pause/resume)")
     @console_ns.doc(
@@ -673,7 +701,7 @@ class DocumentProcessingApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id), action=action
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_action_error(error)
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
@@ -718,6 +746,8 @@ class DocumentMetadataApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 class DocumentStatusApi(Resource):
+    @console_ns.doc(params=query_params_from_model(DocumentIdListQuery))
+    @error_responses(InvalidActionError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
@@ -738,12 +768,13 @@ class DocumentStatusApi(Resource):
                 action=action,
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_status_error(error)
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")
 class DocumentPauseApi(Resource):
+    @error_responses(ArchivedDocumentImmutableError, DocumentIndexingError)
     @console_ns.response(204, "Document paused successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
@@ -756,12 +787,13 @@ class DocumentPauseApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_archive_error(error)
         return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
 class DocumentRecoverApi(Resource):
+    @error_responses(ArchivedDocumentImmutableError, DocumentIndexingError)
     @console_ns.response(204, "Document resumed successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
@@ -774,7 +806,7 @@ class DocumentRecoverApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_archive_error(error)
         return "", 204
 
 
@@ -794,7 +826,7 @@ class DocumentRetryApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_ids=req_data.document_ids
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         return "", 204
 
 
@@ -820,6 +852,7 @@ class DocumentRenameApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
 class WebsiteDocumentSyncApi(Resource):
+    @error_responses(ArchivedDocumentImmutableError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
@@ -831,7 +864,7 @@ class WebsiteDocumentSyncApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_archive_error(error)
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 

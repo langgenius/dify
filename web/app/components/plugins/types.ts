@@ -2,6 +2,8 @@ import type {
   AgentStrategyProviderEntity,
   DatasourceProviderEntity,
   EndpointProviderDeclarationResponse,
+  PluginInstallTask,
+  PluginInstallTaskPluginStatus,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
@@ -60,8 +62,8 @@ export type PluginDeclaration = {
   label: Record<Locale | PluginLanguage, string>
   description: Record<Locale | PluginLanguage, string>
   created_at: string
-  resource: any // useless in frontend
-  plugins: any // useless in frontend
+  resource: unknown // useless in frontend
+  plugins: unknown // useless in frontend
   verified: boolean
   endpoint?: EndpointProviderDeclarationResponse | null
   tool?: PluginToolDeclaration
@@ -109,15 +111,15 @@ export type ParametersSchema = {
   name: string
   label: Record<Locale | PluginLanguage, string>
   type: FormTypeEnum
-  auto_generate: any
-  template: any
+  auto_generate: unknown
+  template: unknown
   scope: any
   required: boolean
   multiple: boolean
   default?: string | string[]
-  min: any
-  max: any
-  precision: any
+  min: unknown
+  max: unknown
+  precision: unknown
   options?: Array<{
     value: string
     label: Record<Locale | PluginLanguage, string>
@@ -130,15 +132,15 @@ export type TriggerEventParameter = {
   name: string
   label: TypeWithI18N
   type: string
-  auto_generate: any
-  template: any
+  auto_generate: unknown
+  template: unknown
   scope: any
   required: boolean
   multiple: boolean
   default: any
-  min: any
-  max: any
-  precision: any
+  min: unknown
+  max: unknown
+  precision: unknown
   options?: Array<{
     value: string
     label: TypeWithI18N
@@ -291,15 +293,8 @@ export type UpdateFromGitHubPayload = {
 }
 
 export type UpdatePluginPayload = {
-  type: PluginSource
   category: PluginCategoryEnum
-  marketPlace?: UpdateFromMarketPlacePayload
-  github?: UpdateFromGitHubPayload
-}
-
-export type UpdatePluginModalType = UpdatePluginPayload & {
-  onCancel: () => void
-  onSave: () => void | Promise<void>
+  github: UpdateFromGitHubPayload
 }
 
 export const InstallStepFromGitHub = {
@@ -350,13 +345,6 @@ export type GitHubRepoReleaseResponse = {
   assets: GitHubAsset[]
 }
 
-export type InstallPackageResponse = {
-  plugin_unique_identifier?: string
-  all_installed: boolean
-  task_id: string
-  task?: PluginTaskStart
-}
-
 export type InstallStatusResponse = {
   status: TaskStatus
   taskId: string
@@ -368,23 +356,6 @@ export type InstallStatus = {
   isFromMarketPlace?: boolean
 }
 
-export type updatePackageResponse = {
-  all_installed: boolean
-  task_id: string
-  task?: PluginTaskStart
-}
-
-export type uploadGitHubResponse = {
-  unique_identifier: string
-  manifest: PluginDeclaration
-}
-
-export type DebugInfo = {
-  key: string
-  host: string
-  port: number
-}
-
 export const TaskStatus = {
   pending: 'pending',
   running: 'running',
@@ -394,34 +365,12 @@ export const TaskStatus = {
 
 export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus]
 
-export type PluginStatus = {
-  plugin_unique_identifier: string
-  plugin_id: string
-  source: PluginSource
-  status: TaskStatus
-  message: string
-  icon: string
-  labels: Record<Locale | PluginLanguage, string>
+export type PluginStatus = PluginInstallTaskPluginStatus & {
+  // The task the status belongs to, added when the task list is read.
   taskId: string
 }
 
-export type PluginTask = {
-  id: string
-  created_at: string
-  updated_at: string
-  status: string
-  total_plugins: number
-  completed_plugins: number
-  plugins: PluginStatus[]
-}
-
-export type PluginTaskStart = Omit<PluginTask, 'plugins'> & {
-  plugins: Array<Omit<PluginStatus, 'taskId'> & { taskId?: string }>
-}
-
-export type TaskStatusResponse = {
-  task: PluginTask
-}
+export type PluginTask = Omit<PluginInstallTask, 'plugins'> & { plugins: PluginStatus[] }
 
 export type MetaData = {
   repo: string
@@ -454,20 +403,6 @@ export type PackageDependency = {
 }
 
 export type Dependency = GitHubItemAndMarketPlaceDependency | PackageDependency
-
-type Version = {
-  plugin_org: string
-  plugin_name: string
-  version: string
-  file_name: string
-  checksum: string
-  created_at: string
-  unique_identifier: string
-}
-
-export type VersionListResponse = {
-  versions: Version[]
-}
 
 export type VersionInfo = {
   installedId: string // use to uninstall

@@ -11,17 +11,20 @@ import type { EventEmitterValue } from '@/context/event-emitter'
 import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
+import { useAtomValue } from 'jotai'
 import {
   Fragment,
   memo,
@@ -46,15 +49,13 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { fetchAllInspectVars } from '@/service/workflow'
 import CandidateNode from './candidate-node'
 import UserCursors from './collaboration/components/user-cursors'
@@ -70,7 +71,7 @@ import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
-import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
+import { HooksStoreContextProvider } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
 import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
@@ -329,7 +330,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
         if (payload.viewport) reactflow.setViewport(payload.viewport)
 
-        if (payload.hash) setSyncWorkflowDraftHash(payload.hash)
+        if (payload.hash) setSyncWorkflowDraftHash(payload.hash, payload)
 
         onWorkflowDataUpdate?.(payload)
 
@@ -567,23 +568,39 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     const { schemaTypeDefinitions } = useMatchSchemaType()
     const { fetchInspectVars } = useSetWorkflowVarsWithValue()
-    const { data: buildInTools } = useAllBuiltInTools()
-    const { data: customTools } = useAllCustomTools()
-    const { data: workflowTools } = useAllWorkflowTools()
-    const { data: mcpTools } = useAllMCPTools()
+    const { data: buildInTools } = useQuery(
+      consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: customTools } = useQuery(
+      consoleQuery.workspaces.current.tools.api.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: workflowTools } = useQuery(
+      consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: mcpTools } = useQuery(
+      consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
     const dataSourceList = useStore((s) => s.dataSourceList)
     // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
-    const configsMap = useHooksStore((s) => s.configsMap)
+    const resource = useAtomValue(editorResourceAtom)
     const [isLoadedVars, setIsLoadedVars] = useState(false)
     const [vars, setVars] = useState<VarInInspect[]>([])
     useEffect(() => {
       ;(async () => {
-        if (!configsMap?.flowType || !configsMap?.flowId) return
-        const data = await fetchAllInspectVars(configsMap.flowType, configsMap.flowId)
+        if (!getEditorResourceId(resource)) return
+        const data = await fetchAllInspectVars(resource)
         setVars(data)
         setIsLoadedVars(true)
       })()
-    }, [configsMap?.flowType, configsMap?.flowId])
+    }, [resource])
     useEffect(() => {
       if (schemaTypeDefinitions && isLoadedVars) {
         fetchInspectVars({
@@ -631,7 +648,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         <CandidateNode />
         <CommentManager />
         <div
-          className="pointer-events-none absolute top-0 left-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
+          className="pointer-events-none absolute inset-s-0 top-0 z-10 flex w-12 items-center justify-center p-1 ps-2"
           style={{ height: controlHeight }}
         >
           <Control />
@@ -640,27 +657,28 @@ export const Workflow: FC<WorkflowProps> = memo(
         <HelpLine />
         <AlertDialog
           open={!!showConfirm}
-          onOpenChange={(open) => !open && setShowConfirm(undefined)}
+          onOpenChange={(open) => {
+            if (!open) {
+              showConfirm?.onCancel?.()
+              setShowConfirm(undefined)
+            }
+          }}
         >
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {showConfirm?.title}
-              </AlertDialogTitle>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{showConfirm?.title}</AlertDialogTitle>
               {showConfirm?.desc && (
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {showConfirm.desc}
-                </AlertDialogDescription>
+                <AlertDialogDescription>{showConfirm.desc}</AlertDialogDescription>
               )}
-            </div>
-            <AlertDialogActions>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={showConfirm?.onConfirm}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {controlMode === ControlMode.Comment && isMouseOverCanvas && <CommentCursor />}

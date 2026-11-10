@@ -3,6 +3,71 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountBannedError,
+  zAgentNotPublishedError,
+  zAgentVersionNotFoundError,
+  zAlreadySubmittedError,
+  zAppMoreLikeThisDisabledError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppUnavailableError,
+  zAudioTooLargeError,
+  zAuthenticationFailedError,
+  zCompletionRequestError,
+  zConversationCursorNotFoundError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNotFoundError,
+  zEmailCodeError,
+  zEmailPasswordResetLimitError,
+  zEmailSendIpLimitError,
+  zExpiredError,
+  zFileExtensionBlockedError,
+  zFileTooLargeError,
+  zFilenameNotExistsError,
+  zHumanInputAccessDeliveryFailedError,
+  zHumanInputAccessRateLimitExceededError,
+  zHumanInputChallengeExpiredError,
+  zHumanInputChallengeStaleError,
+  zHumanInputFormExpiredError,
+  zHumanInputFormNotFoundError,
+  zHumanInputFormSubmittedError,
+  zHumanInputInvalidOtpError,
+  zHumanInputV2UnavailableError,
+  zInvalidEmailError,
+  zInvalidFormDataError,
+  zInvalidInputError,
+  zInvalidOrExpiredTokenError,
+  zInvalidParamError,
+  zInvalidUploadTokenError,
+  zMalformedUploadTokenError,
+  zMessageFeedbackRatingRequiredError,
+  zModelCurrentlyNotSupportError,
+  zNoAudioUploadedError,
+  zNoFileUploadedError,
+  zNotChatAppError,
+  zNotCompletionAppError,
+  zNotWorkflowAppError,
+  zPasswordMismatchError,
+  zPasswordResetRateLimitExceededError,
+  zProviderNotInitializeError,
+  zProviderNotSupportSpeechToTextError,
+  zProviderQuotaExceededError,
+  zRateLimitError,
+  zRemoteFileAccessDeniedError,
+  zRemoteFileInvalidResponseError,
+  zRemoteFileInvalidUrlError,
+  zRemoteFileNotFoundError,
+  zRemoteFileUnavailableError,
+  zRemoteFileUrlBlockedError,
+  zSpeechToTextDisabledError,
+  zTooManyFilesError,
+  zTriggerWorkflowServiceModeUnavailableError,
+  zUnsupportedAudioTypeError,
+  zUnsupportedFileTypeError,
+  zUploadTokenRequiredError,
+  zWebFormRateLimitExceededError,
+  zWorkflowNotActiveError,
+} from './zod.gen.ts'
+import {
   zDeleteConversationsByCIdPath,
   zDeleteConversationsByCIdResponse,
   zDeleteSavedMessagesByMessageIdPath,
@@ -11,6 +76,10 @@ import {
   zGetConversationsResponse,
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
+  zGetFormHumanInputV2ByFormTokenPath,
+  zGetFormHumanInputV2ByFormTokenResponse,
+  zGetFormHumanInputV2PublicByFormTokenPath,
+  zGetFormHumanInputV2PublicByFormTokenResponse,
   zGetLoginStatusQuery,
   zGetLoginStatusResponse,
   zGetMessagesByMessageIdMoreLikeThisPath,
@@ -69,7 +138,23 @@ import {
   zPostFormHumanInputByFormTokenResponse,
   zPostFormHumanInputByFormTokenUploadTokenPath,
   zPostFormHumanInputByFormTokenUploadTokenResponse,
+  zPostFormHumanInputV2ByFormTokenBody,
+  zPostFormHumanInputV2ByFormTokenPath,
+  zPostFormHumanInputV2ByFormTokenResponse,
+  zPostFormHumanInputV2PublicByFormTokenAccessRequestPath,
+  zPostFormHumanInputV2PublicByFormTokenAccessRequestResponse,
+  zPostFormHumanInputV2PublicByFormTokenBody,
+  zPostFormHumanInputV2PublicByFormTokenPath,
+  zPostFormHumanInputV2PublicByFormTokenResponse,
+  zPostFormHumanInputV2PublicByFormTokenUploadTokenPath,
+  zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse,
   zPostHumanInputFormsFilesResponse,
+  zPostHumanInputV2FilesBody,
+  zPostHumanInputV2FilesHeaders,
+  zPostHumanInputV2FilesRemoteBody,
+  zPostHumanInputV2FilesRemoteHeaders,
+  zPostHumanInputV2FilesRemoteResponse,
+  zPostHumanInputV2FilesResponse,
   zPostLoginBody,
   zPostLoginResponse,
   zPostLogoutResponse,
@@ -106,6 +191,21 @@ export const post = oc
     tags: ['web'],
   })
   .output(zPostAudioToTextResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+  })
 
 export const audioToText = {
   post,
@@ -125,6 +225,7 @@ export const post2 = oc
   })
   .input(z.object({ params: zPostChatMessagesByTaskIdStopPath }))
   .output(zPostChatMessagesByTaskIdStopResponse)
+  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const stop = {
   post: post2,
@@ -148,6 +249,16 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostChatMessagesBody }))
   .output(zPostChatMessagesResponse)
+  .errors({
+    agent_not_published: { status: 400, data: zAgentNotPublishedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+  })
 
 export const chatMessages = {
   post: post3,
@@ -168,6 +279,7 @@ export const post4 = oc
   })
   .input(z.object({ params: zPostCompletionMessagesByTaskIdStopPath }))
   .output(zPostCompletionMessagesByTaskIdStopResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const stop2 = {
   post: post4,
@@ -191,6 +303,14 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostCompletionMessagesBody }))
   .output(zPostCompletionMessagesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const completionMessages = {
   post: post5,
@@ -217,6 +337,14 @@ export const post6 = oc
     }),
   )
   .output(zPostConversationsByCIdNameResponse)
+  .errors({
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const name = {
   post: post6,
@@ -236,17 +364,22 @@ export const patch = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdPinPath }))
   .output(zPatchConversationsByCIdPinResponse)
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const pin = {
   patch,
 }
 
 /**
- * Unpin a specific conversation to remove it from the top of the list.
+ * Remove the current user's pin. Succeeds when the conversation is already unpinned.
  */
 export const patch2 = oc
   .route({
-    description: 'Unpin a specific conversation to remove it from the top of the list.',
+    description:
+      "Remove the current user's pin. Succeeds when the conversation is already unpinned.",
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchConversationsByCIdUnpin',
@@ -255,6 +388,10 @@ export const patch2 = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdUnpinPath }))
   .output(zPatchConversationsByCIdUnpinResponse)
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const unpin = {
   patch: patch2,
@@ -275,6 +412,10 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteConversationsByCIdPath }))
   .output(zDeleteConversationsByCIdResponse)
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const byCId = {
   delete: delete_,
@@ -295,8 +436,13 @@ export const get = oc
     path: '/conversations',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetConversationsQuery.optional() }))
+  .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
+  .errors({
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const conversations = {
   get,
@@ -317,6 +463,12 @@ export const post7 = oc
   })
   .input(z.object({ body: zPostEmailCodeLoginValidityBody }))
   .output(zPostEmailCodeLoginValidityResponse)
+  .errors({
+    account_banned: { status: 400, data: zAccountBannedError },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+  })
 
 export const validity = {
   post: post7,
@@ -336,6 +488,7 @@ export const post8 = oc
   })
   .input(z.object({ body: zPostEmailCodeLoginBody }))
   .output(zPostEmailCodeLoginResponse)
+  .errors({ authentication_failed: { status: 401, data: zAuthenticationFailedError } })
 
 export const emailCodeLogin = {
   post: post8,
@@ -382,6 +535,14 @@ export const post9 = oc
     tags: ['web'],
   })
   .output(zPostFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload = {
   post: post9,
@@ -405,6 +566,11 @@ export const post10 = oc
   })
   .input(z.object({ body: zPostForgotPasswordResetsBody }))
   .output(zPostForgotPasswordResetsResponse)
+  .errors({
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    password_mismatch: { status: 400, data: zPasswordMismatchError },
+  })
 
 export const resets = {
   post: post10,
@@ -424,6 +590,12 @@ export const post11 = oc
   })
   .input(z.object({ body: zPostForgotPasswordValidityBody }))
   .output(zPostForgotPasswordValidityResponse)
+  .errors({
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_password_reset_limit: { status: 429, data: zEmailPasswordResetLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
 
 export const validity2 = {
   post: post11,
@@ -443,11 +615,181 @@ export const post12 = oc
   })
   .input(z.object({ body: zPostForgotPasswordBody }))
   .output(zPostForgotPasswordResponse)
+  .errors({
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    password_reset_rate_limit_exceeded: { status: 429, data: zPasswordResetRateLimitExceededError },
+  })
 
 export const forgotPassword = {
   post: post12,
   resets,
   validity: validity2,
+}
+
+export const post13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2PublicByFormTokenAccessRequest',
+    path: '/form/human-input/v2/public/{form_token}/access-request',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostFormHumanInputV2PublicByFormTokenAccessRequestPath }))
+  .output(zPostFormHumanInputV2PublicByFormTokenAccessRequestResponse)
+  .errors({
+    human_input_access_delivery_failed: { status: 503, data: zHumanInputAccessDeliveryFailedError },
+    human_input_access_rate_limit_exceeded: {
+      status: 429,
+      data: zHumanInputAccessRateLimitExceededError,
+    },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    human_input_v2_unavailable: { status: 503, data: zHumanInputV2UnavailableError },
+  })
+
+export const accessRequest = {
+  post: post13,
+}
+
+export const post14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2PublicByFormTokenUploadToken',
+    path: '/form/human-input/v2/public/{form_token}/upload-token',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostFormHumanInputV2PublicByFormTokenUploadTokenPath }))
+  .output(zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+  })
+
+export const uploadToken = {
+  post: post14,
+}
+
+/**
+ * Read a public v2 form definition by delivery token without an OTP or login session.
+ */
+export const get2 = oc
+  .route({
+    description:
+      'Read a public v2 form definition by delivery token without an OTP or login session.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputV2PublicByFormToken',
+    path: '/form/human-input/v2/public/{form_token}',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetFormHumanInputV2PublicByFormTokenPath }))
+  .output(zGetFormHumanInputV2PublicByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+  })
+
+/**
+ * Submit a form with inputs, an action, and email verification proof.
+ */
+export const post15 = oc
+  .route({
+    description: 'Submit a form with inputs, an action, and email verification proof.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2PublicByFormToken',
+    path: '/form/human-input/v2/public/{form_token}',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputV2PublicByFormTokenBody,
+      params: zPostFormHumanInputV2PublicByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputV2PublicByFormTokenResponse)
+  .errors({
+    human_input_challenge_expired: { status: 400, data: zHumanInputChallengeExpiredError },
+    human_input_challenge_stale: { status: 400, data: zHumanInputChallengeStaleError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    human_input_invalid_otp: { status: 400, data: zHumanInputInvalidOtpError },
+    human_input_v2_unavailable: { status: 503, data: zHumanInputV2UnavailableError },
+    invalid_input: { status: 400, data: zInvalidInputError },
+    workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+  })
+
+export const byFormToken = {
+  get: get2,
+  post: post15,
+  accessRequest,
+  uploadToken,
+}
+
+export const public_ = {
+  byFormToken,
+}
+
+/**
+ * Read a v2 form using the original EndUser's Web App passport.
+ */
+export const get3 = oc
+  .route({
+    description: "Read a v2 form using the original EndUser's Web App passport.",
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetFormHumanInputV2ByFormTokenPath }))
+  .output(zGetFormHumanInputV2ByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+  })
+
+/**
+ * Submit a v2 form using the original EndUser's Web App passport.
+ */
+export const post16 = oc
+  .route({
+    description: "Submit a v2 form using the original EndUser's Web App passport.",
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputV2ByFormTokenBody,
+      params: zPostFormHumanInputV2ByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputV2ByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+    invalid_input: { status: 400, data: zInvalidInputError },
+    workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+  })
+
+export const byFormToken2 = {
+  get: get3,
+  post: post16,
+}
+
+export const v2 = {
+  public: public_,
+  byFormToken: byFormToken2,
 }
 
 /**
@@ -456,7 +798,7 @@ export const forgotPassword = {
  * Issue an upload token for an active human input form
  * POST /api/form/human_input/<form_token>/upload-token
  */
-export const post13 = oc
+export const post17 = oc
   .route({
     description:
       'Issue an upload token for an active human input form\nPOST /api/form/human_input/<form_token>/upload-token',
@@ -469,9 +811,14 @@ export const post13 = oc
   })
   .input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath }))
   .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+  })
 
-export const uploadToken = {
-  post: post13,
+export const uploadToken2 = {
+  post: post17,
 }
 
 /**
@@ -480,7 +827,7 @@ export const uploadToken = {
  * Get a human input form definition by token
  * GET /api/form/human_input/<form_token>
  */
-export const get2 = oc
+export const get4 = oc
   .route({
     description:
       'Get a human input form definition by token\nGET /api/form/human_input/<form_token>',
@@ -493,6 +840,11 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
   .output(zGetFormHumanInputByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+  })
 
 /**
  * Submit human input form by token
@@ -508,7 +860,7 @@ export const get2 = oc
  * "action": "Approve"
  * }
  */
-export const post14 = oc
+export const post18 = oc
   .route({
     description:
       'Submit a human input form by token\nPOST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
@@ -526,15 +878,22 @@ export const post14 = oc
     }),
   )
   .output(zPostFormHumanInputByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_form_data: { status: 400, data: zInvalidFormDataError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+  })
 
-export const byFormToken = {
-  get: get2,
-  post: post14,
-  uploadToken,
+export const byFormToken3 = {
+  get: get4,
+  post: post18,
+  uploadToken: uploadToken2,
 }
 
 export const humanInput = {
-  byFormToken,
+  v2,
+  byFormToken: byFormToken3,
 }
 
 export const form = {
@@ -544,7 +903,7 @@ export const form = {
 /**
  * Upload one local file or remote URL file for a HITL human input form
  */
-export const post15 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -555,9 +914,28 @@ export const post15 = oc
     tags: ['web'],
   })
   .output(zPostHumanInputFormsFilesResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+    malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    upload_token_required: { status: 401, data: zUploadTokenRequiredError },
+  })
 
 export const files2 = {
-  post: post15,
+  post: post19,
 }
 
 export const humanInputForms = {
@@ -565,9 +943,108 @@ export const humanInputForms = {
 }
 
 /**
+ * Fetch a remote file using a v2 upload grant.
+ */
+export const post20 = oc
+  .route({
+    description: 'Fetch a remote file using a v2 upload grant.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputV2FilesRemote',
+    path: '/human-input/v2/files/remote',
+    successStatus: 201,
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostHumanInputV2FilesRemoteBody,
+      headers: zPostHumanInputV2FilesRemoteHeaders,
+    }),
+  )
+  .output(zPostHumanInputV2FilesRemoteResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+    malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    upload_token_required: { status: 401, data: zUploadTokenRequiredError },
+  })
+
+export const remote = {
+  post: post20,
+}
+
+/**
+ * Upload a file or a remote URL using a v2 upload grant.
+ */
+export const post21 = oc
+  .route({
+    description: 'Upload a file or a remote URL using a v2 upload grant.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputV2Files',
+    path: '/human-input/v2/files',
+    successStatus: 201,
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostHumanInputV2FilesBody.optional(),
+      headers: zPostHumanInputV2FilesHeaders,
+    }),
+  )
+  .output(zPostHumanInputV2FilesResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+    malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    upload_token_required: { status: 401, data: zUploadTokenRequiredError },
+  })
+
+export const files3 = {
+  post: post21,
+  remote,
+}
+
+export const v22 = {
+  files: files3,
+}
+
+export const humanInput2 = {
+  v2: v22,
+}
+
+/**
  * Check login status
  */
-export const get3 = oc
+export const get5 = oc
   .route({
     description: 'Check login status',
     inputStructure: 'detailed',
@@ -576,11 +1053,11 @@ export const get3 = oc
     path: '/login/status',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetLoginStatusQuery.optional() }))
+  .input(z.object({ query: zGetLoginStatusQuery.optional() }).optional())
   .output(zGetLoginStatusResponse)
 
 export const status = {
-  get: get3,
+  get: get5,
 }
 
 /**
@@ -588,7 +1065,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post16 = oc
+export const post22 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -600,16 +1077,20 @@ export const post16 = oc
   })
   .input(z.object({ body: zPostLoginBody }))
   .output(zPostLoginResponse)
+  .errors({
+    account_banned: { status: 400, data: zAccountBannedError },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+  })
 
 export const login = {
-  post: post16,
+  post: post22,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post17 = oc
+export const post23 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -621,13 +1102,13 @@ export const post17 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post17,
+  post: post23,
 }
 
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
-export const post18 = oc
+export const post24 = oc
   .route({
     description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
@@ -644,15 +1125,19 @@ export const post18 = oc
     }),
   )
   .output(zPostMessagesByMessageIdFeedbacksResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+  })
 
 export const feedbacks = {
-  post: post18,
+  post: post24,
 }
 
 /**
  * Generate a new completion similar to an existing message (completion apps only).
  */
-export const get4 = oc
+export const get6 = oc
   .route({
     description: 'Generate a new completion similar to an existing message (completion apps only).',
     inputStructure: 'detailed',
@@ -668,17 +1153,27 @@ export const get4 = oc
     }),
   )
   .output(zGetMessagesByMessageIdMoreLikeThisResponse)
+  .errors({
+    app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const moreLikeThis = {
-  get: get4,
+  get: get6,
 }
 
 /**
- * Get suggested follow-up questions after a message (chat apps only).
+ * Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
  */
-export const get5 = oc
+export const get7 = oc
   .route({
-    description: 'Get suggested follow-up questions after a message (chat apps only).',
+    description:
+      'Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggestedQuestions',
@@ -687,9 +1182,22 @@ export const get5 = oc
   })
   .input(z.object({ params: zGetMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetMessagesByMessageIdSuggestedQuestionsResponse)
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const suggestedQuestions = {
-  get: get5,
+  get: get7,
 }
 
 export const byMessageId = {
@@ -701,7 +1209,7 @@ export const byMessageId = {
 /**
  * Retrieve paginated list of messages from a conversation in a chat application.
  */
-export const get6 = oc
+export const get8 = oc
   .route({
     description: 'Retrieve paginated list of messages from a conversation in a chat application.',
     inputStructure: 'detailed',
@@ -712,9 +1220,13 @@ export const get6 = oc
   })
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const messages = {
-  get: get6,
+  get: get8,
   byMessageId,
 }
 
@@ -723,7 +1235,7 @@ export const messages = {
  *
  * Retrieve the metadata for a specific app.
  */
-export const get7 = oc
+export const get9 = oc
   .route({
     description: 'Retrieve the metadata for a specific app.',
     inputStructure: 'detailed',
@@ -734,9 +1246,10 @@ export const get7 = oc
     tags: ['web'],
   })
   .output(zGetMetaResponse)
+  .errors({ app_unavailable: { status: 400, data: zAppUnavailableError } })
 
 export const meta = {
-  get: get7,
+  get: get9,
 }
 
 /**
@@ -744,7 +1257,7 @@ export const meta = {
  *
  * Retrieve the parameters for a specific app.
  */
-export const get8 = oc
+export const get10 = oc
   .route({
     description: 'Retrieve the parameters for a specific app.',
     inputStructure: 'detailed',
@@ -755,15 +1268,19 @@ export const get8 = oc
     tags: ['web'],
   })
   .output(zGetParametersResponse)
+  .errors({
+    agent_not_published: { status: 400, data: zAgentNotPublishedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const parameters = {
-  get: get8,
+  get: get10,
 }
 
 /**
  * Get authentication passport for web application access
  */
-export const get9 = oc
+export const get11 = oc
   .route({
     description: 'Get authentication passport for web application access',
     inputStructure: 'detailed',
@@ -772,11 +1289,11 @@ export const get9 = oc
     path: '/passport',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetPassportQuery.optional() }))
+  .input(z.object({ query: zGetPassportQuery.optional() }).optional())
   .output(zGetPassportResponse)
 
 export const passport = {
-  get: get9,
+  get: get11,
 }
 
 /**
@@ -807,7 +1324,7 @@ export const passport = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post19 = oc
+export const post25 = oc
   .route({
     description:
       'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
@@ -821,9 +1338,20 @@ export const post19 = oc
   })
   .input(z.object({ body: zPostRemoteFilesUploadBody }))
   .output(zPostRemoteFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload2 = {
-  post: post19,
+  post: post25,
 }
 
 /**
@@ -844,7 +1372,7 @@ export const upload2 = {
  * Raises:
  * HTTPException: If the remote file cannot be accessed
  */
-export const get10 = oc
+export const get12 = oc
   .route({
     description:
       'Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed',
@@ -857,9 +1385,17 @@ export const get10 = oc
   })
   .input(z.object({ params: zGetRemoteFilesByUrlPath }))
   .output(zGetRemoteFilesByUrlResponse)
+  .errors({
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+  })
 
 export const byUrl = {
-  get: get10,
+  get: get12,
 }
 
 export const remoteFiles = {
@@ -882,6 +1418,7 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteSavedMessagesByMessageIdPath }))
   .output(zDeleteSavedMessagesByMessageIdResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const byMessageId2 = {
   delete: delete2,
@@ -890,7 +1427,7 @@ export const byMessageId2 = {
 /**
  * Retrieve paginated list of saved messages for a completion application.
  */
-export const get11 = oc
+export const get13 = oc
   .route({
     description: 'Retrieve paginated list of saved messages for a completion application.',
     inputStructure: 'detailed',
@@ -899,13 +1436,14 @@ export const get11 = oc
     path: '/saved-messages',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetSavedMessagesQuery.optional() }))
+  .input(z.object({ query: zGetSavedMessagesQuery.optional() }).optional())
   .output(zGetSavedMessagesResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 /**
  * Save a specific message for later reference.
  */
-export const post20 = oc
+export const post26 = oc
   .route({
     description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
@@ -916,10 +1454,11 @@ export const post20 = oc
   })
   .input(z.object({ body: zPostSavedMessagesBody, query: zPostSavedMessagesQuery }))
   .output(zPostSavedMessagesResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const savedMessages = {
-  get: get11,
-  post: post20,
+  get: get13,
+  post: post26,
   byMessageId: byMessageId2,
 }
 
@@ -928,7 +1467,7 @@ export const savedMessages = {
  *
  * Retrieve app site information and configuration.
  */
-export const get12 = oc
+export const get14 = oc
   .route({
     description: 'Retrieve app site information and configuration.',
     inputStructure: 'detailed',
@@ -941,7 +1480,7 @@ export const get12 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get12,
+  get: get14,
 }
 
 /**
@@ -953,7 +1492,7 @@ export const site = {
  *
  * Authentication configuration must be available before the authentication flow can be selected.
  */
-export const get13 = oc
+export const get15 = oc
   .route({
     description:
       'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
@@ -967,7 +1506,7 @@ export const get13 = oc
   .output(zGetSystemFeaturesResponse)
 
 export const systemFeatures = {
-  get: get13,
+  get: get15,
 }
 
 /**
@@ -975,7 +1514,7 @@ export const systemFeatures = {
  *
  * Convert text to audio using text-to-speech service.
  */
-export const post21 = oc
+export const post27 = oc
   .route({
     description: 'Convert text to audio using text-to-speech service.',
     inputStructure: 'detailed',
@@ -987,15 +1526,22 @@ export const post21 = oc
   })
   .input(z.object({ body: zPostTextToAudioBody }))
   .output(zPostTextToAudioResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const textToAudio = {
-  post: post21,
+  post: post27,
 }
 
 /**
  * Retrieve the access mode for a web application (public or restricted).
  */
-export const get14 = oc
+export const get16 = oc
   .route({
     description: 'Retrieve the access mode for a web application (public or restricted).',
     inputStructure: 'detailed',
@@ -1004,17 +1550,18 @@ export const get14 = oc
     path: '/webapp/access-mode',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }))
+  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }).optional())
   .output(zGetWebappAccessModeResponse)
+  .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const accessMode = {
-  get: get14,
+  get: get16,
 }
 
 /**
  * Check if user has permission to access a web application.
  */
-export const get15 = oc
+export const get17 = oc
   .route({
     description: 'Check if user has permission to access a web application.',
     inputStructure: 'detailed',
@@ -1027,7 +1574,7 @@ export const get15 = oc
   .output(zGetWebappPermissionResponse)
 
 export const permission = {
-  get: get15,
+  get: get17,
 }
 
 export const webapp = {
@@ -1042,7 +1589,7 @@ export const webapp = {
  *
  * Returns Server-Sent Events stream.
  */
-export const get16 = oc
+export const get18 = oc
   .route({
     description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
     inputStructure: 'detailed',
@@ -1054,9 +1601,10 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetWorkflowByTaskIdEventsPath }))
   .output(zGetWorkflowByTaskIdEventsResponse)
+  .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const events = {
-  get: get16,
+  get: get18,
 }
 
 export const byTaskId3 = {
@@ -1072,7 +1620,7 @@ export const workflow = {
  *
  * Execute a workflow with provided inputs and files.
  */
-export const post22 = oc
+export const post28 = oc
   .route({
     description: 'Execute a workflow with provided inputs and files.',
     inputStructure: 'detailed',
@@ -1084,9 +1632,21 @@ export const post22 = oc
   })
   .input(z.object({ body: zPostWorkflowsRunBody }))
   .output(zPostWorkflowsRunResponse)
+  .errors({
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    trigger_workflow_service_mode_unavailable: {
+      status: 403,
+      data: zTriggerWorkflowServiceModeUnavailableError,
+    },
+  })
 
 export const run = {
-  post: post22,
+  post: post28,
 }
 
 /**
@@ -1094,7 +1654,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post23 = oc
+export const post29 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -1106,9 +1666,10 @@ export const post23 = oc
   })
   .input(z.object({ params: zPostWorkflowsTasksByTaskIdStopPath }))
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
+  .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const stop3 = {
-  post: post23,
+  post: post29,
 }
 
 export const byTaskId4 = {
@@ -1134,6 +1695,7 @@ export const contract = {
   forgotPassword,
   form,
   humanInputForms,
+  humanInput: humanInput2,
   login,
   logout,
   messages,

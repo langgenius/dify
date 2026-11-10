@@ -1,36 +1,29 @@
 'use client'
-import type { FC } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiEditLine, RiFileEditLine } from '@remixicon/react'
+import { RiFileEditLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useModalContext } from '@/context/modal-context'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { addAnnotation } from '@/service/annotation'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 
-type Props = Readonly<{
+type AnnotationCtrlButtonProps = {
   appId: string
   messageId?: string
-  cached: boolean
   query: string
   answer: string
   onAdded: (annotationId: string, authorName: string) => void
-  onEdit: () => void
-}>
-const AnnotationCtrlButton: FC<Props> = ({
-  cached,
+}
+export default function AnnotationCtrlButton({
   query,
   answer,
   appId,
   messageId,
   onAdded,
-  onEdit,
-}) => {
+}: AnnotationCtrlButtonProps) {
   const { t } = useTranslation(['appDebug', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
@@ -54,34 +47,17 @@ const AnnotationCtrlButton: FC<Props> = ({
       setShowAnnotationFullModal()
       return
     }
-    const res = await addAnnotation(appId, {
-      message_id: messageId,
-      question: query,
-      answer,
+    const res = await consoleClient.apps.byAppId.annotations.post({
+      params: { app_id: appId },
+      body: { message_id: messageId, question: query, answer },
     })
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
-    onAdded(res.id, res.account?.name ?? '')
+    // The create response does not include the author.
+    onAdded(res.id, '')
   }
   return (
     <>
-      {cached && (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <IconButton
-                aria-label={t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}
-                onClick={onEdit}
-              >
-                <RiEditLine aria-hidden className="size-4" />
-              </IconButton>
-            }
-          />
-          <TooltipContent>
-            {t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}
-          </TooltipContent>
-        </Tooltip>
-      )}
-      {!cached && answer && (
+      {answer && (
         <Tooltip>
           <TooltipTrigger
             render={
@@ -102,4 +78,3 @@ const AnnotationCtrlButton: FC<Props> = ({
     </>
   )
 }
-export default React.memo(AnnotationCtrlButton)

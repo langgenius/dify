@@ -28,6 +28,8 @@
   "menus.plugins": "یکپارچه‌سازی‌ها",
   "menus.status": "بتا",
   "menus.tools": "ابزارها",
+  "settings.accessToken": "توکن‌های دسترسی",
+  "settings.accessTokenDescription": "توکن‌های API سرویس بسازید که فقط به برنامه‌ها و پایگاه‌های دانش انتخاب‌شده دسترسی بدهند.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "صورتحساب",
   "settings.customEndpoint": "نقطه پایانی سفارشی",

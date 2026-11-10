@@ -2,7 +2,7 @@
 
 Outbound HTTP client settings describe the FastAPI lifespan-owned
 ``httpx.AsyncClient`` instances shared by local run tasks for plugin-daemon and
-Dify API inner calls. Layers and Agenton providers do not own those clients, so
+Dify API inner calls. Native modules borrow those clients, so
 these settings are process resource limits rather than per-run lifecycle knobs.
 Endpoint URLs and API keys stay service-specific. The Agent Stub also uses this
 settings model directly: the public Agent Stub API base URL, server secret,
@@ -12,7 +12,7 @@ and optional Dify inner API bridge settings live here under the
 
 import httpx
 
-from typing import ClassVar, Literal, cast
+from typing import ClassVar, Literal, cast, override
 
 from pydantic import AliasChoices, AnyHttpUrl, Field, SecretStr, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -131,6 +131,7 @@ class ServerSettings(BaseSettings):
     server_secret_key: str | None = None
     api_token: str | None = None
     trajectory_enabled: bool = False
+    application_tracing_enabled: bool = False
     trajectory_otlp_traces_endpoint: AnyHttpUrl | None = None
     trajectory_otlp_headers: dict[str, SecretStr] = Field(default_factory=dict, repr=False)
     trajectory_service_name: str = Field(default="dify-agent-trajectory", min_length=1)
@@ -158,6 +159,7 @@ class ServerSettings(BaseSettings):
     )
 
     @classmethod
+    @override
     def settings_customise_sources(
         cls,
         settings_cls: type[BaseSettings],

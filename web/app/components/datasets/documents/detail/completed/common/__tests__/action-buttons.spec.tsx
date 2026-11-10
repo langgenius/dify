@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
 import { ChunkingMode } from '@/models/datasets'
 import { DocumentContext } from '../../../context'
@@ -26,15 +27,16 @@ function pressKey(target: HTMLElement, key: string, options: KeyboardEventInit =
 }
 
 describe('ActionButtons', () => {
-  it('saves and cancels through the same actions as the buttons inside its editor', () => {
+  it('saves and cancels through the same actions as the buttons inside its editor', async () => {
+    const user = userEvent.setup()
     const handleSave = vi.fn()
     const handleCancel = vi.fn()
     render(<Editor handleSave={handleSave} handleCancel={handleCancel} loading={false} />)
     const input = screen.getByRole('textbox')
     expect(pressKey(input, 's', { ctrlKey: true }).defaultPrevented).toBe(true)
     expect(pressKey(input, 'Escape').defaultPrevented).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: /operation.save/ }))
-    fireEvent.click(screen.getByRole('button', { name: /operation.cancel/ }))
+    await user.click(screen.getByRole('button', { name: /operation.save/ }))
+    await user.click(screen.getByRole('button', { name: /operation.cancel/ }))
     expect(handleSave).toHaveBeenCalledTimes(2)
     expect(handleCancel).toHaveBeenCalledTimes(2)
   })
@@ -138,7 +140,8 @@ describe('ActionButtons', () => {
     },
   ])(
     'offers regeneration only for eligible parent chunks: $actionType / $isChildChunk / $showRegenerationButton',
-    ({ visible, ...props }) => {
+    async ({ visible, ...props }) => {
+      const user = userEvent.setup()
       const handleRegeneration = vi.fn()
       render(
         <DocumentContext.Provider
@@ -156,7 +159,7 @@ describe('ActionButtons', () => {
       const button = screen.queryByRole('button', { name: /operation.saveAndRegenerate/ })
       expect(Boolean(button)).toBe(visible)
       if (button) {
-        fireEvent.click(button)
+        await user.click(button)
         expect(handleRegeneration).toHaveBeenCalledOnce()
       }
     },

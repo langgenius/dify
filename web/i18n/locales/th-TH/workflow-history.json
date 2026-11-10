@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "คัดลอกรหัสไปยังคลิปบอร์ด",
   "versionHistory.action.deleteDeployedVersionError": "เวิร์กโฟลว์เวอร์ชันนี้ถูกนำไปใช้งานแล้วหรือกำลังนำไปใช้งานในสภาพแวดล้อมอย่างน้อยหนึ่งแห่ง โปรดยกเลิกการนำไปใช้งานจากทุกสภาพแวดล้อมก่อนลบเวอร์ชัน",
   "versionHistory.action.deleteFailure": "ลบเวอร์ชันไม่สำเร็จ",
-  "versionHistory.action.deleteSuccess": "เวอร์ชันถูกลบ",
   "versionHistory.action.restoreFailure": "ไม่สามารถกู้คืนเวอร์ชันได้",
   "versionHistory.action.restoreInProgress": "{{userName}} กำลังกู้คืนไปยังเวอร์ชัน {{versionName}}...",
   "versionHistory.action.restoreSuccess": "เวอร์ชันที่กู้คืน",

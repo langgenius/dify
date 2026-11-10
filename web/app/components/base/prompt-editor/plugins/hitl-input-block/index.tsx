@@ -2,7 +2,13 @@ import type { HITLInputBlockType } from '../../types'
 import type { HITLNodeProps } from './node'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import { $insertNodes, $nodesOfType, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
+import {
+  $insertNodes,
+  $nodesOfType,
+  COMMAND_PRIORITY_EDITOR,
+  createCommand,
+  SKIP_DOM_SELECTION_TAG,
+} from 'lexical'
 import { memo, useEffect } from 'react'
 import { CustomTextNode } from '../custom-text/node'
 import { UPDATE_WORKFLOW_NODES_MAP as WORKFLOW_UPDATE_WORKFLOW_NODES_MAP } from '../workflow-variable-block'
@@ -24,12 +30,16 @@ const HITLInputBlock = memo(
     const [editor] = useLexicalComposerContext()
 
     useEffect(() => {
-      editor.update(() => {
-        editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
-          workflowNodesMap: workflowNodesMap || {},
-          availableVariables: workflowAvailableVariables || [],
-        })
-      })
+      // Synchronizing reference metadata must not steal focus from an open configuration form.
+      editor.update(
+        () => {
+          editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+            workflowNodesMap: workflowNodesMap || {},
+            availableVariables: workflowAvailableVariables || [],
+          })
+        },
+        { tag: SKIP_DOM_SELECTION_TAG },
+      )
     }, [editor, workflowNodesMap, workflowAvailableVariables])
 
     useEffect(() => {

@@ -176,3 +176,52 @@ class TestPersistActivation:
         assert membership is not None
         assert membership.role == TenantAccountRole.EDITOR
         assert membership.current is True
+
+    def test_does_not_create_membership_when_creation_is_disallowed(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        account, _ = _persist_invitation_state(sqlite_session)
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+
+        result = repository.activate(
+            _invitation(),
+            role="admin",
+            setup=AccountSetup(name="Name", interface_language="en-US", timezone="UTC"),
+            create_membership=False,
+        )
+
+        assert result is None
+        sqlite_session.expire_all()
+        assert sqlite_session.scalar(select(TenantAccountJoin)) is None
+        reloaded = sqlite_session.get(Account, account.id)
+        assert reloaded is not None
+        assert reloaded.status == AccountStatus.PENDING
+
+    def test_keeps_existing_membership_when_creation_is_disallowed(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        account, tenant = _persist_invitation_state(sqlite_session)
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.EDITOR,
+            )
+        )
+        account.status = AccountStatus.ACTIVE
+        sqlite_session.commit()
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+
+        result = repository.activate(_invitation(), role="admin", setup=None, create_membership=False)
+
+        assert result is not None
+        assert result.membership_created is False
+        sqlite_session.expire_all()
+        membership = sqlite_session.scalar(select(TenantAccountJoin))
+        assert membership is not None
+        assert membership.role == TenantAccountRole.EDITOR
+        assert membership.current is True

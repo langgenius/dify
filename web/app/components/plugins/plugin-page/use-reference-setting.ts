@@ -14,6 +14,7 @@ import {
   isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
   useInvalidateReferenceSettings,
@@ -43,7 +44,6 @@ const useCanSetPluginSettings = () => {
 }
 
 export const usePluginSettingsAccess = () => {
-  const { t } = useTranslation(['common'])
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
@@ -61,11 +61,7 @@ export const usePluginSettingsAccess = () => {
   const permissionQuery = usePluginPermissionSettings()
   const { data: permissions } = permissionQuery
   const { mutate: setPluginPermissionSettings, isPending: isPermissionUpdatePending } =
-    useMutationPluginPermissionSettings({
-      onSuccess: () => {
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-      },
-    })
+    useMutationPluginPermissionSettings()
   const isAdminOrOwner = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
   const legacyCanInstallPlugin = hasLegacyPluginPermissionAccess({
     isAdminOrOwner,
@@ -153,7 +149,7 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
 
 export const useCanInstallPluginFromMarketplace = () => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const marketplaceAccess = systemFeatures.enable_marketplace
+  const marketplaceAccess = useMarketplace() !== null
   const rbacEnabled = systemFeatures.rbac_enabled
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)

@@ -2,24 +2,27 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { Button } from '@langgenius/dify-ui/button'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useTranslation } from 'react-i18next'
+import { isWorkflowAppMode } from '@/app/components/apps/app-type'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useSearchParams } from '@/next/navigation'
+import { useParams, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { fetchRunDetail } from '@/service/log'
-import { useAppTriggers } from '@/service/use-tools'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
@@ -40,22 +43,28 @@ const WorkflowAppWithAdditionalContext = () => {
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const appACLCapabilities = useMemo(
     () =>
-      getAppACLCapabilities(appDetail?.permission_keys, {
+      getAppACLCapabilities(appDetail.permission_keys, {
         currentUserId,
-        resourceMaintainer: appDetail?.maintainer,
+        resourceMaintainer: appDetail.maintainer,
         workspacePermissionKeys,
       }),
-    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
+    [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
   )
-  const appId = appDetail?.id
-  const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
-  const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    refetchOnWindowFocus: false,
-  })
+  const isWorkflowMode = appDetail.mode === 'workflow'
+  const { data: triggersResponse } = useQuery(
+    consoleQuery.apps.byAppId.triggers.get.queryOptions({
+      input: { params: { app_id: appId } },
+      enabled: isWorkflowMode && !!appId,
+      staleTime: 5 * 60 * 1000, // 5 minutes cache
+      refetchOnWindowFocus: false,
+    }),
+  )
 
   // Sync trigger statuses to store when data loads
   useEffect(() => {
@@ -136,12 +145,51 @@ const WorkflowAppWithAdditionalContext = () => {
 }
 
 const WorkflowAppWrapper = () => {
+  const { appId } = useParams<{ appId: string }>()
+  const { t } = useTranslation(['common', 'workflow'])
+  const collaboration = useQuery({
+    ...consoleQuery.features.get.queryOptions(),
+    retry: false,
+    select: (features) => features.workflow_collaboration_enabled,
+  })
+  const { data: mode } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+      select: (app) => app.mode,
+    }),
+  )
+  if (!isWorkflowAppMode(mode)) throw new Error('This app does not have a workflow editor')
+
+  if (collaboration.data === undefined && collaboration.isPending) {
+    return (
+      <div className="relative flex size-full items-center justify-center">
+        <LoadingPlaceholder />
+      </div>
+    )
+  }
+  if (collaboration.data === undefined) {
+    return (
+      <div className="flex size-full flex-col items-center justify-center gap-4">
+        <div role="alert" className="system-sm-regular text-text-tertiary">
+          {t(($) => $['collaboration.capabilityUnavailable'], { ns: 'workflow' })}
+        </div>
+        <Button size="small" variant="secondary" onClick={() => void collaboration.refetch()}>
+          {t(($) => $['operation.retry'], { ns: 'common' })}
+        </Button>
+      </div>
+    )
+  }
+
   return (
-    <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
+    <EditorResourceScope
+      resource={{ kind: 'app', appId, mode, collaborationEnabled: collaboration.data }}
     >
-      <WorkflowAppWithAdditionalContext />
-    </WorkflowContextProvider>
+      <WorkflowContextProvider
+        injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
+      >
+        <WorkflowAppWithAdditionalContext />
+      </WorkflowContextProvider>
+    </EditorResourceScope>
   )
 }
 

@@ -8,7 +8,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
-import { useCallback, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
@@ -71,7 +71,7 @@ const ChatInputArea = ({
   featureBarReadonly = readonly,
   featureBarDisabled,
   onFeatureBarClick,
-  visionConfig,
+  visionConfig = { enabled: false },
   speechToTextConfig = { enabled: true },
   speechToTextTarget,
   onBeforeSpeechToText,
@@ -101,7 +101,7 @@ const ChatInputArea = ({
     isMultipleLine,
   } = useTextAreaHeight()
   const [query, setQuery] = useState('')
-  const canSend = !!query.trim()
+  const canSend = !disabled && !readonly && !!query.trim()
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const filesStore = useFileStore()
   const {
@@ -111,13 +111,18 @@ const ChatInputArea = ({
     handleDropFile,
     handleClipboardPasteFile,
     isDragActive,
-  } = useFile(visionConfig!, false)
+  } = useFile(visionConfig, false)
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
+  const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearCompositionEndTimer = useCallback(() => {
+    if (compositionEndTimerRef.current !== null) clearTimeout(compositionEndTimerRef.current)
+    compositionEndTimerRef.current = null
+  }, [])
+  useEffect(() => clearCompositionEndTimer, [clearCompositionEndTimer])
   const queryRef = useRef('')
-  const voiceInputRef = useRef<HTMLDivElement>(null)
   const voiceInputReturnFocusRef = useRef<HTMLElement | null>(null)
   const voiceInputCompletedRef = useRef(false)
   const handleQueryChange = useCallback(
@@ -167,14 +172,16 @@ const ChatInputArea = ({
     }
   }
   const handleCompositionStart = () => {
-    // e: React.CompositionEvent<HTMLTextAreaElement>
+    clearCompositionEndTimer()
     isComposingRef.current = true
   }
   const handleCompositionEnd = () => {
     // safari or some browsers will trigger compositionend before keydown.
     // delay 50ms for safari.
-    setTimeout(() => {
+    clearCompositionEndTimer()
+    compositionEndTimerRef.current = setTimeout(() => {
       isComposingRef.current = false
+      compositionEndTimerRef.current = null
     }, 50)
   }
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -238,50 +245,35 @@ const ChatInputArea = ({
     toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
   }, [t])
   const handleHideVoiceInput = useCallback(() => {
-    const textareaElement = textareaRef.current
-    const documentElement = textareaElement?.ownerDocument
-    const activeElement = documentElement?.activeElement
-    const shouldRestoreFocus =
-      !!documentElement &&
-      (activeElement === documentElement.body ||
-        !!(activeElement && voiceInputRef.current?.contains(activeElement)))
+    setShowVoiceInput(false)
+  }, [])
+  useLayoutEffect(() => {
     const returnFocusElement = voiceInputReturnFocusRef.current
+    if (showVoiceInput || !returnFocusElement) return
+
     const voiceInputCompleted = voiceInputCompletedRef.current
     voiceInputReturnFocusRef.current = null
     voiceInputCompletedRef.current = false
-    setShowVoiceInput(false)
-    if (voiceInputCompleted || !shouldRestoreFocus || !documentElement) return
+    const textareaElement = textareaRef.current
+    if (!textareaElement) return
+    const activeElement = textareaElement.ownerDocument.activeElement
+    if (activeElement !== textareaElement.ownerDocument.body && activeElement !== textareaElement)
+      return
 
-    queueMicrotask(() => {
-      const currentActiveElement = documentElement.activeElement
-      if (currentActiveElement !== documentElement.body && currentActiveElement !== activeElement)
-        return
-
-      const elementToFocus = returnFocusElement?.isConnected ? returnFocusElement : textareaElement
-      elementToFocus?.focus({ preventScroll: true })
-    })
-  }, [textareaRef])
-  const handleVoiceInputConverted = (text: string) => {
-    voiceInputCompletedRef.current = true
-    handleQueryChange(text)
-    queueMicrotask(() => {
-      const textareaElement = textareaRef.current
-      if (!textareaElement) return
-
-      const activeElement = textareaElement.ownerDocument.activeElement
-      if (
-        activeElement &&
-        activeElement !== textareaElement.ownerDocument.body &&
-        activeElement !== textareaElement &&
-        !voiceInputRef.current?.contains(activeElement)
-      ) {
-        return
-      }
-
+    if (voiceInputCompleted) {
       textareaElement.focus({ preventScroll: true })
       const caretPosition = textareaElement.value.length
       textareaElement.setSelectionRange(caretPosition, caretPosition)
-    })
+      return
+    }
+    if (activeElement === textareaElement) return
+
+    const elementToFocus = returnFocusElement.isConnected ? returnFocusElement : textareaElement
+    elementToFocus.focus({ preventScroll: true })
+  }, [showVoiceInput, textareaRef])
+  const handleVoiceInputConverted = (text: string) => {
+    voiceInputCompletedRef.current = true
+    handleQueryChange(text)
   }
   const operation = (
     <Operation
@@ -314,19 +306,8 @@ const ChatInputArea = ({
           <FileListInChatInput fileConfig={visionConfig!} />
         </div>
         <div className="relative max-h-39.5 overflow-x-hidden overflow-y-auto px-2.25">
-          <div
-            ref={wrapperRef}
-            className={cn(
-              'flex items-center justify-between',
-              inputLabel && 'max-sm:flex-col max-sm:items-stretch',
-            )}
-          >
-            <div
-              className={cn(
-                'relative flex w-full grow items-center',
-                inputLabel && 'flex-col items-stretch',
-              )}
-            >
+          <div ref={wrapperRef} className="flex items-center justify-between">
+            <div className="relative flex w-full grow items-center">
               <div
                 ref={textValueRef}
                 className="pointer-events-none invisible absolute size-auto p-1 body-lg-regular leading-6 whitespace-pre"
@@ -334,10 +315,7 @@ const ChatInputArea = ({
                 {query}
               </div>
               {inputLabel && (
-                <label
-                  htmlFor={textareaId}
-                  className="px-1 py-1 system-xs-medium text-text-secondary"
-                >
+                <label htmlFor={textareaId} className="sr-only">
                   {inputLabel}
                 </label>
               )}
@@ -357,7 +335,7 @@ const ChatInputArea = ({
                           ($) =>
                             $[readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder'],
                           { ns: 'common', botName: botName ?? '' },
-                        ) || '',
+                        ),
                       )
                 }
                 // oxlint-disable-next-line jsx-a11y/no-autofocus -- Existing chat behavior focuses the composer as soon as it opens.
@@ -374,20 +352,15 @@ const ChatInputArea = ({
                 onDragOver={handleDragFileOver}
                 onDrop={handleDropFile}
                 readOnly={readonly}
+                disabled={disabled}
               />
             </div>
-            {!isMultipleLine &&
-              (inputLabel ? (
-                <div className="max-sm:flex max-sm:justify-end">{operation}</div>
-              ) : (
-                operation
-              ))}
+            {!isMultipleLine && operation}
           </div>
         </div>
         {showVoiceInput && speechToTextTarget && (
           <div className="px-2.25">
             <VoiceInput
-              ref={voiceInputRef}
               target={speechToTextTarget}
               onCancel={handleHideVoiceInput}
               onBeforeTranscribe={onBeforeSpeechToText}

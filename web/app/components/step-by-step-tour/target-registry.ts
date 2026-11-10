@@ -57,8 +57,6 @@ export type StepByStepTourGuideKind = 'action' | 'walkthrough'
 
 export type StepByStepTourGuideInteractionPolicy = 'blocked' | 'target-only'
 
-type StepByStepTourGuidePortalOrder = 'afterOverlays'
-
 export type StepByStepTourGuide = {
   id: string
   taskId: StepByStepTourTaskId
@@ -74,7 +72,6 @@ export type StepByStepTourGuide = {
   integrationSection?: IntegrationSection
   learnMoreDocPath?: DocPathWithoutLang
   optional?: boolean
-  portalOrder?: StepByStepTourGuidePortalOrder
 }
 
 export function getStepByStepTourGuideKind(
@@ -290,7 +287,6 @@ const STEP_BY_STEP_TOUR_GUIDES: Partial<Record<StepByStepTourTaskId, StepByStepT
       completionMode: 'external',
       kind: 'action',
       interactionPolicy: 'target-only',
-      portalOrder: 'afterOverlays',
     },
   ],
   integration: [

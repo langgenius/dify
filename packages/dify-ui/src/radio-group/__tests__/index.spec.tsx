@@ -1,5 +1,6 @@
-import type { RadioGroupProps } from '../index'
+import type { RadioGroupProps, RadioProps } from '../index'
 import * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Field, FieldItem, FieldLabel } from '../../field'
 import { Fieldset, FieldsetLegend } from '../../fieldset'
@@ -27,7 +28,7 @@ function TestRadioGroup<Value = string>({
   )
 }
 
-type TestRadioOptionProps = React.ComponentProps<typeof Radio> & {
+type TestRadioOptionProps = RadioProps & {
   children: React.ReactNode
 }
 
@@ -161,6 +162,28 @@ describe('Radio', () => {
     await expect.element(hdd).toHaveAttribute('data-disabled', '')
     await expect.element(hdd).toHaveAttribute('aria-disabled', 'true')
     await expect.element(hdd).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('should keep read-only radios unchanged on hover and click', async () => {
+    const screen = await render(
+      <TestRadioGroup readOnly defaultValue="ssd" label="Storage type">
+        <TestRadioOption value="ssd">SSD</TestRadioOption>
+        <TestRadioOption value="hdd">HDD</TestRadioOption>
+      </TestRadioGroup>,
+    )
+
+    for (const name of ['SSD', 'HDD']) {
+      const radio = screen.getByRole('radio', { name })
+      const style = getComputedStyle(radio.element())
+      const resting = [style.backgroundColor, style.borderColor]
+      await userEvent.hover(radio)
+      expect([style.backgroundColor, style.borderColor]).toEqual(resting)
+      expect(style.cursor).toBe('default')
+    }
+    await screen.getByRole('radio', { name: 'HDD' }).click()
+    await expect
+      .element(screen.getByRole('radio', { name: 'SSD' }))
+      .toHaveAttribute('aria-checked', 'true')
   })
 
   it('should submit the selected group value through the hidden input', async () => {

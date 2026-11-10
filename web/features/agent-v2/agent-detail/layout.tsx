@@ -9,13 +9,12 @@ import { getAgentDefaultSection, getAgentSectionAccess } from '@/features/agent-
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
+import { isNotFoundError } from '@/service/http-error'
 
 type AgentDetailLayoutProps = {
   agentId: string
   children: ReactNode
 }
-
-const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
 
 export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps) {
   const { t } = useTranslation(['agentV2', 'agentRoster'])
@@ -23,7 +22,7 @@ export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps)
   const router = useRouter()
   const { t: tCommon } = useTranslation(['common'])
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
-  const shouldRedirectToRoster = isNotFoundResponse(agentQuery.error)
+  const shouldRedirectToRoster = isNotFoundError(agentQuery.error)
   const section = pathname.endsWith('/access-config')
     ? 'access-config'
     : pathname.endsWith('/access')

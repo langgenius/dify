@@ -9,27 +9,6 @@ vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: () => 'overview',
 }))
 
-// Mock Next.js Link component
-vi.mock('@/next/link', () => ({
-  default: function MockLink({
-    children,
-    href,
-    className,
-    title,
-  }: {
-    children: React.ReactNode
-    href: string
-    className?: string
-    title?: string
-  }) {
-    return (
-      <a href={href} className={className} title={title} data-testid="nav-link">
-        {children}
-      </a>
-    )
-  },
-}))
-
 describe('NavLink', () => {
   const mockProps: NavLinkProps = {
     name: 'Orchestrate',
@@ -52,13 +31,16 @@ describe('NavLink', () => {
   })
 
   describe('Disabled State', () => {
-    it('should render as button when disabled', () => {
-      render(<NavLink {...mockProps} mode="expand" disabled={true} />)
+    it('prevents navigation when disabled', async () => {
+      const user = userEvent.setup()
+      const onClick = vi.fn()
+      render(<NavLink {...mockProps} mode="expand" disabled onClick={onClick} />)
 
-      const buttonElement = screen.getByRole('button')
-      expect(buttonElement).toBeInTheDocument()
+      const buttonElement = screen.getByRole('button', { name: 'Orchestrate' })
       expect(buttonElement).toBeDisabled()
-      expect(buttonElement).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.queryByRole('link')).not.toBeInTheDocument()
+      await user.click(buttonElement)
+      expect(onClick).not.toHaveBeenCalled()
     })
   })
 

@@ -7,10 +7,15 @@ import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.execution_coordinator import AppExecutionState
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueErrorEvent
+from core.app.entities.queue_entities import QueueErrorEvent, QueueTextChunkEvent
+from graphon.engine.command import AbortCommand
 from models import Tenant
+from models.model import AppMode
 
 
 class DummyQueueManager(AppQueueManager):
@@ -30,7 +35,7 @@ def _redis_broken_pipe_error() -> RedisConnectionError:
 
 class TestBaseAppQueueManager:
     def test_init_requires_user_id(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="user is required"):
             DummyQueueManager(task_id="t1", user_id="", invoke_from=InvokeFrom.SERVICE_API)
 
     def test_publish_error_records_event(self):
@@ -103,7 +108,7 @@ class TestBaseAppQueueManager:
     def test_completed_listener_defers_graph_runtime_state_cleanup_until_listener_exits(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
         ):
             mock_redis.setex.return_value = True
             mock_redis.get.return_value = None
@@ -116,22 +121,74 @@ class TestBaseAppQueueManager:
             assert manager.graph_runtime_state is runtime_state
             assert list(manager.listen()) == []
             assert manager.graph_runtime_state is None
-            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            send_abort_command.assert_not_called()
 
     def test_execution_coordinator_abort_is_idempotent_when_graph_stop_command_fails(self, caplog):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.RedisChannel") as redis_channel,
         ):
             queue_redis.setex.return_value = True
             execution_redis.setex.return_value = True
-            graph_engine_manager.return_value.send_stop_command.side_effect = RuntimeError("redis unavailable")
+            redis_channel.return_value.send_command.side_effect = RedisConnectionError("redis unavailable")
             manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
 
             assert manager._execution_coordinator.request_abort("stream closed") is True
             assert manager._execution_coordinator.request_abort("duplicate") is False
 
         execution_redis.setex.assert_called_once_with("generate_task_stopped:t1", 600, 1)
-        graph_engine_manager.return_value.send_stop_command.assert_called_once_with("t1", reason="stream closed")
-        assert "Failed to send stop command for app execution task=t1" in caplog.text
+        redis_channel.assert_called_once_with(execution_redis, "workflow:t1:commands")
+        redis_channel.return_value.send_command.assert_called_once()
+        command = redis_channel.return_value.send_command.call_args.args[0]
+        assert isinstance(command, AbortCommand)
+        assert command.reason == "stream closed"
+        assert "Failed to send Engine abort command for task t1" in caplog.text
+
+
+def _message_queue_manager(app_mode: str) -> MessageBasedAppQueueManager:
+    with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+        mock_redis.setex.return_value = True
+        return MessageBasedAppQueueManager(
+            task_id="task-1",
+            user_id="user-1",
+            invoke_from=InvokeFrom.DEBUGGER,
+            conversation_id="conversation-1",
+            app_mode=app_mode,
+            message_id="message-1",
+        )
+
+
+def _workflow_queue_manager(app_mode: str) -> WorkflowAppQueueManager:
+    with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+        mock_redis.setex.return_value = True
+        return WorkflowAppQueueManager(
+            task_id="task-1",
+            user_id="user-1",
+            invoke_from=InvokeFrom.DEBUGGER,
+            app_mode=app_mode,
+        )
+
+
+def test_message_queue_does_not_raise_legacy_stop_for_advanced_chat() -> None:
+    manager = _message_queue_manager(AppMode.ADVANCED_CHAT.value)
+
+    with patch.object(manager, "_is_stopped", return_value=True):
+        manager.publish(QueueTextChunkEvent(text="chunk"), PublishFrom.APPLICATION_MANAGER)
+
+
+def test_workflow_queue_does_not_read_legacy_stop_flag() -> None:
+    manager = _workflow_queue_manager(AppMode.WORKFLOW.value)
+
+    with patch.object(manager, "_is_stopped", return_value=True) as is_stopped:
+        manager.publish(QueueTextChunkEvent(text="chunk"), PublishFrom.APPLICATION_MANAGER)
+
+    is_stopped.assert_not_called()
+
+
+def test_message_queue_keeps_legacy_stop_for_non_graphengine_chat() -> None:
+    manager = _message_queue_manager(AppMode.CHAT.value)
+
+    with patch.object(manager, "_is_stopped", return_value=True):
+        with pytest.raises(GenerateTaskStoppedError):
+            manager.publish(QueueTextChunkEvent(text="chunk"), PublishFrom.APPLICATION_MANAGER)

@@ -1,10 +1,10 @@
 import pytest
 from pydantic import JsonValue, TypeAdapter, ValidationError
 from pydantic_ai.output import ToolOutput
-
 import dify_agent.layers.output as output_exports
-from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
-from dify_agent.layers.output.output_layer import DifyOutputLayer
+from dify_agent.layers.output import DifyOutputLayerConfig
+from dify_agent.layers.output.output_layer import Capability
+from tests.local.dify_agent.module_support import deps_for
 
 
 def _json_schema() -> dict[str, JsonValue]:
@@ -25,43 +25,24 @@ def _recursive_json_schema() -> dict[str, JsonValue]:
         "type": "object",
         "properties": {"node": {"$ref": "#/$defs/node"}},
         "$defs": {
-            "node": {
-                "type": "object",
-                "properties": {"child": {"$ref": "#/$defs/node"}},
-                "additionalProperties": False,
-            }
+            "node": {"type": "object", "properties": {"child": {"$ref": "#/$defs/node"}}, "additionalProperties": False}
         },
         "additionalProperties": False,
     }
 
 
 def _remote_ref_schema() -> dict[str, JsonValue]:
-    return {
-        "type": "object",
-        "properties": {
-            "title": {"$ref": "https://example.com/schema.json"},
-        },
-    }
+    return {"type": "object", "properties": {"title": {"$ref": "https://example.com/schema.json"}}}
 
 
 def _literal_dollar_ref_value_schema() -> dict[str, JsonValue]:
     return {
         "type": "object",
         "properties": {
-            "payload": {
-                "const": {
-                    "$ref": "https://example.com/literal",
-                    "kind": "literal",
-                },
-            },
+            "payload": {"const": {"$ref": "https://example.com/literal", "kind": "literal"}},
             "metadata": {
                 "type": "object",
-                "examples": [
-                    {
-                        "$ref": "https://example.com/example",
-                        "note": "example value",
-                    }
-                ],
+                "examples": [{"$ref": "https://example.com/example", "note": "example value"}],
             },
         },
         "required": ["payload", "metadata"],
@@ -72,42 +53,23 @@ def _literal_dollar_ref_value_schema() -> dict[str, JsonValue]:
 def _object_local_definitions_ref_schema() -> dict[str, JsonValue]:
     return {
         "type": "object",
-        "properties": {
-            "items": {"$ref": "#/definitions/itemArray"},
-        },
+        "properties": {"items": {"$ref": "#/definitions/itemArray"}},
         "required": ["items"],
-        "definitions": {
-            "itemArray": {
-                "type": "array",
-                "items": {"type": "string"},
-            },
-        },
+        "definitions": {"itemArray": {"type": "array", "items": {"type": "string"}}},
     }
 
 
 def _object_local_defs_ref_schema() -> dict[str, JsonValue]:
     return {
         "type": "object",
-        "properties": {
-            "items": {"$ref": "#/$defs/itemArray"},
-        },
+        "properties": {"items": {"$ref": "#/$defs/itemArray"}},
         "required": ["items"],
-        "$defs": {
-            "itemArray": {
-                "type": "array",
-                "items": {"type": "string"},
-            },
-        },
+        "$defs": {"itemArray": {"type": "array", "items": {"type": "string"}}},
     }
 
 
 def _invalid_json_schema() -> dict[str, JsonValue]:
-    return {
-        "type": "object",
-        "properties": {
-            "title": {"type": "wat"},
-        },
-    }
+    return {"type": "object", "properties": {"title": {"type": "wat"}}}
 
 
 def _validated_output_type(output_spec: object) -> object:
@@ -116,23 +78,14 @@ def _validated_output_type(output_spec: object) -> object:
 
 
 def test_output_package_exports_client_safe_config_symbols_only() -> None:
-    assert output_exports.__all__ == ["DIFY_OUTPUT_LAYER_TYPE_ID", "DifyOutputLayerConfig"]
-    assert output_exports.DIFY_OUTPUT_LAYER_TYPE_ID == "dify.output"
+    assert output_exports.__all__ == ["DifyOutputLayerConfig"]
     assert not hasattr(output_exports, "DifyOutputLayer")
 
 
 def test_output_layer_config_accepts_valid_object_schema_without_public_tool_name() -> None:
     config = DifyOutputLayerConfig(json_schema=_json_schema())
-
-    assert DIFY_OUTPUT_LAYER_TYPE_ID == "dify.output"
     assert hasattr(config, "name") is False
-    assert config.model_dump(mode="json") == {
-        "json_schema": _json_schema(),
-        "description": None,
-        "strict": None,
-    }
-    assert config.description is None
-    assert config.strict is None
+    assert config.model_dump(mode="json") == {"json_schema": _json_schema(), "description": None, "strict": None}
 
 
 def test_output_layer_config_rejects_non_object_top_level_json_schema() -> None:
@@ -153,19 +106,13 @@ def test_output_layer_config_rejects_invalid_input(payload: dict[str, object], m
 
 
 def test_output_layer_builds_validated_output_contract_for_object_schema() -> None:
-    config = DifyOutputLayerConfig(
-        json_schema=_json_schema(),
-        description="Structured incident summary.",
-        strict=True,
-    )
-
-    layer = DifyOutputLayer.from_config(config)
-    output_contract = layer.build_output_contract()
+    config = DifyOutputLayerConfig(json_schema=_json_schema(), description="Structured incident summary.", strict=True)
+    layer = _output(config)
+    output_contract = layer
     output_type = output_contract.output_type
     output_schema = TypeAdapter(output_type.output).json_schema() if isinstance(output_type, ToolOutput) else {}
     valid_output = {"title": "Database outage", "severity": "high", "actions": ["page on-call"]}
     output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
-
     assert isinstance(output_type, ToolOutput)
     assert output_type.name == "final_output"
     assert output_type.description is None
@@ -191,39 +138,27 @@ def test_output_layer_builds_validated_output_contract_for_object_schema() -> No
         ),
     ],
 )
-def test_output_layer_object_contract_retries_invalid_model_output(invalid_output: JsonValue, message: str) -> None:
-    output_contract = DifyOutputLayer.from_config(
-        DifyOutputLayerConfig(json_schema=_json_schema())
-    ).build_output_contract()
+def test_output_layer_object_contract_rejects_invalid_output(invalid_output: JsonValue, message: str) -> None:
+    output_contract = _output(DifyOutputLayerConfig(json_schema=_json_schema()))
     output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
-
     with pytest.raises(ValidationError, match=message):
         _ = output_adapter.validate_python(invalid_output)
 
 
 def test_output_layer_rejects_non_defs_local_ref_in_direct_object_schema() -> None:
-    layer = DifyOutputLayer.from_config(DifyOutputLayerConfig(json_schema=_object_local_definitions_ref_schema()))
-
-    with pytest.raises(ValueError, match=r"Only local refs under '#/\$defs/' are supported"):
-        _ = layer.build_output_contract()
+    config = DifyOutputLayerConfig(json_schema=_object_local_definitions_ref_schema())
+    with pytest.raises(ValueError, match="Only local refs under '#/\\$defs/' are supported"):
+        _ = _output(config)
 
 
 def test_output_layer_keeps_local_defs_ref_working_in_direct_object_schema() -> None:
-    output_contract = DifyOutputLayer.from_config(
-        DifyOutputLayerConfig(json_schema=_object_local_defs_ref_schema())
-    ).build_output_contract()
+    output_contract = _output(DifyOutputLayerConfig(json_schema=_object_local_defs_ref_schema()))
     output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
     output_schema = output_adapter.json_schema()
-
     assert isinstance(output_contract.output_type, ToolOutput)
     assert output_schema == {
         "type": "object",
-        "properties": {
-            "items": {
-                "type": "array",
-                "items": {"type": "string"},
-            },
-        },
+        "properties": {"items": {"type": "array", "items": {"type": "string"}}},
         "required": ["items"],
         "title": "final_output",
     }
@@ -231,44 +166,31 @@ def test_output_layer_keeps_local_defs_ref_working_in_direct_object_schema() -> 
 
 
 def test_output_layer_rejects_recursive_json_schema_during_contract_build() -> None:
-    layer = DifyOutputLayer.from_config(DifyOutputLayerConfig(json_schema=_recursive_json_schema()))
-
+    config = DifyOutputLayerConfig(json_schema=_recursive_json_schema())
     with pytest.raises(ValueError):
-        _ = layer.build_output_contract()
+        _ = _output(config)
 
 
 def test_output_layer_rejects_invalid_json_schema_during_contract_build() -> None:
-    layer = DifyOutputLayer.from_config(DifyOutputLayerConfig(json_schema=_invalid_json_schema()))
-
+    config = DifyOutputLayerConfig(json_schema=_invalid_json_schema())
     with pytest.raises(ValueError):
-        _ = layer.build_output_contract()
+        _ = _output(config)
 
 
 def test_output_layer_rejects_remote_ref_during_contract_build() -> None:
-    layer = DifyOutputLayer.from_config(DifyOutputLayerConfig(json_schema=_remote_ref_schema()))
-
-    with pytest.raises(ValueError, match=r"Remote \$ref values are not supported"):
-        _ = layer.build_output_contract()
+    config = DifyOutputLayerConfig(json_schema=_remote_ref_schema())
+    with pytest.raises(ValueError, match="Remote \\$ref values are not supported"):
+        _ = _output(config)
 
 
 def test_output_layer_allows_literal_dollar_ref_values_under_const_and_examples() -> None:
-    layer = DifyOutputLayer.from_config(DifyOutputLayerConfig(json_schema=_literal_dollar_ref_value_schema()))
-
-    output_contract = layer.build_output_contract()
+    layer = _output(DifyOutputLayerConfig(json_schema=_literal_dollar_ref_value_schema()))
+    output_contract = layer
     output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
-
     assert output_adapter.validate_python(
-        {
-            "payload": {
-                "$ref": "https://example.com/literal",
-                "kind": "literal",
-            },
-            "metadata": {"note": "runtime value"},
-        }
-    ) == {
-        "payload": {
-            "$ref": "https://example.com/literal",
-            "kind": "literal",
-        },
-        "metadata": {"note": "runtime value"},
-    }
+        {"payload": {"$ref": "https://example.com/literal", "kind": "literal"}, "metadata": {"note": "runtime value"}}
+    ) == {"payload": {"$ref": "https://example.com/literal", "kind": "literal"}, "metadata": {"note": "runtime value"}}
+
+
+def _output(config):
+    return Capability("output").build_output_contract(deps_for("output", config))

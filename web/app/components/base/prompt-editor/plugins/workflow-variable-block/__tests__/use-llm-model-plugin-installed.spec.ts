@@ -24,14 +24,13 @@ const providerSummaryFixture = {
 
 let mockModelProviders: Array<{ provider: string }> = []
 
-const createWorkflowNodesMap = (node: Record<string, unknown>): WorkflowNodesMap =>
-  ({
-    target: {
-      title: 'Target',
-      type: BlockEnum.Start,
-      ...node,
-    },
-  }) as unknown as WorkflowNodesMap
+const createWorkflowNodesMap = (node: Partial<WorkflowNodesMap[string]>): WorkflowNodesMap => ({
+  target: {
+    title: 'Target',
+    type: BlockEnum.Start,
+    ...node,
+  },
+})
 
 const renderHook: typeof renderHookWithConsoleQuery = (callback, options) => {
   const queryClient = createConsoleQueryClient()
@@ -47,7 +46,6 @@ const renderHook: typeof renderHookWithConsoleQuery = (callback, options) => {
 
 describe('useLlmModelPluginInstalled', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockModelProviders = []
   })
 
@@ -59,7 +57,6 @@ describe('useLlmModelPluginInstalled', () => {
 
   it('should return true when the node is not an LLM node', () => {
     const workflowNodesMap = createWorkflowNodesMap({
-      id: 'target',
       type: BlockEnum.Start,
     })
 
@@ -74,7 +71,6 @@ describe('useLlmModelPluginInstalled', () => {
       { provider: 'langgenius/anthropic/claude' },
     ]
     const workflowNodesMap = createWorkflowNodesMap({
-      id: 'target',
       type: BlockEnum.LLM,
       modelProvider: 'langgenius/openai/gpt-4.1',
     })
@@ -87,7 +83,6 @@ describe('useLlmModelPluginInstalled', () => {
   it('should return false when the matching model plugin is not installed', () => {
     mockModelProviders = [{ provider: 'langgenius/anthropic/claude' }]
     const workflowNodesMap = createWorkflowNodesMap({
-      id: 'target',
       type: BlockEnum.LLM,
       modelProvider: 'langgenius/openai/gpt-4.1',
     })

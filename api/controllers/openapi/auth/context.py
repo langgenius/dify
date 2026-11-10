@@ -43,6 +43,7 @@ class Context:
     view_args: Mapping[str, str]
     request_id: str = field(default_factory=get_request_id)
     trace_id: str | None = field(default_factory=get_trace_id)
+    resource_app_ids: frozenset[str] | None = field(default=None, init=False)
     _app: App | None = field(default=None, init=False)
     _workspace: Tenant | None = field(default=None, init=False)
     _workspace_role: TenantAccountRole | None = field(default=None, init=False)
@@ -54,8 +55,9 @@ class Context:
         return RequestContext(
             request_id=self.request_id,
             trace_id=self.trace_id,
-            account_id=str(self.subject.account_id),
+            account_id=str(self.subject.account_id or self.subject.token_id),
             active_workspace_id=str(self.workspace.id),
+            resource_app_ids=self.resource_app_ids,
         )
 
     @property

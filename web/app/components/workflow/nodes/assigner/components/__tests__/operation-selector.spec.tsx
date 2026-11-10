@@ -20,7 +20,9 @@ describe('assigner/operation-selector', () => {
       />,
     )
 
-    await user.click(screen.getByText('workflowLogic.nodes.assigner.operations.over-write'))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowLogic.nodes.assigner.operations.over-write' }),
+    )
 
     expect(screen.getByText('workflowLogic.nodes.assigner.operations.title')).toBeInTheDocument()
     expect(screen.getByText('workflowLogic.nodes.assigner.operations.clear')).toBeInTheDocument()
@@ -52,7 +54,9 @@ describe('assigner/operation-selector', () => {
       />,
     )
 
-    await user.click(screen.getByText('workflowLogic.nodes.assigner.operations.over-write'))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowLogic.nodes.assigner.operations.over-write' }),
+    )
 
     expect(
       screen.queryByText('workflowLogic.nodes.assigner.operations.title'),

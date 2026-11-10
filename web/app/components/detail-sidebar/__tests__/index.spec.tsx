@@ -6,11 +6,20 @@ import userEvent from '@testing-library/user-event'
 import { Provider } from 'jotai'
 import { useHydrateAtoms } from 'jotai/utils'
 import Cookies from 'js-cookie'
-import { useState } from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DetailSidebarFrame } from '..'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '../cookie'
 import { detailSidebarModeAtom } from '../state'
+
+const media = vi.hoisted(() => ({ compact: false, pathname: '/app/app-1/overview' }))
+
+vi.mock('@langgenius/dify-ui/use-media-query', () => ({
+  useMediaQuery: (query: string) => query === '(width < 48rem)' && media.compact,
+}))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => media.pathname,
+}))
 
 vi.mock('@/app/components/main-nav/components/account-section', () => ({
   default: ({ compact }: { compact?: boolean }) => (
@@ -49,12 +58,12 @@ function renderDetailSidebarFrame(
   compact = false,
   mode: DetailSidebarMode = 'expand',
 ) {
-  return renderWithConsoleQuery(
+  media.compact = compact
+  const tree = () => (
     <Provider>
       <InitialDetailSidebarMode mode={mode}>
         <HotkeysProvider defaultOptions={{ hotkey: { platform } }}>
           <DetailSidebarFrame
-            compact={compact}
             renderTop={({ expand, onToggle }) => (
               <div data-testid="detail-top" data-expand={expand}>
                 <button type="button" data-testid="detail-toggle" onClick={onToggle}>
@@ -75,15 +84,20 @@ function renderDetailSidebarFrame(
           <textarea aria-label="Description" />
         </HotkeysProvider>
       </InitialDetailSidebarMode>
-    </Provider>,
-    { accountProfileMeta: { currentEnv } },
+    </Provider>
   )
+  const view = renderWithConsoleQuery(tree(), { accountProfileMeta: { currentEnv } })
+  return { ...view, rerenderTree: () => view.rerender(tree()) }
 }
 
 describe('DetailSidebarFrame', () => {
   beforeEach(() => {
+    media.compact = false
+    media.pathname = '/app/app-1/overview'
     Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
   })
+
+  afterEach(() => Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME))
 
   it('renders expanded detail content by default', () => {
     renderDetailSidebarFrame()
@@ -111,6 +125,19 @@ describe('DetailSidebarFrame', () => {
     await user.click(screen.getByRole('button', { name: 'Toggle' }))
     expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Compact account')
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBeUndefined()
+  })
+
+  it('collapses compact navigation after the route changes', async () => {
+    const user = userEvent.setup()
+    const view = renderDetailSidebarFrame(null, 'mac', true)
+
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
+    expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Expanded account')
+
+    media.pathname = '/app/app-1/logs'
+    view.rerenderTree()
+
+    expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Compact account')
   })
 
   describe.each(['mac', 'windows'] as const)('%s shortcut', (platform) => {
@@ -199,37 +226,31 @@ describe('DetailSidebarFrame', () => {
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
   })
 
-  it('does not restore a stale hover preview after leaving compact layout', async () => {
-    const user = userEvent.setup()
+  it('does not restore a stale hover preview after leaving compact layout', () => {
+    media.compact = false
+    const sidebar = () => (
+      <Provider>
+        <InitialDetailSidebarMode mode="collapse">
+          <HotkeysProvider>
+            <DetailSidebarFrame
+              renderTop={({ expand }) => <div data-testid="detail-top" data-expand={expand} />}
+              renderSection={() => <div>Section</div>}
+            />
+          </HotkeysProvider>
+        </InitialDetailSidebarMode>
+      </Provider>
+    )
 
-    function ResponsiveDetailSidebar() {
-      const [compact, setCompact] = useState(false)
-      return (
-        <Provider>
-          <InitialDetailSidebarMode mode="collapse">
-            <HotkeysProvider>
-              <button type="button" onClick={() => setCompact((value) => !value)}>
-                Switch layout
-              </button>
-              <DetailSidebarFrame
-                compact={compact}
-                renderTop={({ expand }) => <div data-testid="detail-top" data-expand={expand} />}
-                renderSection={() => <div>Section</div>}
-              />
-            </HotkeysProvider>
-          </InitialDetailSidebarMode>
-        </Provider>
-      )
-    }
-
-    renderWithConsoleQuery(<ResponsiveDetailSidebar />, {
+    const view = renderWithConsoleQuery(sidebar(), {
       accountProfileMeta: { currentEnv: null },
     })
     fireEvent.mouseEnter(screen.getByTestId('detail-top').parentElement!)
     expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Expanded account')
 
-    await user.click(screen.getByRole('button', { name: 'Switch layout' }))
-    await user.click(screen.getByRole('button', { name: 'Switch layout' }))
+    media.compact = true
+    view.rerender(sidebar())
+    media.compact = false
+    view.rerender(sidebar())
 
     expect(screen.getByRole('button', { name: 'account' })).toHaveTextContent('Compact account')
   })

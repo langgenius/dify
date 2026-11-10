@@ -1,9 +1,10 @@
 import type { AppModelConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { TFunction } from 'i18next'
 import type { ConfigurationPublishConfig } from './types'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs, ModelConfig, PromptVariable } from '@/models/debug'
 import type { ConsoleClient } from '@/service/console'
 import {
@@ -21,7 +22,7 @@ import { produce } from 'immer'
 import { toast } from '@/app/components/app/configuration/toast'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { PromptMode } from '@/models/debug'
-import { AgentStrategy, AppModeEnum, ModelModeType } from '@/types/app'
+import { AgentStrategy, ModelModeType } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import { normalizeChatPromptConfig, normalizeCompletionPromptConfig } from './prompt-config'
 
@@ -48,7 +49,7 @@ export function buildPublishBody({
   completionParams: FormValue
   completionPromptConfig: ModelConfig['completion_prompt_config']
   contextVar?: string
-  dataSets: DataSet[]
+  dataSets: DatasetDetailWithPartialMembersResponse[]
   datasetConfigs: DatasetConfigs
   externalDataToolsConfig: ModelConfig['external_data_tools']
   features?: FeaturesData
@@ -146,13 +147,13 @@ export const createPublishHandler =
     completionPromptConfig: ModelConfig['completion_prompt_config']
     contextVar?: string
     contextVarEmpty: boolean
-    dataSets: DataSet[]
+    dataSets: DatasetDetailWithPartialMembersResponse[]
     datasetConfigs: DatasetConfigs
     externalDataToolsConfig: ModelConfig['external_data_tools']
     hasSetBlockStatus: { history: boolean; query: boolean }
     isAdvancedMode: boolean
     isFunctionCall: boolean
-    mode: AppModeEnum
+    mode: ConfigurationAppMode
     modelConfig: ModelConfig
     promptEmpty: boolean
     promptMode: PromptMode
@@ -178,7 +179,7 @@ export const createPublishHandler =
     }
     if (
       isAdvancedMode &&
-      mode !== AppModeEnum.COMPLETION &&
+      mode !== 'completion' &&
       resolvedModelModeType === ModelModeType.completion
     ) {
       if (!hasSetBlockStatus.history) {

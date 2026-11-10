@@ -16,6 +16,8 @@ type StubClient interface {
 	PushConfig(ctx context.Context, payload any) ([]byte, error)
 	PatchConfigEnv(ctx context.Context, envText string) ([]byte, error)
 	PutConfigNote(ctx context.Context, note string) ([]byte, error)
+	GetConfigPrompt(ctx context.Context) ([]byte, error)
+	PutConfigPrompt(ctx context.Context, prompt string) ([]byte, error)
 
 	// Data-plane (always HTTP, signed URLs)
 	UploadFileToURL(uploadURL, filePath, filename, mimetype string) ([]byte, error)

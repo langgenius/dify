@@ -146,9 +146,7 @@ export const ValueSection = ({
           <textarea
             className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
             value={(value as string) || ''}
-            placeholder={
-              t(($) => $['chatVariable.modal.valuePlaceholder'], { ns: 'workflow' }) || ''
-            }
+            placeholder={t(($) => $['chatVariable.modal.valuePlaceholder'], { ns: 'workflow' })}
             onChange={(e) => onArrayChange([e.target.value])}
           />
         )}

@@ -121,6 +121,9 @@ jobs:
       - name: Generate sha256 checksum file
         run: scripts/release-write-checksums.sh
 
+      - name: Smoke the runner-arch binary
+        run: scripts/release-smoke.sh "./dist/bin/$(node scripts/release-naming.mjs asset "$version" linux-x64)"
+
       - name: Attach difyctl assets to Dify release
         if: ${{ !inputs.dry_run }}
         env:

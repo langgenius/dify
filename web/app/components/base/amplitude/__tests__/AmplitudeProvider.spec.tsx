@@ -6,11 +6,8 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
 }))
-const mockConsent = vi.hoisted(() => ({
-  value: 'granted' as 'unknown' | 'denied' | 'granted',
-}))
-
 let AmplitudeProvider: typeof import('../AmplitudeProvider').AmplitudeProvider
+let setAnalyticsConsent: typeof import('@/app/components/base/analytics-consent/consent-store').setAnalyticsConsent
 
 vi.mock('@/config', () => ({
   get AMPLITUDE_API_KEY() {
@@ -34,16 +31,14 @@ vi.mock('@amplitude/plugin-session-replay-browser', () => ({
   sessionReplayPlugin: vi.fn(() => ({ name: 'session-replay' })),
 }))
 
-vi.mock('@/app/components/base/analytics-consent/consent-store', () => ({
-  useAnalyticsConsent: () => mockConsent.value,
-}))
-
 describe('AmplitudeProvider', () => {
   beforeEach(async () => {
     vi.resetModules()
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
-    mockConsent.value = 'granted'
+    ;({ setAnalyticsConsent } =
+      await import('@/app/components/base/analytics-consent/consent-store'))
+    setAnalyticsConsent('granted')
     ;({ AmplitudeProvider } = await import('../AmplitudeProvider'))
   })
 
@@ -65,7 +60,6 @@ describe('AmplitudeProvider', () => {
       render(<AmplitudeProvider sessionReplaySampleRate={0.8} />)
       await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
 
-      expect(amplitude.init).toHaveBeenCalledTimes(1)
       expect(sessionReplayPlugin).toHaveBeenCalledTimes(1)
       expect(amplitude.add).toHaveBeenCalledTimes(2)
     })
@@ -81,7 +75,7 @@ describe('AmplitudeProvider', () => {
     it.each(['unknown', 'denied'] as const)(
       'does not initialize amplitude while consent is %s',
       (consent) => {
-        mockConsent.value = consent
+        setAnalyticsConsent(consent)
 
         render(<AmplitudeProvider />)
 
@@ -92,16 +86,14 @@ describe('AmplitudeProvider', () => {
     )
 
     it('opts out on revoke and resumes without reinitializing', async () => {
-      const { rerender } = render(<AmplitudeProvider />)
+      render(<AmplitudeProvider />)
       await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
 
-      mockConsent.value = 'denied'
-      rerender(<AmplitudeProvider />)
+      act(() => setAnalyticsConsent('denied'))
 
       expect(amplitude.setOptOut).toHaveBeenLastCalledWith(true)
 
-      mockConsent.value = 'granted'
-      rerender(<AmplitudeProvider />)
+      act(() => setAnalyticsConsent('granted'))
 
       expect(amplitude.setOptOut).toHaveBeenLastCalledWith(false)
       expect(amplitude.init).toHaveBeenCalledTimes(1)
@@ -121,10 +113,9 @@ describe('AmplitudeProvider', () => {
     it.each(['revoke', 'unmount'] as const)(
       'does not start tracking when %s happens during SDK loading',
       async (action) => {
-        const { rerender, unmount } = render(<AmplitudeProvider />)
+        const { unmount } = render(<AmplitudeProvider />)
         if (action === 'revoke') {
-          mockConsent.value = 'denied'
-          rerender(<AmplitudeProvider />)
+          act(() => setAnalyticsConsent('denied'))
         } else {
           unmount()
         }
@@ -157,43 +148,40 @@ describe('AmplitudeProvider', () => {
 
       await setup({} as Parameters<SetupFn>[0], {} as Parameters<SetupFn>[1])
 
-      const originalWindowLocation = window.location
+      const originalUrl = window.location.href
       try {
-        Object.defineProperty(window, 'location', {
-          value: { pathname: '/datasets' },
-          writable: true,
-        })
+        window.history.replaceState(null, '', '/datasets')
         const event: amplitude.Types.Event = {
           event_type: '[Amplitude] Page Viewed',
           event_properties: {},
         }
         const result = await execute(event)
         expect(getPageTitle(result)).toBe('Knowledge')
-        window.location.pathname = '/'
+        window.history.replaceState(null, '', '/')
         await execute(event)
         expect(getPageTitle(event)).toBe('Home')
-        window.location.pathname = '/apps'
+        window.history.replaceState(null, '', '/apps')
         await execute(event)
         expect(getPageTitle(event)).toBe('Studio')
-        window.location.pathname = '/agents'
+        window.history.replaceState(null, '', '/agents')
         await execute(event)
         expect(getPageTitle(event)).toBe('Agents')
-        window.location.pathname = '/explore'
+        window.history.replaceState(null, '', '/explore')
         await execute(event)
         expect(getPageTitle(event)).toBe('Explore')
-        window.location.pathname = '/tools'
+        window.history.replaceState(null, '', '/tools')
         await execute(event)
         expect(getPageTitle(event)).toBe('Tools')
-        window.location.pathname = '/account'
+        window.history.replaceState(null, '', '/account')
         await execute(event)
         expect(getPageTitle(event)).toBe('Account')
-        window.location.pathname = '/signin'
+        window.history.replaceState(null, '', '/signin')
         await execute(event)
         expect(getPageTitle(event)).toBe('Sign In')
-        window.location.pathname = '/signup'
+        window.history.replaceState(null, '', '/signup')
         await execute(event)
         expect(getPageTitle(event)).toBe('Sign Up')
-        window.location.pathname = '/unknown'
+        window.history.replaceState(null, '', '/unknown')
         await execute(event)
         expect(getPageTitle(event)).toBe('Unknown')
         const otherEvent = {
@@ -208,10 +196,7 @@ describe('AmplitudeProvider', () => {
         const noPropsResult = await execute(noPropsEvent)
         expect(noPropsResult?.event_properties).toBeUndefined()
       } finally {
-        Object.defineProperty(window, 'location', {
-          value: originalWindowLocation,
-          writable: true,
-        })
+        window.history.replaceState(null, '', originalUrl)
       }
     })
   })

@@ -1,47 +1,19 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import AuthorizedInDataSourceNode from '../authorized-in-data-source-node'
 
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: ({ status }: { status: string }) => (
-    <span data-testid="indicator" data-status={status} />
-  ),
-}))
-
 describe('AuthorizedInDataSourceNode', () => {
-  const mockOnJump = vi.fn()
+  it.each([
+    [1, 'plugin.auth.authorization'],
+    [3, 'plugin.auth.authorizations'],
+  ] as const)('opens datasource settings with %s authorizations', async (count, name) => {
+    const user = userEvent.setup()
+    const onJump = vi.fn()
+    render(<AuthorizedInDataSourceNode authorizationsNum={count} onJumpToDataSourcePage={onJump} />)
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    await user.click(screen.getByRole('button', { name }))
 
-  afterEach(() => {
-    cleanup()
-  })
-
-  it('renders with green indicator', () => {
-    render(<AuthorizedInDataSourceNode authorizationsNum={1} onJumpToDataSourcePage={mockOnJump} />)
-    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
-  })
-
-  it('renders singular text for 1 authorization', () => {
-    render(<AuthorizedInDataSourceNode authorizationsNum={1} onJumpToDataSourcePage={mockOnJump} />)
-    expect(screen.getByText('plugin.auth.authorization')).toBeInTheDocument()
-  })
-
-  it('renders plural text for multiple authorizations', () => {
-    render(<AuthorizedInDataSourceNode authorizationsNum={3} onJumpToDataSourcePage={mockOnJump} />)
-    expect(screen.getByText('plugin.auth.authorizations')).toBeInTheDocument()
-  })
-
-  it('calls onJumpToDataSourcePage when button is clicked', () => {
-    render(<AuthorizedInDataSourceNode authorizationsNum={1} onJumpToDataSourcePage={mockOnJump} />)
-    fireEvent.click(screen.getByRole('button'))
-    expect(mockOnJump).toHaveBeenCalledTimes(1)
-  })
-
-  it('renders settings button', () => {
-    render(<AuthorizedInDataSourceNode authorizationsNum={1} onJumpToDataSourcePage={mockOnJump} />)
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(onJump).toHaveBeenCalledOnce()
   })
 })

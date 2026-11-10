@@ -44,8 +44,8 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                     select(DatasetDocument).where(
                         DatasetDocument.dataset_id == dataset_id,
                         DatasetDocument.indexing_status == "completed",
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
                     )
                 ).all()
 
@@ -65,7 +65,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                 select(DocumentSegment)
                                 .where(
                                     DocumentSegment.document_id == dataset_document.id,
-                                    DocumentSegment.enabled == True,
+                                    DocumentSegment.enabled.is_(True),
                                 )
                                 .order_by(DocumentSegment.position.asc())
                             ).all()
@@ -103,8 +103,8 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                     select(DatasetDocument).where(
                         DatasetDocument.dataset_id == dataset_id,
                         DatasetDocument.indexing_status == "completed",
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
                     )
                 ).all()
                 # add new index
@@ -130,7 +130,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                 select(DocumentSegment)
                                 .where(
                                     DocumentSegment.document_id == dataset_document.id,
-                                    DocumentSegment.enabled == True,
+                                    DocumentSegment.enabled.is_(True),
                                 )
                                 .order_by(DocumentSegment.position.asc())
                             ).all()

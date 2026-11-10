@@ -1,4 +1,5 @@
 import type { NodeTracing } from '@/types/workflow'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
 import { addChildrenToIterationNode } from '..'
 
 type ExecutionMetadata = NonNullable<NodeTracing['execution_metadata']>
@@ -13,10 +14,10 @@ const createExecutionMetadata = (
 })
 
 const createTrace = (nodeId: string, executionMetadata?: Partial<ExecutionMetadata>): NodeTracing =>
-  ({
+  createNodeTracing({
     node_id: nodeId,
     execution_metadata: createExecutionMetadata(executionMetadata),
-  }) as NodeTracing
+  })
 
 describe('iteration format log', () => {
   it('should place the first child of a new iteration at a new record when its index is missing', () => {

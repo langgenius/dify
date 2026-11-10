@@ -65,7 +65,7 @@
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
 
-DifyはオープンソースのLLMアプリケーション開発プラットフォームです。直感的なインターフェイスには、AIワークフロー、RAGパイプライン、エージェント機能、モデル管理、観測機能などが組み合わさっており、プロトタイプから本番環境まで迅速に進めることができます。以下の機能が含まれます：
+DifyはオープンソースのLLMアプリケーション開発プラットフォームです。直感的なインターフェイスには、AIワークフロー、RAGパイプライン、エージェント機能、モデル管理、[Opik](https://www.comet.com/docs/opik/integrations/dify)、[Langfuse](https://docs.langfuse.com)、[Arize Phoenix](https://docs.arize.com/phoenix)との連携を含む観測機能などが組み合わさっており、プロトタイプから本番環境まで迅速に進めることができます。以下の機能が含まれます：
 </br> </br>
 
 **1. ワークフロー**:
@@ -128,6 +128,10 @@ docker compose up -d
 
 実行後、ブラウザで[http://localhost/install](http://localhost/install)にアクセスし、初期化プロセスを開始できます。
 
+### お困りの場合
+
+Difyのセットアップで問題が発生した場合は、[FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs)を参照してください。解決しない場合は、[コミュニティや開発チーム](#コミュニティ--お問い合わせ)にお問い合わせください。
+
 > Difyに貢献したり、追加の開発を行う場合は、[ソースコードからのデプロイガイド](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)を参照してください。
 
 ## 次のステップ
@@ -157,6 +161,11 @@ Difyでは、あらゆる形の貢献を歓迎しています。
 - [GitHub Issues](https://github.com/langgenius/dify/issues)：再現可能なバグの報告と開発作業の追跡にご利用ください。Issueを作成する前に[コントリビューションガイド](./CONTRIBUTING.md)をお読みください。
 - [Discord](https://discord.gg/FngNHpbcY7)：リアルタイムで会話し、アプリを共有し、他のDifyユーザーと交流できます。
 - [X](https://x.com/dify_ai)：リリース情報やプロジェクトの最新情報を確認できます。
+
+## スター履歴
+
+[![スター履歴グラフ](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![スター履歴グラフ](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
+
 ## ライセンス
 
 このリポジトリは、Dify Open Source License にいくつかの追加制限を加えた[Difyオープンソースライセンス](../../LICENSE)の下で利用可能です。

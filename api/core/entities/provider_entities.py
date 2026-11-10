@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum, auto
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -208,7 +208,7 @@ class ProviderConfig(BasicProviderConfig):
 
     scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
     required: bool = False
-    default: Union[int, str, float, bool] | None = None
+    default: int | str | float | bool | None = None
     options: list[Option] | None = None
     multiple: bool = False
     label: I18nObject | None = None

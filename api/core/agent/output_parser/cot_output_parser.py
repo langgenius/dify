@@ -1,7 +1,7 @@
 import json
 import re
 from collections.abc import Generator
-from typing import Any, Union
+from typing import Any
 
 from core.agent.entities import AgentScratchpadUnit
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
@@ -10,9 +10,9 @@ from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 class CotAgentOutputParser:
     @classmethod
     def handle_react_stream_output(
-        cls, llm_response: Generator[LLMResultChunk, None, None], usage_dict: dict[str, Any]
-    ) -> Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
-        def parse_action(action) -> Union[str, AgentScratchpadUnit.Action]:
+        cls, llm_response: Generator[LLMResultChunk], usage_dict: dict[str, Any]
+    ) -> Generator[str | AgentScratchpadUnit.Action]:
+        def parse_action(action) -> str | AgentScratchpadUnit.Action:
             action_name = None
             action_input = None
             if isinstance(action, str):
@@ -39,7 +39,7 @@ class CotAgentOutputParser:
             else:
                 return json.dumps(action)
 
-        def extra_json_from_code_block(code_block) -> list[Union[list, dict]]:
+        def extra_json_from_code_block(code_block) -> list[list | dict]:
             blocks = re.findall(r"```[json]*\s*([\[{].*[]}])\s*```", code_block, re.DOTALL | re.IGNORECASE)
             if not blocks:
                 return []
@@ -56,7 +56,9 @@ class CotAgentOutputParser:
         code_block_delimiter_count = 0
         in_code_block = False
         json_cache = ""
-        json_quote_count = 0
+        json_depth = 0
+        in_json_string = False
+        json_escape = False
         in_json = False
         got_json = False
 
@@ -179,33 +181,42 @@ class CotAgentOutputParser:
 
                 if not in_code_block:
                     # handle single json
-                    if delta == "{":
-                        json_quote_count += 1
-                        in_json = True
-                        last_character = delta
-                        json_cache += delta
-                    elif delta == "}":
-                        last_character = delta
-                        json_cache += delta
-                        if json_quote_count > 0:
-                            json_quote_count -= 1
-                            if json_quote_count == 0:
-                                in_json = False
-                                got_json = True
-                                index += steps
-                                continue
-                    else:
-                        if in_json:
-                            last_character = delta
-                            json_cache += delta
-
                     if got_json:
                         got_json = False
                         last_character = delta
                         yield parse_action(json_cache)
                         json_cache = ""
-                        json_quote_count = 0
-                        in_json = False
+                    if not in_json:
+                        if delta == "{":
+                            last_character = delta
+                            in_json = True
+                            json_depth = 1
+                            in_json_string = False
+                            json_escape = False
+                            json_cache = delta
+                    else:
+                        last_character = delta
+                        json_cache += delta
+                        # Braces inside a string value are content, not structure:
+                        # only an unquoted "{" or "}" may move the payload boundary.
+                        if json_escape:
+                            json_escape = False
+                        elif in_json_string:
+                            if delta == "\\":
+                                json_escape = True
+                            elif delta == '"':
+                                in_json_string = False
+                        elif delta == '"':
+                            in_json_string = True
+                        elif delta == "{":
+                            json_depth += 1
+                        elif delta == "}":
+                            json_depth -= 1
+                            if json_depth == 0:
+                                in_json = False
+                                got_json = True
+                                index += steps
+                                continue
 
                 if not in_code_block and not in_json:
                     last_character = delta
@@ -218,3 +229,11 @@ class CotAgentOutputParser:
 
         if json_cache:
             yield parse_action(json_cache)
+
+        # Flush a trailing incomplete "action:"/"thought:" prefix so ordinary
+        # text at the end of the stream is not silently dropped (issue #43350).
+        if action_cache:
+            yield action_cache
+
+        if thought_cache:
+            yield thought_cache

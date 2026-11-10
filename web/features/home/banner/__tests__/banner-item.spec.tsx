@@ -1,7 +1,8 @@
 import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ComponentProps } from 'react'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { BannerItem } from '../banner-item'
 
 const mockTrackEvent = vi.fn()
@@ -31,31 +32,8 @@ const renderBannerItem = (
   render(<BannerItem banner={banner} sort={1} language="en-US" titleId="banner-title" {...props} />)
 
 describe('BannerItem', () => {
-  afterEach(() => {
-    cleanup()
-    vi.clearAllMocks()
-  })
-
-  it('renders the banner content and a decorative image', () => {
-    const { container } = renderBannerItem()
-
-    expect(screen.getByText('Featured')).toBeInTheDocument()
-    expect(screen.getAllByText('Test Banner Title')).toHaveLength(2)
-    expect(screen.getByText('Test banner description text')).toBeInTheDocument()
-    expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/image.png')
-    expect(container.querySelector('img')).toHaveAttribute('alt', '')
-  })
-
-  it('uses a native external link for the card navigation', () => {
-    renderBannerItem()
-
-    const link = screen.getByRole('link', { name: 'Test Banner Title' })
-    expect(link).toHaveAttribute('href', 'https://example.com')
-    expect(link).toHaveAttribute('target', '_blank')
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-  })
-
-  it('tracks navigation through the link', () => {
+  it('names the external destination and tracks navigation through it', async () => {
+    const user = userEvent.setup()
     renderBannerItem(createMockBanner({ link: 'https://test-link.com' }), {
       sort: 2,
       language: 'zh-Hans',
@@ -64,7 +42,10 @@ describe('BannerItem', () => {
 
     const link = screen.getByRole('link', { name: 'Test Banner Title' })
     link.addEventListener('click', (event) => event.preventDefault())
-    fireEvent.click(link)
+    expect(link).toHaveAttribute('href', 'https://test-link.com')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    await user.click(link)
 
     expect(mockTrackEvent).toHaveBeenCalledWith(
       'explore_banner_click',
@@ -85,15 +66,7 @@ describe('BannerItem', () => {
     renderBannerItem(createMockBanner({ link: '' }))
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.getByRole('article')).toHaveTextContent('Test Banner Title')
     expect(mockTrackEvent).not.toHaveBeenCalled()
-  })
-
-  it('associates the link accessible name with the visible title', () => {
-    renderBannerItem()
-
-    const link = screen.getByRole('link', { name: 'Test Banner Title' })
-    const title = document.getElementById(link.getAttribute('aria-labelledby')!)
-
-    expect(title).toHaveTextContent('Test Banner Title')
   })
 })

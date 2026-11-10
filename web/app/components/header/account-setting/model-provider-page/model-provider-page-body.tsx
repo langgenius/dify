@@ -1,7 +1,9 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type { ModelProviderPluginSummary } from './index'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { Suspense } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
@@ -18,8 +20,7 @@ type ModelProviderPageBodyProps = {
   showEmptyProvider: boolean
   showConfiguredProviders: boolean
   showNotConfiguredProviders: boolean
-  showMarketplace: boolean
-  enableMarketplace: boolean
+  marketplace: MarketplaceLinks | null
   searchText: string
   pluginSummaryMap: Map<string, ModelProviderPluginSummary>
   onOpenMarketplace?: () => void
@@ -27,21 +28,27 @@ type ModelProviderPageBodyProps = {
 
 function ModelProviderCardSkeleton() {
   return (
-    <div className="rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs">
-      <SkeletonContainer className="h-24">
-        <SkeletonRow>
-          <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-lg" />
-          <div className="flex flex-1 flex-col gap-1">
-            <SkeletonRectangle className="h-4 w-2/5 animate-pulse" />
-            <SkeletonRectangle className="h-3 w-1/4 animate-pulse" />
-          </div>
-          <SkeletonRectangle className="h-8 w-24 animate-pulse rounded-lg" />
-        </SkeletonRow>
-        <div className="mt-4 flex flex-col gap-2">
-          <SkeletonRectangle className="h-3 w-full animate-pulse" />
-          <SkeletonRectangle className="h-3 w-3/4 animate-pulse" />
+    <div className="rounded-xl border-[0.5px] border-divider-regular bg-third-party-model-bg-default shadow-xs">
+      <div className="flex py-2 ps-3 pe-2">
+        <div className="grow px-1 pt-1 pb-0.5">
+          <SkeletonRow className="mb-2 h-6">
+            <SkeletonRectangle className="my-0 size-6 rounded-md" />
+            <SkeletonRectangle className="my-0 h-4 w-28" />
+          </SkeletonRow>
+          <SkeletonRow className="h-4.5 gap-0.5">
+            <SkeletonRectangle className="my-0 h-4.5 w-8 rounded-[5px]" />
+            <SkeletonRectangle className="my-0 h-4.5 w-24 rounded-[5px]" />
+          </SkeletonRow>
         </div>
-      </SkeletonContainer>
+        <SkeletonContainer className="ms-1 w-32 shrink-0 justify-between rounded-lg border-[0.5px] border-components-panel-border p-1">
+          <SkeletonRectangle className="mx-1.5 mt-1.5 mb-0 h-3 w-16" />
+          <SkeletonRectangle className="my-0 h-6 w-full rounded-md" />
+        </SkeletonContainer>
+      </div>
+      <SkeletonRow className="justify-between border-t border-t-divider-subtle py-1.5 ps-3 pe-2.75">
+        <SkeletonRectangle className="h-4 w-16" />
+        <SkeletonRectangle className="h-4 w-32" />
+      </SkeletonRow>
     </div>
   )
 }
@@ -50,7 +57,11 @@ function ModelProviderListSkeleton() {
   const { t } = useTranslation(['common'])
 
   return (
-    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
+    <div
+      role="status"
+      aria-label={t(($) => $.loading, { ns: 'common' })}
+      className="flex flex-col gap-2 motion-safe:animate-pulse"
+    >
       {Array.from({ length: 3 }, (_, index) => (
         <ModelProviderCardSkeleton key={index} />
       ))}
@@ -162,8 +173,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   showEmptyProvider,
   showConfiguredProviders,
   showNotConfiguredProviders,
-  showMarketplace,
-  enableMarketplace,
+  marketplace,
   searchText,
   pluginSummaryMap,
   onOpenMarketplace,
@@ -188,49 +198,58 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
           <ModelProviderListSkeleton />
         </div>
       )}
-      {showEmptyProvider && (
-        <EmptyProviderState
-          enableMarketplace={enableMarketplace}
-          stepByStepTourTarget={
-            !showConfiguredProviders && !showNotConfiguredProviders
-              ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction
-              : undefined
-          }
-        />
-      )}
-      {showConfiguredProviders && (
-        <ProviderCardList
-          firstCardTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction}
-          providers={filteredConfiguredProviders}
-          pluginSummaryMap={pluginSummaryMap}
-        />
-      )}
-      {showNotConfiguredProviders && (
-        <div className="flex flex-col gap-2 pt-2">
-          <div className="flex h-5 items-center system-md-semibold text-text-primary">
-            {t(($) => $['modelProvider.toBeConfigured'], { ns: 'modelProvider' })}
+      <Suspense
+        fallback={
+          <div>
+            <ModelProviderListSkeleton />
           </div>
-          <ProviderCardList
-            firstCardTarget={
-              !showConfiguredProviders
+        }
+      >
+        {showEmptyProvider && (
+          <EmptyProviderState
+            enableMarketplace={marketplace !== null}
+            stepByStepTourTarget={
+              !showConfiguredProviders && !showNotConfiguredProviders
                 ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction
                 : undefined
             }
-            providers={filteredNotConfiguredProviders}
-            notConfigured
+          />
+        )}
+        {showConfiguredProviders && (
+          <ProviderCardList
+            firstCardTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction}
+            providers={filteredConfiguredProviders}
             pluginSummaryMap={pluginSummaryMap}
           />
-        </div>
-      )}
-      {showMarketplace && (
-        <div>
-          <InstallFromMarketplace
-            searchText={searchText}
-            onOpenMarketplace={onOpenMarketplace}
-            stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall}
-          />
-        </div>
-      )}
+        )}
+        {showNotConfiguredProviders && (
+          <div className="flex flex-col gap-2 pt-2">
+            <div className="flex h-5 items-center system-md-semibold text-text-primary">
+              {t(($) => $['modelProvider.toBeConfigured'], { ns: 'modelProvider' })}
+            </div>
+            <ProviderCardList
+              firstCardTarget={
+                !showConfiguredProviders
+                  ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction
+                  : undefined
+              }
+              providers={filteredNotConfiguredProviders}
+              notConfigured
+              pluginSummaryMap={pluginSummaryMap}
+            />
+          </div>
+        )}
+        {!isLoadingModelProviders && marketplace && (
+          <div>
+            <InstallFromMarketplace
+              marketplace={marketplace}
+              searchText={searchText}
+              onOpenMarketplace={onOpenMarketplace}
+              stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall}
+            />
+          </div>
+        )}
+      </Suspense>
     </div>
   )
 }

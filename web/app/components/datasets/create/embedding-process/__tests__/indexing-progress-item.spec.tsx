@@ -1,25 +1,20 @@
-import type { IndexingStatusResponse } from '@/models/datasets'
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import IndexingProgressItem from '../indexing-progress-item'
 
+// Billing labels have their own tests and are outside indexing progress semantics.
 vi.mock('@/app/components/billing/priority-label', () => ({
   default: () => <span data-testid="priority-label">Priority</span>,
-}))
-vi.mock('../../../common/document-file-icon', () => ({
-  default: ({ name }: { name?: string }) => <span data-testid="file-icon">{name}</span>,
-}))
-vi.mock('@/app/components/base/notion-icon', () => ({
-  default: ({ src }: { src?: string }) => <span data-testid="notion-icon">{src}</span>,
 }))
 describe('IndexingProgressItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  const makeDetail = (overrides: Partial<IndexingStatusResponse> = {}): IndexingStatusResponse => ({
+  const makeDetail = (overrides: Partial<DocumentStatusResponse> = {}): DocumentStatusResponse => ({
     id: 'doc-1',
     indexing_status: 'indexing',
     processing_started_at: 0,
@@ -44,38 +39,12 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    // Name appears in both the file-icon mock and the display div; verify at least one
-    expect(screen.getAllByText('test.pdf').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('test.pdf')).toBeInTheDocument()
     expect(screen.getByText('50%')).toBeInTheDocument()
     expect(screen.getByRole('progressbar', { name: 'test.pdf' })).toHaveAttribute(
       'aria-valuenow',
       '50',
     )
-  })
-
-  it('should render file icon for FILE source type', () => {
-    render(
-      <IndexingProgressItem
-        detail={makeDetail()}
-        name="report.docx"
-        sourceType={DataSourceType.FILE}
-      />,
-    )
-
-    expect(screen.getByTestId('file-icon')).toBeInTheDocument()
-  })
-
-  it('should render notion icon for NOTION source type', () => {
-    render(
-      <IndexingProgressItem
-        detail={makeDetail()}
-        name="My Page"
-        sourceType={DataSourceType.NOTION}
-        notionIcon="notion-icon-url"
-      />,
-    )
-
-    expect(screen.getByTestId('notion-icon')).toBeInTheDocument()
   })
 
   it('announces a file completing after processing without retaining its progress bar', () => {

@@ -1,13 +1,24 @@
-from unittest.mock import patch
+from dataclasses import dataclass
+from io import BytesIO
+from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 import controllers.trigger.webhook as module
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from factories import file_factory
+from models.enums import DEFAULT_END_USER_SESSION_ID, EndUserType
+from models.model import EndUser
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
+from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from services.errors.app import QuotaExceededError
-from tests.unit_tests.model_factories import make_workflow
+from services.trigger.app_trigger_service import AppTriggerService
+from tests.helpers.unit.model_factories import make_end_user, make_workflow
 
 
 class _RequestStub:
@@ -16,14 +27,42 @@ class _RequestStub:
     args = {"a": "b"}
 
 
+@dataclass(eq=False, repr=False)
 class _AppScopedEndUserServicesStub:
-    def __init__(self, commands: object) -> None:
-        self.commands = commands
+    commands: object
+
+
+@dataclass(frozen=True)
+class _AppServicesStub:
+    trigger_status: AppTriggerService
+
+
+@dataclass(eq=False, repr=False)
+class _WorkspaceServicesStub:
+    workflow_dispatch: object
 
 
 class _ApplicationServicesStub:
-    def __init__(self, commands: object) -> None:
+    def __init__(self, commands: object, trigger_status: AppTriggerService) -> None:
         self.app_scoped_end_users = _AppScopedEndUserServicesStub(commands)
+        self.apps = _AppServicesStub(trigger_status)
+        self.workspaces = _WorkspaceServicesStub(object())
+
+
+class _EndUserCommandsStub:
+    def __init__(self, end_user: EndUser) -> None:
+        self._end_user = end_user
+        self.calls: list[tuple[EndUserType, str, str, str | None]] = []
+
+    def get_or_create_end_user_by_type(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser:
+        self.calls.append((type, tenant_id, app_id, user_id))
+        return self._end_user
 
 
 @pytest.fixture(autouse=True)
@@ -37,9 +76,10 @@ def mock_jsonify():
 
 
 @pytest.fixture(autouse=True)
-def end_user_commands(monkeypatch: pytest.MonkeyPatch) -> object:
+def end_user_commands(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> object:
     commands = object()
-    monkeypatch.setattr(module, "application_services", lambda: _ApplicationServicesStub(commands))
+    triggers = AppTriggerService(triggers=SQLAlchemyAppTriggerRepository(session_factory=sqlite_session_factory))
+    monkeypatch.setattr(module, "application_services", lambda: _ApplicationServicesStub(commands, triggers))
     return commands
 
 
@@ -81,6 +121,60 @@ class TestPrepareWebhookExecution:
 
         assert error == "bad"
         assert webhook_data["method"] == "POST"
+
+    @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
+    def test_prepare_stores_uploads_for_the_trigger_end_user_run(
+        self,
+        mock_get: MagicMock,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        node_config = {
+            "data": {
+                "method": "post",
+                "content_type": "multipart/form-data",
+                "body": [{"name": "chat_history_file", "type": "file", "required": True}],
+            }
+        }
+        mock_get.return_value = (_webhook_trigger(), _workflow(), node_config)
+        trigger_end_user = make_end_user(
+            end_user_id="trigger-end-user-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            end_user_type=EndUserType.TRIGGER,
+            session_id=DEFAULT_END_USER_SESSION_ID,
+        )
+        end_users = _EndUserCommandsStub(trigger_end_user)
+        triggers = AppTriggerService(triggers=SQLAlchemyAppTriggerRepository(session_factory=sqlite_session_factory))
+        monkeypatch.setattr(module, "application_services", lambda: _ApplicationServicesStub(end_users, triggers))
+        monkeypatch.setattr("core.tools.tool_file_manager.storage.save", lambda *_args: None)
+
+        with app.test_request_context(
+            "/triggers/webhook/wh-1",
+            method="POST",
+            data={"chat_history_file": (BytesIO(b"# chat"), "chat.md", "text/markdown")},
+            content_type="multipart/form-data",
+        ):
+            _, _, _, webhook_data, error = module._prepare_webhook_execution("wh-1")
+
+        assert error is None
+        tool_file_id = webhook_data["files"]["chat_history_file"]["related_id"]
+        # The async run executes as the trigger end user, whose scope only loads tool files it owns.
+        run_scope = FileAccessScope(
+            tenant_id="tenant-1",
+            user_id=trigger_end_user.id,
+            user_from=UserFrom.END_USER,
+            invoke_from=InvokeFrom.SERVICE_API,
+        )
+        with bind_file_access_scope(run_scope):
+            file = file_factory.build_from_mapping(
+                mapping={"transfer_method": "tool_file", "tool_file_id": tool_file_id},
+                tenant_id="tenant-1",
+                access_controller=DatabaseFileAccessController(),
+            )
+        assert file.related_id == tool_file_id
+        assert end_users.calls == [(EndUserType.TRIGGER, "tenant-1", "app-1", None)]
 
 
 class TestHandleWebhook:
@@ -171,8 +265,9 @@ class TestHandleWebhook:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=ValueError("missing"))
     def test_value_error_not_found(self, mock_get):
-        with pytest.raises(NotFound):
-            module.handle_webhook("wh-1")
+        response = module.handle_webhook("wh-1")
+        assert response.status_code == 404
+        assert response.data == NotFound().get_body().encode()
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=RequestEntityTooLarge())
     def test_request_entity_too_large(self, mock_get):
@@ -249,8 +344,9 @@ class TestHandleWebhookDebug:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=ValueError("missing"))
     def test_debug_not_found(self, mock_get):
-        with pytest.raises(NotFound):
-            module.handle_webhook_debug("wh-1")
+        response = module.handle_webhook_debug("wh-1")
+        assert response.status_code == 404
+        assert response.data == NotFound().get_body().encode()
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=RequestEntityTooLarge())
     def test_debug_request_entity_too_large(self, mock_get):

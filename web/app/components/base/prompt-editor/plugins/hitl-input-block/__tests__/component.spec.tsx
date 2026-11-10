@@ -1,201 +1,90 @@
-import type { RefObject } from 'react'
-import type {
-  FormInputItem,
-  ParagraphFormInput,
-} from '@/app/components/workflow/nodes/human-input/types'
+import type { ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
+import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import HITLInputComponent from '../component'
+import { HITLInputNode } from '../node'
 
-const { mockUseSelectOrDelete } = vi.hoisted(() => ({
-  mockUseSelectOrDelete: vi.fn(),
-}))
-
-vi.mock('../../../hooks', () => ({
-  useSelectOrDelete: (...args: unknown[]) => mockUseSelectOrDelete(...args),
-}))
-
-vi.mock('../component-ui', () => ({
-  default: ({
-    formInput,
-    onChange,
-  }: {
-    formInput?: FormInputItem
-    onChange: (payload: FormInputItem) => void
-  }) => {
-    const basePayload: ParagraphFormInput = (
-      formInput && formInput.type === InputVarType.paragraph
-        ? formInput
-        : {
-            type: InputVarType.paragraph,
-            output_variable_name: 'user_name',
-            default: {
-              type: 'constant',
-              selector: [],
-              value: 'hello',
-            },
-          }
-    ) satisfies ParagraphFormInput
-    return (
-      <div>
-        <button type="button" onClick={() => onChange(basePayload)}>
-          emit-same-name
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            onChange({
-              ...basePayload,
-              output_variable_name: 'renamed_name',
-            })
-          }
-        >
-          emit-rename
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            onChange({
-              ...basePayload,
-              default: {
-                type: 'constant',
-                selector: [],
-                value: 'updated',
-              },
-            })
-          }
-        >
-          emit-update
-        </button>
-      </div>
-    )
-  },
-}))
-
-const createHookReturn = (): [RefObject<HTMLDivElement | null>, boolean] => {
-  return [{ current: null }, false]
-}
-
-const createInput = (overrides?: Partial<ParagraphFormInput>): ParagraphFormInput => ({
+const createInput = (name = 'user_name'): ParagraphFormInput => ({
   type: InputVarType.paragraph,
-  output_variable_name: 'user_name',
-  default: {
-    type: 'constant',
-    selector: [],
-    value: 'hello',
-  },
-  ...overrides,
+  output_variable_name: name,
+  default: { type: 'constant', selector: [], value: 'hello' },
 })
 
-describe('HITLInputComponent', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseSelectOrDelete.mockReturnValue(createHookReturn())
-  })
-
-  it('should append payload when matching form input does not exist', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-
-    render(
+const setup = async (formInputs: ParagraphFormInput[]) => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  const onRename = vi.fn()
+  render(
+    <LexicalComposer
+      initialConfig={{
+        namespace: 'hitl-component',
+        nodes: [HITLInputNode],
+        onError: (error) => {
+          throw error
+        },
+      }}
+    >
       <HITLInputComponent
-        nodeKey="node-key-1"
+        nodeKey="input-node"
         nodeId="node-1"
         varName="user_name"
-        formInputs={[]}
+        formInputs={formInputs}
         onChange={onChange}
-        onRename={vi.fn()}
+        onRename={onRename}
         onRemove={vi.fn()}
         workflowNodesMap={{}}
-      />,
-    )
+      />
+    </LexicalComposer>,
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+  return { user, onChange, onRename }
+}
 
-    await user.click(screen.getByRole('button', { name: 'emit-same-name' }))
+it('appends a missing input after saving the field editor', async () => {
+  const other = createInput('other_name')
+  const { user, onChange } = await setup([other])
+  await user.type(screen.getByRole('textbox', { name: /saveResponseAs/ }), 'user_name')
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  expect(onChange).toHaveBeenCalledWith([
+    other,
+    expect.objectContaining({ output_variable_name: 'user_name', type: InputVarType.paragraph }),
+  ])
+})
 
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0]).toHaveLength(1)
-    expect(onChange.mock.calls[0]![0][0].output_variable_name).toBe('user_name')
-  })
+it('routes a rename through the editor rename callback', async () => {
+  const { user, onChange, onRename } = await setup([createInput()])
+  const name = screen.getByRole('textbox', { name: /saveResponseAs/ })
+  await user.clear(name)
+  await user.type(name, 'renamed_name')
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  expect(onRename).toHaveBeenCalledWith(createInput('renamed_name'), 'user_name')
+  expect(onChange).not.toHaveBeenCalled()
+})
 
-  it('should replace payload when variable name is renamed', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
+it('prevents a duplicate name from being saved', async () => {
+  const { user, onChange, onRename } = await setup([createInput(), createInput('other_name')])
+  const name = screen.getByRole('textbox', { name: /saveResponseAs/ })
+  await user.clear(name)
+  await user.type(name, 'other_name')
+  expect(screen.getByText(/variableNameDuplicated/)).toBeInTheDocument()
+  const save = screen.getByRole('button', { name: 'common.operation.save' })
+  expect(save).toBeDisabled()
+  await user.click(save)
+  expect(onChange).not.toHaveBeenCalled()
+  expect(onRename).not.toHaveBeenCalled()
+})
 
-    render(
-      <HITLInputComponent
-        nodeKey="node-key-2"
-        nodeId="node-2"
-        varName="user_name"
-        formInputs={[createInput()]}
-        onChange={onChange}
-        onRename={vi.fn()}
-        onRemove={vi.fn()}
-        workflowNodesMap={{}}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'emit-rename' }))
-
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0][0].output_variable_name).toBe('renamed_name')
-  })
-
-  it('should ignore rename when the target variable name already exists', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-
-    render(
-      <HITLInputComponent
-        nodeKey="node-key-duplicate"
-        nodeId="node-duplicate"
-        varName="user_name"
-        formInputs={[createInput(), createInput({ output_variable_name: 'renamed_name' })]}
-        onChange={onChange}
-        onRename={vi.fn()}
-        onRemove={vi.fn()}
-        workflowNodesMap={{}}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'emit-rename' }))
-
-    expect(onChange).not.toHaveBeenCalled()
-  })
-
-  it('should update existing payload when variable name stays the same', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-
-    render(
-      <HITLInputComponent
-        nodeKey="node-key-3"
-        nodeId="node-3"
-        varName="user_name"
-        formInputs={[
-          createInput(),
-          createInput({
-            output_variable_name: 'other_name',
-            default: {
-              type: 'constant',
-              selector: [],
-              value: 'other',
-            },
-          }),
-        ]}
-        onChange={onChange}
-        onRename={vi.fn()}
-        onRemove={vi.fn()}
-        workflowNodesMap={{}}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'emit-update' }))
-
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0][0].default.value).toBe('updated')
-    expect(onChange.mock.calls[0]![0][0].output_variable_name).toBe('user_name')
-    expect(onChange.mock.calls[0]![0][1].output_variable_name).toBe('other_name')
-    expect(onChange.mock.calls[0]![0][1].default.value).toBe('other')
-  })
+it('updates only the edited input while preserving the other fields', async () => {
+  const other = createInput('other_name')
+  const { user, onChange } = await setup([createInput(), other])
+  const content = screen.getByRole('textbox', { name: /staticContent/ })
+  await user.clear(content)
+  await user.type(content, 'updated')
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  expect(onChange).toHaveBeenCalledWith([
+    { ...createInput(), default: { type: 'constant', selector: [], value: 'updated' } },
+    other,
+  ])
 })

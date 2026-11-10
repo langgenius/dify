@@ -1,6 +1,6 @@
 'use client'
+import type { WorkflowGeneratePlanEventResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import type { BlockEnum } from '@/app/components/workflow/types'
-import type { WorkflowGenPlan } from '@/service/workflow-generator'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
@@ -12,7 +12,7 @@ type Props = Readonly<{
    * is still running. Drives the two honest phases of the generation:
    * "Planning…" (skeleton outline) → plan outline + "Building…".
    */
-  plan: WorkflowGenPlan | null
+  plan: WorkflowGeneratePlanEventResponse | null
 }>
 
 // Stable keys for the planning skeleton's placeholder rows — avoids array-index

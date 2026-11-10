@@ -48,15 +48,6 @@ export function createStartNode(
   })
 }
 
-export function createNodeDataFactory<T extends CommonNodeType & Record<string, unknown>>(
-  defaults: T,
-) {
-  return (overrides: Partial<T> = {}): T => ({
-    ...defaults,
-    ...overrides,
-  })
-}
-
 export function createTriggerNode(
   triggerType:
     | typeof BlockEnum.TriggerSchedule

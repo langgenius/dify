@@ -28,6 +28,8 @@
   "menus.plugins": "एकीकरण",
   "menus.status": "बीटा",
   "menus.tools": "उपकरण",
+  "settings.accessToken": "एक्सेस टोकन",
+  "settings.accessTokenDescription": "ऐसे सेवा API टोकन बनाएँ जो केवल चुने हुए ऐप और ज्ञान आधारों तक पहुँच दें।",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "बिलिंग",
   "settings.customEndpoint": "कस्टम एंडपॉइंट",

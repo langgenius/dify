@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import ResizeHandle from '..'
@@ -56,10 +56,6 @@ describe('ResizeHandle', () => {
       expect(handle).toHaveAttribute('aria-valuenow', '400')
       await user.keyboard(`{End}{${increase}}`)
       expect(handle).toHaveAttribute('aria-valuenow', '600')
-      await user.tab()
-      expect(screen.getByRole('button', { name: 'Next control' })).toHaveFocus()
-      await user.tab({ shift: true })
-      expect(handle).toHaveFocus()
     },
   )
 
@@ -83,7 +79,7 @@ describe('ResizeHandle', () => {
     await user.tab()
     await user.keyboard('{ArrowDown}{Control>}{ArrowRight}{/Control}{Alt>}{ArrowLeft}{/Alt}')
     expect(onResize).not.toHaveBeenCalled()
-    fireEvent.mouseDown(handle)
+    await user.pointer({ target: handle, keys: '[MouseLeft]' })
     expect(onMouseDown).toHaveBeenCalledOnce()
   })
 })

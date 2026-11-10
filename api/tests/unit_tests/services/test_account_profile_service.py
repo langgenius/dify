@@ -9,7 +9,7 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account_errors import AccountNotFoundError
 from services.account_profile_service import AccountProfileService
 from services.entities.account_entities import AccountProfileChanges
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 def _context() -> RequestContext:

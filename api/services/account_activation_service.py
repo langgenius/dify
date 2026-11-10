@@ -25,6 +25,10 @@ _PENDING_ACCOUNT_STATUS = "pending"
 
 
 class InvitationTokenStore(Protocol):
+    def consume_membership(self, invitation: InvitationLookup) -> bool: ...
+
+    def is_membership_consumed(self, invitation: InvitationLookup) -> bool: ...
+
     def find(self, invitation: InvitationLookup) -> InvitationToken | None: ...
 
     def revoke(self, invitation: InvitationLookup) -> None: ...
@@ -39,6 +43,7 @@ class AccountActivationRepository(Protocol):
         *,
         role: str,
         setup: AccountSetup | None,
+        create_membership: bool = True,
     ) -> ActivationPersistenceResult | None: ...
 
 
@@ -108,8 +113,9 @@ class AccountActivationService:
             raise FrozenAccountError
 
         setup = self._resolve_setup(invitation, command)
-        raw_role = invitation.role
-        role = raw_role if raw_role is not None and raw_role in _NON_OWNER_ROLES else _DEFAULT_ROLE
+        role = self._membership_role(invitation.role)
+        # An invitation that already restored membership at sign-in must not grant it again after removal.
+        membership_consumed = self._tokens.is_membership_consumed(command.invitation)
 
         normalized_email = command.invitation.email.lower() if command.invitation.email else None
         self._tokens.revoke(
@@ -119,12 +125,28 @@ class AccountActivationService:
                 token=command.invitation.token,
             )
         )
-        result = self._accounts.activate(invitation, role=role, setup=setup)
+        result = self._accounts.activate(invitation, role=role, setup=setup, create_membership=not membership_consumed)
         if result is None:
             raise InvalidInvitationError
         if result.membership_created:
             self._membership_cache.invalidate(invitation.workspace_id)
         self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
+
+    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool:
+        lookup = InvitationLookup(workspace_id=None, email=email, token=token)
+        invitation = self._resolve(lookup)
+        if invitation is None or invitation.account_id != account_id:
+            return False
+        if not self._tokens.consume_membership(lookup):
+            return False
+
+        result = self._accounts.activate(invitation, role=self._membership_role(invitation.role), setup=None)
+        if result is None:
+            return False
+        if result.membership_created:
+            self._membership_cache.invalidate(invitation.workspace_id)
+            self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
+        return True
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)
@@ -145,6 +167,12 @@ class AccountActivationService:
         if token is None:
             return None
         return self._accounts.resolve(token)
+
+    @staticmethod
+    def _membership_role(role: str | None) -> str:
+        if role is not None and role in _NON_OWNER_ROLES:
+            return role
+        return _DEFAULT_ROLE
 
     @staticmethod
     def _requires_setup(invitation: AccountInvitation) -> bool:

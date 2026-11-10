@@ -32,7 +32,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
     if (typeof event === 'string') return
 
     if (event?.type === UPDATE_DATASETS_EVENT_EMITTER && Array.isArray(event.payload))
-      setLocalDatasets(event.payload as Dataset[])
+      setLocalDatasets(event.payload)
   })
 
   return (
@@ -63,7 +63,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
             }
           />
           <PopoverContent
-            placement="bottom-end"
+            align="end"
             sideOffset={3}
             alignOffset={-147}
             className="border-none bg-transparent shadow-none"

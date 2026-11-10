@@ -4,7 +4,7 @@ import { WorkflowVersionFilterOptions } from '../../../../types'
 import FilterItem from '../filter-item'
 
 describe('FilterItem', () => {
-  it('renders the label, fires selection, and shows the check mark when selected', async () => {
+  it('maps the selected option to its workflow filter key', async () => {
     const user = userEvent.setup()
     const onClick = vi.fn()
     render(
@@ -21,8 +21,7 @@ describe('FilterItem', () => {
     const option = screen.getByRole('button', { name: 'Only yours' })
     expect(option).toHaveAttribute('aria-pressed', 'true')
 
-    option.focus()
-    await user.keyboard(' ')
+    await user.click(option)
 
     expect(onClick).toHaveBeenCalledWith(WorkflowVersionFilterOptions.onlyYours)
   })

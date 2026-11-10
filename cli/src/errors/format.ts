@@ -1,6 +1,10 @@
-import type { ErrorEnvelope } from './base'
-import type { Style } from '@/sys/io/color'
+import type { ErrorDetail, ErrorEnvelope } from './base'
+import type { Hint } from '@/protocol/hint'
+import type { ColorScheme } from '@/sys/io/color'
+import { LOC_SEPARATOR } from '@/errors/base'
 import { redactBearer } from '@/errors/sanitize'
+import { spacedId } from '@/protocol/op-id'
+import { BINARY } from '@/version/info'
 
 const RAW_RESPONSE_HINT = 'run again with --verbose to see the raw server response'
 
@@ -15,17 +19,29 @@ function resolveHint(e: ErrorEnvelope['error'], opts: RenderOptions): string | u
   return rawHiddenAndUnparsed ? RAW_RESPONSE_HINT : undefined
 }
 
-export function renderEnvelope(env: ErrorEnvelope, style: Style, opts: RenderOptions): string {
+function detailLine(d: ErrorDetail): string {
+  if (d.field !== undefined) return `${d.field}: ${d.msg}`
+  const loc = (d.loc ?? []).join(LOC_SEPARATOR)
+  return `${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`
+}
+
+function nextLine(h: Hint, style: ColorScheme): string {
+  return `${style.magenta('next:')} ${style.cyan(`${BINARY} ${spacedId(h.op)}`)} — ${h.summary}`
+}
+
+export function renderEnvelope(
+  env: ErrorEnvelope,
+  style: ColorScheme,
+  opts: RenderOptions,
+): string {
   const e = env.error
   const server = e.server
   const headerCode = server?.code ?? e.code
   const lines: string[] = [`${headerCode}: ${e.message}`]
-  for (const d of e.details ?? server?.details ?? []) {
-    const loc = (d.loc ?? []).join('.')
-    lines.push(`  - ${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`)
-  }
+  for (const d of e.details ?? server?.details ?? []) lines.push(`  - ${detailLine(d)}`)
   const hint = resolveHint(e, opts)
   if (hint !== undefined) lines.push(`${style.magenta('hint:')} ${style.cyan(hint)}`)
+  for (const h of server?.hints ?? []) lines.push(nextLine(h, style))
   if (e.method !== undefined && e.url !== undefined) lines.push(`request: ${e.method} ${e.url}`)
   if (e.http_status !== undefined) lines.push(`http_status: ${e.http_status}`)
   if (opts.verbose && e.raw_response) lines.push(`raw_response: ${redactBearer(e.raw_response)}`)

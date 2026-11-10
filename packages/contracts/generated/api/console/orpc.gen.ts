@@ -41,6 +41,8 @@ export const contractLoaders = {
     import('./instruction-generate/orpc.gen.ts').then(({ instructionGenerate }) => ({
       instructionGenerate,
     })),
+  knowledgeFs: () =>
+    import('./knowledge-fs/orpc.gen.ts').then(({ knowledgeFs }) => ({ knowledgeFs })),
   login: () => import('./login/orpc.gen.ts').then(({ login }) => ({ login })),
   logout: () => import('./logout/orpc.gen.ts').then(({ logout }) => ({ logout })),
   notification: () =>
@@ -56,6 +58,10 @@ export const contractLoaders = {
     import('./remote-files/orpc.gen.ts').then(({ remoteFiles }) => ({ remoteFiles })),
   resetPassword: () =>
     import('./reset-password/orpc.gen.ts').then(({ resetPassword }) => ({ resetPassword })),
+  resourceAccessTokens: () =>
+    import('./resource-access-tokens/orpc.gen.ts').then(({ resourceAccessTokens }) => ({
+      resourceAccessTokens,
+    })),
   ruleCodeGenerate: () =>
     import('./rule-code-generate/orpc.gen.ts').then(({ ruleCodeGenerate }) => ({
       ruleCodeGenerate,

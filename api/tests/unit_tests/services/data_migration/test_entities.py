@@ -11,7 +11,7 @@ from services.data_migration.entities import (
 )
 
 
-def test_import_options_defaults_match_spec():
+def test_import_options_defaults_match_spec() -> None:
     options = ImportOptions()
 
     assert options.create_app_api_token_on_import is False
@@ -19,12 +19,12 @@ def test_import_options_defaults_match_spec():
     assert options.conflict_strategy == ConflictStrategy.FAIL
 
 
-def test_metadata_requires_version():
+def test_metadata_requires_version() -> None:
     with pytest.raises(MigrationDataError, match="metadata.version"):
         MigrationMetadata.from_mapping({})
 
 
-def test_metadata_parses_source_tenants_and_import_options():
+def test_metadata_parses_source_tenants_and_import_options() -> None:
     metadata = MigrationMetadata.from_mapping(
         {
             "version": "1",
@@ -44,7 +44,7 @@ def test_metadata_parses_source_tenants_and_import_options():
     assert metadata.import_options.id_strategy == IdStrategy.PRESERVE_ID
 
 
-def test_import_options_invalid_strategy_raises_domain_error():
+def test_import_options_invalid_strategy_raises_domain_error() -> None:
     with pytest.raises(MigrationDataError, match="id_strategy"):
         ImportOptions.from_mapping({"id_strategy": "unknown"})
 
@@ -58,12 +58,12 @@ def test_import_options_invalid_strategy_raises_domain_error():
         ImportOptions.from_mapping({"conflict_strategy": "replace"})
 
 
-def test_metadata_rejects_invalid_target_tenant_shape():
+def test_metadata_rejects_invalid_target_tenant_shape() -> None:
     with pytest.raises(MigrationDataError, match="target_tenant"):
         MigrationMetadata.from_mapping({"version": "1", "target_tenant": "prod"})
 
 
-def test_migration_package_sections_must_be_lists_of_objects():
+def test_migration_package_sections_must_be_lists_of_objects() -> None:
     with pytest.raises(MigrationDataError, match="workflows"):
         MigrationPackage.from_mapping({"metadata": {"version": "1"}, "workflows": {"id": "app-1"}})
 

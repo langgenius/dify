@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import DebugInfo from '@/app/components/plugins/plugin-page/debug-info'
-import InstallPluginDropdown from '@/app/components/plugins/plugin-page/install-plugin-dropdown'
+import InstallPluginMenu from '@/app/components/plugins/plugin-page/install-plugin-menu'
 import PluginTasks from '@/app/components/plugins/plugin-page/plugin-tasks'
 import { PermissionQuickPanel } from './permission-quick-panel'
 import {
@@ -26,7 +26,6 @@ type PermissionTooltipWrapperProps = {
   children: ReactNode
   className?: string
   content: string
-  placement: 'top' | 'bottom'
   show: boolean
 }
 
@@ -34,7 +33,6 @@ function PermissionTooltipWrapper({
   children,
   className,
   content,
-  placement,
   show,
 }: PermissionTooltipWrapperProps) {
   const trigger = (
@@ -49,9 +47,7 @@ function PermissionTooltipWrapper({
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />
-      <TooltipContent placement={placement} sideOffset={8}>
-        {content}
-      </TooltipContent>
+      <TooltipContent side="bottom">{content}</TooltipContent>
     </Tooltip>
   )
 }
@@ -98,10 +94,9 @@ function IntegrationSidebarInstallActions({
       <PermissionTooltipWrapper
         show={!canManagement}
         content={permissionTooltip}
-        placement="bottom"
         className="min-w-0 flex-1"
       >
-        <InstallPluginDropdown
+        <InstallPluginMenu
           disabled={!canManagement}
           rootClassName="w-full"
           triggerVariant="primary"
@@ -113,7 +108,7 @@ function IntegrationSidebarInstallActions({
           onSwitchToMarketplaceTab={onSwitchToMarketplace}
         />
       </PermissionTooltipWrapper>
-      <PluginTasks animatedSlot anchor={() => actionRowRef.current} placement="bottom-start" />
+      <PluginTasks animatedSlot anchor={() => actionRowRef.current} />
     </div>
   )
 }
@@ -143,7 +138,6 @@ export function IntegrationSidebarUtilityActions({
     <div className="flex w-46 shrink-0 flex-col gap-px pt-2 pb-2.5">
       {canDebugger && (
         <DebugInfo
-          popupPlacement="top-start"
           triggerVariant="ghost"
           triggerClassName={sidebarUtilityActionClassName}
           triggerContent={
@@ -169,7 +163,8 @@ export function IntegrationSidebarUtilityActions({
             }
           />
           <PopoverContent
-            placement="top-start"
+            side="top"
+            align="start"
             sideOffset={4}
             className="border-0 bg-transparent p-0 shadow-none"
           >

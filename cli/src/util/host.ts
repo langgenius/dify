@@ -1,8 +1,6 @@
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 
-export const DEFAULT_HOST = 'https://cloud.dify.ai'
-
 export function openAPIBase(host: string): string {
   return `${host.replace(/\/+$/, '')}/openapi/v1/`
 }
@@ -14,7 +12,6 @@ export type ResolveHostOptions = {
 
 export function resolveHost(opts: ResolveHostOptions): string {
   let raw = opts.raw.trim()
-  if (raw === '') raw = DEFAULT_HOST
   if (!raw.includes('://')) raw = `https://${raw}`
   let url: URL
   try {

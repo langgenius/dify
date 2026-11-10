@@ -5,13 +5,13 @@ directly. The tools layer now consumes API-prepared declarations from config, so
 this module only keeps the invoke-time boundary:
 
 - POST ``/plugin/{tenant_id}/dispatch/tool/invoke``
-- request headers ``X-Api-Key``, ``X-Plugin-ID``, and ``Content-Type``
+- request headers ``X-Api-Key``, ``X-Plugin-ID``, ``X-Plugin-Unique-Identifier``, and ``Content-Type``
 - top-level ``user_id`` forwarding when shared execution context includes one
 - stream decoding and blob-chunk merging for agent observations
 
 The shared execution-context layer still owns tenant/user daemon context, while
-each tool's own ``plugin_id`` determines the transport identity placed in
-``X-Plugin-ID``.
+each tool's own ``plugin_id`` and ``plugin_unique_identifier`` bind the transport
+to the package whose declaration and credentials were prepared by the API.
 """
 
 from __future__ import annotations
@@ -96,6 +96,15 @@ class DifyPluginToolInvokeMessage(BaseModel):
         data: Mapping[str, object] = Field(default_factory=dict)
         metadata: Mapping[str, object] = Field(default_factory=dict)
 
+        @field_validator("metadata", mode="before")
+        @classmethod
+        def _normalize_metadata(cls, value: object) -> object:
+            # The plugin SDK's ``create_log_message`` defaults ``metadata`` to
+            # None, which the daemon serializes as ``metadata: null``. Mirror the
+            # canonical core model (ToolInvokeMessage.LogMessage) and coerce that
+            # null back to an empty mapping so the message union still resolves.
+            return value or {}
+
     class MessageType(StrEnum):
         TEXT = "text"
         IMAGE = "image"
@@ -150,8 +159,8 @@ class DifyPluginDaemonToolClient:
 
     Callers provide business-level provider/tool/credential data per invocation,
     while this client supplies daemon transport identity from shared runtime
-    context: tenant path segment, daemon API key, plugin-specific ``X-Plugin-ID``
-    header, and optional top-level ``user_id``.
+    context: tenant path segment, daemon API key, plugin ID and complete package
+    identifier headers, and optional top-level ``user_id``.
     """
 
     plugin_daemon_url: str
@@ -160,8 +169,14 @@ class DifyPluginDaemonToolClient:
     plugin_id: str
     user_id: str | None
     http_client: httpx.AsyncClient = field(repr=False)
+    plugin_unique_identifier: str | None = None
 
     def __post_init__(self) -> None:
+        if (
+            self.plugin_unique_identifier is not None
+            and self.plugin_unique_identifier.partition(":")[0] != self.plugin_id
+        ):
+            raise ValueError("Plugin unique identifier does not match plugin_id")
         self.plugin_daemon_url = self.plugin_daemon_url.rstrip("/")
 
     async def invoke(
@@ -253,11 +268,14 @@ class DifyPluginDaemonToolClient:
 
     def _headers(self) -> dict[str, str]:
         """Build required plugin-daemon transport headers for tool invocation."""
-        return {
+        headers = {
             "X-Api-Key": self.plugin_daemon_api_key,
             "X-Plugin-ID": self.plugin_id,
             "Content-Type": "application/json",
         }
+        if self.plugin_unique_identifier is not None:
+            headers["X-Plugin-Unique-Identifier"] = self.plugin_unique_identifier
+        return headers
 
 
 def merge_blob_chunks(
@@ -285,6 +303,11 @@ def merge_blob_chunks(
             is_end = resp.message.end
 
             if chunk_id not in files:
+                # The declared length is plugin-controlled while the whole buffer is
+                # pre-allocated, so an oversized claim must be rejected before the
+                # allocation below rather than after it.
+                if total_length > max_file_size:
+                    raise ValueError(f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB")
                 files[chunk_id] = FileChunk(total_length)
 
             if files[chunk_id].bytes_written + len(blob_data) > max_file_size:

@@ -1,4 +1,5 @@
-import type { VarInInspect } from '@/types/workflow'
+import type { FileResponse, VarInInspect } from '@/types/workflow'
+import { zFileTransferMethod } from '@dify/contracts/api/console/apps/zod.gen'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import {
   checkJsonSchemaDepth,
@@ -52,17 +53,45 @@ export const getValueEditorState = (currentVar: VarInInspect) => {
   }
 }
 
-export const formatInspectFileValue = (currentVar: VarInInspect) => {
-  if (currentVar.value_type === 'file')
-    return currentVar.value ? getProcessedFilesFromResponse([currentVar.value]) : []
-  if (
-    currentVar.value_type === 'array[file]' ||
-    (currentVar.type === VarInInspectType.system && currentVar.name === 'files')
+const toInspectFile = (value: unknown): FileResponse | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const transferMethod = zFileTransferMethod.safeParse(
+    'transfer_method' in value ? value.transfer_method : undefined,
   )
-    return currentVar.value && currentVar.value.length > 0
-      ? getProcessedFilesFromResponse(currentVar.value)
-      : []
-  return []
+  if (!transferMethod.success) return undefined
+  const stringField = (key: string) => {
+    const field = Reflect.get(value, key)
+    return typeof field === 'string' ? field : ''
+  }
+  return {
+    related_id: stringField('related_id'),
+    extension: stringField('extension'),
+    filename: stringField('filename'),
+    size: 'size' in value && typeof value.size === 'number' ? value.size : 0,
+    mime_type: stringField('mime_type'),
+    transfer_method: transferMethod.data,
+    type: stringField('type'),
+    url: stringField('url'),
+    upload_file_id: stringField('upload_file_id'),
+    remote_url: stringField('remote_url'),
+  }
+}
+
+export const formatInspectFileValue = (currentVar: VarInInspect) => {
+  const values =
+    currentVar.value_type === 'file'
+      ? [currentVar.value]
+      : (currentVar.value_type === 'array[file]' ||
+            (currentVar.type === VarInInspectType.system && currentVar.name === 'files')) &&
+          Array.isArray(currentVar.value)
+        ? currentVar.value
+        : []
+  return getProcessedFilesFromResponse(
+    values.flatMap((value) => {
+      const file = toInspectFile(value)
+      return file ? [file] : []
+    }),
+  )
 }
 
 export const validateInspectJsonValue = (value: string, type: string) => {

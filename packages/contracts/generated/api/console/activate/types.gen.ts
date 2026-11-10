@@ -17,6 +17,36 @@ export type ActivationResponse = {
   result: string
 }
 
+export type AccountInFreezeError = ErrorResponse & {
+  code: 'account_in_freeze'
+  status: 400
+}
+
+export type EmailDomainSuspendedError = ErrorResponse & {
+  code: 'email_domain_suspended'
+  status: 400
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type AlreadyActivateError = ErrorResponse & {
+  code: 'already_activate'
+  status: 403
+}
+
+export type InvitationAccountMismatchError = ErrorResponse & {
+  code: 'invitation_account_mismatch'
+  status: 403
+}
+
 export type ActivationCheckResponse = {
   data?: ActivationCheckData | null
   is_valid: boolean
@@ -38,8 +68,12 @@ export type PostActivateData = {
 }
 
 export type PostActivateErrors = {
-  400: unknown
+  400: AccountInFreezeError | EmailDomainSuspendedError | ErrorResponse
+  403: AlreadyActivateError | InvitationAccountMismatchError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostActivateError = PostActivateErrors[keyof PostActivateErrors]
 
 export type PostActivateResponses = {
   200: ActivationResponse
@@ -57,6 +91,12 @@ export type GetActivateCheckData = {
   }
   url: '/activate/check'
 }
+
+export type GetActivateCheckErrors = {
+  default: ErrorResponse
+}
+
+export type GetActivateCheckError = GetActivateCheckErrors[keyof GetActivateCheckErrors]
 
 export type GetActivateCheckResponses = {
   200: ActivationCheckResponse

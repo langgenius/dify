@@ -140,20 +140,15 @@ class VariableTruncator(BaseTruncator):
 
     @staticmethod
     def _segment_need_truncation(segment: Segment) -> bool:
-        if isinstance(
-            segment,
-            (NoneSegment, FloatSegment, IntegerSegment, FileSegment, BooleanSegment, ArrayFileSegment),
-        ):
-            return False
-        return True
+        return not isinstance(
+            segment, (NoneSegment, FloatSegment, IntegerSegment, FileSegment, BooleanSegment, ArrayFileSegment)
+        )
 
     @staticmethod
     def _json_value_needs_truncation(value: Any) -> bool:
         if value is None:
             return False
-        if isinstance(value, (bool, int, float)):
-            return False
-        return True
+        return not isinstance(value, (bool, int, float))
 
     @override
     def truncate(self, segment: Segment) -> TruncationResult:
@@ -309,9 +304,7 @@ class VariableTruncator(BaseTruncator):
         qa_chunks = m.get(_QAKeys.QA_CHUNKS)
         if qa_chunks is None:
             return False
-        if not isinstance(qa_chunks, list):
-            return False
-        return True
+        return isinstance(qa_chunks, list)
 
     @classmethod
     def _maybe_parent_child_structure(cls, m: Mapping[str, Any]) -> bool:
@@ -323,10 +316,7 @@ class VariableTruncator(BaseTruncator):
         parent_child_chunks = m.get(_PCKeys.PARENT_CHILD_CHUNKS)
         if parent_child_chunks is None:
             return False
-        if not isinstance(parent_child_chunks, list):
-            return False
-
-        return True
+        return isinstance(parent_child_chunks, list)
 
     def _truncate_object(self, mapping: Mapping[str, Any], target_size: int) -> _PartResult[Mapping[str, Any]]:
         """

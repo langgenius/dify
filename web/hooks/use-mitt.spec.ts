@@ -24,15 +24,14 @@ function renderMittHook(initialEmitter?: Emitter<Events>) {
 }
 
 describe('useMitt', () => {
-  it('keeps its internal emitter stable across renders', () => {
+  it('keeps one active subscription across rerenders', () => {
     const { handler, rerender, result } = renderMittHook()
-    const initialEmit = result.current.emit
 
     act(() => result.current.emit('message', 'before rerender'))
     rerender({ emitter: undefined })
     act(() => result.current.emit('message', 'after rerender'))
 
-    expect(result.current.emit).toBe(initialEmit)
+    expect(handler).toHaveBeenCalledTimes(2)
     expect(handler).toHaveBeenNthCalledWith(1, 'before rerender')
     expect(handler).toHaveBeenNthCalledWith(2, 'after rerender')
   })

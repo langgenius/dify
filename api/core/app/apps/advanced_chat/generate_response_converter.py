@@ -80,8 +80,8 @@ class AdvancedChatAppGenerateResponseConverter(
     @classmethod
     @override
     def convert_stream_full_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, Any, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, Any] | str, Any]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -112,8 +112,8 @@ class AdvancedChatAppGenerateResponseConverter(
     @classmethod
     @override
     def convert_stream_simple_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, Any, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, Any] | str, Any]:
         """
         Convert stream simple response.
         :param stream_response: stream response

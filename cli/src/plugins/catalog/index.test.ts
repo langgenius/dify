@@ -25,7 +25,6 @@ let dir: string
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'difyctl-cat-'))
   process.env.DIFY_CONFIG_DIR = dir
-  process.env.DIFY_CACHE_DIR = dir
 })
 afterEach(() => {
   delete process.env.DIFY_CONFIG_DIR
@@ -120,4 +119,23 @@ it('a cache it cannot write is an error naming the path', async () => {
     message: `failed to write the catalog cache ${join(dir, CATALOG_DIR_NAME, CACHE_FILE)}`,
   })
   expect(c.loaded).toBe(false)
+})
+
+it('an unknown op id points at the help map, which lists every operation', async () => {
+  const c = await build()
+  await c.replace(FIXTURE)
+  expect(() => c.opOrThrow('get.nothing_here')).toThrow(
+    expect.objectContaining({ code: 'unknown_op', hint: 'run difyctl help' }),
+  )
+})
+
+it('keeps the cache in the config folder and says once that DIFY_CACHE_DIR is no longer used', async () => {
+  process.env.DIFY_CACHE_DIR = join(dir, 'old-cache')
+  const { streams, ctx } = await buildWithStreams()
+  const c = await ctx.get(catalog)
+  await ctx.get(catalog)
+  expect(c.path).toBe(join(dir, CATALOG_DIR_NAME, CACHE_FILE))
+  expect(streams.errBuf()).toBe(
+    'DIFY_CACHE_DIR is no longer used; the catalog cache follows DIFY_CONFIG_DIR\n',
+  )
 })

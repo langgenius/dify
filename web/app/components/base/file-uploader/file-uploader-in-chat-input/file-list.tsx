@@ -5,7 +5,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { useFile } from '../hooks'
 import { useStore } from '../store'
 import FileImageItem from './file-image-item'
-import FileItem from './file-item'
+import { FileItem } from './file-item'
 
 type FileListProps = {
   className?: string

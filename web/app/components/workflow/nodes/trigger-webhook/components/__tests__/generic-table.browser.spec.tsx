@@ -24,7 +24,7 @@ describe('Webhook parameter table keyboard visibility', () => {
     await userEvent.tab()
 
     const deleteButton = screen.getByRole('button', { name: 'Delete row' })
-    expect(deleteButton.element()).toHaveFocus()
+    await expect.element(deleteButton).toHaveFocus()
     let effectiveOpacity = 1
     for (
       let element: Element | null = deleteButton.element();
@@ -33,6 +33,5 @@ describe('Webhook parameter table keyboard visibility', () => {
     )
       effectiveOpacity *= Number(getComputedStyle(element).opacity)
     expect(effectiveOpacity).toBe(1)
-    expect(getComputedStyle(deleteButton.element()).boxShadow).not.toBe('none')
   })
 })

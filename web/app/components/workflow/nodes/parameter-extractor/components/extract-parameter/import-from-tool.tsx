@@ -8,11 +8,13 @@ import type {
 } from '@/app/components/workflow/block-selector/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { CollectionType } from '@/app/components/tools/types'
-import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { consoleQuery } from '@/service/console'
 import { matchesProviderReference } from '@/utils/provider-reference'
 import BlockSelector from '../../../../block-selector'
 import { TabType } from '../../../../block-selector/types'
@@ -38,9 +40,19 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
   const { t } = useTranslation(['workflowModels'])
   const language = useLanguage()
 
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
 
   const handleSelectTool = useCallback(
     (_type: BlockEnum, toolInfo?: BlockDefaultValue) => {
@@ -82,7 +94,8 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
 
   return (
     <BlockSelector
-      placement="bottom-end"
+      side="bottom"
+      align="end"
       sideOffset={4}
       alignOffset={52}
       trigger={triggerElement}

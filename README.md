@@ -72,16 +72,28 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
 
 <br/>
 
-The easiest way to start the Dify server is through [Docker Compose](docker/docker-compose.yaml). Before running Dify with the following commands, make sure that [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2.24.0 or later are installed on your machine:
+The easiest way to start the Dify server is through [Docker Compose](docker/docker-compose.yaml). Install [Docker](https://docs.docker.com/get-docker/) with a running daemon, Docker Compose v2.35.0 or later, and OpenSSL.
+
+For a new deployment, run the following commands from the repository root. For an existing deployment, preserve your `.env` and follow the [upgrade guidance](docker/README.md#review-configuration-after-an-upgrade).
 
 ```bash
-cd dify
 cd docker
 cp .env.example .env
-docker compose up -d
+openssl rand -hex 32
 ```
 
-After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process.
+Open `.env` and set `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` to the generated value. Keep the default `COMPOSE_PROFILES` value for the bundled services. Service defaults load automatically; no additional configuration files are required.
+
+From the same `docker` directory, start the services:
+
+```bash
+docker compose up -d
+docker compose ps --all
+```
+
+Once the services are running, open [http://localhost/install](http://localhost/install) to complete the initial setup. The one-time `init_permissions` service is expected to exit with code `0`.
+
+For optional settings and service overrides, see the [Docker deployment guide](docker/README.md#configure-dify).
 
 ### Seeking help
 
@@ -161,13 +173,7 @@ Choose the channel that best fits your question:
 
 ## Star History
 
-<a href="https://star-history.dera.page/#langgenius/dify&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left" />
- </picture>
-</a>
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## Security disclosure
 

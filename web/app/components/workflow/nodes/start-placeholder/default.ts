@@ -1,6 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { NodeDefault } from '../../types'
-import type { StartPlaceholderNodeType } from './types'
+import type { CommonNodeType, NodeDefault } from '../../types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 
@@ -13,7 +12,7 @@ const metaData = genNodeMetaData({
   helpLinkUri: 'start',
 })
 
-const nodeDefault: NodeDefault<StartPlaceholderNodeType> = {
+const nodeDefault: NodeDefault<CommonNodeType> = {
   metaData,
   defaultValue: {
     title: 'Workflow start',

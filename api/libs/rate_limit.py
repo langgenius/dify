@@ -133,9 +133,8 @@ def enforce(spec: RateLimit, *, key: str) -> None:
 
 
 class _BearerRateLimited(TooManyRequests):
-    """Per-token 429. Carries Retry-After as a plain ``headers`` attribute because the openapi
-    error formatter reads ``getattr(e, "headers")`` (not werkzeug's ``get_headers()``). No
-    pre-built response, so the formatter still renders the canonical ErrorBody ("too_many_requests").
+    """Per-token 429 with an explicit Retry-After header and no pre-built response,
+    so the formatter still renders the canonical ErrorBody ("too_many_requests").
     """
 
     headers: dict[str, str]

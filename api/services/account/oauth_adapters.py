@@ -144,7 +144,7 @@ class RedisOAuthAccountClaimLock(OAuthAccountClaimLock):
         return self._acquire(lock_names=(self._lock_name("account", account_id),))
 
     @contextmanager
-    def _acquire(self, *, lock_names: tuple[str, ...]) -> Generator[OAuthAccountClaimLease, None, None]:
+    def _acquire(self, *, lock_names: tuple[str, ...]) -> Generator[OAuthAccountClaimLease]:
         sorted_lock_names = sorted(set(lock_names))
         locks: list[_RedisLock] = []
         try:

@@ -26,7 +26,8 @@ from services.app.agent_app_contracts import (
     WorkflowSandboxAppNotFoundError,
     WorkflowSandboxCaller,
 )
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RESOURCE_ID = UUID("11111111-1111-1111-1111-111111111111")
@@ -164,7 +165,7 @@ def test_sandbox_error_responses(
 ) -> None:
     service.error = error
     with app.test_request_context("/?caller_type=conversation&caller_id=conversation"):
-        result = unwrap(module.AgentAppSandboxInfoResource.get)(object(), CONTEXT, RESOURCE_ID)
+        result = raised_error(lambda: unwrap(module.AgentAppSandboxInfoResource.get)(object(), CONTEXT, RESOURCE_ID))
     assert result == ({"code": code, "message": message}, status)
 
 

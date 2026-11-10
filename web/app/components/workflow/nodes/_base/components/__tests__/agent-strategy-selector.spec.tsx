@@ -1,47 +1,52 @@
 import type { AgentProviderResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { createPlugin } from '@/app/components/workflow/block-selector/__tests__/factories'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { runDebouncedUserInteraction } from '@/test/debounce'
+import { createDeferred } from '@/test/deferred'
+import { createInstalledPluginFixture } from '@/test/fixtures/plugin'
 import { createProvider, createStrategy } from '../../../agent/__tests__/strategy-fixture'
 import { AgentStrategySelector } from '../agent-strategy-selector'
 
-const { request, searchMarketplace, marketplaceResults, marketplace, install } = vi.hoisted(() => ({
+const MARKETPLACE_SEARCH_DEBOUNCE_MS = 500
+
+const { request, marketplace, install, manifest } = vi.hoisted(() => ({
   request: vi.fn(),
-  searchMarketplace: vi.fn(),
-  marketplaceResults: vi.fn(),
   marketplace: vi.fn(),
   install: vi.fn(),
+  manifest: vi.fn(),
 }))
-vi.mock('@/service/base', () => ({ request }))
-vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplacePlugins: () => ({
-    queryPluginsWithDebounced: searchMarketplace,
-    plugins: marketplaceResults(),
-  }),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request,
+  postMarketplace: marketplace,
 }))
-vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByIds: marketplace,
-  useCheckInstalled: () => ({ data: { plugins: [] }, isLoading: false, refetch: vi.fn() }),
-  useInstallPackageFromMarketPlace: () => ({ mutate: install, isPending: false }),
-}))
-
-vi.mock(
-  '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
-  () => ({
-    default: () => ({ canInstallPlugin: true, canUpdatePlugin: true }),
-  }),
-)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': manifest,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.install.marketplace.post': install,
+    }),
+  }
+})
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  marketplaceResults.mockReturnValue([])
-  marketplace.mockReturnValue({
-    isLoading: false,
-    data: { data: { plugins: [] } },
-    refetch: vi.fn(),
-  })
+  request.mockReset()
+  marketplace.mockReset().mockResolvedValue({ data: { plugins: [], total: 0 } })
+  manifest.mockReset().mockResolvedValue({ plugins: [] })
+  install.mockReset()
+})
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
 })
 
 function namedProvider(name: string, label: string, author: string): AgentProviderResponse {
@@ -159,7 +164,7 @@ it('filters by provider identity without changing the saved selection or opening
   expect(screen.queryByRole('button', { name: 'Display name' })).not.toBeInTheDocument()
   expect(screen.getByText('tools.addToolModal.agent.title')).toBeInTheDocument()
   expect(onChange).not.toHaveBeenCalled()
-  expect(searchMarketplace).not.toHaveBeenCalled()
+  expect(marketplace).not.toHaveBeenCalled()
 })
 
 it('keeps letter navigation for long catalogs and removes it in tree view', async () => {
@@ -186,34 +191,51 @@ it('keeps letter navigation for long catalogs and removes it in tree view', asyn
 
 it('keeps marketplace search and its category link alongside the installed catalog', async () => {
   const user = userEvent.setup()
-  marketplaceResults.mockReturnValue([
-    createPlugin({ label: { en_US: 'Marketplace strategy', zh_Hans: 'Marketplace strategy' } }),
-  ])
+  marketplace.mockResolvedValue({
+    data: {
+      total: 2,
+      plugins: [
+        createPlugin({ label: { en_US: 'Marketplace strategy', zh_Hans: 'Marketplace strategy' } }),
+      ],
+    },
+  })
   request.mockImplementation(() => Promise.resolve(Response.json([createProvider()])))
   render(<AgentStrategySelector onChange={vi.fn()} />, {
     systemFeatures: { enable_marketplace: true },
   })
   await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   const link = screen.getByRole('link', { name: 'plugin.findMoreInMarketplace' })
-  expect(link.getAttribute('href')).toContain('/plugins/agent-strategy')
-  await user.type(
-    screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
-    'react',
+  expect(new URL(link.getAttribute('href')!, window.location.href).pathname).toBe(
+    '/plugins/agent-strategy',
   )
-  expect(searchMarketplace).toHaveBeenLastCalledWith({
-    query: 'react',
-    category: PluginCategoryEnum.agent,
+  await screen.findByRole('button', { name: 'Agent provider' })
+  await runDebouncedUserInteraction(MARKETPLACE_SEARCH_DEBOUNCE_MS, async (search) => {
+    await search.type(
+      screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
+      'react',
+    )
   })
-  expect(screen.getByText('Marketplace strategy')).toBeInTheDocument()
+  expect(await screen.findByText('Marketplace strategy')).toBeInTheDocument()
+  expect(marketplace).toHaveBeenCalledWith(
+    '/plugins/search/advanced',
+    expect.objectContaining({
+      body: expect.objectContaining({ query: 'react', category: PluginCategoryEnum.agent }),
+    }),
+  )
 })
 
 it('shows installed strategies once and keeps other marketplace results available', async () => {
   const user = userEvent.setup()
   const provider = createProvider()
-  marketplaceResults.mockReturnValue([
-    createPlugin({ plugin_id: provider.plugin_id, label: { en_US: 'Installed Marketplace' } }),
-    createPlugin({ plugin_id: 'org/available', label: { en_US: 'Available Marketplace' } }),
-  ])
+  marketplace.mockResolvedValue({
+    data: {
+      total: 2,
+      plugins: [
+        createPlugin({ plugin_id: provider.plugin_id, label: { en_US: 'Installed Marketplace' } }),
+        createPlugin({ plugin_id: 'org/available', label: { en_US: 'Available Marketplace' } }),
+      ],
+    },
+  })
   request.mockImplementation(() => Promise.resolve(Response.json([provider])))
   render(<AgentStrategySelector onChange={vi.fn()} />, {
     systemFeatures: { enable_marketplace: true },
@@ -221,10 +243,13 @@ it('shows installed strategies once and keeps other marketplace results availabl
 
   await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   expect(await screen.findByRole('button', { name: 'Agent provider' })).toBeInTheDocument()
-  await user.type(
-    screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
-    'agent',
-  )
+  await runDebouncedUserInteraction(MARKETPLACE_SEARCH_DEBOUNCE_MS, async (search) => {
+    await search.type(
+      screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
+      'agent',
+    )
+  })
+  await screen.findByText('Available Marketplace')
   expect(screen.queryByText('Installed Marketplace')).not.toBeInTheDocument()
   expect(await screen.findByText('Available Marketplace')).toBeInTheDocument()
 })
@@ -234,7 +259,7 @@ it('preserves an older saved selection with no plugin identifier until the user 
   const onChange = vi.fn()
   const provider = createProvider()
   request.mockImplementation((url: string) =>
-    Promise.resolve(Response.json(url.includes('agent-providers') ? [provider] : provider)),
+    Promise.resolve(Response.json(url.endsWith('/agent-providers') ? [provider] : provider)),
   )
   render(
     <AgentStrategySelector
@@ -262,20 +287,34 @@ it('preserves an older saved selection with no plugin identifier until the user 
   )
 })
 
-it('keeps the install action for a saved marketplace strategy that is no longer installed', async () => {
+it('installs a missing saved strategy and refreshes its availability', async () => {
   const user = userEvent.setup()
-  marketplace.mockReturnValue({
-    isLoading: false,
-    data: { data: { plugins: [createPlugin()] } },
-    refetch: vi.fn(),
+  const installation = createDeferred<{ all_installed: boolean; task_id: string }>()
+  marketplace.mockResolvedValue({ data: { plugins: [createPlugin()], total: 1 } })
+  let installed = false
+  const provider = createProvider()
+  request.mockImplementation((url: string) => {
+    if (url.endsWith('/agent-providers'))
+      return Promise.resolve(Response.json(installed ? [provider] : []))
+    if (installed) return Promise.resolve(Response.json(provider))
+    return Promise.reject(new Error('Provider not installed'))
   })
-  request.mockImplementation((url: string) =>
-    Promise.resolve(
-      url.includes('agent-providers')
-        ? Response.json([])
-        : Response.json({ message: 'Provider not installed' }, { status: 404 }),
-    ),
-  )
+  install.mockImplementation(async () => {
+    const response = await installation.promise
+    installed = true
+    return response
+  })
+  manifest.mockImplementation(async () => ({
+    plugins: installed
+      ? [
+          createInstalledPluginFixture({
+            id: 'langgenius/agent:1.0.0@hash',
+            plugin_id: 'langgenius/agent',
+            plugin_unique_identifier: 'langgenius/agent:1.0.0@hash',
+          }),
+        ]
+      : [],
+  }))
   render(
     <AgentStrategySelector
       value={{
@@ -287,16 +326,29 @@ it('keeps the install action for a saved marketplace strategy that is no longer 
       }}
       onChange={vi.fn()}
     />,
-    { systemFeatures: { enable_marketplace: true } },
+    { systemFeatures: { enable_marketplace: true }, workspacePermissionKeys: ['plugin.install'] },
   )
   await user.click(
     await screen.findByRole('button', {
       name: 'workflowAgent.nodes.agent.pluginInstaller.install',
     }),
   )
-  expect(install).toHaveBeenCalledWith('langgenius/agent:1.0.0@hash', expect.any(Object))
+  expect(
+    await screen.findByRole('button', {
+      name: 'workflowAgent.nodes.agent.pluginInstaller.installing',
+    }),
+  ).toBeDisabled()
+  expect(install).toHaveBeenCalledExactlyOnceWith({
+    body: { plugin_unique_identifiers: ['langgenius/agent:1.0.0@hash'] },
+  })
+  await act(async () => installation.resolve({ all_installed: true, task_id: 'task-1' }))
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: /pluginInstaller.install/ }),
+    ).not.toBeInTheDocument(),
+  )
+  expect(screen.getByText('Saved label')).toBeInTheDocument()
   expect(
     screen.queryByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
   ).not.toBeInTheDocument()
-  expect(screen.getByText('Saved label')).toBeInTheDocument()
 })

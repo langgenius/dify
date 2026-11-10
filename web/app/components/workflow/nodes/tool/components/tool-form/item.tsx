@@ -1,15 +1,14 @@
 'use client'
-import type { FC, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { Tool } from '@/app/components/tools/types'
 import type { FormInputSchema } from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { Button } from '@langgenius/dify-ui/button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal'
+import { SchemaDialog } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-dialog'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 
 const URL_REGEX = /(https?:\/\/\S+)/g
@@ -63,7 +62,7 @@ type Props = Readonly<{
   providerType?: 'tool' | 'trigger'
 }>
 
-const ToolFormItem: FC<Props> = ({
+export function ToolFormItem({
   readOnly,
   staticSchema = false,
   nodeId,
@@ -76,7 +75,7 @@ const ToolFormItem: FC<Props> = ({
   onManageInputField,
   extraParams,
   providerType = 'tool',
-}) => {
+}: Props) {
   const language = useLanguage()
   const labelId = useId()
   const { name, label, type, required, tooltip, input_schema } = schema
@@ -87,7 +86,6 @@ const ToolFormItem: FC<Props> = ({
     type === FormTypeEnum.secretInput ||
     type === FormTypeEnum.date ||
     type === FormTypeEnum.dateRange
-  const [isShowSchema, setIsShowSchema] = useState(false)
   return (
     <div className="space-y-0.5 py-1">
       <div>
@@ -112,15 +110,7 @@ const ToolFormItem: FC<Props> = ({
           {showSchemaButton && (
             <>
               <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
-              <Button
-                variant="ghost"
-                size="small"
-                onClick={() => setIsShowSchema(true)}
-                className="px-1 system-xs-regular text-text-tertiary"
-              >
-                <span aria-hidden className="i-ri-braces-line size-3.5" />
-                <span>JSON Schema</span>
-              </Button>
+              <SchemaDialog schema={input_schema} rootName={name} />
             </>
           )}
         </div>
@@ -145,16 +135,6 @@ const ToolFormItem: FC<Props> = ({
         extraParams={extraParams}
         providerType={providerType}
       />
-
-      {isShowSchema && (
-        <SchemaModal
-          isShow
-          onClose={() => setIsShowSchema(false)}
-          rootName={name}
-          schema={input_schema!}
-        />
-      )}
     </div>
   )
 }
-export default ToolFormItem

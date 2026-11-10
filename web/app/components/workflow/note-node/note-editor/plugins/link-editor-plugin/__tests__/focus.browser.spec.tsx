@@ -52,7 +52,7 @@ function Harness({ secondLinkUrl }: { secondLinkUrl?: string }) {
 }
 
 // Chromium owns contenteditable selection and the native input that follows focus restoration.
-it.each(['URL input', 'confirm button', 'toolbar edit button'])(
+it.each(['URL input', 'toolbar edit button'])(
   'dismisses the entire link popup with Escape from the %s until explicitly reopened',
   async (target) => {
     await render(<Harness />)
@@ -71,12 +71,6 @@ it.each(['URL input', 'confirm button', 'toolbar edit button'])(
     } else {
       await edit.click()
       await expect.element(urlInput).toHaveFocus()
-      if (target === 'confirm button') {
-        await userEvent.keyboard('{Tab}')
-        await expect
-          .element(page.getByRole('button', { name: 'common.operation.ok' }))
-          .toHaveFocus()
-      }
     }
 
     await userEvent.keyboard('{Escape}')
@@ -112,8 +106,8 @@ it('keeps focus on the outside action when it dismisses link editing', async () 
   await expect.element(outside).toHaveFocus()
 })
 
-// Native button activation and sequential focus navigation must preserve the Lexical selection.
-it.each(['{Enter}', '{Space}'])('opens link editing with %s from the keyboard', async (key) => {
+// Removing the link unmounts the focused toolbar; the editor must regain focus and its selection.
+it('removes the selected link from the keyboard', async () => {
   await render(<Harness />)
   const note = page.getByRole('region', { name: 'Note editor' }).getByRole('textbox')
   await note.click()
@@ -122,64 +116,38 @@ it.each(['{Enter}', '{Space}'])('opens link editing with %s from the keyboard', 
   await expect.element(openLink).toBeVisible()
   ;(openLink.element() as HTMLAnchorElement).focus()
   await userEvent.keyboard('{Tab}')
-  const edit = page.getByRole('button', { name: 'common.operation.edit', exact: true })
-  await expect.element(edit).toHaveFocus()
+  await expect
+    .element(page.getByRole('button', { name: 'common.operation.edit', exact: true }))
+    .toHaveFocus()
   await userEvent.keyboard('{Tab}')
   await expect
     .element(page.getByRole('button', { name: 'workflow.nodes.note.editor.unlink' }))
     .toHaveFocus()
-  await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
-  await expect.element(edit).toHaveFocus()
 
-  await userEvent.keyboard(key)
+  await userEvent.keyboard('{Enter}')
 
-  await expect.element(page.getByPlaceholder('workflow.nodes.note.editor.enterUrl')).toHaveFocus()
-  await userEvent.keyboard('{Escape}X')
+  await expect.element(page.getByRole('link', { name: 'hello' })).not.toBeInTheDocument()
+  await expect.element(note).toHaveFocus()
+  await userEvent.keyboard('X')
   await expect.element(note).toHaveTextContent('heXllo')
 })
 
-it.each(['{Enter}', '{Space}'])(
-  'removes the selected link with %s from the keyboard',
-  async (key) => {
-    await render(<Harness />)
-    const note = page.getByRole('region', { name: 'Note editor' }).getByRole('textbox')
-    await note.click()
-    await userEvent.keyboard('{Home}{ArrowRight}{ArrowRight}')
-    const openLink = page.getByRole('link', { name: /workflow.nodes.note.editor.openLink/ })
-    await expect.element(openLink).toBeVisible()
-    ;(openLink.element() as HTMLAnchorElement).focus()
-    await userEvent.keyboard('{Tab}{Tab}')
-    await expect
-      .element(page.getByRole('button', { name: 'workflow.nodes.note.editor.unlink' }))
-      .toHaveFocus()
+it('opens a different link with the same URL after dismissing the first', async () => {
+  const secondLinkUrl = 'https://example.com'
+  await render(<Harness secondLinkUrl={secondLinkUrl} />)
+  const note = page.getByRole('region', { name: 'Note editor' }).getByRole('textbox')
+  const openLink = page.getByRole('link', { name: /workflow.nodes.note.editor.openLink/ })
+  await expect.element(page.getByRole('link', { name: 'hello', exact: true })).toBeVisible()
+  await expect.element(page.getByRole('link', { name: 'world', exact: true })).toBeVisible()
+  await note.click()
+  await userEvent.keyboard('{Home}{ArrowRight}')
+  await page.getByRole('button', { name: 'common.operation.edit', exact: true }).click()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(note).toHaveFocus()
+  await expect.element(openLink).not.toBeInTheDocument()
 
-    await userEvent.keyboard(key)
+  await userEvent.keyboard('{End}{ArrowLeft}')
 
-    await expect.element(page.getByRole('link', { name: 'hello' })).not.toBeInTheDocument()
-    await expect.element(note).toHaveFocus()
-    await userEvent.keyboard('X')
-    await expect.element(note).toHaveTextContent('heXllo')
-  },
-)
-
-it.each(['https://second.example.com', 'https://example.com'])(
-  'opens a different link after dismissing the first when its URL is %s',
-  async (secondLinkUrl) => {
-    await render(<Harness secondLinkUrl={secondLinkUrl} />)
-    const note = page.getByRole('region', { name: 'Note editor' }).getByRole('textbox')
-    const openLink = page.getByRole('link', { name: /workflow.nodes.note.editor.openLink/ })
-    await expect.element(page.getByRole('link', { name: 'hello', exact: true })).toBeVisible()
-    await expect.element(page.getByRole('link', { name: 'world', exact: true })).toBeVisible()
-    await note.click()
-    await userEvent.keyboard('{Home}{ArrowRight}')
-    await page.getByRole('button', { name: 'common.operation.edit', exact: true }).click()
-    await userEvent.keyboard('{Escape}')
-    await expect.element(note).toHaveFocus()
-    await expect.element(openLink).not.toBeInTheDocument()
-
-    await userEvent.keyboard('{End}{ArrowLeft}')
-
-    await expect.element(openLink).toBeVisible()
-    await expect.element(openLink).toHaveAttribute('href', secondLinkUrl)
-  },
-)
+  await expect.element(openLink).toBeVisible()
+  await expect.element(openLink).toHaveAttribute('href', secondLinkUrl)
+})

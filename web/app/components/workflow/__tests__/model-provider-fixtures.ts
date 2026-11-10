@@ -2,11 +2,7 @@ import type {
   ProviderModelWithStatusEntity,
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type {
-  DefaultModel,
-  ModelProvider,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CredentialPanelState } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state'
+import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -46,14 +42,6 @@ export function createModel(
   }
 }
 
-export function createDefaultModel(overrides: Partial<DefaultModel> = {}): DefaultModel {
-  return {
-    provider: 'openai',
-    model: 'text-embedding-3-large',
-    ...overrides,
-  }
-}
-
 export function createProviderMeta(overrides: Partial<ModelProvider> = {}): ModelProvider {
   return {
     provider: 'openai',
@@ -85,22 +73,6 @@ export function createProviderMeta(overrides: Partial<ModelProvider> = {}): Mode
       current_quota_type: CurrentSystemQuotaTypeEnum.free,
       quota_configurations: [],
     },
-    ...overrides,
-  }
-}
-
-export function createCredentialState(
-  overrides: Partial<CredentialPanelState> = {},
-): CredentialPanelState {
-  return {
-    variant: 'api-active',
-    priority: 'apiKeyOnly',
-    supportsCredits: false,
-    showPrioritySwitcher: false,
-    isCreditsExhausted: false,
-    hasCredentials: true,
-    credentialName: undefined,
-    credits: 0,
     ...overrides,
   }
 }

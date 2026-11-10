@@ -5,13 +5,12 @@ from typing import Any, override
 
 from pydantic.fields import FieldInfo
 
-from .http_request import NacosHttpClient
-
-logger = logging.getLogger(__name__)
-
 from configs.remote_settings_sources.base import RemoteSettingsSource
 
+from .http_request import NacosHttpClient
 from .utils import parse_config
+
+logger = logging.getLogger(__name__)
 
 
 class NacosSettingsSource(RemoteSettingsSource):
@@ -39,7 +38,7 @@ class NacosSettingsSource(RemoteSettingsSource):
         try:
             return parse_config(content)
         except Exception as e:
-            raise RuntimeError(f"Failed to parse config: {e}")
+            raise RuntimeError(f"Failed to parse config: {e}") from e
 
     @override
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:

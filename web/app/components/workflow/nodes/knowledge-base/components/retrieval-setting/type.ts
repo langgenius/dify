@@ -3,7 +3,7 @@ import type { HybridSearchModeEnum, RetrievalSearchMethodEnum } from '../../type
 export type Option = {
   id: RetrievalSearchMethodEnum
   iconClassName: string
-  title: any
+  title: React.ReactNode
   description: string
   effectColor?: string
   showEffectColor?: boolean

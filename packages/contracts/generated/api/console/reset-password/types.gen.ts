@@ -14,12 +14,50 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
+export type AccountBannedError = ErrorResponse & {
+  code: 'account_banned'
+  status: 400
+}
+
+export type AccountInFreezeError = ErrorResponse & {
+  code: 'account_in_freeze'
+  status: 400
+}
+
+export type EmailDomainSuspendedError = ErrorResponse & {
+  code: 'email_domain_suspended'
+  status: 400
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type PasswordResetRateLimitExceededError = ErrorResponse & {
+  code: 'password_reset_rate_limit_exceeded'
+  status: 429
+}
+
 export type PostResetPasswordData = {
   body: EmailPayload
   path?: never
   query?: never
   url: '/reset-password'
 }
+
+export type PostResetPasswordErrors = {
+  400: AccountBannedError | AccountInFreezeError | EmailDomainSuspendedError | ErrorResponse
+  429: PasswordResetRateLimitExceededError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostResetPasswordError = PostResetPasswordErrors[keyof PostResetPasswordErrors]
 
 export type PostResetPasswordResponses = {
   200: SimpleResultDataResponse

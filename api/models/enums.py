@@ -11,6 +11,7 @@ from core.trigger.constants import (
 class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
+    DATASET_API_KEY = "dataset_api_key"
 
     @classmethod
     @override
@@ -288,6 +289,7 @@ class TidbAuthBindingStatus(StrEnum):
 
     CREATING = "CREATING"
     ACTIVE = "ACTIVE"
+    FAILED = "FAILED"
 
 
 class MessageFileBelongsTo(StrEnum):
@@ -366,6 +368,13 @@ class ApiTokenType(StrEnum):
 
     APP = "app"
     DATASET = "dataset"
+
+
+class ApiTokenBindingResourceType(StrEnum):
+    """Kind of knowledge base a dataset API key binding row points at."""
+
+    DATASET = "dataset"
+    KNOWLEDGE_FS_SPACE = "knowledge_fs_space"
 
 
 class PermissionEnum(StrEnum):

@@ -1,79 +1,10 @@
 import type { IfElseNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import {
-  createNodeCrudModuleMock,
-  createUuidModuleMock,
-} from '../../__tests__/use-config-test-utils'
+import { createEdge, createNode } from '../../../__tests__/fixtures'
+import { renderNodeConfig } from '../../__tests__/render-node-config'
 import { ComparisonOperator, LogicalOperator } from '../types'
 import useConfig from '../use-config'
-
-const mockSetInputs = vi.hoisted(() => vi.fn())
-const mockHandleEdgeDeleteByDeleteBranch = vi.hoisted(() => vi.fn())
-const mockUpdateNodeInternals = vi.hoisted(() => vi.fn())
-const mockGetIsVarFileAttribute = vi.hoisted(() => vi.fn())
-const mockUuid = vi.hoisted(() => vi.fn(() => 'generated-id'))
-
-vi.mock('uuid', () => ({
-  ...createUuidModuleMock(mockUuid),
-}))
-
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    useUpdateNodeInternals: () => mockUpdateNodeInternals,
-  }
-})
-
-vi.mock('../../../hooks/use-edges-interactions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-edges-interactions')>()
-
-  return {
-    ...actual,
-    useEdgesInteractions: () => ({
-      handleEdgeDeleteByDeleteBranch: (...args: unknown[]) =>
-        mockHandleEdgeDeleteByDeleteBranch(...args),
-    }),
-  }
-})
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  }
-})
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  ...createNodeCrudModuleMock<IfElseNodeType>(mockSetInputs),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  __esModule: true,
-  default: (_id: string, { filterVar }: { filterVar: (value: { type: VarType }) => boolean }) => ({
-    availableVars: filterVar({ type: VarType.number })
-      ? [{ nodeId: 'node-1', title: 'Start', vars: [{ variable: 'score', type: VarType.number }] }]
-      : [
-          {
-            nodeId: 'node-1',
-            title: 'Start',
-            vars: [{ variable: 'answer', type: VarType.string }],
-          },
-        ],
-    availableNodesWithParent: [],
-  }),
-}))
-
-vi.mock('../use-is-var-file-attribute', () => ({
-  __esModule: true,
-  default: () => ({
-    getIsVarFileAttribute: (...args: unknown[]) => mockGetIsVarFileAttribute(...args),
-  }),
-}))
-
 const createPayload = (overrides: Partial<IfElseNodeType> = {}): IfElseNodeType => ({
   title: 'If Else',
   desc: '',
@@ -102,117 +33,66 @@ const createPayload = (overrides: Partial<IfElseNodeType> = {}): IfElseNodeType 
   ...overrides,
 })
 
-describe('useConfig', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetIsVarFileAttribute.mockReturnValue(false)
-  })
-
-  it('should expose derived vars and file-attribute flags', () => {
-    const { result } = renderHook(() => useConfig('if-node', createPayload()))
-
-    expect(result.current.readOnly).toBe(false)
-    expect(result.current.filterVar()).toBe(true)
-    expect(result.current.filterNumberVar({ type: VarType.number } as never)).toBe(true)
-    expect(result.current.filterNumberVar({ type: VarType.string } as never)).toBe(false)
-    expect(result.current.nodesOutputVars).toHaveLength(1)
-    expect(result.current.nodesOutputNumberVars).toHaveLength(1)
-    expect(result.current.varsIsVarFileAttribute).toEqual({ 'condition-1': false })
-  })
-
-  it('should manage cases and conditions', () => {
-    const { result } = renderHook(() => useConfig('if-node', createPayload()))
-
-    result.current.handleAddCase()
-    result.current.handleRemoveCase('generated-id')
-    result.current.handleAddCondition('case-1', ['node-1', 'score'], {
-      type: VarType.number,
-    } as never)
-    result.current.handleUpdateCondition('case-1', 'condition-1', {
-      id: 'condition-1',
-      varType: VarType.number,
-      variable_selector: ['node-1', 'score'],
-      comparison_operator: ComparisonOperator.largerThan,
-      value: '3',
+describe('if-else/use-config', () => {
+  it('persists condition edits, case ordering and removes only the deleted branch edges', () => {
+    const payload = createPayload()
+    const { result } = renderNodeConfig(useConfig, payload, {
+      nodes: [createNode({ id: 'node', data: payload }), createNode({ id: 'target' })],
+      edges: [createEdge({ id: 'kept', source: 'node', target: 'target', sourceHandle: 'false' })],
     })
-    result.current.handleRemoveCondition('case-1', 'condition-1')
-    result.current.handleToggleConditionLogicalOperator('case-1')
-    result.current.handleSortCase([
+    act(() => result.current.config.handleAddCase())
+    const added = result.current.config.inputs.cases[1]!
+    act(() =>
+      result.current.flow.addEdges(
+        createEdge({
+          id: 'removed',
+          source: 'node',
+          target: 'target',
+          sourceHandle: added.case_id,
+        }),
+      ),
+    )
+    act(() =>
+      result.current.config.handleAddCondition('case-1', ['start', 'score'], {
+        variable: 'score',
+        type: VarType.number,
+      }),
+    )
+    const condition = result.current.config.inputs.cases[0]!.conditions[1]!
+    act(() =>
+      result.current.config.handleUpdateCondition('case-1', condition.id, {
+        ...condition,
+        comparison_operator: ComparisonOperator.largerThan,
+        value: '3',
+      }),
+    )
+    act(() => result.current.config.handleRemoveCondition('case-1', 'condition-1'))
+    act(() => result.current.config.handleToggleConditionLogicalOperator('case-1'))
+    const first = result.current.config.inputs.cases[0]!
+    act(() =>
+      result.current.config.handleSortCase([
+        { ...added, id: added.case_id },
+        { ...first, id: first.case_id },
+      ]),
+    )
+    expect(result.current.flow.getNode('node')?.data._targetBranches).toEqual([
+      { id: added.case_id, name: 'CASE 1' },
+      { id: 'case-1', name: 'CASE 2' },
+      { id: 'false', name: 'ELSE' },
+    ])
+    act(() => result.current.config.handleRemoveCase(added.case_id))
+    expect(result.current.flow.getNode('node')?.data.cases).toMatchObject([
       {
-        id: 'sortable-1',
         case_id: 'case-1',
         logical_operator: LogicalOperator.or,
-        conditions: [],
+        conditions: [
+          { ...condition, comparison_operator: ComparisonOperator.largerThan, value: '3' },
+        ],
       },
     ])
-
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cases: expect.arrayContaining([
-          expect.objectContaining({
-            case_id: 'generated-id',
-            logical_operator: LogicalOperator.and,
-          }),
-        ]),
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cases: [
-          expect.objectContaining({
-            case_id: 'case-1',
-            logical_operator: LogicalOperator.or,
-          }),
-        ],
-        _targetBranches: [
-          { id: 'case-1', name: 'IF' },
-          { id: 'false', name: 'ELSE' },
-        ],
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cases: expect.arrayContaining([
-          expect.objectContaining({
-            conditions: expect.arrayContaining([
-              expect.objectContaining({
-                id: 'generated-id',
-                variable_selector: ['node-1', 'score'],
-              }),
-            ]),
-          }),
-        ]),
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cases: expect.arrayContaining([
-          expect.objectContaining({
-            conditions: expect.arrayContaining([
-              expect.objectContaining({
-                id: 'condition-1',
-                comparison_operator: ComparisonOperator.largerThan,
-                value: '3',
-              }),
-            ]),
-          }),
-        ]),
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cases: expect.arrayContaining([
-          expect.objectContaining({
-            logical_operator: LogicalOperator.or,
-          }),
-        ]),
-      }),
-    )
-    expect(mockHandleEdgeDeleteByDeleteBranch).toHaveBeenCalledWith('if-node', 'generated-id')
-    expect(mockUpdateNodeInternals).toHaveBeenCalledWith('if-node')
+    expect(result.current.flow.getEdges().map((edge) => edge.id)).toEqual(['kept'])
   })
-
-  it('should manage sub-variable conditions', () => {
+  it('persists file subconditions through add, update, removal and logical toggle', () => {
     const payload = createPayload({
       cases: [
         {
@@ -243,74 +123,36 @@ describe('useConfig', () => {
         },
       ],
     })
-    const { result } = renderHook(() => useConfig('if-node', payload))
 
-    result.current.handleAddSubVariableCondition('case-1', 'condition-1', 'name')
-    result.current.handleUpdateSubVariableCondition('case-1', 'condition-1', 'sub-1', {
-      id: 'sub-1',
-      key: 'size',
-      varType: VarType.string,
-      comparison_operator: ComparisonOperator.is,
-      value: '2',
+    const { result } = renderNodeConfig(useConfig, payload)
+    act(() => result.current.config.handleAddSubVariableCondition('case-1', 'condition-1', 'name'))
+    const added =
+      result.current.config.inputs.cases[0]!.conditions[0]!.sub_variable_condition!.conditions[1]!
+    act(() =>
+      result.current.config.handleUpdateSubVariableCondition('case-1', 'condition-1', added.id, {
+        ...added,
+        key: 'size',
+        comparison_operator: ComparisonOperator.is,
+        value: '2',
+      }),
+    )
+    act(() =>
+      result.current.config.handleRemoveSubVariableCondition('case-1', 'condition-1', 'sub-1'),
+    )
+    act(() =>
+      result.current.config.handleToggleSubVariableConditionLogicalOperator(
+        'case-1',
+        'condition-1',
+      ),
+    )
+    expect(
+      result.current.flow.getNode('node')?.data.cases[0].conditions[0].sub_variable_condition,
+    ).toEqual({
+      case_id: 'sub-case-1',
+      logical_operator: LogicalOperator.or,
+      conditions: [
+        { ...added, key: 'size', comparison_operator: ComparisonOperator.is, value: '2' },
+      ],
     })
-    result.current.handleRemoveSubVariableCondition('case-1', 'condition-1', 'sub-1')
-    result.current.handleToggleSubVariableConditionLogicalOperator('case-1', 'condition-1')
-
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cases: expect.arrayContaining([
-          expect.objectContaining({
-            conditions: expect.arrayContaining([
-              expect.objectContaining({
-                sub_variable_condition: expect.objectContaining({
-                  conditions: expect.arrayContaining([
-                    expect.objectContaining({
-                      id: 'generated-id',
-                      key: 'name',
-                    }),
-                  ]),
-                }),
-              }),
-            ]),
-          }),
-        ]),
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cases: expect.arrayContaining([
-          expect.objectContaining({
-            conditions: expect.arrayContaining([
-              expect.objectContaining({
-                sub_variable_condition: expect.objectContaining({
-                  conditions: expect.arrayContaining([
-                    expect.objectContaining({
-                      id: 'sub-1',
-                      key: 'size',
-                      value: '2',
-                    }),
-                  ]),
-                }),
-              }),
-            ]),
-          }),
-        ]),
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cases: expect.arrayContaining([
-          expect.objectContaining({
-            conditions: expect.arrayContaining([
-              expect.objectContaining({
-                sub_variable_condition: expect.objectContaining({
-                  logical_operator: LogicalOperator.or,
-                }),
-              }),
-            ]),
-          }),
-        ]),
-      }),
-    )
   })
 })

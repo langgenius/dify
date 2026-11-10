@@ -2,13 +2,16 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from io import BytesIO
 from typing import cast
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
 from services.app import creators_platform_gateway as gateway_module
 from services.app.console_service import CreatorsPlatformDisabledError
+from services.app.creators_platform_gateway import CreatorsPlatformGateway
 from services.entities.oauth_server_entities import OAuthAuthorizationCode
 from services.oauth_server_service import OAuthServerService
 
@@ -51,3 +54,11 @@ def test_gateway_rejects_disabled_feature(config_overrides: Callable[..., None])
     gateway = gateway_module.CreatorsPlatformGateway(oauth=cast(OAuthServerService, OAuth()))
     with pytest.raises(CreatorsPlatformDisabledError):
         gateway.require_enabled()
+
+
+def test_gateway_forwards_package_stream_and_filename() -> None:
+    gateway = CreatorsPlatformGateway(oauth=cast(OAuthServerService, OAuth()))
+    with BytesIO(b"package") as source, patch("core.helper.creators.upload_package", return_value="claim") as upload:
+        assert gateway.upload(source, filename="example.ifpkg") == "claim"
+        upload.assert_called_once_with(source, filename="example.ifpkg")
+        assert not source.closed

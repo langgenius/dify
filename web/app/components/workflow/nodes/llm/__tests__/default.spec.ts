@@ -1,7 +1,5 @@
 import type { LLMNodeType } from '../types'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { EditionType, PromptRole } from '../../../types'
 import nodeDefault from '../default'
 
@@ -13,7 +11,7 @@ const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType =>
     model: {
       ...nodeDefault.defaultValue.model,
       provider: 'langgenius/openai/gpt-4.1',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
     },
     prompt_template: [
       {
@@ -33,7 +31,7 @@ describe('llm default node validation', () => {
           ...nodeDefault.defaultValue.model,
           provider: '',
           name: 'gpt-4.1',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
           completion_params: {
             temperature: 0.7,
           },
@@ -66,7 +64,7 @@ describe('llm default node validation', () => {
             value: {
               provider: 'langgenius/anthropic/anthropic',
               name: 'claude-sonnet',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
             },
             description: '',
           },
@@ -113,7 +111,7 @@ describe('llm default node validation', () => {
             value: {
               provider: 'langgenius/anthropic/anthropic',
               name: 'claude-sonnet',
-              mode: AppModeEnum.COMPLETION,
+              mode: 'completion' as const,
             },
             description: '',
           },
@@ -137,7 +135,7 @@ describe('llm default node validation', () => {
         },
       }),
       t,
-      { flowType: FlowType.appFlow },
+      { resourceKind: 'app' },
     )
 
     expect(result.isValid).toBe(false)
@@ -156,7 +154,7 @@ describe('llm default node validation', () => {
         },
       }),
       t,
-      { flowType: FlowType.snippet },
+      { resourceKind: 'snippet' },
     )
 
     expect(result.isValid).toBe(true)

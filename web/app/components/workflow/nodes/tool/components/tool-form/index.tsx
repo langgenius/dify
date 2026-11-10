@@ -4,7 +4,7 @@ import type { Tool } from '@/app/components/tools/types'
 import type { FormInputSchema } from '@/app/components/workflow/nodes/_base/components/form-input-item.helpers'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import ToolFormItem from './item'
+import { ToolFormItem } from './item'
 
 type Props = Readonly<{
   staticSchema?: boolean

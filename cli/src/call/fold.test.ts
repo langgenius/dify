@@ -91,3 +91,18 @@ it('copies server hints from a pause and suspends; a pause without hints is stil
   ])
   expect(bare.result).toEqual({ status: 'suspended', text: { answer: '' }, hints: [] })
 })
+
+it('keeps the run id from any event, even one it has no handler for', () => {
+  const { result, code } = run([
+    ['workflow_started', { workflow_run_id: 'run-1', data: { id: 'run-1' } }],
+    ['human_input_required', { workflow_run_id: 'run-1', hints: [] }],
+    ['workflow_paused', { workflow_run_id: 'run-1' }],
+  ])
+  expect(result).toMatchObject({ status: 'suspended', run_id: 'run-1' })
+  expect(code).toBe(0)
+})
+
+it('ignores a run id that is not a string', () => {
+  const { result } = run([['some_future_event', { workflow_run_id: 42 }]])
+  expect(result).not.toHaveProperty('run_id')
+})

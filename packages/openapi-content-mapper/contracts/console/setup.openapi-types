@@ -1,0 +1,6 @@
+{
+  "extends": "../community.source.json",
+  "args": [
+    "api/console/setup"
+  ]
+}

@@ -2,7 +2,6 @@ import type { LLMNodeType } from '../../types'
 import type { LLMDefaultConfig } from '../use-llm-input-manager'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import useLLMInputManager from '../use-llm-input-manager'
 
 const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
@@ -12,7 +11,7 @@ const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   prompt_template: [
@@ -110,7 +109,7 @@ describe('use-llm-input-manager', () => {
           model: {
             provider: 'openai',
             name: 'gpt-4o-mini',
-            mode: AppModeEnum.COMPLETION,
+            mode: 'completion' as const,
             completion_params: {},
           },
         }),
@@ -124,7 +123,7 @@ describe('use-llm-input-manager', () => {
       model: {
         provider: 'openai',
         name: 'gpt-4o-mini',
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         completion_params: {},
       },
     })
@@ -139,7 +138,7 @@ describe('use-llm-input-manager', () => {
           model: {
             provider: 'openai',
             name: 'gpt-4o-mini',
-            mode: AppModeEnum.COMPLETION,
+            mode: 'completion' as const,
             completion_params: {},
           },
           prompt_template: draftPayload.prompt_template,

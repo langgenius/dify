@@ -15,7 +15,6 @@ from repositories.knowledge.dataset_read_repository import (
     get_external_api_bindings_batch,
     get_external_api_dataset_bindings,
 )
-from services.enterprise import rbac_service
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.hit_testing_service import HitTestingService
 from services.knowledge.dataset_read_service import load_dataset_detail
@@ -24,11 +23,14 @@ from services.knowledge.entities.datasets import DatasetDetailRecord
 from services.knowledge.external.application import ExternalTemplateNotFoundError
 from services.knowledge.external.service import ExternalDatasetService
 from services.knowledge.resource_scope import DatasetRef
+from services.rbac.contracts import RBACResourceType
+from services.rbac.members import MemberService
 
 
 class SQLAlchemyExternalKnowledgeOperations:
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(self, *, session_factory: sessionmaker[Session], members: MemberService) -> None:
         self._sessions = session_factory
+        self._members = members
 
     @staticmethod
     def _template(session: Session, workspace_id: str, template_id: str) -> ExternalKnowledgeApis:
@@ -106,8 +108,8 @@ class SQLAlchemyExternalKnowledgeOperations:
             dataset = ExternalDatasetService.create_external_dataset(
                 context.active_workspace_id, context.account_id, payload, session=session
             )
-            permissions = rbac_service.RBACService.DatasetPermissions.batch_get(
-                context.active_workspace_id, context.account_id, [dataset.id], session=session
+            permissions = self._members.resource_permissions(
+                context.active_workspace_id, context.account_id, RBACResourceType.DATASET, [dataset.id]
             )
             result = load_dataset_detail(dataset, session=session)
             result["permission_keys"] = permissions.get(dataset.id, [])

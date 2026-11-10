@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 from services.oauth_device_contracts import ApprovalTransitionConfirmation, DeviceFlowStatus, PollPayload
@@ -25,10 +26,10 @@ class _Redis:
     def get(self, _name: str) -> str:
         return self.response
 
-    def register_script(self, script: str):
+    def register_script(self, script: str) -> Callable[..., str | int]:
         self.script_sources.append(script)
 
-        def execute(*, keys, args=()):
+        def execute(*, keys: Sequence[str], args: Sequence[object] = ()) -> str | int:
             self.script_calls.append((script, tuple(keys), tuple(args or ())))
             if "return raw" in script:
                 return self.response

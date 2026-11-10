@@ -7,10 +7,10 @@ import useNodeCrud from '../_base/hooks/use-node-crud'
 type Params = {
   id: string
   payload: CodeNodeType
-  runInputData: Record<string, any>
-  runInputDataRef: RefObject<Record<string, any>>
+  runInputData: Record<string, unknown>
+  runInputDataRef: RefObject<Record<string, unknown>>
   getInputVars: (textList: string[]) => InputVar[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: (data: Record<string, unknown>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({
@@ -24,13 +24,13 @@ const useSingleRunFormParams = ({
 
   const varInputs = toVarInputs(inputs.variables)
   const setInputVarValues = useCallback(
-    (newPayload: Record<string, any>) => {
+    (newPayload: Record<string, unknown>) => {
       setRunInputData(newPayload)
     },
     [setRunInputData],
   )
   const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
+    const vars: Record<string, unknown> = {}
     Object.keys(runInputData).forEach((key) => {
       vars[key] = runInputData[key]
     })

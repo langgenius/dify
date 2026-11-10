@@ -6,8 +6,7 @@ import dynamic from 'next/dynamic'
 import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { formatFileSize, getFileExtension } from '@/utils/format'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR } from '../constants'
 
@@ -15,7 +14,7 @@ const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-ch
   ssr: false,
 })
 
-export type FileListItemProps = {
+type FileListItemProps = {
   fileItem: FileItem
   onPreview: (file: File) => void
   onRemove: (fileID: string) => void
@@ -26,8 +25,8 @@ const FileListItem = ({ fileItem, onPreview, onRemove }: FileListItemProps) => {
   const fileNameId = useId()
   const previewLabelId = useId()
   const removeLabelId = useId()
-  const { theme } = useTheme()
-  const chartColor = useMemo(() => (theme === Theme.dark ? '#5289ff' : '#296dff'), [theme])
+  const theme = useResolvedTheme()
+  const chartColor = useMemo(() => (theme === 'dark' ? '#5289ff' : '#296dff'), [theme])
 
   const isUploading = fileItem.progress >= 0 && fileItem.progress < PROGRESS_COMPLETE
   const isError = fileItem.progress === PROGRESS_ERROR
@@ -43,7 +42,7 @@ const FileListItem = ({ fileItem, onPreview, onRemove }: FileListItemProps) => {
         disabled={!fileItem.file?.id}
         aria-labelledby={`${previewLabelId} ${fileNameId}`}
         onClick={handleClick}
-        className="flex h-full min-w-0 grow items-center rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-input-border-active"
+        className="flex h-full min-w-0 grow items-center rounded-lg text-start focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-input-border-active"
       >
         <span id={previewLabelId} className="sr-only">
           {t(($) => $['stepOne.filePreview'], { ns: 'datasetCreation' })}
@@ -69,7 +68,7 @@ const FileListItem = ({ fileItem, onPreview, onRemove }: FileListItemProps) => {
           </div>
         </div>
       </button>
-      <div className="flex w-16 shrink-0 items-center justify-end gap-1 pr-3">
+      <div className="flex w-16 shrink-0 items-center justify-end gap-1 pe-3">
         {isUploading && (
           <SimplePieChart
             percentage={fileItem.progress}

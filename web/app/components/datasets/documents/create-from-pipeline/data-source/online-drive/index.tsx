@@ -1,6 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -14,7 +15,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
-import { useGetDataSourceAuth } from '@/service/use-datasource'
+import { consoleQuery } from '@/service/console'
 import Header from '../base/header'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import FileList from './file-list'
@@ -64,10 +65,11 @@ const OnlineDrive = ({
   const [isLoading, setIsLoading] = useState(false)
   const isLoadingRef = useRef(false)
 
-  const { data: dataSourceAuth } = useGetDataSourceAuth({
-    pluginId: nodeData.plugin_id,
-    provider: nodeData.provider_name,
-  })
+  const { data: dataSourceAuth } = useQuery(
+    consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
+      input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
+    }),
+  )
 
   const datasourceNodeRunURL = !isInPipeline
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`

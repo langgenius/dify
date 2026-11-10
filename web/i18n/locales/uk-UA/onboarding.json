@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "Позначити {{title}} як невиконане",
   "stepByStepTour.minimize": "Згорнути",
   "stepByStepTour.progressAriaValueText": "Виконано {{completed}} з {{total}} кроків",
-  "stepByStepTour.restore": "Відкрити покроковий тур",
   "stepByStepTour.skip": "Пропустити тур",
   "stepByStepTour.skipRecovery.dismiss": "Зрозуміло",
   "stepByStepTour.skipRecovery.label": "Порада щодо відновлення Step-by-step Tour",
