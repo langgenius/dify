@@ -175,26 +175,100 @@ def native_service_failure(run: Run) -> bool:
     )
 
 
+def tool_credential_failure_message(
+    run: Run, *, graph: Mapping[str, Any], graph_revision: str, reply_language: str = "en-US"
+) -> str | None:
+    """Observe an exact native Tool setup envelope, without altering Run evidence.
+
+    Prefer sealed attribution elsewhere. This fallback requires the executed
+    graph revision and one failed Tool node; titles and workflow-level text
+    cannot establish the resource. Unknown, foreign and stale evidence stays
+    unknown. This display observation grants no execution or retry authority.
+    """
+    from services.dify_builder.native_launch_observation import _public_id
+
+    evidence = run.verification
+    summary = evidence.execution_evidence if evidence else None
+    if (
+        run.status != "failed"
+        or not run.dify_run_id
+        or evidence is None
+        or not graph_revision
+        or evidence.executed_graph_revision != graph_revision
+        or summary is None
+        or not summary.sealed
+        or summary.safety_outcome != "native_failed"
+        or summary.native_run_id != run.dify_run_id
+        or summary.failure_resource is not None
+        or summary.failure_phase is not None
+        or summary.failure_reason is not None
+        or run.execution_refusal is not None
+    ):
+        return None
+    failed = [node for node in run.per_node if node.status in {"failed", "exception"}]
+    if len(failed) != 1 or not _public_id(failed[0].node_id):
+        return None
+    # These are backend-owned native runtime messages, not keyword matching.
+    reasons = {
+        "Failed to get tool runtime: Credentials not available: Please use ENTERPRISE global credentials": (
+            "enterprise_global_credential_required"
+        ),
+        "Failed to get tool runtime: Credentials not available": "credential_unavailable",
+    }
+    reason = reasons.get(failed[0].error)
+    nodes = graph.get("nodes")
+    if reason is None or not isinstance(nodes, list):
+        return None
+    matches = [node for node in nodes if isinstance(node, Mapping) and node.get("id") == failed[0].node_id]
+    if len(matches) != 1 or not isinstance(data := matches[0].get("data"), Mapping):
+        return None
+    if data.get("type") != "tool" or data.get("provider_type") not in {"builtin", "plugin"}:
+        return None
+    provider, name = data.get("provider_id"), data.get("tool_name")
+    if not isinstance(provider, str) or not isinstance(name, str) or not _public_id(provider) or not _public_id(name):
+        return None
+    return _resource_setup_guidance(
+        reason=reason,
+        resource=("tool", provider, name),
+        node_ids=(failed[0].node_id,),
+        reply_language=reply_language,
+    )
+
+
 def _resource_setup_guidance(
     *, reason: str, resource: FailureResource, node_ids: tuple[str, ...], reply_language: str
 ) -> str:
     label = _display_label(_REASON_LABELS, reason, reply_language)
     resource_label = "/".join(filter(None, resource[1:]))
     nodes = ", ".join(node_ids)
+    global_credential = reason == "enterprise_global_credential_required"
     if reply_language.lower().startswith("zh"):
+        kind = "工具" if resource[0] == "tool" else "模型"
+        if global_credential:
+            return (
+                f"{kind}设置失败：需要企业全局凭据。请联系工作区管理员配置或选择获准的企业全局凭据，"
+                f"然后重新准备并确认测试。\n{resource_label}\n{nodes}"
+            )
         recovery = (
             "请检查工作区凭据访问权限后重新准备测试。"
             if reason == "authorization_lookup_failed"
             else "请配置或选择有权访问此资源的凭据，并检查提供商权限后重新准备测试。"
         )
-        return f"资源设置失败：{label}。{recovery}\n{resource_label}\n{nodes}"
+        return f"{kind}资源设置失败：{label}。{recovery}\n{resource_label}\n{nodes}"
+    kind = "Tool" if resource[0] == "tool" else "Model"
+    if global_credential:
+        return (
+            f"{kind} setup failed: enterprise global credential required. Ask a workspace administrator "
+            "to configure or select an authorized enterprise global credential; "
+            f"then prepare and confirm a fresh test.\n{resource_label}\n{nodes}"
+        )
     recovery = (
         "Check workspace credential access before preparing a fresh test."
         if reason == "authorization_lookup_failed"
         else "Configure or select an authorized credential and check provider permissions "
         "before preparing a fresh test."
     )
-    return f"Resource setup failed: {label}. {recovery}\n{resource_label}\n{nodes}"
+    return f"{kind} resource setup failed: {label}. {recovery}\n{resource_label}\n{nodes}"
 
 
 def sanitize_observed_failure(run: Run) -> Run:
