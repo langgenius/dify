@@ -24,7 +24,7 @@ including Agent Stub and file-service URLs, are documented in the
 | `DIFY_AGENT_OPENSHELL_SANDBOX_IMAGE` | `langgenius/dify-agent-local-sandbox:latest` | Build the runtime image yourself from this checkout and explicitly set this to the resulting image reference. Do not rely on the code fallback or a published `latest` tag: older images may lack `iproute2`, which the OpenShell supervisor requires alongside shellctl. The env templates use the self-built `docker.io/library/dify-agent-runtime:latest`; see the build command below. |
 | `DIFY_AGENT_OPENSHELL_DRIVER_CONFIG` | empty | Optional JSON `SandboxTemplate.driver_config` as a driver-keyed envelope (for example `{"docker": {...}}`); empty sends an empty driver config. Use it for driver-specific options such as custom mounts. |
 | `DIFY_AGENT_OPENSHELL_EGRESS_ALLOW` | empty | Optional comma-separated `host:port` egress allowlist (no scheme or path). Empty sends no network policy (gateway/driver default egress). When set, sandbox egress is enforced to exactly these endpoints — include the Agent Stub and files endpoints. |
-| `DIFY_AGENT_OPENSHELL_SHELLCTL_AUTH_TOKEN` | empty | Required bearer token the exec-bootstrapped shellctl expects on its data plane; sent as `Authorization` through the bearer-passthrough service endpoint. Empty is rejected at startup. |
+| `DIFY_AGENT_OPENSHELL_SHELLCTL_AUTH_TOKEN` | empty | Required high-entropy master secret. The backend derives a stable per-sandbox shellctl bearer token from it (HMAC-SHA256 keyed by this secret over the canonical sandbox name); only the derived token reaches the bootstrap `SHELLCTL_AUTH_TOKEN` export and data-plane `Authorization` headers through the bearer-passthrough service endpoint. The master stays backend-side, never enters a sandbox, and must be identical on all `agent_backend` replicas. Empty is rejected at startup. |
 | `DIFY_AGENT_OPENSHELL_SHELLCTL_PORT` | `5004` | Sandbox-loopback port shellctl listens on; reached through the gateway's native exposed-service endpoint. |
 | `DIFY_AGENT_OPENSHELL_READY_TIMEOUT_SECONDS` | `300` | Maximum wait for a sandbox to reach the READY phase. |
 | `DIFY_AGENT_OPENSHELL_EXEC_TIMEOUT_SECONDS` | `120` | Timeout for gateway exec calls (bootstrap and maintenance scripts). |
@@ -42,8 +42,10 @@ port. See the upstream
 for how exposed services work.
 
 The service is exposed with bearer passthrough: `Authorization` on data-plane
-requests reaches shellctl unchanged and carries
-`DIFY_AGENT_OPENSHELL_SHELLCTL_AUTH_TOKEN`. The deployment gateway credential
+requests reaches shellctl unchanged and carries the per-sandbox token derived
+from `DIFY_AGENT_OPENSHELL_SHELLCTL_AUTH_TOKEN` — the configured value itself
+is a backend-only master secret and is never sent to sandbox services. The
+deployment gateway credential
 (`DIFY_AGENT_OPENSHELL_BEARER_TOKEN`) stays on the gRPC control plane and is
 never sent to sandbox services. The configured CA and client certificates
 also authenticate the HTTPS service transport where applicable; certificates
@@ -117,11 +119,27 @@ Deployment prerequisites:
    bundle shellctl and `iproute2`. A published or cached
    `langgenius/dify-agent-local-sandbox:latest` is not a substitute: older images
    lack `iproute2`, causing the OpenShell supervisor to exit during startup.
-4. A required `DIFY_AGENT_OPENSHELL_SHELLCTL_AUTH_TOKEN`. shellctl is
-   bootstrapped with `SHELLCTL_ENABLE_PATH_ISOLATION=false` because the
+4. A required `DIFY_AGENT_OPENSHELL_SHELLCTL_AUTH_TOKEN` — a high-entropy
+   master secret shared by all `agent_backend` replicas. Each sandbox's
+   shellctl is bootstrapped with a per-sandbox token derived from it, so one
+   sandbox's credential does not authenticate against another sandbox.
+   Bootstrap sets `SHELLCTL_ENABLE_PATH_ISOLATION=false` because the
    sandbox Landlock policy is authoritative; stacking both would require
-   re-granting every device path twice. The token still authenticates the
+   re-granting every device path twice. The derived token authenticates the
    in-sandbox command plane.
+
+   Upgrade caveat: a running shellctl keeps the token it was started with,
+   and the unauthenticated `/healthz` readiness check does not detect a
+   token mismatch. When upgrading from a version that used a shared
+   deployment-wide token, or when rotating the master secret, quiesce or
+   drain active work and stop/start the existing sandboxes so each shellctl
+   restarts with its derived credential; acquire alone will not restart a
+   healthy stale shellctl. On upgrade, generate a **fresh** high-entropy
+   master secret — do not reuse the previously shared token, which already
+   entered sandboxes: anyone who learned it could otherwise derive every
+   per-sandbox token. Roll the new master out to all `agent_backend`
+   replicas together, since replicas with different masters derive
+   different tokens.
 5. Home Snapshots are **not supported** by this backend: OpenShell has no
    native snapshot capability, `create_from_runtime` reports `snapshot_ref:
    null`, and every new Binding is materialized image-fresh — a supplied

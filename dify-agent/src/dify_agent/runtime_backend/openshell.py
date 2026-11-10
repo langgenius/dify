@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 import logging
 import re
 import shlex
@@ -454,6 +455,7 @@ class OpenShellExecutionBindingBackend:
         try:
             await self.control_plane.start_sandbox(binding_ref)
             sandbox_name = await self.control_plane.wait_ready(binding_ref)
+            token = self._shellctl_token(sandbox_name)
             layout_code, _ = await self.control_plane.exec_script(
                 sandbox_name,
                 "\n".join(
@@ -466,13 +468,13 @@ class OpenShellExecutionBindingBackend:
             )
             if layout_code != 0:
                 raise BindingLostError(f"OpenShell Binding {binding_ref!r} no longer contains its Home or Workspace")
-            exit_code, output = await self.control_plane.exec_script(sandbox_name, self._bootstrap_script())
+            exit_code, output = await self.control_plane.exec_script(sandbox_name, self._bootstrap_script(token=token))
             if exit_code != 0:
                 raise BindingAcquireError(f"shellctl bootstrap failed: {output}")
             # Expose on every acquire: sandbox ids change across restarts, so
             # refresh the name-keyed endpoint association before connecting.
             base_url = await self.control_plane.expose_service(binding_ref, self.shellctl_port)
-            data_plane = await self._data_plane(binding_ref, base_url)
+            data_plane = await self._data_plane(binding_ref, base_url, token=token)
             await _wait_for_shellctl_ready(data_plane.client)
             return OpenShellRuntimeLease(data_plane=data_plane)
         except OpenShellNotFoundError as exc:
@@ -533,7 +535,20 @@ class OpenShellExecutionBindingBackend:
             ]
         )
 
-    def _bootstrap_script(self) -> str:
+    def _shellctl_token(self, sandbox_name: str) -> str:
+        """Derive the per-sandbox shellctl bearer from the deployment master token.
+
+        Keyed by the canonical stable sandbox name, so each sandbox gets a
+        distinct credential while the master token stays backend-side and
+        never enters the sandbox.
+        """
+        return hmac.new(
+            self.shellctl_auth_token.encode(),
+            f"dify-agent/openshell/shellctl/v1:{sandbox_name}".encode(),
+            hashlib.sha256,
+        ).hexdigest()
+
+    def _bootstrap_script(self, *, token: str) -> str:
         """Idempotently start shellctl on the sandbox loopback.
 
         The supervisor replaces the image entrypoint, so shellctl never starts
@@ -547,7 +562,7 @@ class OpenShellExecutionBindingBackend:
             [
                 "set -eu",
                 f"export HOME={shlex.quote(self.layout.home_dir)}",
-                f"export SHELLCTL_AUTH_TOKEN={shlex.quote(self.shellctl_auth_token)}",
+                f"export SHELLCTL_AUTH_TOKEN={shlex.quote(token)}",
                 "export SHELLCTL_ENABLE_PATH_ISOLATION=false",
                 f"if {health}; then exit 0; fi",
                 f"setsid /usr/local/bin/shellctl serve --listen {listen} </dev/null >>/tmp/shellctl.log 2>&1 &",
@@ -560,7 +575,7 @@ class OpenShellExecutionBindingBackend:
             ]
         )
 
-    async def _data_plane(self, binding_ref: str, base_url: str) -> ShellctlRuntimeLease:
+    async def _data_plane(self, binding_ref: str, base_url: str, *, token: str) -> ShellctlRuntimeLease:
         http_client = self.control_plane.create_service_http_client(base_url)
 
         def client_factory() -> ShellctlClientProtocol:
@@ -568,14 +583,14 @@ class OpenShellExecutionBindingBackend:
 
             return cast(
                 ShellctlClientProtocol,
-                cast(object, ShellctlClient(base_url, token=self.shellctl_auth_token, client=http_client)),
+                cast(object, ShellctlClient(base_url, token=token, client=http_client)),
             )
 
         return await create_owned_shellctl_lease(
             handle=binding_ref,
             layout=self.layout,
             entrypoint=base_url,
-            token=self.shellctl_auth_token,
+            token=token,
             client_factory=client_factory,
             owned_transport=http_client,
         )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
@@ -38,6 +39,9 @@ from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease
 # sha256 digest of the Binding id; restated here independently of the
 # implementation to pin the naming contract.
 _BINDING_NAME = f"dify-{hashlib.sha256(b'binding-1').hexdigest()[:14]}"
+_BINDING_NAME_2 = f"dify-{hashlib.sha256(b'binding-2').hexdigest()[:14]}"
+_SHELLCTL_MASTER = "shellctl-token"
+_SHELLCTL_TOKEN = "14a48efcf8bbf86f7634183598653f071c2ea87f132d52f987d012bed5548551"
 _OPAQUE_TENANT = hashlib.sha256(b"tenant-1").hexdigest()[:14]
 _OPAQUE_AGENT = hashlib.sha256(b"agent-1").hexdigest()[:14]
 _OPAQUE_BINDING = hashlib.sha256(b"binding-1").hexdigest()[:14]
@@ -55,6 +59,7 @@ class _ControlPlane:
     exposed: list[tuple[str, int]] = field(default_factory=list)
     service_url: str = "http://dify-test--shellctl.openshell.localhost:17670/"
     expose_error: BaseException | None = None
+    ready_names: dict[str, str] = field(default_factory=dict)
     generation: dict[str, int] = field(default_factory=dict)
     missing: set[str] = field(default_factory=set)
     exec_results: list[tuple[int, str]] = field(default_factory=list)
@@ -73,7 +78,7 @@ class _ControlPlane:
         self._require(name)
         # Sandbox ids churn across restarts; exec and exposure address the
         # sandbox by its stable canonical name.
-        return name
+        return self.ready_names.get(name, name)
 
     async def start_sandbox(self, name: str) -> None:
         self._require(name)
@@ -145,7 +150,7 @@ def _healthy_handler(request: httpx.Request) -> httpx.Response:
 def _backend(control: _ControlPlane) -> OpenShellExecutionBindingBackend:
     return OpenShellExecutionBindingBackend(
         control_plane=control,
-        shellctl_auth_token="shellctl-token",
+        shellctl_auth_token=_SHELLCTL_MASTER,
     )
 
 
@@ -304,7 +309,8 @@ async def test_openshell_acquire_bootstraps_shellctl_and_exposes_service(
     bootstrap_name, bootstrap = control.exec_calls[-1]
     assert bootstrap_name == _BINDING_NAME
     assert "shellctl serve --listen 127.0.0.1:5004" in bootstrap
-    assert "SHELLCTL_AUTH_TOKEN=shellctl-token" in bootstrap
+    assert f"SHELLCTL_AUTH_TOKEN={_SHELLCTL_TOKEN}" in bootstrap
+    assert _SHELLCTL_MASTER not in bootstrap
     assert "SHELLCTL_ENABLE_PATH_ISOLATION=false" in bootstrap
     # Exposure is keyed by the stable sandbox name, not the changing id.
     assert control.exposed == [(_BINDING_NAME, 5004)]
@@ -354,9 +360,157 @@ async def test_openshell_data_plane_sends_shellctl_bearer_only(
     authed = [headers for headers in seen_headers if "authorization" in headers]
     assert authed
     for headers in authed:
-        assert headers["authorization"] == "Bearer shellctl-token"
+        assert headers["authorization"] == f"Bearer {_SHELLCTL_TOKEN}"
         assert "x-shellctl-token" not in headers
     await backend.release(lease)
+
+
+def _exported_token(script: str) -> str:
+    line = next(line for line in script.splitlines() if "SHELLCTL_AUTH_TOKEN" in line)
+    return line.split("=", 1)[1]
+
+
+def _expected_token(master: str, sandbox_name: str) -> str:
+    return hmac.new(
+        master.encode(),
+        f"dify-agent/openshell/shellctl/v1:{sandbox_name}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+@pytest.mark.anyio
+async def test_openshell_shellctl_token_stable_across_leases_and_backends(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _mock_http(monkeypatch, _healthy_handler)
+    control = _ControlPlane()
+    first_backend = _backend(control)
+    _ = await first_backend.create_binding(_create_spec())
+
+    first = await first_backend.acquire(_BINDING_NAME)
+    await first_backend.release(first)
+    second = await first_backend.acquire(_BINDING_NAME)
+    await first_backend.release(second)
+
+    other_backend = _backend(control)
+    third = await other_backend.acquire(_BINDING_NAME)
+    await other_backend.release(third)
+
+    tokens = [_exported_token(script) for _, script in control.exec_calls if "SHELLCTL_AUTH_TOKEN" in script]
+    assert tokens == [_SHELLCTL_TOKEN] * 3
+
+
+@pytest.mark.anyio
+async def test_openshell_shellctl_token_depends_on_canonical_sandbox_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _mock_http(monkeypatch, _healthy_handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+    _ = await backend.create_binding(_create_spec(binding_id="binding-2", workspace_id="workspace-2"))
+
+    control.ready_names[_BINDING_NAME_2] = "dify-canonical2"
+    first = await backend.acquire(_BINDING_NAME)
+    second = await backend.acquire(_BINDING_NAME_2)
+    try:
+        tokens = [_exported_token(script) for _, script in control.exec_calls if "SHELLCTL_AUTH_TOKEN" in script]
+        assert tokens == [
+            _SHELLCTL_TOKEN,
+            _expected_token(_SHELLCTL_MASTER, "dify-canonical2"),
+        ]
+        assert tokens[0] != tokens[1]
+    finally:
+        await backend.release(first)
+        await backend.release(second)
+
+
+@pytest.mark.anyio
+async def test_openshell_shellctl_token_changes_with_master(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _mock_http(monkeypatch, _healthy_handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    rotated = OpenShellExecutionBindingBackend(
+        control_plane=control,
+        shellctl_auth_token="rotated-master",
+    )
+    _ = await backend.create_binding(_create_spec())
+
+    lease = await backend.acquire(_BINDING_NAME)
+    await backend.release(lease)
+    rotated_lease = await rotated.acquire(_BINDING_NAME)
+    await rotated.release(rotated_lease)
+
+    tokens = [_exported_token(script) for _, script in control.exec_calls if "SHELLCTL_AUTH_TOKEN" in script]
+    assert tokens == [_SHELLCTL_TOKEN, _expected_token("rotated-master", _BINDING_NAME)]
+    assert tokens[0] != tokens[1]
+
+
+@pytest.mark.anyio
+async def test_openshell_distinct_bindings_reject_cross_sandbox_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from shellctl.client import ShellctlClient, ShellctlClientError
+
+    token_b = _expected_token(_SHELLCTL_MASTER, _BINDING_NAME_2)
+    url_a = "http://svc-a.openshell.localhost:17670/"
+    url_b = "http://svc-b.openshell.localhost:17670/"
+    expected_by_host = {
+        "svc-a.openshell.localhost": _SHELLCTL_TOKEN,
+        "svc-b.openshell.localhost": token_b,
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/jobs/probe":
+            if request.headers.get("authorization") == f"Bearer {expected_by_host[request.url.host]}":
+                return httpx.Response(
+                    200,
+                    json={
+                        "job_id": "probe",
+                        "status": "running",
+                        "done": False,
+                        "created_at": "2026-01-01T00:00:00Z",
+                        "offset": 0,
+                    },
+                )
+            return httpx.Response(
+                401,
+                json={"error": {"code": "unauthorized", "message": "invalid token"}},
+            )
+        return _healthy_handler(request)
+
+    _mock_http(monkeypatch, handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+    _ = await backend.create_binding(_create_spec(binding_id="binding-2", workspace_id="workspace-2"))
+
+    control.service_url = url_a
+    lease_a = await backend.acquire(_BINDING_NAME)
+    control.service_url = url_b
+    lease_b = await backend.acquire(_BINDING_NAME_2)
+    assert isinstance(lease_a, OpenShellRuntimeLease)
+    assert isinstance(lease_b, OpenShellRuntimeLease)
+    try:
+        assert isinstance(lease_a.data_plane.client, ShellctlClient)
+        assert isinstance(lease_b.data_plane.client, ShellctlClient)
+        _ = await lease_a.data_plane.client.status("probe")
+        _ = await lease_b.data_plane.client.status("probe")
+
+        foreign_transport = control.create_service_http_client(url_b)
+        foreign_client = ShellctlClient(url_b, token=_SHELLCTL_TOKEN, client=foreign_transport)
+        try:
+            with pytest.raises(ShellctlClientError) as exc_info:
+                _ = await foreign_client.status("probe")
+            assert exc_info.value.status_code == 401
+        finally:
+            await foreign_client.close()
+            await foreign_transport.aclose()
+    finally:
+        await backend.release(lease_a)
+        await backend.release(lease_b)
 
 
 @pytest.mark.anyio
