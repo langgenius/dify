@@ -37,7 +37,7 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
 from core.model_context import get_app_moderation_runtime
 from core.model_manager import ModelInstance, ModelManager
-from core.moderation.base import ModerationAction, ModerationError
+from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult, ModerationOutputsResult
 from core.moderation.input_moderation import InputModeration
 from core.moderation.openai_moderation.openai_moderation import OpenAIModeration
 from core.moderation.output_moderation import ModerationRule as OutputModerationRule
@@ -64,6 +64,7 @@ from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
 from models.provider import ProviderType
+from services.moderation_adapters import HostedOpenAIModerationGateway
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
@@ -78,6 +79,7 @@ from services.moderation_service import (
     ModerationVerdict,
 )
 from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_moderation_fixtures import RecordingHostedModerationClient
 from tests.helpers.unit.model_factories import make_account, make_conversation, make_message
 from tests.workflow_test_utils import build_test_variable_pool
 
@@ -215,6 +217,88 @@ def test_unrelated_capabilities_cannot_be_marked_as_shared_platform_openai_check
             )
         assert not session.enabled
     assert not gateway.calls
+
+
+@pytest.mark.parametrize("phase", ["input", "output"])
+@pytest.mark.parametrize("failure", ["missing_credentials", "runtime_failure"])
+def test_admitted_app_model_checks_fail_closed_without_exposing_backend_errors(
+    monkeypatch: pytest.MonkeyPatch, phase: ModerationPhase, failure: str
+) -> None:
+    client = RecordingHostedModerationClient()
+    if failure == "runtime_failure":
+        client.error = RuntimeError("Private plugin diagnostic")
+    service = ModerationService(
+        gateway=HostedOpenAIModerationGateway(
+            client=client,
+            credentials=None if failure == "missing_credentials" else {"openai_api_key": "platform-key"},
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+        )
+    )
+    monkeypatch.setattr("extensions.application_services.moderation.build_platform_moderation_service", lambda: service)
+    config = app_config()
+    with app_moderation_scope("tenant-1", "app-1") as session:
+        session.enabled = True
+        session.app_platform_checks_enabled = True
+        runtime = get_app_moderation_runtime()
+        assert runtime is not None
+
+        def evaluate() -> None:
+            if phase == "input":
+                runtime.evaluate_input(config, {}, "input")
+            else:
+                runtime.evaluate_output(config, "output")
+
+        with pytest.raises(ModerationUnavailableInvocationError) as unavailable:
+            evaluate()
+    assert str(unavailable.value) == "This message can’t be processed right now. Please try again later."
+    assert unavailable.value.status_code == 503
+    assert unavailable.value.__cause__ is not None
+    assert len(client.calls) == (0 if failure == "missing_credentials" else 1)
+
+
+@pytest.mark.parametrize("phase", ["input", "output"])
+@pytest.mark.parametrize("scenario", ["foreign_tenant", "foreign_app", "missing_rule", "disabled", "invalid_phase"])
+def test_app_runtime_admission_and_phase_boundaries_do_not_resolve_a_backend(
+    monkeypatch: pytest.MonkeyPatch, phase: ModerationPhase, scenario: str
+) -> None:
+    def unexpected_service() -> ModerationService:
+        raise AssertionError("An unadmitted or disabled rule must not resolve a moderation backend")
+
+    monkeypatch.setattr("extensions.application_services.app_moderation._app_service", unexpected_service)
+    config = app_config("keywords")
+    if scenario == "foreign_tenant":
+        config.tenant_id = "tenant-2"
+    elif scenario == "foreign_app":
+        config.app_id = "app-2"
+    elif scenario == "missing_rule":
+        config.sensitive_word_avoidance = None
+    else:
+        rule = config.sensitive_word_avoidance
+        assert rule is not None
+        rule.config[f"{phase}s_config"]["enabled"] = False if scenario == "disabled" else "invalid"
+
+    with app_moderation_scope("tenant-1", "app-1"):
+        runtime = get_app_moderation_runtime()
+        assert runtime is not None
+
+        def evaluate() -> ModerationInputsResult | ModerationOutputsResult | None:
+            return (
+                runtime.evaluate_input(config, {"key": "value"}, "query")
+                if phase == "input"
+                else runtime.evaluate_output(config, "output")
+            )
+
+        if scenario == "invalid_phase":
+            with pytest.raises(ValueError, match="enabled must be a bool"):
+                evaluate()
+        elif scenario == "disabled":
+            result = evaluate()
+            assert result is not None
+            assert not result.flagged
+        else:
+            assert evaluate() is None
+        if scenario in {"foreign_tenant", "foreign_app"}:
+            assert runtime.check_openai(config.tenant_id, config.app_id, {"key": "value"}, phase) is None
 
 
 def test_app_input_evaluation_uses_the_shared_use_case(monkeypatch: pytest.MonkeyPatch) -> None:

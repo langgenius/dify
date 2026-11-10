@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.model_entities import ModelStatus
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.entities.provider_entities import ModelSettings, ProviderQuotaType, QuotaUnit
 from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
@@ -58,7 +58,7 @@ def _model_instance(
     configuration = MagicMock()
     configuration.get_provider_model.return_value = provider_model
     configuration.provider.provider = "openai"
-    configuration.model_settings = []
+    configuration.model_settings = list[ModelSettings]()
     bundle = MagicMock()
     bundle.configuration = configuration
     bundle.model_type_instance = make_model_instance(provider="openai", model="gpt-test").model_type_instance
