@@ -66,10 +66,3 @@
   content: '';
   pointer-events: none;
 }
-
-.logo {
-  background-image: var(--pricing-logo-light);
-}
-:global(html[data-theme='dark']) .logo {
-  background-image: url('./assets/logo-dark.svg');
-}
