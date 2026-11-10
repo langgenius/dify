@@ -137,7 +137,20 @@ class KnowledgeFSLifecycleSagaRunner:
                 completed = self._settle_deletion(claimed=claimed, progress=progress, settled_at=now)
                 return self._result(claimed, completed=completed, settled_at=now)
             if claimed.operation is KnowledgeFSLifecycleOperation.REVOKE:
-                acknowledgment = self._remote.revoke_capability_grant(_revoke_request(claimed))
+                if self._settle_revoke_after_deletion(claimed=claimed, settled_at=now):
+                    return self._result(claimed, completed=True, settled_at=now)
+                try:
+                    acknowledgment = self._remote.revoke_capability_grant(_revoke_request(claimed))
+                except KnowledgeFSLifecycleRemoteError as exc:
+                    # DELETE can finish while this request is in flight. Recheck its durable
+                    # terminal state before persisting another retry of an obsolete command.
+                    if self._settle_revoke_after_deletion(
+                        claimed=claimed,
+                        settled_at=now,
+                        remote_deleted=exc.code == "CAPABILITY_SPACE_DELETED",
+                    ):
+                        return self._result(claimed, completed=True, settled_at=now)
+                    raise
                 completed = self._settle_revoke(
                     claimed=claimed,
                     acknowledgment=acknowledgment,
@@ -473,6 +486,61 @@ class KnowledgeFSLifecycleSagaRunner:
             ):
                 raise KnowledgeFSLifecycleLeaseLostError("Delete command lease was lost before retry scheduling")
             return False
+
+    def _settle_revoke_after_deletion(
+        self, *, claimed: _ClaimedCommand, settled_at: datetime, remote_deleted: bool = False
+    ) -> bool:
+        """ACK a bound REVOKE only after local or authenticated remote deletion proof.
+
+        The claimed outbox must retain its original event, key, grant and positive sequence,
+        and the registered Space must match this tenant's DELETE intent. A local DELETED state
+        requires a succeeded DELETE outbox; an in-flight DELETING state additionally requires
+        KFS's typed completed-deletion response. Success changes only the leased REVOKE row;
+        a mismatch leaves it untouched for normal retry.
+        """
+
+        payload = claimed.command_payload
+        sequence = payload.get("revoke_sequence")
+        grant_id = payload.get("grant_id")
+        if (
+            payload.get("event_id") != claimed.operation_id
+            or payload.get("idempotency_key") != claimed.idempotency_key
+            or not isinstance(grant_id, str)
+            or not grant_id
+            or not isinstance(sequence, int)
+            or isinstance(sequence, bool)
+            or sequence < 1
+        ):
+            return False
+        with self._session_maker.begin() as session:
+            control_space = SQLAlchemyKnowledgeFSControlSpaceRepository(session).get(
+                tenant_id=claimed.tenant_id,
+                control_space_id=claimed.control_space_id,
+            )
+            if (
+                control_space is None
+                or control_space.knowledge_space_id is None
+                or control_space.knowledge_space_id != payload.get("knowledge_space_id")
+                or control_space.lifecycle_operation_id is None
+            ):
+                return False
+            outbox_repository = SQLAlchemyKnowledgeFSLifecycleOutboxRepository(session)
+            deletion = outbox_repository.find_latest_for_control_space(
+                tenant_id=claimed.tenant_id,
+                control_space_id=claimed.control_space_id,
+                operation=KnowledgeFSLifecycleOperation.DELETE,
+            )
+            if deletion is None or deletion.operation_id != control_space.lifecycle_operation_id:
+                return False
+            locally_completed = (
+                control_space.state is KnowledgeFSControlSpaceState.DELETED
+                and deletion.status is KnowledgeFSLifecycleOutboxStatus.SUCCEEDED
+            )
+            remotely_completed = remote_deleted and control_space.state is KnowledgeFSControlSpaceState.DELETING
+            if not (locally_completed or remotely_completed):
+                return False
+            self._ack(outbox_repository, claimed=claimed, completed_at=settled_at)
+            return True
 
     def _settle_revoke(
         self,

@@ -41,6 +41,12 @@ class WorkflowNodeSource(Protocol):
     def get_node_config_by_id(self, node_id: str) -> Mapping[str, Any]: ...
 
 
+class PluginTriggerEventInvoker(Protocol):
+    def __call__(
+        self, *, tenant_id: str, user_id: str, node_config: NodeConfigDict, event: PluginTriggerDebugEvent
+    ) -> TriggerInvokeEventResponse: ...
+
+
 class TriggerDebugEvent(BaseModel):
     workflow_args: Mapping[str, Any]
     node_id: str
@@ -66,10 +72,21 @@ class TriggerDebugEventPoller(ABC):
 
 
 class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
+    def __init__(
+        self,
+        tenant_id: str,
+        user_id: str,
+        app_id: str,
+        node_config: NodeConfigDict,
+        node_id: str,
+        *,
+        invoke_plugin_event: PluginTriggerEventInvoker,
+    ) -> None:
+        super().__init__(tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id)
+        self._invoke_plugin_event = invoke_plugin_event
+
     @override
     def poll(self) -> TriggerDebugEvent | None:
-        from services.trigger.trigger_service import TriggerService
-
         plugin_trigger_data = TriggerEventNodeData.model_validate(self.node_config["data"], from_attributes=True)
         provider_id = TriggerProviderID(plugin_trigger_data.provider_id)
         pool_key: str = build_plugin_pool_key(
@@ -88,7 +105,7 @@ class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
         )
         if not plugin_trigger_event:
             return None
-        trigger_event_response: TriggerInvokeEventResponse = TriggerService.invoke_trigger_event(
+        trigger_event_response = self._invoke_plugin_event(
             event=plugin_trigger_event,
             user_id=plugin_trigger_event.user_id,
             tenant_id=self.tenant_id,
@@ -211,7 +228,13 @@ class ScheduleTriggerDebugEventPoller(TriggerDebugEventPoller):
 
 
 def create_event_poller(
-    draft_workflow: WorkflowNodeSource, tenant_id: str, user_id: str, app_id: str, node_id: str
+    draft_workflow: WorkflowNodeSource,
+    tenant_id: str,
+    user_id: str,
+    app_id: str,
+    node_id: str,
+    *,
+    invoke_plugin_event: PluginTriggerEventInvoker,
 ) -> TriggerDebugEventPoller:
     raw_node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
     if not raw_node_config:
@@ -220,7 +243,12 @@ def create_event_poller(
     node_type = node_config["data"].type
     if node_type == TRIGGER_PLUGIN_NODE_TYPE:
         return PluginTriggerDebugEventPoller(
-            tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
+            tenant_id=tenant_id,
+            user_id=user_id,
+            app_id=app_id,
+            node_config=node_config,
+            node_id=node_id,
+            invoke_plugin_event=invoke_plugin_event,
         )
     if node_type == TRIGGER_WEBHOOK_NODE_TYPE:
         return WebhookTriggerDebugEventPoller(
@@ -234,7 +262,12 @@ def create_event_poller(
 
 
 def select_trigger_debug_events(
-    draft_workflow: WorkflowNodeSource, app_model: App, user_id: str, node_ids: list[str]
+    draft_workflow: WorkflowNodeSource,
+    app_model: App,
+    user_id: str,
+    node_ids: list[str],
+    *,
+    invoke_plugin_event: PluginTriggerEventInvoker,
 ) -> TriggerDebugEvent | None:
     event: TriggerDebugEvent | None = None
     for node_id in node_ids:
@@ -247,6 +280,7 @@ def select_trigger_debug_events(
             user_id=user_id,
             app_id=app_model.id,
             node_id=node_id,
+            invoke_plugin_event=invoke_plugin_event,
         )
         event = poller.poll()
         if event is not None:

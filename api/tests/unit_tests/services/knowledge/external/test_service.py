@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -790,12 +791,65 @@ class TestExternalDatasetServiceCheckEndpoint:
         assert "CDEF" not in message
 
     @patch("services.knowledge.external.service.ssrf_proxy")
+    def test_check_endpoint_strips_trailing_slash_before_retrieval(
+        self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """Regression for #40028: trailing slashes must not produce a double-slash retrieval URL."""
+        settings = {"endpoint": "http://ragflow.example.com/api/v1/dify/", "api_key": "ragflow-test-key"}
+
+        mock_proxy.post.return_value = httpx.Response(200)
+
+        ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        assert mock_proxy.post.call_args[0][0] == "http://ragflow.example.com/api/v1/dify/retrieval"
+
+    @patch("services.knowledge.external.service.ssrf_proxy")
+    def test_check_endpoint_ragflow_wrong_base_returns_401(
+        self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """Regression for #40028: a generic /api/v1 base must not pass when it only returns 401."""
+        settings = {"endpoint": "http://ragflow.example.com/api/v1", "api_key": "ragflow-test-key"}
+
+        mock_proxy.post.return_value = httpx.Response(401)
+
+        with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
+            ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        call_args = mock_proxy.post.call_args
+        assert call_args[0][0] == "http://ragflow.example.com/api/v1/retrieval"
+
+    @patch("services.knowledge.external.service.ssrf_proxy")
+    def test_check_endpoint_ragflow_dify_base_accepts_argument_error(
+        self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """Regression for #40028: the documented /api/v1/dify base should pass when the provider
+        rejects the probe payload with a 400 argument error instead of dropping the connection."""
+        settings = {"endpoint": "http://ragflow.example.com/api/v1/dify", "api_key": "ragflow-test-key"}
+
+        mock_proxy.post.return_value = httpx.Response(400)
+
+        ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        call_args = mock_proxy.post.call_args
+        assert call_args[0][0] == "http://ragflow.example.com/api/v1/dify/retrieval"
+
+    @patch("services.knowledge.external.service.ssrf_proxy")
+    def test_check_endpoint_401_unauthorized(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
+        """Test validation fails with 401 Unauthorized (auth failure)."""
+        settings = {"endpoint": "https://api.example.com", "api_key": "wrong-key"}
+
+        mock_proxy.post.return_value = httpx.Response(401)
+
+        with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
+            ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+    @patch("services.knowledge.external.service.ssrf_proxy")
     def test_check_endpoint_other_4xx_codes_pass(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test that other 4xx codes don't raise exceptions."""
         # Arrange
         settings = {"endpoint": "https://api.example.com", "api_key": "test-key"}
 
-        for status_code in [400, 401, 405, 429]:
+        for status_code in [400, 405, 429]:
             mock_response = MagicMock()
             mock_response.status_code = status_code
             mock_proxy.post.return_value = mock_response
@@ -1663,17 +1717,26 @@ class TestExternalDatasetServiceCreateDataset:
 class TestExternalDatasetServiceFetchRetrieval:
     """Test fetch_external_knowledge_retrieval operations."""
 
+    @pytest.mark.parametrize("trailing_slashes", ["", "/", "///"])
     @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
     def test_fetch_external_knowledge_retrieval_success_with_results(
-        self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
+        self,
+        mock_process,
+        factory: ExternalDatasetServiceTestDataFactory,
+        sqlite_session: Session,
+        trailing_slashes: str,
     ):
-        """Test successful external knowledge retrieval with results."""
+        """Given endpoint slash variants, retrieve records from the same normalized URL."""
         # Arrange
         tenant_id = "tenant-123"
         dataset_id = "dataset-123"
         query = "test query for retrieval"
 
-        _seed_external_retrieval_dependencies(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
+        _, api = _seed_external_retrieval_dependencies(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
+        api.settings = json.dumps(
+            {"endpoint": f"http://ragflow.example.com/api/v1/dify{trailing_slashes}", "api_key": "ragflow-test-key"}
+        )
+        sqlite_session.commit()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -1696,6 +1759,7 @@ class TestExternalDatasetServiceFetchRetrieval:
         assert len(result) == 2
         assert result[0]["content"] == "result 1"
         assert result[1]["score"] == 0.8
+        assert mock_process.call_args[0][0].url == "http://ragflow.example.com/api/v1/dify/retrieval"
 
     def test_fetch_external_knowledge_retrieval_binding_not_found_error(
         self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
