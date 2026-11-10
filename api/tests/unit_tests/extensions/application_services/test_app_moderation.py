@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 from threading import Event, Thread
 from time import perf_counter
 from typing import override
-from unittest.mock import Mock
 
 import pytest
 from flask import Flask
@@ -464,12 +463,24 @@ def test_app_moderation_silently_skips_ineligible_checks_without_tenant_fallback
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=edition, HOSTED_MODERATION_ENABLED=enabled)
     platform_model = credit_model and enabled and edition == DeploymentEdition.CLOUD
-    tenant_factory = Mock(side_effect=AssertionError("App moderation must not resolve a tenant provider"))
+
+    def tenant_factory(*_args: object, **_kwargs: object) -> ModelManager:
+        raise AssertionError("App moderation must not resolve a tenant provider")
+
     monkeypatch.setattr(ModelManager, "for_tenant", tenant_factory)
-    tenant_service_factory = Mock(side_effect=AssertionError("App model moderation must not use the tenant backend"))
+
+    def tenant_service_factory() -> ModerationService:
+        raise AssertionError("App model moderation must not use the tenant backend")
+
     monkeypatch.setattr("extensions.application_services.app_moderation._app_service", tenant_service_factory)
     gateway = RecordingGateway()
-    hosted_factory = Mock(return_value=ModerationService(gateway=gateway))
+    hosted_service = ModerationService(gateway=gateway)
+    hosted_calls: list[None] = []
+
+    def hosted_factory() -> ModerationService:
+        hosted_calls.append(None)
+        return hosted_service
+
     monkeypatch.setattr("extensions.application_services.moderation.build_platform_moderation_service", hosted_factory)
     model = make_model_config(provider="test-provider", model="test-model", mode="chat")
     model.provider_model_bundle.configuration.tenant_id = "tenant-1"
@@ -565,15 +576,13 @@ def test_app_moderation_silently_skips_ineligible_checks_without_tenant_fallback
         assert not result.flagged
         assert result.text == "unrelated custom model output"
         assert result.preset_response == ""
-    tenant_factory.assert_not_called()
-    tenant_service_factory.assert_not_called()
     if platform_model and not advanced:
         assert gateway.calls == [("safe input", "input"), ("unrelated custom model output", "output")]
     else:
         if platform_model:
             assert gateway.calls == [("credit input", "input"), ("credit output", "output")]
         else:
-            hosted_factory.assert_not_called()
+            assert not hosted_calls
 
 
 def test_runtime_does_not_share_output_checks_or_presets_with_another_app() -> None:
