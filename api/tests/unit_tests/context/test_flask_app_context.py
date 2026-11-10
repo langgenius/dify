@@ -11,13 +11,12 @@ from models.account import Account
 
 
 def _flask_current_app() -> Flask:
-    accessor = "_get_current_object"
-    return getattr(current_app, accessor)()
+    # LocalProxy-only accessor; Flask's stubs do not expose it.
+    return current_app._get_current_object()  # pyrefly: ignore[missing-attribute]
 
 
 def _flask_g() -> object:
-    accessor = "_get_current_object"
-    return getattr(g, accessor)()
+    return g._get_current_object()
 
 
 @pytest.fixture
