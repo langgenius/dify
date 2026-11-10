@@ -262,7 +262,6 @@ project-excludes = [
   "services/test_workflow_draft_variable_service.py",
   "services/workflow/test_workflow_converter.py",
   "tasks/app_generate/test_workflow_execute_task.py",
-  "../e2e_tests/contracts/test_pytest_dify.py",
 ]
 
 [errors]
