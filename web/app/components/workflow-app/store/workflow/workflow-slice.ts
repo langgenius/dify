@@ -1,6 +1,9 @@
 import type { StateCreator } from 'zustand'
+import type { LoroDraftIdentity } from '@/app/components/workflow/collaboration/core/loro-draft-provider'
 
 export type WorkflowSliceShape = {
+  loroDraft?: LoroDraftIdentity
+  hasPendingLoroDraftChanges?: boolean
   notInitialWorkflow: boolean
   setNotInitialWorkflow: (notInitialWorkflow: boolean) => void
   shouldAutoOpenStartNodeSelector: boolean

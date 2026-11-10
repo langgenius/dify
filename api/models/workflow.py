@@ -80,7 +80,7 @@ from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, Wor
 # UploadFile and workflow execution models use TypeBase; importing the class object keeps
 # their relationship joins explicit.
 from .model import UploadFile
-from .types import EnumText, LongText, StringUUID
+from .types import BinaryData, EnumText, LongText, StringUUID
 from .utils.file_input_compat import (
     build_file_from_mapping_without_lookup,
     build_file_from_stored_mapping,
@@ -230,6 +230,8 @@ class Workflow(TypeBase):
     marked_name: Mapped[str] = mapped_column(String(255), default="")
     marked_comment: Mapped[str] = mapped_column(String(255), default="")
     graph: Mapped[str] = mapped_column(LongText, default=None)
+    loro_draft_epoch: Mapped[str | None] = mapped_column(StringUUID, default=None)
+    loro_draft_snapshot: Mapped[bytes | None] = mapped_column(BinaryData(), default=None, deferred=True)
     _features: Mapped[Any] = mapped_column("features", LongText, default=None)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
     created_at: Mapped[datetime] = mapped_column(

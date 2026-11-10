@@ -16,6 +16,8 @@ export const resolveE2EBrowser = (value: string | undefined): E2EBrowser => {
 
 export const baseURL = process.env.E2E_BASE_URL || defaultBaseURL
 export const apiURL = process.env.E2E_API_URL || defaultApiURL
+export const workflowCollaborationEnabled =
+  process.env.ENABLE_COLLABORATION_MODE === 'true' || process.env.ENABLE_COLLABORATION_MODE === '1'
 
 export const cucumberHeadless = process.env.CUCUMBER_HEADLESS !== '0'
 export const cucumberSlowMo = Number(process.env.E2E_SLOW_MO || 0)

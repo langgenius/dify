@@ -93,7 +93,7 @@ jobs:
           key: ${{ steps.next-cache.outputs.cache-primary-key }}
 
   chromium-full:
-    name: Chromium Full (${{ matrix.shard }}/3)
+    name: ${{ matrix.collaboration == 'true' && 'Chromium Workflow Collaboration' || format('Chromium Full ({0}/3)', matrix.shard) }}
     if: ${{ !inputs.run-external-runtime }}
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 45
@@ -101,11 +101,15 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
+        include:
+          - shard: collaboration
+            collaboration: 'true'
     env:
       E2E_ADMIN_EMAIL: e2e-admin@example.com
       E2E_ADMIN_NAME: E2E Admin
       E2E_ADMIN_PASSWORD: E2eAdmin12345
       E2E_INIT_PASSWORD: E2eInit12345
+      ENABLE_COLLABORATION_MODE: ${{ matrix.collaboration || 'false' }}
 
     steps:
       - name: Checkout code
@@ -146,11 +150,16 @@ jobs:
         wait: install-api-dependencies
 
       # The runner prepares the backend while waiting for and downloading the build.
-      - name: Run Chromium full shard
+      - name: Run Chromium scenarios
         working-directory: ./e2e
         env:
           GH_TOKEN: ${{ github.token }}
-        run: vp run e2e:full --download-web-build -- --shard ${{ matrix.shard }}/3
+        run: |
+          if [ "$ENABLE_COLLABORATION_MODE" = true ]; then
+            vp run e2e:full --download-web-build -- --tags @workflow-collaboration
+          else
+            vp run e2e:full --download-web-build -- --shard ${{ matrix.shard }}/3
+          fi
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}

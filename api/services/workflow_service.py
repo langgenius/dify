@@ -4,10 +4,12 @@ import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Literal, cast
 
+from loro import ExportMode
 from sqlalchemy import exists, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm.attributes import flag_modified
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -105,6 +107,16 @@ from services.errors.app import (
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
 from services.workflow.workflow_converter import WorkflowConverter
+from services.workflow_loro_document import (
+    LoroDraftEmptyGraphError,
+    LoroDraftEpochChangedError,
+    LoroDraftSyncResult,
+    export_loro_delta,
+    load_loro_draft,
+    merge_loro_update,
+    project_loro_graph,
+    replace_loro_graph,
+)
 from services.workflow_node_variables import get_human_input_form_variable_mapping
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_run_agg import WorkflowRunAgg
@@ -427,6 +439,7 @@ class WorkflowService:
         commit: bool = True,
         sync_agent_bindings: bool = True,
         graph_only: bool = False,
+        graph_writer: Literal["server", "http", "initialize"] = "server",
     ) -> Workflow:
         """
         Sync draft workflow.
@@ -438,6 +451,7 @@ class WorkflowService:
         Existing drafts are row-locked before the hash check. Collaborative
         graph-only saves preserve independently persisted draft fields, while
         an explicit per-ID environment patch is merged with the graph.
+        In Loro mode the HTTP endpoint can initialize a missing draft only.
 
         :raises WorkflowHashNotEqualError
         """
@@ -447,7 +461,7 @@ class WorkflowService:
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
 
-        if workflow and workflow.unique_hash != unique_hash:
+        if workflow and (graph_writer == "initialize" or workflow.unique_hash != unique_hash):
             raise WorkflowHashNotEqualError()
 
         # Collaboration persists features and variables through dedicated endpoints. A graph save
@@ -513,6 +527,9 @@ class WorkflowService:
                 draft_workflow=workflow,
             )
 
+        if commit:
+            self.align_loro_draft_after_graph_write(workflow, replace=graph_writer == "server", session=session)
+
         # commit db session changes
         if commit:
             session.commit()
@@ -528,6 +545,113 @@ class WorkflowService:
 
         # return draft workflow
         return workflow
+
+    @staticmethod
+    def align_loro_draft_after_graph_write(workflow: Workflow, *, replace: bool, session: Session) -> None:
+        """With the draft locked, apply an explicit import/restore or invalidate an inactive epoch.
+
+        The caller commits the Loro history and final graph in the same transaction.
+        """
+        if workflow.loro_draft_epoch is None or workflow.loro_draft_snapshot is None:
+            return
+        if replace and dify_config.ENABLE_COLLABORATION_MODE:
+            from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+            doc = load_loro_draft(workflow.loro_draft_snapshot, workflow.graph_dict)
+            projected = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+                session=session, draft_workflow=workflow
+            )
+            replace_loro_graph(doc, projected)
+            workflow.loro_draft_snapshot = doc.export(ExportMode.Snapshot())
+        else:
+            workflow.loro_draft_epoch = str(uuid.uuid4())
+            workflow.loro_draft_snapshot = None
+
+    def sync_loro_draft(
+        self,
+        *,
+        app_model: App,
+        account_id: str,
+        epoch: str,
+        version: bytes | None,
+        update: bytes | None,
+        allow_empty: bool,
+        session: Session,
+    ) -> LoroDraftSyncResult:
+        """Merge updates for an admitted editor, committing history and projection before confirming.
+
+        The draft row lock serializes seed and merges across workers. A rejected or duplicate
+        update neither changes the saved graph nor repeats its Agent binding side effects.
+        """
+        workflow = self.get_draft_workflow_for_update(app_model, session=session)
+        if workflow is None:
+            raise WorkflowNotFoundError("Draft workflow not found.")
+        current_epoch = workflow.loro_draft_epoch or workflow.id
+        if epoch != current_epoch:
+            raise LoroDraftEpochChangedError("Draft epoch changed.")
+
+        graph = workflow.graph_dict
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        snapshot = workflow.loro_draft_snapshot
+        seed = (
+            WorkflowAgentPublishService.project_draft_bindings_to_graph(session=session, draft_workflow=workflow)
+            if snapshot is None
+            else graph
+        )
+        doc = load_loro_draft(snapshot, seed)
+        before = doc.state_vv
+        if update is not None:
+            merge_loro_update(doc, update)
+        changed = not before.includes_vv(doc.state_vv)
+        needs_commit = changed or snapshot is None
+        if needs_commit:
+            workflow.loro_draft_epoch = current_epoch
+            workflow.loro_draft_snapshot = doc.export(ExportMode.Snapshot())
+        graph_changed = False
+        retirement_candidates: set[str] = set()
+        if changed:
+            projected = project_loro_graph(doc)
+            if not projected["nodes"] and not projected["edges"] and (graph.get("nodes") or graph.get("edges")):
+                if not allow_empty:
+                    raise LoroDraftEmptyGraphError("Clearing the draft requires confirmation.")
+            graph_changed = graph != projected
+            if graph_changed:
+                self.validate_graph_structure(projected)
+                workflow.graph = json.dumps(projected, allow_nan=False)
+                workflow.updated_at = naive_utc_now()
+                workflow.updated_by = account_id
+
+                session.flush()
+                retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                    session=session, draft_workflow=workflow, account_id=account_id
+                )
+                WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                    session=session, draft_workflow=workflow
+                )
+
+        if needs_commit and not graph_changed:
+            flag_modified(workflow, "updated_at")
+        delta = export_loro_delta(doc, version)
+        result = LoroDraftSyncResult(
+            epoch=current_epoch,
+            version=doc.state_vv.encode(),
+            update=delta,
+            hash=workflow.unique_hash,
+            updated_at=to_utc_timestamp(workflow.updated_at or workflow.created_at),
+            changed=changed,
+        )
+        if needs_commit:
+            session.commit()
+        if graph_changed:
+            try:
+                WorkflowAgentRetirementService.retire_unowned(
+                    tenant_id=app_model.tenant_id, agent_ids=retirement_candidates, account_id=account_id
+                )
+                app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
+            except Exception:
+                logging.getLogger(__name__).exception("Post-commit effects failed for Loro draft %s", current_epoch)
+        return result
 
     def update_draft_workflow_environment_variables(
         self,
@@ -655,7 +779,7 @@ class WorkflowService:
         self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
-        draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
+        draft_workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
         draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -678,6 +802,7 @@ class WorkflowService:
             account_id=account.id,
         )
 
+        self.align_loro_draft_after_graph_write(draft_workflow, replace=True, session=session)
         session.commit()
         WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app_model.tenant_id,

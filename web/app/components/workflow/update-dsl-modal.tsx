@@ -63,6 +63,7 @@ function UpdateDSLModal({
 
   const handleWorkflowUpdate = useCallback(
     async (app_id: string) => {
+      if (collaborationManager.usesLoroDraft(app_id)) return
       const { graph, features, hash, conversation_variables, environment_variables } =
         await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
 

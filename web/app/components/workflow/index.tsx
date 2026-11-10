@@ -243,17 +243,19 @@ export const Workflow: FC<WorkflowProps> = memo(
     useEffect(() => {
       return collaborationManager.onGraphImport(
         ({ nodes: importedNodes, edges: importedEdges }) => {
-          if (!isEqual(nodes, importedNodes)) {
+          const { getNodes, edges: canvasEdges } = store.getState()
+          const loroDraft = workflowStore.getState().loroDraft
+          if (!isEqual(loroDraft ? getNodes() : nodes, importedNodes)) {
             setNodes(importedNodes)
             store.getState().setNodes(importedNodes)
           }
-          if (!isEqual(edges, importedEdges)) {
+          if (!isEqual(loroDraft ? canvasEdges : edges, importedEdges)) {
             setEdges(importedEdges)
             store.getState().setEdges(importedEdges)
           }
         },
       )
-    }, [edges, nodes, setEdges, setNodes, store])
+    }, [edges, nodes, setEdges, setNodes, store, workflowStore])
 
     useEffect(() => {
       return collaborationManager.onHistoryAction(() => {
@@ -391,6 +393,10 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
     const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
+      if (workflowStore.getState().loroDraft) {
+        collaborationManager.emitGraphViewState(document.visibilityState === 'visible')
+        return
+      }
       if (document.visibilityState === 'hidden') {
         // Update the local guard synchronously. Waiting for the server's leader
         // status would leave a window where this hidden tab saves a stale canvas.
@@ -550,7 +556,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     const { isValidConnection } = useWorkflow()
 
     useOnViewportChange({
-      onEnd: () => {
+      onEnd: (viewport) => {
+        const { loroDraft, isRestoring } = workflowStore.getState()
+        if (loroDraft && !isRestoring) collaborationManager.setLoroDraftViewport(viewport)
         handleSyncWorkflowDraft()
       },
     })

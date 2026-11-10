@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
-from models.account import Account
-from models.model import App
+from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.model import App, AppMode
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services.enterprise.rbac_service import RBACService
 from services.feature_service import FeatureService
@@ -192,6 +192,41 @@ class WorkflowCollaborationService:
 
         self.handle_leader_disconnect(workflow_id, sid)
         self.broadcast_online_users(workflow_id)
+
+    def authorize_loro_draft_sync(self, sid: str, *, session: Session) -> tuple[App, str] | None:
+        """Admit only a joined, still-entitled editor of this tenant's workflow app."""
+        mapping = self._repository.get_sid_mapping(sid)
+        if mapping is None or not dify_config.ENABLE_COLLABORATION_MODE:
+            return None
+        app_id, user_id = mapping["workflow_id"], mapping["user_id"]
+        socket_identity = self._socketio.get_session(sid)
+        tenant_id = socket_identity.get("tenant_id")
+        if not tenant_id or socket_identity.get("user_id") != user_id:
+            return None
+
+        if not FeatureService.can_use_workflow_collaboration(tenant_id):
+            raise WorkflowCollaborationNotEntitledError
+        if not self._can_access_workflow(app_id, tenant_id, user_id, session=session):
+            return None
+
+        row = session.execute(
+            select(App, TenantAccountJoin.role)
+            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == App.tenant_id)
+            .where(
+                App.id == app_id,
+                App.tenant_id == tenant_id,
+                App.status == "normal",
+                App.mode.in_([AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]),
+                TenantAccountJoin.account_id == user_id,
+            )
+        ).one_or_none()
+        if row is None:
+            return None
+        app, role = row
+        if not dify_config.RBAC_ENABLED and not TenantAccountRole.is_editing_role(role):
+            return None
+        self.refresh_session_state(app_id, sid)
+        return app, user_id
 
     def relay_collaboration_event(self, sid: str, data: Mapping[str, object]) -> tuple[dict[str, object], int]:
         """Route collaboration control events, directing save and graph-resync requests to the active leader."""

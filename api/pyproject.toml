@@ -61,6 +61,7 @@ dependencies = [
     "httpx-sse==0.4.3",
     "json-repair==0.60.1",
     "lark-oapi==1.7.2",
+    "loro==1.17.1",
     "pyjwt>=2.10.1,<3.0.0",
     "slack-sdk>=3.43.0,<4.0.0",
     "wechatpy>=1.8.18,<2.0.0",

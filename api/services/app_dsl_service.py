@@ -853,6 +853,9 @@ class AppDslService:
                         session=self._session,
                         draft_workflow=draft_workflow,
                     )
+                    workflow_service.align_loro_draft_after_graph_write(
+                        draft_workflow, replace=True, session=self._session
+                    )
                     self._session.commit()
                     WorkflowAgentRetirementService.retire_unowned(
                         tenant_id=app.tenant_id,

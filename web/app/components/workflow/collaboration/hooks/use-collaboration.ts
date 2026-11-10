@@ -8,6 +8,7 @@ import type {
 import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
+import { useStore } from '@/app/components/workflow/store'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 
@@ -39,6 +40,7 @@ export function useCollaboration(
   const cursorServiceRef = useRef<CursorService | null>(null)
   const lastDisconnectReasonRef = useRef<string | null>(null)
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
+  const loroDraft = useStore((state) => state.loroDraft)
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled || !canEdit) {
@@ -55,7 +57,9 @@ export function useCollaboration(
 
     const initCollaboration = async () => {
       try {
-        const id = await collaborationManager.connect(appId, reactFlowStore)
+        const id = await (loroDraft
+          ? collaborationManager.connect(appId, reactFlowStore, loroDraft)
+          : collaborationManager.connect(appId, reactFlowStore))
         if (isUnmounted) {
           collaborationManager.disconnect(id)
           return
@@ -111,7 +115,7 @@ export function useCollaboration(
       cursorServiceRef.current?.stopTracking()
       if (connectionId) collaborationManager.disconnect(connectionId)
     }
-  }, [appId, canEdit, reactFlowStore, isCollaborationEnabled])
+  }, [appId, canEdit, reactFlowStore, isCollaborationEnabled, loroDraft])
 
   const prevIsConnected = useRef(false)
   useEffect(() => {

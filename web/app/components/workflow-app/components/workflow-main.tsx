@@ -26,8 +26,9 @@ import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
@@ -60,6 +61,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { t } = useTranslation(['workflow'] as const)
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
+  const loroDraft = useStore((state) => state.loroDraft)
   const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
@@ -75,6 +77,17 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
   const reactFlowStore = useMemo(
     () => ({
+      hydrateGraph: (graph: { nodes: Node[]; edges: Edge[] }) => {
+        const canvas = getWorkflowDraftGraphForCanvas(graph, {
+          localStartPlaceholderNodes: reactFlow
+            .getNodes()
+            .filter((node) => node.data.type === BlockEnum.StartPlaceholder),
+        })
+        return {
+          nodes: initialNodes(canvas.nodes, canvas.edges),
+          edges: initialEdges(canvas.edges, canvas.nodes),
+        }
+      },
       getState: () => ({
         getNodes: () => reactFlow.getNodes(),
         setNodes: (nodesToSet: Node[]) => reactFlow.setNodes(nodesToSet),
@@ -82,7 +95,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         setEdges: (edgesToSet: Edge[]) => reactFlow.setEdges(edgesToSet),
       }),
     }),
-    [reactFlow],
+    [getWorkflowDraftGraphForCanvas, reactFlow],
   )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -138,6 +151,28 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     if (!appId || !isCollaborationEnabled) return
     return collaborationManager.onJoinFailure(setJoinFailure)
   }, [appId, isCollaborationEnabled])
+
+  useEffect(() => {
+    if (!loroDraft || !isCollaborationEnabled) return
+    const unsubscribeConfirmation = collaborationManager.onLoroDraftConfirmed(
+      ({ hash, updatedAt, isEmpty }) => {
+        workflowStore.setState({
+          syncWorkflowDraftHash: hash,
+          syncWorkflowDraftIsEmpty: isEmpty,
+          draftUpdatedAt: updatedAt,
+        })
+      },
+    )
+    const unsubscribePending = collaborationManager.onLoroDraftPendingChange(
+      (hasPendingLoroDraftChanges) => {
+        workflowStore.setState({ hasPendingLoroDraftChanges })
+      },
+    )
+    return () => {
+      unsubscribeConfirmation()
+      unsubscribePending()
+    }
+  }, [isCollaborationEnabled, loroDraft, workflowStore])
 
   const handleWorkflowDataUpdate = useCallback(
     (payload: WorkflowDataUpdatePayload) => {
@@ -341,7 +376,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         handleWorkflowDataUpdate(response)
 
         // Update workflow canvas (nodes, edges, viewport)
-        if (response.graph)
+        if (response.graph && !loroDraft)
           handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
       } catch (error) {
         console.error('Failed to fetch updated workflow:', error)
@@ -355,13 +390,14 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     handleWorkflowDataUpdate,
     handleUpdateWorkflowCanvas,
     isCollaborationEnabled,
+    loroDraft,
     workflowStore,
   ])
 
   // The server directs this request to the selected saver. Do not gate it on the
   // local leader flag because the preceding status event may still be in flight.
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled) return
+    if (!appId || !isCollaborationEnabled || loroDraft) return
 
     const unsubscribe = collaborationManager.onSyncRequest(({ acknowledge }) => {
       if (!collaborationManager.canPersistLocalGraph()) {
@@ -384,7 +420,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     })
 
     return unsubscribe
-  }, [appId, doSyncWorkflowDraft, isCollaborationEnabled])
+  }, [appId, doSyncWorkflowDraft, isCollaborationEnabled, loroDraft])
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return

@@ -95,6 +95,7 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.feature_service import FeatureService
 from services.trigger.debug_service import TriggerDebugEvent
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
@@ -361,6 +362,12 @@ class WorkflowResponse(ResponseModel):
         return [_serialize_environment_variable(item) for item in value]
 
 
+class DraftWorkflowResponse(WorkflowResponse):
+    """The epoch is present only when the existing collaboration policy enables Loro."""
+
+    loro_draft_epoch: str | None = Field(default=None, exclude_if=lambda value: value is None)
+
+
 class WorkflowResponseSource:
     def __init__(self, workflow: Workflow, *, session: Session) -> None:
         self._workflow = workflow
@@ -502,6 +509,7 @@ register_response_schema_models(
     PipelineVariableResponse,
     WorkflowEnvironmentVariableResponse,
     WorkflowResponse,
+    DraftWorkflowResponse,
     WorkflowPaginationResponse,
     WorkflowOnlineUser,
     WorkflowOnlineUsersByApp,
@@ -594,7 +602,7 @@ class DraftWorkflowApi(Resource):
     @console_ns.response(
         200,
         "Draft workflow retrieved successfully",
-        console_ns.models[WorkflowResponse.__name__],
+        console_ns.models[DraftWorkflowResponse.__name__],
     )
     @console_ns.response(404, "Draft workflow not found")
     @setup_required
@@ -619,14 +627,16 @@ class DraftWorkflowApi(Resource):
 
         # Return workflow with response-only Agent node job projection so the
         # front-end can treat draft graph node data as the editing source.
-        response = WorkflowResponse.model_validate(
+        response = DraftWorkflowResponse.model_validate(
             WorkflowResponseSource(workflow, session=session), from_attributes=True
-        ).model_dump(mode="json")
-        response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+        )
+        response.graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
             session=session,
             draft_workflow=workflow,
         )
-        return response
+        if FeatureService.can_use_workflow_collaboration(app_model.tenant_id):
+            response.loro_draft_epoch = workflow.loro_draft_epoch or workflow.id
+        return response.model_dump(mode="json")
 
     @error_responses(DraftWorkflowNotSync)
     @setup_required
@@ -702,6 +712,9 @@ class DraftWorkflowApi(Resource):
                 deleted_environment_variable_ids=deleted_environment_variable_ids,
                 preserve_environment_variables=True,
                 graph_only=args_model.is_collaborative,
+                graph_writer="initialize"
+                if FeatureService.can_use_workflow_collaboration(app_model.tenant_id)
+                else "http",
             )
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
