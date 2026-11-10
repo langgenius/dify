@@ -341,26 +341,38 @@ def test_restore_rejects_a_garbage_version_id(app: Flask, sqlite_session: Sessio
             cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", "not-a-uuid")
 
 
-def test_version_list_excludes_the_draft(
+def test_version_list_excludes_the_draft_before_pagination(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     account_application_services: ApplicationServices,
 ) -> None:
+    """A draft preceding two publications must not consume either one-item page."""
     _workflow_services(monkeypatch, account_application_services)
     ctx = _app_context(sqlite_session)
     _add_draft(sqlite_session)
-    published = _workflow(version=Workflow.version_from_datetime(datetime(2026, 10, 1, 12, 0, 0)))
-    sqlite_session.add(published)
+    older = _workflow(version=Workflow.version_from_datetime(datetime(2026, 10, 1, 12, 0, 0)))
+    older.created_at = datetime(2026, 10, 1, 12, 0, 0)
+    newer = _workflow(version=Workflow.version_from_datetime(datetime(2026, 10, 2, 12, 0, 0)))
+    newer.created_at = datetime(2026, 10, 2, 12, 0, 0)
+    sqlite_session.add_all([older, newer])
     sqlite_session.commit()
-    ctx.app.workflow_id = published.id
+    ctx.app.workflow_id = newer.id
     sqlite_session.commit()
 
     api = AppVersionListApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/versions"):
-        response = cast(_EndpointView, api.get).__handler__(api, ctx, "app-1", query=VersionListQuery())
+    handler = cast(_EndpointView, api.get).__handler__
+    with app.test_request_context("/openapi/v1/apps/app-1/versions?page=1&limit=1"):
+        first = handler(api, ctx, "app-1", query=VersionListQuery(page=1, limit=1))
+    with app.test_request_context("/openapi/v1/apps/app-1/versions?page=2&limit=1"):
+        second = handler(api, ctx, "app-1", query=VersionListQuery(page=2, limit=1))
 
-    assert [row.id for row in cast(VersionListResponse, response).data] == [published.id]
+    assert isinstance(first, VersionListResponse)
+    assert isinstance(second, VersionListResponse)
+    assert [row.id for row in first.data] == [newer.id]
+    assert first.has_more is True
+    assert [row.id for row in second.data] == [older.id]
+    assert second.has_more is False
 
 
 def test_restore_returns_the_hash_an_import_checks(

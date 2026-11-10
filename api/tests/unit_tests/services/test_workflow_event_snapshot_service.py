@@ -33,7 +33,7 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.human_input_entities import FormDefinition, FormInputConfig, SelectInputConfig, StringListSource
 from models.model import AppMode, Message
@@ -141,7 +141,7 @@ def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
         app_id="app-1",
         workflow_id="workflow-1",
         type=ModelWorkflowType("workflow"),
-        triggered_from="app-run",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="v1",
         graph=None,
         inputs=json.dumps({"input": "value"}),
@@ -259,11 +259,7 @@ def test_build_snapshot_events_applies_message_context() -> None:
         (None, None, "run-1"),
     ],
 )
-def test_resolve_task_id_priority(
-    context_task_id: str | None,
-    buffered_task_id: str | None,
-    expected: str,
-) -> None:
+def test_resolve_task_id_priority(context_task_id: str | None, buffered_task_id: str | None, expected: str) -> None:
     resumption_context = _build_resumption_context(context_task_id) if context_task_id else None
     buffer_state = BufferState(
         queue=queue.Queue(),
@@ -285,7 +281,7 @@ def _build_workflow_run_additional(status: WorkflowExecutionStatus = WorkflowExe
         app_id="app-1",
         workflow_id="workflow-1",
         type=ModelWorkflowType("workflow"),
-        triggered_from="app-run",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="v1",
         graph=None,
         inputs=json.dumps({"query": "hello"}),
@@ -590,7 +586,7 @@ def test_get_message_context_by_conversation_should_default_created_at_to_zero_w
     session_maker = MagicMock()
     message = Message(id="msg-1", conversation_id="conv-1", answer="answer")
     # Exercise a legacy row without a timestamp.
-    message.created_at = None  # pyrefly: ignore[bad-assignment]
+    message.created_at = None  # pyrefly: ignore[bad-argument-type]
     session_maker.return_value.__enter__.return_value.scalar.return_value = message
 
     result = service_module._get_message_context_by_conversation(

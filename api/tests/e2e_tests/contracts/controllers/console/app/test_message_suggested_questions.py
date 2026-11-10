@@ -204,6 +204,7 @@ def harness(
         tool_providers=ToolProviderRepository(sqlite_session_factory),
         workflow_tools=workflow_tools,
         workflow_publisher=build_console_workflow_service(
+            invoke_plugin_event=lambda **_: None,
             database_client=sqlite_session_factory,
             redis=redis,
             variables=workflow_variables,

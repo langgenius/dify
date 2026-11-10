@@ -910,14 +910,36 @@ class WorkflowDefinitionRepository:
             return workflow_record(workflow, session) if workflow is not None else None
 
     def versions(
-        self, context: RequestContext, app_id: str, *, page: int, limit: int, user_id: str | None, named_only: bool
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        page: int,
+        limit: int,
+        user_id: str | None,
+        named_only: bool,
+        include_draft: bool = True,
     ) -> tuple[list[WorkflowRecord], bool]:
+        """Read one page after applying all visibility filters in SQL.
+
+        Preconditions:
+            ``page`` and ``limit`` are positive pagination values.
+        Postconditions:
+            Draft, author, and name visibility affect the SQL result before its limit,
+            offset, and ``has_more`` calculation; returned records are detached.
+        """
         from repositories.app.console_repository import require_console_app
 
         with self._sessions() as session:
             app = require_console_app(session, context, app_id)
             workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
-                session=session, app_model=app, page=page, limit=limit, user_id=user_id, named_only=named_only
+                session=session,
+                app_model=app,
+                page=page,
+                limit=limit,
+                user_id=user_id,
+                named_only=named_only,
+                include_draft=include_draft,
             )
             return [workflow_record(workflow, session) for workflow in workflows], has_more
 

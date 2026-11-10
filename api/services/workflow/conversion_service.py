@@ -44,13 +44,27 @@ class WorkflowConversionService:
         converter: WorkflowConversionBuilder,
         decrypt_token: Callable[[str, str], str],
         notify_created: AppCreatedNotifier,
+        inherit_access: Callable[[str, str], None],
     ) -> None:
+        """Receive conversion dependencies without performing I/O.
+
+        The access hook inherits the source policy when WebApp auth is enabled
+        and performs no external calls when it is disabled.
+        """
         self._apps = apps
         self._decrypt_token = decrypt_token
         self._notify_created = notify_created
+        self._inherit_access = inherit_access
         self._converter = converter
 
     def convert(self, context: RequestContext, app_id: str, args: dict[str, Any]) -> str:
+        """Convert a supported basic app and preserve its WebApp access policy.
+
+        The source must belong to the active workspace and have a model config.
+        Commit the converted app before notifying creation, then inherit access
+        after notification initializes the target's default policy. Post-commit
+        hook failures propagate without rolling back the converted app.
+        """
         source = self._apps.conversion_source(context, app_id)
         if source.mode not in {AppMode.CHAT, AppMode.COMPLETION}:
             raise WorkflowConversionError(f"Current App mode: {source.mode} is not supported convert to workflow.")
@@ -89,4 +103,5 @@ class WorkflowConversionService:
         )
         created = self._apps.create_converted(context, app_id, params, settings, workflow)
         self._notify_created(event=created, account_id=context.account_id, backing_agent_id=None)
+        self._inherit_access(source.id, created.id)
         return created.id

@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { findNodeIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { consoleQuery } from '@/service/console'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 
@@ -60,7 +60,7 @@ export const useGetProviderIcon = (nodes: UnsupportedNode[]) => {
     }),
   )
   const { data: triggerPlugins } = useAllTriggerPlugins(hasTriggerPluginNode)
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   return useCallback(
     (node: UnsupportedNode) => {
