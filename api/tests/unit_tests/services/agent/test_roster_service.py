@@ -5294,7 +5294,11 @@ class TestAgentAppBackingAgent:
             ),
         )
         retire_binding = MagicMock(return_value="binding-1")
-        enqueue_collection = MagicMock()
+        collection_calls: list[tuple[str, tuple[str, ...]]] = []
+
+        def enqueue_collection(*, tenant_id: str, binding_ids: tuple[str, ...]) -> None:
+            collection_calls.append((tenant_id, binding_ids))
+
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
         monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
 
@@ -5314,10 +5318,7 @@ class TestAgentAppBackingAgent:
             tenant_id="tenant-1",
             binding_id="binding-1",
         )
-        enqueue_collection.assert_called_once_with(
-            tenant_id="tenant-1",
-            binding_ids=("binding-1",),
-        )
+        assert collection_calls == [("tenant-1", ("binding-1",))]
 
     def test_preview_rotation_commit_failure_rolls_back_before_enqueue(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mocker: MockerFixture
@@ -5365,7 +5366,11 @@ class TestAgentAppBackingAgent:
             ),
         )
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock(return_value="binding-1"))
-        enqueue_collection = MagicMock()
+        collection_calls: list[tuple[str, tuple[str, ...]]] = []
+
+        def enqueue_collection(*, tenant_id: str, binding_ids: tuple[str, ...]) -> None:
+            collection_calls.append((tenant_id, binding_ids))
+
         monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
 
         with pytest.raises(RuntimeError, match="commit failed"):
@@ -5376,7 +5381,7 @@ class TestAgentAppBackingAgent:
             )
 
         assert session.get(AgentDebugConversation, mapping.id).conversation_id == "old-conversation"
-        enqueue_collection.assert_not_called()
+        assert collection_calls == []
 
     def test_build_reset_commit_failure_rolls_back_before_enqueue(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mocker: MockerFixture
@@ -5440,7 +5445,11 @@ class TestAgentAppBackingAgent:
         )
         retire_binding = MagicMock(side_effect=lambda **_kwargs: events.append("retire") or "binding-1")
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
-        enqueue_collection = MagicMock()
+        collection_calls: list[tuple[str, tuple[str, ...]]] = []
+
+        def enqueue_collection(*, tenant_id: str, binding_ids: tuple[str, ...]) -> None:
+            collection_calls.append((tenant_id, binding_ids))
+
         monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
 
         with pytest.raises(RuntimeError, match="commit failed"):
@@ -5459,7 +5468,7 @@ class TestAgentAppBackingAgent:
             tenant_id="tenant-1",
             binding_id="binding-1",
         )
-        enqueue_collection.assert_not_called()
+        assert collection_calls == []
 
     def test_duplicate_agent_app_copies_app_config_and_active_soul(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session

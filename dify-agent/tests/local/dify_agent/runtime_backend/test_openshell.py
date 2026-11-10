@@ -591,13 +591,14 @@ class _FakeRpcError(grpc.RpcError, grpc.Call):
 
 
 def _sdk_plane_with_stub(stub: object, **kwargs: object) -> "openshell_module.OpenShellSDKControlPlane":
-    from types import SimpleNamespace
-    from typing import cast
+    from openshell import SandboxClient
+    from openshell._proto import openshell_pb2_grpc
 
     plane = openshell_module.OpenShellSDKControlPlane(endpoint="localhost:1", insecure=True, **kwargs)
-    plane._client_cache = cast(  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
-        "openshell_module.SandboxClient", cast(object, SimpleNamespace(_stub=stub))
-    )
+    client = SandboxClient("localhost:1")
+    client.close()
+    client._stub = cast("openshell_pb2_grpc.OpenShellStub", stub)  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+    plane._client_cache = client  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
     return plane
 
 
