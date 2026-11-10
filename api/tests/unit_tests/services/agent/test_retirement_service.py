@@ -472,13 +472,8 @@ def test_retire_unowned_retry_after_hidden_app_enqueue_failure_preserves_full_co
     workspace_id = workspace.id
     binding_id = binding.id
     error = RuntimeError("broker unavailable")
-    cleanup_app = MagicMock(side_effect=[error, None])
-    enqueue_collection = MagicMock()
-    monkeypatch.setattr("services.agent.retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
-    monkeypatch.setattr(
-        "services.agent.retirement_service.enqueue_agent_resource_collection",
-        enqueue_collection,
-    )
+    cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
+    cleanup_app.side_effect = [error, None]
 
     with pytest.raises(RuntimeError) as exc_info:
         WorkflowAgentRetirementService.retire_unowned(
@@ -673,10 +668,14 @@ def test_blank_candidates_cause_no_side_effects(
     candidates: list[str],
 ) -> None:
     """C8: empty or all-blank candidate lists open no transaction and publish nothing."""
-    create_session = MagicMock()
+
+    def unexpected_session() -> Session:
+        """Fail if empty candidates attempt to open a database session."""
+        pytest.fail("empty candidates must not open a database session")
+
     monkeypatch.setattr(
         "services.agent.retirement_service.session_factory.create_session",
-        create_session,
+        unexpected_session,
     )
     cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
 
@@ -686,7 +685,6 @@ def test_blank_candidates_cause_no_side_effects(
         account_id="account-1",
     )
 
-    create_session.assert_not_called()
     cleanup_app.assert_not_called()
     enqueue_collection.assert_not_called()
 
