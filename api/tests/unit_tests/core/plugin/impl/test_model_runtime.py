@@ -7,6 +7,7 @@ import inspect
 import uuid
 from collections import defaultdict
 from collections.abc import Callable
+from typing import NoReturn
 from unittest.mock import call, patch, sentinel
 
 import pytest
@@ -1112,12 +1113,14 @@ def test_get_provider_schema_supports_short_alias_and_rejects_invalid_provider(m
         runtime._get_provider_schema("missing")
 
 
-def test_schema_failure_observation_uses_canonical_identity_and_never_credentials(monkeypatch):
+def test_schema_failure_observation_uses_canonical_identity_and_never_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from services.dify_builder.native_launch_observation import NativeLaunchObservation
 
     client, _, _ = _recording_model_client(monkeypatch)
 
-    def unavailable(**_kwargs):
+    def unavailable(**_kwargs: object) -> NoReturn:
         raise ConnectionRefusedError("private endpoint and secret")
 
     monkeypatch.setattr(client, "get_model_schema", unavailable)
