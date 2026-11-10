@@ -226,6 +226,39 @@ def _tool_with_setting(template: str) -> dict[str, object]:
     }
 
 
+def test_build_parameters_treats_null_variable_value_as_not_provided():
+    """A canvas-written {type: variable, value: null} entry must not crash the node.
+
+    The canvas stores unset optional strategy params as {"type": "variable", "value": null}.
+    build_parameters must pass None to the strategy instead of calling
+    variable_pool.get(None), which raises TypeError: object of type 'NoneType' has no len().
+    """
+    result = _build_parameters(
+        configured={
+            "files": {"type": "variable", "value": None},
+            "allowed_tools": {"type": "variable", "value": None},
+        },
+        declared=[
+            _declared_parameter("files", _ParameterType.FILES),
+            _declared_parameter("allowed_tools", _ParameterType.TOOLS_SELECTOR),
+        ],
+        variables={},
+    )
+
+    assert result["files"] is None
+    assert result["allowed_tools"] is None
+
+
+def test_build_parameters_resolves_set_variable_value():
+    result = _build_parameters(
+        configured={"query": {"type": "variable", "value": ["start", "target"]}},
+        declared=[_declared_parameter("query", _ParameterType.STRING)],
+        variables={"target": "dify"},
+    )
+
+    assert result["query"] == "dify"
+
+
 @pytest.mark.parametrize(
     "raw_value",
     [
