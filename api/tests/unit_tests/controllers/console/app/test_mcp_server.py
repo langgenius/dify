@@ -76,16 +76,22 @@ class TestMcpServerAdmissionCases:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("method", "permission"),
+        ("method", "permissions"),
         [
-            (AppMCPServerController.get, RBACPermission.APP_VIEW_LAYOUT),
-            (AppMCPServerController.post, RBACPermission.APP_EDIT),
-            (AppMCPServerController.put, RBACPermission.APP_EDIT),
-            (AppMCPServerRefreshController.post, RBACPermission.APP_EDIT),
+            (
+                AppMCPServerController.get,
+                (RBACPermission.APP_VIEW_LAYOUT, RBACPermission.APP_ACCESS_POINT_VIEW),
+            ),
+            (AppMCPServerController.post, (RBACPermission.APP_EDIT,)),
+            (AppMCPServerController.put, (RBACPermission.APP_EDIT,)),
+            (AppMCPServerRefreshController.post, (RBACPermission.APP_EDIT,)),
         ],
     )
     def test_rbac_checks_keep_app_scope(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, method: Callable[..., object], permission: RBACPermission
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        method: Callable[..., object],
+        permissions: tuple[RBACPermission, ...],
     ) -> None:
         account = make_account(role=TenantAccountRole.NORMAL)
         apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
@@ -99,9 +105,8 @@ class TestMcpServerAdmissionCases:
         ) -> None:
             assert (tenant_id, account_id) == ("workspace", account.id)
             assert path_args == {"app_id": _MCP_SERVER_ADMISSION_APP_ID}
-            assert len(checks) == 1
-            assert checks[0].scene == permission
-            assert isinstance(checks[0].locator, PlainApp)
+            assert [check.scene for check in checks] == list(permissions)
+            assert all(isinstance(check.locator, PlainApp) for check in checks)
             called.append(True)
             raise Forbidden
 

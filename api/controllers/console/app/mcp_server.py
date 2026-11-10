@@ -85,7 +85,14 @@ class AppMCPServerController(Resource):
     @console_ns.response(
         200, "MCP server configuration retrieved successfully", console_ns.models[AppMCPServerResponse.__name__]
     )
-    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())])
+    # The Access Point page is readable by members who hold access-point-view
+    # but not view-layout, so either scene may read the server configuration.
+    @console_account_admission(
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),
+            RBACCheck(RBACPermission.APP_ACCESS_POINT_VIEW, PlainApp()),
+        ]
+    )
     def get(self, request_context: RequestContext, app_id: UUID):
         try:
             server = application_services().app_mcp_servers.get(request_context, str(app_id))
