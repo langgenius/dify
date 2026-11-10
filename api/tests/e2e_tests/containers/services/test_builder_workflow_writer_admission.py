@@ -40,6 +40,13 @@ from models.dify_builder import (
     DifyBuilderTestInput,
     DifyBuilderWorkflowWriter,
 )
+from models.dify_builder_native_tests import (
+    NativeDispatch,
+    NativeEffectOperation,
+    NativeInvocationState,
+    NativeTestInvocation,
+    NativeTestScope,
+)
 from models.model import App, AppMode
 from services.dify_builder import session_lock
 from services.dify_builder.app_metadata import NativeAppMetadata
@@ -111,6 +118,11 @@ def infrastructure() -> Iterator[Infrastructure]:
                 DifyBuilderRun,
                 DifyBuilderSnapshot,
                 DifyBuilderTestInput,
+                NativeDispatch,
+                NativeEffectOperation,
+                NativeInvocationState,
+                NativeTestInvocation,
+                NativeTestScope,
             )
         ]
         Base.metadata.create_all(engine, tables=tables)
