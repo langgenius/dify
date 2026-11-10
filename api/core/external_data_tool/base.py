@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any
 
+from sqlalchemy.orm import Session, scoped_session
+
 from core.extension.extensible import Extensible, ExtensionModule
 
 
@@ -24,22 +26,24 @@ class ExternalDataTool(Extensible, ABC):
 
     @classmethod
     @abstractmethod
-    def validate_config(cls, tenant_id: str, config: dict[str, Any]):
+    def validate_config(cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session):
         """
         Validate the incoming form config data.
 
         :param tenant_id: the id of workspace
         :param config: the form config data
+        :param session: the database session the extension lookup runs through
         :return:
         """
         raise NotImplementedError
 
     @abstractmethod
-    def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+    def query(self, inputs: Mapping[str, Any], session: Session | scoped_session, query: str | None = None) -> str:
         """
         Query the external data tool.
 
         :param inputs: user inputs
+        :param session: the database session the extension lookup runs through
         :param query: the query of chat app
         :return: the tool query result
         """
