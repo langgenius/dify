@@ -1,6 +1,7 @@
 """Real resource validation and durable admission around the worker handoff."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -180,7 +181,11 @@ def test_prepared_guest_resources_are_rechecked_after_migration(admission: Admis
         )
 
 
-def test_committed_admission_blocks_migration_before_worker_start(admission: Admission) -> None:
+def test_committed_admission_blocks_migration_before_worker_start(
+    admission: Admission, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started_at = datetime(2026, 11, 9, 8, 30, 0, 123456)
+    monkeypatch.setattr("services.web_workflow_admission.naive_utc_now", lambda: started_at)
     with web_workflow_launch(
         admission.entity,
         workflow=admission.workflow,
@@ -193,6 +198,7 @@ def test_committed_admission_blocks_migration_before_worker_start(admission: Adm
             assert run is not None
             assert run.status == WorkflowExecutionStatus.RUNNING
             assert run.task_id == admission.entity.task_id
+            assert run.created_at == started_at
         with pytest.raises(GuestMigrationNotReadyError):
             admission.claim()
     with web_workflow_worker(admission.entity):

@@ -11,7 +11,11 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from models.provider_ids import ToolProviderID
 from services.end_user_connections.revision import AuthorizationRequirementSnapshot
+from services.entities import tool_connection_entities
 from services.entities.tool_connection_entities import ToolConnectionRequirement
+
+first_end_user_tool_node = tool_connection_entities.first_end_user_tool_node
+requires_end_user_connections = tool_connection_entities.requires_end_user_connections
 
 
 class EndUserAuthConfig(BaseModel):
@@ -135,33 +139,6 @@ class ToolCredentialIssue:
     node_id: str
     path: tuple[str | int, ...]
     message: str
-
-
-def requires_end_user_connections(graph: Mapping[str, Any]) -> bool:
-    """Static discovery only: reuse delegates to a node that declares its source.
-
-    A declared EndUser requirement must stay visible even if its configuration
-    is incomplete; publication validation and Preflight diagnose that separately.
-    """
-    return first_end_user_tool_node(graph) is not None
-
-
-def first_end_user_tool_node(graph: Mapping[str, Any]) -> str | None:
-    """Find the node declaring personal credentials, including incomplete drafts."""
-    return next(
-        (
-            str(node.get("id", "unknown"))
-            for node in graph.get("nodes", [])
-            if (
-                isinstance(node, Mapping)
-                and node.get("type") != "custom-note"
-                and isinstance(data := node.get("data"), Mapping)
-                and data.get("type") == BuiltinNodeTypes.TOOL
-                and data.get("credential_source") == "end_user"
-            )
-        ),
-        None,
-    )
 
 
 class WorkflowToolEndUserAuthError(ValueError):

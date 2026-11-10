@@ -8,7 +8,9 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 from pytest_mock import MockerFixture
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 import services.app_generate_service as ags_module
@@ -19,10 +21,12 @@ from core.app.features.rate_limiting import rate_limit as rate_limit_module
 from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
 from core.errors.error import AppInvokeQuotaExceededError
 from enums import DeploymentEdition, QuotaType
+from extensions.ext_database import db
 from models.account import Account
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from services.app_definition_query_service import ServiceApiEndUserAuthError
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError,
@@ -132,6 +136,52 @@ def _make_workflow(
         _environment_variables=[],
         _conversation_variables=[],
     )
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("selection", ["historical", "republished"])
+def test_selected_workflow_rechecks_service_api_personal_auth(
+    app: Flask,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+    selection: str,
+) -> None:
+    monkeypatch.setitem(db._app_engines, app, {None: sqlite_engine})
+    app_model = _make_app(mode)
+    safe_workflow = _make_workflow(workflow_id=str(uuid.uuid4()))
+    safe_workflow.version = "safe"
+    safe_workflow.features = "{}"
+    protected_workflow = _make_workflow(workflow_id=str(uuid.uuid4()))
+    protected_workflow.version = "protected"
+    protected_workflow.features = "{}"
+    protected_workflow.graph = json.dumps(
+        {"nodes": [{"id": "personal-tool", "data": {"type": "tool", "credential_source": "end_user"}}]}
+    )
+    app_model.workflow_id = safe_workflow.id
+    sqlite_session.add_all([app_model, safe_workflow, protected_workflow])
+    sqlite_session.commit()
+
+    admitted_workflow = AppGenerateService._get_workflow(app_model, InvokeFrom.SERVICE_API, session=sqlite_session)
+    assert admitted_workflow.id == safe_workflow.id
+    if selection == "republished":
+        app_model.workflow_id = protected_workflow.id
+        sqlite_session.commit()
+
+    with pytest.raises(ServiceApiEndUserAuthError, match="Service API end-user access is unavailable"):
+        AppGenerateService._get_workflow(
+            app_model,
+            InvokeFrom.SERVICE_API,
+            protected_workflow.id if selection == "historical" else None,
+            session=sqlite_session,
+        )
+
+    for invoke_from in (InvokeFrom.WEB_APP, InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER):
+        selected = AppGenerateService._get_workflow(
+            app_model, invoke_from, protected_workflow.id, session=sqlite_session
+        )
+        assert selected.id == protected_workflow.id
 
 
 class _RateLimitRedis:

@@ -642,7 +642,9 @@ class TestDeleteAppStars:
 
 
 @patch("tasks.remove_app_and_related_data_task._delete_records")
-def test_personal_webapp_cleanup_keeps_other_tenants_and_apps(mock_delete_records, sqlite_session: Session) -> None:
+def test_personal_webapp_cleanup_keeps_other_tenants_and_apps(
+    mock_delete_records: MagicMock, sqlite_session: Session
+) -> None:
     tenant_id, app_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
     states = [
         AccountWebApp(tenant_id=tenant_id, app_id=app_id, account_id=account_id),

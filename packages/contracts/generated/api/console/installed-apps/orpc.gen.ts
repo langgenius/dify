@@ -1000,12 +1000,22 @@ export const byInstalledAppId = {
   workflows,
 }
 
+/**
+ * Return published, authorized installations matching the validated query
+ *
+ * Require an admitted workspace account; preserve the cursor response shape
+ * and translate invalid cursors or unavailable access checks into API errors.
+ * No installation state changes on success or failure.
+ */
 export const get11 = oc
   .route({
+    description:
+      'Require an admitted workspace account; preserve the cursor response shape\nand translate invalid cursors or unavailable access checks into API errors.\nNo installation state changes on success or failure.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getInstalledApps',
     path: '/installed-apps',
+    summary: 'Return published, authorized installations matching the validated query',
     tags: ['console'],
   })
   .input(z.object({ query: zGetInstalledAppsQuery.optional() }).optional())
