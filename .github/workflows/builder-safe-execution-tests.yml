@@ -627,7 +627,7 @@ jobs:
                   'test_public_decision_refresh_and_readiness_never_dispatch': 1,
                   'test_expired_saved_decision_stays_frozen_but_cannot_resume': 1,
               })
-              EXPECTED['tests.e2e_tests.containers.core.workflow.test_builder_test_action_api'] = {'test_confirm_and_refresh_use_only_existing_session_action_transport': 1, 'test_action_transport_rejects_foreign_scope_without_dispatch': 1, 'test_action_transport_still_requires_console_login_and_csrf': 1, 'test_native_resume_through_choice_reuses_one_durable_dispatch': 1, 'test_native_cancel_through_choice_does_not_claim_external_rollback': 1, 'test_action_controls_complete_real_graphon_run_without_repeated_http': 3}
+              EXPECTED['tests.e2e_tests.containers.core.workflow.test_builder_test_action_api'] = {'test_confirm_and_refresh_use_only_existing_session_action_transport': 1, 'test_action_transport_rejects_foreign_scope_without_dispatch': 1, 'test_action_transport_still_requires_console_login_and_csrf': 1, 'test_approval_stream_reports_one_durable_continuation': 1, 'test_native_cancel_through_choice_does_not_claim_external_rollback': 1, 'test_action_controls_complete_real_graphon_run_without_repeated_http': 4}
               EXPECTED['tests.e2e_tests.containers.core.workflow.test_builder_test_action_api']['test_expired_current_test_remains_readonly_and_cannot_continue'] = 3
               REPORT = "builder-native-console.xml"
               code = pytest.main(['api/tests/e2e_tests/containers/core/workflow/test_builder_native_console_api.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_test_action_api.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-console.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
@@ -1011,7 +1011,7 @@ jobs:
                   "test_local_real_transport_runs_fixed_read_only_probe": 5,
                   "test_other_backends_and_native_scopes_are_explicitly_unsupported": 1,
                   "test_client_rejects_foreign_inspection_identity": 2,
-                  "test_fixed_local_probe_executes_only_exact_paths": 6,
+                  "test_fixed_local_probe_executes_only_exact_paths": 8,
                   "test_private_inspection_validation_never_echoes_input": 1
               }
           }.items():
@@ -1703,7 +1703,7 @@ jobs:
                   'test_native_input_binding_has_only_public_identity': 1,
               },
               'tests.unit_tests.services.dify_builder.native_testing.test_context_binding': {
-                  'test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection': 1,
+                  'test_unrelated_end_edit_retains_owned_agent_without_new_resource_selection': 2,
                   'test_unselected_agent_retention_refuses_changed_job_copy_pin_publication_or_access': 5,
                   'test_retained_hidden_job_metadata_is_rechecked_under_draft_lock': 1,
                   'test_final_retained_binding_check_locks_and_refreshes_rows_before_sync': 1,
