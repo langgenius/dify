@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from unittest.mock import create_autospec
 
 import pytest
-from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager

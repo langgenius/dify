@@ -2,9 +2,7 @@ import logging
 import time
 from http import HTTPStatus
 
-from flask import jsonify, request
-from werkzeug.exceptions import RequestEntityTooLarge
-from werkzeug.wrappers import Response
+from flask import Response, jsonify, request
 
 from controllers.common.access_response import webhook_not_found_response
 from controllers.common.errors import reraise_http_error
@@ -77,9 +75,8 @@ def handle_webhook(webhook_id: str) -> Response | tuple[Response, int]:
         ), HTTPStatus.TOO_MANY_REQUESTS
     except WebhookNotFoundError:
         return webhook_not_found_response()
-    except RequestEntityTooLarge:
-        raise
-    except Exception:
+    except Exception as error:
+        reraise_http_error(error)
         logger.exception("Webhook processing failed for %s", webhook_id)
         return jsonify(
             {"error": "Internal server error", "message": "An internal error has occurred."}
@@ -152,8 +149,6 @@ def handle_webhook_debug(webhook_id: str) -> Response | tuple[Response, int]:
 
     except WebhookNotFoundError:
         return webhook_not_found_response()
-    except RequestEntityTooLarge:
-        raise
     except Exception as error:
         reraise_http_error(error)
         logger.exception("Webhook debug processing failed for %s", webhook_id)
