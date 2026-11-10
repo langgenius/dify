@@ -22,6 +22,7 @@ from core.app.app_config.entities import (
     MetadataFilteringCondition,
     ModelConfig,
 )
+from core.app.apps.exc import ModerationInvocationError
 from core.app.entities.app_invoke_entities import (
     CreditUsageCreatedBy,
     EasyUIBasedAppGenerateEntity,
@@ -1636,6 +1637,7 @@ class DatasetRetrieval:
         user_id: str,
         metadata_model_config: ModelConfig,
     ) -> list[dict[str, Any]] | None:
+        """Extract automatic filters; preserve moderation failures instead of continuing without filters."""
         # get all metadata field
         metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
         metadata_fields = session.scalars(metadata_stmt).all()
@@ -1684,6 +1686,8 @@ class DatasetRetrieval:
                                 "condition": item.get("comparison_operator"),
                             }
                         )
+        except ModerationInvocationError:
+            raise
         except Exception as e:
             logger.warning(e, exc_info=True)
             return None

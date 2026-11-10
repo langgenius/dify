@@ -255,3 +255,9 @@ Ordinary QA generation failures retain their existing best-effort handling.
 Function-call dataset routing also propagates moderation failures. Ordinary
 routing failures may still yield no selected dataset, but moderation failure
 must never be interpreted as a successful empty retrieval.
+
+Automatic metadata filtering in both legacy RAG and KnowledgeFS stops on
+moderation failures instead of continuing with no automatic conditions.
+KnowledgeFS emits a failed node event with the moderation exception type and
+does not issue a retrieval request. Ordinary extraction and parsing failures
+keep their existing fallback behavior.
