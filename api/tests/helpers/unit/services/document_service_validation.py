@@ -155,19 +155,19 @@ class DocumentValidationTestDataFactory:
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
         doc_form: str | None = None,
-        indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
+        indexing_technique: IndexTechniqueType = IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
         **kwargs: Any,
     ) -> Dataset:
         """
-        Create a Dataset with specified attributes.
+        Given dataset fields and an indexing enum, build a Dataset without database I/O.
 
         Args:
             dataset_id: Unique identifier for the dataset
             tenant_id: Tenant identifier
             doc_form: Document form type
-            indexing_technique: Indexing technique
+            indexing_technique: An IndexTechniqueType enum member
             embedding_model_provider: Embedding model provider
             embedding_model: Embedding model name
             **kwargs: Additional mapped attributes for the dataset
@@ -190,7 +190,7 @@ class DocumentValidationTestDataFactory:
         data_source: DataSource | None = None,
         process_rule: ProcessRule | None = None,
         doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
-        indexing_technique: Literal["economy", "high_quality"] = "high_quality",
+        indexing_technique: IndexTechniqueType = IndexTechniqueType.HIGH_QUALITY,
         **kwargs: Any,
     ) -> KnowledgeConfig:
         """
@@ -200,7 +200,7 @@ class DocumentValidationTestDataFactory:
             data_source: Data source configuration
             process_rule: Process rule configuration
             doc_form: Document form type
-            indexing_technique: Indexing technique
+            indexing_technique: An IndexTechniqueType enum member
             **kwargs: Additional configuration fields
 
         Returns:
@@ -210,7 +210,7 @@ class DocumentValidationTestDataFactory:
             data_source=data_source,
             process_rule=process_rule,
             doc_form=doc_form,
-            indexing_technique=indexing_technique,
+            indexing_technique=indexing_technique.value,
             **kwargs,
         )
 
