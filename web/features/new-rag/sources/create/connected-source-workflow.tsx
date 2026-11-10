@@ -488,24 +488,28 @@ function ResourceList({
           const pageBranch = resource.kind === 'page' ? pageBranches.get(resource.key) : undefined
           const emptyDriveFolder =
             hasDriveFolderCheckbox(resource) && driveBranch?.loaded && !selectionKeys.length
+          const githubPreviewContainer = isGitHubPreviewContainer(resource)
           const selectionBlocked = selectionAtLimit && !checked
           const checkboxDisabled =
-            selectionBlocked || emptyDriveFolder || Boolean(driveBranch?.loading)
+            selectionBlocked ||
+            emptyDriveFolder ||
+            Boolean(driveBranch?.loading) ||
+            (githubPreviewContainer && !hasSelectionKeys)
           const expanded =
             resource.kind === 'page'
               ? treePreview
                 ? expandedPageKeys.has(resource.key)
                 : !collapsed.has(resource.key)
               : expandedDriveContainers.has(resource.key)
-          const githubPreviewContainer = isGitHubPreviewContainer(resource)
-          const rendersCheckbox = hasDriveFolderCheckbox(resource) || isSelectableResource(resource)
+          const rendersCheckbox =
+            hasDriveFolderCheckbox(resource) ||
+            githubPreviewContainer ||
+            isSelectableResource(resource)
           return (
             <Fragment key={resource.key}>
               <li
                 className={cn('flex items-center gap-2 pe-3', expandable ? 'h-8.5' : 'h-7.5')}
-                style={{
-                  paddingInlineStart: `${12 + resource.depth * 26 + (githubPreviewContainer ? 24 : 0)}px`,
-                }}
+                style={{ paddingInlineStart: `${12 + resource.depth * 26}px` }}
               >
                 {expandable ? (
                   <button
@@ -537,9 +541,9 @@ function ResourceList({
                     indeterminate={indeterminate}
                     onCheckedChange={() => onToggle(resource)}
                   />
-                ) : !githubPreviewContainer ? (
+                ) : (
                   <span className="size-4 shrink-0" />
-                ) : null}
+                )}
                 <span aria-hidden className={`${resourceIcon(resource)} size-4 shrink-0`} />
                 <span className="min-w-0 flex-1 truncate system-xs-regular text-text-primary">
                   {resourceName(resource)}
@@ -1254,7 +1258,7 @@ function ResourceConfiguration({
       void toggleDriveFolder(resource)
       return
     }
-    if (!isSelectableResource(resource)) return
+    if (!isSelectableResource(resource) && !isGitHubPreviewContainer(resource)) return
     const removingResource = selectedRef.current.has(resource.key)
     if (resource.kind === 'file' && removingResource)
       setFolderSelectionIntents((intents) => {
@@ -1265,13 +1269,14 @@ function ResourceConfiguration({
     const resourcesToToggle =
       resource.kind === 'page'
         ? [
-            resource,
+            ...(isSelectableResource(resource) ? [resource] : []),
             ...pageResources.filter(
               (candidate) =>
                 resource.descendantKeys.includes(candidate.key) && isSelectableResource(candidate),
             ),
           ]
         : [resource]
+    if (!resourcesToToggle.length) return
     updateSelected((current) => {
       const next = new Map(current)
       const removing = resourcesToToggle.every((candidate) => next.has(candidate.key))

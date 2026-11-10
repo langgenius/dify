@@ -902,7 +902,7 @@ describe('ConnectedSourceWorkflow', () => {
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
   })
 
-  it('loads GitHub tree branches on expansion and imports only explicitly selected pages', async () => {
+  it('selects only loaded GitHub pages through repository and folder checkboxes', async () => {
     const user = userEvent.setup()
     const connection = connectionResponse({
       configuration: {
@@ -1007,14 +1007,19 @@ describe('ConnectedSourceWorkflow', () => {
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
       query: { limit: 30, parentId: 'repo:FFXN/dify', view: 'tree' },
     })
-    expect(screen.queryByRole('checkbox', { name: 'Contents' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('checkbox', { name: 'Pull requests' })).not.toBeInTheDocument()
+    const contentsCheckbox = screen.getByRole('checkbox', { name: 'Contents' })
+    const pullRequestsCheckbox = screen.getByRole('checkbox', { name: 'Pull requests' })
+    expect(contentsCheckbox).toHaveAttribute('aria-disabled', 'true')
+    expect(pullRequestsCheckbox).toHaveAttribute('aria-disabled', 'true')
     expect(repository).toBeChecked()
 
     await user.click(screen.getByRole('button', { name: 'Pull requests' }))
     const firstPr = await screen.findByRole('checkbox', { name: 'PR #1' })
     expect(firstPr).not.toBeChecked()
     expect(repository).toBePartiallyChecked()
+    expect(pullRequestsCheckbox).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(pullRequestsCheckbox)
+    expect(firstPr).toBeChecked()
     const branchLoadMore = screen.getByRole('button', { name: 'knowledgeSpace.loadMore' })
     expect(firstPr.closest('li')?.nextElementSibling).toBe(branchLoadMore.closest('li'))
     await user.click(branchLoadMore)
@@ -1024,9 +1029,16 @@ describe('ConnectedSourceWorkflow', () => {
       query: { cursor: 'pr-next', limit: 30, parentId: 'prs:FFXN/dify', view: 'tree' },
     })
     expect(secondPr).not.toBeChecked()
+    expect(pullRequestsCheckbox).toBePartiallyChecked()
+    await user.click(pullRequestsCheckbox)
+    expect(firstPr).toBeChecked()
+    expect(secondPr).toBeChecked()
 
     await user.click(contents)
     expect(await screen.findByRole('button', { name: 'src' })).toBeInTheDocument()
+    const srcCheckbox = screen.getByRole('checkbox', { name: 'src' })
+    expect(contentsCheckbox).not.toHaveAttribute('aria-disabled', 'true')
+    expect(srcCheckbox).toHaveAttribute('aria-disabled', 'true')
     await user.click(screen.getByRole('button', { name: 'src' }))
     const codeFile = await screen.findByRole('checkbox', { name: 'main.py' })
     expect(clientMock.getPages).toHaveBeenCalledWith({
@@ -1034,11 +1046,15 @@ describe('ConnectedSourceWorkflow', () => {
       query: { limit: 30, parentId: 'dir:FFXN/dify:src', view: 'tree' },
     })
     expect(codeFile).not.toBeChecked()
-    await user.click(repository)
-    expect(firstPr).toBeChecked()
-    expect(secondPr).toBeChecked()
+    expect(srcCheckbox).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(srcCheckbox)
     expect(codeFile).toBeChecked()
     await user.click(repository)
+    expect(screen.getByRole('checkbox', { name: 'README.md' })).toBeChecked()
+    await user.click(repository)
+    expect(firstPr).not.toBeChecked()
+    expect(secondPr).not.toBeChecked()
+    expect(codeFile).not.toBeChecked()
     await user.click(secondPr)
     await user.click(codeFile)
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
