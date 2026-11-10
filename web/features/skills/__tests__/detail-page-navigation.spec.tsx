@@ -195,7 +195,7 @@ describe('SkillDetailPage navigation', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -252,7 +252,7 @@ describe('SkillDetailPage navigation', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -296,7 +296,7 @@ describe('SkillDetailPage navigation', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -320,7 +320,7 @@ describe('SkillDetailPage navigation', () => {
 
     renderSkillDetailPage()
 
-    await screen.findByRole('button', {
+    await screen.findByRole('radio', {
       name: 'skill.skillManagement.detail.markdownLiveMode',
     })
     const livePreview = screen
@@ -351,7 +351,7 @@ describe('SkillDetailPage navigation', () => {
 
     renderSkillDetailPage()
 
-    await screen.findByRole('button', {
+    await screen.findByRole('radio', {
       name: 'skill.skillManagement.detail.markdownLiveMode',
     })
     const livePreview = screen
@@ -429,7 +429,7 @@ describe('SkillDetailPage navigation', () => {
     mocks.skillDetail = createFileTabSkillDetail()
     renderSkillDetailPage()
 
-    await screen.findByRole('button', {
+    await screen.findByRole('radio', {
       name: 'skill.skillManagement.detail.markdownLiveMode',
     })
     expect(getFileTabButton('SKILL.md')).toBeInTheDocument()
@@ -457,7 +457,7 @@ describe('SkillDetailPage navigation', () => {
     mocks.skillDetail = createFileTabSkillDetail()
     renderSkillDetailPage()
 
-    await screen.findByRole('button', {
+    await screen.findByRole('radio', {
       name: 'skill.skillManagement.detail.markdownLiveMode',
     })
     await user.dblClick(getFileTreeButton('README.md'))
@@ -477,7 +477,7 @@ describe('SkillDetailPage navigation', () => {
     preserveDraftFilesOnSave()
     renderSkillDetailPage()
 
-    await screen.findByRole('button', {
+    await screen.findByRole('radio', {
       name: 'skill.skillManagement.detail.markdownLiveMode',
     })
     await user.click(getFileTreeButton('notes.txt'))

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import type { CookieRewriteOptions } from './types'
+import type { CookieRewriteOptions, DevProxyRoute } from './types'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { resolveCookieRewriteLocalScopeKey, toScopedLocalCookieName } from './cookies'
 import { createDevProxyApp } from './server'
@@ -12,9 +12,11 @@ const cookieRewrite: CookieRewriteOptions = {
   localCookieScope: 'target-origin',
 }
 
-const createApp = (fetchImpl: typeof fetch) =>
+const createApp = (fetchImpl: typeof fetch, requestHeaders?: DevProxyRoute['requestHeaders']) =>
   createDevProxyApp({
-    routes: [{ paths: '/console/api', target: 'https://cloud.example.com', cookieRewrite }],
+    routes: [
+      { paths: '/console/api', target: 'https://cloud.example.com', cookieRewrite, requestHeaders },
+    ],
     sessionImport: {
       refreshPath: '/console/api/refresh-token',
       cookieName: 'refresh_token',
@@ -90,6 +92,29 @@ describe('session import', () => {
       `${toScopedLocalCookieName('access_token', scopeKey)}=new-access; Path=/; HttpOnly; SameSite=Lax`,
       `${toScopedLocalCookieName('refresh_token', scopeKey)}=new-refresh; Path=/; HttpOnly; SameSite=Lax`,
     ])
+  })
+
+  // Scenario: session imports must authenticate with configured gateway service headers.
+  it('should include configured request headers when refreshing an imported session', async () => {
+    // Arrange
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('{}', {
+        headers: { 'set-cookie': '__Host-access_token=new-access; Path=/; Secure; HttpOnly' },
+      }),
+    )
+
+    // Act
+    const response = await createApp(fetchImpl, {
+      'CF-Access-Client-Id': 'configured-id',
+      'CF-Access-Client-Secret': 'configured-secret',
+    }).request(postInput('old-refresh'))
+
+    // Assert
+    const headers = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers)
+    expect(headers.get('cookie')).toBe('__Host-refresh_token=old-refresh')
+    expect(headers.get('cf-access-client-id')).toBe('configured-id')
+    expect(headers.get('cf-access-client-secret')).toBe('configured-secret')
+    expect(response.status).toBe(303)
   })
 
   // Scenario: an expired or already-rotated token should be reported instead of redirecting.

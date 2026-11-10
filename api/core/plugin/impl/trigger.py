@@ -84,7 +84,7 @@ class PluginTriggerClient(BasePluginClient):
         user_id: str,
         provider: str,
         event_name: str,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
         request: Request,
         parameters: Mapping[str, Any],
@@ -124,7 +124,7 @@ class PluginTriggerClient(BasePluginClient):
         raise ValueError("No response received from plugin daemon for invoke trigger")
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str, provider: str, credentials: Mapping[str, str]
+        self, tenant_id: str, user_id: str, provider: str, credentials: Mapping[str, object]
     ) -> bool:
         """
         Validate the credentials of the trigger provider.
@@ -160,7 +160,7 @@ class PluginTriggerClient(BasePluginClient):
         provider: str,
         subscription: Mapping[str, Any],
         request: Request,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> TriggerDispatchResponse:
         """
@@ -196,7 +196,7 @@ class PluginTriggerClient(BasePluginClient):
         tenant_id: str,
         user_id: str,
         provider: str,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
         endpoint: str,
         parameters: Mapping[str, Any],
@@ -236,7 +236,7 @@ class PluginTriggerClient(BasePluginClient):
         user_id: str,
         provider: str,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> TriggerSubscriptionResponse:
         """
@@ -273,7 +273,7 @@ class PluginTriggerClient(BasePluginClient):
         user_id: str,
         provider: str,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> TriggerSubscriptionResponse:
         """
