@@ -31,6 +31,10 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.example.com${path || ''}`,
 }))
 
+vi.mock('@/service/use-common', () => ({
+  useFileUploadConfig: () => ({ data: undefined }),
+}))
+
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({
     onChange,

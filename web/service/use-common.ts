@@ -51,10 +51,11 @@ export const commonQueryKeys = {
   dataSourceIntegrates: [NAME_SPACE, 'data-source-integrates'] as const,
 }
 
-export const useFileUploadConfig = () => {
+export const useFileUploadConfig = (enabled = true) => {
   return useQuery<FileUploadConfigResponse>({
     queryKey: commonQueryKeys.fileUploadConfig,
     queryFn: () => get<FileUploadConfigResponse>('/files/upload'),
+    enabled,
   })
 }
 
