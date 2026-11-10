@@ -711,9 +711,9 @@ class TestRetrievalServiceInternals:
         vector_engine: Engine,
     ) -> None:
         mock_get_dataset.return_value = internal_dataset
-        vector_instance = Mock()
-        vector_instance.search_by_full_text.return_value = [create_mock_document("fulltext", "ft-1", 7.4)]
-        mock_vector_class.return_value = vector_instance
+        mock_vector_class.return_value.search_by_full_text.return_value = [
+            create_mock_document("fulltext", "ft-1", 7.4)
+        ]
         all_documents: list[Document] = []
         exceptions: list[str] = []
 
