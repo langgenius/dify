@@ -353,13 +353,7 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
         "services.agent.retirement_service.session_factory.create_session",
         lambda: nullcontext(sqlite_session),
     )
-    cleanup_app = MagicMock()
-    enqueue_collection = MagicMock()
-    monkeypatch.setattr("services.agent.retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
-    monkeypatch.setattr(
-        "services.agent.retirement_service.enqueue_agent_resource_collection",
-        enqueue_collection,
-    )
+    cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
 
     WorkflowAgentRetirementService.retire_unowned(
         tenant_id="tenant-1",
