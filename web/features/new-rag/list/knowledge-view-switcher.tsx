@@ -79,8 +79,12 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           className="relative flex max-h-[calc(100dvh-2rem)] min-h-40.5 w-80 max-w-[calc(100vw-2rem)] flex-col"
         >
           <PopoverArrow className="h-[9.728px] w-[19.456px] overflow-clip data-[side=bottom]:top-[-9.728px] data-[side=top]:bottom-[-9.728px] data-[side=top]:rotate-180">
-            {/* oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- The rotated arrow always draws its physical top and right edges. */}
-            <span className="absolute bottom-0 left-1/2 size-[13.757px] -translate-x-1/2 translate-y-1/2 -rotate-45 rounded-tr-xs border-t border-r border-divider-subtle bg-components-panel-bg" />
+            <svg aria-hidden="true" viewBox="0 0 20 10" className="block size-full">
+              <path
+                d="M-1 11.7 8.94 1.76a1.5 1.5 0 0 1 2.12 0L21 11.7"
+                className="fill-components-panel-bg stroke-divider-subtle"
+              />
+            </svg>
           </PopoverArrow>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3.5 pb-4">
             <PopoverTitle className="system-md-medium text-text-primary">
