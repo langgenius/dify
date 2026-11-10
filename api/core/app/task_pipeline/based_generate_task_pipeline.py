@@ -1,5 +1,6 @@
 import logging
 import time
+from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -124,11 +125,14 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
             )
         return None
 
-    def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
-        """
-        Handle output moderation when task finished.
-        :param completion: completion
-        :return:
+    def handle_output_moderation_when_task_finished(
+        self, completion: str, *, extra_texts: Sequence[str] = ()
+    ) -> str | None:
+        """Moderate the answer and independent content without mixing their output.
+
+        A flagged extra text asks the caller to remove independent content. Only
+        moderated answer prose is returned, even when an external moderator
+        rewrites the extra text's syntax. None means nothing was flagged.
         """
         # response moderation
         if self.output_moderation_handler:
@@ -137,6 +141,11 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
             completion, flagged = self.output_moderation_handler.moderation_completion(
                 completion=completion, public_event=False
             )
+            for text in extra_texts:
+                _, extra_flagged = self.output_moderation_handler.moderation_completion(
+                    completion=text, public_event=False
+                )
+                flagged = flagged or extra_flagged
 
             self.output_moderation_handler = None
             if flagged:

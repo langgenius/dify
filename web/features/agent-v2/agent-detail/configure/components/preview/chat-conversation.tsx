@@ -3,6 +3,7 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { Ref } from 'react'
 import type { AgentPreviewChatConfig } from './chat-config'
+import type { ChatProps } from '@/app/components/base/chat/chat'
 import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
@@ -22,6 +23,7 @@ import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/cha
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { saveGenerativeUIState } from '@/features/generative-ui/state-client'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
 import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
@@ -82,6 +84,7 @@ export function AgentPreviewChatConversation({
   config,
   conversationId,
   currentModel: _currentModel,
+  disabled,
   draftType,
   initialChatTree,
   inputs,
@@ -106,6 +109,7 @@ export function AgentPreviewChatConversation({
   config: AgentPreviewChatConfig
   conversationId?: string | null
   currentModel?: AgentComposerModel
+  disabled?: boolean
   draftType?: 'debug_build'
   initialChatTree: ChatItemInTree[]
   inputs: Inputs
@@ -130,6 +134,10 @@ export function AgentPreviewChatConversation({
     select: (data) => data.profile,
   })
   const sendInterruptedRef = useRef(false)
+  const disabledRef = useRef(disabled)
+  useLayoutEffect(() => {
+    disabledRef.current = disabled
+  }, [disabled])
   const [isSendPending, setIsSendPending] = useState(false)
   const notifySendInterrupted = useCallback(() => {
     if (sendInterruptedRef.current) return
@@ -142,6 +150,7 @@ export function AgentPreviewChatConversation({
     setTargetMessageId,
     isResponding,
     handleSend,
+    handleContentBlockStateSaved,
     suggestedQuestions,
     handleStop,
     handleAnnotationAdded,
@@ -163,14 +172,39 @@ export function AgentPreviewChatConversation({
     { isNewAgent: true },
   )
 
+  const handleGenerativeUIStateChange: NonNullable<ChatProps['onGenerativeUIStateChange']> =
+    useCallback(
+      async (messageId, blockId, state) => {
+        const result = await saveGenerativeUIState(
+          { kind: 'agent', agentId },
+          messageId,
+          blockId,
+          state,
+        )
+        handleContentBlockStateSaved(messageId, result.block)
+        // Refetch when reopening history without remounting the form currently being edited.
+        await queryClient.invalidateQueries({
+          queryKey: consoleQuery.agent.byAgentId.chatMessages.get.key({
+            input: { params: { agent_id: agentId } },
+          }),
+          refetchType: 'none',
+        })
+      },
+      [agentId, handleContentBlockStateSaved, queryClient],
+    )
+
   const doSend: OnSend = useCallback(
     async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+      if (disabled) return false
+
       sendInterruptedRef.current = false
       setIsSendPending(true)
       let sendStarted = false
 
       try {
         const preparedAgentSoulConfig = await onSaveDraftBeforeRun?.()
+        if (disabledRef.current) return false
+
         const runtimeAgentSoulConfig = preparedAgentSoulConfig || agentSoulConfig
         const runtimeInputsForm = preparedAgentSoulConfig
           ? getAgentSoulInputsForm(runtimeAgentSoulConfig)
@@ -260,6 +294,7 @@ export function AgentPreviewChatConversation({
       agentSoulConfig,
       chatList,
       conversationId,
+      disabled,
       draftType,
       docLink,
       handleSend,
@@ -277,7 +312,10 @@ export function AgentPreviewChatConversation({
   )
 
   const doStopResponding = useCallback(async () => {
-    if (await handleStop()) notifySendInterrupted()
+    if (await handleStop()) {
+      setIsSendPending(false)
+      notifySendInterrupted()
+    }
   }, [handleStop, notifySendInterrupted])
 
   const doRegenerate = useCallback(
@@ -319,12 +357,14 @@ export function AgentPreviewChatConversation({
       onBeforeSpeechToText={onBeforeSpeechToText}
       chatList={chatList}
       isResponding={isResponding}
+      inputDisabled={disabled || isSendPending}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       sendButtonLoading={sendButtonLoading}
       chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 pb-22!' : 'px-3')}
       chatFooterClassName={isEmptyChat ? 'hidden' : 'px-3 pb-0 pt-10'}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
+      onGenerativeUIStateChange={handleGenerativeUIStateChange}
       inputs={inputs}
       inputsForm={inputsForm}
       onRegenerate={doRegenerate}

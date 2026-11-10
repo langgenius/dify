@@ -1543,6 +1543,7 @@ export const zAgentSensitiveWordAvoidanceFeatureConfig = z.object({
  */
 export const zAgentSoulAppFeaturesConfig = z.object({
   file_upload: zAgentFileUploadFeatureConfig.optional(),
+  generative_ui: zAgentFeatureToggleConfig.optional(),
   opening_statement: z.string().nullish(),
   retriever_resource: zAgentFeatureToggleConfig.nullish(),
   sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),

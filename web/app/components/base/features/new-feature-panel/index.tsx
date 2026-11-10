@@ -12,6 +12,7 @@ import ConversationOpener from '@/app/components/base/features/new-feature-panel
 import { FeaturePanelDrawer } from '@/app/components/base/features/new-feature-panel/feature-panel-drawer'
 import FileUpload from '@/app/components/base/features/new-feature-panel/file-upload'
 import { FollowUp } from '@/app/components/base/features/new-feature-panel/follow-up'
+import GenerativeUI from '@/app/components/base/features/new-feature-panel/generative-ui'
 import ImageUpload from '@/app/components/base/features/new-feature-panel/image-upload'
 import Moderation from '@/app/components/base/features/new-feature-panel/moderation'
 import MoreLikeThis from '@/app/components/base/features/new-feature-panel/more-like-this'
@@ -37,6 +38,7 @@ type Props = Readonly<{
   showThoughtsToggle?: boolean
   showModeration?: boolean
   showAnnotationReply?: boolean
+  showGenerativeUI?: boolean
   promptVariables?: PromptVariable[]
   workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
@@ -56,6 +58,7 @@ const NewFeaturePanel = ({
   showThoughtsToggle = false,
   showModeration = true,
   showAnnotationReply = true,
+  showGenerativeUI = false,
   promptVariables,
   workflowVariables,
   onAutoAddPromptVariable,
@@ -108,6 +111,7 @@ const NewFeaturePanel = ({
             />
           )}
           {isChatMode && <FollowUp disabled={disabled} onChange={onChange} />}
+          {showGenerativeUI && <GenerativeUI disabled={disabled} onChange={onChange} />}
           {text2speechDefaultModel && (isChatMode || !inWorkflow) && (
             <TextToSpeech disabled={disabled} onChange={onChange} />
           )}

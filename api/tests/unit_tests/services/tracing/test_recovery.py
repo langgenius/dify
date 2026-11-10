@@ -576,10 +576,8 @@ def save_agent_stop(
     )
     pipeline._task_state.llm_result.message.content = answer
     if process_stream:
-        # Token estimates and moderation are separate external boundaries;
-        # exercise real stream dispatch, SQL save, commit and notification.
+        # Skip provider token estimates while exercising real stream dispatch and persistence.
         monkeypatch.setattr(pipeline, "_handle_stop", lambda _event: None)
-        monkeypatch.setattr(pipeline, "handle_output_moderation_when_task_finished", lambda _answer: None)
         list(pipeline._process_stream_response(publisher=None))
     elif consumer_session is None:
         with case.collection.sessions.begin() as session:

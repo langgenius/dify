@@ -815,6 +815,8 @@ class WorkflowBasedAppRunner:
                     QueueTextChunkEvent(
                         text=event.chunk,
                         from_variable_selector=list(event.selector),
+                        node_execution_id=event.id,
+                        is_final=event.is_final,
                         in_iteration_id=iteration_id,
                         in_loop_id=loop_id,
                     )

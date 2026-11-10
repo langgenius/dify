@@ -1031,6 +1031,48 @@ export const zNotWorkflowAppError = zErrorResponse.and(
   }),
 )
 
+export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
+
+/**
+ * OpenUIContentBlock
+ */
+export const zOpenUiContentBlock = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+  id: z.string(),
+  library_version: z.literal('dify-ui-v1'),
+  sequence: z.int().gte(0),
+  source: z.string(),
+  status: zOpenUiContentStatus,
+  text_offset: z.int().gte(0),
+  type: z.literal('openui'),
+})
+
+/**
+ * OpenUIStatePayload
+ */
+export const zOpenUiStatePayload = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * OpenUIStateResponse
+ */
+export const zOpenUiStateResponse = z.object({
+  block: zOpenUiContentBlock,
+})
+
+/**
+ * OpenuiBlockNotReadyError
+ *
+ * Only completed OpenUI blocks accept form state.
+ */
+export const zOpenuiBlockNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('openui_block_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
 /**
  * ParagraphInput
  *
@@ -2088,6 +2130,7 @@ export const zWebMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
+  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.uuid(),
   created_at: z.int().nullish(),
   currency: z.string().nullish(),
@@ -2262,6 +2305,7 @@ export const zWebMessageListItemWritable = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
+  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.uuid(),
   created_at: z.int().nullish(),
   currency: z.string().nullish(),
@@ -2578,6 +2622,18 @@ export const zGetMessagesQuery = z.object({
  * Success
  */
 export const zGetMessagesResponse = zWebMessageInfiniteScrollPagination
+
+export const zPutMessagesByMessageIdContentBlocksByBlockIdStateBody = zOpenUiStatePayload
+
+export const zPutMessagesByMessageIdContentBlocksByBlockIdStatePath = z.object({
+  block_id: z.string(),
+  message_id: z.uuid(),
+})
+
+/**
+ * Draft saved
+ */
+export const zPutMessagesByMessageIdContentBlocksByBlockIdStateResponse = zOpenUiStateResponse
 
 export const zPostMessagesByMessageIdFeedbacksBody = zMessageFeedbackPayload
 

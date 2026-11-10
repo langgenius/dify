@@ -1216,6 +1216,30 @@ Get Agent App message details by ID
 | 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [PUT] /agent/{agent_id}/messages/{message_id}/content-blocks/{block_id}/state
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| block_id | path |  | Yes | string |
+| message_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OpenUIStatePayload](#openuistatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft saved | **application/json**: [OpenUIStateResponse](#openuistateresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [OpenuiBlockNotReadyError](#openuiblocknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /agent/{agent_id}/publish
 #### Parameters
 
@@ -3267,6 +3291,30 @@ Get message details by ID
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /apps/{app_id}/messages/{message_id}/content-blocks/{block_id}/state
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| block_id | path |  | Yes | string |
+| message_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OpenUIStatePayload](#openuistatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft saved | **application/json**: [OpenUIStateResponse](#openuistateresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [OpenuiBlockNotReadyError](#openuiblocknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/model-config
@@ -8082,6 +8130,32 @@ Request body:
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageCursorNotFoundError](#messagecursornotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /installed-apps/{installed_app_id}/messages/{message_id}/content-blocks/{block_id}/state
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| block_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
+| message_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OpenUIStatePayload](#openuistatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft saved | **application/json**: [OpenUIStateResponse](#openuistateresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageNotFoundError](#messagenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [OpenuiBlockNotReadyError](#openuiblocknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -20774,6 +20848,7 @@ Visibility and lifecycle scope of an Agent record.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | file_upload | [AgentFileUploadFeatureConfig](#agentfileuploadfeatureconfig) |  | No |
+| generative_ui | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | opening_statement | string |  | No |
 | retriever_resource | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | sensitive_word_avoidance | [AgentSensitiveWordAvoidanceFeatureConfig](#agentsensitivewordavoidancefeatureconfig) |  | No |
@@ -26161,6 +26236,7 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | No |
+| content_blocks | [ [OpenUIContentBlock](#openuicontentblock) ] |  | No |
 | conversation_id | string (uuid) |  | Yes |
 | created_at | integer |  | No |
 | currency | string |  | No |
@@ -31018,6 +31094,7 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | annotation_hit_history | [ConversationAnnotationHitHistory](#conversationannotationhithistory) |  | No |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | Yes |
+| content_blocks | [ [OpenUIContentBlock](#openuicontentblock) ] |  | No |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
 | error | string |  | No |
@@ -31047,6 +31124,7 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | annotation_hit_history | [ConversationAnnotationHitHistory](#conversationannotationhithistory) |  | No |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | Yes |
+| content_blocks | [ [OpenUIContentBlock](#openuicontentblock) ] |  | No |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
 | error | string |  | No |
@@ -32065,6 +32143,45 @@ OAuth schema
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | type | string, <br>**Default:** onetime_email |  | No |
+
+#### OpenUIContentBlock
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_state | object |  | Yes |
+| id | string |  | Yes |
+| library_version | string |  | Yes |
+| sequence | integer |  | Yes |
+| source | string |  | Yes |
+| status | [OpenUIContentStatus](#openuicontentstatus) |  | Yes |
+| text_offset | integer | Position in the prose answer before this block, measured in Unicode code points. | Yes |
+| type | string |  | Yes |
+
+#### OpenUIContentStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenUIContentStatus | string |  |  |
+
+#### OpenUIStatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_state | object |  | Yes |
+
+#### OpenUIStateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| block | [OpenUIContentBlock](#openuicontentblock) |  | Yes |
+
+#### OpenuiBlockNotReadyError
+
+Only completed OpenUI blocks accept form state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenuiBlockNotReadyError |  | Only completed OpenUI blocks accept form state. |  |
 
 #### Option
 

@@ -67,6 +67,7 @@ from graphon.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from libs.generative_ui import OpenUIStreamParser
 from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
@@ -267,6 +268,7 @@ class _AgentProcessRecorder:
         dify_context: DifyRunContext,
         message_id: str,
         queue_manager: AppQueueManager,
+        generative_ui_enabled: bool = False,
     ) -> None:
         self._dify_context = dify_context
         self._message_id = message_id
@@ -278,6 +280,7 @@ class _AgentProcessRecorder:
         self._tool_by_call_id: dict[str, str] = {}
         self._open_tool_by_name: dict[str, set[str]] = {}
         self._knowledge_receipts: set[str] = set()
+        self._answer_parser = OpenUIStreamParser(message_id) if generative_ui_enabled else None
 
     def handle_stream_event(self, event: AgentBackendStreamInternalEvent) -> None:
         data = event.data
@@ -331,6 +334,17 @@ class _AgentProcessRecorder:
             self._record_tool_return_part(part)
 
     def append_answer_text(self, content_delta: str) -> None:
+        if self._answer_parser is not None:
+            content_delta = "".join(part for part in self._answer_parser.feed(content_delta) if isinstance(part, str))
+        self._append_answer_prose(content_delta)
+
+    def finish_answer_text(self) -> None:
+        if self._answer_parser is not None:
+            self._append_answer_prose(
+                "".join(part for part in self._answer_parser.finish("cancelled") if isinstance(part, str))
+            )
+
+    def _append_answer_prose(self, content_delta: str) -> None:
         if not content_delta:
             return
 
@@ -341,6 +355,11 @@ class _AgentProcessRecorder:
         self._update_thought(self._answer_thought_id, answer_delta=content_delta)
 
     def trim_answer_suffix(self, final_answer: str) -> None:
+        if self._answer_parser is not None:
+            parser = OpenUIStreamParser(self._message_id)
+            final_answer = "".join(
+                part for part in [*parser.feed(final_answer), *parser.finish("completed")] if isinstance(part, str)
+            )
         if not final_answer or self._answer_thought_id is None:
             return
 
@@ -701,6 +720,7 @@ class AgentAppRunner:
             query=query,
             session_scope=scope,
             binding_id=runtime.binding_id,
+            generative_ui_enabled=agent_soul.app_features.generative_ui.enabled,
         )
 
         terminal_usage = None
@@ -854,6 +874,7 @@ class AgentAppRunner:
         query: str | None,
         session_scope: AgentAppSessionScope,
         binding_id: str,
+        generative_ui_enabled: bool = False,
     ):
         """Consume backend events while preserving raw recorder granularity."""
         terminal = None
@@ -861,6 +882,7 @@ class AgentAppRunner:
             dify_context=dify_context,
             message_id=message_id,
             queue_manager=queue_manager,
+            generative_ui_enabled=generative_ui_enabled,
         )
         text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
         last_event_id: str | None = None
@@ -883,10 +905,20 @@ class AgentAppRunner:
                 user_query=query,
             )
 
-        def flush_pending_agent_message_text() -> None:
-            pending_text = text_delta_debouncer.flush()
-            if pending_text:
-                persist_answer_text(pending_text)
+        def flush_pending_agent_message_text(*, finish: bool = False) -> None:
+            try:
+                pending_text = text_delta_debouncer.flush()
+                if pending_text:
+                    persist_answer_text(pending_text)
+            finally:
+                if finish:
+                    try:
+                        process_recorder.finish_answer_text()
+                    except Exception:
+                        db.session.rollback()
+                        logger.warning(
+                            "Failed to finish Agent App answer text: message_id=%s", message_id, exc_info=True
+                        )
 
         try:
             public_events = self._agent_backend_client.stream_events(
@@ -911,7 +943,7 @@ class AgentAppRunner:
                 if terminal is not None:
                     break
                 if queue_manager.is_stopped():
-                    flush_pending_agent_message_text()
+                    flush_pending_agent_message_text(finish=True)
                     self._cancel_run(
                         run_id,
                         after=last_event_id,
@@ -924,7 +956,7 @@ class AgentAppRunner:
                     raise GenerateTaskStoppedError()
                 for internal_event in internal_events:
                     if queue_manager.is_stopped():
-                        flush_pending_agent_message_text()
+                        flush_pending_agent_message_text(finish=True)
                         self._cancel_run(
                             run_id,
                             after=last_event_id,
@@ -962,9 +994,10 @@ class AgentAppRunner:
                             continue
                         continue
         except GenerateTaskStoppedError:
+            flush_pending_agent_message_text(finish=True)
             raise
         except Exception as error:
-            flush_pending_agent_message_text()
+            flush_pending_agent_message_text(finish=True)
             self._cancel_run(
                 run_id,
                 after=last_event_id,
@@ -978,7 +1011,7 @@ class AgentAppRunner:
                 raise GenerateTaskStoppedError() from error
             raise
         try:
-            flush_pending_agent_message_text()
+            flush_pending_agent_message_text(finish=True)
         except GenerateTaskStoppedError:
             if terminal is not None:
                 self._finish_stopped_terminal(

@@ -233,6 +233,26 @@ export type MessageCursorNotFoundError = ErrorResponse & {
   status: 404
 }
 
+export type OpenUiStatePayload = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+}
+
+export type OpenUiStateResponse = {
+  block: OpenUiContentBlock
+}
+
+export type MessageNotFoundError = ErrorResponse & {
+  code: 'message_not_found'
+  status: 404
+}
+
+export type OpenuiBlockNotReadyError = ErrorResponse & {
+  code: 'openui_block_not_ready'
+  status: 409
+}
+
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
@@ -241,11 +261,6 @@ export type MessageFeedbackPayload = {
 export type MessageFeedbackRatingRequiredError = ErrorResponse & {
   code: 'message_feedback_rating_required'
   status: 400
-}
-
-export type MessageNotFoundError = ErrorResponse & {
-  code: 'message_not_found'
-  status: 404
 }
 
 export type AppMoreLikeThisDisabledError = ErrorResponse & {
@@ -680,6 +695,7 @@ export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
+  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -700,6 +716,21 @@ export type ExploreMessageListItem = {
   status: string
   total_price?: string | null
   readonly total_tokens: number
+}
+
+export type JsonValue = unknown
+
+export type OpenUiContentBlock = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+  id: string
+  library_version: 'dify-ui-v1'
+  sequence: number
+  source: string
+  status: OpenUiContentStatus
+  text_offset: number
+  type: 'openui'
 }
 
 export type SystemParameters = {
@@ -808,6 +839,8 @@ export type RetrieverResource = {
   word_count?: number | null
 }
 
+export type OpenUiContentStatus = 'cancelled' | 'completed' | 'error' | 'streaming'
+
 export type HumanInputFormDefinition = {
   actions?: Array<UserActionConfig>
   display_in_ui?: boolean
@@ -872,8 +905,6 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
-
-export type JsonValue = unknown
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
@@ -960,6 +991,7 @@ export type ExploreMessageListItemWritable = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
+  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -1407,6 +1439,36 @@ export type GetInstalledAppsByInstalledAppIdMessagesResponses = {
 
 export type GetInstalledAppsByInstalledAppIdMessagesResponse =
   GetInstalledAppsByInstalledAppIdMessagesResponses[keyof GetInstalledAppsByInstalledAppIdMessagesResponses]
+
+export type PutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateData = {
+  body: OpenUiStatePayload
+  path: {
+    block_id: string
+    installed_app_id: string
+    message_id: string
+  }
+  query?: never
+  url: '/installed-apps/{installed_app_id}/messages/{message_id}/content-blocks/{block_id}/state'
+}
+
+export type PutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateErrors = {
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
+  409: OpenuiBlockNotReadyError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateError =
+  PutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateErrors[keyof PutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateErrors]
+
+export type PutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponses =
+  {
+    200: OpenUiStateResponse
+  }
+
+export type PutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponse =
+  PutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponses[keyof PutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponses]
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = {
   body: MessageFeedbackPayload

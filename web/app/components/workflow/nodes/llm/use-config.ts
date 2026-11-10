@@ -208,6 +208,14 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     deleteNodeInspectorVars,
   })
 
+  const handleGenerativeUIChange = (enabled: boolean) => {
+    const nextInputs = produce(inputRef.current, (draft) => {
+      draft.generative_ui_enabled = enabled
+    })
+    setInputs(nextInputs)
+    deleteNodeInspectorVars(id)
+  }
+
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: promptConfig.filterVar,
@@ -251,6 +259,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleStructureOutputEnableChange: structuredOutputConfig.handleStructureOutputEnableChange,
     filterJinja2InputVar: promptConfig.filterJinja2InputVar,
     handleReasoningFormatChange: structuredOutputConfig.handleReasoningFormatChange,
+    handleGenerativeUIChange,
   }
 }
 

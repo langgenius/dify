@@ -189,3 +189,42 @@ class TestBasedGenerateTaskPipeline:
         assert result is None
         handler.stop_thread.assert_called_once()
         assert pipeline.output_moderation_handler is None
+
+
+@pytest.mark.parametrize("prose", ["Safe summary", ""])
+@pytest.mark.parametrize("keyword", ["openui", "Stack"])
+def test_independent_ui_moderation_never_returns_transformed_source(
+    agent_generate_entity,
+    agent_queue_manager,
+    prose: str,
+    keyword: str,
+) -> None:
+    from core.moderation.output_moderation import ModerationRule, OutputModeration
+    from extensions.ext_code_based_extension import code_based_extension
+
+    code_based_extension.init()
+    pipeline = BasedGenerateTaskPipeline(
+        application_generate_entity=agent_generate_entity,
+        queue_manager=agent_queue_manager,
+        stream=True,
+    )
+    pipeline.output_moderation_handler = OutputModeration(
+        tenant_id="tenant",
+        app_id="app",
+        queue_manager=agent_queue_manager,
+        rule=ModerationRule(
+            type="keywords",
+            config={
+                "keywords": keyword,
+                "inputs_config": {"enabled": False, "preset_response": ""},
+                "outputs_config": {"enabled": True, "preset_response": "transformed UI must not become prose"},
+            },
+        ),
+    )
+    result = pipeline.handle_output_moderation_when_task_finished(
+        prose,
+        extra_texts=['root = Stack([TextContent("openui")]);'],
+    )
+    assert result == prose
+    assert result is not None
+    assert pipeline.output_moderation_handler is None

@@ -1,11 +1,12 @@
-import { LineChart } from 'echarts/charts'
+import { BarChart, LineChart } from 'echarts/charts'
 import { DatasetComponent, GridComponent, TooltipComponent } from 'echarts/components'
 import * as echarts from 'echarts/core'
 import { LegacyGridContainLabel } from 'echarts/features'
 import { CanvasRenderer, SVGRenderer } from 'echarts/renderers'
 
-// Overview uses SVG; Agent monitoring retains its canvas renderer.
+// Overview and generated charts use SVG; Agent monitoring retains its canvas renderer.
 echarts.use([
+  BarChart,
   LineChart,
   DatasetComponent,
   GridComponent,

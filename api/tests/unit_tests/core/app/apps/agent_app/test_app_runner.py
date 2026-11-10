@@ -1079,6 +1079,66 @@ def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -
     assert rows[0].answer == "intermediate "
 
 
+def test_interrupted_openui_answer_persists_only_prose(sqlite_session: Session) -> None:
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
+        generative_ui_enabled=True,
+    )
+    for character in 'Summary\n```openui\nroot = Card("Incomplete":':
+        recorder.append_answer_text(character)
+    recorder.finish_answer_text()
+
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    assert rows[0].answer == "Summary\n"
+
+
+def test_openui_final_answer_trim_removes_duplicate_prose(sqlite_session: Session) -> None:
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
+        generative_ui_enabled=True,
+    )
+    final_answer = 'Summary\n```openui\nroot = Text("Result")\n```'
+    recorder.append_answer_text("Earlier answer\n")
+    for character in final_answer:
+        recorder.append_answer_text(character)
+    recorder.finish_answer_text()
+    recorder.trim_answer_suffix(final_answer)
+
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    assert rows[0].answer == "Earlier answer\n"
+
+
+def test_openui_recorder_preserves_ordinary_trailing_fence(sqlite_session: Session) -> None:
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
+        generative_ui_enabled=True,
+    )
+    prose = "```python\nprint(1)\n```"
+    recorder.append_answer_text(prose)
+    recorder.finish_answer_text()
+    assert _thought_rows(sqlite_session)[0].answer == prose
+
+
+def test_disabled_openui_recorder_preserves_code_examples(sqlite_session: Session) -> None:
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
+    )
+    prose = '```openui\nroot = Text("Example")\n```'
+    recorder.append_answer_text(prose)
+    recorder.finish_answer_text()
+    assert _thought_rows(sqlite_session)[0].answer == prose
+
+
 def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(

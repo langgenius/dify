@@ -4944,11 +4944,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/llm/components/panel-output-section.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/nodes/llm/components/resolution-picker.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1

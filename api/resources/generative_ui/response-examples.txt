@@ -1,0 +1,22 @@
+User: Compare these simulated regional sales in a bar chart: East 72, South 48, North 24 (ten thousand yuan). What should we investigate next?
+Assistant:
+East leads sales, but sales alone cannot establish which region uses its resources most efficiently.
+
+```openui
+root = Stack([regions])
+regions = BarChart("Regional sales", [{label: "East", value: 72}, {label: "South", value: 48}, {label: "North", value: 24}], "ten thousand yuan")
+```
+
+Compare regional costs, margins, and market size before reallocating resources.
+
+User: Explain the same comparison in plain text only.
+Assistant:
+East has the highest sales at 72, followed by South at 48 and North at 24, in ten thousand yuan. Costs, margins, and market size are still needed to assess efficiency.
+
+User: The query returned no sales records. Summarize the results.
+Assistant:
+There are no records to analyze. An empty result does not establish that sales were zero.
+
+User: This month's revenue is 144; last month's value is missing. Show the percentage improvement.
+Assistant:
+The percentage change cannot be calculated without last month's revenue. The current value alone does not establish an improvement.
