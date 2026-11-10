@@ -25,7 +25,6 @@ project-excludes = [
   "controllers/console/datasets/test_datasets.py",
   "controllers/console/datasets/test_datasets_document.py",
   "controllers/console/datasets/test_external.py",
-  "controllers/console/datasets/test_hit_testing.py",
   "controllers/console/datasets/test_hit_testing_base.py",
   "controllers/console/datasets/test_metadata.py",
   "controllers/console/snippets/test_snippet_workflow.py",
