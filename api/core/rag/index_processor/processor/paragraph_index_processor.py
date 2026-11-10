@@ -10,6 +10,7 @@ from typing import Any, TypedDict, cast, override
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.app.apps.exc import ModerationInvocationError
 from core.app.file_access import DatabaseFileAccessController
 from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
@@ -304,7 +305,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         """
         For each segment, concurrently call generate_summary to generate a summary
         and write it to the summary attribute of PreviewDetail.
-        In preview mode (indexing-estimate), if any summary generation fails, the method will raise an exception.
+        In preview mode, failures raise rather than returning partial previews.
+        Moderation failures retain their original type for the HTTP error mapping.
         """
         import concurrent.futures
 
@@ -376,6 +378,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         # In preview mode (indexing-estimate), if there are any errors, fail the request
         if errors:
+            for error in errors:
+                if isinstance(error, ModerationInvocationError):
+                    raise error
             error_messages = [str(e) for e in errors]
             error_summary = (
                 f"Failed to generate summaries for {len(errors)} chunk(s). "

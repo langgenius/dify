@@ -78,13 +78,21 @@ class ModerationGateway(Protocol):
     ) -> ModerationVerdict: ...
 
 
-class ModerationRejectedError(Exception):
+class ModerationError(Exception):
+    """Base contract for terminal moderation failures, independent of model invocation and transport."""
+
+
+class ModerationRejectedError(ModerationError):
     """The original content cannot be delivered, regardless of a backend's replacement action."""
 
     def __init__(self, phase: ModerationPhase, message: str) -> None:
         """Preserve the rejected phase and expose the backend message without rejected content."""
         self.phase = phase
         super().__init__(message or f"Model {phase} was rejected by moderation.")
+
+
+class ModerationUnavailableError(ModerationError):
+    """A moderation backend could not evaluate content; callers must not substitute approval or fallback results."""
 
 
 class ModerationService:

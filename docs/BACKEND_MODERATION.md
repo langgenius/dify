@@ -261,3 +261,14 @@ moderation failures instead of continuing with no automatic conditions.
 KnowledgeFS emits a failed node event with the moderation exception type and
 does not issue a retrieval request. Ordinary extraction and parsing failures
 keep their existing fallback behavior.
+
+Paragraph and parent-child summary previews preserve moderation failures from
+their worker futures. Indexing-estimate adapters and application services pass
+the shared moderation error contract through unchanged, so existing HTTP
+handlers return `moderation_rejected` (400) or `moderation_unavailable` (503)
+instead of a generic indexing-estimate error. Ordinary preview failures keep
+their existing aggregated error messages.
+
+Background summary generation records `ERROR` on the affected summary and does
+not save or vectorize the failed LLM output. Other segments can still finish;
+the original document's indexing status is independent of its summary status.

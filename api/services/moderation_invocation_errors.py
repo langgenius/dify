@@ -6,7 +6,7 @@ classification without importing concrete moderation gateways.
 """
 
 from core.app.apps.exc import ModerationInvocationError
-from services.moderation_service import ModerationRejectedError
+from services.moderation_service import ModerationRejectedError, ModerationUnavailableError
 
 
 class ModerationRejectedInvocationError(ModerationRejectedError, ModerationInvocationError):
@@ -16,7 +16,7 @@ class ModerationRejectedInvocationError(ModerationRejectedError, ModerationInvoc
     status_code = 400
 
 
-class ModerationUnavailableInvocationError(ModerationInvocationError):
+class ModerationUnavailableInvocationError(ModerationUnavailableError, ModerationInvocationError):
     """Fail closed without exposing provider credentials, plugin errors, or rejected content."""
 
     error_code = "moderation_unavailable"
