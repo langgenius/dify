@@ -75,7 +75,7 @@ class TestParagraphIndexProcessor:
         return document
 
     @pytest.fixture
-    def process_rule(self) -> dict:
+    def process_rule(self) -> dict[str, object]:
         return {
             "mode": "custom",
             "rules": {"segmentation": {"max_tokens": 256, "chunk_overlap": 10, "separator": "\n"}},
