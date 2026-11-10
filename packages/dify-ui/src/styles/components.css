@@ -132,3 +132,41 @@
     animation: none;
   }
 }
+
+[data-dify-segment-thumb] {
+  display: none;
+  transition-property: none;
+}
+
+@supports (anchor-scope: --dify-segment) and (top: anchor(top)) {
+  [data-dify-segmented-control] {
+    anchor-scope: --dify-segment;
+  }
+
+  [data-dify-segmented-control] [role='radio'][data-checked] {
+    anchor-name: --dify-segment;
+  }
+
+  [data-dify-segmented-control]:has([role='radio'][data-checked]) > [data-dify-segment-thumb] {
+    display: block;
+    position: absolute;
+    position-anchor: --dify-segment;
+    inset: anchor(top) anchor(right) anchor(bottom) anchor(left);
+    z-index: -1;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    [data-dify-segmented-control]:not(:has([role='radio'][data-checked]:focus-visible))
+      > [data-dify-segment-thumb] {
+      transition: inset 180ms cubic-bezier(0.2, 0, 0, 1);
+    }
+  }
+
+  [data-dify-segment-sliding] {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    --tw-shadow: 0 0 #0000 !important;
+  }
+}
