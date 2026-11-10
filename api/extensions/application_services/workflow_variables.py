@@ -9,7 +9,7 @@ from repositories.workflow.draft_repository import WorkflowDraftRepository
 from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
 from services.file_service import FileService
 from services.workflow.console_variable_service import ConsoleWorkflowVariableService
-from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
+from services.workflow.variable_file_gateway import WorkflowDraftFileUploader, WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 from tasks.workflow_draft_var_tasks import cleanup_draft_variable_files_task
 
@@ -17,7 +17,7 @@ from tasks.workflow_draft_var_tasks import cleanup_draft_variable_files_task
 def build_workflow_variable_service(*, database_client: sessionmaker[Session]) -> WorkflowVariableService:
     return WorkflowVariableService(
         repository=WorkflowDraftVariableRepository(sessions=database_client),
-        files=FileService(database_client),
+        files=WorkflowDraftFileUploader(FileService(database_client)),
         file_inputs=WorkflowVariableFileGateway(database_client, DatabaseFileAccessController()),
         executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(database_client),
         storage=storage,

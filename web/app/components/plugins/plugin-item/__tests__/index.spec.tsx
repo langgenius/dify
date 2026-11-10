@@ -19,8 +19,8 @@ import PluginItem from '../index'
 const mockEnableMarketplace = vi.fn(() => true)
 
 const mockTheme = vi.fn(() => 'light')
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: mockTheme() }),
+vi.mock('@/features/theme/hooks', () => ({
+  useResolvedTheme: () => mockTheme(),
 }))
 const PluginPageContextProvider = PluginPageContext.Provider
 
