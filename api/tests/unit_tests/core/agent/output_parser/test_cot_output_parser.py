@@ -169,6 +169,87 @@ class TestCotAgentOutputParser:
         assert any('```json {"a":1}' in item for item in result)
 
     # --------------------------------------------------------
+    # Payloads that do not follow the single-action prompt format
+    # --------------------------------------------------------
+
+    def test_code_block_action_list_uses_first_action(self, make_chunk, usage_dict) -> None:
+        content = """```json
+[{"action": "a1", "action_input": {"q": 1}}, {"action": "a2", "action_input": {"q": 2}}]
+```"""
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert [item for item in result if isinstance(item, AgentScratchpadUnit.Action)] == [
+            AgentScratchpadUnit.Action(action_name="a1", action_input={"q": 1})
+        ]
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            [],
+            [1],
+            [{"name": "a"}, {"name": "b"}],
+            [["nested"], {"action": "a1", "action_input": "x"}],
+        ],
+    )
+    def test_code_block_list_without_leading_action_returns_string(self, make_chunk, usage_dict, payload) -> None:
+        chunks = [make_chunk(f"```json\n{json.dumps(payload)}\n```")]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert all(isinstance(item, str) for item in result)
+        assert json.loads("".join(result)) == payload
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            '{"action": "search", "action_input": {"q": "x"}, "reason": "need data"}',
+            '{"reason": "need data", "action": "search", "action_input": {"q": "x"}}',
+            '{"tool_name": "search", "tool_input": {"q": "x"}, "thought": "need data"}',
+        ],
+    )
+    def test_extra_keys_do_not_replace_action_name(self, make_chunk, usage_dict, content) -> None:
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [AgentScratchpadUnit.Action(action_name="search", action_input={"q": "x"})]
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            '{"action": "search", "name": "wrong", "action_input": {"q": "x"}}',
+            '{"name": "wrong", "action": "search", "action_input": {"q": "x"}}',
+            '{"tool": "search", "name": "wrong", "action_input": {"q": "x"}}',
+            '{"name": "wrong", "tool": "search", "action_input": {"q": "x"}}',
+            '{"action_name": "search", "tool": "wrong", "action_input": {"q": "x"}}',
+            '{"tool": "wrong", "action_name": "search", "action_input": {"q": "x"}}',
+        ],
+    )
+    def test_name_key_priority_ignores_key_order(self, make_chunk, usage_dict, content) -> None:
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [AgentScratchpadUnit.Action(action_name="search", action_input={"q": "x"})]
+
+    def test_unknown_name_key_is_still_accepted(self, make_chunk, usage_dict) -> None:
+        chunks = [make_chunk('{"function": "search", "function_input": {"q": "x"}}')]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [AgentScratchpadUnit.Action(action_name="search", action_input={"q": "x"})]
+
+    def test_non_string_action_name_returns_string(self, make_chunk, usage_dict) -> None:
+        payload = {"action": ["search"], "action_input": {"q": "x"}}
+        chunks = [make_chunk(json.dumps(payload))]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [json.dumps(payload)]
+
+    @pytest.mark.parametrize("action_input", [42, 1.5, True, ["x"]])
+    def test_unsupported_action_input_type_returns_string(self, make_chunk, usage_dict, action_input) -> None:
+        payload = {"action": "search", "action_input": action_input}
+        chunks = [make_chunk(json.dumps(payload))]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [json.dumps(payload)]
+
+    def test_non_action_json_keeps_non_ascii_text(self, make_chunk, usage_dict) -> None:
+        chunks = [make_chunk('{"姓名": "张三"}')]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == ['{"姓名": "张三"}']
+
+    # --------------------------------------------------------
     # Action / Thought prefix handling
     # --------------------------------------------------------
 
