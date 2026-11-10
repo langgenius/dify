@@ -64,9 +64,7 @@ def test_parse_services_discards_empty_items() -> None:
     assert parse_services(" db_postgres, redis,, sandbox ") == ["db_postgres", "redis", "sandbox"]
 
 
-def test_stack_up_uses_waiting_compose_command(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_stack_up_uses_waiting_compose_command(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     calls: list[list[str]] = []
 
     def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
