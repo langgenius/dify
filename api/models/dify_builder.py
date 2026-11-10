@@ -303,6 +303,7 @@ class DifyBuilderExecutionRequest(BuilderRowIdentity, TypeBase, kw_only=True, eq
     native_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     task_id: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
     observations: Mapped[list] = mapped_column(AdjustedJSON, nullable=False, insert_default=list, default_factory=list)
+    canvas_path: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
     completion_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
     completion_summary: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(

@@ -26,8 +26,9 @@ import dataclasses
 from collections.abc import Callable, Iterable, Iterator
 from datetime import timedelta
 from itertools import islice
+from typing import Literal
 
-from sqlalchemy import func, select, update
+from sqlalchemy import Select, false, func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased, sessionmaker
@@ -633,7 +634,12 @@ class SqlDifyBuilderRepository:
             ):
                 raise ConflictError("lifecycle control targets a superseded task")
             old_generation = generation(context)
-            self._stop_context(sql, row, context, client_action_id)
+            if operation == "clear":
+                self._revoke_cleared_native_authority(sql, session, client_action_id)
+                settlement = self._clear_execution_settlement(sql, session, context)
+            else:
+                self._stop_context(sql, row, context, client_action_id)
+                settlement = context.task_control["settlement"]
             mark_task_abandoned(context, operation)
             context.logical_task_id = target
             context.task_control["generation"] = old_generation + 1
@@ -660,25 +666,21 @@ class SqlDifyBuilderRepository:
                 "task_status": "abandoned",
                 "conversation_cleared": operation == "clear",
                 "conversation_last_seq": -1 if operation == "clear" else context.next_seq - 1,
-                "settlement": context.task_control["settlement"],
+                "settlement": settlement,
             }
             saved_receipt = {"id": client_action_id, "intent": intent, "receipt": receipt, "generation": old_generation}
             if operation == "clear":
-                native_settlement = self._revoke_cleared_native_authority(sql, row, client_action_id)
-                if native_settlement != "settled":
-                    context.task_control["settlement"] = native_settlement
-                    receipt["settlement"] = native_settlement
                 floor = {"version": row.version + 1, "seq_floor": context.next_seq}
                 context = DifyBuilderContext(
                     paused=True,
                     last_command_id=client_action_id,
+                    task_status="abandoned",
                     task_control={
                         "generation": old_generation + 1,
                         "conversation_clear": floor,
-                        "settlement": context.task_control["settlement"],
+                        "settlement": settlement,
                     },
                 )
-                context.task_status = "abandoned"
             context.task_control["lifecycle_receipt"] = saved_receipt
             session.version = self._compare_and_advance_in_session(
                 sql, session_id, row.version, session.current_state, context, []
@@ -686,43 +688,107 @@ class SqlDifyBuilderRepository:
             return session, context, receipt, old_generation
 
     @staticmethod
-    def _revoke_cleared_native_authority(sql, row, key):
+    def _owned_request_ids(session: DomainSession) -> Select[tuple[str]]:
+        """Bind execution evidence to this authorized Session and its owner."""
+        return select(DifyBuilderExecutionRequest.id).where(
+            DifyBuilderExecutionRequest.session_id == session.id,
+            DifyBuilderExecutionRequest.tenant_id == session.tenant_id,
+            DifyBuilderExecutionRequest.actor_id == session.owner_account_id,
+        )
+
+    def _native_request_ids(self, session: DomainSession) -> Select[tuple[str]]:
+        """Include retained native requests whose authority can outlive a task change."""
+        return self._owned_request_ids(session).where(
+            DifyBuilderExecutionRequest.context["policy_version"].as_string() == "builder-native-test-v1"
+        )
+
+    def _revoke_cleared_native_authority(self, sql: Session, session: DomainSession, key: str) -> None:
+        """Revoke live native authority under the caller's Session lock, without external I/O."""
+        from runtime_contracts.builder.execution import canonical_digest
         from services.dify_builder.native_testing.lifecycle import revoke_request_authority
 
-        request_ids = list(
-            sql.scalars(
-                select(DifyBuilderExecutionRequest.id)
-                .where(
-                    DifyBuilderExecutionRequest.session_id == row.id,
-                    DifyBuilderExecutionRequest.tenant_id == row.tenant_id,
-                    DifyBuilderExecutionRequest.actor_id == row.owner_account_id,
-                    DifyBuilderExecutionRequest.context["policy_version"].as_string() == "builder-native-test-v1",
-                    DifyBuilderExecutionRequest.state.in_(("running", "waiting")),
-                )
-                .with_for_update()
-            )
+        request_ids = self._native_request_ids(session).where(
+            DifyBuilderExecutionRequest.state.in_(("running", "waiting"))
         )
-        from models.dify_builder_native_tests import NativeEffectOperation
-        from runtime_contracts.builder.execution import canonical_digest
-
-        uncertain = (
-            sql.scalar(
-                select(NativeEffectOperation.id)
-                .where(
-                    NativeEffectOperation.request_id.in_(request_ids),
-                    NativeEffectOperation.tenant_id == row.tenant_id,
-                    NativeEffectOperation.state.in_(("claimed", "unknown")),
-                )
-                .limit(1)
-            )
-            if request_ids
-            else None
-        )
-        for request_id in request_ids:
+        for request_id in list(sql.scalars(request_ids.with_for_update())):
             revoke_request_authority(
-                sql, request_id=request_id, tenant_id=row.tenant_id, cancellation_key=canonical_digest(key)
+                sql, request_id=request_id, tenant_id=session.tenant_id, cancellation_key=canonical_digest(key)
             )
-        return "unknown" if uncertain else "pending" if request_ids else "settled"
+
+    def _clear_execution_settlement(
+        self, sql: Session, session: DomainSession, context: DifyBuilderContext
+    ) -> Literal["settled", "pending", "unknown"]:
+        """Classify the pre-clear task and retained native execution without treating a sealed request as live."""
+        from models.dify_builder_native_tests import NativeDispatch, NativeEffectOperation
+        from services.dify_builder.task_native_cancel import task_execution_settlement
+
+        task = task_execution_settlement(sql, session.id, context)
+        if task == "unknown":
+            return "unknown"
+        native_ids = self._native_request_ids(session)
+        dispatches = select(NativeDispatch.id).where(
+            NativeDispatch.request_id.in_(native_ids), NativeDispatch.tenant_id == session.tenant_id
+        )
+        effects = select(NativeEffectOperation.id).where(
+            NativeEffectOperation.request_id.in_(native_ids), NativeEffectOperation.tenant_id == session.tenant_id
+        )
+        live_requests = native_ids.where(DifyBuilderExecutionRequest.state.in_(("running", "waiting")))
+        open_runs = select(DifyBuilderRun.id).where(
+            DifyBuilderRun.session_id == session.id,
+            DifyBuilderRun.inputs_ref == context.test_input_ref,
+            DifyBuilderRun.immutable.is_(False),
+        )
+        unknown, pending = sql.execute(
+            select(
+                or_(
+                    dispatches.where(NativeDispatch.state == "unknown").exists(),
+                    effects.where(NativeEffectOperation.state.in_(("claimed", "unknown"))).exists(),
+                ),
+                or_(
+                    live_requests.exists(),
+                    dispatches.where(NativeDispatch.state.in_(("queued", "published", "claimed"))).exists(),
+                    open_runs.exists() if context.test_input_ref else false(),
+                ),
+            )
+        ).one()
+        if unknown:
+            return "unknown"
+        return "pending" if task == "pending" or pending else "settled"
+
+    def cleared_execution_settled(self, session: DomainSession) -> bool:
+        """Observe the exact predecessor of an authorized pending clear without editing or exposing its history.
+
+        A missing predecessor or missing execution evidence cannot settle the clear. The original
+        receipt and the fence remain immutable even when the retained execution is now terminal.
+        """
+        with self._session_factory() as sql:
+            commit = DifyBuilderSessionCommit.context
+            previous = sql.execute(
+                select(
+                    commit["test_input_ref"].as_string(),
+                    commit["verify_run_id"].as_string(),
+                    commit["task_control"],
+                ).where(
+                    DifyBuilderSessionCommit.session_id == session.id,
+                    DifyBuilderSessionCommit.version == session.version - 1,
+                )
+            ).one_or_none()
+            if previous is None:
+                return False
+            test_input_ref, verify_run_id, task_control = previous
+            context = DifyBuilderContext(
+                test_input_ref=test_input_ref or "", verify_run_id=verify_run_id or "", task_control=task_control or {}
+            )
+            if self._clear_execution_settlement(sql, session, context) != "settled":
+                return False
+            if context.verify_run_id:
+                return True
+            if not context.test_input_ref:
+                return False
+            known_requests = self._owned_request_ids(session).where(
+                DifyBuilderExecutionRequest.test_input_id == context.test_input_ref
+            )
+            return sql.scalar(known_requests.limit(1)) is not None
 
     def reserve_workflow_writer(self, session_id: str, token: str, generation: int, lease_seconds: int) -> bool:
         """Reserve the shared workflow owner without external I/O under SQL locks.

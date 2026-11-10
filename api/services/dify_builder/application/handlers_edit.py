@@ -71,6 +71,7 @@ from services.dify_builder.application.handlers_fix import (
     start_schema,
     test_failure_reason,
     testdata_form,
+    wait_for_native_approval,
     without_endpoint_values,
 )
 from services.dify_builder.application.runner import Env, Handler, StepResult
@@ -865,12 +866,6 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             actor=turn.actor,
         )
 
-    if status == "succeeded":
-        progress.complete("edit-run-test")
-    else:
-        progress.fail_step("edit-run-test")
-    progress.activate("edit-evaluate-test")
-
     run = Run(
         execution_refusal=raw.execution_refusal if raw else None,
         id=str(uuid.uuid4()),
@@ -884,6 +879,18 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    if raw is not None and raw.awaiting_native_approval:
+        return wait_for_native_approval(env, s, fc, progress, run, PcState.EDIT_AWAIT_REPAIR)
+
+    if status == "running":
+        progress.finish(status="stopped")
+    else:
+        if status == "succeeded":
+            progress.complete("edit-run-test")
+        else:
+            progress.fail_step("edit-run-test")
+        progress.activate("edit-evaluate-test")
 
     record_run_acceptance(s, fc, run, ti, graph, _hash)
     business_failure = business_failure_context(

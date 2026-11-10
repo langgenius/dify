@@ -78,6 +78,7 @@ from services.dify_builder.application.handlers_fix import (
     start_schema,
     test_failure_reason,
     testdata_form,
+    wait_for_native_approval,
     without_endpoint_values,
     without_upload_values,
 )
@@ -1307,12 +1308,6 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             actor=turn.actor,
         )
 
-    if status == "succeeded":
-        progress.complete("build-run-test")
-    else:
-        progress.fail_step("build-run-test")
-    progress.activate("build-evaluate-test")
-
     run = Run(
         execution_refusal=raw.execution_refusal if raw else None,
         id=str(uuid.uuid4()),
@@ -1326,6 +1321,18 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    if raw is not None and raw.awaiting_native_approval:
+        return wait_for_native_approval(env, s, fc, progress, run, PcState.BUILD_AWAIT_REPAIR)
+
+    if status == "running":
+        progress.finish(status="stopped")
+    else:
+        if status == "succeeded":
+            progress.complete("build-run-test")
+        else:
+            progress.fail_step("build-run-test")
+        progress.activate("build-evaluate-test")
 
     record_run_acceptance(s, fc, run, ti, graph, _hash)
     business_failure = business_failure_context(

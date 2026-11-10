@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Callable, Generator
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -17,6 +17,7 @@ from sqlalchemy.orm import sessionmaker
 
 from clients.agent_backend import DifyAgentBackendRunClient
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.dify_builder.contract import AssistantTurnItem, ExecutionActivity, ExecutionProgress
 from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, Run, Session
 from core.dify_builder.state import PcState
 from extensions.ext_redis import RedisClientWrapper
@@ -41,6 +42,7 @@ from runtime_contracts.builder.native.agent_contracts import (
     AgentTestWorkspaceRef,
     AgentWaitAssociation,
 )
+from runtime_contracts.builder.native.canvas_path import NativeCanvasEdge, NativeCanvasPath
 from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import (
     NativeCheckpointPayload,
@@ -247,7 +249,26 @@ def completed(
     initial.inputs_ref, initial.immutable = saved_id, True
     repo.save_run(session.id, initial)
     context.verify_run_id, context.test_input_ref = verify_id, saved_id
-    repo.compare_and_advance(session.id, 1, PcState.BUILD_AWAIT_REPAIR, context, [])
+    profile = getattr(request, "param", "legacy")
+    items = []
+    if profile == "approval_progress":
+        items.append(
+            AssistantTurnItem(
+                turn_id="waiting-test",
+                stage_id=str(PcState.BUILD_TEST_AND_REPAIR),
+                execution=ExecutionProgress(
+                    status="stopped",
+                    activities=[
+                        ExecutionActivity("build-prepare-test", "Prepare test", "done"),
+                        ExecutionActivity("build-run-test", "Run workflow", "stopped"),
+                        ExecutionActivity("node:start", "Start", "done", "node", "build-run-test"),
+                        ExecutionActivity("node:agent", "Agent", "stopped", "node", "build-run-test"),
+                    ],
+                ),
+            ).to_item(seq=context.next_seq, at_version=2)
+        )
+        context.next_seq += 1
+    repo.compare_and_advance(session.id, 1, PcState.BUILD_AWAIT_REPAIR, context, items)
     request_context = {
         "policy_version": "builder-native-test-v1",
         "request_id": request_id,
@@ -264,10 +285,6 @@ def completed(
         "session_id": session.id,
         "test_input_id": saved_id,
     }
-    try:
-        profile = request.param
-    except AttributeError:
-        profile = "legacy"
     if profile == "confirmed":
         from services.dify_builder.native_testing.repository import admitted_workflow_revision
 
@@ -431,6 +448,15 @@ def observe(owner: CompletedOwner) -> NativeTestPublicReceipt:
 
 def test_terminal_public_read_closes_same_builder_run_and_review_without_dispatch(completed: CompletedOwner) -> None:
     owner = completed
+    path = NativeCanvasPath(
+        owner.native_id,
+        3,
+        (NativeCanvasEdge("agent-end", "agent", "end", "source", "target", "succeeded", "succeeded"),),
+    )
+    with owner.factory.begin() as sql:
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert request is not None
+        request.canvas_path = asdict(path)
     assert owner.repo.get_run(owner.verify_id).status == "running"
     observe(owner)
     run = owner.repo.get_run(owner.verify_id)
@@ -450,7 +476,8 @@ def test_terminal_public_read_closes_same_builder_run_and_review_without_dispatc
     observe(owner)
     assert owner.repo.get_session(owner.session.id)[0].version == session.version
     page = owner.repo.list_conversation_page(owner.session.id, limit=20)
-    assert len([item for item in page.data if item.kind == "test_result"]) == 1
+    (card,) = [item for item in page.data if item.kind == "test_result"]
+    assert card.payload["native_canvas_path"] == json.loads(json.dumps(asdict(path)))
 
 
 @pytest.mark.parametrize("retired_state", ["not_dispatched", "cancelled", "claimed", "unknown"])
@@ -706,6 +733,7 @@ def test_user_session_cas_wins_during_terminal_result_read(
     assert completed.repo.get_session(completed.session.id)[0].current_state == PcState.BUILD_EXECUTION
 
 
+@pytest.mark.parametrize("completed", ["approval_progress"], indirect=True)
 def test_actual_native_failure_closes_old_run_without_diagnosis_or_new_execution(completed: CompletedOwner) -> None:
     owner = completed
     with owner.factory.begin() as sql:
@@ -730,6 +758,11 @@ def test_actual_native_failure_closes_old_run_without_diagnosis_or_new_execution
     assert context.staged_repair == []
     with owner.factory() as sql:
         assert len(sql.scalars(select(DifyBuilderRun)).all()) == 2
+    (card,) = owner.repo.list_conversation_page(owner.session.id, after_seq=0, limit=10).data
+    progress = card.payload["resumed_progress"]
+    assert progress["source_seq"] == 0
+    assert progress["execution"]["status"] == "error"
+    assert progress["execution"]["activities"][1]["state"] == "failed"
 
 
 def test_concurrent_terminal_observers_commit_one_result_on_the_same_attempt(
@@ -2544,6 +2577,7 @@ def test_edit_terminal_projection_refuses_stale_unknown_or_wrong_task_family(
     assert session.current_state == PcState.EDIT_AWAIT_REPAIR
 
 
+@pytest.mark.parametrize("completed", ["approval_progress"], indirect=True)
 def test_native_control_only_commits_do_not_strand_successful_builder_run(completed: CompletedOwner) -> None:
     from core.dify_builder.models import ConversationItem
 
@@ -2553,10 +2587,12 @@ def test_native_control_only_commits_do_not_strand_successful_builder_run(comple
         context.last_command_id = identity
         item = ConversationItem(
             seq=context.next_seq,
-            kind="decision",
+            kind="interaction_response",
             at_version=session.version + 1,
             payload={
-                "text": kind,
+                "interaction_kind": "choice",
+                "question": "Test operation approval",
+                "answer": kind,
                 "test_action_kind": kind,
                 "test_command_id": identity,
                 "test_action_digest": "a" * 64,
@@ -2568,6 +2604,18 @@ def test_native_control_only_commits_do_not_strand_successful_builder_run(comple
     observe(owner)
     assert owner.repo.get_run(owner.verify_id).status == "succeeded"
     assert owner.repo.get_session(owner.session.id)[0].current_state == PcState.BUILD_REVIEW
+    (card,) = owner.repo.list_conversation_page(owner.session.id, after_seq=2, limit=10).data
+    assert card.kind == "test_result"
+    progress = card.payload["resumed_progress"]
+    assert progress["source_seq"] == 0
+    assert progress["execution"]["status"] == "completed"
+    assert [(item["id"], item["state"]) for item in progress["execution"]["activities"]] == [
+        ("build-prepare-test", "done"),
+        ("build-run-test", "done"),
+        ("node:start", "done"),
+        ("node:agent", "done"),
+        ("node:end", "done"),
+    ]
 
 
 def test_terminal_projection_crash_is_recovered_without_get_or_dispatch(completed: CompletedOwner) -> None:

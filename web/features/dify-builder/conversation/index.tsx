@@ -13,6 +13,7 @@ import { useDifyBuilderLocale } from '../i18n/use-builder-locale'
 import { ConversationCard, UserMessage } from './conversation-card'
 import { groupConversationItems } from './group-conversation-items'
 import { StreamingAssistantTurn } from './streaming-assistant-turn'
+import { ActiveNativeTestRun } from './test-result/native-run'
 
 type ConversationRenderEntry =
   | DifyBuilderConversationGroup
@@ -240,6 +241,7 @@ export const DifyBuilderConversation = memo(
           )),
         )}
         <StreamingAssistantTurn busy={busy} onContentChange={onStreamingContentChange} />
+        <ActiveNativeTestRun />
       </div>
     )
   },

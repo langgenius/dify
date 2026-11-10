@@ -41,7 +41,18 @@ import { DifyBuilderAttachmentScope } from './attachment-scope'
 
 const COMPOSITION_END_DELAY = 50
 
-const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) => {
+type ComposerProps = {
+  attachmentsOnly?: boolean
+  hideStop?: boolean
+}
+
+const DifyBuilderPromptInput = ({
+  descriptionId,
+  conversationCleared,
+}: {
+  descriptionId?: string
+  conversationCleared?: boolean
+}) => {
   const locale = useDifyBuilderLocale()
   const { t } = useTranslation(['difyBuilder'], { lng: locale })
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
@@ -51,7 +62,7 @@ const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) =
   const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const placeholder = canCompose
     ? t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })
-    : interactionBusy
+    : interactionBusy && !conversationCleared
       ? t(($) => $.workingPlaceholder, { ns: 'difyBuilder' })
       : t(($) => $.inputUnavailable, { ns: 'difyBuilder' })
 
@@ -99,12 +110,14 @@ const DifyBuilderComposerAction = ({
   filesReady,
   hasFiles,
   attachmentsOnly,
+  hideStop,
 }: {
   hasModel: boolean
   descriptionId?: string
   filesReady: boolean
   hasFiles: boolean
   attachmentsOnly: boolean
+  hideStop: boolean
 }) => {
   const locale = useDifyBuilderLocale()
   const { t } = useTranslation(['difyBuilder'], { lng: locale })
@@ -113,11 +126,12 @@ const DifyBuilderComposerAction = ({
   const canSend =
     hasModel && filesReady && (hasFiles ? canAddMaterial : !attachmentsOnly && canSendDraft)
   const canControl = useAtomValue(difyBuilderCanControlTaskAtom)
-  const operation = useAtomValue(difyBuilderTaskControlOperationAtom)
+  const taskControlOperation = useAtomValue(difyBuilderTaskControlOperationAtom)
+  const operation = hideStop && taskControlOperation === 'stop' ? null : taskControlOperation
   const control = useAtomValue(difyBuilderTaskControlAtom)
   const testCancelling = useAtomValue(difyBuilderNativeTestCancellingAtom)
   const controlTask = useSetAtom(difyBuilderControlTaskAtom)
-  const pending = control ? control.phase !== 'unknown' : testCancelling
+  const pending = operation !== null && (control ? control.phase !== 'unknown' : testCancelling)
   const label =
     operation === 'stop'
       ? t(($) => $['taskControl.stop'])
@@ -201,7 +215,10 @@ const DraftFileList = ({
   )
 }
 
-const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOnly?: boolean }) => {
+const DifyBuilderComposerContent = ({
+  attachmentsOnly = false,
+  hideStop = false,
+}: ComposerProps) => {
   const locale = useDifyBuilderLocale()
   const { t } = useTranslation(['difyBuilder'], { lng: locale })
   const sendDraft = useSetAtom(difyBuilderSendDraftAtom)
@@ -212,7 +229,7 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
   const canAddMaterial = useAtomValue(difyBuilderCanAddMaterialAtom)
   const showAttachments = !attachmentsOnly || canAddMaterial || files.length > 0
   const nativeCancel = useAtomValue(difyBuilderNativeCancelAtom)
-  const showAction = !attachmentsOnly || files.length > 0 || Boolean(nativeCancel)
+  const showAction = !attachmentsOnly || files.length > 0 || (!hideStop && Boolean(nativeCancel))
   const material = useAtomValue(difyBuilderMaterialControlAtom)
   const runtime = useAtomValue(difyBuilderRuntimeAtom)
   const fileConfig = useMemo<FileUpload>(
@@ -349,7 +366,12 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
               <DraftFileList files={files} fileConfig={fileConfig} editable={!material} />
             </div>
           )}
-          {!attachmentsOnly && <DifyBuilderPromptInput descriptionId={descriptionId} />}
+          {!attachmentsOnly && (
+            <DifyBuilderPromptInput
+              descriptionId={descriptionId}
+              conversationCleared={view?.conversation_cleared}
+            />
+          )}
           <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 ps-1">
             <div className="flex min-w-0 items-center">
               {!attachmentsOnly && <DifyBuilderModelSelector {...modelState} />}
@@ -367,6 +389,7 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
                   filesReady={filesReady}
                   hasFiles={files.length > 0}
                   attachmentsOnly={attachmentsOnly}
+                  hideStop={hideStop}
                   descriptionId={descriptionId}
                 />
               )}
@@ -378,7 +401,7 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
   )
 }
 
-const DifyBuilderComposer = (props: { attachmentsOnly?: boolean }) => (
+const DifyBuilderComposer = (props: ComposerProps) => (
   <DifyBuilderAttachmentScope>
     <DifyBuilderComposerContent {...props} />
   </DifyBuilderAttachmentScope>

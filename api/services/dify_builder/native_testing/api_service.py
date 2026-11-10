@@ -39,6 +39,7 @@ from runtime_contracts.builder.native.contracts import (
 )
 from services.dify_builder.execution_policy_service import check_execution_permission, load_execution_owners
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
+from services.dify_builder.native_testing.canvas_path import read_canvas_path
 from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler, NativeRuntimeProfile
 from services.dify_builder.native_testing.input_binding import current_input_binding
 from services.dify_builder.native_testing.lifecycle import (
@@ -540,6 +541,7 @@ class NativeTestApiService:
             else None,
             native_run_id=native_run.id if native_run else None,
             native_status=native_run.status if native_run else None,
+            canvas_path=read_canvas_path(request.canvas_path, native_run.id if native_run else None),
             pending=tuple(pending),
             outcome=outcome,
             evidence_refs=(native_run.id,) if native_run else (),

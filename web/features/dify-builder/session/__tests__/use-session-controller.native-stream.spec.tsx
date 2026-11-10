@@ -1,3 +1,4 @@
+import type { NativeCanvasPath } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem } from '../../types'
 import { act, waitFor } from '@testing-library/react'
 import { createDeferred } from '@/test/deferred'
@@ -24,6 +25,7 @@ const api = vi.hoisted(() => ({
   stream: vi.fn(),
   conversation: vi.fn(),
   action: vi.fn(),
+  message: vi.fn(),
 }))
 vi.mock('@/service/console', () => ({
   consoleClient: {
@@ -35,11 +37,21 @@ vi.mock('@/service/console', () => ({
           stream: { get: api.stream },
           conversation: { get: api.conversation },
           actions: { post: api.action },
+          messages: { post: api.message },
         },
       },
     },
   },
 }))
+
+const idleTimeout = 2 * 60_000
+
+const published = createSessionView({
+  phase: 'complete',
+  run_status: 'complete',
+  canvas_read_only: false,
+  command_pending: false,
+})
 
 const pending = {
   request_id: 'request-1',
@@ -68,6 +80,198 @@ const runResult: ConversationItem = {
 beforeEach(() => {
   vi.resetAllMocks()
   api.conversation.mockResolvedValue(conversationPage())
+})
+
+it.each(['message', 'action'] as const)(
+  'reopens an idle published session before submitting the next %s',
+  async (operation) => {
+    vi.useFakeTimers()
+    const first = createControlledEventStream()
+    const second = createControlledEventStream()
+    const model = { provider: 'provider-1', name: 'model-1' }
+    const submit = operation === 'message' ? api.message : api.action
+    api.stream.mockResolvedValueOnce(first.iterable).mockResolvedValueOnce(second.iterable)
+    submit.mockResolvedValue({
+      command_id: 'next-command',
+      pending: false,
+      session: { ...published, version: 2, last_command_id: 'next-command' },
+    })
+    const { result, unmount } = renderSessionHook(undefined, undefined, { scripted: false })
+    try {
+      await act(async () => {
+        first.push({ event: 'session_ready', data: published })
+        expect(await result.current.restore('session-1')).toBe(true)
+      })
+      const firstSignal: AbortSignal = api.stream.mock.calls[0]?.[1].signal
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(idleTimeout)
+      })
+      expect(firstSignal.aborted).toBe(true)
+      await act(async () => {
+        first.close()
+        await vi.advanceTimersByTimeAsync(idleTimeout)
+      })
+      expect(api.stream).toHaveBeenCalledTimes(1)
+
+      let command!: Promise<boolean>
+      await act(async () => {
+        command =
+          operation === 'message'
+            ? result.current.sendMessage('Add a step')
+            : result.current.updateModel(model)
+      })
+      expect(api.stream).toHaveBeenCalledTimes(2)
+      expect(api.stream).toHaveBeenLastCalledWith(
+        { params: { session_id: 'session-1' } },
+        expect.anything(),
+      )
+      expect(submit).not.toHaveBeenCalled()
+
+      await act(async () => {
+        second.push({ event: 'session_ready', data: published })
+        expect(await command).toBe(true)
+      })
+      expect(submit).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: { session_id: 'session-1' },
+          body: expect.objectContaining(
+            operation === 'message' ? { text: 'Add a step' } : { action_id: 'update_model' },
+          ),
+        },
+        expect.anything(),
+      )
+      expect(api.create).not.toHaveBeenCalled()
+    } finally {
+      unmount()
+      first.close()
+      second.close()
+      vi.useRealTimers()
+    }
+  },
+)
+
+it('lets a message retry reopen an idle session after reconnect attempts fail', async () => {
+  vi.useFakeTimers()
+  const first = createControlledEventStream()
+  const recovered = createControlledEventStream()
+  api.stream
+    .mockResolvedValueOnce(first.iterable)
+    .mockRejectedValueOnce({ status: 503 })
+    .mockRejectedValueOnce({ status: 503 })
+    .mockRejectedValueOnce({ status: 503 })
+    .mockResolvedValueOnce(recovered.iterable)
+  api.message.mockResolvedValue({
+    command_id: 'next-command',
+    pending: false,
+    session: { ...published, version: 2, last_command_id: 'next-command' },
+  })
+  const { result, unmount } = renderSessionHook(undefined, undefined, { scripted: false })
+  try {
+    await act(async () => {
+      first.push({ event: 'session_ready', data: published })
+      expect(await result.current.restore('session-1')).toBe(true)
+      await vi.advanceTimersByTimeAsync(idleTimeout)
+      first.close()
+    })
+    await act(async () => {
+      const send = result.current.sendMessage('Add a step')
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(await send).toBe(false)
+    })
+    expect(api.message).not.toHaveBeenCalled()
+
+    let retry!: Promise<boolean>
+    await act(async () => {
+      retry = result.current.sendMessage('Add a step')
+    })
+    expect(api.stream).toHaveBeenCalledTimes(5)
+    expect(api.message).not.toHaveBeenCalled()
+    await act(async () => {
+      recovered.push({ event: 'session_ready', data: published })
+      expect(await retry).toBe(true)
+    })
+    expect(api.message).toHaveBeenCalledTimes(1)
+  } finally {
+    unmount()
+    first.close()
+    recovered.close()
+    vi.useRealTimers()
+  }
+})
+
+it('waits for command admission and native test settlement before disconnecting for idleness', async () => {
+  vi.useFakeTimers()
+  const stream = createControlledEventStream()
+  const ready = createSessionView({
+    phase: 'test',
+    run_status: 'waiting_input',
+    canvas_read_only: false,
+    command_pending: false,
+    last_command_id: 'prepare-test',
+  })
+  const admission = createDeferred<{ command_id: string; pending: boolean }>()
+  api.stream.mockResolvedValue(stream.iterable)
+  api.action.mockReturnValue(admission.promise)
+  const { result, unmount } = renderSessionHook(undefined, undefined, { scripted: false })
+  try {
+    await act(async () => {
+      stream.push({ event: 'session_ready', data: ready })
+      expect(await result.current.restore('session-1')).toBe(true)
+    })
+    const signal: AbortSignal = api.stream.mock.calls[0]?.[1].signal
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(idleTimeout - 1000)
+    })
+    let command!: Promise<boolean>
+    await act(async () => {
+      command = result.current.runAction('run_test')
+    })
+    expect(api.action).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(idleTimeout)
+    })
+    expect(signal.aborted).toBe(false)
+
+    await act(async () => {
+      stream.push(commandStartedEvent(ready))
+      stream.push(stateEvent({ ...waiting, last_command_id: 'command-1' }))
+      admission.resolve({ command_id: 'command-1', pending: true })
+      expect(await command).toBe(true)
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(idleTimeout)
+    })
+    expect(signal.aborted).toBe(false)
+
+    await act(async () => {
+      stream.push({
+        event: 'session_state',
+        data: {
+          ...waiting,
+          version: 5,
+          phase: 'review',
+          run_status: 'waiting_input',
+          test_execution: createNativeReceipt({
+            version: 2,
+            status: 'terminal',
+            outcome: 'succeeded',
+          }),
+        },
+      })
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(idleTimeout - 1)
+    })
+    expect(signal.aborted).toBe(false)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    expect(signal.aborted).toBe(true)
+  } finally {
+    unmount()
+    stream.close()
+    vi.useRealTimers()
+  }
 })
 
 it('restores the same pending Native Test after disabling and enabling Builder', async () => {
@@ -219,7 +423,26 @@ it('correlates a command that completes on the stream before its POST returns', 
     command = result.current.runAction('run_test')
   })
   await waitFor(() => expect(api.action).toHaveBeenCalledTimes(1))
-  const native = createNativeReceipt({ status: 'waiting', wait_reason: 'approval' })
+  const path = {
+    native_run_id: 'run-1',
+    revision: 2,
+    edges: [
+      {
+        edge_id: 'start-agent',
+        source: 'start',
+        target: 'agent',
+        source_handle: 'source',
+        target_handle: 'target',
+        source_status: 'succeeded',
+        target_status: 'paused',
+      },
+    ],
+  } satisfies NativeCanvasPath
+  const native = createNativeReceipt({
+    status: 'waiting',
+    wait_reason: 'approval',
+    canvas_path: path,
+  })
   await act(async () => {
     stream.push(commandStartedEvent(session))
     stream.push(
@@ -234,9 +457,18 @@ it('correlates a command that completes on the stream before its POST returns', 
         test_execution: { ...native, version: 2 },
       },
     })
+    stream.push(
+      stateEvent({
+        ...waiting,
+        version: 5,
+        last_command_id: 'command-1',
+        test_execution: { ...native, version: 2, canvas_path: { ...path, revision: 1, edges: [] } },
+      }),
+    )
   })
   expect(store.get(difyBuilderSessionBusyAtom)).toBe(true)
   expect(store.get(difyBuilderSessionViewAtom)?.test_execution?.version).toBe(2)
+  expect(store.get(difyBuilderSessionViewAtom)?.test_execution?.canvas_path).toEqual(path)
   await act(async () => {
     admission.resolve({ command_id: 'command-1', pending: true })
     expect(await command).toBe(true)
