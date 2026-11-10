@@ -312,8 +312,8 @@ class TestUpgradePluginWithMarketplace:
     ) -> None:
         mock_fs.get_plugin_installation_permission.return_value = _make_permission()
         installer = mock_installer_cls.return_value
-        installer.fetch_plugin_manifest.return_value = MagicMock()
-        expected_result = MagicMock()
+        installer.fetch_plugin_manifest.return_value = object()
+        expected_result = object()
         installer.upgrade_plugin.return_value = expected_result
         mock_marketplace.record_install_plugin_event.side_effect = telemetry_error
 
