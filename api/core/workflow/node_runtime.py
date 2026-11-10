@@ -610,6 +610,25 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         return self._confirmed_guard is not None or self._confirmed_guard_factory is not None
 
     @property
+    def _has_builder_markers(self) -> bool:
+        """Recognize Builder/native execution before API binding or credential delegation.
+
+        Read the validated run context only; missing binding maps never erase
+        another marker or the runtime's confirmed guard configuration.
+        """
+        context = self._run_context
+        return (
+            self._confirmed
+            or context.builder_tool_credential_bindings is not None
+            or context.builder_api_tool_bindings is not None
+            or context.builder_execution is not None
+            or context.builder_agent_execution is not None
+            or bool(context.builder_mocked_node_ids)
+            or context.native_test_ref is not None
+            or context.native_test_required
+        )
+
+    @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
         return self._file_reference_factory
 
@@ -634,7 +653,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             if guard is None:
                 draft_options: WorkflowToolRuntimeKwargs = {}
                 api_bindings = self._run_context.builder_api_tool_bindings
-                if node_data.provider_type.value == "api" and (api_bindings is not None or bindings is not None):
+                if node_data.provider_type.value == "api" and self._has_builder_markers:
                     if api_bindings is None or node_id not in api_bindings:
                         raise BuilderExecutionPolicyError("api_tool_definition_stale")
                     draft_options["builder_expected_api_binding"] = api_bindings[node_id]
@@ -643,15 +662,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                     draft_options["builder_credential_refreshed"] = self._credential_refresh_recorder(node_id)
                 if self._workflow_id is not None:
                     draft_options["draft_tool_workflow_id"] = self._workflow_id
-                    draft_options["allow_draft_credential_delegation"] = (
-                        bindings is None
-                        and api_bindings is None
-                        and self._run_context.builder_execution is None
-                        and self._run_context.builder_agent_execution is None
-                        and not self._run_context.builder_mocked_node_ids
-                        and self._run_context.native_test_ref is None
-                        and not self._run_context.native_test_required
-                    )
+                    draft_options["allow_draft_credential_delegation"] = not self._has_builder_markers
                 tool_runtime = ToolManager.get_workflow_tool_runtime(
                     self._run_context.tenant_id,
                     self._run_context.app_id,

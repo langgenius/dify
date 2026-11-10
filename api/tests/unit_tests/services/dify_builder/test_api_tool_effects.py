@@ -222,6 +222,8 @@ def test_native_admission_refuses_owned_api_drift_before_decryption(
         ("side_effect", True, 1, "lost_ack"),
         ("read", False, 1, "ordinary"),
         ("side_effect", True, 0, "missing_binding"),
+        ("side_effect", True, 0, "missing_both_mocked"),
+        ("side_effect", True, 0, "missing_both_agent"),
     ],
 )
 def test_confirmation_to_native_tool_recording_transport(
@@ -251,7 +253,7 @@ def test_confirmation_to_native_tool_recording_transport(
     from services.workflow_runtime.node_factory import DifyNodeFactory
     from tests.unit_tests.core.tools.test_tool_manager import _CallableSessionProxy
     from tests.unit_tests.services.dify_builder.test_code_risk_preparation import save_context
-    from tests.unit_tests.services.dify_builder.test_confirmed_full_run import _run
+    from tests.unit_tests.services.dify_builder.test_confirmed_full_run import _run, prepared_agent_context
 
     table = ApiToolProvider.__table__
     assert isinstance(table, Table)
@@ -317,7 +319,7 @@ def test_confirmation_to_native_tool_recording_transport(
     def record(request: httpx.Request) -> httpx.Response:
         from sqlalchemy.pool import QueuePool
 
-        if drift != "ordinary":
+        if drift != "ordinary" and not drift.startswith("missing_both"):
             pool = harness.factory.kw["bind"].pool
             assert isinstance(pool, QueuePool)
             assert pool.checkedout() == 0
@@ -345,11 +347,12 @@ def test_confirmation_to_native_tool_recording_transport(
         builder_api_tool_bindings: Mapping[str, str],
         **_: object,
     ) -> dict[str, object]:
-        if drift in {"native_target", "native_credentials"}:
+        missing_both = drift.startswith("missing_both")
+        if drift in {"native_target", "native_credentials"} or missing_both:
             with harness.factory.begin() as sql:
                 row = sql.get(ApiToolProvider, provider_id)
                 assert row is not None
-                if drift == "native_target":
+                if drift == "native_target" or missing_both:
                     changed = row.tools[0].model_dump(mode="json")
                     changed["server_url"] = "https://changed.example.invalid/invoices"
                     row.tools_str = json.dumps([changed])
@@ -361,9 +364,18 @@ def test_confirmation_to_native_tool_recording_transport(
             user_id=harness.ids["account"],
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
-            builder_mocked_node_ids=builder_mocked_node_ids,
-            builder_tool_credential_bindings=None if drift == "ordinary" else builder_tool_credential_bindings,
-            builder_api_tool_bindings=None if drift in {"ordinary", "missing_binding"} else builder_api_tool_bindings,
+            builder_mocked_node_ids=(
+                frozenset({"unrelated-builder-mocked-node"})
+                if drift == "missing_both_mocked"
+                else builder_mocked_node_ids
+            ),
+            builder_agent_execution=prepared_agent_context() if drift == "missing_both_agent" else None,
+            builder_tool_credential_bindings=(
+                None if drift == "ordinary" or missing_both else builder_tool_credential_bindings
+            ),
+            builder_api_tool_bindings=(
+                None if drift in {"ordinary", "missing_binding"} or missing_both else builder_api_tool_bindings
+            ),
         )
         init = InitParams(workflow_id=harness.draft.id, graph_config=graph, run_context=run_context, call_depth=0)
         state = RuntimeState(workflow_id=harness.draft.id, variable_pool=VariablePool(), start_at=time.perf_counter())
@@ -407,7 +419,7 @@ def test_confirmation_to_native_tool_recording_transport(
             assert str(requests[0].url) == "https://synthetic.example.invalid/invoices"
             assert json.loads(requests[0].content) == {"amount": 5}
         assert completed
-        if drift in {"native_target", "native_credentials", "missing_binding"}:
+        if drift in {"native_target", "native_credentials", "missing_binding"} or drift.startswith("missing_both"):
             assert completed[0].status.value == "failed"
             assert "api_tool_definition_stale" in completed[0].error
         else:
@@ -522,3 +534,63 @@ def test_api_reasoning_withholds_parameter_values_account_version_and_url_secret
         assert secret not in encoded
     assert "synthetic.example.invalid/invoices" in encoded
     assert facts.model_facts["parameters"]["amount"]["runtime_type"] == "string"
+
+
+@pytest.mark.parametrize("marker", ["mocked", "agent", "restricted", "confirmed", "native_ref", "native_required"])
+def test_missing_api_bindings_never_resolve_ordinary_with_surviving_marker(
+    marker: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+    from core.tools.tool_manager import ToolManager
+    from core.workflow.node_runtime import DifyToolNodeRuntime
+    from graphon.nodes.tool.entities import ToolNodeData
+    from graphon.nodes.tool.exc import ToolRuntimeResolutionError
+    from runtime_contracts.builder.execution import BuilderExecutionContext, ConfirmedToolExecutionContext
+    from runtime_contracts.builder.native.contracts import NativeTestContextRef
+    from tests.unit_tests.services.dify_builder.test_confirmed_full_run import prepared_agent_context
+    from tests.unit_tests.services.dify_builder.test_execution_policy_service import _stored_context_values
+
+    context = DifyRunContext(
+        tenant_id="tenant", app_id="app", user_id="owner", user_from=UserFrom.ACCOUNT, invoke_from=InvokeFrom.DEBUGGER
+    )
+    if marker == "mocked":
+        context.builder_mocked_node_ids = frozenset({"unrelated-builder-mocked-node"})
+    elif marker == "agent":
+        context.builder_agent_execution = prepared_agent_context()
+    elif marker == "restricted":
+        context.builder_execution = BuilderExecutionContext.model_validate(
+            {
+                **_stored_context_values(),
+                "fixture_digest": "e" * 64,
+                "context_digest": "f" * 64,
+                "http_fixtures": (),
+            }
+        )
+    elif marker == "confirmed":
+        context.builder_execution = ConfirmedToolExecutionContext.model_validate(
+            {
+                **_stored_context_values(),
+                "mode": "confirmed_tool",
+                "policy_version": "builder-confirmed-gmail-read-v1",
+                "context_digest": "f" * 64,
+                "consent_id": "consent",
+                "scope_digest": "e" * 64,
+                "command_id": "command",
+            }
+        )
+    elif marker == "native_ref":
+        context.native_test_ref = NativeTestContextRef(
+            request_id="request", invocation_id="invocation", context_digest="f" * 64
+        )
+    else:
+        context.native_test_required = True
+    data = api_graph()["nodes"][0]["data"]
+    data.update(title="Invoice", provider_name="Synthetic", tool_label="Get invoice", tool_configurations={})
+
+    def forbidden(*_args: object, **_kwargs: object) -> Never:
+        pytest.fail("Known Builder/native context reached ordinary Tool resolution without an API binding")
+
+    monkeypatch.setattr(ToolManager, "get_workflow_tool_runtime", forbidden)
+    runtime = DifyToolNodeRuntime(context)
+    with pytest.raises(ToolRuntimeResolutionError, match="api_tool_definition_stale"):
+        runtime.get_runtime(node_id="api", node_data=ToolNodeData.model_validate(data), variable_pool=None)
