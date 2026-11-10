@@ -12,18 +12,53 @@ Bearer format: API_KEY
 ## web
 Web application API operations
 
-### [GET] /account/profile
-**Return the Account profile authenticated by the WebApp login cookie**
+### [POST] /account/password
+**Set or change the admitted Account's password when password login is enabled**
 
-Get the authenticated WebApp user's profile
-The profile is Account-scoped, so neither an App Passport nor X-App-Code is required.
-A missing, invalid, expired, or unavailable Account identity returns 401.
+A same-origin Account cookie is required. Existing credentials require the
+current password; confirmation and policy failures leave credentials unchanged.
+Concurrent credential changes cannot overwrite a password verified earlier.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAccountPasswordPayload](#webaccountpasswordpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Updated Account settings | **application/json**: [WebAccountResponse](#webaccountresponse)<br> |
+| 400 | Bad Request | **application/json**: [CurrentPasswordIncorrectError](#currentpasswordincorrecterror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[RepeatPasswordNotMatchError](#repeatpasswordnotmatcherror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /account/profile
+**Return private settings for an admitted Account; unavailable Accounts return 401 without caching**
+
+Get personal Account settings using the WebApp Account cookie, without App or workspace scope.
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Account profile | **application/json**: [WebAccountProfileResponse](#webaccountprofileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /account/profile
+**Update submitted profile fields for a same-origin Account cookie, without changing identity or membership**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountProfilePatchPayload](#accountprofilepatchpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Updated Account settings | **application/json**: [WebAccountResponse](#webaccountresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /audio-to-text
@@ -1698,6 +1733,16 @@ Account is banned.
 | ---- | ---- | ----------- | -------- |
 | AccountBannedError |  | Account is banned. |  |
 
+#### AccountProfilePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| interface_language | string |  | No |
+| interface_theme | string, <br>**Available values:** "dark", "light" | *Enum:* `"dark"`, `"light"` | No |
+| name | string |  | No |
+| timezone | string |  | No |
+
 #### AgentNotPublishedError
 
 Agent has not been published. Please publish the Agent before using the web app.
@@ -2223,6 +2268,14 @@ Credential validation is temporarily unavailable.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CredentialCheckUnavailableError |  | Credential validation is temporarily unavailable. |  |
+
+#### CurrentPasswordIncorrectError
+
+Current password is incorrect.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CurrentPasswordIncorrectError |  | Current password is incorrect. |  |
 
 #### DeploymentEdition
 
@@ -2763,6 +2816,14 @@ Model class for i18n object.
 | pt_BR | string |  | No |
 | zh_Hans | string |  | No |
 
+#### InvalidAccountPasswordError
+
+The password does not satisfy the account password policy.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidAccountPasswordError |  | The password does not satisfy the account password policy. |  |
+
 #### InvalidEmailError
 
 The email address is not valid.
@@ -3192,6 +3253,14 @@ The remote file URL is not allowed.
 | ---- | ---- | ----------- | -------- |
 | RemoteFileUrlBlockedError |  | The remote file URL is not allowed. |  |
 
+#### RepeatPasswordNotMatchError
+
+New password and repeat password does not match.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RepeatPasswordNotMatchError |  | New password and repeat password does not match. |  |
+
 #### ResolvedForm
 
 Immutable authoritative presentation snapshot for one v2 form.
@@ -3469,15 +3538,43 @@ in form definition, or a variable while the workflow is running.
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
 
+#### WebAccountPasswordPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| new_password | string |  | Yes |
+| password | string | Current password; may be omitted only before the first password is set. | No |
+| repeat_new_password | string |  | Yes |
+
 #### WebAccountProfileResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | avatar | string |  | Yes |
 | avatar_url | string |  | Yes |
+| email | string |  | Yes |
 | has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
 | has_tenant | boolean | Whether the Account has a tenant membership, including ownership. Null means unavailable. | No |
+| interface_language | string |  | Yes |
+| interface_theme | string |  | Yes |
+| is_password_set | boolean |  | Yes |
 | name | string |  | Yes |
+| timezone | string |  | Yes |
+
+#### WebAccountResponse
+
+Personal settings only; credentials, login IPs and Builder lifecycle stay private.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | Yes |
+| avatar_url | string |  | Yes |
+| email | string |  | Yes |
+| interface_language | string |  | Yes |
+| interface_theme | string |  | Yes |
+| is_password_set | boolean |  | Yes |
+| name | string |  | Yes |
+| timezone | string |  | Yes |
 
 #### WebAppAuthModel
 

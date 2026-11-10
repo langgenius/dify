@@ -9,7 +9,7 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account_errors import AccountNotFoundError, CurrentAccountPasswordIncorrectError
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
-from services.entities.account_entities import AccountPasswordDigest
+from services.entities.account_entities import AccountCredentials, AccountPasswordDigest
 from tests.helpers.unit.model_factories import make_account
 
 
@@ -40,7 +40,7 @@ def test_change_verifies_current_password_and_updates_digest(
     accounts = _accounts(sqlite_session_factory, old_digest)
     verify = mocker.spy(passwords, "verify")
     hash_password = mocker.spy(passwords, "hash")
-    update = mocker.spy(accounts, "update_password")
+    update = mocker.spy(accounts, "change_password")
     service = AccountPasswordService(accounts=accounts, passwords=passwords)
 
     result = service.change(_context(), current_password="old-password1", new_password="new-password1")
@@ -51,7 +51,11 @@ def test_change_verifies_current_password_and_updates_digest(
         "old-password1", password_hash=old_digest.password_hash, password_salt=old_digest.password_salt
     )
     hash_password.assert_called_once_with("new-password1")
-    update.assert_called_once_with("account-1", hash_password.spy_return)
+    update.assert_called_once_with(
+        "account-1",
+        expected=AccountCredentials(password_hash=old_digest.password_hash, password_salt=old_digest.password_salt),
+        password=hash_password.spy_return,
+    )
     credentials = accounts.get_credentials("account-1")
     assert credentials is not None
     assert credentials.password_hash is not None
@@ -69,7 +73,7 @@ def test_change_rejects_incorrect_current_password_without_hashing_or_update(
     accounts = _accounts(sqlite_session_factory, passwords.hash("old-password1"))
     previous = accounts.get_credentials("account-1")
     hash_password = mocker.spy(passwords, "hash")
-    update = mocker.spy(accounts, "update_password")
+    update = mocker.spy(accounts, "change_password")
     service = AccountPasswordService(accounts=accounts, passwords=passwords)
 
     with pytest.raises(CurrentAccountPasswordIncorrectError):
@@ -86,7 +90,7 @@ def test_change_does_not_verify_current_password_when_account_has_no_password(
     accounts = _accounts(sqlite_session_factory, None)
     passwords = DefaultAccountPasswordHasher()
     verify = mocker.spy(passwords, "verify")
-    update = mocker.spy(accounts, "update_password")
+    update = mocker.spy(accounts, "change_password")
     service = AccountPasswordService(accounts=accounts, passwords=passwords)
 
     service.change(_context(), current_password="", new_password="new-password1")

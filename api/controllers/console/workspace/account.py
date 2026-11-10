@@ -6,11 +6,11 @@ from typing import Annotated, Literal
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
-from pydantic.json_schema import SkipJsonSchema
+from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
+from controllers.common.account import AccountProfilePatchPayload
 from controllers.common.fields import (
     AvatarUrlResponse,
     SimpleResultDataResponse,
@@ -64,7 +64,6 @@ from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to
 from machinery.context import AccountRequestContext, RequestContext
 from services import account_errors
 from services.account_education_service import EDUCATION_EDITIONS
-from services.entities.account_entities import AccountProfileChanges
 from services.errors.billing import BillingUpstreamError
 
 
@@ -86,42 +85,6 @@ class AccountInitPayload(BaseModel):
 
 class AccountAvatarQuery(BaseModel):
     avatar: str = Field(..., description="Avatar file ID")
-
-
-class AccountProfilePatchPayload(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: Annotated[str, Field(min_length=3, max_length=30)] | SkipJsonSchema[None] = None
-    avatar: str | SkipJsonSchema[None] = None
-    interface_language: str | SkipJsonSchema[None] = None
-    interface_theme: Literal["light", "dark"] | SkipJsonSchema[None] = None
-    timezone: str | SkipJsonSchema[None] = None
-
-    @field_validator("*", mode="before")
-    @classmethod
-    def reject_null(cls, value: object) -> object:
-        if value is None:
-            raise ValueError("Account profile fields cannot be null")
-        return value
-
-    @field_validator("interface_language")
-    @classmethod
-    def validate_language(cls, value: str) -> str:
-        return supported_language(value)
-
-    @field_validator("timezone")
-    @classmethod
-    def validate_timezone(cls, value: str) -> str:
-        return timezone(value)
-
-    def to_changes(self) -> AccountProfileChanges:
-        return AccountProfileChanges(
-            name=self.name,
-            avatar=self.avatar,
-            interface_language=self.interface_language,
-            interface_theme=self.interface_theme,
-            timezone=self.timezone,
-        )
 
 
 class AccountPasswordPayload(BaseModel):

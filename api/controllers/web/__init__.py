@@ -47,6 +47,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     """Load route modules after their namespaces and schema models exist."""
 
     from . import (
+        account,
         app,
         audio,
         completion,
@@ -75,6 +76,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     )
 
     return (
+        account,
         app,
         audio,
         completion,
@@ -104,6 +106,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 
 (
+    account,
     app,
     audio,
     completion,
@@ -134,6 +137,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 api.add_namespace(web_ns)
 
 __all__ = [
+    "account",
     "api",
     "app",
     "audio",

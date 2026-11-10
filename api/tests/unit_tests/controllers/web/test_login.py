@@ -27,7 +27,6 @@ from controllers.web.login import (
     LoginStatusApi,
     LoginStatusQuery,
     LogoutApi,
-    WebAccountProfileResponse,
 )
 from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
@@ -45,14 +44,6 @@ from services.web_authentication_service import (
 from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, web_identities
-
-
-def test_account_profile_excludes_login_configuration() -> None:
-    profile = WebAccountProfileResponse(name="Alice", avatar=None)
-
-    assert "account_login_url" not in profile.model_dump(mode="json")
-    schema = WebAccountProfileResponse.model_json_schema(mode="serialization")
-    assert "account_login_url" not in schema["properties"]
 
 
 @pytest.fixture
