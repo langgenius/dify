@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "Impossibile partecipare alla collaborazione. Controlla i permessi di accesso e il piano dell’area di lavoro, quindi riapri l’editor.",
   "collaboration.joinUnavailable": "Impossibile connettersi alla collaborazione. Le modifiche a questa area di lavoro potrebbero non essere salvate.",
   "collaboration.reloadPage": "Ricarica Pagina",
+  "collaboration.replacedWithPendingEdits": "La bozza è stata sostituita. Le modifiche non sincronizzate sono salvate su questo dispositivo e non sono state applicate alla nuova bozza.",
   "common.accessAPIReference": "Accedi alla Riferimento API",
   "common.accessPointDescription": "Configura app web, API, MCP e trigger",
   "common.addBlock": "Aggiungi nodo",

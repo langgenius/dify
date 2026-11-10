@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from events.app_event import app_draft_loro_epoch_was_replaced
 from extensions.ext_application_services import application_services
 from extensions.ext_socketio import sio
 from extensions.otel.workflow_collaboration import observe_workflow_event
@@ -32,6 +33,15 @@ class LoroDraftSyncPayload(BaseModel):
 
 def _sio_on(event: str) -> Callable[[Callable[..., object]], Callable[..., object]]:
     return cast(Callable[[Callable[..., object]], Callable[..., object]], sio.on(event))
+
+
+@app_draft_loro_epoch_was_replaced.connect
+def notify_draft_replacement(app_id: str, *, epoch: str) -> None:
+    """Ask all editors to reconcile after the replacement transaction has committed."""
+    try:
+        sio.emit("loro_draft_changed", {"epoch": epoch}, room=app_id)
+    except Exception:
+        logging.exception("Failed to notify collaborators about replaced Loro draft %s", app_id)
 
 
 @_sio_on("connect")
@@ -161,8 +171,10 @@ def handle_loro_draft_sync(sid: str, data: object) -> tuple[dict[str, object], i
                 allow_empty=payload.allow_empty,
                 session=session,
             )
-    except (WorkflowNotFoundError, LoroDraftEpochChangedError):
+    except LoroDraftEpochChangedError:
         return {"msg": "epoch_changed"}, 409
+    except WorkflowNotFoundError:
+        return {"msg": "draft_workflow_not_exist"}, 404
     except LoroDraftEmptyGraphError:
         return {"msg": "empty_graph_confirmation_required"}, 409
     except ValueError:

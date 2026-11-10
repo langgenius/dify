@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "Ortak düzenlemeye katılamadınız. Erişim izninizi ve çalışma alanı planını kontrol edip düzenleyiciyi yeniden açın.",
   "collaboration.joinUnavailable": "Ortak düzenlemeye bağlanılamadı. Bu tuvaldeki değişiklikler kaydedilmemiş olabilir.",
   "collaboration.reloadPage": "Sayfayı Yenile",
+  "collaboration.replacedWithPendingEdits": "Taslak değiştirildi. Eşitlenmemiş düzenlemeleriniz bu cihazda kayıtlıdır ve yeni taslağa uygulanmadı.",
   "common.accessAPIReference": "API Referansına Eriş",
   "common.accessPointDescription": "Web uygulamasını, API'yi, MCP'yi ve tetikleyicileri yapılandır",
   "common.addBlock": "Düğüm Ekle",

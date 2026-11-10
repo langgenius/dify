@@ -5,6 +5,8 @@ import pytest
 from loro import ExportMode, LoroDoc, VersionVector
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
+from libs.datetime_utils import naive_utc_now
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
@@ -179,3 +181,78 @@ def test_ordinary_http_write_retires_old_loro_epoch(
             allow_empty=False,
             session=sqlite_session,
         )
+
+
+@pytest.mark.parametrize("operation", ["restore", "overwrite"])
+def test_server_replacement_excludes_previous_epoch(
+    service: WorkflowService,
+    sqlite_session: Session,
+    draft: tuple[App, Workflow],
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+) -> None:
+    """Keep a committed replacement when edits from the previous draft arrive on either side of it."""
+    monkeypatch.setattr(dify_config, "ENABLE_COLLABORATION_MODE", True)
+    app, row = draft
+    account = make_account(account_id=row.created_by)
+    client, baseline = _seed(service, app, row, sqlite_session)
+    old_epoch = row.id
+
+    def exchange(epoch: str, version: bytes | None, update: bytes | None):
+        return service.sync_loro_draft(
+            app_model=app,
+            account_id=account.id,
+            epoch=epoch,
+            version=version,
+            update=update,
+            allow_empty=False,
+            session=sqlite_session,
+        )
+
+    client.get_map("graph").insert("viewport", {"x": 32, "y": 0, "zoom": 1})
+    committed = exchange(old_epoch, baseline, client.export(ExportMode.Updates(VersionVector.decode(baseline))))
+    assert committed.changed
+    client.get_map("graph").insert("viewport", {"x": 64, "y": 0, "zoom": 1})
+    pending = client.export(ExportMode.Updates(VersionVector.decode(committed.version)))
+
+    if operation == "restore":
+        published = Workflow(
+            app_id=app.id,
+            tenant_id=app.tenant_id,
+            created_by=account.id,
+            type=WorkflowType.CHAT,
+            version=Workflow.version_from_datetime(naive_utc_now()),
+            graph=json.dumps(GRAPH),
+            _features="{}",
+        )
+        sqlite_session.add(published)
+        sqlite_session.commit()
+        service.restore_published_workflow_to_draft(
+            app_model=app, workflow_id=published.id, account=account, session=sqlite_session
+        )
+    else:
+        service.sync_draft_workflow(
+            app_model=app,
+            graph=GRAPH,
+            features={},
+            unique_hash=committed.hash,
+            account=account,
+            environment_variables=[],
+            conversation_variables=[],
+            session=sqlite_session,
+        )
+
+    new_epoch = row.loro_draft_epoch
+    assert new_epoch is not None
+    assert new_epoch != old_epoch
+    assert row.graph_dict == GRAPH
+    with pytest.raises(LoroDraftEpochChangedError):
+        exchange(old_epoch, committed.version, pending)
+    sqlite_session.rollback()
+
+    confirmation = exchange(new_epoch, None, None)
+    assert confirmation.update is not None
+    restored = LoroDoc()
+    restored.import_(confirmation.update)
+    assert project_loro_graph(restored) == row.graph_dict == GRAPH
+    assert not restored.state_vv.includes_vv(VersionVector.decode(committed.version))

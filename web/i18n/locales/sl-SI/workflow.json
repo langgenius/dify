@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "Pridružitev sodelovanju ni uspela. Preverite dostop in paket delovnega prostora ter znova odprite urejevalnik.",
   "collaboration.joinUnavailable": "Povezava za sodelovanje ni uspela. Spremembe na tem platnu morda niso shranjene.",
   "collaboration.reloadPage": "Znova naloži stran",
+  "collaboration.replacedWithPendingEdits": "Osnutek je bil zamenjan. Vaše nesinhronizirane spremembe so shranjene v tej napravi in niso bile uporabljene v novem osnutku.",
   "common.accessAPIReference": "Dostop do referenčnega API-ja",
   "common.accessPointDescription": "Nastavi spletno aplikacijo, API, MCP in sprožilce",
   "common.addBlock": "Dodaj vozlišče",

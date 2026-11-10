@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "Nu te poți alătura colaborării. Verifică accesul și abonamentul spațiului de lucru, apoi redeschide editorul.",
   "collaboration.joinUnavailable": "Nu s-a putut conecta la colaborare. Modificările de pe acest spațiu de lucru ar putea să nu fie salvate.",
   "collaboration.reloadPage": "Reîncarcă pagina",
+  "collaboration.replacedWithPendingEdits": "Schița a fost înlocuită. Modificările nesincronizate sunt salvate pe acest dispozitiv și nu au fost aplicate noii schițe.",
   "common.accessAPIReference": "Accesează referința API",
   "common.accessPointDescription": "Configurează aplicația web, API, MCP și declanșatoarele",
   "common.addBlock": "Adaugă nod",

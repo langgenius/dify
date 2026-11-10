@@ -16,6 +16,7 @@ type Options = {
   onReady: () => void
   onConfirmed: (result: LoroDraftConfirmation) => void
   onPendingChange: (pending: boolean) => void
+  onEpochChanged: () => void
   onUnavailable: () => void
   onUnauthorized: () => void
 }
@@ -173,9 +174,12 @@ export class LoroDraftProvider {
         if (error instanceof SyncRejected && error.status === 401) {
           this.leave()
           this.options.onUnauthorized()
+        } else if (error instanceof SyncRejected && error.code === 'epoch_changed') {
+          this.options.onEpochChanged()
+          retry = true
         } else if (
           error instanceof SyncRejected &&
-          (error.status === 403 || error.code === 'epoch_changed')
+          (error.status === 403 || error.status === 404)
         ) {
           this.markUnavailable()
         } else {

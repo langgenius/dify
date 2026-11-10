@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "共同編集に参加できません。アクセス権とワークスペースのプランを確認し、エディターを開き直してください。",
   "collaboration.joinUnavailable": "共同編集に接続できません。このキャンバスの変更は保存されていない可能性があります。",
   "collaboration.reloadPage": "ページを再読み込み",
+  "collaboration.replacedWithPendingEdits": "下書きが置き換えられました。未同期の編集内容はこのデバイスに保存されており、新しい下書きには反映されていません。",
   "common.accessAPIReference": "API リファレンス",
   "common.accessPointDescription": "Web アプリ、API、MCP、トリガーを設定",
   "common.addBlock": "ブロックを追加",

@@ -1,6 +1,6 @@
 """Loro graph encoding shared with the workflow editor.
 
-Node and data maps retain their identity across edits and server-side replaces.
+Node and data maps retain their identity across edits within one draft epoch.
 Only fully applied document versions can be projected or acknowledged.
 """
 

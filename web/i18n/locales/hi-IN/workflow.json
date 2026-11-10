@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "सहयोग से जुड़ना संभव नहीं हुआ। अपनी पहुँच और कार्यक्षेत्र का प्लान जाँचें, फिर संपादक दोबारा खोलें।",
   "collaboration.joinUnavailable": "सहयोग से कनेक्ट नहीं हो सका। इस कैनवास के बदलाव सहेजे नहीं गए हो सकते हैं।",
   "collaboration.reloadPage": "पेज रीलोड करें",
+  "collaboration.replacedWithPendingEdits": "ड्राफ़्ट बदल दिया गया है। आपके सिंक न हुए बदलाव इस डिवाइस पर सुरक्षित हैं और नए ड्राफ़्ट पर लागू नहीं किए गए हैं।",
   "common.accessAPIReference": "एपीआई संदर्भ तक पहुंचें",
   "common.accessPointDescription": "वेब ऐप, API, MCP और ट्रिगर कॉन्फ़िगर करें",
   "common.addBlock": "नोड जोड़ें",

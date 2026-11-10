@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "공동 편집에 참여할 수 없습니다. 접근 권한과 워크스페이스 요금제를 확인한 후 편집기를 다시 열어 주세요.",
   "collaboration.joinUnavailable": "공동 편집에 연결할 수 없습니다. 이 캔버스의 변경 사항이 저장되지 않았을 수 있습니다.",
   "collaboration.reloadPage": "페이지 새로고침",
+  "collaboration.replacedWithPendingEdits": "초안이 교체되었습니다. 동기화되지 않은 수정 내용은 이 기기에 저장되어 있으며 새 초안에는 적용되지 않았습니다.",
   "common.accessAPIReference": "API 참조 접근",
   "common.accessPointDescription": "웹 앱, API, MCP 및 트리거를 구성합니다",
   "common.addBlock": "노드 추가",

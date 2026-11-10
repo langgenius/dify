@@ -60,7 +60,11 @@ from core.workflow.workflow_entry import WorkflowEntry
 from domain.workflow.agent_node import is_dify_agent_node_data
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
-from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
+from events.app_event import (
+    app_draft_loro_epoch_was_replaced,
+    app_draft_workflow_was_synced,
+    app_published_workflow_was_updated,
+)
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -115,7 +119,6 @@ from services.workflow_loro_document import (
     load_loro_draft,
     merge_loro_update,
     project_loro_graph,
-    replace_loro_graph,
 )
 from services.workflow_node_variables import get_human_input_form_variable_mapping
 from services.workflow_ref_service import WorkflowRef
@@ -528,44 +531,45 @@ class WorkflowService:
             )
 
         if commit:
-            self.align_loro_draft_after_graph_write(workflow, replace=graph_writer == "server", session=session)
-
-        # commit db session changes
-        if commit:
+            replacement_epoch = self.align_loro_draft_after_graph_write(
+                workflow, replace=graph_writer == "server", session=session
+            )
             session.commit()
+            if replacement_epoch is not None:
+                app_draft_loro_epoch_was_replaced.send(app_model.id, epoch=replacement_epoch)
             WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=app_model.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
             )
-
-        # trigger app workflow events
-        if commit:
             app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
 
         # return draft workflow
         return workflow
 
     @staticmethod
-    def align_loro_draft_after_graph_write(workflow: Workflow, *, replace: bool, session: Session) -> None:
-        """With the draft locked, apply an explicit import/restore or invalidate an inactive epoch.
+    def align_loro_draft_after_graph_write(workflow: Workflow, *, replace: bool, session: Session) -> str | None:
+        """Prepare a fresh collaborative history for a replacement while the draft is locked.
 
-        The caller commits the Loro history and final graph in the same transaction.
+        A replacement and its epoch must commit together so edits based on the old graph
+        cannot merge into the new graph. Return the new epoch for notification after commit.
+        An HTTP write retires existing Loro history without starting a collaborative session.
         """
-        if workflow.loro_draft_epoch is None or workflow.loro_draft_snapshot is None:
-            return
         if replace and dify_config.ENABLE_COLLABORATION_MODE:
             from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
-            doc = load_loro_draft(workflow.loro_draft_snapshot, workflow.graph_dict)
             projected = WorkflowAgentPublishService.project_draft_bindings_to_graph(
                 session=session, draft_workflow=workflow
             )
-            replace_loro_graph(doc, projected)
+            doc = load_loro_draft(None, projected)
             workflow.loro_draft_snapshot = doc.export(ExportMode.Snapshot())
-        else:
+            workflow.loro_draft_epoch = str(uuid.uuid4())
+            return workflow.loro_draft_epoch
+
+        if workflow.loro_draft_snapshot is not None:
             workflow.loro_draft_epoch = str(uuid.uuid4())
             workflow.loro_draft_snapshot = None
+        return None
 
     def sync_loro_draft(
         self,
@@ -802,8 +806,10 @@ class WorkflowService:
             account_id=account.id,
         )
 
-        self.align_loro_draft_after_graph_write(draft_workflow, replace=True, session=session)
+        replacement_epoch = self.align_loro_draft_after_graph_write(draft_workflow, replace=True, session=session)
         session.commit()
+        if replacement_epoch is not None:
+            app_draft_loro_epoch_was_replaced.send(app_model.id, epoch=replacement_epoch)
         WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app_model.tenant_id,
             agent_ids=retirement_candidates,

@@ -23,6 +23,24 @@ Feature: Persist LLM node prompts in workflow drafts
     When the collaboration connection returns
     Then the retried prompt save should confirm the same stored revision
 
+  @workflow-collaboration
+  Scenario Outline: Keep a replaced draft when another editor reconnects
+    Given a Chatflow with a published LLM prompt and a second editor
+    When I open the app from the app list
+    And the other editor opens the same Chatflow
+    And I save a newer LLM prompt
+    And the other editor queues changes while disconnected
+    And I <replace the draft>
+    Then the saved draft contains the replacement prompt
+    When the other editor reconnects
+    Then both editors see the replacement instead of the queued changes
+    And the other editor can save and reload a new prompt
+
+    Examples:
+      | replace the draft                             |
+      | restore the published LLM prompt              |
+      | overwrite the draft with its original DSL     |
+
   @core @workflow-http-draft
   Scenario: Save and reload a prompt with collaboration disabled
     Given a Chatflow with a saved LLM prompt and collaboration disabled

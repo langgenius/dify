@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "تعذّر الانضمام إلى التعاون. تحقّق من صلاحية الوصول وخطة مساحة العمل، ثم أعد فتح المحرّر.",
   "collaboration.joinUnavailable": "تعذر الاتصال بالتحرير التعاوني. قد لا تُحفظ التغييرات في هذه اللوحة.",
   "collaboration.reloadPage": "إعادة تحميل الصفحة",
+  "collaboration.replacedWithPendingEdits": "تم استبدال المسودة. لا تزال تعديلاتك غير المتزامنة محفوظة على هذا الجهاز ولم تُطبَّق على المسودة الجديدة.",
   "common.accessAPIReference": "الوصول إلى مرجع API",
   "common.accessPointDescription": "تهيئة تطبيق الويب وواجهة API وMCP والمشغلات",
   "common.addBlock": "إضافة عقدة",

@@ -29,6 +29,7 @@ import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-i
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
@@ -153,7 +154,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   }, [appId, isCollaborationEnabled])
 
   useEffect(() => {
-    if (!loroDraft || !isCollaborationEnabled) return
+    if (!isCollaborationEnabled) return
     const unsubscribeConfirmation = collaborationManager.onLoroDraftConfirmed(
       ({ hash, updatedAt, isEmpty }) => {
         workflowStore.setState({
@@ -172,7 +173,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       unsubscribeConfirmation()
       unsubscribePending()
     }
-  }, [isCollaborationEnabled, loroDraft, workflowStore])
+  }, [isCollaborationEnabled, workflowStore])
 
   const handleWorkflowDataUpdate = useCallback(
     (payload: WorkflowDataUpdatePayload) => {
@@ -266,6 +267,8 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
     const applySnapshot = async (snapshot: VarsUpdateSnapshot) => {
       if (snapshot.generation <= varsUpdateAppliedGenerationRef.current) return
+      const { loroDraft: activeDraft } = workflowStore.getState()
+      if (activeDraft && snapshot.response.loro_draft_epoch !== activeDraft.epoch) return
 
       handleWorkflowDataUpdate(snapshot.response)
       varsUpdateAppliedGenerationRef.current = snapshot.generation
@@ -359,38 +362,53 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     )
 
     return unsubscribe
-  }, [appId, doSyncWorkflowDraft, handleWorkflowDataUpdate, isCollaborationEnabled])
+  }, [appId, doSyncWorkflowDraft, handleWorkflowDataUpdate, isCollaborationEnabled, workflowStore])
 
   // Listen for workflow updates from other users
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
 
+    let disposed = false
+    let refreshSequence = 0
+    let appliedSequence = 0
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
+      const { loroDraft: activeDraft } = workflowStore.getState()
+      const sequence = ++refreshSequence
       try {
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+        const state = workflowStore.getState()
+        if (disposed || sequence < appliedSequence || state.loroDraft !== activeDraft) return
 
-        if (response.hash)
-          workflowStore.getState().setSyncWorkflowDraftHash(response.hash, response.graph)
-
-        // Handle features, variables etc.
+        const nextEpoch = response.loro_draft_epoch
+        if (activeDraft && nextEpoch && nextEpoch !== activeDraft.epoch) {
+          const identity = { ...activeDraft, epoch: nextEpoch }
+          if (!collaborationManager.replaceLoroDraft(appId, identity)) return
+          workflowStore.setState({ loroDraft: identity, hasPendingLoroDraftChanges: false })
+          if (state.hasPendingLoroDraftChanges)
+            toast.info(t(($) => $['collaboration.replacedWithPendingEdits'], { ns: 'workflow' }))
+        }
+        appliedSequence = sequence
+        if (response.hash) state.setSyncWorkflowDraftHash(response.hash, response.graph)
         handleWorkflowDataUpdate(response)
 
-        // Update workflow canvas (nodes, edges, viewport)
-        if (response.graph && !loroDraft)
+        if (response.graph && !activeDraft)
           handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
       } catch (error) {
         console.error('Failed to fetch updated workflow:', error)
       }
     })
 
-    return unsubscribe
+    return () => {
+      disposed = true
+      unsubscribe()
+    }
   }, [
     appId,
     getWorkflowDraftGraphForCanvas,
     handleWorkflowDataUpdate,
     handleUpdateWorkflowCanvas,
     isCollaborationEnabled,
-    loroDraft,
+    t,
     workflowStore,
   ])
 

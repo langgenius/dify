@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "Die Verbindung zur Zusammenarbeit konnte nicht hergestellt werden. Prüfe deine Zugriffsrechte und den Tarif des Arbeitsbereichs und öffne den Editor erneut.",
   "collaboration.joinUnavailable": "Verbindung zur Zusammenarbeit fehlgeschlagen. Änderungen auf dieser Arbeitsfläche sind möglicherweise nicht gespeichert.",
   "collaboration.reloadPage": "Seite neu laden",
+  "collaboration.replacedWithPendingEdits": "Der Entwurf wurde ersetzt. Deine nicht synchronisierten Änderungen sind weiterhin auf diesem Gerät gespeichert und wurden nicht auf den neuen Entwurf angewendet.",
   "common.accessAPIReference": "API-Referenz aufrufen",
   "common.accessPointDescription": "Web-App, API, MCP und Trigger konfigurieren",
   "common.addBlock": "Knoten hinzufügen",

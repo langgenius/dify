@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "Birgə redaktəyə qoşulmaq mümkün olmadı. Giriş icazənizi və iş sahəsinin planını yoxlayın, sonra redaktoru yenidən açın.",
   "collaboration.joinUnavailable": "Birgə redaktəyə qoşulmaq olmadı. Bu lövhədəki dəyişikliklər saxlanmamış ola bilər.",
   "collaboration.reloadPage": "Səhifəni yenidən yüklə",
+  "collaboration.replacedWithPendingEdits": "Qaralama əvəzləndi. Sinxronlaşdırılmamış dəyişiklikləriniz bu cihazda saxlanılıb və yeni qaralamaya tətbiq edilməyib.",
   "common.accessAPIReference": "API istinad sənədlərinə keç",
   "common.accessPointDescription": "Veb tətbiqini, API-ni, MCP-ni və tətikləyiciləri konfiqurasiya edin",
   "common.addBlock": "Düyün əlavə et",

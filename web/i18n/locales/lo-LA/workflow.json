@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "ບໍ່ສາມາດເຂົ້າຮ່ວມການແກ້ໄຂຮ່ວມກັນໄດ້. ກວດສອບສິດເຂົ້າເຖິງ ແລະ ແພັກເກັດຂອງພື້ນທີ່ເຮັດວຽກ ແລ້ວເປີດໂຕແກ້ໄຂອີກຄັ້ງ.",
   "collaboration.joinUnavailable": "ບໍ່ສາມາດເຊື່ອມຕໍ່ການແກ້ໄຂຮ່ວມກັນໄດ້. ການປ່ຽນແປງໃນກະດານນີ້ອາດຍັງບໍ່ຖືກບັນທຶກ.",
   "collaboration.reloadPage": "ໂຫຼດໜ້າຄືນໃໝ່",
+  "collaboration.replacedWithPendingEdits": "ຮ່າງຖືກແທນທີ່ແລ້ວ. ການແກ້ໄຂທີ່ຍັງບໍ່ໄດ້ຊິງຄ໌ຍັງຖືກເກັບໄວ້ໃນອຸປະກອນນີ້ ແລະບໍ່ໄດ້ນຳໃຊ້ກັບຮ່າງໃໝ່.",
   "common.accessAPIReference": "ເບິ່ງເອກະສານອ້າງອີງ API",
   "common.accessPointDescription": "ຕັ້ງຄ່າເວັບແອັບ, API, MCP ແລະ ຕົວກະຕຸ້ນ",
   "common.addBlock": "ເພີ່ມໂນດ",

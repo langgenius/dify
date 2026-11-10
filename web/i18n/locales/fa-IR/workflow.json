@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "پیوستن به ویرایش مشارکتی ممکن نشد. دسترسی خود و طرح فضای کاری را بررسی کنید و ویرایشگر را دوباره باز کنید.",
   "collaboration.joinUnavailable": "اتصال به ویرایش مشارکتی ممکن نشد. تغییرات این بوم ممکن است ذخیره نشده باشند.",
   "collaboration.reloadPage": "بارگذاری مجدد صفحه",
+  "collaboration.replacedWithPendingEdits": "پیش‌نویس جایگزین شد. تغییرات همگام‌نشدهٔ شما در این دستگاه ذخیره شده‌اند و روی پیش‌نویس جدید اعمال نشدند.",
   "common.accessAPIReference": "دسترسی به مستندات API",
   "common.accessPointDescription": "برنامه وب، API، MCP و محرک‌ها را پیکربندی کنید",
   "common.addBlock": "افزودن گره",

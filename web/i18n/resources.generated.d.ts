@@ -5801,6 +5801,7 @@ export default interface Resources {
     'collaboration.joinDenied': 'Unable to join collaboration. Check your access and workspace plan, then reopen the editor.'
     'collaboration.joinUnavailable': 'Unable to connect to collaboration. Changes on this canvas may not be saved.'
     'collaboration.reloadPage': 'Reload Page'
+    'collaboration.replacedWithPendingEdits': 'The draft was replaced. Your unsynced edits are saved on this device and were not applied to the new draft.'
     'common.accessAPIReference': 'Access API Reference'
     'common.accessPointDescription': 'Configure web app, API, MCP, and triggers'
     'common.addBlock': 'Add Node'

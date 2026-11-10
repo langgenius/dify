@@ -18,6 +18,7 @@ export async function observeWorkflowDraftNetwork(page: Page) {
   let socketCount = 0
   let confirmedUploads = 0
   let confirmedSyncs = 0
+  let rejectedStaleUploads = 0
   const httpSaves: number[] = []
 
   page.on('response', (response) => {
@@ -66,14 +67,27 @@ export async function observeWorkflowDraftNetwork(page: Page) {
     server.onMessage((message) => {
       if (interrupted) return
       const packet = socketPacket(message)
-      if (packet && syncs.delete(packet.id) && packet.payload[1] === 200) {
+      if (packet && syncs.delete(packet.id)) {
         const upload = uploads.delete(packet.id)
-        if (upload && fault === 'acknowledgement') {
-          interrupt()
-          return
+        const [body, status]: unknown[] = packet.payload
+        if (status === 200) {
+          if (upload && fault === 'acknowledgement') {
+            interrupt()
+            return
+          }
+          confirmedSyncs += 1
+          if (upload) confirmedUploads += 1
         }
-        confirmedSyncs += 1
-        if (upload) confirmedUploads += 1
+        if (
+          upload &&
+          status === 409 &&
+          body &&
+          typeof body === 'object' &&
+          'msg' in body &&
+          body.msg === 'epoch_changed'
+        ) {
+          rejectedStaleUploads += 1
+        }
       }
       client.send(message)
     })
@@ -90,6 +104,9 @@ export async function observeWorkflowDraftNetwork(page: Page) {
     socketCount: () => socketCount,
     confirmedUploads: () => confirmedUploads,
     confirmedSyncs: () => confirmedSyncs,
+    rejectedStaleUploads: () => rejectedStaleUploads,
     httpSaves,
   }
 }
+
+export type WorkflowDraftNetwork = Awaited<ReturnType<typeof observeWorkflowDraftNetwork>>

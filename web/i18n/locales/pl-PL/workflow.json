@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "Nie można dołączyć do współpracy. Sprawdź dostęp i plan obszaru roboczego, a następnie otwórz edytor ponownie.",
   "collaboration.joinUnavailable": "Nie udało się połączyć ze współpracą. Zmiany na tym obszarze roboczym mogły nie zostać zapisane.",
   "collaboration.reloadPage": "Odśwież stronę",
+  "collaboration.replacedWithPendingEdits": "Wersja robocza została zastąpiona. Niezsynchronizowane zmiany są zapisane na tym urządzeniu i nie zostały zastosowane do nowej wersji roboczej.",
   "common.accessAPIReference": "Uzyskaj dostęp do dokumentacji API",
   "common.accessPointDescription": "Skonfiguruj aplikację internetową, API, MCP i wyzwalacze",
   "common.addBlock": "Dodaj węzeł",

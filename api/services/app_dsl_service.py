@@ -40,7 +40,7 @@ from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from enums import DeploymentEdition
-from events.app_event import app_model_config_was_updated, app_was_created
+from events.app_event import app_draft_loro_epoch_was_replaced, app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
 from graphon.enums import BuiltinNodeTypes
@@ -853,10 +853,12 @@ class AppDslService:
                         session=self._session,
                         draft_workflow=draft_workflow,
                     )
-                    workflow_service.align_loro_draft_after_graph_write(
+                    replacement_epoch = workflow_service.align_loro_draft_after_graph_write(
                         draft_workflow, replace=True, session=self._session
                     )
                     self._session.commit()
+                    if replacement_epoch is not None:
+                        app_draft_loro_epoch_was_replaced.send(app.id, epoch=replacement_epoch)
                     WorkflowAgentRetirementService.retire_unowned(
                         tenant_id=app.tenant_id,
                         agent_ids=retirement_candidates,

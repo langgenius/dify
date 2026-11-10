@@ -722,9 +722,10 @@ export class CollaborationManager {
     })
 
     if (this.loroDraft && this.currentAppId) {
+      const appId = this.currentAppId
       const generation = this.crdtGeneration
       this.loroProvider = new LoroDraftProvider({
-        appId: this.currentAppId,
+        appId,
         identity: this.loroDraft,
         doc: this.doc,
         socket,
@@ -736,6 +737,11 @@ export class CollaborationManager {
         },
         onConfirmed: (result) => this.eventEmitter.emit('loroDraftConfirmed', result),
         onPendingChange: (pending) => this.eventEmitter.emit('loroDraftPendingChange', pending),
+        onEpochChanged: () => {
+          this.crdtTrusted = false
+          this.emitGraphReadyState()
+          this.eventEmitter.emit('workflowUpdate', { appId, timestamp: Date.now() })
+        },
         onUnavailable: () => {
           this.joinFailure = 'session_unavailable'
           this.crdtTrusted = false
@@ -1194,6 +1200,23 @@ export class CollaborationManager {
 
   usesLoroDraft(appId: string): boolean {
     return this.currentAppId === appId && this.loroDraft !== undefined
+  }
+
+  replaceLoroDraft(appId: string, identity: LoroDraftIdentity): boolean {
+    const socket = this.getActiveSocket()
+    if (!this.usesLoroDraft(appId) || !socket) return false
+
+    this.crdtTrusted = false
+    this.loroProvider?.destroy()
+    this.loroDraft = identity
+    this.targetLoroDraft = identity
+    this.initializeCrdt(socket)
+    this.emitGraphReadyState()
+    this.eventEmitter.emit('undoRedoStateChange', { canUndo: false, canRedo: false })
+
+    if (socket.connected && this.hasJoinedRoom && !this.joinPending && !this.joinFailure)
+      this.loroProvider?.join()
+    return true
   }
 
   syncLoroDraft(appId: string, allowEmpty = false): Promise<WorkflowSyncResult> {
@@ -2026,8 +2049,8 @@ export class CollaborationManager {
       },
     )
 
-    socket.on('loro_draft_changed', (data: { epoch: string }) => {
-      if (this.loroDraft?.epoch === data?.epoch) this.loroProvider?.pull()
+    socket.on('loro_draft_changed', () => {
+      this.loroProvider?.pull()
     })
 
     socket.on('online_users', (data: { users: OnlineUser[]; leader?: string }) => {

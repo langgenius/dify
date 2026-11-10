@@ -114,6 +114,7 @@
   "collaboration.joinDenied": "无法加入协作。请检查访问权限和工作区套餐，然后重新打开编辑器。",
   "collaboration.joinUnavailable": "无法连接协作编辑，此画布上的修改可能尚未保存。",
   "collaboration.reloadPage": "重新加载页面",
+  "collaboration.replacedWithPendingEdits": "草稿已被替换。未同步的编辑仍保存在此设备上，未应用到新草稿。",
   "common.accessAPIReference": "访问 API",
   "common.accessPointDescription": "配置 Web 应用、API、MCP 和触发器",
   "common.addBlock": "添加节点",
