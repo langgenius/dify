@@ -89,13 +89,11 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
           isFetching,
         }
   return (
-    <>
-      <div className="shrink-0 px-2 pt-3.5 pb-2 sm:px-8">
+    <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+      <div className="sticky top-0 z-10 shrink-0 bg-background-body px-2 pt-3.5 pb-2 sm:px-8">
         <RosterToolbar publicationCounts={publicationCounts} />
       </div>
-      <div className="min-h-0 flex-1 max-md:min-h-64">
-        <AgentRosterList aria-labelledby={labelledBy} state={listState} />
-      </div>
-    </>
+      <AgentRosterList aria-labelledby={labelledBy} state={listState} />
+    </div>
   )
 }

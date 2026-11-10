@@ -223,13 +223,13 @@ const EditCustomCollectionModal: FC<Props> = ({
           <DrawerViewport className={dialogClassName}>
             <DrawerPopup
               className={cn(
-                'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-160 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
+                'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-160 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:ring-divider-subtle',
                 isAdd && !positionLeft
                   ? 'data-[swipe-direction=right]:right-[max(0.5rem,calc(50%-320px))]'
                   : 'data-[swipe-direction=right]:right-2',
               )}
             >
-              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+              <DrawerContent>
                 <div className="shrink-0 border-b border-divider-regular py-4">
                   <div className="flex h-6 items-center justify-between ps-6 pe-5">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">

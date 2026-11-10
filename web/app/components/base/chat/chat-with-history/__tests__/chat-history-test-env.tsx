@@ -41,7 +41,7 @@ export function renderChatHistory(
     appParams?: ChatConfig
     sidebarCollapsed?: boolean
     // These are caller-owned display inputs; all conversation commands come from the real owner.
-    ownerProps?: Pick<Partial<ChatWithHistoryContextValue>, 'isMobile' | 'isResponding'>
+    ownerProps?: Pick<Partial<ChatWithHistoryContextValue>, 'isBelowSm' | 'isResponding'>
   } = {},
 ) {
   window.history.replaceState({}, '', '/')
@@ -69,7 +69,7 @@ export function renderChatHistory(
   function Owner() {
     const value = useChatWithHistory()
     return (
-      <ChatWithHistoryContext.Provider value={{ ...value, isMobile: false, ...ownerProps }}>
+      <ChatWithHistoryContext.Provider value={{ ...value, isBelowSm: false, ...ownerProps }}>
         {ui}
       </ChatWithHistoryContext.Provider>
     )

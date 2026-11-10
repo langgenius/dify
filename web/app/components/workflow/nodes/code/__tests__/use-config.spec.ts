@@ -49,6 +49,13 @@ describe('code/use-config', () => {
         .mockResolvedValueOnce({ config: python })
     }
   })
+  it('offers integer variables, such as integer tool outputs, as code inputs while rejecting unsupported types', () => {
+    const { result } = renderNodeConfig(useConfig, createData(), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
+    expect(result.current.config.filterVar({ variable: 'code', type: VarType.integer })).toBe(true)
+    expect(result.current.config.filterVar({ variable: 'code', type: VarType.any })).toBe(false)
+  })
   it('hydrates empty code and output ordering from stored defaults', async () => {
     const defaults = createData({ outputs: createOutputs('default_result') })
     const { result } = renderNodeConfig(
