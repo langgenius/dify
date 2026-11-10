@@ -26,10 +26,10 @@ from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.schedule_gateway import publish_schedules
 from services.trigger.schedule_service import SchedulePublicationService, TriggerScheduleService
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_app, make_workflow
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _Harness
 from tests.unit_tests.controllers.trigger import test_webhook as native_webhook_tests
-from tests.unit_tests.model_factories import make_app, make_workflow
 from tests.unit_tests.tasks.test_trigger_processing_tasks import _Billing, billing
 
 __all__ = ["billing"]
