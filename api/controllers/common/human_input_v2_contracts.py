@@ -280,12 +280,15 @@ class IMSyncRunResultCounts(ResponseModel):
 class IMSyncRun(ResponseModel):
     """One IM sync run snapshot.
 
-    The latest-only UI displays ``finished_at`` as the explicit sync time. The
-    transport contract intentionally does not expose a ``started_by`` actor.
+    The latest-only UI displays ``finished_at`` as the explicit sync time.
+    The initiator display name is resolved from the initiating Dify Account.
     """
 
     id: IMSyncRunId = Field(description="Unique sync run identifier.")
     status: IMSyncRunStatus = Field(description="Current lifecycle state of the sync run.")
+    initiator_display_name: str = Field(
+        description="Current initiating Account name; empty for EE administrators or an unavailable Account."
+    )
     started_at: Timestamp | None = Field(
         default=None, description="Unix timestamp in seconds when the sync run started."
     )

@@ -2016,6 +2016,7 @@ export type ImSyncRun = {
   error_message?: string | null
   finished_at?: number | null
   id: string
+  initiator_display_name: string
   provider: ImProvider
   result_counts: ImSyncRunResultCounts
   started_at?: number | null

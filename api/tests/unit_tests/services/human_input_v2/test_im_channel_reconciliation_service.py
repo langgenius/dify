@@ -28,6 +28,7 @@ from core.human_input_v2.im_integration.adapters import (
     ProviderUserId,
 )
 from core.human_input_v2.im_integration.adapters.entities import Avatar
+from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator
 from core.human_input_v2.shared import AccountId, ContactId, IMSyncRunId, TenantId
 from extensions.ext_storage import storage
 from models.account import Account, TenantAccountJoin, TenantAccountRole
@@ -187,7 +188,7 @@ def reconciliation_context(sqlite_engine: Engine) -> _ReconciliationContext:
         WorkspaceIMChannelWriter(session, _TENANT_ID, _ACCOUNT_ID).create(channel)
         decision = SQLAlchemyIMControlPlaneRepository(session, channel).create_or_get_active_run(
             sync_run_id=_RUN_ID,
-            started_by_account_id=_ACCOUNT_ID,
+            started_by=AccountIMSyncInitiator(_ACCOUNT_ID),
             now=_NOW,
         )
         assert decision.run is not None
@@ -214,17 +215,17 @@ def _create_active_run(
     with sessions.begin() as session:
         decision = SQLAlchemyIMControlPlaneRepository(session, channel).create_or_get_active_run(
             sync_run_id=sync_run_id,
-            started_by_account_id=_ACCOUNT_ID,
+            started_by=AccountIMSyncInitiator(_ACCOUNT_ID),
             now=_NOW,
         )
         assert decision.run is not None
 
 
-@pytest.mark.parametrize("has_initiator", [True, False])
-def test_workspace_sync_stores_avatar_with_initiator_or_owner(
+@pytest.mark.parametrize("has_account_initiator", [True, False])
+def test_workspace_sync_stores_avatar_with_account_initiator_or_owner(
     reconciliation_context: _ReconciliationContext,
     mocker: MockerFixture,
-    has_initiator: bool,
+    has_account_initiator: bool,
 ) -> None:
     save = mocker.patch.object(storage, "save")
     with reconciliation_context.sessions.begin() as session:
@@ -241,9 +242,11 @@ def test_workspace_sync_stores_avatar_with_initiator_or_owner(
                 ),
             ]
         )
-        if not has_initiator:
-            session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).started_by_account_id = None
-        expected_creator = str(_ACCOUNT_ID) if has_initiator else owner.id
+        if not has_account_initiator:
+            run_record = session.get_one(HumanInputIMSyncRun, str(_RUN_ID))
+            run_record.started_by_account_id = None
+            run_record.started_by_sys_user_id = "00000000-0000-0000-0000-000000000999"
+        expected_creator = str(_ACCOUNT_ID) if has_account_initiator else owner.id
     entry = replace(_successful_directory().entries[0], avatar=Avatar(mime_type="image/png", data=b"first avatar"))
     service = reconciliation_context.service(_Adapter(Directory((entry,))))
 
@@ -295,7 +298,9 @@ def test_missing_workspace_owner_fails_before_storing_avatars(
 ) -> None:
     save = mocker.patch.object(storage, "save")
     with reconciliation_context.sessions.begin() as session:
-        session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).started_by_account_id = None
+        run_record = session.get_one(HumanInputIMSyncRun, str(_RUN_ID))
+        run_record.started_by_account_id = None
+        run_record.started_by_sys_user_id = "00000000-0000-0000-0000-000000000999"
     entry = replace(_successful_directory().entries[0], avatar=Avatar(mime_type="image/png", data=b"avatar"))
 
     run = reconciliation_context.service(_Adapter(Directory((entry,)))).reconcile(_RUN_ID)
@@ -726,7 +731,7 @@ def test_trigger_retires_abandoned_old_revision_and_creates_current_run(
     with reconciliation_context.sessions.begin() as session:
         repository = SQLAlchemyIMControlPlaneRepository(session, current_channel)
         decision = repository.create_or_get_active_run(
-            sync_run_id=_SECOND_RUN_ID, started_by_account_id=_ACCOUNT_ID, now=_NOW
+            sync_run_id=_SECOND_RUN_ID, started_by=AccountIMSyncInitiator(_ACCOUNT_ID), now=_NOW
         )
         assert decision.run is not None
         assert decision.run.id == _SECOND_RUN_ID

@@ -7,7 +7,8 @@ from dataclasses import replace
 from datetime import datetime
 from importlib import import_module
 from inspect import unwrap
-from typing import Never, override
+from typing import override
+from unittest.mock import create_autospec
 
 import pytest
 from flask import Flask
@@ -50,10 +51,12 @@ from core.human_input_v2.im_integration import (
     SyncResultFact,
     SyncResultPage,
 )
+from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator, IMSyncInitiator
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
     DeploymentScope,
+    DirectoryScope,
     IMBindingId,
     IMIdentityId,
     IMSyncResultId,
@@ -77,6 +80,7 @@ from services.human_input_v2.im_contact_sync.service import (
     IMSyncDispatchUnavailableError,
     IMSyncRevisionChangedError,
     IMSyncRunNotFoundError,
+    IMSyncRunSummary,
 )
 from tests.helpers.unit.model_factories import make_account
 
@@ -87,7 +91,7 @@ _RUN = IMSyncRun.create(
     sync_run_id=IMSyncRunId("run-1"),
     channel_revision=IMChannelRevision("channel-1", 3),
     provider=IMProvider.FEISHU,
-    started_by_account_id=AccountId("account-1"),
+    started_by=AccountIMSyncInitiator(AccountId("account-1")),
     now=_NOW,
 )
 _RESULT = SyncResultFact(
@@ -117,39 +121,39 @@ _RESULT = SyncResultFact(
 class _SyncService:
     def create_or_get_active_run(
         self,
-        organization_scope: WorkspaceScope,
-        started_by_account_id: AccountId,
-    ) -> IMSyncRun:
-        assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
-        assert started_by_account_id == AccountId("account-1")
-        return _RUN
+        owner_scope: DirectoryScope,
+        started_by: IMSyncInitiator,
+    ) -> IMSyncRunSummary:
+        assert owner_scope == WorkspaceScope(id=TenantId("workspace-1"))
+        assert started_by == AccountIMSyncInitiator(AccountId("account-1"))
+        return IMSyncRunSummary(_RUN, "Editor")
 
-    def get_latest_run(self, organization_scope: WorkspaceScope) -> IMSyncRun:
-        assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
-        return _RUN
+    def get_latest_run(self, owner_scope: DirectoryScope) -> IMSyncRunSummary:
+        assert owner_scope == WorkspaceScope(id=TenantId("workspace-1"))
+        return IMSyncRunSummary(_RUN, "Editor")
 
     def list_latest_results(
         self,
-        organization_scope: WorkspaceScope,
+        owner_scope: DirectoryScope,
         result_type: IMSyncResultType,
         *,
         page: int,
         limit: int,
     ) -> SyncResultPage:
-        assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
+        assert owner_scope == WorkspaceScope(id=TenantId("workspace-1"))
         assert result_type is IMSyncResultType.NOT_MATCHED
         assert (page, limit) == (1, 20)
         return SyncResultPage((_RESULT,), page=page, limit=limit, total=1)
 
     def search_identities(
         self,
-        organization_scope: WorkspaceScope,
+        owner_scope: DirectoryScope,
         *,
         keyword: str | None,
         page: int,
         limit: int,
     ) -> SynchronizedIMIdentityPage:
-        assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
+        assert owner_scope == WorkspaceScope(id=TenantId("workspace-1"))
         assert (keyword, page, limit) == ("provider-user", 1, 20)
         return SynchronizedIMIdentityPage(
             (
@@ -188,26 +192,42 @@ def _contact_view(scope: IMBindingScope) -> ContactIMBindingView:
 
 
 class _BindingService:
-    def set_organization_binding(self, **kwargs: object) -> ContactIMBindingView:
-        assert kwargs == {
-            "organization_scope": WorkspaceScope(id=TenantId("workspace-1")),
-            "tenant_id": TenantId("workspace-1"),
-            "contact_id": ContactId("00000000-0000-0000-0000-000000000001"),
-            "identity_id": IMIdentityId("identity-1"),
-            "bound_by_account_id": AccountId("account-1"),
-        }
+    def set_organization_binding(
+        self,
+        *,
+        organization_scope: DirectoryScope,
+        tenant_id: TenantId,
+        contact_id: ContactId,
+        identity_id: IMIdentityId,
+        bound_by_account_id: AccountId | None,
+    ) -> ContactIMBindingView:
+        assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
+        assert tenant_id == TenantId("workspace-1")
+        assert contact_id == ContactId("00000000-0000-0000-0000-000000000001")
+        assert identity_id == IMIdentityId("identity-1")
+        assert bound_by_account_id == AccountId("account-1")
         return _contact_view(IMBindingScope.ORGANIZATION)
 
-    def delete_organization_binding(self, **kwargs: object) -> None:
-        assert kwargs == {
-            "organization_scope": WorkspaceScope(id=TenantId("workspace-1")),
-            "contact_id": ContactId("00000000-0000-0000-0000-000000000001"),
-        }
+    def delete_organization_binding(self, *, organization_scope: DirectoryScope, contact_id: ContactId) -> None:
+        assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
+        assert contact_id == ContactId("00000000-0000-0000-0000-000000000001")
 
-    def set_workspace_override(self, **_kwargs: object) -> ContactIMBindingView:
+    def set_workspace_override(
+        self,
+        *,
+        organization_scope: DirectoryScope,
+        tenant_id: TenantId,
+        contact_id: ContactId,
+        identity_id: IMIdentityId,
+        bound_by_account_id: AccountId | None,
+    ) -> ContactIMBindingView:
+        del organization_scope, tenant_id, contact_id, identity_id, bound_by_account_id
         return _contact_view(IMBindingScope.WORKSPACE)
 
-    def reset_workspace_override(self, **_kwargs: object) -> ContactIMBindingView:
+    def reset_workspace_override(
+        self, *, organization_scope: DirectoryScope, tenant_id: TenantId, contact_id: ContactId
+    ) -> ContactIMBindingView:
+        del organization_scope, tenant_id, contact_id
         return _contact_view(IMBindingScope.ORGANIZATION)
 
 
@@ -265,6 +285,7 @@ def test_sync_command_and_queries_map_transport_neutral_results(
                 "provider": "feishu",
                 "channel_id": "channel-1",
                 "channel_config_version": 3,
+                "initiator_display_name": "Editor",
             }
         }
     )
@@ -310,11 +331,11 @@ def test_sync_dispatch_unavailable_has_stable_retryable_http_mapping(
 ) -> None:
     error = IMSyncDispatchUnavailableError("IM synchronization dispatch is temporarily unavailable")
 
-    class SyncService:
-        def create_or_get_active_run(self, _scope: object, _account_id: object) -> Never:
-            raise error
-
-    monkeypatch.setattr(application.sync_service, "create_or_get_active_run", SyncService().create_or_get_active_run)
+    monkeypatch.setattr(
+        application.sync_service,
+        "create_or_get_active_run",
+        create_autospec(application.sync_service.create_or_get_active_run, side_effect=error),
+    )
 
     with app.test_request_context(method="POST"):
         response, status = unwrap(WorkspaceIMSyncRunsApi.post)(
@@ -346,22 +367,21 @@ def test_write_unavailable_has_stable_retryable_http_mapping(
     )
     error = IMWriteUnavailableError("IM write is temporarily unavailable")
 
-    class SyncService:
-        def create_or_get_active_run(self, _scope: object, _account_id: object) -> Never:
-            raise error
-
-    class BindingService:
-        def set_organization_binding(self, **_kwargs: object) -> Never:
-            raise error
-
-        def set_workspace_override(self, **_kwargs: object) -> Never:
-            raise error
-
-    monkeypatch.setattr(application.sync_service, "create_or_get_active_run", SyncService().create_or_get_active_run)
     monkeypatch.setattr(
-        application.binding_service, "set_organization_binding", BindingService().set_organization_binding
+        application.sync_service,
+        "create_or_get_active_run",
+        create_autospec(application.sync_service.create_or_get_active_run, side_effect=error),
     )
-    monkeypatch.setattr(application.binding_service, "set_workspace_override", BindingService().set_workspace_override)
+    monkeypatch.setattr(
+        application.binding_service,
+        "set_organization_binding",
+        create_autospec(application.binding_service.set_organization_binding, side_effect=error),
+    )
+    monkeypatch.setattr(
+        application.binding_service,
+        "set_workspace_override",
+        create_autospec(application.binding_service.set_workspace_override, side_effect=error),
+    )
     account = make_account(account_id="account-1", name="Editor", email="editor@example.com")
     contact_id = "00000000-0000-0000-0000-000000000001"
     if command == "sync_create":
@@ -435,10 +455,11 @@ def test_latest_results_map_every_discriminated_bucket(
     monkeypatch: pytest.MonkeyPatch,
     sync_result: SyncResultFact,
 ) -> None:
-    class SyncService:
+    class SyncService(_SyncService):
+        @override
         def list_latest_results(
             self,
-            _scope: object,
+            owner_scope: DirectoryScope,
             result_type: IMSyncResultType,
             *,
             page: int,
@@ -571,25 +592,50 @@ def test_enterprise_override_and_identity_search_use_the_deployment_directory(
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-    scopes = []
+    scopes: list[DirectoryScope] = []
 
     class BindingService(_BindingService):
         @override
-        def set_workspace_override(self, **kwargs: object) -> ContactIMBindingView:
-            scopes.append(kwargs["organization_scope"])
-            return super().set_workspace_override(**kwargs)
+        def set_workspace_override(
+            self,
+            *,
+            organization_scope: DirectoryScope,
+            tenant_id: TenantId,
+            contact_id: ContactId,
+            identity_id: IMIdentityId,
+            bound_by_account_id: AccountId | None,
+        ) -> ContactIMBindingView:
+            scopes.append(organization_scope)
+            return super().set_workspace_override(
+                organization_scope=organization_scope,
+                tenant_id=tenant_id,
+                contact_id=contact_id,
+                identity_id=identity_id,
+                bound_by_account_id=bound_by_account_id,
+            )
 
         @override
-        def reset_workspace_override(self, **kwargs: object) -> ContactIMBindingView:
-            scopes.append(kwargs["organization_scope"])
-            return super().reset_workspace_override(**kwargs)
+        def reset_workspace_override(
+            self, *, organization_scope: DirectoryScope, tenant_id: TenantId, contact_id: ContactId
+        ) -> ContactIMBindingView:
+            scopes.append(organization_scope)
+            return super().reset_workspace_override(
+                organization_scope=organization_scope,
+                tenant_id=tenant_id,
+                contact_id=contact_id,
+            )
 
     class SyncService(_SyncService):
         @override
         def search_identities(
-            self, organization_scope: WorkspaceScope, **_kwargs: object
+            self,
+            owner_scope: DirectoryScope,
+            *,
+            keyword: str | None,
+            page: int,
+            limit: int,
         ) -> SynchronizedIMIdentityPage:
-            scopes.append(organization_scope)
+            scopes.append(owner_scope)
             return SynchronizedIMIdentityPage((), page=1, limit=20, total=0)
 
     monkeypatch.setattr(application.binding_service, "set_workspace_override", BindingService().set_workspace_override)
@@ -640,13 +686,10 @@ def test_expected_application_errors_have_stable_http_mapping(
     expected_code: str,
 ) -> None:
     if isinstance(error, IMBindingCommandError):
-
-        class BindingService:
-            def set_organization_binding(self, **_kwargs: object) -> Never:
-                raise error
-
         monkeypatch.setattr(
-            application.binding_service, "set_organization_binding", BindingService().set_organization_binding
+            application.binding_service,
+            "set_organization_binding",
+            create_autospec(application.binding_service.set_organization_binding, side_effect=error),
         )
         handler = unwrap(WorkspaceContactIMBindingsApi.put)
         request_context = app.test_request_context(method="PUT", json={"identity_id": "identity-1"})
@@ -657,13 +700,10 @@ def test_expected_application_errors_have_stable_http_mapping(
             "00000000-0000-0000-0000-000000000001",
         )
     elif isinstance(error, IMSyncRevisionChangedError):
-
-        class SyncService:
-            def create_or_get_active_run(self, _scope: object, _account_id: object) -> Never:
-                raise error
-
         monkeypatch.setattr(
-            application.sync_service, "create_or_get_active_run", SyncService().create_or_get_active_run
+            application.sync_service,
+            "create_or_get_active_run",
+            create_autospec(application.sync_service.create_or_get_active_run, side_effect=error),
         )
         handler = unwrap(WorkspaceIMSyncRunsApi.post)
         request_context = app.test_request_context(method="POST")
@@ -673,12 +713,11 @@ def test_expected_application_errors_have_stable_http_mapping(
             make_account(account_id="account-1", name="Editor", email="editor@example.com"),
         )
     else:
-
-        class SyncService:
-            def get_latest_run(self, _scope: object) -> Never:
-                raise error
-
-        monkeypatch.setattr(application.sync_service, "get_latest_run", SyncService().get_latest_run)
+        monkeypatch.setattr(
+            application.sync_service,
+            "get_latest_run",
+            create_autospec(application.sync_service.get_latest_run, side_effect=error),
+        )
         handler = unwrap(WorkspaceLatestIMSyncRunApi.get)
         request_context = app.test_request_context(method="GET")
         handler_args = (WorkspaceLatestIMSyncRunApi(), "workspace-1")
