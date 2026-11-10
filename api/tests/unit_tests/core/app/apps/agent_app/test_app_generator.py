@@ -450,9 +450,11 @@ class TestGenerateWorker:
         run_side_effect=None,
         handled=False,
         guard_query="query",
+        real_guards=False,
     ):
         mocker.patch.object(generator._records, "load", return_value=(_app(), _conversation(), _message()))
-        generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query, None))
+        if not real_guards:
+            generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query, None))
         session = _session()
         if session.get(App, "app1") is None:
             session.add(_app())
@@ -478,6 +480,7 @@ class TestGenerateWorker:
         session_scope_config_version_id="s",
         files=(),
         file_upload_config=None,
+        inputs=None,
     ):
         class _GenerateEntity:
             user_id = "user-1"
@@ -500,6 +503,8 @@ class TestGenerateWorker:
                 agent_session_scope_config_version_id=session_scope_config_version_id,
                 model_conf=_ModelConf(),
                 query=query,
+                inputs=inputs or {},
+                trace_scope=_trace_scope(),
                 files=files,
                 file_upload_config=file_upload_config,
             ),
@@ -520,6 +525,23 @@ class TestGenerateWorker:
         assert runner.run.call_args.kwargs["home_snapshot_id"] == "home-1"
         assert "home_snapshot_ref" not in runner.run.call_args.kwargs
         queue_manager.publish_error.assert_not_called()
+
+    @pytest.mark.parametrize("overridden", [False, True])
+    def test_worker_passes_moderated_inputs_to_runner(self, generator, mocker, overridden):
+        """Successful moderation reaches the migrated runner with the checked input values."""
+        runner, _ = self._wire(generator, mocker, real_guards=True)
+        expected = {"name": "[redacted]"} if overridden else {"name": "original"}
+        moderation = mocker.patch(
+            "core.moderation.input_moderation.InputModeration.check",
+            return_value=(overridden, expected, "query"),
+        )
+        mocker.patch.object(generator._annotations, "query", return_value=None)
+
+        self._call(generator, mocker, mocker.MagicMock(), inputs={"name": "original"})
+
+        assert moderation.call_args.kwargs["inputs"] == {"name": "original"}
+        runner.run.assert_called_once()
+        assert runner.run.call_args.kwargs["inputs"] == expected
 
     def test_worker_passes_session_scope_config_version_to_runner(self, generator, mocker: MockerFixture):
         runner, _ = self._wire(generator, mocker)

@@ -7,8 +7,10 @@ they never create, commit, or close a session and perform no external I/O.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any
+from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy import Select, func, select, tuple_
@@ -308,14 +310,26 @@ def get_document_metadata_rows(document: Document, *, session: Session) -> Seque
 
 
 def get_query_upload_files(query: DatasetQuery, file_ids: set[str], *, session: Session) -> dict[str, UploadFile]:
-    if not file_ids:
+    """Resolve historical file references within the dataset's tenant.
+
+    Accept raw historical IDs, ignoring invalid UUIDs before querying. Return
+    found files keyed by the original IDs, including noncanonical UUID aliases.
+    Use the caller's session without committing, rolling back, or closing it;
+    database failures propagate rather than being treated as missing files.
+    """
+    normalized_ids: dict[str, str] = {}
+    for file_id in file_ids:
+        with suppress(ValueError):
+            normalized_ids[file_id] = str(UUID(file_id))
+    if not normalized_ids:
         return {}
     rows = session.scalars(
         select(UploadFile)
         .join(Dataset, Dataset.tenant_id == UploadFile.tenant_id)
-        .where(Dataset.id == query.dataset_id, UploadFile.id.in_(file_ids))
+        .where(Dataset.id == query.dataset_id, UploadFile.id.in_(set(normalized_ids.values())))
     ).all()
-    return {file.id: file for file in rows}
+    files = {file.id: file for file in rows}
+    return {original: files[normalized] for original, normalized in normalized_ids.items() if normalized in files}
 
 
 def get_external_api_bindings_batch(

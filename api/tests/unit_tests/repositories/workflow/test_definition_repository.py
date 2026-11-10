@@ -3,6 +3,7 @@
 import json
 from collections.abc import Callable
 from dataclasses import replace
+from datetime import datetime
 from unittest.mock import Mock, NonCallableMock, create_autospec, patch
 from uuid import uuid4
 
@@ -204,6 +205,48 @@ def test_published_result_is_complete_after_session_closes(repository: WorkflowD
     assert response["version_number"] == 1
     assert response["created_by"]["id"] == "account-1"
     assert response["tool_published"] is False
+
+
+def test_versions_excludes_draft_before_pagination_and_includes_it_by_default(
+    seeded: sessionmaker[Session], repository: WorkflowDefinitionRepository
+) -> None:
+    """The published-only query pages publications while the Console default starts with the draft."""
+    with seeded.begin() as session:
+        published = session.get(Workflow, "published")
+        assert published is not None
+        published.created_at = datetime(2026, 10, 1, 12, 0, 0)
+        newer = make_workflow(workflow_id="published-2", version="2", version_number=2)
+        newer.created_at = datetime(2026, 10, 2, 12, 0, 0)
+        session.add(newer)
+
+    console_page, console_has_more = repository.versions(
+        CONTEXT, "app-1", page=1, limit=1, user_id=None, named_only=False
+    )
+    first_page, first_has_more = repository.versions(
+        CONTEXT,
+        "app-1",
+        page=1,
+        limit=1,
+        user_id=None,
+        named_only=False,
+        include_draft=False,
+    )
+    second_page, second_has_more = repository.versions(
+        CONTEXT,
+        "app-1",
+        page=2,
+        limit=1,
+        user_id=None,
+        named_only=False,
+        include_draft=False,
+    )
+
+    assert [workflow.id for workflow in console_page] == ["draft"]
+    assert console_has_more is True
+    assert [workflow.id for workflow in first_page] == ["published-2"]
+    assert first_has_more is True
+    assert [workflow.id for workflow in second_page] == ["published"]
+    assert second_has_more is False
 
 
 def test_update_version_remarks_masks_secrets_without_key_io(

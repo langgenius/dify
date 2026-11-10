@@ -15,12 +15,12 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from constants.oauth_bearer import Scope
-from controllers.common.errors import NotFoundError, UnprocessableEntityError
+from controllers.common.errors import NotFoundError
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
-from controllers.openapi._errors import RunNotFound, require_uuid
+from controllers.openapi._errors import RunNotFound, WorkflowEventReconnectModeUnsupportedError, require_uuid
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -85,7 +85,7 @@ class OpenApiWorkflowEventsApi(Resource):
 
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
-            raise UnprocessableEntityError("mode_not_supported_for_event_reconnect")
+            raise WorkflowEventReconnectModeUnsupportedError()
 
         # The event stream outlives `ctx.session`, so this route needs a maker of its
         # own — the guard's, not a fresh one bound straight to the engine.
