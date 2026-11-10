@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Protocol
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
+from services.entities.app_list_entities import AppListSortBy
 from services.installed_app_access_service import InstalledAppRef
 
 InstalledAppListMode = Literal[
@@ -15,9 +16,24 @@ InstalledAppListMode = Literal[
 
 
 class InstalledAppCursor(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     is_pinned: bool
     last_used_at: datetime | None
     installed_app_id: str
+
+
+class InstalledAppSortCursor(BaseModel):
+    """An explicit app-time sort cursor, never interchangeable with usage cursors."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    sort_by: AppListSortBy
+    timestamp: datetime
+    installed_app_id: str
+
+
+type InstalledAppPageCursor = InstalledAppCursor | InstalledAppSortCursor
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,8 +55,22 @@ class InstalledAppRecord:
     app_owner_tenant_id: str
     is_pinned: bool
     last_used_at: datetime | None
+    app_created_at: datetime
+    app_updated_at: datetime
 
-    def cursor(self) -> InstalledAppCursor:
+    def cursor(self, *, sort_by: AppListSortBy | None = None) -> InstalledAppPageCursor:
+        """Return the current row's pagination key for the selected ordering.
+
+        None preserves the legacy pin/usage cursor; an explicit Studio ordering
+        records its app timestamp and mode so a caller cannot reuse it for another
+        ordering. This operation only reads the detached record.
+        """
+        if sort_by is not None:
+            return InstalledAppSortCursor(
+                sort_by=sort_by,
+                timestamp=self.app_updated_at if sort_by == "last_modified" else self.app_created_at,
+                installed_app_id=self.id,
+            )
         return InstalledAppCursor(
             is_pinned=self.is_pinned,
             last_used_at=self.last_used_at,
@@ -52,7 +82,7 @@ class InstalledAppRecord:
 class InstalledAppPage:
     data: tuple[InstalledAppRecord, ...]
     has_more: bool
-    next_cursor: InstalledAppCursor | None
+    next_cursor: InstalledAppPageCursor | None
     editable: bool
 
 
@@ -71,11 +101,12 @@ class InstalledAppStore(Protocol):
         self,
         *,
         tenant_id: str,
-        cursor: InstalledAppCursor | None,
+        cursor: InstalledAppPageCursor | None,
         limit: int,
         app_id: str | None,
         name: str | None,
         mode: InstalledAppListMode,
+        sort_by: AppListSortBy | None = None,
     ) -> tuple[InstalledAppRecord, ...]:
         """Return detached published installations in tenant scope, filtered before pagination.
 
@@ -83,6 +114,8 @@ class InstalledAppStore(Protocol):
         case-insensitive literal substrings. Mode uses Studio's exact type values,
         with all retaining every otherwise eligible type. Publication and tenant
         constraints apply to every mode, including types with no eligible apps.
+        None sorts by pin/usage/ID; explicit sort options use the corresponding app
+        timestamp, then installation ID ascending. The cursor must match that sort.
         Reads do not mutate installations and close their session before returning.
         """
         ...
@@ -117,18 +150,20 @@ class InstalledAppService:
         *,
         tenant_id: str,
         user_id: str,
-        cursor: InstalledAppCursor | None,
+        cursor: InstalledAppPageCursor | None,
         limit: int,
         app_id: str | None,
         name: str | None,
         mode: InstalledAppListMode,
+        sort_by: AppListSortBy | None = None,
     ) -> InstalledAppPage:
         """Return a filtered page for an admitted account in the given workspace.
 
-        Given a validated mode, positive limit and optional cursor, scan published
+        Given validated filters, a positive limit and an optional matching cursor, scan published
         candidates matching all filters until a page of authorized apps is complete.
-        Preserve the filters across scans and derive the cursor only from consumed
+        Preserve filters and ordering across scans and derive the cursor only from consumed
         candidates. Access-check failures propagate without changing installations.
+        None preserves pin/usage ordering; explicit sorting follows Studio app times.
         """
         scan_size = limit * 2 if self._get_visible_app_ids is not None else limit + 1
         visible_rows: list[InstalledAppRecord] = []
@@ -146,6 +181,7 @@ class InstalledAppService:
                 app_id=app_id,
                 name=name,
                 mode=mode,
+                sort_by=sort_by,
             )
             if not candidate_rows:
                 break
@@ -170,9 +206,9 @@ class InstalledAppService:
 
             if len(candidate_rows) < scan_size:
                 break
-            scan_cursor = candidate_rows[-1].cursor()
+            scan_cursor = candidate_rows[-1].cursor(sort_by=sort_by)
 
-        next_cursor = last_consumed_app.cursor() if has_more and last_consumed_app is not None else None
+        next_cursor = last_consumed_app.cursor(sort_by=sort_by) if has_more and last_consumed_app is not None else None
         role = self._get_workspace_role(account_id=user_id, tenant_id=tenant_id)
         return InstalledAppPage(
             data=tuple(visible_rows), has_more=has_more, next_cursor=next_cursor, editable=role in {"owner", "admin"}

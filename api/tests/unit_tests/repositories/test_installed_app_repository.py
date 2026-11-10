@@ -12,8 +12,15 @@ from sqlalchemy.sql import Select
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
+from services.entities.app_list_entities import AppListSortBy
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_service import InstalledAppInfo, InstalledAppListMode, InstalledAppRecord
+from services.installed_app_service import (
+    InstalledAppCursor,
+    InstalledAppInfo,
+    InstalledAppListMode,
+    InstalledAppRecord,
+    InstalledAppSortCursor,
+)
 
 _USED_AT = datetime(2026, 9, 6, 12, 30, 45)
 _VIEWER_TENANT_ID = "11111111-1111-4111-8111-111111111111"
@@ -323,6 +330,7 @@ def test_candidates_return_detached_nested_data_and_stored_installation_owner(
         session.add(installation)
         session.flush()
         installation_id, app_id = installation.id, app.id
+        app_created_at, app_updated_at = app.created_at, app.updated_at
     repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
 
     result = repository.get_candidates(
@@ -345,6 +353,8 @@ def test_candidates_return_detached_nested_data_and_stored_installation_owner(
             app_owner_tenant_id=stored_owner_id,
             is_pinned=False,
             last_used_at=_USED_AT,
+            app_created_at=app_created_at,
+            app_updated_at=app_updated_at,
         ),
     )
     assert inspect(result[0], raiseerr=False) is None
@@ -398,9 +408,51 @@ def test_candidates_order_and_cursor_cover_pin_groups_ties_and_null_dates(
     )
 
 
+@pytest.mark.parametrize(
+    ("sort_by", "expected_numbers"),
+    [
+        ("last_modified", [5, 2, 3, 4, 1]),
+        ("recently_created", [1, 3, 4, 2, 5]),
+        ("earliest_created", [2, 5, 3, 4, 1]),
+    ],
+)
+def test_candidates_sort_by_app_timestamps_and_page_through_equal_timestamps(
+    sqlite_session_factory: sessionmaker[Session], sort_by: AppListSortBy, expected_numbers: list[int]
+) -> None:
+    installation_ids: dict[int, str] = {}
+    with sqlite_session_factory.begin() as session:
+        for number, created_day, updated_day in [(1, 3, 1), (2, 1, 3), (3, 2, 2), (4, 2, 2), (5, 1, 4)]:
+            app = _app_with_publication(session)
+            app.created_at = _USED_AT + timedelta(days=created_day)
+            app.updated_at = _USED_AT + timedelta(days=updated_day)
+            installation = _installation(app_id=app.id)
+            installation.id = f"00000000-0000-4000-8000-{number:012d}"
+            installation.is_pinned = number == 1
+            installation.last_used_at = _USED_AT if number == 1 else None
+            session.add(installation)
+            installation_ids[number] = installation.id
+    repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
+    expected = [installation_ids[number] for number in expected_numbers]
+
+    rows = repository.get_candidates(
+        tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=20, app_id=None, name=None, mode="all", sort_by=sort_by
+    )
+
+    assert [row.id for row in rows] == expected
+    for index, row in enumerate(rows):
+        cursor = row.cursor(sort_by=sort_by)
+        assert isinstance(cursor, InstalledAppSortCursor)
+        assert cursor.sort_by == sort_by
+        remaining = repository.get_candidates(
+            tenant_id=_VIEWER_TENANT_ID, cursor=cursor, limit=20, app_id=None, name=None, mode="all", sort_by=sort_by
+        )
+        assert [candidate.id for candidate in remaining] == expected[index + 1 :]
+
+
+@pytest.mark.parametrize("sort_by", [None, "last_modified", "recently_created", "earliest_created"])
 @pytest.mark.parametrize("dialect", [mysql.dialect(), postgresql.dialect()], ids=["mysql", "postgresql"])
 def test_candidates_order_compiles_without_nulls_last_for_every_dialect(
-    sqlite_session_factory: sessionmaker[Session], dialect: Dialect
+    sqlite_session_factory: sessionmaker[Session], dialect: Dialect, sort_by: AppListSortBy | None
 ) -> None:
     statements: list[Select[tuple[InstalledApp, App]]] = []
 
@@ -410,7 +462,14 @@ def test_candidates_order_compiles_without_nulls_last_for_every_dialect(
             statements.append(state.statement)
 
     repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
-    repository.get_candidates(tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=20, app_id=None, name=None, mode="all")
+    cursor = (
+        InstalledAppCursor(is_pinned=False, last_used_at=None, installed_app_id=str(uuid4()))
+        if sort_by is None
+        else InstalledAppSortCursor(sort_by=sort_by, timestamp=_USED_AT, installed_app_id=str(uuid4()))
+    )
+    repository.get_candidates(
+        tenant_id=_VIEWER_TENANT_ID, cursor=cursor, limit=20, app_id=None, name=None, mode="all", sort_by=sort_by
+    )
 
     assert len(statements) == 1
     # MySQL rejects NULLS LAST, so null dates must sort last through a portable key.
