@@ -1,4 +1,4 @@
-"""Credential projections exposing identifiers while keeping secrets redacted."""
+"""Shared credential projections exposing identifiers while keeping secrets redacted."""
 
 from typing import Annotated, Literal
 
