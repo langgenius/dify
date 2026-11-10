@@ -199,3 +199,20 @@ def redact_diagnostic_value(value: Any, failed_run: Run, graph: Graph, node_outp
     known = _known_credentials(failed_run, graph, node_outputs)
     structured = _structured(deepcopy(value), known)
     return _replace_known(structured, sorted(known, key=len, reverse=True))
+
+
+def redact_dsl_context(dsl: Graph) -> Graph:
+    """Return a credential-safe continuation copy from fresh or historical DSL.
+
+    Accept a DSL context mapping, collecting secret environment provenance before
+    withholding it. Reuse the diagnostic profile for all other structured fields
+    and known echoes. The source graph, execution evidence and write-admission
+    policy remain untouched; this projection is only for context and prompts.
+    """
+    safe = deepcopy(dsl)
+    known: set[str] = set()
+    for variable in safe.get("environment_variables", []):
+        if isinstance(variable, dict) and variable.get("value_type") == "secret":
+            variable["value"] = _hide(variable.get("value"), known)
+    structured = _structured(safe, known)
+    return _replace_known(structured, sorted(known, key=len, reverse=True))
