@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -18,8 +19,10 @@ from graphon.model_runtime.entities.message_entities import (
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.core.model_fixtures import make_model_config, make_token_buffer_memory
 
+ChatModelArgs = tuple[ModelConfigWithCredentialsEntity, MemoryConfig, list[ChatModelMessage], dict[str, str], str]
 
-def test__get_completion_model_prompt_messages():
+
+def test__get_completion_model_prompt_messages() -> None:
     model_config = make_model_config(provider="openai", model="gpt-3.5-turbo-instruct", mode="completion")
 
     prompt_template = "Context:\n{{#context#}}\n\nHistories:\n{{#histories#}}\n\nyou are {{name}}."
@@ -67,7 +70,7 @@ def test__get_completion_model_prompt_messages():
     )
 
 
-def test__get_chat_model_prompt_messages(get_chat_model_args):
+def test__get_chat_model_prompt_messages(get_chat_model_args: ChatModelArgs) -> None:
     model_config, memory_config, messages, inputs, context = get_chat_model_args
 
     files = []
@@ -99,7 +102,7 @@ def test__get_chat_model_prompt_messages(get_chat_model_args):
     assert prompt_messages[5].content == query
 
 
-def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args):
+def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args: ChatModelArgs) -> None:
     model_config, _, messages, inputs, context = get_chat_model_args
 
     files = []
@@ -124,7 +127,9 @@ def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args):
     )
 
 
-def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_args, monkeypatch: pytest.MonkeyPatch):
+def test__get_chat_model_prompt_messages_with_files_no_memory(
+    get_chat_model_args: ChatModelArgs, monkeypatch: pytest.MonkeyPatch
+) -> None:
     model_config, _, messages, inputs, context = get_chat_model_args
     apply_config_overrides(monkeypatch, MULTIMODAL_SEND_FORMAT="url")
 
@@ -167,7 +172,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
 
 
 @pytest.fixture
-def get_chat_model_args():
+def get_chat_model_args() -> ChatModelArgs:
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
 
     memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
@@ -187,7 +192,7 @@ def get_chat_model_args():
     return model_config, memory_config, prompt_messages, inputs, context
 
 
-def test_get_prompt_dispatches_completion_and_chat_and_invalid():
+def test_get_prompt_dispatches_completion_and_chat_and_invalid() -> None:
     transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     completion_template = CompletionModelPromptTemplate(text="Hello {{name}}", edition_type="basic")
@@ -221,7 +226,7 @@ def test_get_prompt_dispatches_completion_and_chat_and_invalid():
     assert chat_result[0].content == "h"
 
     invalid_result = transform.get_prompt(
-        prompt_template=cast(list, ["not-chat-model-message"]),
+        prompt_template=cast(list[ChatModelMessage], ["not-chat-model-message"]),
         inputs={"name": "john"},
         query="q",
         files=[],
@@ -233,7 +238,7 @@ def test_get_prompt_dispatches_completion_and_chat_and_invalid():
     assert invalid_result == []
 
 
-def test_completion_prompt_jinja2_with_files():
+def test_completion_prompt_jinja2_with_files() -> None:
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     transform = AdvancedPromptTransform()
     completion_template = CompletionModelPromptTemplate(text="Hi {{name}}", edition_type="jinja2")
@@ -272,7 +277,7 @@ def test_completion_prompt_jinja2_with_files():
     assert messages[0].content[1].data == "Hi John"
 
 
-def test_completion_prompt_basic_sets_query_variable():
+def test_completion_prompt_basic_sets_query_variable() -> None:
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     transform = AdvancedPromptTransform()
     template = CompletionModelPromptTemplate(text="Q={{#query#}}", edition_type="basic")
@@ -291,7 +296,7 @@ def test_completion_prompt_basic_sets_query_variable():
     assert messages[0].content == "Q=what?"
 
 
-def test_chat_prompt_with_variable_template_and_context():
+def test_chat_prompt_with_variable_template_and_context() -> None:
     transform = AdvancedPromptTransform(with_variable_tmpl=True)
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     prompt_template = [ChatModelMessage(text="sys={{#node.name#}} ctx={{#context#}}", role=PromptMessageRole.SYSTEM)]
@@ -312,7 +317,7 @@ def test_chat_prompt_with_variable_template_and_context():
     assert messages[0].content == "sys=john ctx=context-text"
 
 
-def test_chat_prompt_jinja2_branch_and_invalid_edition():
+def test_chat_prompt_jinja2_branch_and_invalid_edition() -> None:
     transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     prompt_template = [ChatModelMessage(text="Hello {{name}}", role=PromptMessageRole.USER, edition_type="jinja2")]
@@ -344,7 +349,7 @@ def test_chat_prompt_jinja2_branch_and_invalid_edition():
         )
 
 
-def test_chat_prompt_query_template_and_query_only_branch():
+def test_chat_prompt_query_template_and_query_only_branch() -> None:
     transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     memory_config = MemoryConfig(
@@ -366,7 +371,7 @@ def test_chat_prompt_query_template_and_query_only_branch():
     assert messages[-1].content == "query={{#sys.query#}} ctx=ctx"
 
 
-def test_chat_prompt_memory_with_files_and_query():
+def test_chat_prompt_memory_with_files_and_query() -> None:
     transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
@@ -403,7 +408,7 @@ def test_chat_prompt_memory_with_files_and_query():
     assert messages[-1].content[1].data == "q"
 
 
-def test_chat_prompt_files_without_query_updates_last_user_or_appends_new():
+def test_chat_prompt_files_without_query_updates_last_user_or_appends_new() -> None:
     transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     file = File(
@@ -453,7 +458,7 @@ def test_chat_prompt_files_without_query_updates_last_user_or_appends_new():
     assert messages[-1].content[1].data == ""
 
 
-def test_chat_prompt_files_with_query_branch():
+def test_chat_prompt_files_with_query_branch() -> None:
     transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     file = File(
@@ -484,7 +489,7 @@ def test_chat_prompt_files_with_query_branch():
     assert messages[-1].content[1].data == "query-text"
 
 
-def test_set_context_query_histories_variable_helpers():
+def test_set_context_query_histories_variable_helpers() -> None:
     transform = AdvancedPromptTransform()
     parser_context = PromptTemplateParser(template="{{#context#}}")
     parser_query = PromptTemplateParser(template="{{#query#}}")

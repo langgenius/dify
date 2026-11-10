@@ -125,7 +125,6 @@ project-excludes = [
   "core/plugin/backwards_invocation/test_app.py",
   "core/plugin/entities/test_plugin_daemon.py",
   "core/plugin/impl/test_plugin.py",
-  "core/prompt/test_advanced_prompt_transform.py",
   "core/prompt/utils/test_extract_thread_messages.py",
   "core/rag/data_post_processor/test_data_post_processor.py",
   "core/rag/datasource/test_retrieval_service.py",
