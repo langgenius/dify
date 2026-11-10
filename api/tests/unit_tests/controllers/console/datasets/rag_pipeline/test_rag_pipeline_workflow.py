@@ -877,10 +877,30 @@ def make_node_execution(**overrides: Unpack[NodeExecutionOverrides]) -> Workflow
     }
     payload.update(overrides)
     execution = WorkflowNodeExecutionModel(
+        id=payload["id"],
+        tenant_id=payload["tenant_id"],
+        app_id=payload["app_id"],
+        workflow_id=payload["workflow_id"],
+        workflow_run_id=payload["workflow_run_id"],
+        index=payload["index"],
+        predecessor_node_id=payload["predecessor_node_id"],
+        node_execution_id=payload["node_execution_id"],
+        node_id=payload["node_id"],
+        node_type=payload["node_type"],
+        title=payload["title"],
+        inputs=payload["inputs"],
+        process_data=payload["process_data"],
+        outputs=payload["outputs"],
+        status=payload["status"],
+        error=payload["error"],
+        elapsed_time=payload["elapsed_time"],
+        execution_metadata=payload["execution_metadata"],
+        created_by_role=payload["created_by_role"],
+        created_by=payload["created_by"],
+        finished_at=payload["finished_at"],
         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
     )
-    for key, value in payload.items():
-        setattr(execution, key, value)
+    execution.created_at = payload["created_at"]
     execution.offload_data = list[WorkflowNodeExecutionOffload]()
     return execution
 
