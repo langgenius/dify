@@ -14,7 +14,6 @@ from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import CredentialInvalid, ProviderNotFound
-from controllers.openapi._i18n import localized
 from controllers.openapi._models import (
     CredentialFormField,
     CredentialRef,
@@ -32,7 +31,6 @@ from controllers.openapi._models import (
     ProviderCredentialCreatePayload,
     ProviderCredentialUpdatePayload,
 )
-from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import ADMIN_ROLES, WORKSPACE_READ_GUARDS, workspace_write_guards
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
@@ -41,6 +39,8 @@ from extensions.ext_application_services import application_services
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import CredentialFormSchema
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from libs.i18n_text import localized
+from libs.text_search import matches
 from services.entities.model_provider_entities import CustomConfigurationStatus, ProviderResponse
 from services.errors.app_model_config import ProviderNotFoundError
 from services.model_provider.service import ModelProviderService

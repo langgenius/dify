@@ -2,21 +2,29 @@
 
 from __future__ import annotations
 
+import operator
 from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Final, Literal, Protocol, Self
+from typing import Annotated, Any, Final, Literal, Protocol, Self, override
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    ValidationInfo,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 
 from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
-from controllers.openapi._i18n import localized
 from controllers.openapi._upload import UploadPart, UploadParts
 from core.plugin.entities.plugin import PluginCategory
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
-from core.tools.entities.tool_entities import ToolProviderType
 from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
@@ -24,11 +32,17 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.nodes.tool.entities import ToolInputType
 from graphon.variables import SegmentType
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
+from libs.i18n_text import localized
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
-from services.workflow.graph_check import GraphIssue
+from services.tools.tool_sources import TOOL_NODE_VERSION, ToolSource
+from services.workflow.authoring.checks import AuthoringIssue, PackageCheck
+from services.workflow.authoring.node_options import NodeOption, NodeOptionKind
+from services.workflow.authoring.node_spec import FieldHint, NodeSpec
+from services.workflow.authoring.plugins import NO_DEFAULT, DeclaredParameter
+from services.workflow.graph_check import GRAPH_MODES, GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
@@ -793,11 +807,14 @@ class AppDslImportResponse(Import, Hinted):
     """`Import` plus the server-built next step for a pending import."""
 
 
+_CHECKED_APP_DESCRIPTION: Final = "Check against this existing app's mode, as an overwrite import would"
+
+
 class DslCheckPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     yaml_content: str = Field(description="The DSL to check, as YAML text")
-    app_id: str | None = Field(None, description="Check against this existing app's mode, as an overwrite import would")
+    app_id: str | None = Field(None, description=_CHECKED_APP_DESCRIPTION)
 
 
 class DslIssueRow(BaseModel):
@@ -821,6 +838,163 @@ class DslIssueRow(BaseModel):
 class DslCheckResponse(Hinted):
     valid: bool = Field(description="No error-severity issues")
     issues: list[DslIssueRow]
+
+
+class AppPackageFillPayload(BaseModel):
+    """Request body for POST /workspaces/<workspace_id>/apps/packages:fill."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    package: UploadPart | UploadParts = Field(
+        description="A .ifpkg file, or an unpacked package folder (one part per file)"
+    )
+
+
+class AppPackageCheckPayload(AppPackageFillPayload):
+    """Request body for POST /workspaces/<workspace_id>/apps/packages:check."""
+
+    app_id: str | None = Field(None, description=_CHECKED_APP_DESCRIPTION)
+
+
+def _omitted_without_default(description: str) -> Any:
+    """A `default` field left out of the response when there is no default; a null default is sent as null."""
+    return Field(
+        default_factory=lambda: NO_DEFAULT, exclude_if=lambda value: value is NO_DEFAULT, description=description
+    )
+
+
+def _omitted_when_none(description: str, *, alias: str | None = None) -> Any:
+    """An optional field that is left out of the response when it is None."""
+    return Field(None, alias=alias, exclude_if=lambda value: value is None, description=description)
+
+
+def _omitted_when_empty(description: str) -> Any:
+    """A list field that is left out of the response when it is empty."""
+    return Field(default_factory=list, exclude_if=operator.not_, description=description)
+
+
+_ITEMS_DESCRIPTION: Final = (
+    "For a list of objects, each field of one item, located relative to the item; left out for any other field"
+)
+_FIELDS_DESCRIPTION: Final = (
+    "For an object, each of its fields, located relative to the object; left out for any other field"
+)
+
+
+class FieldHintItemRow(BaseModel):
+    loc: list[str | int] = Field(description="Where the field sits in the node's data")
+    type: str | None
+    options: list[str]
+    description: str | None
+    required: bool
+    default: Any = _omitted_without_default("The value the node runs with when the field is left out")
+
+    @classmethod
+    def of(cls, hint: FieldHint) -> Self:
+        return cls(
+            loc=list(hint.loc),
+            type=hint.type,
+            options=list(hint.options),
+            description=hint.description,
+            required=hint.required,
+            default=hint.default,
+        )
+
+
+class FieldHintRow(FieldHintItemRow):
+    items: list[FieldHintItemRow] = _omitted_when_empty(_ITEMS_DESCRIPTION)
+    fields: list[FieldHintItemRow] = _omitted_when_empty(_FIELDS_DESCRIPTION)
+
+    @override
+    @classmethod
+    def of(cls, hint: FieldHint) -> Self:
+        return cls(
+            **dict(FieldHintItemRow.of(hint)),
+            items=[FieldHintItemRow.of(item) for item in hint.items],
+            fields=[FieldHintItemRow.of(field) for field in hint.fields],
+        )
+
+
+class DeclaredParameterRow(BaseModel):
+    name: str
+    form: str | None
+    type: str
+    required: bool
+    default: Any = _omitted_without_default("The plugin's declared default")
+    options: list[str]
+    help: str | None
+
+    @classmethod
+    def of(cls, parameter: DeclaredParameter) -> Self:
+        return cls(
+            name=parameter.name,
+            form=parameter.form,
+            type=parameter.type,
+            required=parameter.required,
+            default=parameter.default,
+            options=list(parameter.options),
+            help=parameter.help,
+        )
+
+
+class NodeSpecRow(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    node_id: str
+    type: str
+    version: str
+    schema_: dict[str, Any] = Field(alias="schema", description="The JSON schema describe.node_type serves")
+    plugin_parameters: list[DeclaredParameterRow] = Field(description="The parameters the node's plugin declares")
+    open_fields: list[FieldHintRow] = Field(description="Every field the node has not written yet")
+
+    @classmethod
+    def of(cls, spec: NodeSpec) -> Self:
+        return cls(
+            node_id=spec.node_id,
+            type=spec.type,
+            version=spec.version,
+            schema=dict(spec.schema),
+            plugin_parameters=[DeclaredParameterRow.of(parameter) for parameter in spec.plugin_parameters],
+            open_fields=[FieldHintRow.of(hint) for hint in spec.open_fields],
+        )
+
+
+class AuthoringIssueRow(BaseModel):
+    code: str
+    severity: str = Field(description="error: the package is not valid; warning: it is")
+    refuses_import: bool = Field(description="The package import refuses the package for this issue")
+    message: str
+    node_id: str | None
+    loc: list[str | int]
+    hint: FieldHintRow | None = Field(description="The field to write, for a missing one")
+
+    @classmethod
+    def of(cls, issue: AuthoringIssue) -> Self:
+        return cls(
+            code=issue.code,
+            severity=issue.severity,
+            refuses_import=issue.refuses_import,
+            message=issue.message,
+            node_id=issue.node_id,
+            loc=list(issue.loc),
+            hint=FieldHintRow.of(issue.hint) if issue.hint is not None else None,
+        )
+
+
+class PackageCheckResponse(Hinted):
+    valid: bool = Field(description="No error-severity issues")
+    issues: list[AuthoringIssueRow]
+    node_specs: list[NodeSpecRow] = Field(
+        description="What each node that has an issue, as written, still needs; empty when no node has one"
+    )
+
+    @classmethod
+    def of(cls, check: PackageCheck) -> Self:
+        return cls(
+            valid=check.valid,
+            issues=[AuthoringIssueRow.of(issue) for issue in check.issues],
+            node_specs=[NodeSpecRow.of(spec) for spec in check.node_specs],
+        )
 
 
 class ReleaseCheckName(StrEnum):
@@ -885,9 +1059,18 @@ class RunListQuery(BaseModel):
         ]
         | None
     ) = None
-    triggered_from: Literal[WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.APP_RUN] = Field(
+    triggered_from: Literal[
         WorkflowRunTriggeredFrom.DEBUGGING,
-        description="debugging: draft test runs, as in the console; app-run: real use",
+        WorkflowRunTriggeredFrom.APP_RUN,
+        WorkflowRunTriggeredFrom.SCHEDULE,
+        WorkflowRunTriggeredFrom.WEBHOOK,
+        WorkflowRunTriggeredFrom.PLUGIN,
+    ] = Field(
+        WorkflowRunTriggeredFrom.DEBUGGING,
+        description=(
+            "debugging: draft test runs, as in the console; app-run: real use; "
+            "schedule, webhook, plugin: runs started by that kind of trigger"
+        ),
     )
 
 
@@ -935,6 +1118,17 @@ class VersionListResponse(Hinted):
     limit: int
     has_more: bool
     data: list[VersionRow]
+
+
+class WebhookResponse(BaseModel):
+    node_id: str
+    webhook_url: str = Field(
+        description="Runs the published workflow on each request, once the node is published and its trigger is on"
+    )
+    webhook_debug_url: str = Field(
+        description="Feeds the draft's node while the console's variable inspector listens for it; otherwise "
+        "the request is refused"
+    )
 
 
 class EnvVariableRow(BaseModel):
@@ -988,13 +1182,121 @@ class NodeTypeListResponse(BaseModel):
     data: list[NodeTypeRow]
 
 
+class NodeTypeDescribeQuery(BaseModel):
+    """Query parameters for GET /node-types/<node_type>."""
+
+    include_schema: bool = Field(False, description="Also return the full JSON schema of the node's data")
+
+
+def _first_line(text: str | None) -> str | None:
+    if text is None:
+        return None
+    return next((line.strip() for line in text.splitlines() if line.strip()), None)
+
+
+class NodeTypeFieldItemRow(BaseModel):
+    loc: list[str | int] = Field(description="Where the field sits in the node's data")
+    type: str | None
+    required: bool
+    options: list[str] = _omitted_when_empty("The values the field accepts")
+    description: str | None = _omitted_when_none(
+        "The first line of the field's description; include_schema=true has the whole text"
+    )
+    default: Any = _omitted_when_none(
+        "The value the node runs with when the field is left out; left out when there is none or it is null"
+    )
+
+    @classmethod
+    def of(cls, hint: FieldHint) -> Self:
+        return cls(
+            loc=list(hint.loc),
+            type=hint.type,
+            required=hint.required,
+            options=list(hint.options),
+            description=_first_line(hint.description),
+            default=None if hint.default is NO_DEFAULT else hint.default,
+        )
+
+
+class NodeTypeFieldRow(NodeTypeFieldItemRow):
+    items: list[NodeTypeFieldItemRow] = _omitted_when_empty(_ITEMS_DESCRIPTION)
+    fields: list[NodeTypeFieldItemRow] = _omitted_when_empty(_FIELDS_DESCRIPTION)
+
+    @classmethod
+    def describing(cls, hint: FieldHint) -> Self:
+        return cls(
+            **dict(NodeTypeFieldItemRow.of(hint)),
+            items=[NodeTypeFieldItemRow.of(item) for item in hint.items],
+            fields=[NodeTypeFieldItemRow.of(field) for field in hint.fields],
+        )
+
+
 class NodeTypeDetailResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     type: str
-    version: str
-    schema_: dict[str, Any] = Field(alias="schema")
-    default_config: dict[str, Any]
+    version: str = Field(description="The node's current version, the one the seed names")
+    seed: dict[str, Any] = Field(description="The node data to copy into the graph: the canvas's new node")
+    fields: list[NodeTypeFieldRow] = Field(
+        description="Every top-level field of the node's data, the required ones first"
+    )
+    handles: list[str] = Field(description="Every source handle the node has, in the order the canvas draws them")
+    schema_: dict[str, Any] | None = _omitted_when_none(
+        "The JSON schema of the node's data; only with include_schema=true", alias="schema"
+    )
+
+
+_GRAPH_MODE_VALUES: Final = sorted(mode.value for mode in GRAPH_MODES)
+
+
+class NodeOptionQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    app_mode: Annotated[AppMode, WithJsonSchema({"type": "string", "enum": _GRAPH_MODE_VALUES})] = Field(
+        description="The mode of the app the nodes go into"
+    )
+    kind: NodeOptionKind | None = Field(None, description="Only options of this kind")
+    keyword: str | None = Field(
+        None,
+        description=(
+            "Text to find in the label or description, the tool name, the provider id, name or label, the node type, "
+            "or the agent name, ignoring case"
+        ),
+    )
+
+    @field_validator("app_mode")
+    @classmethod
+    def _graph_mode(cls, mode: AppMode) -> AppMode:
+        if mode not in GRAPH_MODES:
+            raise ValueError(f"app_mode must be one of {', '.join(_GRAPH_MODE_VALUES)}")
+        return mode
+
+
+class NodeOptionRow(BaseModel):
+    kind: NodeOptionKind
+    type: str
+    version: str = Field(description="Pass to describe.node_type for the node's schema")
+    label: str
+    description: str | None
+    seed: dict[str, Any] = Field(
+        description="The smallest node data that names this option, or the whole node for a note; copy it into "
+        "the graph"
+    )
+
+    @classmethod
+    def of(cls, option: NodeOption) -> Self:
+        return cls(
+            kind=option.kind,
+            type=option.type,
+            version=option.version,
+            label=option.label,
+            description=option.description,
+            seed=dict(option.seed),
+        )
+
+
+class NodeOptionListResponse(PaginationEnvelope[NodeOptionRow]):
+    pass
 
 
 AppIconType = Literal[IconType.EMOJI, IconType.IMAGE, IconType.LINK]
@@ -1302,19 +1604,12 @@ class ToolCredentialUpdatePayload(BaseModel):
     name: str | None = Field(None, max_length=30)
 
 
-class ToolSource(StrEnum):
-    """Tool provider types a workflow tool node can call; values match the node's provider_type."""
-
-    BUILTIN = ToolProviderType.BUILT_IN.value
-    WORKFLOW = ToolProviderType.WORKFLOW.value
-    API = ToolProviderType.API.value
-    MCP = ToolProviderType.MCP.value
-
-
 class ToolListQuery(PageQuery):
     model_config = ConfigDict(extra="forbid")
 
-    query: str = Field("", description="Words to match in the tool name or label, or the provider id or label")
+    query: str = Field(
+        "", description="Text to find in the tool name, label or description, or the provider id, name or label"
+    )
     provider_type: ToolSource | None = Field(None, description="Only tools of this provider type")
     provider: str | None = Field(None, description="Only this provider's tools")
 
@@ -1335,9 +1630,6 @@ class ToolParameterRow(BaseModel):
     min: float | None
     max: float | None
     llm_description: str | None
-
-
-TOOL_NODE_VERSION: Final = "2"
 
 
 class ToolNodeTemplate(BaseModel):

@@ -24,9 +24,11 @@ from services.human_input_v2.submission_service import (
     ServiceAPIFormActor,
     WebAppFormActor,
 )
-from tests.unit_tests.services.human_input_v2.test_form_delivery_runtime import Context, PublicFormApproval
+from tests.helpers.unit.services.human_input_v2_approvals import Context
+from tests.unit_tests.services.human_input_v2.test_form_delivery_runtime import PublicFormApproval
 
 pytest_plugins = (
+    "tests.helpers.unit.services.human_input_v2_approvals",
     "tests.unit_tests.services.human_input_v2.test_form_delivery_runtime",
     "tests.unit_tests.services.human_input_v2.test_im_webhook_runtime",
 )
@@ -49,7 +51,7 @@ def _assert_delivery_attribution(
     context: Context,
     form_id: str,
     token: str,
-    submit: Callable[[str], None],
+    submit: Callable[[str], object],
     *,
     fail_commit: bool,
     im_retry: bool = False,

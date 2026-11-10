@@ -61,7 +61,8 @@ export async function executeCall(req: CallRequest, ctx: CommandContext): Promis
   }
   const whole = await loadInput({ ...source, raw: req.flags.input })
   const fields = await resolveFileRefs(req.fields, req.op.input, source)
-  const workspaceId = await (await ctx.get(session)).workspaceId()
+  const sessions = await ctx.get(session)
+  const workspaceId = await sessions.workspaceId()
   const body = applyPins({ ...whole, ...fields }, req.op.input, { [PIN.Workspace]: workspaceId })
   assertValidInput({ command: commandWords(req.id), schema: req.op.input, input: body })
 
@@ -79,6 +80,10 @@ export async function executeCall(req: CallRequest, ctx: CommandContext): Promis
     signal,
   }))
 
-  const code = await rendererFor(req.op.kind, out)(res, out, req.flags, req.id)
+  const code = await rendererFor(req.op.kind, out)(res, out, req.flags, {
+    opId: req.id,
+    input: body,
+    tokenFromEnv: sessions.fromEnv,
+  })
   return new Outcome(code)
 }

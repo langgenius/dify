@@ -16,7 +16,6 @@ from controllers.openapi._models import (
     ModelProviderDetailResponse,
     ModelRef,
 )
-from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.model_providers import (
@@ -118,12 +117,6 @@ def test_query_matches_model_label_or_provider() -> None:
 def test_unknown_model_type_is_rejected() -> None:
     with pytest.raises(ValidationError):
         ModelListQuery.model_validate({"model_type": "video"})
-
-
-def test_matches_ignores_case_and_none() -> None:
-    assert matches("Git", None, "github")
-    assert matches("", None)
-    assert not matches("slack", "github", None)
 
 
 def _provider_response(

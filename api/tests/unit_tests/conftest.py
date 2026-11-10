@@ -49,6 +49,9 @@ pytest_plugins = (
     "tests.helpers.unit.model_provider_fixtures",
 )
 
+# Test modules import names from this fixture helper before their `pytest_plugins` registers it.
+pytest.register_assert_rewrite("tests.helpers.unit.services.human_input_v2_approvals")
+
 # set global mock for Redis client
 redis_mock = MagicMock()
 redis_mock.get = MagicMock(return_value=None)
@@ -338,6 +341,22 @@ def persist_service_api_dataset_owner(
     """Persist the tenant-owner mapping resolved by dataset-token authentication."""
     session.add_all([tenant, tenant_account_join])
     session.commit()
+
+
+@pytest.fixture
+def bare_workspace_credentials(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> None:
+    """Publish's credential check over the SQLite database, for a workspace with no model set up.
+
+    No plugin daemon runs in unit tests, so the model lookup answers as it does for a model the workspace lacks.
+    """
+    from services.workflow import graph_check
+    from services.workflow_service import WorkflowService
+
+    def no_model(_service: WorkflowService, _tenant_id: str, provider: str, model_name: str) -> None:
+        raise ValueError(f"Model {model_name} not found for provider {provider}")
+
+    monkeypatch.setattr(graph_check, "WorkflowService", lambda: WorkflowService(session_maker=sqlite_session_factory))
+    monkeypatch.setattr(WorkflowService, "_validate_llm_model_config", no_model)
 
 
 @pytest.fixture

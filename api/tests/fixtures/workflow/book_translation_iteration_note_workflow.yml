@@ -1,0 +1,644 @@
+app:
+  icon: "\U0001F916"
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 'Book Translation '
+workflow:
+  features:
+    file_upload:
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+          - local_file
+          - remote_url
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          sourceType: start
+          targetType: code
+        id: 1711067409646-source-1717916867969-target
+        source: '1711067409646'
+        sourceHandle: source
+        target: '1717916867969'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: iteration
+        id: 1717916867969-source-1717916955547-target
+        source: '1717916867969'
+        sourceHandle: source
+        target: '1717916955547'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: true
+          iteration_id: '1717916955547'
+          sourceType: llm
+          targetType: llm
+        id: 1717916961837-source-1717916977413-target
+        source: '1717916961837'
+        sourceHandle: source
+        target: '1717916977413'
+        targetHandle: target
+        type: custom
+        zIndex: 1002
+      - data:
+          isInIteration: true
+          iteration_id: '1717916955547'
+          sourceType: llm
+          targetType: llm
+        id: 1717916977413-source-1717916984996-target
+        source: '1717916977413'
+        sourceHandle: source
+        target: '1717916984996'
+        targetHandle: target
+        type: custom
+        zIndex: 1002
+      - data:
+          isInIteration: true
+          iteration_id: '1717916955547'
+          sourceType: llm
+          targetType: llm
+        id: 1717916984996-source-1717916991709-target
+        source: '1717916984996'
+        sourceHandle: source
+        target: '1717916991709'
+        targetHandle: target
+        type: custom
+        zIndex: 1002
+      - data:
+          isInIteration: false
+          sourceType: iteration
+          targetType: template-transform
+        id: 1717916955547-source-1717917057450-target
+        source: '1717916955547'
+        sourceHandle: source
+        target: '1717917057450'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: template-transform
+          targetType: end
+        id: 1717917057450-source-1711068257370-target
+        source: '1717917057450'
+        sourceHandle: source
+        target: '1711068257370'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+    nodes:
+      - data:
+          desc: ''
+          selected: false
+          title: Start
+          type: start
+          variables:
+            - label: Input Text
+              max_length: null
+              options: []
+              required: true
+              type: paragraph
+              variable: input_text
+        dragging: false
+        height: 89
+        id: '1711067409646'
+        position:
+          x: 30
+          y: 301.5
+        positionAbsolute:
+          x: 30
+          y: 301.5
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          desc: ''
+          outputs:
+            - value_selector:
+                - '1717917057450'
+                - output
+              variable: final
+          selected: false
+          title: End
+          type: end
+        height: 89
+        id: '1711068257370'
+        position:
+          x: 2291
+          y: 301.5
+        positionAbsolute:
+          x: 2291
+          y: 301.5
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          code: "\ndef main(input_text: str) -> str:\n    token_limit = 1000\n    overlap\
+            \ = 100\n    chunk_size = int(token_limit * 6 * (4/3))\n\n        # Initialize\
+            \ variables\n    chunks = []\n    start_index = 0\n    text_length = len(input_text)\n\
+            \n    # Loop until the end of the text is reached\n    while start_index\
+            \ < text_length:\n        # If we are not at the beginning, adjust the start_index\
+            \ to ensure overlap\n        if start_index > 0:\n            start_index\
+            \ -= overlap\n\n        # Calculate end index for the current chunk\n  \
+            \      end_index = start_index + chunk_size\n        if end_index > text_length:\n\
+            \            end_index = text_length\n\n        # Add the current chunk\
+            \ to the list\n        chunks.append(input_text[start_index:end_index])\n\
+            \n        # Update the start_index for the next chunk\n        start_index\
+            \ += chunk_size\n\n    return {\n        \"chunks\": chunks,\n    }\n"
+          code_language: python3
+          dependencies: []
+          desc: 'token_limit = 1000
+
+            overlap = 100'
+          outputs:
+            chunks:
+              children: null
+              type: array[string]
+          selected: false
+          title: Code
+          type: code
+          variables:
+            - value_selector:
+                - '1711067409646'
+                - input_text
+              variable: input_text
+        height: 101
+        id: '1717916867969'
+        position:
+          x: 336
+          y: 301.5
+        positionAbsolute:
+          x: 336
+          y: 301.5
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          desc: 'Take good care on maximum number of iterations.  '
+          height: 203
+          iterator_selector:
+            - '1717916867969'
+            - chunks
+          output_selector:
+            - '1717916991709'
+            - text
+          output_type: array[string]
+          selected: false
+          startNodeType: llm
+          start_node_id: '1717916961837'
+          title: Iteration
+          type: iteration
+          width: 1289
+        height: 203
+        id: '1717916955547'
+        position:
+          x: 638
+          y: 301.5
+        positionAbsolute:
+          x: 638
+          y: 301.5
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 1289
+        zIndex: 1
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: ''
+          isInIteration: true
+          isIterationStart: true
+          iteration_id: '1717916955547'
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: gpt-4o
+            provider: openai
+          prompt_template:
+            - id: 7261280b-cb27-4f84-8363-b93e09246d16
+              role: system
+              text: "<Task> Identify the technical terms in the users input. Use the following\
+                \ format {XXX} -> {XXX} to show the corresponding technical terms before\
+                \ and after translation. \n\n<Input Text> \n{{#1717916955547.item#}}\n\
+                \n<Example>\n| \u82F1\u6587 | \u4E2D\u6587 |\n| --- | --- |\n| Prompt\
+                \ Engineering | \u63D0\u793A\u8BCD\u5DE5\u7A0B |\n| Text Generation \_\
+                | \u6587\u672C\u751F\u6210 |\n| Token \_| Token |\n| Prompt \_| \u63D0\
+                \u793A\u8BCD |\n| Meta Prompting \_| \u5143\u63D0\u793A |\n| diffusion\
+                \ models \_| \u6269\u6563\u6A21\u578B |\n| Agent \_| \u667A\u80FD\u4F53\
+                \ |\n| Transformer \_| Transformer |\n| Zero Shot \_| \u96F6\u6837\u672C\
+                \ |\n| Few Shot \_| \u5C11\u6837\u672C |\n| chat window \_| \u804A\u5929\
+                \ |\n| context | \u4E0A\u4E0B\u6587 |\n| stock photo \_| \u56FE\u5E93\u7167\
+                \u7247 |\n\n\n<Technical Terms> "
+          selected: false
+          title: 'Identify Terms '
+          type: llm
+          variables: []
+          vision:
+            configs:
+              detail: high
+            enabled: true
+        extent: parent
+        height: 97
+        id: '1717916961837'
+        parentId: '1717916955547'
+        position:
+          x: 117
+          y: 85
+        positionAbsolute:
+          x: 755
+          y: 386.5
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+        zIndex: 1001
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: ''
+          isInIteration: true
+          iteration_id: '1717916955547'
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: gpt-4o
+            provider: openai
+          prompt_template:
+            - id: 05e03f0d-c1a9-43ab-b4c0-44b55049434d
+              role: system
+              text: "<Task> You are a professional translator proficient in Simplified\
+                \ Chinese especially skilled in translating professional academic papers\
+                \ into easy-to-understand popular science articles. Please help me translate\
+                \ the following english paragraph into Chinese, in a style similar to\
+                \ Chinese popular science articles .\n<Constraints> \nTranslate directly\
+                \ based on the English content, maintain the original format and do not\
+                \ omit any information. \n<Before Translation> \n{{#1717916955547.item#}}\n\
+                <Terms>\n{{#1717916961837.text#}}\n<Direct Translation> "
+          selected: false
+          title: 1st Translation
+          type: llm
+          variables: []
+          vision:
+            configs:
+              detail: high
+            enabled: true
+        extent: parent
+        height: 97
+        id: '1717916977413'
+        parentId: '1717916955547'
+        position:
+          x: 421
+          y: 85
+        positionAbsolute:
+          x: 1059
+          y: 386.5
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+        zIndex: 1002
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: ''
+          isInIteration: true
+          iteration_id: '1717916955547'
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: gpt-4o
+            provider: openai
+          prompt_template:
+            - id: 9e6cc050-465e-4632-abc9-411acb255a95
+              role: system
+              text: "<Task>\nBased on the results of the direct translation, point out\
+                \ specific issues it have. Accurate descriptions are required, avoiding\
+                \ vague statements, and there's no need to add content or formats that\
+                \ were not present in the original text, including but not limited to:\
+                \ \n- inconsistent with chinese expression habits, clearly indicate where\
+                \ it does not conform\n- Clumsy sentences, specify the location, no need\
+                \ to offer suggestions for modification, which will be fixed during free\
+                \ translation\n- Obscure and difficult to understand, attempts to explain\
+                \ may be made\n- \u65E0\u6F0F\u8BD1\uFF08\u539F\u2F42\u4E2D\u7684\u5173\
+                \u952E\u8BCD\u3001\u53E5\u2F26\u3001\u6BB5\u843D\u90FD\u5E94\u4F53\u73B0\
+                \u5728\u8BD1\u2F42\u4E2D\uFF09\u3002\n- \u2F46\u9519\u8BD1\uFF08\u770B\
+                \u9519\u539F\u2F42\u3001\u8BEF\u89E3\u539F\u2F42\u610F\u601D\u5747\u7B97\
+                \u9519\u8BD1\uFF09\u3002\n- \u2F46\u6709\u610F\u589E\u52A0\u6216\u8005\
+                \u5220\u51CF\u7684\u539F\u2F42\u5185\u5BB9\uFF08\u7FFB\u8BD1\u5E76\u2FAE\
+                \u521B\u4F5C\uFF0C\u9700\u5C0A\u91CD\u4F5C\u8005\u89C2 \u70B9\uFF1B\u53EF\
+                \u4EE5\u9002\u5F53\u52A0\u8BD1\u8005\u6CE8\u8BF4\u660E\uFF09\u3002\n-\
+                \ \u8BD1\u2F42\u6D41\u7545\uFF0C\u7B26\u5408\u4E2D\u2F42\u8868\u8FBE\u4E60\
+                \u60EF\u3002\n- \u5173\u4E8E\u2F08\u540D\u7684\u7FFB\u8BD1\u3002\u6280\
+                \u672F\u56FE\u4E66\u4E2D\u7684\u2F08\u540D\u901A\u5E38\u4E0D\u7FFB\u8BD1\
+                \uFF0C\u4F46\u662F\u2F00\u4E9B\u4F17\u6240 \u5468\u77E5\u7684\u2F08\u540D\
+                \u9700\u2F64\u4E2D\u2F42\uFF08\u5982\u4E54\u5E03\u65AF\uFF09\u3002\n-\
+                \ \u5173\u4E8E\u4E66\u540D\u7684\u7FFB\u8BD1\u3002\u6709\u4E2D\u2F42\u7248\
+                \u7684\u56FE\u4E66\uFF0C\u8BF7\u2F64\u4E2D\u2F42\u7248\u4E66\u540D\uFF1B\
+                \u2F46\u4E2D\u2F42\u7248 \u7684\u56FE\u4E66\uFF0C\u76F4\u63A5\u2F64\u82F1\
+                \u2F42\u4E66\u540D\u3002\n- \u5173\u4E8E\u56FE\u8868\u7684\u7FFB\u8BD1\
+                \u3002\u8868\u683C\u4E2D\u7684\u8868\u9898\u3001\u8868\u5B57\u548C\u6CE8\
+                \u89E3\u7B49\u5747\u9700\u7FFB\u8BD1\u3002\u56FE\u9898 \u9700\u8981\u7FFB\
+                \u8BD1\u3002\u754C\u2FAF\u622A\u56FE\u4E0D\u9700\u8981\u7FFB\u8BD1\u56FE\
+                \u5B57\u3002\u89E3\u91CA\u6027\u56FE\u9700\u8981\u6309\u7167\u4E2D\u82F1\
+                \u2F42 \u5BF9\u7167\u683C\u5F0F\u7ED9\u51FA\u56FE\u5B57\u7FFB\u8BD1\u3002\
+                \n- \u5173\u4E8E\u82F1\u2F42\u672F\u8BED\u7684\u8868\u8FF0\u3002\u82F1\
+                \u2F42\u672F\u8BED\u2FB8\u6B21\u51FA\u73B0\u65F6\uFF0C\u5E94\u8BE5\u6839\
+                \u636E\u8BE5\u672F\u8BED\u7684 \u6D41\u2F8F\u60C5\u51B5\uFF0C\u4F18\u5148\
+                \u4F7F\u2F64\u7B80\u5199\u5F62\u5F0F\uFF0C\u5E76\u5728\u5176\u540E\u4F7F\
+                \u2F64\u62EC\u53F7\u52A0\u82F1\u2F42\u3001\u4E2D\u2F42 \u5168\u79F0\u6CE8\
+                \u89E3\uFF0C\u683C\u5F0F\u4E3A\uFF08\u4E3E\u4F8B\uFF09\uFF1AHTML\uFF08\
+                Hypertext Markup Language\uFF0C\u8D85\u2F42\u672C\u6807\u8BC6\u8BED\u2F94\
+                \uFF09\u3002\u7136\u540E\u5728\u4E0B\u2F42\u4E2D\u76F4\u63A5\u4F7F\u2F64\
+                \u7B80\u5199\u5F62 \u5F0F\u3002\u5F53\u7136\uFF0C\u5FC5\u8981\u65F6\u4E5F\
+                \u53EF\u4EE5\u6839\u636E\u8BED\u5883\u4F7F\u2F64\u4E2D\u3001\u82F1\u2F42\
+                \u5168\u79F0\u3002\n- \u5173\u4E8E\u4EE3\u7801\u6E05\u5355\u548C\u4EE3\
+                \u7801\u2F5A\u6BB5\u3002\u539F\u4E66\u4E2D\u5305\u542B\u7684\u7A0B\u5E8F\
+                \u4EE3\u7801\u4E0D\u8981\u6C42\u8BD1\u8005\u5F55 \u2F0A\uFF0C\u4F46\u5E94\
+                \u8BE5\u4F7F\u2F64\u201C\u539F\u4E66P99\u2EDA\u4EE3\u78011\u201D\uFF08\
+                \u5373\u539F\u4E66\u7B2C99\u2EDA\u4E2D\u7684\u7B2C\u2F00\u6BB5\u4EE3 \u7801\
+                \uFF09\u7684\u683C\u5F0F\u4F5C\u51FA\u6807\u6CE8\u3002\u540C\u65F6\uFF0C\
+                \u8BD1\u8005\u5E94\u8BE5\u5728\u6709\u6761\u4EF6\u7684\u60C5\u51B5\u4E0B\
+                \u68C0\u6838\u4EE3 \u7801\u7684\u6B63\u786E\u6027\uFF0C\u5BF9\u53D1\u73B0\
+                \u7684\u9519\u8BEF\u4EE5\u8BD1\u8005\u6CE8\u5F62\u5F0F\u8BF4\u660E\u3002\
+                \u7A0B\u5E8F\u4EE3\u7801\u4E2D\u7684\u6CE8 \u91CA\u8981\u6C42\u7FFB\u8BD1\
+                \uFF0C\u5982\u679C\u8BD1\u7A3F\u4E2D\u6CA1\u6709\u4EE3\u7801\uFF0C\u5219\
+                \u5E94\u8BE5\u4EE5\u2F00\u53E5\u82F1\u2F42\uFF08\u6CE8\u91CA\uFF09 \u2F00\
+                \u53E5\u4E2D\u2F42\uFF08\u6CE8\u91CA\uFF09\u7684\u5F62\u5F0F\u7ED9\u51FA\
+                \u6CE8\u91CA\u3002\n- \u5173\u4E8E\u6807\u70B9\u7B26\u53F7\u3002\u8BD1\
+                \u7A3F\u4E2D\u7684\u6807\u70B9\u7B26\u53F7\u8981\u9075\u5FAA\u4E2D\u2F42\
+                \u8868\u8FBE\u4E60\u60EF\u548C\u4E2D\u2F42\u6807 \u70B9\u7B26\u53F7\u7684\
+                \u4F7F\u2F64\u4E60\u60EF\uFF0C\u4E0D\u80FD\u7167\u642C\u539F\u2F42\u7684\
+                \u6807\u70B9\u7B26\u53F7\u3002\n\n<Direct Translation>\n{{#1717916977413.text#}}\n\
+                <Original Text>\n{{#1717916955547.item#}}\n<Terms>\n{{#1717916961837.text#}}\n\
+                <Problems with the Direct Translation>"
+          selected: false
+          title: 'Problems '
+          type: llm
+          variables: []
+          vision:
+            configs:
+              detail: high
+            enabled: true
+        extent: parent
+        height: 97
+        id: '1717916984996'
+        parentId: '1717916955547'
+        position:
+          x: 725
+          y: 85
+        positionAbsolute:
+          x: 1363
+          y: 386.5
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+        zIndex: 1002
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: ''
+          isInIteration: true
+          iteration_id: '1717916955547'
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: gpt-4o
+            provider: openai
+          prompt_template:
+            - id: 4d7ae758-2d7b-4404-ad9f-d6748ee64439
+              role: system
+              text: "<Task>\nBased on the results of the direct translation in the first\
+                \ step and the problems identified in the second step, re-translate to\
+                \ achieve a meaning-based interpretation. Ensure the original intent of\
+                \ the content is preserved while making it easier to understand and more\
+                \ in line with Chinese expression habits. All the while maintaining the\
+                \ original format unchanged. \n\n<Guidance>\n- inconsistent with chinese\
+                \ expression habits, clearly indicate where it does not conform\n- Clumsy\
+                \ sentences, specify the location, no need to offer suggestions for modification,\
+                \ which will be fixed during free translation\n- Obscure and difficult\
+                \ to understand, attempts to explain may be made\n- \u65E0\u6F0F\u8BD1\
+                \uFF08\u539F\u2F42\u4E2D\u7684\u5173\u952E\u8BCD\u3001\u53E5\u2F26\u3001\
+                \u6BB5\u843D\u90FD\u5E94\u4F53\u73B0\u5728\u8BD1\u2F42\u4E2D\uFF09\u3002\
+                \n- \u2F46\u9519\u8BD1\uFF08\u770B\u9519\u539F\u2F42\u3001\u8BEF\u89E3\
+                \u539F\u2F42\u610F\u601D\u5747\u7B97\u9519\u8BD1\uFF09\u3002\n- \u2F46\
+                \u6709\u610F\u589E\u52A0\u6216\u8005\u5220\u51CF\u7684\u539F\u2F42\u5185\
+                \u5BB9\uFF08\u7FFB\u8BD1\u5E76\u2FAE\u521B\u4F5C\uFF0C\u9700\u5C0A\u91CD\
+                \u4F5C\u8005\u89C2 \u70B9\uFF1B\u53EF\u4EE5\u9002\u5F53\u52A0\u8BD1\u8005\
+                \u6CE8\u8BF4\u660E\uFF09\u3002\n- \u8BD1\u2F42\u6D41\u7545\uFF0C\u7B26\
+                \u5408\u4E2D\u2F42\u8868\u8FBE\u4E60\u60EF\u3002\n- \u5173\u4E8E\u2F08\
+                \u540D\u7684\u7FFB\u8BD1\u3002\u6280\u672F\u56FE\u4E66\u4E2D\u7684\u2F08\
+                \u540D\u901A\u5E38\u4E0D\u7FFB\u8BD1\uFF0C\u4F46\u662F\u2F00\u4E9B\u4F17\
+                \u6240 \u5468\u77E5\u7684\u2F08\u540D\u9700\u2F64\u4E2D\u2F42\uFF08\u5982\
+                \u4E54\u5E03\u65AF\uFF09\u3002\n- \u5173\u4E8E\u4E66\u540D\u7684\u7FFB\
+                \u8BD1\u3002\u6709\u4E2D\u2F42\u7248\u7684\u56FE\u4E66\uFF0C\u8BF7\u2F64\
+                \u4E2D\u2F42\u7248\u4E66\u540D\uFF1B\u2F46\u4E2D\u2F42\u7248 \u7684\u56FE\
+                \u4E66\uFF0C\u76F4\u63A5\u2F64\u82F1\u2F42\u4E66\u540D\u3002\n- \u5173\
+                \u4E8E\u56FE\u8868\u7684\u7FFB\u8BD1\u3002\u8868\u683C\u4E2D\u7684\u8868\
+                \u9898\u3001\u8868\u5B57\u548C\u6CE8\u89E3\u7B49\u5747\u9700\u7FFB\u8BD1\
+                \u3002\u56FE\u9898 \u9700\u8981\u7FFB\u8BD1\u3002\u754C\u2FAF\u622A\u56FE\
+                \u4E0D\u9700\u8981\u7FFB\u8BD1\u56FE\u5B57\u3002\u89E3\u91CA\u6027\u56FE\
+                \u9700\u8981\u6309\u7167\u4E2D\u82F1\u2F42 \u5BF9\u7167\u683C\u5F0F\u7ED9\
+                \u51FA\u56FE\u5B57\u7FFB\u8BD1\u3002\n- \u5173\u4E8E\u82F1\u2F42\u672F\
+                \u8BED\u7684\u8868\u8FF0\u3002\u82F1\u2F42\u672F\u8BED\u2FB8\u6B21\u51FA\
+                \u73B0\u65F6\uFF0C\u5E94\u8BE5\u6839\u636E\u8BE5\u672F\u8BED\u7684 \u6D41\
+                \u2F8F\u60C5\u51B5\uFF0C\u4F18\u5148\u4F7F\u2F64\u7B80\u5199\u5F62\u5F0F\
+                \uFF0C\u5E76\u5728\u5176\u540E\u4F7F\u2F64\u62EC\u53F7\u52A0\u82F1\u2F42\
+                \u3001\u4E2D\u2F42 \u5168\u79F0\u6CE8\u89E3\uFF0C\u683C\u5F0F\u4E3A\uFF08\
+                \u4E3E\u4F8B\uFF09\uFF1AHTML\uFF08Hypertext Markup Language\uFF0C\u8D85\
+                \u2F42\u672C\u6807\u8BC6\u8BED\u2F94\uFF09\u3002\u7136\u540E\u5728\u4E0B\
+                \u2F42\u4E2D\u76F4\u63A5\u4F7F\u2F64\u7B80\u5199\u5F62 \u5F0F\u3002\u5F53\
+                \u7136\uFF0C\u5FC5\u8981\u65F6\u4E5F\u53EF\u4EE5\u6839\u636E\u8BED\u5883\
+                \u4F7F\u2F64\u4E2D\u3001\u82F1\u2F42\u5168\u79F0\u3002\n- \u5173\u4E8E\
+                \u4EE3\u7801\u6E05\u5355\u548C\u4EE3\u7801\u2F5A\u6BB5\u3002\u539F\u4E66\
+                \u4E2D\u5305\u542B\u7684\u7A0B\u5E8F\u4EE3\u7801\u4E0D\u8981\u6C42\u8BD1\
+                \u8005\u5F55 \u2F0A\uFF0C\u4F46\u5E94\u8BE5\u4F7F\u2F64\u201C\u539F\u4E66\
+                P99\u2EDA\u4EE3\u78011\u201D\uFF08\u5373\u539F\u4E66\u7B2C99\u2EDA\u4E2D\
+                \u7684\u7B2C\u2F00\u6BB5\u4EE3 \u7801\uFF09\u7684\u683C\u5F0F\u4F5C\u51FA\
+                \u6807\u6CE8\u3002\u540C\u65F6\uFF0C\u8BD1\u8005\u5E94\u8BE5\u5728\u6709\
+                \u6761\u4EF6\u7684\u60C5\u51B5\u4E0B\u68C0\u6838\u4EE3 \u7801\u7684\u6B63\
+                \u786E\u6027\uFF0C\u5BF9\u53D1\u73B0\u7684\u9519\u8BEF\u4EE5\u8BD1\u8005\
+                \u6CE8\u5F62\u5F0F\u8BF4\u660E\u3002\u7A0B\u5E8F\u4EE3\u7801\u4E2D\u7684\
+                \u6CE8 \u91CA\u8981\u6C42\u7FFB\u8BD1\uFF0C\u5982\u679C\u8BD1\u7A3F\u4E2D\
+                \u6CA1\u6709\u4EE3\u7801\uFF0C\u5219\u5E94\u8BE5\u4EE5\u2F00\u53E5\u82F1\
+                \u2F42\uFF08\u6CE8\u91CA\uFF09 \u2F00\u53E5\u4E2D\u2F42\uFF08\u6CE8\u91CA\
+                \uFF09\u7684\u5F62\u5F0F\u7ED9\u51FA\u6CE8\u91CA\u3002\n- \u5173\u4E8E\
+                \u6807\u70B9\u7B26\u53F7\u3002\u8BD1\u7A3F\u4E2D\u7684\u6807\u70B9\u7B26\
+                \u53F7\u8981\u9075\u5FAA\u4E2D\u2F42\u8868\u8FBE\u4E60\u60EF\u548C\u4E2D\
+                \u2F42\u6807 \u70B9\u7B26\u53F7\u7684\u4F7F\u2F64\u4E60\u60EF\uFF0C\u4E0D\
+                \u80FD\u7167\u642C\u539F\u2F42\u7684\u6807\u70B9\u7B26\u53F7\u3002\n\n\
+                <Direct Translation> \n{{#1717916977413.text#}}\n<problems in the first\
+                \ translation>\n{{#1717916984996.text#}}\n<Original Text>\n{{#1711067409646.input_text#}}\n\
+                <Terms>\n{{#1717916961837.text#}}\n<Free Translation> "
+          selected: false
+          title: '2nd Translation '
+          type: llm
+          variables: []
+          vision:
+            configs:
+              detail: high
+            enabled: true
+        extent: parent
+        height: 97
+        id: '1717916991709'
+        parentId: '1717916955547'
+        position:
+          x: 1029
+          y: 85
+        positionAbsolute:
+          x: 1667
+          y: 386.5
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+        zIndex: 1002
+      - data:
+          desc: 'Combine all chunks of translation. '
+          selected: false
+          template: '{{ translated_text | join('' '') }}'
+          title: Template
+          type: template-transform
+          variables:
+            - value_selector:
+                - '1717916955547'
+                - output
+              variable: translated_text
+        height: 83
+        id: '1717917057450'
+        position:
+          x: 1987
+          y: 301.5
+        positionAbsolute:
+          x: 1987
+          y: 301.5
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          author: Dify
+          desc: ''
+          height: 186
+          selected: false
+          showAuthor: true
+          text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"Code
+            node separates the input_text into chunks with length of token_limit. Each
+            chunk overlap with each other to make sure the texts are consistent.  ","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1,"textFormat":0},{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"The
+            code node outputs an array of segmented texts of input_texts. ","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1,"textFormat":0}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}'
+          theme: blue
+          title: ''
+          type: ''
+          width: 340
+        height: 186
+        id: '1718990593686'
+        position:
+          x: 259.3026056936437
+          y: 451.6924912936374
+        positionAbsolute:
+          x: 259.3026056936437
+          y: 451.6924912936374
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom-note
+        width: 340
+      - data:
+          author: Dify
+          desc: ''
+          height: 128
+          selected: false
+          showAuthor: true
+          text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"Iterate
+            through all the elements in output of the code node and translate each chunk
+            using a three steps translation workflow. ","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1,"textFormat":0}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}'
+          theme: blue
+          title: ''
+          type: ''
+          width: 355
+        height: 128
+        id: '1718991836605'
+        position:
+          x: 764.3891977435923
+          y: 530.8917807505335
+        positionAbsolute:
+          x: 764.3891977435923
+          y: 530.8917807505335
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom-note
+        width: 355
+      - data:
+          author: Dify
+          desc: ''
+          height: 126
+          selected: false
+          showAuthor: true
+          text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"Avoid
+            using a high token_limit, LLM''s performance decreases with longer context
+            length for gpt-4o. ","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1,"textFormat":0},{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"Recommend
+            to use less than or equal to 1000 tokens. ","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1,"textFormat":0}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}'
+          theme: yellow
+          title: ''
+          type: ''
+          width: 351
+        height: 126
+        id: '1718991882984'
+        position:
+          x: 304.49115824454367
+          y: 148.4042994607805
+        positionAbsolute:
+          x: 304.49115824454367
+          y: 148.4042994607805
+        selected: true
+        sourcePosition: right
+        targetPosition: left
+        type: custom-note
+        width: 351
+    viewport:
+      x: 335.92505067152274
+      y: 18.806553508850584
+      zoom: 0.8705505632961259

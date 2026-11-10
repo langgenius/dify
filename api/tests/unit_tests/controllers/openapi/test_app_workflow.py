@@ -1,9 +1,10 @@
 import json
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
+from http import HTTPStatus
 from io import BytesIO
-from typing import Protocol, cast
+from typing import Final, Protocol, cast
 
 import pytest
 from flask import Flask
@@ -18,10 +19,13 @@ from controllers.openapi import app_workflow
 from controllers.openapi._errors import (
     DraftNotFound,
     EnvVariableNotFound,
+    NodeNotFound,
+    NotWebhookTrigger,
     RunNotFound,
     SecretMaskNotSecret,
     SecretMaskUnknownId,
     VersionNotFound,
+    WebhookNotFound,
 )
 from controllers.openapi._hints import cursor_after, next_page_hint
 from controllers.openapi._models import (
@@ -32,29 +36,41 @@ from controllers.openapi._models import (
     PublishResponse,
     RestoreResponse,
     RunListQuery,
+    RunListResponse,
     VersionListQuery,
     VersionListResponse,
+    WebhookResponse,
 )
 from controllers.openapi._upload import UploadParts, file_fields
 from controllers.openapi.app_workflow import (
     AppEnvItemApi,
     AppPublishApi,
+    AppRunListApi,
     AppRunNodeListApi,
     AppVersionListApi,
     AppVersionRestoreApi,
+    AppWebhookApi,
     env_variable_rows,
     run_draft_node,
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from core.helper import encrypter
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
+from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_application_services import ApplicationServices
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import VariablePool
 from graphon.variables import SecretVariable, StringVariable, VariableBase
 from libs.oauth_bearer import AuthContext
 from models.account import Account, Tenant
-from models.enums import AppStatus
+from models.enums import AppStatus, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
-from models.workflow import Workflow, WorkflowType
+from models.trigger import WorkflowWebhookTrigger
+from models.workflow import Workflow, WorkflowRun, WorkflowType
 from services.workflow.graph_diff import draft_token
 from services.workflow_service import WorkflowService
 
@@ -389,8 +405,144 @@ def test_node_run_payload_accepts_files_and_forbids_attachments(payload_cls: typ
         payload_cls.model_validate({"attachments": []})
 
 
+_UPSTREAM: Final = ["search", "text"]
+
+
+def _code_node(node_id: str) -> dict[str, object]:
+    return {
+        "id": node_id,
+        "data": {
+            "type": "code",
+            "title": "Shorten",
+            "code_language": "python3",
+            "code": "def main(results):\n    return {'short': results}",
+            "variables": [{"variable": "results", "value_selector": _UPSTREAM}],
+            "outputs": {"short": {"type": "string"}},
+        },
+    }
+
+
+_TEMPLATE_NODE: Final[Mapping[str, object]] = {
+    "id": "digest",
+    "data": {
+        "type": "template-transform",
+        "title": "Digest",
+        "template": "{{ headlines }}",
+        "variables": [{"variable": "headlines", "value_selector": _UPSTREAM}],
+    },
+}
+_TOOL_NODE: Final[Mapping[str, object]] = {
+    "id": "now",
+    "data": {
+        "type": "tool",
+        "title": "Now",
+        "provider_id": "time",
+        "provider_type": "builtin",
+        "provider_name": "time",
+        "tool_name": "current_time",
+        "tool_label": "Current Time",
+        "tool_configurations": {},
+        "tool_parameters": {"query": {"type": "mixed", "value": "news at {{#search.text#}}"}},
+    },
+}
+
+
 def _code_node_graph(node_id: str) -> str:
-    return json.dumps({"nodes": [{"id": node_id, "data": {"type": "code"}}], "edges": []})
+    return _graph(_code_node(node_id))
+
+
+def _graph(node: Mapping[str, object]) -> str:
+    return json.dumps({"nodes": [node], "edges": []})
+
+
+def _run_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+    session: Session,
+    session_factory: sessionmaker[Session],
+    node: Mapping[str, object],
+    inputs: dict[str, object],
+) -> Mapping[str, object]:
+    """The user inputs the node test hands the single-step run."""
+    service = _workflow_service(monkeypatch, session_factory)
+    ctx = _app_context(session)
+    _add_draft(session, graph=_graph(node))
+    handed: list[Mapping[str, object]] = []
+
+    def run_draft_workflow_node(*, user_inputs: Mapping[str, object], **_kwargs: object) -> None:
+        handed.append(user_inputs)
+
+    monkeypatch.setattr(service, "run_draft_workflow_node", run_draft_workflow_node)
+    monkeypatch.setattr(app_workflow, "node_execution_response_source", lambda *_args, **_kwargs: {"id": "e-1"})
+
+    run_draft_node(ctx, str(node["id"]), inputs=inputs, query="")
+
+    [user_inputs] = handed
+    return user_inputs
+
+
+def _read_by_the_run(node: Mapping[str, object], user_inputs: Mapping[str, object]) -> VariablePool:
+    """The pool the single-step run fills from `user_inputs`, through the node's own variable mapping."""
+    config = NodeConfigDictAdapter.validate_python(node)
+    node_cls = resolve_workflow_node_class(node_type=config["data"].type, node_version=config["data"].version)
+    mapping = node_cls.extract_variable_selector_to_variable_mapping(
+        graph_config=json.loads(_graph(node)), config=config
+    )
+    pool = VariablePool()
+    WorkflowEntry.mapping_user_inputs_to_variable_pool(
+        variable_mapping=mapping, user_inputs=user_inputs, variable_pool=pool, tenant_id=WORKSPACE_ID
+    )
+    return pool
+
+
+@pytest.mark.parametrize("node", [_code_node("shorten"), _TEMPLATE_NODE, _TOOL_NODE], ids=["code", "template", "tool"])
+@pytest.mark.parametrize("key", ["#search.text#", "search.text"])
+def test_a_node_test_takes_an_upstream_reference_with_or_without_hashes(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    node: Mapping[str, object],
+    key: str,
+) -> None:
+    user_inputs = _run_inputs(monkeypatch, sqlite_session, sqlite_session_factory, node, {key: "AI news"})
+
+    variable = _read_by_the_run(node, user_inputs).get(_UPSTREAM)
+    assert variable is not None
+    assert variable.value == "AI news"
+
+
+@pytest.mark.parametrize(
+    ("node", "inputs"),
+    [
+        pytest.param(_code_node("shorten"), {"results": "AI news"}, id="code-variable"),
+        pytest.param(_code_node("shorten"), {"shorten.results": "AI news"}, id="code-node-variable"),
+        pytest.param(_TOOL_NODE, {"#search.text#": "AI news"}, id="tool-reference"),
+    ],
+)
+def test_a_node_test_hands_the_keys_the_run_already_reads_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    node: Mapping[str, object],
+    inputs: dict[str, object],
+) -> None:
+    user_inputs = _run_inputs(monkeypatch, sqlite_session, sqlite_session_factory, node, inputs)
+
+    assert {key: user_inputs[key] for key in inputs} == inputs
+    variable = _read_by_the_run(node, user_inputs).get(_UPSTREAM)
+    assert variable is not None
+    assert variable.value == "AI news"
+
+
+def test_a_node_test_with_an_unknown_key_still_names_the_missing_variable(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    node = _code_node("shorten")
+
+    user_inputs = _run_inputs(monkeypatch, sqlite_session, sqlite_session_factory, node, {"#other.text#": "x"})
+
+    assert user_inputs == {"#other.text#": "x"}
+    with pytest.raises(ValueError, match=r"^Variable key shorten\.results not found in user inputs\.$"):
+        _read_by_the_run(node, user_inputs)
 
 
 def _upload_part() -> FileStorage:
@@ -552,3 +704,165 @@ def test_publish_refusal_is_a_bad_request(
     stored_app = sqlite_session.get(App, APP_ID)
     assert stored_app is not None
     assert stored_app.workflow_id is None
+
+
+def _add_run(session: Session, *, triggered_from: WorkflowRunTriggeredFrom) -> WorkflowRun:
+    run = WorkflowRun(
+        tenant_id=WORKSPACE_ID,
+        app_id=APP_ID,
+        workflow_id=VERSION_ID,
+        type=WorkflowType.WORKFLOW,
+        triggered_from=triggered_from,
+        version="1",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=ACCOUNT_ID,
+        graph="{}",
+        inputs="{}",
+    )
+    session.add(run)
+    session.commit()
+    return run
+
+
+def _listed_run_ids(
+    app: Flask, ctx: Context, monkeypatch: pytest.MonkeyPatch, services: ApplicationServices, *, query: RunListQuery
+) -> list[str]:
+    monkeypatch.setattr(app_workflow, "application_services", lambda: services)
+    api = AppRunListApi()
+    with app.test_request_context(f"/openapi/v1/apps/{APP_ID}/runs"):
+        response = api.get.__handler__(api, ctx, APP_ID, query=query)  # type: ignore[attr-defined]
+    assert isinstance(response, RunListResponse)
+    return [row.id for row in response.data]
+
+
+@pytest.mark.parametrize(
+    "triggered_from",
+    [WorkflowRunTriggeredFrom.SCHEDULE, WorkflowRunTriggeredFrom.WEBHOOK, WorkflowRunTriggeredFrom.PLUGIN],
+)
+def test_run_list_lists_trigger_started_runs_only_when_asked(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+    triggered_from: WorkflowRunTriggeredFrom,
+) -> None:
+    ctx = _app_context(sqlite_session)
+    triggered = _add_run(sqlite_session, triggered_from=triggered_from)
+
+    asked = _listed_run_ids(
+        app,
+        ctx,
+        monkeypatch,
+        account_application_services,
+        query=RunListQuery.model_validate({"triggered_from": triggered_from}),
+    )
+    by_default = _listed_run_ids(app, ctx, monkeypatch, account_application_services, query=RunListQuery())
+
+    assert asked == [triggered.id]
+    assert by_default == []
+
+
+@pytest.mark.parametrize("triggered_from", [WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN, "unknown"])
+def test_run_list_refuses_a_trigger_source_outside_the_app_runs(triggered_from: str) -> None:
+    with pytest.raises(ValidationError):
+        RunListQuery.model_validate({"triggered_from": triggered_from})
+
+
+_WEBHOOK_NODE: Final[Mapping[str, object]] = {
+    "id": "hook",
+    "data": {"type": TRIGGER_WEBHOOK_NODE_TYPE, "title": "Webhook", "method": "post"},
+}
+_WEBHOOK_ID: Final = "abcdefghijklmnopqrstuvwx"
+
+
+def _add_webhook_record(session: Session, node_id: str) -> None:
+    session.add(
+        WorkflowWebhookTrigger(
+            app_id=APP_ID, tenant_id=WORKSPACE_ID, node_id=node_id, webhook_id=_WEBHOOK_ID, created_by=ACCOUNT_ID
+        )
+    )
+    session.commit()
+
+
+def _describe_webhook(
+    app: Flask, ctx: Context, monkeypatch: pytest.MonkeyPatch, services: ApplicationServices, node_id: str
+) -> WebhookResponse:
+    monkeypatch.setattr(app_workflow, "application_services", lambda: services)
+    api = AppWebhookApi()
+    with app.test_request_context(f"/openapi/v1/apps/{APP_ID}/webhooks/{node_id}"):
+        response = api.get.__handler__(api, ctx, APP_ID, node_id)  # type: ignore[attr-defined]
+    assert isinstance(response, WebhookResponse)
+    return response
+
+
+def test_describe_webhook_gives_the_trigger_node_its_addresses(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    account_application_services: ApplicationServices,
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_graph(_WEBHOOK_NODE))
+    _add_webhook_record(sqlite_session, "hook")
+
+    response = _describe_webhook(app, ctx, monkeypatch, account_application_services, "hook")
+
+    assert response == WebhookResponse(
+        node_id="hook",
+        webhook_url=generate_webhook_trigger_endpoint(_WEBHOOK_ID),
+        webhook_debug_url=generate_webhook_trigger_endpoint(_WEBHOOK_ID, debug=True),
+    )
+
+
+def test_describe_webhook_of_a_node_the_draft_lacks_is_not_found(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    account_application_services: ApplicationServices,
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_graph(_WEBHOOK_NODE))
+
+    with pytest.raises(NodeNotFound):
+        _describe_webhook(app, ctx, monkeypatch, account_application_services, "typo")
+
+
+def test_describe_webhook_of_a_node_that_is_no_webhook_trigger_names_its_type(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    account_application_services: ApplicationServices,
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_code_node_graph("shorten"))
+
+    with pytest.raises(NotWebhookTrigger) as raised:
+        _describe_webhook(app, ctx, monkeypatch, account_application_services, "shorten")
+
+    assert raised.value.code == HTTPStatus.BAD_REQUEST
+    assert "code" in str(raised.value.description)
+
+
+def test_describe_webhook_of_a_trigger_without_an_address_is_not_found(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    account_application_services: ApplicationServices,
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_graph(_WEBHOOK_NODE))
+
+    with pytest.raises(WebhookNotFound) as raised:
+        _describe_webhook(app, ctx, monkeypatch, account_application_services, "hook")
+    # An openapi caller writes the draft by importing it; the console's save is not one of its ops.
+    assert raised.value.hint is not None
+    assert "import the draft again" in raised.value.hint

@@ -10,6 +10,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
+from controllers.common.agent_access import AgentAccessFilter
 from controllers.console import console_ns
 from controllers.console.agent import composer as composer_controller
 from controllers.console.agent import roster as roster_controller
@@ -308,7 +309,7 @@ def test_agent_app_list_and_create_use_agent_route(
     )
     monkeypatch.setattr(
         roster_controller,
-        "resolve_agent_access_filter",
+        "account_agent_access",
         lambda *_args, **_kwargs: FakeAgentAccessFilter(),
     )
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
@@ -1060,8 +1061,8 @@ def test_invite_options_get_applies_resource_visibility(
     )
     monkeypatch.setattr(
         roster_controller,
-        "resolve_agent_access_filter",
-        lambda *_args, **_kwargs: SimpleNamespace(accessible_agent_ids={"agent-2", "agent-1"}),
+        "account_agent_access",
+        lambda *_args, **_kwargs: AgentAccessFilter(accessible_agent_ids={"agent-2", "agent-1"}),
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,

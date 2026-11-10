@@ -3,9 +3,12 @@ from __future__ import annotations
 import json
 import sys
 import uuid
+from collections.abc import Iterable
 from dataclasses import replace
+from http import HTTPStatus
 from io import BytesIO
 from types import SimpleNamespace
+from typing import Final
 from unittest.mock import Mock
 
 import pytest
@@ -18,7 +21,12 @@ from werkzeug.exceptions import BadRequest, NotFound, TooManyRequests
 
 from constants.oauth_bearer import TokenType
 from controllers.openapi import app_run
-from controllers.openapi._errors import AgentNotPublished, AppModeMismatch
+from controllers.openapi._errors import (
+    AgentNotPublished,
+    AppModeMismatch,
+    OpenApiErrorCode,
+    TriggerWorkflowNotRunnable,
+)
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
     AgentRunPayload,
@@ -34,12 +42,14 @@ from controllers.openapi.app_run import (
     CompletionRunApi,
     _translate_service_errors,
 )
+from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import Subject, subject_from_auth
-from controllers.service_api.app.error import TriggerWorkflowServiceModeUnavailableError
+from controllers.openapi.human_input_form import FormVersion
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.errors.error import AppInvokeQuotaExceededError
+from core.workflow.nodes.human_input import UserActionConfig
 from extensions.ext_application_services import ApplicationServices
 from graphon.file import FileType
 from libs.oauth_bearer import AuthContext
@@ -47,9 +57,7 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser, UploadFile
 from services.app_task_service import AppTaskControlService
-from services.errors.app import (
-    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
-)
+from services.errors.app import TriggerWorkflowServiceModeUnavailableError
 from services.errors.llm import InvokeRateLimitError
 from tests.helpers.unit.model_factories import make_upload_file
 from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
@@ -77,12 +85,15 @@ def test_translate_maps_workflow_quota_to_rate_limit_error():
     assert exc.value.code == 429
 
 
-def test_translate_maps_trigger_workflow_to_stable_unavailable_error():
-    with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc:
+def test_a_trigger_workflow_run_is_refused_for_its_shape_not_as_forbidden() -> None:
+    with pytest.raises(TriggerWorkflowNotRunnable) as exc:
         with _translate_service_errors():
-            raise TriggerWorkflowServiceModeUnavailableServiceError()
-    assert exc.value.error_code == "trigger_workflow_service_mode_unavailable"
-    assert exc.value.code == 403
+            raise TriggerWorkflowServiceModeUnavailableError()
+
+    assert (exc.value.code, exc.value.error_code) == (
+        HTTPStatus.UNPROCESSABLE_ENTITY,
+        OpenApiErrorCode.TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE,
+    )
 
 
 def test_translate_maps_value_error_to_a_fixed_bad_request():
@@ -410,7 +421,9 @@ def _hint_input(events: list[str]) -> dict[str, object]:
 
 
 def test_reply_hints_keep_the_app_target() -> None:
-    events = list(app_run._reply_layer(_message_end_events(), "run.console_app.chat", _TEST_APP_ID))
+    events = list(
+        app_run._reply_layer(_message_end_events(), "run.console_app.chat", _layer_ctx(TokenType.OAUTH_ACCOUNT))
+    )
     assert _hint_input(events) == {"app_id": _TEST_APP_ID, "conversation_id": "c1", "query": None, "inputs": {}}
 
 
@@ -419,11 +432,65 @@ def test_reply_hints_carry_any_target() -> None:
     assert _hint_input(events) == {"agent_id": "a", "conversation_id": "c1", "query": None, "inputs": {}}
 
 
-def test_draft_runs_do_not_hint_the_form_submit_op() -> None:
-    """A draft run's human-input form is a debugger form; the submit op only takes web-app
-    forms, so hinting it would send the agent straight into a 403."""
-    draft_routes = [route for route in app_run._RUN_ROUTES if route.invoke_from == InvokeFrom.DEBUGGER]
-    assert draft_routes
-    for route in draft_routes:
-        assert app_run._form_layer not in route.hints
-        assert "cannot be resumed over openapi" in route.summary
+def _paused_events() -> list[str]:
+    events = []
+    for version in FormVersion:
+        paused = HumanInputRequiredResponse(
+            task_id="t1",
+            workflow_run_id="r1",
+            data=HumanInputRequiredResponse.Data(
+                form_version=version.value,
+                form_id=f"form-v{version.value}",
+                node_id="n1",
+                node_title="Review",
+                form_content="",
+                actions=[UserActionConfig(id="approve", title="Approve")],
+                form_token=f"token-v{version.value}",
+                expiration_time=4102444800,
+            ),
+        )
+        events.append(f"data: {json.dumps(paused.model_dump(mode='json'))}\n\n")
+    return events
+
+
+def _hinted_tokens(events: list[str]) -> list[str]:
+    hints = [hint for event in events for hint in json.loads(event[len("data: ") :]).get("hints", [])]
+    return [hint["input"]["form_token"] for hint in hints]
+
+
+def _layer_ctx(token_type: TokenType) -> Context:
+    ctx = Context(_subject(token_type), Session(), {"app_id": _TEST_APP_ID})
+    ctx._app = _make_app()
+    return ctx
+
+
+_GRAPH_ROUTES: Final = tuple(route for route in app_run._RUN_ROUTES if app_run._form_layer in route.hints)
+
+
+def test_every_graph_route_draft_or_published_hints_paused_forms() -> None:
+    assert {route.op for route in _GRAPH_ROUTES} == {
+        "run.console_app.workflow",
+        "run.console_app.advanced_chat",
+        "test.console_app.workflow",
+        "test.console_app.advanced_chat",
+    }
+    assert all(route.summary.endswith(app_run._DRAFT_FORM_NOTE) for route in _GRAPH_ROUTES if route.draft)
+
+
+@pytest.mark.parametrize(
+    ("token_type", "hinted"),
+    [
+        (TokenType.OAUTH_ACCOUNT, ["token-v2"]),
+        (TokenType.OAUTH_EXTERNAL_SSO, ["token-v2"]),
+        (TokenType.RESOURCE_ACCESS, []),
+    ],
+)
+def test_a_paused_run_hints_its_form_only_to_a_caller_the_submit_op_admits(
+    token_type: TokenType, hinted: list[str]
+) -> None:
+    """The v1 token has no form in the store, so only the v2 one can be answered at all."""
+    for route in _GRAPH_ROUTES:
+        events: Iterable[str] = _paused_events()
+        for layer in route.hints:
+            events = layer(events, route.op, _layer_ctx(token_type))
+        assert _hinted_tokens(list(events)) == hinted

@@ -337,6 +337,25 @@ export const zAppListRow = z.object({
 })
 
 /**
+ * AppPackageCheckPayload
+ *
+ * Request body for POST /workspaces/<workspace_id>/apps/packages:check.
+ */
+export const zAppPackageCheckPayload = z.object({
+  app_id: z.string().nullish(),
+  package: z.union([
+    z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+    z.record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    ),
+  ]),
+})
+
+/**
  * AppPackageExportQuery
  *
  * Query parameters for GET /apps/<app_id>/package.
@@ -345,6 +364,24 @@ export const zAppPackageExportQuery = z.object({
   include_secret: z.boolean().optional().default(false),
   preserve_agent_bindings: z.boolean().optional().default(true),
   workflow_id: z.uuid().nullish(),
+})
+
+/**
+ * AppPackageFillPayload
+ *
+ * Request body for POST /workspaces/<workspace_id>/apps/packages:fill.
+ */
+export const zAppPackageFillPayload = z.object({
+  package: z.union([
+    z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+    z.record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    ),
+  ]),
 })
 
 /**
@@ -556,6 +593,19 @@ export const zCustomModelRow = z.object({
 })
 
 /**
+ * DeclaredParameterRow
+ */
+export const zDeclaredParameterRow = z.object({
+  default: z.unknown().optional(),
+  form: z.string().nullable(),
+  help: z.string().nullable(),
+  name: z.string(),
+  options: z.array(z.string()),
+  required: z.boolean(),
+  type: z.string(),
+})
+
+/**
  * DeploymentEdition
  *
  * Enum representing the deployment edition of the platform.
@@ -746,6 +796,45 @@ export const zErrorDetail = z.object({
  * EventStreamResponse
  */
 export const zEventStreamResponse = z.string()
+
+/**
+ * FieldHintItemRow
+ */
+export const zFieldHintItemRow = z.object({
+  default: z.unknown().optional(),
+  description: z.string().nullable(),
+  loc: z.array(z.union([z.string(), z.int()])),
+  options: z.array(z.string()),
+  required: z.boolean(),
+  type: z.string().nullable(),
+})
+
+/**
+ * FieldHintRow
+ */
+export const zFieldHintRow = z.object({
+  default: z.unknown().optional(),
+  description: z.string().nullable(),
+  fields: z.array(zFieldHintItemRow).optional(),
+  items: z.array(zFieldHintItemRow).optional(),
+  loc: z.array(z.union([z.string(), z.int()])),
+  options: z.array(z.string()),
+  required: z.boolean(),
+  type: z.string().nullable(),
+})
+
+/**
+ * AuthoringIssueRow
+ */
+export const zAuthoringIssueRow = z.object({
+  code: z.string(),
+  hint: zFieldHintRow.nullable(),
+  loc: z.array(z.union([z.string(), z.int()])),
+  message: z.string(),
+  node_id: z.string().nullable(),
+  refuses_import: z.boolean(),
+  severity: z.string(),
+})
 
 /**
  * FileResponse
@@ -1497,6 +1586,48 @@ export const zNodeChange = z.object({
 })
 
 /**
+ * NodeOptionKind
+ *
+ * Where a node option comes from; a kind other than block seeds the nodes whose data is its `seeded_model`.
+ */
+export const zNodeOptionKind = z.enum(['agent', 'block', 'note', 'tool'])
+
+/**
+ * NodeOptionQuery
+ */
+export const zNodeOptionQuery = z.object({
+  app_mode: z.enum(['advanced-chat', 'workflow']),
+  keyword: z.string().nullish(),
+  kind: zNodeOptionKind.nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * NodeOptionRow
+ */
+export const zNodeOptionRow = z.object({
+  description: z.string().nullable(),
+  kind: zNodeOptionKind,
+  label: z.string(),
+  seed: z.record(z.string(), z.unknown()),
+  type: z.string(),
+  version: z.string(),
+})
+
+/**
+ * NodeOptionListResponse
+ */
+export const zNodeOptionListResponse = z.object({
+  data: z.array(zNodeOptionRow),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * NodeRunPayload
  */
 export const zNodeRunPayload = z.object({
@@ -1513,11 +1644,60 @@ export const zNodeRunPayload = z.object({
 })
 
 /**
+ * NodeSpecRow
+ */
+export const zNodeSpecRow = z.object({
+  node_id: z.string(),
+  open_fields: z.array(zFieldHintRow),
+  plugin_parameters: z.array(zDeclaredParameterRow),
+  schema: z.record(z.string(), z.unknown()),
+  type: z.string(),
+  version: z.string(),
+})
+
+/**
+ * NodeTypeDescribeQuery
+ *
+ * Query parameters for GET /node-types/<node_type>.
+ */
+export const zNodeTypeDescribeQuery = z.object({
+  include_schema: z.boolean().optional().default(false),
+})
+
+/**
+ * NodeTypeFieldItemRow
+ */
+export const zNodeTypeFieldItemRow = z.object({
+  default: z.unknown().optional(),
+  description: z.string().nullish(),
+  loc: z.array(z.union([z.string(), z.int()])),
+  options: z.array(z.string()).optional(),
+  required: z.boolean(),
+  type: z.string().nullable(),
+})
+
+/**
+ * NodeTypeFieldRow
+ */
+export const zNodeTypeFieldRow = z.object({
+  default: z.unknown().optional(),
+  description: z.string().nullish(),
+  fields: z.array(zNodeTypeFieldItemRow).optional(),
+  items: z.array(zNodeTypeFieldItemRow).optional(),
+  loc: z.array(z.union([z.string(), z.int()])),
+  options: z.array(z.string()).optional(),
+  required: z.boolean(),
+  type: z.string().nullable(),
+})
+
+/**
  * NodeTypeDetailResponse
  */
 export const zNodeTypeDetailResponse = z.object({
-  default_config: z.record(z.string(), z.unknown()),
-  schema: z.record(z.string(), z.unknown()),
+  fields: z.array(zNodeTypeFieldRow),
+  handles: z.array(z.string()),
+  schema: z.record(z.string(), z.unknown()).nullish(),
+  seed: z.record(z.string(), z.unknown()),
   type: z.string(),
   version: z.string(),
 })
@@ -1583,6 +1763,7 @@ export const zOpenApiErrorCode = z.enum([
   'node_type_not_found',
   'not_acceptable',
   'not_found',
+  'not_webhook_trigger',
   'plugin_install_forbidden',
   'plugin_not_installed',
   'plugin_service_unavailable',
@@ -1617,6 +1798,7 @@ export const zOpenApiErrorCode = z.enum([
   'webapp_access_requires_ee',
   'webapp_access_unavailable',
   'webapp_public_access_disabled',
+  'webhook_not_found',
 ])
 
 /**
@@ -1636,6 +1818,16 @@ export const zOpenApiFormSubmitPayload = z.object({
     )
     .nullish(),
   inputs: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * PackageCheckResponse
+ */
+export const zPackageCheckResponse = z.object({
+  hints: z.array(zHint).optional(),
+  issues: z.array(zAuthoringIssueRow),
+  node_specs: z.array(zNodeSpecRow),
+  valid: z.boolean(),
 })
 
 /**
@@ -1890,7 +2082,10 @@ export const zRunListQuery = z.object({
   last_id: z.uuid().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   status: z.enum(['failed', 'partial-succeeded', 'running', 'stopped', 'succeeded']).nullish(),
-  triggered_from: z.enum(['app-run', 'debugging']).optional().default('debugging'),
+  triggered_from: z
+    .enum(['app-run', 'debugging', 'plugin', 'schedule', 'webhook'])
+    .optional()
+    .default('debugging'),
 })
 
 /**
@@ -2433,6 +2628,15 @@ export const zWebAppToken = z.object({
   access_token: z.string().nullish(),
   app_base_url: z.string(),
   url: z.string().nullish(),
+})
+
+/**
+ * WebhookResponse
+ */
+export const zWebhookResponse = z.object({
+  node_id: z.string(),
+  webhook_debug_url: z.string(),
+  webhook_url: z.string(),
 })
 
 /**
@@ -3092,7 +3296,10 @@ export const zGetAppsByAppIdRunsQuery = z.object({
   last_id: z.uuid().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   status: z.enum(['failed', 'partial-succeeded', 'running', 'stopped', 'succeeded']).optional(),
-  triggered_from: z.enum(['app-run', 'debugging']).optional().default('debugging'),
+  triggered_from: z
+    .enum(['app-run', 'debugging', 'plugin', 'schedule', 'webhook'])
+    .optional()
+    .default('debugging'),
 })
 
 /**
@@ -3398,6 +3605,16 @@ export const zPostAppsByAppIdWebappResetPath = z.object({
  */
 export const zPostAppsByAppIdWebappResetResponse = zWebAppToken
 
+export const zGetAppsByAppIdWebhooksByNodeIdPath = z.object({
+  app_id: z.string(),
+  node_id: z.string(),
+})
+
+/**
+ * Webhook addresses
+ */
+export const zGetAppsByAppIdWebhooksByNodeIdResponse = zWebhookResponse
+
 export const zPostAppsByAppIdWorkflowRunBody = zWorkflowRunPayload
 
 export const zPostAppsByAppIdWorkflowRunPath = z.object({
@@ -3427,6 +3644,10 @@ export const zGetNodeTypesResponse = zNodeTypeListResponse
 
 export const zGetNodeTypesByNodeTypePath = z.object({
   node_type: z.string(),
+})
+
+export const zGetNodeTypesByNodeTypeQuery = z.object({
+  include_schema: z.boolean().optional().default(false),
 })
 
 /**
@@ -3622,6 +3843,28 @@ export const zPostWorkspacesByWorkspaceIdAppsPackagesPath = z.object({
  * Import completed
  */
 export const zPostWorkspacesByWorkspaceIdAppsPackagesResponse = zAppDslImportResponse
+
+export const zPostWorkspacesByWorkspaceIdAppsPackagesCheckBody = zAppPackageCheckPayload
+
+export const zPostWorkspacesByWorkspaceIdAppsPackagesCheckPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Check result
+ */
+export const zPostWorkspacesByWorkspaceIdAppsPackagesCheckResponse = zPackageCheckResponse
+
+export const zPostWorkspacesByWorkspaceIdAppsPackagesFillBody = zAppPackageFillPayload
+
+export const zPostWorkspacesByWorkspaceIdAppsPackagesFillPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Filled app package
+ */
+export const zPostWorkspacesByWorkspaceIdAppsPackagesFillResponse = zBinaryFileResponse
 
 export const zPostWorkspacesByWorkspaceIdAppsWorkflowBody = zCreateAppPayload
 
@@ -3981,6 +4224,23 @@ export const zGetWorkspacesByWorkspaceIdModelsQuery = z.object({
  * Models
  */
 export const zGetWorkspacesByWorkspaceIdModelsResponse = zModelListResponse
+
+export const zGetWorkspacesByWorkspaceIdNodeOptionsPath = z.object({
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdNodeOptionsQuery = z.object({
+  app_mode: z.enum(['advanced-chat', 'workflow']),
+  keyword: z.string().optional(),
+  kind: z.enum(['agent', 'block', 'note', 'tool']).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * Node options
+ */
+export const zGetWorkspacesByWorkspaceIdNodeOptionsResponse = zNodeOptionListResponse
 
 export const zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdPath = z.object({
   task_id: z.string(),

@@ -9,10 +9,10 @@ Four phases. Each ends with a gate; never skip one, even for a small app.
 
 ## Rules
 
-- Keep the working files in `difyctl/<app-slug>/` in the current folder: `spec.md`, `plan.md`, `app.yml`, and `live.yml` when changing an existing app.
+- Keep the working files in `difyctl/<app-slug>/` in the current folder: `spec.md`, `plan.md`, the package folder `app/`, and `live/` when changing an existing app. Keep `.ifpkg` files next to the folders, never inside one: an upload sends every file in the folder.
 - Requirement ids (`R1`, `R2`, …) from the spec run through the plan, the build and the final report.
 - One writer per draft at a time.
-- Change an app only through `export console_app dsl` and `import console_app dsl`. Don't use `export console_app package` or `import console_app package`: editing through packages isn't finished.
+- Change an app only through packages: `export console_app package`, edit `app/app.yaml`, then `fill console_app package` and `check console_app package`, then `import console_app package`. Check before every import.
 - Nothing goes live without the human's yes.
 - **Report problems; never work around them.** When something blocks the agreed design, stop and tell the human what you found and the options. Examples: a tool that isn't configured, a missing credential or plugin, a requirement a node can't meet, a check you can't pass. Never swap in a substitute on your own: an HTTP Request or Code node in place of a tool, prompt text in place of a knowledge base, a dropped or weakened requirement.
 - **Every change from the approved spec or plan needs the human's yes before you build it.** List each one: what changes, why, and what it costs. "Use defaults" or "go" approves only the options you already showed with your recommendation. It never approves a substitute you didn't show.
@@ -25,13 +25,15 @@ Four phases. Each ends with a gate; never skip one, even for a small app.
 - [`build-workflow/plan.md`](build-workflow/plan.md): read in the plan phase.
 - [`build-workflow/build.md`](build-workflow/build.md): read in the build phase.
 - [`build-workflow/handover.md`](build-workflow/handover.md): read when the build is done.
-- [`build-workflow/dsl.md`](build-workflow/dsl.md): read when writing or reading app YAML.
+- [`build-workflow/package.md`](build-workflow/package.md): read when writing or reading `app.yaml`, or acting on a check result.
 - Read [`plugins.md`](plugins.md) in the spec phase to find tools, models and knowledge bases, and when a plugin, model, tool or credential is missing.
 
 ## Limits
 
-- A draft run paused on a human-input node can't be resumed over difyctl.
-- Trigger-started workflows (webhook, schedule, plugin) can't be draft-tested.
+- A draft run that pauses on a human-input node can be resumed over difyctl only when the node is version 2, sends to the person who ran it, and has debug mode off; the result's `submit.run.form` hint then resumes it. Otherwise the result has no hint, and the human answers the form in the Dify console.
+- A draft run doesn't wait for a trigger event; it runs at once. A schedule-started workflow tests fully: the trigger passes straight through. After a webhook or plugin trigger the trigger's variables are empty in a draft run, so test each node alone with `--inputs`.
 - Loop and iteration nodes can't be tested alone; use a full draft run.
-- With an app's Service API off, difyctl can't find, describe, export (exit 4), test, run or publish it; only import works. An admin turns it on with `difyctl set service_api --app-id <app_id> --enabled`.
-- An Agent node linked to a roster Agent (`agent_binding.binding_type: roster_agent` in the export) becomes a copy on `import console_app dsl`, and stops following the roster Agent. If the export has one, stop and ask the human to make the change in the Dify console.
+- Check takes an empty value you write as meant. It doesn't flag an End with no `outputs`, an if-else with no `cases`, a human-input node with no `user_actions`, an empty model, or an empty prompt or text. Review those fields against the plan; test runs find the rest.
+- Iteration and loop need their start child written by hand. Fill doesn't create it, and the node list doesn't offer it. See [`build-workflow/package.md`](build-workflow/package.md).
+- The node list has no plugin triggers and no Agent v1 strategies, and offers only Agents that already exist. If the plan needs one of these, ask the human to add it in the Dify console.
+- With an app's Service API off, difyctl can't find, describe, export (exit 4), test, run or publish it; only fill, check and import work. An admin turns it on with `difyctl set service_api --app-id <app_id> --enabled`.

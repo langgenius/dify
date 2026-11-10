@@ -9,7 +9,7 @@ from uuid import uuid4
 import pytest
 import yaml
 from pydantic import ValidationError
-from sqlalchemy import event, select
+from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
@@ -33,6 +33,7 @@ from services.errors.base import NoPermissionError
 from services.workflow.graph_diff import draft_token
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
+from tests.helpers.unit.services.webhook_sync import route_webhook_sync
 
 _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -992,6 +993,16 @@ def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: py
     assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
 
 
+class _RecordedSignal:
+    """A signal that records what it was sent instead of calling its receivers."""
+
+    def __init__(self) -> None:
+        self.sent: list[tuple[object, dict[str, object]]] = []
+
+    def send(self, sender: object, **kwargs: object) -> None:
+        self.sent.append((sender, kwargs))
+
+
 def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
     session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
     service = AppDslService(session=session)
@@ -1027,6 +1038,8 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
         "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned",
         retire_unowned,
     )
+    synced = _RecordedSignal()
+    monkeypatch.setattr("services.app_dsl_service.app_draft_workflow_was_synced", synced)
 
     service._create_or_update_app(
         app=cast(App, app),
@@ -1043,6 +1056,7 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
         agent_ids={"retired-agent"},
         account_id="account-1",
     )
+    assert synced.sent == [(app, {"synced_draft_workflow": workflow})]
 
 
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
@@ -1213,6 +1227,8 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
     ("mode", "node_type"),
     [
         (AppMode.WORKFLOW, "answer"),
+        (AppMode.WORKFLOW, "knowledge-index"),
+        (AppMode.ADVANCED_CHAT, "knowledge-index"),
         (AppMode.ADVANCED_CHAT, "end"),
         (AppMode.ADVANCED_CHAT, "trigger-webhook"),
         (AppMode.ADVANCED_CHAT, "trigger-schedule"),
@@ -1560,3 +1576,57 @@ def test_confirmed_import_reports_creation_only_for_new_apps(
     assert result.status == ImportStatus.COMPLETED
     assert result.app_created is not overwrite
     assert (result.app_id == existing.id) is overwrite
+
+
+def test_an_import_that_keeps_agent_bindings_creates_the_webhook_record(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    """The draft is committed by the import itself, not by `sync_draft_workflow`, so the
+    import sends the draft-synced signal; its webhook listener creates the trigger's record."""
+    import events.event_handlers.sync_webhook_when_app_created  # noqa: F401  # connects the webhook listener
+    from domain.workflow.agent_node import AGENT_NODE_KIND, AGENT_NODE_VERSION
+    from graphon.enums import BuiltinNodeTypes
+    from models.trigger import WorkflowWebhookTrigger
+
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+    engine = sqlite_session.get_bind()
+    assert isinstance(engine, Engine)
+    route_webhook_sync(monkeypatch, engine)
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        lambda **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned", lambda **_kwargs: None
+    )
+    account = _account(account_id="22222222-2222-2222-2222-222222222222", tenant_id="tenant-1")
+    app = make_app(tenant_id="tenant-1", mode=AppMode.WORKFLOW, name="Hooked", created_by=account.id)
+    sqlite_session.add(app)
+    sqlite_session.commit()
+    service = AppDslService(sqlite_session)
+    monkeypatch.setattr(service, "_sync_copied_workflow_bindings", lambda **_kwargs: set())
+    graph: dict[str, object] = {
+        "nodes": [
+            {"id": "hook", "data": {"type": "trigger-webhook", "title": "Webhook", "method": "post"}},
+            {
+                "id": "agent",
+                "data": {
+                    "type": BuiltinNodeTypes.AGENT,
+                    "version": AGENT_NODE_VERSION,
+                    "agent_node_kind": AGENT_NODE_KIND,
+                    "title": "Agent",
+                },
+            },
+        ],
+        "edges": [],
+    }
+
+    service._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": graph}},
+        account=account,
+        preserve_agent_bindings=True,
+    )
+
+    records = sqlite_session.scalars(select(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.app_id == app.id))
+    assert [record.node_id for record in records] == ["hook"]

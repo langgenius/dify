@@ -25,6 +25,7 @@ from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdap
 from core.human_input_v2.resolved_form import ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from core.workflow.nodes.human_input_v2.entities import RequestUrlCountError
 from graphon.variables.segments import ArrayStringSegment, StringSegment
 from graphon.variables.variables import StringVariable
 from libs.datetime_utils import naive_utc_now
@@ -639,7 +640,7 @@ def test_other_workspace_draft_is_inaccessible(context: _Context) -> None:
 
 
 def test_input_values_are_not_interpreted_as_template_tokens(context: _Context) -> None:
-    context.template("Review", "{{#start.value#}}")
+    context.template("Review", "{{#start.value#}} {{#url#}}")
     context.send(**{"#start.value#": "Literal {{#url#}} and {{#env.secret#}}"})
     html = context.gateway.send_message.call_args.kwargs["html"]
     assert "{{#url#}}" in html
@@ -647,7 +648,7 @@ def test_input_values_are_not_interpreted_as_template_tokens(context: _Context) 
 
 
 def test_environment_variables_use_saved_values_and_ignore_request_overrides(context: _Context) -> None:
-    context.template("{{#env.name#}}", "{{#start.count#}} / {{#start.tags#}}")
+    context.template("{{#env.name#}}", "{{#start.count#}} / {{#start.tags#}} {{#url#}}")
     with context.sessions.begin() as session:
         session.query(Workflow).one().environment_variables = [StringVariable(name="name", value="Saved")]
     inputs: dict[str, JsonValue] = {"#env.name#": "Override", "#start.count#": 3, "#start.tags#": ["A", "B"]}
@@ -690,10 +691,29 @@ def test_workspace_override_is_used_instead_of_default_binding(context: _Context
         assert delivery.target_snapshot.im_binding_id == override.id
 
 
-@pytest.mark.parametrize(("subject", "body"), [(" ", "Body"), ("Subject", "\n"), ("<b></b>", "Body")])
-def test_blank_rendered_template_is_rejected(context: _Context, subject: str, body: str) -> None:
-    context.template(subject, body)
+@pytest.mark.parametrize("subject", [" ", "<b></b>"])
+def test_blank_rendered_subject_is_rejected(context: _Context, subject: str) -> None:
+    context.template(subject, "Body {{#url#}}")
     with pytest.raises(MessageTemplateTestError, match="must not be blank"):
+        context.send()
+    context.gateway.send_message.assert_not_called()
+
+
+@pytest.mark.parametrize(("body", "found"), [("\n", 0), ("Body", 0), ("{{#url#}} {{#url#}}", 2)])
+def test_body_without_exactly_one_request_url_is_refused_naming_the_placeholder(
+    context: _Context, body: str, found: int
+) -> None:
+    context.template("Review", body)
+    with pytest.raises(MessageTemplateTestError) as refused:
+        context.send()
+    assert str(refused.value) == str(RequestUrlCountError(body))
+    assert f"Request URL {{{{#url#}}}} exactly once, found {found}" in str(refused.value)
+    context.gateway.send_message.assert_not_called()
+
+
+def test_a_node_invalid_for_another_reason_keeps_the_generic_refusal(context: _Context) -> None:
+    context.template("Review", "Body {{#url#}}", version="1")
+    with pytest.raises(MessageTemplateTestError, match="valid message template"):
         context.send()
     context.gateway.send_message.assert_not_called()
 
@@ -708,7 +728,7 @@ def test_invalid_im_credentials_are_reported_without_attempting_send(context: _C
 
 
 def test_email_body_empty_after_html_sanitization_is_rejected(context: _Context) -> None:
-    context.template("Review", "<b></b>")
+    context.template("Review", '<a href="{{#url#}}"></a>')
     with pytest.raises(MessageTemplateTestError, match="body"):
         context.send()
     context.gateway.send_message.assert_not_called()

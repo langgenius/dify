@@ -158,7 +158,7 @@ class OpenApiWorkflowEventsApi(Resource):
             event_generator = _generate_stream_events
 
         return Response(
-            with_form_hints(event_generator(), app_id=owning_app_id),
+            with_form_hints(event_generator(), app_id=owning_app_id, subject=ctx.subject),
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )

@@ -1110,7 +1110,7 @@
       "kind": "sse",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/draft/workflow:run",
-      "summary": "Test-run the draft of a workflow app; streams workflow events. A human-input pause in a draft run cannot be resumed over openapi."
+      "summary": "Test-run the draft of a workflow app; streams workflow events. Its stream hints the form submit op only for a pause on a v2 human-input node that lists the initiator as a recipient, with debug mode off."
     },
     "test.console_app.advanced_chat": {
       "bind": {
@@ -1142,7 +1142,7 @@
       "kind": "sse",
       "method": "POST",
       "path": "/openapi/v1/apps/{app_id}/draft/advanced-chat:run",
-      "summary": "Test-run the draft of an advanced-chat app; streams message and workflow events. A human-input pause in a draft run cannot be resumed over openapi."
+      "summary": "Test-run the draft of an advanced-chat app; streams message and workflow events. Its stream hints the form submit op only for a pause on a v2 human-input node that lists the initiator as a recipient, with debug mode off."
     },
     "check.console_app.dsl": {
       "bind": { "app_id": "body", "workspace_id": "path", "yaml_content": "body" },
@@ -1261,14 +1261,18 @@
       "summary": "Every node type this server can run; import decides which a mode allows"
     },
     "describe.node_type": {
-      "bind": { "node_type": "path" },
+      "bind": { "include_schema": "query", "node_type": "path" },
       "deprecated": false,
-      "input": { "type": "object", "properties": { "node_type": {} }, "required": ["node_type"] },
+      "input": {
+        "type": "object",
+        "properties": { "include_schema": {}, "node_type": {} },
+        "required": ["node_type"]
+      },
       "internal": false,
       "kind": "object",
       "method": "GET",
       "path": "/openapi/v1/node-types/{node_type}",
-      "summary": "The JSON schema of a node type's data and its default config"
+      "summary": "A node type's seed, its fields and its handles; the full data schema on request"
     },
     "get.run": {
       "bind": {
@@ -2005,6 +2009,76 @@
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}/apps/packages",
       "summary": "Import an app from a .ifpkg package or an unpacked package folder"
+    },
+    "fill.console_app.package": {
+      "bind": {
+        "package": "file",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "package": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id", "package"]
+      },
+      "internal": false,
+      "kind": "file",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/packages:fill",
+      "summary": "Fill the editor's defaults into a .ifpkg package or an unpacked package folder"
+    },
+    "check.console_app.package": {
+      "bind": {
+        "app_id": "body",
+        "package": "file",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "package": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id", "package"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/packages:check",
+      "summary": "Check a .ifpkg package or an unpacked package folder: every problem, and what each node needs"
+    },
+    "get.node_option": {
+      "bind": {
+        "app_mode": "query",
+        "keyword": "query",
+        "kind": "query",
+        "limit": "query",
+        "page": "query",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_mode": {},
+          "keyword": {},
+          "kind": {},
+          "limit": {},
+          "page": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id", "app_mode"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/node-options",
+      "summary": "Nodes a workflow or chatflow can add here, each with a seed to copy into the graph"
     },
     "get.agent": {
       "bind": {

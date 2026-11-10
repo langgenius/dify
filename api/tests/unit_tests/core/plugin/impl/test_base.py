@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Callable
 from urllib.parse import quote
 
@@ -8,7 +9,7 @@ from pytest_mock import MockerFixture
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginListResponse
 from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
-from core.plugin.impl.exc import PluginLLMPollingUnsupportedError, PluginRuntimeError
+from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError, PluginRuntimeError
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -218,3 +219,46 @@ class TestBasePluginClientImpl:
             "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1"
         )
         assert exc_info.value.lambda_request_id == lambda_request_id
+
+    def test_handle_plugin_daemon_error_leaves_an_unknown_type_s_traceback_out_and_logs_it(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        client = BasePluginClient()
+        traceback_text = (
+            'Traceback (most recent call last):\n  File "/app/models/llm.py", line 42, in _invoke\nServerError'
+        )
+        message = json.dumps(
+            {
+                "error_type": "ServerError",
+                "message": "503 UNAVAILABLE. 模型繁忙",
+                "args": {"traceback": traceback_text, "status_code": 503},
+            }
+        )
+
+        with caplog.at_level(logging.WARNING), pytest.raises(PluginInvokeError) as exc_info:
+            client._handle_plugin_daemon_error("PluginInvokeError", message)
+
+        assert "Traceback" not in str(exc_info.value)
+        assert "/app/models" not in str(exc_info.value)
+        assert exc_info.value.get_error_type() == "ServerError"
+        assert exc_info.value.get_error_message() == "503 UNAVAILABLE. 模型繁忙"
+        assert json.loads(exc_info.value.description)["args"] == {"status_code": 503}
+        [record] = [record for record in caplog.records if record.levelno == logging.WARNING]
+        assert traceback_text in record.getMessage()
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            '{"error_type": "ServerError", "message": "503 UNAVAILABLE"}',
+            '{"error_type":"ServerError","message":"busy","args":{"status_code":503}}',
+            '{"error_type": "ServerError", "message": "\\u6a21\\u578b", "args": {}}',
+        ],
+    )
+    def test_handle_plugin_daemon_error_keeps_an_unknown_type_without_a_traceback_as_it_is(self, message: str) -> None:
+        client = BasePluginClient()
+
+        with pytest.raises(PluginInvokeError) as exc_info:
+            client._handle_plugin_daemon_error("PluginInvokeError", message)
+
+        assert type(exc_info.value) is PluginInvokeError
+        assert exc_info.value.description == message

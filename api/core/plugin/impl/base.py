@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any, cast
+from typing import Any, Final, cast
 from urllib.parse import unquote
 
 import httpx
@@ -13,6 +13,7 @@ from yarl import URL
 
 from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
+from core.logging.context import get_request_id
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import (
     PluginDaemonBasicResponse,
@@ -71,6 +72,26 @@ logger = logging.getLogger(__name__)
 
 PLUGIN_DAEMON_MAX_PATH_LENGTH = 4096
 PLUGIN_DAEMON_MAX_PATH_DECODE_DEPTH = 8
+# The arg a plugin SDK fills with the formatted traceback of the exception it reports.
+_PLUGIN_TRACEBACK_ARG: Final = "traceback"
+
+
+def _without_traceback(message: str, error_object: Mapping[str, Any]) -> str:
+    """The plugin error `message` with its args' traceback left out and logged once; unchanged when it has none."""
+    args = error_object.get("args")
+    if not isinstance(args, Mapping):
+        return message
+    if _PLUGIN_TRACEBACK_ARG not in args:
+        return message
+    logger.warning(
+        "Plugin error %s carried a traceback, req_id: %s\n%s",
+        error_object.get("error_type"),
+        get_request_id(),
+        args[_PLUGIN_TRACEBACK_ARG],
+    )
+    kept_args = {key: value for key, value in args.items() if key != _PLUGIN_TRACEBACK_ARG}
+    return json.dumps({**error_object, "args": kept_args}, ensure_ascii=False)
+
 
 _httpx_client: httpx.Client = get_pooled_http_client(
     "plugin_daemon",
@@ -447,7 +468,7 @@ class BasePluginClient:
                             lambda_request_id=lambda_request_id,
                         )
                     case _:
-                        raise PluginInvokeError(description=message)
+                        raise PluginInvokeError(description=_without_traceback(message, error_object))
             case PluginDaemonInternalServerError.__name__:
                 raise PluginDaemonInternalServerError(description=message)
             case PluginDaemonBadRequestError.__name__:

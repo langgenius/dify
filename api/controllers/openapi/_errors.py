@@ -35,6 +35,7 @@ from werkzeug.exceptions import HTTPException
 
 from controllers.openapi._models import Hint
 from libs.external_api import http_status_message
+from services.errors.app import TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
 
 
 class OpenApiErrorCode(StrEnum):
@@ -93,6 +94,8 @@ class OpenApiErrorCode(StrEnum):
     WEBAPP_ACCESS_UNAVAILABLE = "webapp_access_unavailable"
     NODE_TYPE_NOT_FOUND = "node_type_not_found"
     NODE_NOT_FOUND = "node_not_found"
+    NOT_WEBHOOK_TRIGGER = "not_webhook_trigger"
+    WEBHOOK_NOT_FOUND = "webhook_not_found"
     WEBAPP_ACCESS_MODE_CONSOLE_ONLY = "webapp_access_mode_console_only"
     WEBAPP_PUBLIC_ACCESS_DISABLED = "webapp_public_access_disabled"
     SECRET_MASK_NOT_SECRET = "secret_mask_not_secret"
@@ -424,6 +427,19 @@ class NodeNotFound(OpenApiError):  # noqa: N818
     description = "The draft has no node with this id."
 
 
+class NotWebhookTrigger(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.NOT_WEBHOOK_TRIGGER
+    description = "Only a webhook trigger node has a webhook address."
+
+
+class WebhookNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.WEBHOOK_NOT_FOUND
+    description = "This webhook trigger node has no address yet."
+    hint = "Importing the draft gives each webhook trigger node its address; import the draft again."
+
+
 class WebAppAccessModeConsoleOnly(OpenApiError):  # noqa: N818
     code = 400
     error_code = OpenApiErrorCode.WEBAPP_ACCESS_MODE_CONSOLE_ONLY
@@ -544,6 +560,14 @@ class AppModeMismatch(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.APP_MODE_MISMATCH
     description = "This op does not serve apps of this mode."
     hint = "describe.console_app shows the app's mode."
+
+
+class TriggerWorkflowNotRunnable(OpenApiError):  # noqa: N818
+    """The app's trigger entry refuses the run, not the caller's permission, so it is no 403."""
+
+    code = 422
+    error_code = OpenApiErrorCode.TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE
+    description = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
 
 
 class ServiceApiDisabled(OpenApiError):  # noqa: N818

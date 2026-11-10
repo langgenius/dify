@@ -2,19 +2,26 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Generator, Iterable, Mapping
-from typing import Any, override
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterable, Mapping
+from enum import StrEnum
+from typing import Any, Final, override
 
 from flask import Response
 from flask_restx import Resource
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, HTTPException
 
-from constants.oauth_bearer import Scope
-from controllers.common.human_input import stringify_form_default_values
+from constants.oauth_bearer import Scope, SubjectType
+from controllers.common.human_input import (
+    stringify_form_default_values,
+    v2_form_definition_response,
+    viewer_ip_address,
+)
+from controllers.common.human_input_v2_errors import legacy_form_http_error
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._contract import Example, Kind, endpoint, op_of, requirements_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._files import end_read_transaction, merge_files
 from controllers.openapi._hints import attach_stream_hints
@@ -38,21 +45,46 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
 from core.app.entities.task_entities import HumanInputRequiredResponse, StreamEvent
 from core.db.session_factory import session_factory
+from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
 from libs.helper import to_timestamp
 from models.enums import CreatorUserRole
 from models.model import App
-from services.human_input_service import FormNotFoundError, HumanInputService
+from repositories.human_input_v2.form_repository import Form as V2Form
+from services.human_input_service import Form, FormNotFoundError, HumanInputService
+from services.human_input_v2.submission_service import (
+    HumanInputFormError,
+    HumanInputSubmissionService,
+    WebAppFormActor,
+)
 
 logger = logging.getLogger(__name__)
 
 
+class FormVersion(StrEnum):
+    """`form_version` of a `human_input_required` event: the store, and so the lookup, that owns the form."""
+
+    V1 = "1"
+    V2 = "2"
+
+
+def _v1_form(form_token: str) -> Form | None:
+    # `HumanInputService` takes an engine or a maker, never a `Session`, so this
+    # read is a separate transaction from the caller's.
+    return HumanInputService(session_factory.get_session_maker()).get_form_by_token(form_token)
+
+
+def _on_openapi(form: Form) -> bool:
+    return is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.OPENAPI)
+
+
 class CheckFormSurface(Requirement):
-    """`/openapi/v1` is allowed only the recipient types `human_input_policy` lists
-    for it, so a console-bound form is refused before any handler body runs. It
-    lives here rather than in `auth/requirements.py` so the auth layer never has
-    to import this feature's domain.
+    """For a v1 form, `/openapi/v1` is allowed only the recipient types
+    `human_input_policy` lists for it, so a console-bound form is refused before
+    any handler body runs. A v2 form has no recipient type; its own lookup
+    authorizes the caller. It lives here rather than in `auth/requirements.py` so
+    the auth layer never has to import this feature's domain.
 
     A form the caller could not have found anyway — missing, or belonging to
     another app — is left to the handler's own 404: answering 403 here would tell
@@ -63,12 +95,10 @@ class CheckFormSurface(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         form_token = ctx.view_args[PathParam.FORM_TOKEN]
         app = load_app(ctx)
-        # `HumanInputService` takes an engine or a maker, never a `Session`, so this
-        # read is a separate transaction from the handler's — as it was before the move.
-        form = HumanInputService(session_factory.get_session_maker()).get_form_by_token(form_token)
+        form = _v1_form(form_token)
         if form is None or form.app_id != app.id or form.tenant_id != app.tenant_id:
             return
-        if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.OPENAPI):
+        if not _on_openapi(form):
             raise RecipientSurfaceMismatch()
 
 
@@ -87,6 +117,110 @@ def _jsonify_form_definition(form) -> Response:
 def _ensure_form_belongs_to_app(form, app_model: App) -> None:
     if form.app_id != app_model.id or form.tenant_id != app_model.tenant_id:
         raise HumanInputFormNotFound()
+
+
+class _V2FormCaller(ABC):
+    """How one subject kind reads and answers a v2 form, as the recipient its run made of it."""
+
+    @abstractmethod
+    def get(self, service: HumanInputSubmissionService, ctx: Context, form_token: str) -> V2Form: ...
+
+    @abstractmethod
+    def submit(
+        self,
+        service: HumanInputSubmissionService,
+        ctx: Context,
+        form_token: str,
+        *,
+        action: str,
+        inputs: Mapping[str, Any],
+    ) -> V2Form: ...
+
+
+class _AccountV2Caller(_V2FormCaller):
+    """An account's run makes it a CONSOLE recipient through its own Contact."""
+
+    @override
+    def get(self, service: HumanInputSubmissionService, ctx: Context, form_token: str) -> V2Form:
+        return service.get_console_form(
+            account_id=AccountId(ctx.account.id),
+            form_token=form_token,
+            ip_address=viewer_ip_address(),
+            app_id=ctx.app.id,
+        )
+
+    @override
+    def submit(
+        self,
+        service: HumanInputSubmissionService,
+        ctx: Context,
+        form_token: str,
+        *,
+        action: str,
+        inputs: Mapping[str, Any],
+    ) -> V2Form:
+        return service.submit_console_form(
+            account_id=AccountId(ctx.account.id), form_token=form_token, action=action, inputs=inputs, app_id=ctx.app.id
+        )
+
+
+class _EndUserV2Caller(_V2FormCaller):
+    """An External SSO caller is a WEB_APP recipient as its end user of the app."""
+
+    @override
+    def get(self, service: HumanInputSubmissionService, ctx: Context, form_token: str) -> V2Form:
+        return service.get_web_app_form(actor=self._actor(ctx), form_token=form_token, ip_address=viewer_ip_address())
+
+    @override
+    def submit(
+        self,
+        service: HumanInputSubmissionService,
+        ctx: Context,
+        form_token: str,
+        *,
+        action: str,
+        inputs: Mapping[str, Any],
+    ) -> V2Form:
+        return service.submit_web_app_form(actor=self._actor(ctx), form_token=form_token, action=action, inputs=inputs)
+
+    @staticmethod
+    def _actor(ctx: Context) -> WebAppFormActor:
+        return WebAppFormActor(tenant_id=TenantId(ctx.app.tenant_id), app_id=ctx.app.id, end_user_id=ctx.end_user.id)
+
+
+# Keyed like the routes' `CheckSubject(allowed=...)` below.
+_V2_FORM_CALLERS: Final[Mapping[SubjectType, _V2FormCaller]] = {
+    SubjectType.ACCOUNT: _AccountV2Caller(),
+    SubjectType.EXTERNAL_SSO: _EndUserV2Caller(),
+}
+
+
+def _v2_form_error(error: HumanInputFormError) -> HTTPException:
+    """The same errors a v1 form answers with on these ops."""
+    return legacy_form_http_error(error, not_found=HumanInputFormNotFound())
+
+
+def _v2_service() -> HumanInputSubmissionService:
+    return HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
+
+
+def _follow_hint(app_id: str, workflow_run_id: str | None) -> FormSubmitResponse:
+    if workflow_run_id is None:
+        return FormSubmitResponse()
+    # `workflow_events` imports this module for `with_form_hints`.
+    from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
+
+    follow = Hint(
+        summary="Follow the resumed run",
+        op=op_of(OpenApiWorkflowEventsApi.get),
+        input={
+            "app_id": app_id,
+            "run_id": workflow_run_id,
+            "include_state_snapshot": True,
+            "continue_on_pause": False,
+        },
+    )
+    return FormSubmitResponse(hints=[follow])
 
 
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
@@ -116,7 +250,11 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
-            raise HumanInputFormNotFound()
+            try:
+                v2_form = _V2_FORM_CALLERS[ctx.subject.subject_type].get(_v2_service(), ctx, form_token)
+            except HumanInputFormError as error:
+                raise _v2_form_error(error) from error
+            return v2_form_definition_response(v2_form, HumanInputFormDefinitionResponse)
 
         _ensure_form_belongs_to_app(form, ctx.app)
         service.ensure_form_active(form)
@@ -166,7 +304,14 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
-            raise HumanInputFormNotFound()
+            inputs = self._inputs(ctx, body)
+            try:
+                v2_form = _V2_FORM_CALLERS[ctx.subject.subject_type].submit(
+                    _v2_service(), ctx, form_token, action=body.action, inputs=inputs
+                )
+            except HumanInputFormError as error:
+                raise _v2_form_error(error) from error
+            return _follow_hint(ctx.app.id, v2_form.workflow_run_id)
 
         _ensure_form_belongs_to_app(form, ctx.app)
 
@@ -181,9 +326,7 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             logger.warning("Recipient type is None for form, form_token=%s", form_token)
             raise BadRequest("Form recipient type is invalid")
 
-        if body.files:
-            end_read_transaction(ctx.session)
-        inputs = merge_files(body.inputs, body.files, ctx.caller)
+        inputs = self._inputs(ctx, body)
 
         try:
             service.submit_form_by_token(
@@ -196,30 +339,42 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             )
         except FormNotFoundError as caught_error:
             raise HumanInputFormNotFound() from caught_error
+        return _follow_hint(ctx.app.id, form.workflow_run_id)
 
-        if form.workflow_run_id is None:
-            return FormSubmitResponse()
-        # `workflow_events` imports this module for `with_form_hints`.
-        from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
+    @staticmethod
+    def _inputs(ctx: Context, body: OpenApiFormSubmitPayload) -> dict[str, Any]:
+        if body.files:
+            end_read_transaction(ctx.session)
+        return merge_files(body.inputs, body.files, ctx.caller)
 
-        follow = Hint(
-            summary="Follow the resumed run",
-            op=op_of(OpenApiWorkflowEventsApi.get),
-            input={
-                "app_id": ctx.app.id,
-                "run_id": form.workflow_run_id,
-                "include_state_snapshot": True,
-                "continue_on_pause": False,
-            },
-        )
-        return FormSubmitResponse(hints=[follow])
+
+def _v1_token_on_openapi(form_token: str) -> bool:
+    form = _v1_form(form_token)
+    if form is None:
+        return False
+    return _on_openapi(form)
+
+
+def _v2_token_on_openapi(_form_token: str) -> bool:
+    # A v2 event carries only the initiator's own delivery token, and the run's caller is its initiator.
+    return True
+
+
+# Whether submit.run.form can answer a paused form's token, by the store that owns the form.
+_TOKEN_ON_OPENAPI: Final[Mapping[FormVersion, Callable[[str], bool]]] = {
+    FormVersion.V1: _v1_token_on_openapi,
+    FormVersion.V2: _v2_token_on_openapi,
+}
 
 
 def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) -> list[Hint]:
-    """One hint per action button of a paused form, its `inputs` blanked to the form's fields."""
+    """One hint per action button of a paused form the submit route can answer, its `inputs`
+    blanked to the form's fields."""
 
     data = response.data
     if not data.form_token:
+        return []
+    if not _TOKEN_ON_OPENAPI[FormVersion(data.form_version)](data.form_token):
         return []
     fields = [field.model_dump(mode="json") for field in data.inputs]
     blank = {field.output_variable_name: None for field in data.inputs}
@@ -234,9 +389,18 @@ def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) ->
     ]
 
 
-def with_form_hints(events: Iterable[str], *, app_id: str) -> Generator[str]:
-    """A run stream whose `human_input_required` events carry hints that target the submit route above."""
+def _submit_admits(subject: Subject) -> bool:
+    """Whether the submit route admits `subject`, by the route's own subject check."""
+    requirements = requirements_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
+    return all(check.admits(subject) for check in requirements if isinstance(check, CheckSubject))
 
+
+def with_form_hints(events: Iterable[str], *, app_id: str, subject: Subject) -> Iterable[str]:
+    """A run stream whose `human_input_required` events carry hints that target the submit route
+    above, when that route admits `subject` and can answer the form's token."""
+
+    if not _submit_admits(subject):
+        return events
     op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
 
     def build(event: Mapping[str, Any]) -> list[Hint]:

@@ -17,6 +17,7 @@ from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from core.tools.entities.tool_entities import ToolIdentity, ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from core.workflow.workflow_tool_node import reads_tool_inputs
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.runtime import VariablePool
@@ -132,7 +133,7 @@ class AgentRuntimeSupport:
                         extra = tool.get("extra", {})
 
                         runtime_variable_pool: VariablePool | None = None
-                        if node_data.version != "1" or node_data.tool_node_version is not None:
+                        if reads_tool_inputs(version=node_data.version, tool_node_version=node_data.tool_node_version):
                             runtime_variable_pool = variable_pool
                         tool_runtime = ToolManager.get_agent_tool_runtime(
                             tenant_id,

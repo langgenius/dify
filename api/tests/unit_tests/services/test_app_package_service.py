@@ -54,12 +54,13 @@ from services.agent.errors import (
 from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
 from services.agent.package_resource_importer import AgentPackageResourceImporter
 from services.app_dsl_service import AppDslService, Import
-from services.app_package_service import AppPackageManifest, AppPackageService
+from services.app_package_service import AppPackageManifest, AppPackageService, package_filename
 from services.dsl_content import DSL_MAX_SIZE
 from services.entities.dsl_entities import ImportStatus
 from services.errors.base import NoPermissionError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
+from tests.helpers.unit.services.webhook_sync import route_webhook_sync
 
 """Workflow packages restore node-owned Agents and assets across workspaces."""
 
@@ -365,6 +366,7 @@ def _package_storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> 
         lambda: AgentPackageResourceImporter(storage_backend=backend),
     )
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
+    route_webhook_sync(monkeypatch, sqlite_engine)
     return backend
 
 
@@ -1666,3 +1668,18 @@ class TestPackageIconsCases:
                 assert prepared.apps["app.yaml"].site.icon == "i_000001"
                 assert prepared.manifest.icons[0].path == "i_000001.png"
                 assert RosterAgentPackageReader().read_member_bytes(prepared, "i_000001.png", max_bytes=4) == b"icon"
+
+
+@pytest.mark.parametrize(
+    ("app_name", "filename"),
+    [
+        ("Release Summary", "release-summary.ifpkg"),
+        ("  --Ünïcode & Co--  ", "n-code-co.ifpkg"),
+        ("x" * 100, f"{'x' * 80}.ifpkg"),
+        ("!!!", "app.ifpkg"),
+        ("", "app.ifpkg"),
+        (None, "app.ifpkg"),
+    ],
+)
+def test_package_filename_slugs_the_app_name(app_name: str | None, filename: str) -> None:
+    assert package_filename(app_name) == filename

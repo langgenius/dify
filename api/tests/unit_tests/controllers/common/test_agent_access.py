@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass, field
+
 import pytest
 from sqlalchemy.orm import Session
 
+from controllers.common import agent_access
 from controllers.common.agent_access import (
     AGENT_LIST_PERMISSION_KEYS,
     AgentAccessFilter,
+    account_agent_access,
     has_agent_list_permission,
     resolve_agent_access_filter,
 )
@@ -173,3 +178,74 @@ class TestResolveAgentAccessFilter:
         )
 
         assert access_filter.accessible_agent_ids == {"agent-9"}
+
+
+@dataclass
+class _Members:
+    answer: MyPermissionsResponse
+    asked: list[tuple[str, str]] = field(default_factory=list)
+
+    def permissions(self, tenant_id: str, account_id: str) -> MyPermissionsResponse:
+        self.asked.append((tenant_id, account_id))
+        return self.answer
+
+
+@dataclass
+class _Rbac:
+    members: _Members
+
+
+@dataclass
+class _Services:
+    rbac: _Rbac
+
+
+class TestAccountAgentAccess:
+    @pytest.fixture
+    def members(self, monkeypatch: pytest.MonkeyPatch) -> _Members:
+        members = _Members(
+            answer=_permissions(
+                agent_overrides=[ResourcePermissionKeys(resource_id="agent-2", permission_keys=["agent.acl.preview"])]
+            )
+        )
+        monkeypatch.setattr(agent_access, "application_services", lambda: _Services(_Rbac(members)))
+        monkeypatch.setattr(
+            f"{_RBAC_MODULE}.RBACService.AgentAccess.whitelist_resources",
+            lambda _tenant_id, _account_id: ResourceWhitelistResources(unrestricted=True),
+        )
+        return members
+
+    def test_every_agent_is_visible_without_rbac(
+        self, members: _Members, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=False)
+
+        access_filter = account_agent_access("tenant-1", "account-1")
+
+        assert (access_filter.accessible_agent_ids, members.asked) == (None, [])
+
+    def test_rbac_reads_the_accounts_permissions(
+        self, members: _Members, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+
+        access_filter = account_agent_access("tenant-1", "account-1")
+
+        assert (access_filter.accessible_agent_ids, members.asked) == ({"agent-2"}, [("tenant-1", "account-1")])
+
+    def test_rbac_uses_permissions_already_read(self, members: _Members, config_overrides: Callable[..., None]) -> None:
+        config_overrides(RBAC_ENABLED=True)
+
+        access_filter = account_agent_access(
+            "tenant-1", "account-1", permissions=_permissions(agent_default_keys=["agent.acl.preview"])
+        )
+
+        assert (access_filter.accessible_agent_ids, members.asked) == (None, [])
+
+
+@pytest.mark.parametrize(
+    ("accessible_agent_ids", "expected"),
+    [(None, None), (set(), []), ({"agent-2", "agent-1"}, ["agent-1", "agent-2"])],
+)
+def test_sorted_ids(accessible_agent_ids: set[str] | None, expected: list[str] | None) -> None:
+    assert AgentAccessFilter(accessible_agent_ids=accessible_agent_ids).sorted_ids() == expected

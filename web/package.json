@@ -21,6 +21,7 @@
     "gen-doc-paths": "node ./scripts/gen-doc-paths.ts && vp fmt types/doc-paths.ts",
     "gen-icons": "pnpm --filter @dify/iconify-collections generate",
     "gen-provider-initials": "node ./scripts/generate-provider-initials.ts",
+    "gen:node-defaults": "bun ./scripts/generate-node-defaults.ts",
     "i18n:check": "node ./scripts/generate-i18n-types.ts --check && node ./scripts/check-i18n.js",
     "i18n:check-types": "node ./scripts/generate-i18n-types.ts --check",
     "i18n:generate-types": "node ./scripts/generate-i18n-types.ts",

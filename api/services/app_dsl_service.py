@@ -40,7 +40,7 @@ from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from enums import DeploymentEdition
-from events.app_event import app_model_config_was_updated, app_was_created
+from events.app_event import app_draft_workflow_was_synced, app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
 from graphon.enums import BuiltinNodeTypes
@@ -87,6 +87,7 @@ from services.icon_configuration import (
 )
 from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.workflow.graph_check import refused_node_types
 from services.workflow.graph_diff import draft_token
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -643,11 +644,7 @@ class AppDslService:
         }:
             raise ValueError("Only workflow or advanced chat DSLs can overwrite workflow Apps")
         # Package uploads cannot run the editor's YAML node checks before import.
-        invalid_types = (
-            {BuiltinNodeTypes.END, "trigger-webhook", "trigger-schedule", "trigger-plugin"}
-            if app.mode == AppMode.ADVANCED_CHAT
-            else {BuiltinNodeTypes.ANSWER}
-        )
+        invalid_types = refused_node_types(app.mode)
         nodes = data.get("workflow", {}).get("graph", {}).get("nodes", [])
         if any(node.get("data", {}).get("type") in invalid_types for node in nodes):
             raise ValueError("Workflow contains node types incompatible with the target App")
@@ -861,6 +858,8 @@ class AppDslService:
                         agent_ids=retirement_candidates,
                         account_id=account.id,
                     )
+                    # The draft was synced without a commit, so `sync_draft_workflow` sent no signal.
+                    app_draft_workflow_was_synced.send(app, synced_draft_workflow=draft_workflow)
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
                 model_config = data.get("model_config")

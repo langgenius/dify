@@ -9,6 +9,7 @@ export type Scenario =
   | 'forbidden'
   | 'rate-limited'
   | 'server-5xx'
+  | 'trigger-refused'
   | 'slow-down'
   | 'stream-error'
   | 'slow-stream'

@@ -664,7 +664,7 @@ Upload a file to use as an input variable when running the app
 | last_id | query | Cursor: id of the last run on the previous page | No | string (uuid) |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | status | query |  | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
-| triggered_from | query | debugging: draft test runs, as in the console; app-run: real use | No | string, <br>**Available values:** "app-run", "debugging", <br>**Default:** debugging |
+| triggered_from | query | debugging: draft test runs, as in the console; app-run: real use; schedule, webhook, plugin: runs started by that kind of trigger | No | string, <br>**Available values:** "app-run", "debugging", "plugin", "schedule", "webhook", <br>**Default:** debugging |
 | app_id | path |  | Yes | string |
 
 #### Responses
@@ -1164,6 +1164,21 @@ Upload a file to use as an input variable when running the app
 | 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/webhooks/{node_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Webhook addresses | **application/json**: [WebhookResponse](#webhookresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /apps/{app_id}/workflow:run
 #### Parameters
 
@@ -1219,6 +1234,7 @@ Upload a file to use as an input variable when running the app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| include_schema | query | Also return the full JSON schema of the node's data | No | boolean |
 | node_type | path |  | Yes | string |
 
 #### Responses
@@ -1226,6 +1242,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node type | **application/json**: [NodeTypeDetailResponse](#nodetypedetailresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/approve
@@ -1551,6 +1568,48 @@ Upload a file to use as an input variable when running the app
 | 200 | Import completed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
 | 202 | Import pending confirmation | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
 | 400 | Import failed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br>[ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/apps/packages:check
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [AppPackageCheckPayload](#apppackagecheckpayload)<br>**multipart/form-data**: [AppPackageCheckPayload](#apppackagecheckpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Check result | **application/json**: [PackageCheckResponse](#packagecheckresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/apps/packages:fill
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: [AppPackageFillPayload](#apppackagefillpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Filled app package | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -2036,6 +2095,26 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/node-options
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_mode | query | The mode of the app the nodes go into | Yes | string, <br>**Available values:** "advanced-chat", "workflow" |
+| keyword | query | Text to find in the label or description, the tool name, the provider id, name or label, the node type, or the agent name, ignoring case | No | string |
+| kind | query | Only options of this kind | No | string, <br>**Available values:** "agent", "block", "note", "tool" |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node options | **application/json**: [NodeOptionListResponse](#nodeoptionlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces/{workspace_id}/plugin-tasks/{task_id}
 #### Parameters
 
@@ -2291,7 +2370,7 @@ so an edit made in the same second as the export is not detected.
 | page | query |  | No | integer, <br>**Default:** 1 |
 | provider | query | Only this provider's tools | No | string |
 | provider_type | query | Only tools of this provider type | No | string, <br>**Available values:** "api", "builtin", "mcp", "workflow" |
-| query | query | Words to match in the tool name or label, or the provider id or label | No | string |
+| query | query | Text to find in the tool name, label or description, or the provider id, name or label | No | string |
 | workspace_id | path |  | Yes | string |
 
 #### Responses
@@ -2662,6 +2741,15 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | AppMode | string |  |  |
 
+#### AppPackageCheckPayload
+
+Request body for POST /workspaces/<workspace_id>/apps/packages:check.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string | Check against this existing app's mode, as an overwrite import would | No |
+| package | string<br>object | A .ifpkg file, or an unpacked package folder (one part per file) | Yes |
+
 #### AppPackageExportQuery
 
 Query parameters for GET /apps/<app_id>/package.
@@ -2671,6 +2759,14 @@ Query parameters for GET /apps/<app_id>/package.
 | include_secret | boolean | Include secret values in plaintext in the exported DSL. Ignored for Agent Apps, which export the Agent's current state | No |
 | preserve_agent_bindings | boolean, <br>**Default:** true | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged. false: every Agent is packaged, as the console does, for moving the App to another workspace. Either way each workspace skill is written as a link plus a copy; an import with preserve_agent_bindings=true links it, so the importing workspace must have it, and an import with false uses the copy. Ignored for Agent Apps, which export the Agent's current state | No |
 | workflow_id | string | Export a specific workflow version instead of the current draft. Ignored for Agent Apps, which export the Agent's current state | No |
+
+#### AppPackageFillPayload
+
+Request body for POST /workspaces/<workspace_id>/apps/packages:fill.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| package | string<br>object | A .ifpkg file, or an unpacked package folder (one part per file) | Yes |
 
 #### AppPackageImportPayload
 
@@ -2698,6 +2794,18 @@ Request body for POST /workspaces/<workspace_id>/apps/packages.
 | icon_type | string |  | No |
 | max_active_requests | integer |  | No |
 | name | string |  | Yes |
+
+#### AuthoringIssueRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| hint | [FieldHintRow](#fieldhintrow) | The field to write, for a missing one | Yes |
+| loc | [ string<br>integer ] |  | Yes |
+| message | string |  | Yes |
+| node_id | string |  | Yes |
+| refuses_import | boolean | The package import refuses the package for this issue | Yes |
+| severity | string | error: the package is not valid; warning: it is | Yes |
 
 #### BinaryFileResponse
 
@@ -2858,6 +2966,18 @@ Request body for POST /workspaces/<workspace_id>/apps/packages.
 | active_credential | [CredentialRef](#credentialref) |  | Yes |
 | model | string |  | Yes |
 | model_type | string |  | Yes |
+
+#### DeclaredParameterRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  | The plugin's declared default | No |
+| form | string |  | Yes |
+| help | string |  | Yes |
+| name | string |  | Yes |
+| options | [ string ] |  | Yes |
+| required | boolean |  | Yes |
+| type | string |  | Yes |
 
 #### DeploymentEdition
 
@@ -3050,6 +3170,30 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EventStreamResponse | string |  |  |
+
+#### FieldHintItemRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  | The value the node runs with when the field is left out | No |
+| description | string |  | Yes |
+| loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
+| options | [ string ] |  | Yes |
+| required | boolean |  | Yes |
+| type | string |  | Yes |
+
+#### FieldHintRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  | The value the node runs with when the field is left out | No |
+| description | string |  | Yes |
+| fields | [ [FieldHintItemRow](#fieldhintitemrow) ] | For an object, each of its fields, located relative to the object; left out for any other field | No |
+| items | [ [FieldHintItemRow](#fieldhintitemrow) ] | For a list of objects, each field of one item, located relative to the item; left out for any other field | No |
+| loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
+| options | [ string ] |  | Yes |
+| required | boolean |  | Yes |
+| type | string |  | Yes |
 
 #### FileResponse
 
@@ -3631,6 +3775,46 @@ Enum class for model type.
 | title | string |  | Yes |
 | type | string |  | Yes |
 
+#### NodeOptionKind
+
+Where a node option comes from; a kind other than block seeds the nodes whose data is its `seeded_model`.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeOptionKind | string | Where a node option comes from; a kind other than block seeds the nodes whose data is its `seeded_model`. |  |
+
+#### NodeOptionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [NodeOptionRow](#nodeoptionrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### NodeOptionQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_mode | string, <br>**Available values:** "advanced-chat", "workflow" | The mode of the app the nodes go into<br>*Enum:* `"advanced-chat"`, `"workflow"` | Yes |
+| keyword | string | Text to find in the label or description, the tool name, the provider id, name or label, the node type, or the agent name, ignoring case | No |
+| kind | [NodeOptionKind](#nodeoptionkind) | Only options of this kind | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### NodeOptionRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| kind | [NodeOptionKind](#nodeoptionkind) |  | Yes |
+| label | string |  | Yes |
+| seed | object | The smallest node data that names this option, or the whole node for a note; copy it into the graph | Yes |
+| type | string |  | Yes |
+| version | string | Pass to describe.node_type for the node's schema | Yes |
+
 #### NodeRunPayload
 
 | Name | Type | Description | Required |
@@ -3638,14 +3822,59 @@ Enum class for model type.
 | files | object | Local file paths keyed by the file variable name (a start variable or #node.var#); each is uploaded | No |
 | inputs | object | Overrides for what the last draft run saved, keyed by variable reference such as #llm.text# | No |
 
+#### NodeSpecRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| open_fields | [ [FieldHintRow](#fieldhintrow) ] | Every field the node has not written yet | Yes |
+| plugin_parameters | [ [DeclaredParameterRow](#declaredparameterrow) ] | The parameters the node's plugin declares | Yes |
+| schema | object | The JSON schema describe.node_type serves | Yes |
+| type | string |  | Yes |
+| version | string |  | Yes |
+
+#### NodeTypeDescribeQuery
+
+Query parameters for GET /node-types/<node_type>.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_schema | boolean | Also return the full JSON schema of the node's data | No |
+
 #### NodeTypeDetailResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default_config | object |  | Yes |
-| schema | object |  | Yes |
+| fields | [ [NodeTypeFieldRow](#nodetypefieldrow) ] | Every top-level field of the node's data, the required ones first | Yes |
+| handles | [ string ] | Every source handle the node has, in the order the canvas draws them | Yes |
+| schema | object | The JSON schema of the node's data; only with include_schema=true | No |
+| seed | object | The node data to copy into the graph: the canvas's new node | Yes |
 | type | string |  | Yes |
-| version | string |  | Yes |
+| version | string | The node's current version, the one the seed names | Yes |
+
+#### NodeTypeFieldItemRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  | The value the node runs with when the field is left out; left out when there is none or it is null | No |
+| description | string | The first line of the field's description; include_schema=true has the whole text | No |
+| loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
+| options | [ string ] | The values the field accepts | No |
+| required | boolean |  | Yes |
+| type | string |  | Yes |
+
+#### NodeTypeFieldRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  | The value the node runs with when the field is left out; left out when there is none or it is null | No |
+| description | string | The first line of the field's description; include_schema=true has the whole text | No |
+| fields | [ [NodeTypeFieldItemRow](#nodetypefielditemrow) ] | For an object, each of its fields, located relative to the object; left out for any other field | No |
+| items | [ [NodeTypeFieldItemRow](#nodetypefielditemrow) ] | For a list of objects, each field of one item, located relative to the item; left out for any other field | No |
+| loc | [ string<br>integer ] | Where the field sits in the node's data | Yes |
+| options | [ string ] | The values the field accepts | No |
+| required | boolean |  | Yes |
+| type | string |  | Yes |
 
 #### NodeTypeListResponse
 
@@ -3675,6 +3904,15 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
 | files | object | Local file paths keyed by the form's file input name, same convention as the run ops' `files` | No |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
+
+#### PackageCheckResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| issues | [ [AuthoringIssueRow](#authoringissuerow) ] |  | Yes |
+| node_specs | [ [NodeSpecRow](#nodespecrow) ] | What each node that has an issue, as written, still needs; empty when no node has one | Yes |
+| valid | boolean | No error-severity issues | Yes |
 
 #### PermittedExternalAppsListQuery
 
@@ -3900,7 +4138,7 @@ Strict (extra='forbid').
 | last_id | string | Cursor: id of the last run on the previous page | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | status | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |  | No |
-| triggered_from | string, <br>**Available values:** "app-run", "debugging", <br>**Default:** debugging | debugging: draft test runs, as in the console; app-run: real use<br>*Enum:* `"app-run"`, `"debugging"` | No |
+| triggered_from | string, <br>**Available values:** "app-run", "debugging", "plugin", "schedule", "webhook", <br>**Default:** debugging | debugging: draft test runs, as in the console; app-run: real use; schedule, webhook, plugin: runs started by that kind of trigger<br>*Enum:* `"app-run"`, `"debugging"`, `"plugin"`, `"schedule"`, `"webhook"` | No |
 
 #### RunListResponse
 
@@ -4182,7 +4420,7 @@ Binding modes for persisted tool input values.
 | page | integer, <br>**Default:** 1 |  | No |
 | provider | string | Only this provider's tools | No |
 | provider_type | [ToolSource](#toolsource) | Only tools of this provider type | No |
-| query | string | Words to match in the tool name or label, or the provider id or label | No |
+| query | string | Text to find in the tool name, label or description, or the provider id, name or label | No |
 
 #### ToolListResponse
 
@@ -4370,6 +4608,14 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | access_token | string |  | No |
 | app_base_url | string |  | Yes |
 | url | string |  | No |
+
+#### WebhookResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| webhook_debug_url | string | Feeds the draft's node while the console's variable inspector listens for it; otherwise the request is refused | Yes |
+| webhook_url | string | Runs the published workflow on each request, once the node is published and its trigger is on | Yes |
 
 #### WorkflowDiff
 

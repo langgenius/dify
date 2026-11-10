@@ -10,21 +10,33 @@ runs, and the allow/deny answers live in `test_auth_matrix.py`.
 
 from __future__ import annotations
 
+import json
 import sys
+import uuid
+from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from constants.oauth_bearer import TokenType
+from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.human_input_form import FormVersion
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
+from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.db.session_factory import session_factory
+from core.workflow.nodes.human_input import UserActionConfig
 from graphon.enums import WorkflowExecutionStatus
+from libs.oauth_bearer import AuthContext
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.human_input import RecipientType
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
+from tests.helpers.unit.services.human_input_v1_forms import persist_v1_form_token
 
 _RUN_ID = "11111111-1111-1111-1111-111111111111"
 
@@ -107,6 +119,48 @@ def _make_end_user() -> EndUser:
         type=EndUserType.OPENAPI,
         session_id="session-1",
     )
+
+
+class _ReplayedEvents:
+    """A `MessageGenerator` whose replay is a fixed list of stream events."""
+
+    def __init__(self, events: list[dict[str, object]]) -> None:
+        self._events = events
+
+    def retrieve_events(self, *_args: object, **_kwargs: object) -> Iterator[dict[str, object]]:
+        return iter(self._events)
+
+
+def _account_subject() -> AccountSubject:
+    return AccountSubject(
+        AuthContext(
+            token_type=TokenType.OAUTH_ACCOUNT,
+            subject_email=None,
+            subject_issuer=None,
+            account_id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+            client_id=None,
+            token_id=uuid.uuid4(),
+            expires_at=None,
+        )
+    )
+
+
+def _paused(version: FormVersion, form_token: str) -> dict[str, object]:
+    response = HumanInputRequiredResponse(
+        task_id="t1",
+        workflow_run_id=_RUN_ID,
+        data=HumanInputRequiredResponse.Data(
+            form_version=version.value,
+            form_id=f"form-{form_token}",
+            node_id="n1",
+            node_title="Review",
+            form_content="",
+            actions=[UserActionConfig(id="approve", title="Approve")],
+            form_token=form_token,
+            expiration_time=4102444800,
+        ),
+    )
+    return response.model_dump(mode="json")
 
 
 class TestOpenApiWorkflowEventsApi:
@@ -281,3 +335,31 @@ class TestOpenApiWorkflowEventsApi:
 
         terminal_events = msg_gen_mock.retrieve_events.call_args.kwargs["terminal_events"]
         assert terminal_events == ([] if continue_on_pause else None)
+
+    def test_a_replay_hints_only_the_tokens_the_submit_op_accepts(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        """Without a snapshot the replay carries each v1 form's console-preferred token, which the
+        submit op refuses; a web app token and a v2 initiator token it accepts."""
+        module = sys.modules["controllers.openapi.workflow_events"]
+        self._bind_repo(monkeypatch, _make_workflow_run())
+        console_token = persist_v1_form_token(sqlite_session, RecipientType.CONSOLE)
+        web_app_token = persist_v1_form_token(sqlite_session, RecipientType.STANDALONE_WEB_APP)
+        replay = _ReplayedEvents(
+            [
+                _paused(FormVersion.V1, console_token),
+                _paused(FormVersion.V1, web_app_token),
+                _paused(FormVersion.V2, "v2-initiator-token"),
+            ]
+        )
+        monkeypatch.setattr(module, "MessageGenerator", lambda: replay)
+        ctx = _SealableContext(app=_make_app(), caller=_make_account(), subject=_account_subject())
+
+        api = OpenApiWorkflowEventsApi()
+        with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{_RUN_ID}/events"):
+            resp = api.get.__handler__(api, ctx, app_id="app-1", run_id=_RUN_ID, query=WorkflowEventsQuery())
+            ctx.seal()
+            frames = [json.loads(chunk[len("data: ") :]) for chunk in resp.response]
+
+        hinted = [hint["input"]["form_token"] for frame in frames for hint in frame.get("hints", [])]
+        assert hinted == [web_app_token, "v2-initiator-token"]

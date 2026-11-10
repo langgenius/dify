@@ -1,36 +1,34 @@
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from typing import Protocol, cast
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from constants.oauth_bearer import TokenType
 from controllers.openapi import node_types
-from controllers.openapi._models import NodeTypeDetailResponse
+from controllers.openapi._errors import NodeTypeNotFound
+from controllers.openapi._models import NodeTypeDescribeQuery, NodeTypeDetailResponse, NodeTypeFieldRow
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
+from core.workflow.human_input_adapter import EmailDeliveryConfig
 from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.code import CodeNode
-from graphon.nodes.http_request import HttpRequestNode
 from libs.oauth_bearer import AuthContext
-from services.workflow_service import WorkflowService
 
 
 class _EndpointView(Protocol):
     __handler__: Callable[..., object]
 
 
+type _Describe = Callable[..., NodeTypeDetailResponse]
+
+NO_CANVAS_KEYS = frozenset({"example", "purpose"})
+EMPTY_VALUES: tuple[object, ...] = ("", [], {})
+
+
 @pytest.fixture
-def describe(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> Callable[[str], NodeTypeDetailResponse]:
-    # `WorkflowService()` builds its sessions from db.engine, which the bare Flask app does not have
-    monkeypatch.setattr(node_types, "WorkflowService", lambda: WorkflowService(sqlite_session_factory))
+def describe(app: Flask, sqlite_session: Session) -> _Describe:
     auth = AuthContext(
         token_type=TokenType.OAUTH_ACCOUNT,
         subject_email="caller@example.com",
@@ -41,44 +39,151 @@ def describe(
         expires_at=None,
     )
 
-    def run(node_type: str) -> NodeTypeDetailResponse:
+    def run(node_type: str, *, include_schema: bool = False) -> NodeTypeDetailResponse:
         ctx = Context(AccountSubject(auth), sqlite_session, {"node_type": node_type})
         api = node_types.NodeTypeDetailApi()
+        query = NodeTypeDescribeQuery(include_schema=include_schema)
+        handler = cast(_EndpointView, api.get).__handler__
         with app.test_request_context(f"/openapi/v1/node-types/{node_type}"):
-            return cast(NodeTypeDetailResponse, cast(_EndpointView, api.get).__handler__(api, ctx, node_type))
+            response = handler(api, ctx, node_type, query=query)
+        assert isinstance(response, NodeTypeDetailResponse)
+        return response
 
     return run
 
 
-def test_http_request_default_body_carries_an_empty_data_list(
-    describe: Callable[[str], NodeTypeDetailResponse],
-) -> None:
-    graphon_default = HttpRequestNode.get_default_config()
-    graphon_config = cast(Mapping[str, object], graphon_default["config"])
-    assert "data" not in cast(Mapping[str, object], graphon_config["body"])
-
-    response = describe(BuiltinNodeTypes.HTTP_REQUEST)
-
-    assert response.default_config["config"]["body"] == {"type": "none", "data": []}
-    assert response.default_config["config"]["method"] == graphon_config["method"]
-    assert response.default_config["retry_config"] == graphon_default["retry_config"]
+def _rows(response: NodeTypeDetailResponse) -> dict[str, NodeTypeFieldRow]:
+    return {str(row.loc[0]): row for row in response.fields}
 
 
-def test_keys_the_default_already_has_are_kept(
-    describe: Callable[[str], NodeTypeDetailResponse], sqlite_session_factory: sessionmaker[Session]
-) -> None:
-    graphon_default = WorkflowService(sqlite_session_factory).get_default_block_config(BuiltinNodeTypes.HTTP_REQUEST)
-    graphon_timeout = cast(Mapping[str, object], cast(Mapping[str, object], graphon_default["config"])["timeout"])
+def test_describe_llm_is_compact(describe: _Describe) -> None:
+    response = describe(BuiltinNodeTypes.LLM)
 
-    response = describe(BuiltinNodeTypes.HTTP_REQUEST)
+    assert "schema" not in response.model_dump(mode="json", by_alias=True)
+    assert {"type": "llm", "version": "1", "title": "llm"}.items() <= response.seed.items()
+    assert "context" in response.seed
+    rows = _rows(response)
+    assert rows["model"].required is True
+    assert response.handles == ["source"]
 
-    timeout = response.default_config["config"]["timeout"]
-    assert {key: timeout[key] for key in graphon_timeout} == graphon_timeout
+
+def test_fields_list_required_ones_first_then_by_loc(describe: _Describe) -> None:
+    order = [(not row.required, row.loc) for row in describe(BuiltinNodeTypes.LLM).fields]
+
+    assert order == sorted(order)
 
 
-def test_sub_objects_that_fail_their_model_pass_through(describe: Callable[[str], NodeTypeDetailResponse]) -> None:
-    graphon_default = CodeNode.get_default_config()
+def test_describe_llm_seed_has_no_empty_value_in_a_required_field(describe: _Describe) -> None:
+    response = describe(BuiltinNodeTypes.LLM)
+    rows = _rows(response)
+    seed = response.seed
 
-    response = describe(BuiltinNodeTypes.CODE)
+    assert not [key for key, value in seed.items() if value in EMPTY_VALUES and rows[key].required]
+    assert seed["context"] == {"enabled": False, "variable_selector": []}
+    assert {"provider", "name"}.isdisjoint(seed["model"])
 
-    assert response.default_config == dict(graphon_default)
+
+def test_the_llm_reply_stays_small_with_items_and_fields_included(describe: _Describe) -> None:
+    body = describe(BuiltinNodeTypes.LLM).model_dump_json(by_alias=True)
+
+    assert len(body.encode()) < 3300, (
+        "measured 3217 bytes: prompt_template and default_value list their item fields, the object fields "
+        "(model, context, memory, vision, prompt_template, prompt_config, retry_config) list their own fields, "
+        "no example or purpose key, and the seed keeps the canvas's empty values outside required fields"
+    )
+
+
+def test_rows_leave_out_what_the_seed_already_holds(describe: _Describe) -> None:
+    response = describe(BuiltinNodeTypes.LLM)
+
+    assert {"type", "title", "version", "desc"}.isdisjoint(_rows(response))
+    assert all(NO_CANVAS_KEYS.isdisjoint(row.model_dump(mode="json")) for row in response.fields)
+
+
+def test_rows_carry_only_the_parts_they_have(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.LLM)).items()}
+
+    assert "options" not in rows["model"]
+    assert rows["reasoning_format"]["options"] == ["separated", "tagged"]
+    assert rows["reasoning_format"]["default"] == "tagged"
+    assert "\n" not in rows["reasoning_format"]["description"]
+    assert rows["reasoning_format"]["description"].startswith("Strategy for handling model reasoning output.")
+    assert "default" not in rows["memory"]
+    assert "description" not in rows["model"]
+
+
+def test_a_list_row_carries_its_item_fields(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.END)).items()}
+
+    items = {item["loc"][0]: item for item in rows["outputs"]["items"]}
+    assert {"variable", "value_selector"} <= items.keys()
+    assert items["variable"]["required"] is True
+    assert all(NO_CANVAS_KEYS.isdisjoint(item) and "items" not in item for item in items.values())
+
+
+def test_an_object_row_carries_its_fields(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.HUMAN_INPUT)).items()}
+
+    template = {field["loc"][0]: field for field in rows["message_template"]["fields"]}
+    assert {"subject", "body"} <= template.keys()
+    assert template["body"]["required"] is True
+    assert "channels" in {field["loc"][0] for field in rows["debug_mode"]["fields"]}
+    assert all("fields" not in field and "items" not in field for field in template.values())
+
+
+def test_the_message_body_row_says_it_holds_the_request_url_once(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.HUMAN_INPUT)).items()}
+
+    template = {field["loc"][0]: field for field in rows["message_template"]["fields"]}
+    assert f"{EmailDeliveryConfig.URL_PLACEHOLDER} exactly once" in template["body"]["description"]
+
+
+def test_a_scalar_row_leaves_out_fields(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.LLM)).items()}
+
+    assert "fields" not in rows["reasoning_format"]
+
+
+def test_a_row_that_is_not_a_list_of_objects_leaves_out_items(describe: _Describe) -> None:
+    rows = {name: row.model_dump(mode="json") for name, row in _rows(describe(BuiltinNodeTypes.LLM)).items()}
+
+    assert "items" not in rows["model"]
+
+
+def test_include_schema_adds_the_json_schema(describe: _Describe) -> None:
+    response = describe(BuiltinNodeTypes.LLM, include_schema=True)
+
+    assert response.schema_ is not None
+    assert "model" in response.schema_["properties"]
+    assert "schema" in response.model_dump(mode="json", by_alias=True)
+    assert response.fields
+
+
+def test_unknown_type_is_404(describe: _Describe) -> None:
+    with pytest.raises(NodeTypeNotFound):
+        describe("no-such-node")
+
+
+def test_if_else_handles_follow_the_seed_case_then_false(describe: _Describe) -> None:
+    response = describe(BuiltinNodeTypes.IF_ELSE)
+
+    [case] = response.seed["cases"]
+    assert response.handles == [case["case_id"], "false"]
+
+
+def test_a_type_the_canvas_gives_no_defaults_still_answers(describe: _Describe) -> None:
+    response = describe(BuiltinNodeTypes.TOOL)
+
+    assert response.seed == {"type": "tool", "version": "1", "title": "tool"}
+    assert all(NO_CANVAS_KEYS.isdisjoint(row.model_dump(mode="json")) for row in response.fields)
+
+
+def test_describe_node_type_human_input_describes_the_v2_node(describe: _Describe) -> None:
+    response = describe(BuiltinNodeTypes.HUMAN_INPUT, include_schema=True)
+
+    assert response.schema_ is not None
+    properties = response.schema_["properties"]
+    assert response.version == "2"
+    assert {"recipients_spec", "message_template"} <= set(properties)
+    assert "delivery_methods" not in properties
+    assert {"recipients_spec", "user_actions"} <= set(_rows(response))

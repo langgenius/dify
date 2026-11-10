@@ -39,7 +39,7 @@ def _node_data(
     return HumanInputNodeData(
         title="Review",
         recipients_spec=[],
-        message_template=MessageTemplateConfig(subject="Review", body="Review the request"),
+        message_template=MessageTemplateConfig(subject="Review", body="Review the request {{#url#}}"),
         debug_mode=DebugModeConfig(channels=[]),
         form_content=form_content,
         inputs=inputs,
