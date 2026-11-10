@@ -1,5 +1,6 @@
 import json
 import uuid
+from collections.abc import Generator
 
 import pytest
 from pytest_mock import MockerFixture
@@ -53,7 +54,7 @@ _CURRENT_SESSION: Session | None = None
 
 
 @pytest.fixture(autouse=True)
-def _bind_unbound_session(unbound_session: Session):
+def _bind_unbound_session(unbound_session: Session) -> Generator[None]:
     global _CURRENT_SESSION
     _CURRENT_SESSION = unbound_session
     yield
@@ -130,7 +131,7 @@ class TestAgentChatAppConfigManagerGetAppConfig:
         assert result.agent.strategy.value == "function-calling"
         assert result.agent.tools == []
 
-    def test_get_app_config_requires_annotation_reply_without_override(self):
+    def test_get_app_config_requires_annotation_reply_without_override(self) -> None:
         with pytest.raises(ValueError, match="Annotation reply config is required"):
             AgentChatAppConfigManager.get_app_config(
                 app_model=_app(),
@@ -141,8 +142,8 @@ class TestAgentChatAppConfigManagerGetAppConfig:
 
 
 class TestAgentChatAppConfigManagerConfigValidate:
-    def test_config_validate_filters_related_keys(self, mocker: MockerFixture):
-        config = {
+    def test_config_validate_filters_related_keys(self, mocker: MockerFixture) -> None:
+        config: dict[str, object] = {
             "model": {},
             "user_input_form": {},
             "file_upload": {},
@@ -158,57 +159,57 @@ class TestAgentChatAppConfigManagerConfigValidate:
             "extra": "value",
         }
 
-        def return_with_key(key):
+        def return_with_key(key: str) -> tuple[dict[str, object], list[str]]:
             return config, [key]
 
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.ModelConfigManager.validate_and_set_defaults",
-            side_effect=lambda tenant_id, cfg: return_with_key("model"),
+            side_effect=lambda _tenant_id, _cfg: return_with_key("model"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.BasicVariablesConfigManager.validate_and_set_defaults",
-            side_effect=lambda tenant_id, cfg: return_with_key("user_input_form"),
+            side_effect=lambda _tenant_id, _cfg: return_with_key("user_input_form"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.FileUploadConfigManager.validate_and_set_defaults",
-            side_effect=lambda cfg: return_with_key("file_upload"),
+            side_effect=lambda _cfg: return_with_key("file_upload"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.PromptTemplateConfigManager.validate_and_set_defaults",
-            side_effect=lambda app_mode, cfg: return_with_key("prompt_template"),
+            side_effect=lambda _app_mode, _cfg: return_with_key("prompt_template"),
         )
         mocker.patch.object(
             AgentChatAppConfigManager,
             "validate_agent_mode_and_set_defaults",
-            side_effect=lambda tenant_id, cfg, session: return_with_key("agent_mode"),
+            side_effect=lambda _tenant_id, _cfg, _session: return_with_key("agent_mode"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.OpeningStatementConfigManager.validate_and_set_defaults",
-            side_effect=lambda cfg: return_with_key("opening_statement"),
+            side_effect=lambda _cfg: return_with_key("opening_statement"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults",
-            side_effect=lambda cfg: return_with_key("suggested_questions_after_answer"),
+            side_effect=lambda _cfg: return_with_key("suggested_questions_after_answer"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.SpeechToTextConfigManager.validate_and_set_defaults",
-            side_effect=lambda cfg: return_with_key("speech_to_text"),
+            side_effect=lambda _cfg: return_with_key("speech_to_text"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.TextToSpeechConfigManager.validate_and_set_defaults",
-            side_effect=lambda cfg: return_with_key("text_to_speech"),
+            side_effect=lambda _cfg: return_with_key("text_to_speech"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.RetrievalResourceConfigManager.validate_and_set_defaults",
-            side_effect=lambda cfg: return_with_key("retriever_resource"),
+            side_effect=lambda _cfg: return_with_key("retriever_resource"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.DatasetConfigManager.validate_and_set_defaults",
-            side_effect=lambda tenant_id, app_mode, cfg, session: return_with_key("dataset"),
+            side_effect=lambda _tenant_id, _app_mode, _cfg, _session: return_with_key("dataset"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.SensitiveWordAvoidanceConfigManager.validate_and_set_defaults",
-            side_effect=lambda tenant_id, cfg: return_with_key("moderation"),
+            side_effect=lambda _tenant_id, _cfg: return_with_key("moderation"),
         )
 
         filtered = AgentChatAppConfigManager.config_validate("tenant", config, _session())
@@ -230,8 +231,8 @@ class TestAgentChatAppConfigManagerConfigValidate:
 
 
 class TestValidateAgentModeAndSetDefaults:
-    def test_defaults_when_missing(self):
-        config = {}
+    def test_defaults_when_missing(self) -> None:
+        config: dict[str, object] = {}
         updated, keys = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, _session())
         assert "agent_mode" in updated
         assert updated["agent_mode"]["enabled"] is False
@@ -242,43 +243,43 @@ class TestValidateAgentModeAndSetDefaults:
         "agent_mode",
         ["invalid", 123],
     )
-    def test_agent_mode_type_validation(self, agent_mode):
+    def test_agent_mode_type_validation(self, agent_mode: str | int) -> None:
         with pytest.raises(ValueError, match="agent_mode must be of object type"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": agent_mode}, _session()
             )
 
-    def test_agent_mode_empty_list_defaults(self):
-        config = {"agent_mode": []}
+    def test_agent_mode_empty_list_defaults(self) -> None:
+        config: dict[str, object] = {"agent_mode": []}
         updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, _session())
         assert updated["agent_mode"]["enabled"] is False
         assert updated["agent_mode"]["tools"] == []
 
-    def test_enabled_must_be_bool(self):
+    def test_enabled_must_be_bool(self) -> None:
         with pytest.raises(ValueError, match="enabled in agent_mode must be of boolean type"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": {"enabled": "yes"}}, _session()
             )
 
-    def test_strategy_must_be_valid(self):
+    def test_strategy_must_be_valid(self) -> None:
         with pytest.raises(ValueError, match="strategy in agent_mode must be in the specified strategy list"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": {"enabled": True, "strategy": "invalid"}}, _session()
             )
 
-    def test_tools_must_be_list(self):
+    def test_tools_must_be_list(self) -> None:
         with pytest.raises(ValueError, match="tools in agent_mode must be a list of objects"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": {"enabled": True, "tools": "not-list"}}, _session()
             )
 
-    def test_old_tool_dataset_requires_id(self):
+    def test_old_tool_dataset_requires_id(self) -> None:
         with pytest.raises(ValueError, match="id is required in dataset"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant", {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True}}]}}, _session()
             )
 
-    def test_old_tool_dataset_id_must_be_uuid(self):
+    def test_old_tool_dataset_id_must_be_uuid(self) -> None:
         with pytest.raises(ValueError, match="id in dataset must be of UUID type"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
@@ -286,7 +287,7 @@ class TestValidateAgentModeAndSetDefaults:
                 _session(),
             )
 
-    def test_old_tool_dataset_id_not_exists(self, mocker: MockerFixture):
+    def test_old_tool_dataset_id_not_exists(self, mocker: MockerFixture) -> None:
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.DatasetConfigManager.is_dataset_exists",
             return_value=False,
@@ -299,7 +300,7 @@ class TestValidateAgentModeAndSetDefaults:
                 _session(),
             )
 
-    def test_old_tool_enabled_must_be_bool(self):
+    def test_old_tool_enabled_must_be_bool(self) -> None:
         with pytest.raises(ValueError, match="enabled in agent_mode\\.tools must be of boolean type"):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
@@ -308,7 +309,7 @@ class TestValidateAgentModeAndSetDefaults:
             )
 
     @pytest.mark.parametrize("missing_key", ["provider_type", "provider_id", "tool_name", "tool_parameters"])
-    def test_new_style_tool_requires_fields(self, missing_key):
+    def test_new_style_tool_requires_fields(self, missing_key: str) -> None:
         tool = {"enabled": True, "provider_type": "type", "provider_id": "id", "tool_name": "tool"}
         tool.pop(missing_key, None)
         with pytest.raises(
@@ -323,13 +324,13 @@ class TestValidateAgentModeAndSetDefaults:
                 "tenant", {"agent_mode": {"enabled": True, "tools": [tool]}}, _session()
             )
 
-    def test_valid_old_and_new_style_tools(self, mocker: MockerFixture):
+    def test_valid_old_and_new_style_tools(self, mocker: MockerFixture) -> None:
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.DatasetConfigManager.is_dataset_exists",
             return_value=True,
         )
         dataset_id = str(uuid.uuid4())
-        config = {
+        config: dict[str, object] = {
             "agent_mode": {
                 "enabled": True,
                 "strategy": PlanningStrategy.ROUTER.value,

@@ -49,13 +49,19 @@ from models.workflow import (
 from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository, _model_to_insertion_dict
 from services.file_service import FileService
 from services.variable_truncator import TruncationResult
+from services.workflow.draft_variable_contracts import (
+    DraftUploadRecord,
+    DraftVariableCreator,
+    DraftVariableFileWriteCommand,
+    DraftVariableWriteCommand,
+)
 from services.workflow.draft_variable_service import (
     DraftVariableSaver as _ApplicationDraftVariableSaver,
 )
 from services.workflow.draft_variable_service import (
     DraftVarLoader as _ApplicationDraftVarLoader,
 )
-from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
+from services.workflow.variable_file_gateway import WorkflowDraftFileUploader, WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 from services.workflow_draft_variable_service import DraftVarLoader
 
@@ -505,13 +511,13 @@ class TestWorkflowDraftVariableServiceCases:
                 repository=WorkflowDraftVariableRepository(
                     sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
                 ),
-                files=FileService(sqlite_session.get_bind()),
+                files=WorkflowDraftFileUploader(FileService(sqlite_session.get_bind())),
                 tenant_id="test-tenant-id",
                 app_id=test_app_id,
                 node_id="test_node_id",
                 node_type=_workflow_draft_variable_service_BuiltinNodeTypes.START,
                 node_execution_id="test_execution_id",
-                user=mock_user,
+                creator=DraftVariableCreator(mock_user.id),
             )
             assert (
                 saver._should_variable_be_visible(
@@ -587,13 +593,13 @@ class TestWorkflowDraftVariableServiceCases:
                 repository=WorkflowDraftVariableRepository(
                     sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
                 ),
-                files=FileService(sqlite_session.get_bind()),
+                files=WorkflowDraftFileUploader(FileService(sqlite_session.get_bind())),
                 tenant_id="test-tenant-id",
                 app_id=test_app_id,
                 node_id=_node_id,
                 node_type=_workflow_draft_variable_service_BuiltinNodeTypes.START,
                 node_execution_id="test_execution_id",
-                user=mock_user,
+                creator=DraftVariableCreator(mock_user.id),
             )
             for idx, c in enumerate(cases, 1):
                 fail_msg = f"Test case {c.name} failed, index={idx}"
@@ -614,13 +620,13 @@ class TestWorkflowDraftVariableServiceCases:
                 repository=WorkflowDraftVariableRepository(
                     sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
                 ),
-                files=FileService(sqlite_session.get_bind()),
+                files=WorkflowDraftFileUploader(FileService(sqlite_session.get_bind())),
                 tenant_id="tenant-1",
                 app_id=self._get_test_app_id(),
                 node_id="start",
                 node_type=_workflow_draft_variable_service_BuiltinNodeTypes.START,
                 node_execution_id="exec-1",
-                user=mock_user,
+                creator=DraftVariableCreator(mock_user.id),
             )
             rebuilt_file = File(
                 file_id="file-1",
@@ -646,7 +652,7 @@ class TestWorkflowDraftVariableServiceCases:
                 draft_vars = saver._build_variables_from_start_mapping({"sys.files": [raw_file]})
 
             sys_var = draft_vars[0]
-            assert sys_var.get_value().value[0] == rebuilt_file
+            assert sys_var.value.value[0] == rebuilt_file
             rebuild_file.assert_called_once_with(mapping=raw_file, tenant_id="tenant-1")
 
         @pytest.fixture
@@ -666,13 +672,13 @@ class TestWorkflowDraftVariableServiceCases:
                 repository=WorkflowDraftVariableRepository(
                     sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
                 ),
-                files=FileService(sqlite_session.get_bind()),
+                files=WorkflowDraftFileUploader(FileService(sqlite_session.get_bind())),
                 tenant_id="test-tenant-id",
                 app_id="test-app-id",
                 node_id="test-node-id",
                 node_type=_workflow_draft_variable_service_BuiltinNodeTypes.LLM,
                 node_execution_id="test-execution-id",
-                user=mock_user,
+                creator=DraftVariableCreator(mock_user.id),
             )
 
         def test_draft_saver_with_small_variables(self, draft_saver: _ApplicationDraftVariableSaver):
@@ -684,7 +690,8 @@ class TestWorkflowDraftVariableServiceCases:
                 mock_segment = StringSegment(value="small value")
                 draft_var = draft_saver._create_draft_variable(name="small_var", value=mock_segment, visible=True)
 
-                # Should not have large variable metadata
+                assert isinstance(draft_var, DraftVariableWriteCommand)
+                assert draft_var.value == mock_segment
                 assert draft_var.file_id is None
                 _mock_try_offload.return_value = None
 
@@ -694,7 +701,8 @@ class TestWorkflowDraftVariableServiceCases:
                 autospec=True,
             ) as _mock_try_offload:
                 mock_segment = StringSegment(value="small value")
-                mock_draft_var_file = WorkflowDraftVariableFile(
+                mock_draft_var_file = DraftVariableFileWriteCommand(
+                    id=str(uuidv7()),
                     tenant_id=str(uuidv7()),
                     app_id=str(uuidv7()),
                     user_id=str(uuidv7()),
@@ -703,12 +711,11 @@ class TestWorkflowDraftVariableServiceCases:
                     value_type=SegmentType.ARRAY_STRING,
                     upload_file_id=str(uuidv7()),
                 )
-                mock_draft_var_file.id = str(uuidv7())
 
                 _mock_try_offload.return_value = mock_segment, mock_draft_var_file
                 draft_var = draft_saver._create_draft_variable(name="small_var", value=mock_segment, visible=True)
 
-                # Should not have large variable metadata
+                assert isinstance(draft_var, DraftVariableWriteCommand)
                 assert draft_var.file_id == mock_draft_var_file.id
 
         def test_try_offload_large_variable_uses_resource_tenant(self, sqlite_session: Session):
@@ -724,13 +731,13 @@ class TestWorkflowDraftVariableServiceCases:
                 repository=WorkflowDraftVariableRepository(
                     sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
                 ),
-                files=FileService(sqlite_session.get_bind()),
+                files=WorkflowDraftFileUploader(FileService(sqlite_session.get_bind())),
                 tenant_id="app-tenant-id",
                 app_id="test-app-id",
                 node_id="test-node-id",
                 node_type=_workflow_draft_variable_service_BuiltinNodeTypes.LLM,
                 node_execution_id="test-execution-id",
-                user=mock_user,
+                creator=DraftVariableCreator(mock_user.id),
             )
             upload_file = UploadFile(
                 tenant_id="app-tenant-id",
@@ -754,13 +761,18 @@ class TestWorkflowDraftVariableServiceCases:
                     "services.workflow.draft_variable_service.VariableTruncator.truncate",
                     return_value=truncation_result,
                 ),
-                patch.object(saver._files, "upload_file", return_value=upload_file) as upload,
+                patch.object(
+                    saver._files,
+                    "upload_file",
+                    return_value=DraftUploadRecord(id=upload_file.id),
+                ) as upload,
             ):
                 result = saver._try_offload_large_variable("large_var", StringSegment(value="large value"))
 
             assert result is not None
             _, variable_file = result
             assert upload.call_args.kwargs["tenant_id"] == "app-tenant-id"
+            assert upload.call_args.kwargs["creator"] == DraftVariableCreator(mock_user.id)
             assert variable_file.tenant_id == "app-tenant-id"
             sqlite_session.expire_all()
             stored_variable_file = sqlite_session.get(WorkflowDraftVariableFile, variable_file.id)
@@ -798,13 +810,13 @@ class TestWorkflowDraftVariableServiceCases:
                 repository=WorkflowDraftVariableRepository(
                     sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
                 ),
-                files=FileService(sqlite_session.get_bind()),
+                files=WorkflowDraftFileUploader(FileService(sqlite_session.get_bind())),
                 tenant_id="test-tenant-id",
                 app_id="test-app-id",
                 node_id="start-node-id",
                 node_type=_workflow_draft_variable_service_BuiltinNodeTypes.START,
                 node_execution_id="exec-id",
-                user=mock_user,
+                creator=DraftVariableCreator(mock_user.id),
             )
 
             outputs = {
@@ -842,13 +854,13 @@ class TestWorkflowDraftVariableServiceCases:
                 repository=WorkflowDraftVariableRepository(
                     sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
                 ),
-                files=FileService(sqlite_session.get_bind()),
+                files=WorkflowDraftFileUploader(FileService(sqlite_session.get_bind())),
                 tenant_id="test-tenant-id",
                 app_id="test-app-id",
                 node_id="start-node-id",
                 node_type=_workflow_draft_variable_service_BuiltinNodeTypes.START,
                 node_execution_id="exec-id",
-                user=mock_user,
+                creator=DraftVariableCreator(mock_user.id),
             )
 
             saver.save(
@@ -1297,13 +1309,13 @@ class TestWorkflowDraftVariableServiceSqliteCases:
                         repository=WorkflowDraftVariableRepository(
                             sessions=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
                         ),
-                        files=FileService(self._engine),
+                        files=WorkflowDraftFileUploader(FileService(self._engine)),
                         tenant_id=self._test_tenant_id,
                         app_id=self._test_app_id,
                         node_id="test_offload_node",
                         node_type=_workflow_draft_variable_service_sqlite_BuiltinNodeTypes.LLM,  # Use a real node type
                         node_execution_id=node_execution_id,
-                        user=account,
+                        creator=DraftVariableCreator(account.id),
                     )
 
                     # Save the variable - this will trigger offloading due to large size
@@ -1411,7 +1423,9 @@ class TestWorkflowDraftVariableServiceSqliteCases:
 
                     assert len(draft_vars) == 1
                     loaded_var = draft_vars[0]
-                    assert loaded_var.is_truncated()
+                    assert loaded_var.file_id == variable_file.id
+                    assert loaded_var.variable_file is not None
+                    assert loaded_var.variable_file.storage_key == upload_file.key
 
                     # Create _ApplicationDraftVarLoader and test loading
                     var_loader = _ApplicationDraftVarLoader(

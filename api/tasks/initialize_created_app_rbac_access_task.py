@@ -8,7 +8,7 @@ from celery import shared_task
 from sqlalchemy import select
 
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models import Agent, App, Dataset, TenantAccountJoin, TenantAccountRole
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.rbac import contracts as rbac_contracts
@@ -23,12 +23,13 @@ APP_RBAC_MEMBER_APPEND_BATCH_SIZE = 500
 
 
 def _owner_account_id(tenant_id: str) -> str | None:
-    return db.session().scalar(
-        select(TenantAccountJoin.account_id)
-        .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.role == TenantAccountRole.OWNER)
-        .order_by(TenantAccountJoin.id.asc())
-        .limit(1)
-    )
+    with session_factory.create_session() as session:
+        return session.scalar(
+            select(TenantAccountJoin.account_id)
+            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.role == TenantAccountRole.OWNER)
+            .order_by(TenantAccountJoin.id.asc())
+            .limit(1)
+        )
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,10 @@ class _WhitelistResourceKind[ItemT]:
     append_members: Callable[[str, str | None, Sequence[ItemT]], None]
 
     def iter_id_batches(self, tenant_id: str, batch_size: int) -> Iterator[list[str]]:
+        """Yield resource ids in ascending batches, closing each batch's session before yielding.
+
+        Callers call the RBAC service between batches, so no database connection is held across a yield.
+        """
         last_id: str | None = None
         while True:
             stmt = (
@@ -49,7 +54,8 @@ class _WhitelistResourceKind[ItemT]:
             )
             if last_id:
                 stmt = stmt.where(self.model.id > last_id)
-            ids = list(db.session().scalars(stmt).all())
+            with session_factory.create_session() as session:
+                ids = list(session.scalars(stmt).all())
             if not ids:
                 return
             yield ids
