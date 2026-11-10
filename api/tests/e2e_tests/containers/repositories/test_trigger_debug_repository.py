@@ -13,7 +13,8 @@ from extensions.ext_redis import redis_client
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from repositories.trigger.debug_repository import RedisTriggerDebugRepository
 from services.trigger.debug_events import WebhookDebugEvent, build_webhook_pool_key
-from services.trigger.debug_service import ScheduleDebugRuntime, TriggerDebugService
+from services.trigger.debug_service import TriggerDebugService
+from services.trigger.debug_store import ScheduleDebugRuntime
 
 
 @pytest.fixture

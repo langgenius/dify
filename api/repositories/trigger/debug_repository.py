@@ -5,7 +5,7 @@ from redis import RedisError
 
 from extensions.ext_redis import RedisClientWrapper
 from services.trigger.debug_events import BaseDebugEvent
-from services.trigger.debug_service import ScheduleDebugRuntime
+from services.trigger.debug_store import ScheduleDebugRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ TRIGGER_DEBUG_EVENT_TTL = 300
 
 class RedisTriggerDebugRepository:
     """
-    Unified Redis-based trigger debug service with polling support.
+    Redis-backed trigger debug storage with polling support.
 
     Uses {tenant_id} hash tags for Redis Cluster compatibility.
     Supports multiple event types through a generic dispatch/poll interface.
@@ -96,7 +96,7 @@ class RedisTriggerDebugRepository:
         Otherwise, register the address to the waiting pool for future dispatch.
 
         Args:
-            event_class: Event class for deserialization and type safety
+            event_type: Event class for deserialization and type safety
             pool_key: Pool key (generate using build_{?}_pool_key(...))
             tenant_id: Tenant ID
             user_id: User ID for address calculation
@@ -123,6 +123,7 @@ class RedisTriggerDebugRepository:
             return None
 
     def get_runtime(self, cache_key: str) -> ScheduleDebugRuntime | None:
+        """Read a schedule runtime and refresh its TTL, or return None when absent."""
         data = self._redis.get(cache_key)
         if data is None:
             return None
@@ -130,7 +131,9 @@ class RedisTriggerDebugRepository:
         return ScheduleDebugRuntime.model_validate_json(data)
 
     def save_runtime(self, runtime: ScheduleDebugRuntime) -> None:
+        """Store the runtime under its key with a bounded TTL."""
         self._redis.setex(runtime.cache_key, TRIGGER_DEBUG_EVENT_TTL, runtime.model_dump_json())
 
     def delete_runtime(self, cache_key: str) -> None:
+        """Remove the runtime if present; deleting an absent key has no effect."""
         self._redis.delete(cache_key)

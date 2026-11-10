@@ -67,6 +67,9 @@ def test_debug_http_requires_matching_listener_and_preserves_draft_response(
         )
         assert event is not None
         assert event.node_id == webhook.node_id
+        assert event.request_id.startswith(f"webhook_debug_{webhook.webhook_id}_")
+        assert event.timestamp > 0
+        assert event.payload["method"] == "POST"
         assert event.payload["webhook_data"]["body"] == {"ref": "main"}
         assert event.payload["inputs"]["webhook_body"] == {"ref": "main"}
     else:

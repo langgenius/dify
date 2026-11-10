@@ -32,7 +32,8 @@ from repositories.trigger.subscription_repository import (
 )
 from services.async_workflow_service import AsyncWorkflowService, TriggerWorkflowQuery
 from services.quota_service import QuotaService
-from services.trigger.debug_service import TriggerDebugEventStore, TriggerDebugService
+from services.trigger.debug_service import TriggerDebugService
+from services.trigger.debug_store import TriggerDebugEventStore
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.event_gateway import PluginTriggerEventGateway
