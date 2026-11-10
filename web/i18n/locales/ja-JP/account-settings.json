@@ -1,10 +1,5 @@
 {
   "account.account": "アカウント",
-  "account.appearanceDark": "ダーク",
-  "account.appearanceFollowSystem": "システムに合わせる",
-  "account.appearanceLabel": "外観",
-  "account.appearanceLight": "ライト",
-  "account.appearanceSystem": "システム",
   "account.changeEmail.authTip": "メールアドレスが変更されると、旧メールアドレスにリンクされている Google または GitHub アカウントは、このアカウントにログインできなくなります。",
   "account.changeEmail.changeTo": "{{email}} に変更",
   "account.changeEmail.codeLabel": "コード",

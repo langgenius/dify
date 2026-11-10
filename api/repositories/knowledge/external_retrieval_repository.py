@@ -21,7 +21,12 @@ def prepare_external_retrieval(
     *,
     session: Session,
 ) -> ExternalKnowledgeApiSetting:
-    """Resolve owned configuration into a request that outlives the read session."""
+    """Resolve tenant-owned configuration using the caller's read session.
+
+    Return a request with one slash before ``retrieval`` that outlives the
+    session, without making an HTTP call. Missing owned configuration
+    raises ``ExternalKnowledgeRetrievalError``.
+    """
     external_knowledge_binding = session.scalar(
         select(ExternalKnowledgeBindings)
         .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
@@ -58,7 +63,7 @@ def prepare_external_retrieval(
     }
 
     return ExternalKnowledgeApiSetting(
-        url=f"{settings.get('endpoint')}/retrieval",
+        url=f"{settings.get('endpoint', '').rstrip('/')}/retrieval",
         request_method="post",
         headers=headers,
         params=request_params,
