@@ -38,6 +38,7 @@ suppress node execution errors. See the [worker] and
 from graphon.engine.layer import Layer
 from graphon.engine_events import EngineEvent, NodeRunSucceededEvent
 
+
 class MetricsLayer(Layer):
     def __init__(self):
         """Create storage for elapsed time collected during one engine run."""
