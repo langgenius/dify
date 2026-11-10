@@ -195,25 +195,12 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
           )}
           {!isFreePlan && (
             <>
-              {isYearly && (
-                <span className="text-xl leading-[25px] text-(--pricing-subdued) line-through">
-                  <span className="sr-only">
-                    {t(($) => $['plansCommon.originalAnnualPrice'], { ns: 'billing' })}
-                  </span>
-                  {`$${planInfo.price * 12}`}
-                </span>
-              )}
               <span
                 className={cn(
                   'text-2xl leading-[30px] font-medium',
                   isMostPopularPlan && 'text-text-primary',
                 )}
               >
-                {isYearly && (
-                  <span className="sr-only">
-                    {t(($) => $['plansCommon.discountedAnnualPrice'], { ns: 'billing' })}
-                  </span>
-                )}
                 {`$${isYearly ? planInfo.price * 10 : planInfo.price}`}
               </span>
               <span className="text-xl leading-[25px]">
