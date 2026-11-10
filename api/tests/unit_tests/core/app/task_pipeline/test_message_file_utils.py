@@ -1,5 +1,5 @@
 from core.app.task_pipeline.message_file_utils import prepare_file_dict
-from graphon.file import FileTransferMethod
+from graphon.file import FileTransferMethod, FileType
 from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 
@@ -7,7 +7,7 @@ from models.model import MessageFile, UploadFile
 def _message_file(url: str, transfer_method: FileTransferMethod) -> MessageFile:
     message_file = MessageFile(
         message_id="message-1",
-        type="document",
+        type=FileType.DOCUMENT,
         transfer_method=transfer_method,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-id",
