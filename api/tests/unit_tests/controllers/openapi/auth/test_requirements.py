@@ -1377,10 +1377,12 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_workflow.env.list": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.env.set": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.env.delete": dict(_ACCOUNT_EDITOR_APP),
-    "app_run.workflow": dict(_DUAL_SUBJECT_RUN),
-    "app_run.chat": dict(_DUAL_SUBJECT_RUN),
-    "app_run.advanced_chat": dict(_DUAL_SUBJECT_RUN),
-    "app_run.completion": dict(_DUAL_SUBJECT_RUN),
+    "app_run.workflow": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.chat": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.advanced_chat": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.completion": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.stop": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.stop.task": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
     "human_input_form.get": dict(_DUAL_SUBJECT_RUN),
     "files.upload": {
         **_DUAL_SUBJECT_RUN,
@@ -1618,7 +1620,13 @@ def _settings_req(
     return (*base, CheckWorkspaceRole(roles)) if roles is not None else base
 
 
-_RESOURCE_RUN = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)), *_REQ_RUN[1:])
+_RESOURCE_RUN = (
+    CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_RUN),
+    CheckAppAccess(),
+)
 
 DECLARED: dict[str, tuple[Requirement, ...]] = {
     "knowledge_fs.ls": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
