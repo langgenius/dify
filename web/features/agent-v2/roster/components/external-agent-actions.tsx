@@ -44,7 +44,7 @@ type ExternalAgentActionsProps = {
   request: ExternalAgentActionRequest | undefined
   open: boolean
   onOpenChange: (open: boolean) => void
-  fallbackFocus: RefObject<HTMLInputElement | null>
+  fallbackFocus: RefObject<HTMLElement | null>
   onEdit: (key: string, fields: AgentInfo) => void
   onToggle: (key: string) => void
   onDelete: (key: string) => void

@@ -65,7 +65,8 @@ export const MAIN_NAV_ROUTES = [
     key: 'roster',
     href: '/agents',
     label: 'Agents',
-    active: (path: string) => isPathUnderRoute(path, '/agents'),
+    active: (path: string) =>
+      isPathUnderRoute(path, '/agents') || isPathUnderRoute(path, '/external-agent'),
     icon: 'i-custom-vender-main-nav-agent',
     activeIcon: 'i-custom-vender-main-nav-agent-active',
     visibility: VISIBLE_TO_ALL,
@@ -172,7 +173,7 @@ export function shouldHideMainNavigation(pathname: string) {
 function isAgentDetailPathname(pathname: string) {
   const [section, agentId] = pathname.split('/').filter(Boolean)
 
-  return section === 'agents' && !!agentId
+  return (section === 'agents' || section === 'external-agent') && !!agentId
 }
 
 function isSnippetDetailPathname(pathname: string) {

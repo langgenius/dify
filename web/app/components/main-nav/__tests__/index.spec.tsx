@@ -661,14 +661,25 @@ describe('MainNav', () => {
     )
   })
 
-  it('keeps roster detail navigation hidden when Agent v2 is disabled', () => {
-    mockIsAgentV2Enabled.mockReturnValue(false)
-    mockPathname = '/agents/agent-1/configure'
+  it('keeps Agents active on external agent detail routes', () => {
+    mockPathname = '/external-agent/contract-review/overview'
 
     renderMainNav()
 
-    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('aria-current', 'page')
   })
+
+  it.each(['/agents/agent-1/configure', '/external-agent/contract-review/overview'])(
+    'keeps roster detail navigation hidden on %s when Agent v2 is disabled',
+    (pathname) => {
+      mockIsAgentV2Enabled.mockReturnValue(false)
+      mockPathname = pathname
+
+      renderMainNav()
+
+      expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    },
+  )
 
   it('keeps MainNav on primary navigation when it is mounted on a detail route', () => {
     mockPathname = '/app/app-1/overview'

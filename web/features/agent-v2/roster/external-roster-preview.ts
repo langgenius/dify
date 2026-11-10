@@ -41,7 +41,7 @@ export function createExternalRosterPreview(now = Date.now()): ExternalAgentList
       name: 'Contract Review Agent',
       role: 'Legal & compliance',
       description:
-        'Reviews contract clauses against your company’s policies, identifies risks, and suggests safer wording.',
+        'Reviews contract clauses against your company’s policies, identifies risks, and suggests safer wording. Maintained by the legal team in their own environment.',
       enabled: true,
       connectedByMe: true,
       createdAt: now - 3600000,

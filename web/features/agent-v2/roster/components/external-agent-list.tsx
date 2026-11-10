@@ -5,13 +5,7 @@ import type { AppIconProps } from '@/app/components/base/app-icon'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
-import {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverTitle,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -24,7 +18,9 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import CornerLabel from '@/app/components/base/corner-label'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { getExternalAgentOverviewPath } from '@/features/agent-v2/external-agent/routes'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import Link from '@/next/link'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 
 export type ExternalAgentListItem = {
@@ -37,7 +33,7 @@ export type ExternalAgentListItem = {
   connectedByMe: boolean
   createdAt: number
   updatedAt: number
-  apps: readonly { name: string; kind: 'workflow' | 'chatflow' }[]
+  apps: readonly { id?: string; name: string; kind: 'workflow' | 'chatflow' }[]
 }
 
 type ExternalAgentListProps = {
@@ -66,7 +62,7 @@ function ExternalAgentCard({
       agent,
       trigger: menuTriggerRef.current,
       adjacentFocusTargets: getAdjacentFocusTargets(itemRef.current, (sibling) =>
-        sibling.querySelector<HTMLButtonElement>('button'),
+        sibling.querySelector<HTMLAnchorElement>(':scope > a[href]'),
       ),
     })
   }
@@ -80,44 +76,34 @@ function ExternalAgentCard({
         !agent.enabled && 'opacity-60',
       )}
     >
-      <Popover>
-        <PopoverTrigger
-          aria-labelledby={nameId}
-          aria-describedby={`${descriptionId}${agent.enabled ? '' : ` ${statusId}`}`}
-          className="flex min-h-0 flex-1 flex-col rounded-t-xl text-start focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
-        >
-          <div className="flex w-full items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
-            <AppIcon
-              size="xl"
-              icon={agent.icon}
-              fallback={{
-                content: <span className="i-ri-robot-2-line size-7 text-text-tertiary" />,
-                background: 'var(--color-text-primary-on-surface)',
-              }}
-            />
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-              <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
-                {agent.name}
-              </h2>
-              <p className="truncate system-xs-regular text-text-tertiary">{agent.role}</p>
-            </div>
+      <Link
+        href={getExternalAgentOverviewPath(agent.key)}
+        aria-labelledby={nameId}
+        aria-describedby={`${descriptionId}${agent.enabled ? '' : ` ${statusId}`}`}
+        className="flex min-h-0 flex-1 flex-col rounded-t-xl text-start outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+      >
+        <div className="flex w-full items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
+          <AppIcon
+            size="xl"
+            icon={agent.icon}
+            fallback={{
+              content: <span className="i-ri-robot-2-line size-7 text-text-tertiary" />,
+              background: 'var(--color-text-primary-on-surface)',
+            }}
+          />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+            <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
+              {agent.name}
+            </h2>
+            <p className="truncate system-xs-regular text-text-tertiary">{agent.role}</p>
           </div>
-          <div className="w-full px-4 py-1 system-xs-regular text-text-tertiary">
-            <p id={descriptionId} className="line-clamp-2 min-h-8">
-              {agent.description}
-            </p>
-          </div>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] p-4">
-          <PopoverTitle className="system-md-semibold wrap-break-word text-text-primary">
-            {agent.name}
-          </PopoverTitle>
-          <p className="mt-1 system-xs-regular wrap-break-word text-text-tertiary">{agent.role}</p>
-          <PopoverDescription className="mt-3 system-sm-regular wrap-break-word text-text-secondary">
+        </div>
+        <div className="w-full px-4 py-1 system-xs-regular text-text-tertiary">
+          <p id={descriptionId} className="line-clamp-2 min-h-8">
             {agent.description}
-          </PopoverDescription>
-        </PopoverContent>
-      </Popover>
+          </p>
+        </div>
+      </Link>
       {!agent.enabled && (
         <span id={statusId} className="pointer-events-none absolute inset-e-0 top-[-0.5px]">
           <CornerLabel
@@ -183,7 +169,7 @@ function ExternalAgentCard({
             <ul>
               {agent.apps.map((app) => (
                 <li
-                  key={app.name}
+                  key={app.id ?? app.name}
                   className="flex min-w-0 items-center gap-2 px-3 py-2 system-sm-regular text-text-secondary"
                 >
                   <span

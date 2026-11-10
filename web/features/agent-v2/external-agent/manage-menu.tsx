@@ -1,0 +1,105 @@
+'use client'
+
+import type { ExternalAgentActionRequest } from '../roster/components/external-agent-actions'
+import type { ExternalAgentListItem } from '../roster/components/external-agent-list'
+import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { useAtomValue } from 'jotai'
+import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { useRouter } from '@/next/navigation'
+import { ExternalAgentActions } from '../roster/components/external-agent-actions'
+
+export function ExternalAgentManageMenu({
+  agent,
+  onUpdate,
+  compact = false,
+}: {
+  agent: ExternalAgentListItem
+  onUpdate: (agent: ExternalAgentListItem) => void
+  compact?: boolean
+}) {
+  const { t } = useTranslation(['agentRoster'])
+  const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const router = useRouter()
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [request, setRequest] = useState<ExternalAgentActionRequest>()
+  const [open, setOpen] = useState(false)
+
+  if (!canManage) return null
+
+  const requestAction = (kind: ExternalAgentActionRequest['kind']) => {
+    setRequest({ kind, agent, trigger: triggerRef.current, adjacentFocusTargets: [] })
+    setOpen(true)
+  }
+
+  return (
+    <>
+      <Menu>
+        <MenuTrigger
+          render={
+            compact ? (
+              <IconButton ref={triggerRef} aria-label={t(($) => $['external.overview.manage'])}>
+                <span aria-hidden className="i-ri-more-fill size-4" />
+              </IconButton>
+            ) : (
+              <Button ref={triggerRef} variant="secondary" />
+            )
+          }
+        >
+          {compact ? (
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          ) : (
+            <>
+              {t(($) => $['external.overview.manage'])}
+              <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+            </>
+          )}
+        </MenuTrigger>
+        <MenuContent align="end">
+          <MenuItem onClick={() => requestAction('edit')}>
+            <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+            {t(($) => $['external.editInfo'])}
+          </MenuItem>
+          <MenuItem onClick={() => requestAction('toggle')}>
+            <span
+              aria-hidden
+              className={
+                agent.enabled
+                  ? 'i-ri-pause-circle-line size-4 text-text-tertiary'
+                  : 'i-ri-play-circle-line size-4 text-text-tertiary'
+              }
+            />
+            {agent.enabled ? t(($) => $['external.disable']) : t(($) => $['external.enable'])}
+          </MenuItem>
+          <MenuSeparator />
+          <MenuItem onClick={() => requestAction('delete')}>
+            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+            {t(($) => $['external.delete'])}
+          </MenuItem>
+        </MenuContent>
+      </Menu>
+      <ExternalAgentActions
+        request={request}
+        open={open}
+        onOpenChange={setOpen}
+        onRequest={setRequest}
+        fallbackFocus={triggerRef}
+        onEdit={(_, fields) => {
+          onUpdate({ ...agent, ...fields, updatedAt: Date.now() })
+          setOpen(false)
+        }}
+        onToggle={() => {
+          onUpdate({ ...agent, enabled: !agent.enabled, updatedAt: Date.now() })
+          setOpen(false)
+        }}
+        onDelete={() => {
+          setOpen(false)
+          router.push('/agents?agent_type=external')
+        }}
+      />
+    </>
+  )
+}

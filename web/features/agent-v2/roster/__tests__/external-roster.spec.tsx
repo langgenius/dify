@@ -86,7 +86,7 @@ describe('ExternalRoster', () => {
     })
   })
 
-  it('keeps connection management unavailable to workspace editors', () => {
+  it('keeps detail links available without exposing connection management to workspace editors', () => {
     renderRoster({ role: 'editor' })
 
     expect(
@@ -96,6 +96,14 @@ describe('ExternalRoster', () => {
       screen.queryByRole('button', { name: /agentRoster\.roster\.moreActions/ }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Contract Review Agent' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Contract Review Agent' })).toHaveAttribute(
+      'href',
+      '/external-agent/contract-review/overview',
+    )
+    expect(screen.getByRole('link', { name: 'Vendor Screening Agent' })).toHaveAttribute(
+      'href',
+      '/external-agent/vendor-screening/overview',
+    )
   })
 
   it('discards canceled edits and updates the card only after saving the reopened draft', async () => {
@@ -225,7 +233,7 @@ describe('ExternalRoster', () => {
       screen.queryByRole('heading', { name: 'Vendor Screening Agent' }),
     ).not.toBeInTheDocument()
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Contract Review Agent' })).toHaveFocus(),
+      expect(screen.getByRole('link', { name: 'Contract Review Agent' })).toHaveFocus(),
     )
 
     await openActions(user, 'Contract Review Agent')
