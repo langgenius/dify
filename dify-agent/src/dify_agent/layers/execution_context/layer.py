@@ -1,6 +1,8 @@
 """Dify identity module; clients and transport settings remain lifespan-owned."""
 
 import httpx
+
+from dify_agent.adapters.native_testing.transport import refuse_native_daemon_dispatch
 from pydantic import BaseModel, ConfigDict
 from pydantic_ai.capabilities import AbstractCapability
 
@@ -31,6 +33,7 @@ class Capability(AbstractCapability[Deps]):
         http_client: httpx.AsyncClient,
         plugin_unique_identifier: str | None = None,
     ) -> DifyPluginDaemonToolClient:
+        refuse_native_daemon_dispatch()
         if http_client.is_closed:
             raise RuntimeError("Plugin tool invocation requires an open shared HTTP client.")
         config = Config.model_validate(deps.layers[name]["config"])

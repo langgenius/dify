@@ -15,6 +15,7 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
+import { CreateAppEntry } from '@/features/app-creation/entry'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
@@ -34,6 +35,7 @@ type AppListHeaderProps = {
   keywords: string
   creatorIDs: string[]
   sortBy: AppListSortBy
+  isBuilderEnabled: boolean
   onCategoryChange: (category: AppListCategory) => void
   onTagIDsChange: (tagIDs: string[]) => void
   onKeywordsChange: (keywords: string) => void
@@ -53,6 +55,7 @@ export function AppListHeader({
   keywords,
   creatorIDs,
   sortBy,
+  isBuilderEnabled,
   onCategoryChange,
   onTagIDsChange,
   onKeywordsChange,
@@ -76,6 +79,15 @@ export function AppListHeader({
   const activeStudioGuide = activeStudioGuides[activeStepByStepTourGuideIndex ?? 0]
   const shouldOpenStepByStepTourCreateMenu =
     activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate
+  const createMenuProps = {
+    onCreateTemplate,
+    onImportDSL,
+    stepByStepTourControlledOpen: activeStudioGuide
+      ? shouldOpenStepByStepTourCreateMenu
+      : undefined,
+    stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate,
+    stepByStepTourHighlightPart: STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu,
+  }
 
   return (
     <StudioListHeader
@@ -107,7 +119,7 @@ export function AppListHeader({
             aria-label={t(($) => $['gotoAnything.actions.searchApplications'], { ns: 'app' })}
           />
         </div>
-        <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
+        <div className="ms-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
           <StudioListLink
             href={snippetsHref}
             className="inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
@@ -115,18 +127,12 @@ export function AppListHeader({
             <span aria-hidden className="i-ri-braces-line size-4 shrink-0" />
             {t(($) => $['studio.viewSnippets'], { ns: 'app' })}
           </StudioListLink>
-          {showCreateButton && (
-            <CreateAppMenu
-              onCreateBlank={onCreateBlank}
-              onCreateTemplate={onCreateTemplate}
-              onImportDSL={onImportDSL}
-              stepByStepTourControlledOpen={
-                activeStudioGuide ? shouldOpenStepByStepTourCreateMenu : undefined
-              }
-              stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate}
-              stepByStepTourHighlightPart={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu}
-            />
-          )}
+          {showCreateButton &&
+            (isBuilderEnabled ? (
+              <CreateAppEntry {...createMenuProps} />
+            ) : (
+              <CreateAppMenu {...createMenuProps} onCreateBlank={onCreateBlank} />
+            ))}
         </div>
       </div>
     </StudioListHeader>

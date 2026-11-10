@@ -44,6 +44,8 @@
   "stepByStepTour.guides.studio.empty.learnDify.title": "Ou commencez avec Learn Dify",
   "stepByStepTour.guides.studio.empty.template.description": "Parcourez les modèles de Dify et choisissez celui qui correspond à ce que vous voulez créer. Une excellente façon de démarrer sans partir de zéro.",
   "stepByStepTour.guides.studio.empty.template.title": "Créer à partir d'un modèle",
+  "stepByStepTour.guides.studio.empty.workflow.description": "Commencez par un workflow qui s’exécute une fois, puis se termine.",
+  "stepByStepTour.guides.studio.empty.workflow.title": "Créer un workflow",
   "stepByStepTour.guides.studio.noCreate.empty.description": "Vous pouvez consulter les apps de cet espace de travail, mais il n y en a pas encore. Pour creer ou modifier des apps, changez d espace de travail ou demandez l acces au proprietaire ou a un admin.",
   "stepByStepTour.guides.studio.noCreate.empty.title": "Aucune app a afficher pour le moment",
   "stepByStepTour.guides.studio.noCreate.withApps.description": "Vous pouvez parcourir et ouvrir les apps de cet espace de travail, mais la creation ou la modification necessite une autorisation. Changez d espace de travail ou contactez le proprietaire ou un admin.",

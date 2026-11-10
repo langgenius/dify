@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import type { ExternalTraceSource } from './external-trace-row'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +10,7 @@ import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log/agent-l
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
 import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import { ExternalTraceRow } from './external-trace-row'
@@ -43,6 +43,7 @@ export type ResultPanelProps = {
   workflowRunId?: string
   externalTrace?: ExternalTraceSource
   onOpenTracingTab?: () => void
+  renderFailureActions?: (runId: string) => ReactNode
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
@@ -72,6 +73,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   workflowRunId,
   externalTrace,
   onOpenTracingTab,
+  renderFailureActions,
   handleShowIterationResultList,
   handleShowLoopResultList,
   onShowRetryDetail,
@@ -98,6 +100,9 @@ const ResultPanel: FC<ResultPanelProps> = ({
           onOpenTracingTab={onOpenTracingTab}
         />
       </div>
+      {status === WorkflowRunningStatus.Failed && workflowRunId && renderFailureActions && (
+        <div className="flex items-start px-4 pb-3">{renderFailureActions(workflowRunId)}</div>
+      )}
       <div className="px-4">
         {isIterationNode && handleShowIterationResultList && (
           <IterationLogTrigger

@@ -1,10 +1,15 @@
 import logging
-from collections.abc import Generator, Iterator
+from collections.abc import Callable, Generator, Iterator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
+from uuid import uuid4
 
 import pytest
+import socketio
+from engineio.socket import Socket
+from gevent.pool import Group
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError
+from socketio.packet import Packet
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
@@ -19,6 +24,7 @@ from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
     WorkflowCollaborationNotEntitledError,
     WorkflowCollaborationService,
+    WorkflowPageResume,
 )
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_app
@@ -43,6 +49,32 @@ def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
     repository = WorkflowCollaborationRepository()
     socketio = Mock()
     return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
+
+
+@pytest.fixture
+def socket_servers(monkeypatch: pytest.MonkeyPatch) -> Iterator[Callable[[], socketio.Server]]:
+    """Use actual Socket.IO sessions and own the lifetime of their heartbeat tasks."""
+    tasks = Group()
+
+    def create_server() -> socketio.Server:
+        server = socketio.Server(async_mode="gevent")
+        monkeypatch.setattr(server, "start_background_task", tasks.spawn)
+        return server
+
+    try:
+        yield create_server
+    finally:
+        tasks.kill()
+
+
+def _connect_editor(server: socketio.Server, user_id: str = "u-1") -> tuple[str, Socket]:
+    """Attach a transport and admit its authenticated identity without opening a port."""
+    eio_sid = uuid4().hex
+    transport = Socket(server.eio, eio_sid)
+    server.eio.sockets[eio_sid] = transport
+    sid = server.manager.connect(eio_sid, "/")
+    server.save_session(sid, {"user_id": user_id, "tenant_id": "t-1"})
+    return sid, transport
 
 
 @pytest.fixture
@@ -164,7 +196,9 @@ class TestWorkflowCollaborationService:
                 "services.workflow_collaboration_service.RBACService.CheckAccess.check", return_value=True
             ) as check_access,
             patch.object(collaboration_service, "get_or_set_leader", return_value="sid-1") as get_leader,
-            patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
+            patch.object(
+                collaboration_service, "broadcast_online_users", return_value="sid-1"
+            ) as broadcast_online_users,
         ):
             # Act
             result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
@@ -185,8 +219,96 @@ class TestWorkflowCollaborationService:
         socketio.start_background_task.assert_called_once()
         get_leader.assert_called_once_with("wf-1", "sid-1")
         socketio.enter_room.assert_called_once_with("sid-1", "wf-1")
-        broadcast_online_users.assert_called_once_with("wf-1")
+        broadcast_online_users.assert_called_once_with("wf-1", joining_sid="sid-1")
         socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
+
+    @pytest.mark.usefixtures("collaboration_redis")
+    @pytest.mark.parametrize(("other_tab_open", "leader_unavailable"), [(False, False), (True, False), (False, True)])
+    def test_reconnect_supersedes_only_its_previous_sid_across_workers(
+        self,
+        socket_servers: Callable[[], socketio.Server],
+        db_session: Session,
+        other_tab_open: bool,
+        leader_unavailable: bool,
+    ) -> None:
+        repository = WorkflowCollaborationRepository()
+        old_server, new_server = socket_servers(), socket_servers()
+        old_worker = WorkflowCollaborationService(repository, old_server, server_id="server-1")
+        new_worker = WorkflowCollaborationService(repository, new_server, server_id="server-2")
+        old_sid, _ = _connect_editor(old_server)
+        new_sid, new_transport = _connect_editor(new_server)
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+        original = WorkflowPageResume(uuid4().hex, 1)
+        expected_sids = {new_sid}
+        expected_leader = new_sid
+
+        with config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+        ):
+            assert old_worker.authorize_and_join_workflow_room(
+                "wf-1", old_sid, session=db_session, resume=original
+            ) == ("u-1", True)
+            if other_tab_open:
+                other_sid, _ = _connect_editor(old_server)
+                assert old_worker.authorize_and_join_workflow_room(
+                    "wf-1", other_sid, session=db_session, resume=WorkflowPageResume(uuid4().hex, 1)
+                ) == ("u-1", False)
+                expected_sids.add(other_sid)
+                expected_leader = other_sid
+            if leader_unavailable:
+                repository.set_leader("wf-1", "sid-expired")
+
+            assert new_worker.authorize_and_join_workflow_room(
+                "wf-1", new_sid, session=db_session, resume=WorkflowPageResume(original.page_id, 2)
+            ) == ("u-1", not other_tab_open)
+            assert (
+                old_worker.authorize_and_join_workflow_room("wf-1", old_sid, session=db_session, resume=original)
+                is None
+            )
+
+        # The local managers have no message queue, so the old worker has not
+        # received the server disconnect. The shared membership still fences it.
+        assert old_server.manager.is_connected(old_sid, "/")
+        assert old_worker.relay_graph_event(old_sid, b"late edit") == ({"msg": "unauthorized"}, 401)
+        assert old_worker.disconnect_session(old_sid) is None
+        assert set(repository.get_session_sids("wf-1")) == expected_sids
+        assert repository.get_current_leader("wf-1") == expected_leader
+        status = {"isLeader": False} if other_tab_open else {"isLeader": True, "requiresGraphReload": True}
+        packets = [
+            Packet(encoded_packet=new_transport.queue.get_nowait().data) for _ in range(new_transport.queue.qsize())
+        ]
+        assert [packet.data for packet in packets if packet.data[0] == "status"] == [["status", status]]
+
+    @pytest.mark.usefixtures("collaboration_redis")
+    def test_page_resume_is_scoped_to_the_workflow_and_authenticated_account(
+        self, socket_servers: Callable[[], socketio.Server], db_session: Session
+    ) -> None:
+        repository = WorkflowCollaborationRepository()
+        server = socket_servers()
+        service = WorkflowCollaborationService(repository, server)
+        original_sid, _ = _connect_editor(server)
+        other_room_sid, _ = _connect_editor(server)
+        other_user_sid, _ = _connect_editor(server, "u-2")
+        page_id = uuid4().hex
+        db_session.add_all([_app(app_id="wf-1", tenant_id="t-1"), _app(app_id="wf-2", tenant_id="t-1")])
+        db_session.commit()
+        with config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False
+        ):
+            assert service.authorize_and_join_workflow_room(
+                "wf-1", original_sid, session=db_session, resume=WorkflowPageResume(page_id, 1)
+            ) == ("u-1", True)
+            assert service.authorize_and_join_workflow_room(
+                "wf-2", other_room_sid, session=db_session, resume=WorkflowPageResume(page_id, 2)
+            ) == ("u-1", True)
+            assert service.authorize_and_join_workflow_room(
+                "wf-1", other_user_sid, session=db_session, resume=WorkflowPageResume(page_id, 2)
+            ) == ("u-2", False)
+
+        assert set(repository.get_session_sids("wf-1")) == {original_sid, other_user_sid}
+        assert repository.get_session_sids("wf-2") == [other_room_sid]
+        assert server.manager.is_connected(original_sid, "/")
 
     def test_authorize_and_join_workflow_room_returns_none_when_missing_user(
         self, real_service: ServiceFixture, db_session: Session
@@ -805,7 +927,7 @@ class TestWorkflowCollaborationService:
         }
 
         with (
-            patch.object(repository, "graph_view_state_lock", return_value=graph_view_lock()),
+            patch.object(repository, "room_state_lock", return_value=graph_view_lock()),
             patch.object(repository, "update_session_graph_active", side_effect=record_visibility),
             patch.object(collaboration_service, "refresh_session_state"),
             patch.object(
@@ -1064,10 +1186,11 @@ class TestWorkflowCollaborationService:
             patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
         ):
             # Act
-            collaboration_service.disconnect_session("sid-1")
+            disconnected_workflow = collaboration_service.disconnect_session("sid-1")
 
         # Assert
         assert not repository.session_exists("wf-1", "sid-1")
+        assert disconnected_workflow == "wf-1"
         assert repository.get_sid_mapping("sid-1") is None
         handle_leader_disconnect.assert_called_once_with("wf-1", "sid-1")
         broadcast_online_users.assert_called_once_with("wf-1")
@@ -1113,7 +1236,7 @@ class TestWorkflowCollaborationService:
         # Assert
         assert result == "sid-2"
         assert not repository.session_exists("wf-1", "sid-1")
-        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
+        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2", skip_sid="sid-2")
 
         assert repository.get_current_leader("wf-1") == "sid-2"
 
@@ -1189,7 +1312,7 @@ class TestWorkflowCollaborationService:
 
         # Assert
         assert repository.get_current_leader("wf-1") == "sid-2"
-        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
+        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2", skip_sid=None)
 
     def test_handle_leader_disconnect_clears_when_empty(self, real_service: ServiceFixture) -> None:
         # Arrange
@@ -1275,7 +1398,7 @@ class TestWorkflowCollaborationService:
             collaboration_service.broadcast_online_users("wf-1")
 
         assert repository.get_current_leader("wf-1") == "sid-2"
-        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
+        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2", skip_sid=None)
         socketio.emit.assert_called_once_with(
             "online_users",
             {"workflow_id": "wf-1", "users": users, "leader": "sid-2"},
@@ -1332,6 +1455,7 @@ class TestWorkflowCollaborationService:
     def test_refresh_session_state_replaces_inactive_existing_leader(self, real_service: ServiceFixture) -> None:
         collaboration_service, repository, _socketio = real_service
         repository.set_leader("wf-1", "sid-old")
+        seed_session(repository, "sid-new")
 
         with (
             patch.object(collaboration_service, "is_session_active", return_value=False),
@@ -1551,4 +1675,4 @@ class TestWorkflowCollaborationService:
             collaboration_service.handle_leader_disconnect("wf-1", "sid-old")
 
         assert repository.get_current_leader("wf-1") == "sid-2"
-        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
+        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2", skip_sid=None)

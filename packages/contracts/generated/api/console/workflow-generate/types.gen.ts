@@ -57,6 +57,17 @@ export type ErrorResponse = {
   status: number
 }
 
+export type WorkflowInstructionImprovePayload = {
+  instruction: string
+  language?: string | null
+  mode?: 'advanced-chat' | 'workflow'
+}
+
+export type WorkflowInstructionImproveResponse = {
+  changed: boolean
+  instruction: string
+}
+
 export type WorkflowGenerateStreamEventResponse =
   | WorkflowGeneratePlanEventResponse
   | WorkflowGenerateResultEventResponse
@@ -147,7 +158,9 @@ export type WorkflowGenerateErrorCode =
   | 'EMPTY_PLAN'
   | 'GRAPH_CYCLE'
   | 'INSTRUCTION_TOO_LONG'
+  | 'INVALID_BRANCH_HANDLE'
   | 'INVALID_CONTAINER'
+  | 'INVALID_HTTP_BODY'
   | 'INVALID_JSON'
   | 'INVALID_SCHEMA'
   | 'MISSING_START'
@@ -200,6 +213,28 @@ export type PostWorkflowGenerateResponses = {
 
 export type PostWorkflowGenerateResponse =
   PostWorkflowGenerateResponses[keyof PostWorkflowGenerateResponses]
+
+export type PostWorkflowGenerateImproveData = {
+  body: WorkflowInstructionImprovePayload
+  path?: never
+  query?: never
+  url: '/workflow-generate/improve'
+}
+
+export type PostWorkflowGenerateImproveErrors = {
+  400: ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkflowGenerateImproveError =
+  PostWorkflowGenerateImproveErrors[keyof PostWorkflowGenerateImproveErrors]
+
+export type PostWorkflowGenerateImproveResponses = {
+  200: WorkflowInstructionImproveResponse
+}
+
+export type PostWorkflowGenerateImproveResponse =
+  PostWorkflowGenerateImproveResponses[keyof PostWorkflowGenerateImproveResponses]
 
 export type PostWorkflowGenerateStreamData = {
   body: WorkflowGeneratePayload

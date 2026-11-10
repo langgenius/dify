@@ -2,7 +2,7 @@ import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { useScheduleDraftSave } from './use-schedule-draft-save'
 import { useNodesReadOnly } from './use-workflow'
 
 type NodeDataUpdatePayload = {
@@ -11,7 +11,7 @@ type NodeDataUpdatePayload = {
 }
 
 export const useNodeDataUpdate = () => {
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
   const { getNodesReadOnly } = useNodesReadOnly()
   const collaborativeWorkflow = useCollaborativeWorkflow()
 

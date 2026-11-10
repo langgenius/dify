@@ -124,8 +124,21 @@ def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask, unboun
     )
 
 
-def test_download_request_binds_frontend_url(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+@pytest.mark.parametrize(
+    ("options", "internal_files_url", "expected_base_url"),
+    [
+        ({}, "http://files.internal", "https://files.example.com"),
+        ({"for_external": False}, "http://files.internal", "http://files.internal"),
+        ({"for_external": False}, "", "https://files.example.com"),
+    ],
+)
+def test_download_request_binds_requested_url(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session: Session,
+    options: dict[str, bool],
+    internal_files_url: str,
+    expected_base_url: str,
 ) -> None:
     reference = build_file_reference(record_id="tool-file-1")
     payload = {
@@ -134,9 +147,9 @@ def test_download_request_binds_frontend_url(
         "user_from": "account",
         "invoke_from": "debugger",
         "file": {"transfer_method": "tool_file", "reference": reference},
-        "for_frontend": True,
+        **options,
     }
-    apply_config_overrides(monkeypatch, FILES_URL="https://files.example.com")
+    apply_config_overrides(monkeypatch, FILES_URL="https://files.example.com", INTERNAL_FILES_URL=internal_files_url)
     session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (
@@ -154,4 +167,4 @@ def test_download_request_binds_frontend_url(
             )
             response = _raw(AgentFileDownloadRequestApi.post)(AgentFileDownloadRequestApi(), session)
 
-    assert response["download_uri"] == "https://files.example.com/files/tools/tool-file-1.pdf?sign=1"
+    assert response["download_uri"] == f"{expected_base_url}/files/tools/tool-file-1.pdf?sign=1"

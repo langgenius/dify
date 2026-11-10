@@ -1567,7 +1567,7 @@ class TestWorkflowService:
 
         from unittest.mock import patch
 
-        from core.workflow.node_factory import DifyNodeFactory
+        from services.workflow_runtime.node_factory import DifyNodeFactory
 
         # Act
         with patch.object(

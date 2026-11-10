@@ -127,6 +127,7 @@ class StoredPolicyTraceScopes(ExecutionTraceScopes):
         app_tracing: str | None,
         user_id: str | None,
         correlation: TraceCorrelation,
+        external_tracing_disabled: bool = False,
     ) -> TraceScope | None:
         return self._scopes.for_execution(
             tenant_id=tenant_id,
@@ -134,6 +135,7 @@ class StoredPolicyTraceScopes(ExecutionTraceScopes):
             policy=trace_settings_from_column(app_tracing),
             user_id=user_id,
             correlation=correlation,
+            external_tracing_disabled=external_tracing_disabled,
         )
 
     @override

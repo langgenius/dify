@@ -63,6 +63,7 @@ from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfi
 from repositories.application_trace_repository import ApplicationTraceRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
+from runtime_contracts.builder.execution import BuilderExecutionContext
 from services.tracing.adapters import StoredPolicyTraceScopes
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AgentTraceSettings, AppTracingSnapshot, TraceRun, workflow_has_agent_v2
@@ -988,6 +989,58 @@ class TestRuntimeBridgeCases:
             conversation_id=None,
             graph_data=AGENT_GRAPH,
         )
+        assert run_count(bridge.sessions) == 0
+
+    @staticmethod
+    @pytest.mark.parametrize("native", [False, True])
+    def test_restricted_runs_never_start_agent_collection(bridge: Bridge, native: bool) -> None:
+        restriction = (
+            None
+            if native
+            else BuilderExecutionContext.model_validate(
+                {
+                    "request_id": "request",
+                    "tenant_id": "tenant",
+                    "app_id": "workflow-app",
+                    "workflow_id": "workflow",
+                    "actor_id": "account",
+                    "session_id": "session",
+                    "test_input_id": "input",
+                    "execution_revision": "a" * 64,
+                    "graph_revision": "b" * 64,
+                    "submitted_inputs_digest": "c" * 64,
+                    "effective_inputs_digest": "d" * 64,
+                    "fixture_digest": "e" * 64,
+                    "context_digest": "f" * 64,
+                    "mode": "restricted",
+                    "sandbox_profile": "disabled",
+                    "admitted_nodes": (),
+                    "http_fixtures": (),
+                }
+            )
+        )
+        policy = {"native_test_required": native, "builder_execution": restriction}
+        agent = agent_context()
+        workflow = workflow_agent_context(False)
+
+        assert (
+            bridge.hooks.prepare_agent_app(replace(agent, dify_context=agent.dify_context.model_copy(update=policy)))
+            is None
+        )
+        assert (
+            bridge.hooks.prepare_workflow_agent(
+                replace(workflow, dify_context=workflow.dify_context.model_copy(update=policy)), None
+            )
+            is None
+        )
+        bridge.hooks.freeze_workflow_run(
+            workflow_entity({}).model_copy(update=policy),
+            workflow_id="workflow",
+            workflow_run_id="run",
+            conversation_id=None,
+            graph_data=AGENT_GRAPH,
+        )
+
         assert run_count(bridge.sessions) == 0
 
     @staticmethod

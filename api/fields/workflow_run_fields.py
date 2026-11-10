@@ -1,4 +1,4 @@
-"""Workflow run response schemas for console APIs.
+"""Shared workflow run payload and response schemas for console APIs.
 
 Workflow-run endpoints should document and serialize responses with the
 Pydantic models in this module.
@@ -10,13 +10,21 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from fields.base import ResponseModel, SessionResponseSource
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
 from libs.helper import to_timestamp
+
+
+class IterationNodeRunPayload(BaseModel):
+    inputs: dict[str, Any] | None = Field(default=None)
+
+
+class LoopNodeRunPayload(BaseModel):
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class WorkflowRunForLogResponse(ResponseModel):

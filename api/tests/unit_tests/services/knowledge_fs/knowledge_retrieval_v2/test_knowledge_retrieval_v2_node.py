@@ -14,7 +14,6 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
@@ -53,6 +52,7 @@ from services.knowledge_fs.product_dto import (
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.query_images import KnowledgeFSWorkflowQueryImageReference
 from services.knowledge_fs.retrieval_contracts import KnowledgeFSRetrievalTestItemResponse
+from services.workflow_runtime.node_factory import resolve_workflow_node_class
 from tasks import knowledge_fs_failed_retrieval_tasks as failed_retrieval_dependencies
 from tests.workflow_test_utils import build_test_graph_init_params
 

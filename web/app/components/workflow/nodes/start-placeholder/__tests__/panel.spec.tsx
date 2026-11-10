@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { useNodes } from 'reactflow'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
-import { useNodesSyncDraft } from '@/app/components/workflow-app/hooks/use-nodes-sync-draft'
+import { useWorkflowDraftSave } from '@/app/components/workflow-app/draft/use-draft-save'
 import { createWorkflowSlice } from '@/app/components/workflow-app/store/workflow/workflow-slice'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
@@ -50,7 +50,7 @@ const nodesMap: Partial<NonNullable<AvailableNodesMetaData['nodesMap']>> = {
 }
 
 function DraftOwner({ children }: { children: ReactNode }) {
-  const sync = useNodesSyncDraft()
+  const sync = useWorkflowDraftSave()
   const [hooks] = useState(() =>
     createHooksStore({
       ...sync,

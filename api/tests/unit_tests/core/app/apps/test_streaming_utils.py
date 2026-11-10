@@ -9,12 +9,6 @@ from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
-from core.app.apps.advanced_chat.generate_task_pipeline import (
-    AdvancedChatAppGenerateTaskPipeline,
-    ConversationSnapshot,
-    MessageSnapshot,
-    WorkflowSnapshot,
-)
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
@@ -32,6 +26,12 @@ from graphon.entities import WorkflowStartReason
 from libs.broadcast_channel.channel import SupportsPreparedSubscription
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, EndUser, Message
+from services.workflow_runtime.chatflow_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
 from tasks.app_generate.workflow_execute_task import _publish_streaming_response
 
 

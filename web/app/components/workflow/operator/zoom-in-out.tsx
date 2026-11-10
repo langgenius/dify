@@ -12,10 +12,11 @@ import {
 import { useAtomValue } from 'jotai'
 import { Fragment, memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useReactFlow, useViewport } from 'reactflow'
+import { useReactFlow, useStore } from 'reactflow'
 import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
-import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '../hooks/use-schedule-draft-save'
 import { useWorkflowReadOnly } from '../hooks/use-workflow'
+import { useWorkflowViewport } from '../hooks/use-workflow-viewport'
 import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 import TipPopup from './tip-popup'
@@ -56,9 +57,11 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
-  const { zoom } = useViewport()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const zoom = useStore((state) => state.transform[2])
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
   const { workflowReadOnly, getWorkflowReadOnly } = useWorkflowReadOnly()
+  const { canvasReadOnly, handleViewportUserInteraction } = useWorkflowViewport()
+  const viewportReadOnly = workflowReadOnly && !canvasReadOnly
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
 
   const zoomOptions = [
@@ -116,19 +119,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   ]
 
   const handleZoom = (type: ZoomType) => {
-    if (workflowReadOnly) return
-
-    if (type === ZoomType.zoomToFit) fitView()
-
-    if (type === ZoomType.zoomTo25) zoomTo(0.25)
-
-    if (type === ZoomType.zoomTo50) zoomTo(0.5)
-
-    if (type === ZoomType.zoomTo75) zoomTo(0.75)
-
-    if (type === ZoomType.zoomTo100) zoomTo(1)
-
-    if (type === ZoomType.zoomTo200) zoomTo(2)
+    if (getWorkflowReadOnly() && !canvasReadOnly) return
 
     if (type === ZoomType.toggleUserComments) {
       if (!isCommentMode) onToggleUserComments?.()
@@ -146,6 +137,13 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
       return
     }
 
+    handleViewportUserInteraction()
+    if (type === ZoomType.zoomToFit) fitView()
+    if (type === ZoomType.zoomTo25) zoomTo(0.25)
+    if (type === ZoomType.zoomTo50) zoomTo(0.5)
+    if (type === ZoomType.zoomTo75) zoomTo(0.75)
+    if (type === ZoomType.zoomTo100) zoomTo(1)
+    if (type === ZoomType.zoomTo200) zoomTo(2)
     handleSyncWorkflowDraft()
   }
 
@@ -156,7 +154,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
 
   return (
     <div
-      className={`h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-[13px] shadow-lg backdrop-blur-[5px] hover:bg-state-base-hover ${workflowReadOnly && 'cursor-not-allowed! opacity-50'} `}
+      className={`h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-[13px] shadow-lg backdrop-blur-[5px] hover:bg-state-base-hover ${viewportReadOnly && 'cursor-not-allowed! opacity-50'} `}
     >
       <div className="flex h-8 w-24.5 items-center justify-between rounded-lg">
         <TipPopup
@@ -172,7 +170,9 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
               if (zoom <= 0.25) return
 
               e.stopPropagation()
+              handleViewportUserInteraction()
               zoomOut()
+              handleSyncWorkflowDraft()
             }}
           >
             <span
@@ -183,7 +183,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
         </TipPopup>
         <Menu open={open} onOpenChange={setOpen}>
           <MenuTrigger
-            disabled={getWorkflowReadOnly()}
+            disabled={viewportReadOnly}
             className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary"
           >
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}%
@@ -192,7 +192,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
             <MenuPositioner sideOffset={4} side="top" align="start" alignOffset={-2}>
               <MenuPopup
                 onKeyDown={(event) => {
-                  if (workflowReadOnly) return
+                  if (viewportReadOnly) return
                   handleWorkflowMenuKeyDown(event, [
                     ['workflow.zoom-to-fit', () => selectZoom(ZoomType.zoomToFit)],
                     ['workflow.zoom-to-100', () => selectZoom(ZoomType.zoomTo100)],
@@ -278,7 +278,9 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
               if (zoom >= 2) return
 
               e.stopPropagation()
+              handleViewportUserInteraction()
               zoomIn()
+              handleSyncWorkflowDraft()
             }}
           >
             <span

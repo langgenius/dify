@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
-from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes
@@ -21,6 +20,7 @@ from graphon.nodes.base.node import Node
 from graphon.variables import VariableBase
 from models import AppMode
 from services.workflow.node_defaults import complete_sub_models, editor_defaults, node_data_type
+from services.workflow_runtime.node_factory import resolve_workflow_node_class
 from services.workflow_service import WorkflowService
 from services.workflow_variable_reference_validator import SOURCE_HANDLE, branch_handles
 

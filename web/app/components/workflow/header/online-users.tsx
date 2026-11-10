@@ -1,6 +1,6 @@
 'use client'
 
-import type { OnlineUser } from '../collaboration/types/collaboration'
+import type { CursorPosition, OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -8,13 +8,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatar } from '@/service/common'
 import { getAvatarInitial } from '@/utils/avatar'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
@@ -53,11 +54,17 @@ const OnlineUsers = () => {
   const { t } = useTranslation(['workspaceMembers', 'workflowComments'])
   const appId = useAtomValue(editorAppIdAtom)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
-  const {
-    onlineUsers,
-    cursors,
-    isEnabled: isCollaborationEnabled,
-  } = useCollaboration(appId, canEdit)
+  const { onlineUsers, isEnabled: isCollaborationEnabled } = useCollaboration(appId, canEdit)
+  const cursorsRef = useRef<Record<string, CursorPosition>>({})
+  useEffect(() => {
+    if (!isCollaborationEnabled) {
+      cursorsRef.current = {}
+      return
+    }
+    return collaborationManager.onCursorUpdate((cursors) => {
+      cursorsRef.current = cursors
+    })
+  }, [isCollaborationEnabled])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -85,7 +92,7 @@ const OnlineUsers = () => {
 
   // Function to jump to user's cursor position
   const jumpToUserCursor = (userId: string) => {
-    const cursor = cursors[userId]
+    const cursor = cursorsRef.current[userId]
     if (!cursor) return
 
     // Convert world coordinates to center the view on the cursor

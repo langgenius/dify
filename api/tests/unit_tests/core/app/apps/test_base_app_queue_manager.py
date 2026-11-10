@@ -10,12 +10,12 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueErrorEvent, QueueTextChunkEvent
 from graphon.engine.command import AbortCommand
 from models import Tenant
 from models.model import AppMode
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 
 
 class DummyQueueManager(AppQueueManager):

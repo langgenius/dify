@@ -12,6 +12,7 @@ from flask import Flask
 from sqlalchemy import Engine, create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+import core.db.session_factory as session_factory_module
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper.encrypter import encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -47,8 +48,12 @@ def sqlite_engine(flask_app_with_containers: Flask, tmp_path: Path) -> Iterator[
 
 
 @pytest.fixture
-def sqlite_session_factory(sqlite_engine: Engine) -> sessionmaker[Session]:
-    return sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+def sqlite_session_factory(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[sessionmaker[Session]]:
+    """Use the harness database for independent setup reads and restore the container factory on teardown."""
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with monkeypatch.context() as patch:
+        patch.setattr(session_factory_module, "_session_maker", factory)
+        yield factory
 
 
 def _provider_with_secrets() -> dict[str, object]:

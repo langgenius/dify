@@ -1,0 +1,33 @@
+# Existing native Template v1; bounded text formatting for the Builder test.
+nodes:
+  - id: start
+    data:
+      type: start
+      variables:
+        - variable: subject
+          label: Subject
+          type: text-input
+        - variable: body
+          label: Body
+          type: paragraph
+  - id: template
+    data:
+      type: template-transform
+      version: '1'
+      template: "{% if subject|trim %}## {{ subject|trim }}{% endif %}{% if subject|trim and body|trim %}\n\n{% endif %}{% if body|trim %}{{ body }}{% endif %}"
+      variables:
+        - variable: subject
+          value_selector: [start, subject]
+        - variable: body
+          value_selector: [start, body]
+  - id: end
+    data:
+      type: end
+      outputs:
+        - variable: notification_markdown
+          value_selector: [template, output]
+edges:
+  - source: start
+    target: template
+  - source: template
+    target: end

@@ -1,3 +1,7 @@
+"""Tests for Console workflow pause details.
+
+Unit tests for the Console workflow-run application service."""
+
 from datetime import datetime
 from types import SimpleNamespace
 from typing import override
@@ -7,16 +11,20 @@ import pytest
 from pydantic import TypeAdapter
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
+from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from graphon.entities.pause_reason import SchedulingPause
+from core.workflow.nodes.human_input.session_binding import default_session_binding
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from machinery.context import RequestContext
-from models import WorkflowRun, WorkflowRunTriggeredFrom
+from models import AppMode, WorkflowRun, WorkflowRunTriggeredFrom
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowPause
 from models.workflow import WorkflowType as ModelWorkflowType
@@ -38,8 +46,6 @@ from services.workflow_run_service import (
     WorkflowRunPausedNode,
     WorkflowRunService,
 )
-
-"""Unit tests for the Console workflow-run application service."""
 
 
 def _workflow_run_service_service(dependencies: tuple[MagicMock, MagicMock]) -> WorkflowRunService:
@@ -337,29 +343,6 @@ class TestWorkflowRunServiceCases:
             assert assembly_session.closed
 
 
-"""Tests for Console workflow pause details."""
-
-
-def _workflow_run_service_pause_service(workflow_runs: MagicMock) -> WorkflowRunService:
-    return WorkflowRunService(
-        workflow_runs=workflow_runs,
-        node_executions=MagicMock(),
-        session_factory=sessionmaker(),
-    )
-
-
-def _workflow_run_service_pause_request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
-    return RequestContext(
-        request_id="request-1",
-        trace_id="trace-1",
-        account_id="account-1",
-        active_workspace_id=workspace_id,
-    )
-
-
-"""Tests for Console workflow pause details."""
-
-
 @pytest.fixture
 def workflow_runs() -> DifyAPISQLAlchemyWorkflowRunRepository:
     return DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker())
@@ -471,7 +454,7 @@ def test_get_pause_details_maps_human_input_and_token(
     assert lookups == [("tenant-context", "run-1")]
 
 
-def test_get_pause_details_rejects_unsupported_pause_reason(
+def test_get_pause_details_rejects_a_checkpoint_with_a_missing_human_input_form(
     workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     record = WorkflowRunPauseRecord(
@@ -480,15 +463,84 @@ def test_get_pause_details_rejects_unsupported_pause_reason(
             pause_model=WorkflowPause(workflow_id="workflow-1", workflow_run_id="run-1", state_object_key="state")
         ),
     )
+    runtime = RuntimeState(workflow_id="workflow-1", variable_pool=VariablePool(), start_at=0)
+    runtime.graph_execution.pause(
+        HitlRequired(
+            session_id=default_session_binding.issue_session_id_for_form("2", "missing-form"),
+            node_id="node-1",
+            node_title="Approval",
+        )
+    )
+    context = WorkflowResumptionContext(
+        generate_entity=_WorkflowGenerateEntityWrapper(
+            entity=WorkflowAppGenerateEntity(
+                task_id="task-1",
+                inputs={},
+                files=[],
+                user_id="account-1",
+                user_from=UserFrom.ACCOUNT,
+                stream=True,
+                invoke_from=InvokeFrom.DEBUGGER,
+                workflow_execution_id="run-1",
+                app_config=WorkflowUIBasedAppConfig(
+                    tenant_id="tenant-1", app_id="app-1", workflow_id="workflow-1", app_mode=AppMode.WORKFLOW
+                ),
+            )
+        ),
+        serialized_graph_runtime_state=runtime.dumps(),
+    )
     monkeypatch.setattr(workflow_runs, "get_pause_record", lambda *_args, **_kwargs: record)
+    monkeypatch.setattr(
+        "repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: context.dumps().encode()
+    )
+    monkeypatch.setattr("services.workflow_pause_service.load_prepared_forms", lambda **_kwargs: {})
+
+    with pytest.raises(ValueError, match="Human Input v2 form is missing from its paused run: missing-form"):
+        _service(workflow_runs).get_pause_details(_request_context(), workflow_run_id="run-1")
+
+
+@pytest.mark.parametrize("scheduling_first", [True, False])
+@pytest.mark.parametrize("with_human_form", [True, False])
+def test_get_pause_details_hides_private_scheduling_messages(
+    workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository,
+    monkeypatch: pytest.MonkeyPatch,
+    scheduling_first: bool,
+    with_human_form: bool,
+) -> None:
+    paused_at = datetime(2026, 1, 2, 3, 4, 5)
+    pause_model = WorkflowPause(workflow_id="workflow-1", workflow_run_id="run-1", state_object_key="state")
+    pause_model.created_at = paused_at
+    record = WorkflowRunPauseRecord(
+        status=WorkflowExecutionStatus.PAUSED,
+        pause=_PrivateWorkflowPauseEntity(pause_model=pause_model),
+    )
+    scheduling = SchedulingPause(message="private-agent-command-carrier")
+    human = HumanInputRequired(form_id="form-1", form_content="Approve?", node_id="node-1", node_title="Approval")
+    reasons: tuple[SchedulingPause | HumanInputRequired, ...] = (scheduling,)
+    if with_human_form:
+        reasons = (scheduling, human) if scheduling_first else (human, scheduling)
+    monkeypatch.setattr(workflow_runs, "get_pause_record", lambda *_args, **_kwargs: record)
+    monkeypatch.setattr(
+        workflow_runs,
+        "get_legacy_form_tokens",
+        lambda *_args, **_kwargs: {"form-1": "form-token", "private-agent-command-carrier": "not-a-human-form-token"},
+    )
     monkeypatch.setattr(
         "services.workflow_run_service.load_workflow_pause_snapshot",
         lambda *_args, **_kwargs: WorkflowPauseSnapshot(
             runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0),
-            reasons=(SchedulingPause(message="Waiting for external input"),),
+            reasons=reasons,
             v2_forms={},
         ),
     )
-
-    with pytest.raises(NotImplementedError, match="Pause details do not support SchedulingPause"):
-        _service(workflow_runs).get_pause_details(_request_context(), workflow_run_id="run-1")
+    result = _service(workflow_runs).get_pause_details(_request_context(), workflow_run_id="run-1")
+    assert result == WorkflowRunPauseDetails(
+        paused_at=paused_at,
+        paused_nodes=(
+            WorkflowRunPausedNode(
+                node_id="node-1", node_title="Approval", form_id="form-1", form_version="1", form_token="form-token"
+            ),
+        )
+        if with_human_form
+        else (),
+    )

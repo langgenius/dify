@@ -452,16 +452,23 @@ export const useWorkflowReadOnly = () => {
 const useNodesReadOnlyBase = (canEdit: boolean) => {
   const workflowStore = useWorkflowStore()
   const canvasReadOnly = useStore((s) => s.canvasReadOnly)
+  const nodeEditingLocked = useStore((s) => s.nodeEditingLocked)
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const isRestoring = useStore((s) => s.isRestoring)
 
   const getNodesReadOnly = useCallback((): boolean => {
-    const { workflowRunningData, historyWorkflowData, isRestoring, canvasReadOnly } =
-      workflowStore.getState()
+    const {
+      workflowRunningData,
+      historyWorkflowData,
+      isRestoring,
+      canvasReadOnly,
+      nodeEditingLocked,
+    } = workflowStore.getState()
 
     return !!(
       canvasReadOnly ||
+      nodeEditingLocked ||
       !canEdit ||
       workflowRunningData?.result.status === WorkflowRunningStatus.Running ||
       workflowRunningData?.result.status === WorkflowRunningStatus.Paused ||
@@ -473,6 +480,7 @@ const useNodesReadOnlyBase = (canEdit: boolean) => {
   return {
     nodesReadOnly: !!(
       canvasReadOnly ||
+      nodeEditingLocked ||
       !canEdit ||
       workflowRunningData?.result.status === WorkflowRunningStatus.Running ||
       workflowRunningData?.result.status === WorkflowRunningStatus.Paused ||

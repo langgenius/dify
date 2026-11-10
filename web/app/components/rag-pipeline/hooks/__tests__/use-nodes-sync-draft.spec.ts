@@ -5,6 +5,7 @@ import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixt
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createHttpError } from '@/service/http-error'
+import { createRagPipelineSliceSlice } from '../../store'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockSyncWorkflowDraft = vi.fn()
@@ -72,6 +73,7 @@ const renderPipelineDraftSync = ({
 } = {}) =>
   renderWorkflowCanvasHook(() => useNodesSyncDraft(), {
     resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+    injectWorkflowStoreSliceFn: createRagPipelineSliceSlice,
     nodes,
     edges,
     transform,

@@ -28,6 +28,7 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { CreateAppDialogShell } from '@/features/app-creation/dialog-shell'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useResolvedTheme } from '@/features/theme/hooks'
 import { useRouter } from '@/next/navigation'
@@ -36,7 +37,6 @@ import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
-import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
   onClose: () => void
@@ -44,7 +44,10 @@ type CreateAppProps = {
   defaultAppMode?: AppType
 }
 
-const CREATE_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
+const DEFAULT_APP_KEYBINDINGS = {
+  createApp: 'Mod+Enter',
+  implicitSubmit: 'Enter',
+} satisfies Record<string, HotkeyChord>
 
 const shouldExpandBeginnerAppTypes = (appMode?: AppType) => {
   return appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
@@ -55,6 +58,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const { push } = useRouter()
   const descriptionInputId = useId()
   const contentRef = useRef<HTMLDivElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   const [appMode, setAppMode] = useState<AppType>(defaultAppMode || 'advanced-chat')
   const [appIcon, setAppIcon] = useState<IconPickerValue>({
@@ -170,13 +174,13 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   const createDisabled = isAppQuotaUnavailable || isAppsFull || !canCreateApp || !name.trim()
   useHotkey(
-    CREATE_APP_HOTKEY,
+    DEFAULT_APP_KEYBINDINGS.createApp,
     (event) => {
       if (event.defaultPrevented || event.isComposing) return
       event.preventDefault()
       event.stopPropagation()
       if (event.repeat) return
-      handleCreateApp()
+      formRef.current?.requestSubmit()
     },
     {
       target: contentRef,
@@ -193,7 +197,14 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
         className="flex h-full justify-center overflow-x-hidden overflow-y-auto"
       >
         <div className="flex flex-1 shrink-0 justify-end">
-          <div className="px-10">
+          <form
+            ref={formRef}
+            className="px-10"
+            onSubmit={(event) => {
+              event.preventDefault()
+              handleCreateApp()
+            }}
+          >
             <div className="h-6 w-full 2xl:h-34.75" />
             <div className="pt-1 pb-6">
               <span className="title-2xl-semi-bold text-text-primary">
@@ -322,6 +333,13 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                       aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      onKeyDown={(event) => {
+                        if (
+                          event.key === DEFAULT_APP_KEYBINDINGS.implicitSubmit &&
+                          !event.nativeEvent.isComposing
+                        )
+                          event.preventDefault()
+                      }}
                       placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' })}
                     />
                   </Field>
@@ -370,25 +388,29 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                 </div>
               </button>
               <div className="flex gap-2">
-                <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
+                <Button type="button" onClick={onClose}>
+                  {t(($) => $['newApp.Cancel'], { ns: 'app' })}
+                </Button>
                 <Button
+                  type="submit"
                   disabled={createDisabled}
                   loading={isCreating}
                   variant="primary"
-                  onClick={handleCreateApp}
                 >
                   <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
                   <KbdGroup>
-                    {formatForDisplay(CREATE_APP_HOTKEY, { parts: true }).map((key) => (
-                      <Kbd key={key} color="white">
-                        {key}
-                      </Kbd>
-                    ))}
+                    {formatForDisplay(DEFAULT_APP_KEYBINDINGS.createApp, { parts: true }).map(
+                      (key) => (
+                        <Kbd key={key} color="white">
+                          {key}
+                        </Kbd>
+                      ),
+                    )}
                   </KbdGroup>
                 </Button>
               </div>
             </div>
-          </div>
+          </form>
         </div>
         <div className="relative flex h-full flex-1 shrink justify-start overflow-hidden">
           <div className="absolute inset-s-0 inset-e-0 top-0 h-6 border-b border-b-divider-subtle 2xl:h-34.75"></div>
@@ -429,6 +451,7 @@ const CreateAppModal = ({
 
   return (
     <CreateAppDialogShell
+      legacyLayout
       show={show}
       title={t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
       contentClassName="overflow-visible"
@@ -456,6 +479,7 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
   return (
     <button
       type="button"
+      aria-pressed={active}
       className={cn(
         'relative box-content h-21 w-47.75 cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-start shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         active

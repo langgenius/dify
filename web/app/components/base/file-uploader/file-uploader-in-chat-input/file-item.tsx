@@ -115,7 +115,8 @@ export function FileItem({
           <button
             type="button"
             aria-label={t(($) => $['operation.retry'], { ns: 'common' })}
-            className="size-4 cursor-pointer border-none bg-transparent p-0 text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="size-4 cursor-pointer border-none bg-transparent p-0 text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled"
+            disabled={!onReUpload}
             onClick={() => onReUpload?.(id)}
           >
             <span className="i-custom-vender-other-replay-line block size-4" aria-hidden="true" />

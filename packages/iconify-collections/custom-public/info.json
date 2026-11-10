@@ -1,7 +1,7 @@
 {
   "prefix": "custom-public",
   "name": "Dify Custom Public",
-  "total": 154,
+  "total": 158,
   "version": "0.0.0-private",
   "author": {
     "name": "LangGenius, Inc.",
@@ -14,11 +14,11 @@
   },
   "samples": [
     "agent-building-blocks",
-    "avatar-user",
-    "billing-ar-cube-1",
-    "billing-asterisk",
-    "billing-aws-marketplace-dark",
-    "billing-aws-marketplace-light"
+    "app-builder-builder-mark",
+    "app-builder-builder-mark-24",
+    "app-builder-builder-mark-24-center",
+    "app-builder-thinking",
+    "avatar-user"
   ],
   "palette": false
 }

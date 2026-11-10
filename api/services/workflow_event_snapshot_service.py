@@ -13,7 +13,6 @@ from typing import Any
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity
 from core.app.entities.task_entities import (
@@ -56,6 +55,7 @@ from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_task_service import AppTaskService
 from services.workflow_pause_service import WorkflowPauseSnapshot, load_workflow_pause_snapshot
+from services.workflow_runtime.response_converter import WorkflowResponseConverter
 
 logger = logging.getLogger(__name__)
 

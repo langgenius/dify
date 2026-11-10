@@ -13,8 +13,6 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import ValidationError
 
 from dify_agent.agent_stub.protocol.agent_stub import (
-    AgentStubConnectRequest,
-    AgentStubConnectResponse,
     AgentStubConfigEnvUpdateRequest,
     AgentStubConfigManifestResponse,
     AgentStubConfigNoteUpdateRequest,
@@ -22,16 +20,19 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConfigPromptUpdateRequest,
     AgentStubConfigPushRequest,
     AgentStubConfigPushResponse,
+    AgentStubConnectRequest,
+    AgentStubConnectResponse,
     AgentStubFileDownloadRequest,
     AgentStubFileDownloadResponse,
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
 )
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
 from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestHandler
 from dify_agent.agent_stub.server.control_plane import AgentStubControlPlaneError, AgentStubControlPlaneService
-from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler
+from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.protocol.knowledge_fs import KnowledgeFsCommand, KnowledgeFsCommandResult, KnowledgeFsError
 
 
@@ -39,12 +40,14 @@ def create_agent_stub_http_router(
     token_codec: AgentStubTokenCodec | None,
     file_request_handler: AgentStubFileRequestHandler | None = None,
     config_request_handler: AgentStubConfigRequestHandler | None = None,
+    admission: AgentStubAdmission | None = None,
     knowledge_request_handler: AgentStubKnowledgeHandler | None = None,
 ) -> APIRouter:
     """Create HTTP routes bound to the application's Agent Stub dependencies."""
     router = APIRouter(prefix="/agent-stub", tags=["agent-stub"])
     service = AgentStubControlPlaneService(
         token_codec=token_codec,
+        admission=admission,
         file_request_handler=file_request_handler,
         config_request_handler=config_request_handler,
     )

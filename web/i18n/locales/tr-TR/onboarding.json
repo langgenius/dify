@@ -44,6 +44,8 @@
   "stepByStepTour.guides.studio.empty.learnDify.title": "Ya da Learn Dify ile başlayın",
   "stepByStepTour.guides.studio.empty.template.description": "Dify'ın şablonlarına göz atın ve oluşturmak istediğinize uyan birini seçin. Her şeyi sıfırdan yazmadan başlamanın harika bir yolu.",
   "stepByStepTour.guides.studio.empty.template.title": "Bir şablondan oluştur",
+  "stepByStepTour.guides.studio.empty.workflow.description": "Bir kez çalışıp tamamlanan bir iş akışıyla başlayın.",
+  "stepByStepTour.guides.studio.empty.workflow.title": "İş akışı oluştur",
   "stepByStepTour.guides.studio.noCreate.empty.description": "Bu workspace icindeki uygulamalari gorebilirsiniz, ancak henuz uygulama yok. Uygulama olusturmak veya duzenlemek icin workspace degistirin ya da Workspace Owner veya Admin den erisim isteyin.",
   "stepByStepTour.guides.studio.noCreate.empty.title": "Henuz goruntulenecek uygulama yok",
   "stepByStepTour.guides.studio.noCreate.withApps.description": "Bu workspace icindeki uygulamalara goz atip acabilirsiniz, ancak olusturma veya duzenleme izin gerektirir. Erisiminiz olan bir workspace e gecin ya da Workspace Owner veya Admin ile iletisime gecin.",

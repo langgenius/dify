@@ -1,3 +1,7 @@
+"""Workflow orchestration against real Engine, SQLAlchemy, and filesystem storage.
+
+Pipeline tool lifecycle through the real Engine and SQLAlchemy repositories."""
+
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -8,10 +12,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from clients.agent_backend import FakeAgentBackendRunClient, FakeAgentBackendScenario
-from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
-from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
@@ -60,20 +61,21 @@ from repositories.human_input_v2.form_repository import Form
 from services.agent.workspace_service import AgentWorkspaceService
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.pipeline_runner import PipelineRunner
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
+from services.workflow_runtime.workflow_runner import WorkflowAppRunner
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
-from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
+from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _install_backend_client
+from tests.unit_tests.core.workflow.nodes.human_input_v2.test_node import form as _v2_form_fixture
+from tests.unit_tests.services.workflow_runtime.test_agent_binding import _agent, _binding, _snapshot
+from tests.unit_tests.services.workflow_runtime.test_pipeline_runner import (
     _build_app_generate_entity,
     _build_runner,
     _document,
     _persist_scope,
     _workflow,
 )
-from tests.unit_tests.core.workflow.nodes.agent_v2.test_binding_resolver import _agent, _binding, _snapshot
-from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _install_backend_client
-from tests.unit_tests.core.workflow.nodes.human_input_v2.test_node import form as _v2_form_fixture
-
-"""Pipeline tool lifecycle through the real Engine and SQLAlchemy repositories."""
 
 
 def _pipeline_tool_runner(
@@ -280,9 +282,6 @@ class TestPipelineWorkflowToolsCases:
             assert session.get(AgentWorkspaceBinding, binding_id) is None
 
 
-"""Workflow orchestration against real Engine, SQLAlchemy, and filesystem storage."""
-
-
 def make_workflow_runner(
     sqlite_engine: Engine, *, human_input: bool = False
 ) -> tuple[WorkflowAppRunner, SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository]:
@@ -398,7 +397,7 @@ class TestWorkflowRunAggCases:
     @pytest.fixture
     def _local_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False)
-        from core.app.apps import workflow_app_runner
+        from services.workflow_runtime import base_runner as workflow_app_runner
 
         monkeypatch.setattr(
             workflow_app_runner.dispatch_human_input_form_delivery_task, "apply_async", lambda **_kwargs: None
@@ -533,12 +532,12 @@ class TestWorkflowRunAggCases:
 
     @staticmethod
     def test_late_form_submission_is_refreshed_before_the_real_queue_closes(sqlite_session: Session) -> None:
-        from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
         from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent
         from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
         from core.workflow.nodes.human_input.enums import HumanInputFormStatus
         from graphon.engine_events import NodeRunStartedEvent
-        from tests.unit_tests.core.app.apps.test_workflow_app_runner import (
+        from services.workflow_runtime.base_runner import WorkflowBasedAppRunner
+        from tests.unit_tests.services.workflow_runtime.test_base_runner import (
             _make_paused_workflow,
             _resume_events,
             _save_form,
@@ -850,13 +849,13 @@ class TestWorkflowRunAggCases:
         | GraphRunAbortedEvent,
         status: WorkflowExecutionStatus,
     ) -> None:
-        from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
         from core.app.entities.task_entities import WorkflowPauseStreamResponse
         from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
         from core.workflow.nodes.human_input.enums import HumanInputFormStatus
         from core.workflow.system_variables import build_system_variables
         from graphon.entities import WorkflowStartReason
         from models.human_input import HumanInputForm
+        from services.workflow_runtime.response_converter import WorkflowResponseConverter
 
         clock = [100.0]
         monkeypatch.setattr("repositories.entities.workflow_execution.perf_counter", lambda: clock[0])

@@ -32,7 +32,6 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_knowledge_layer_config,
     build_shell_layer_config,
 )
-from core.workflow.workflow_entry import WorkflowEntry
 from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
@@ -58,6 +57,8 @@ from models.agent_config_entities import (
 )
 from models.workflow import Workflow
 from services.tracing.adapters import CeleryTraceEmitter
+from services.workflow_runtime.agent_binding import WorkflowAgentBindingResolver
+from services.workflow_runtime.entry import WorkflowEntry
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
@@ -435,7 +436,7 @@ def test_single_step_legacy_agent_v2_does_not_resolve_new_agent_binding(monkeypa
     def reject_new_agent_binding(*_args, **_kwargs):
         raise AssertionError("Legacy Agent must not resolve an Agent v2 binding")
 
-    monkeypatch.setattr("core.workflow.workflow_entry.WorkflowAgentBindingResolver.resolve", reject_new_agent_binding)
+    monkeypatch.setattr(WorkflowAgentBindingResolver, "resolve", reject_new_agent_binding)
     workflow = Workflow(
         id="workflow-id",
         tenant_id="tenant-id",

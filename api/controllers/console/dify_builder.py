@@ -1,0 +1,1204 @@
+"""Console HTTP surface for Dify Builder sessions and command streams.
+
+Flask-RESTX resources under /console/api/dify-builder/*. Auth + CSRF come from
+the console guard stack (CSRF is enforced inside login_required for every
+method); RBAC/authz is enforced here at the
+boundary — the Celery advance task trusts the Actor. The route LOGIC lives in
+undecorated module functions (_create/_get_session/_conversation/_stream/
+_action/_message and the real-call consent _prepare_real_call/
+_confirm_real_call/_execute_real_call/_get_real_call) so they are unit
+testable without the Flask request stack; the Resource methods are thin
+auth-wrappers.
+
+Decorator injection contract (verified against controllers/console/wraps.py
+and the multi-decorator precedent in controllers/console/app/workflow_comment.py,
+e.g. ``def post(self, current_tenant_id, current_user, app_model, comment_id)``):
+``@with_current_user`` and ``@with_current_tenant_id`` do NOT inject their
+values as keyword arguments. Each calls its wrapped view as
+``view(self, injected_value, *args, **kwargs)`` — i.e. it PREPENDS the value
+as a positional argument immediately after ``self``. Stacking both means the
+decorator closer to the function (here, ``@with_current_tenant_id``, directly
+above ``@dify_builder_required``) contributes the positional argument
+closest to ``self``; the one above it (``@with_current_user``) contributes
+the next one. URL path parameters (e.g. ``session_id``) are untouched by
+either decorator and keep arriving as keyword arguments from Flask-RESTX's
+routing. ``dify_builder_required`` sits directly below
+``@with_current_tenant_id`` in the stack, so it receives ``current_tenant_id``
+positionally (as the argument right after ``self``), not as a keyword-only
+argument.
+"""
+
+import dataclasses
+import functools
+import logging
+from collections.abc import Callable
+from typing import Literal, TypedDict
+
+from flask import Response, request
+from flask.globals import app_ctx
+from flask_restx import Resource
+from pydantic import ValidationError
+from sqlalchemy.orm import scoped_session
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound, ServiceUnavailable
+
+from controllers.common.schema import (
+    query_params_from_model,
+    register_response_schema_models,
+    register_schema_models,
+    typed_event_stream_response,
+)
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
+from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
+from core.dify_builder.models import Action, Actor
+from core.dify_builder.real_call_consent import ConsentReceipt
+from extensions.ext_database import db
+from libs.helper import dump_response
+from libs.login import login_required
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from services.dify_builder import progress_bus, progress_snapshot
+from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.public_contracts import (
+    NativeTestCancelPayload,
+    NativeTestDecisionPayload,
+    NativeTestResumePayload,
+    NativeTestStartPayload,
+)
+from services.dify_builder.service import CommandSubmission, resolve_submitted_action
+from services.dify_builder.wiring import (
+    build_native_test_api_service,
+    build_native_test_input_binding_service,
+    build_real_call_consent_service,
+    build_service,
+    dify_builder_error_response,
+    real_call_error_response,
+    session_view_to_dict,
+    stream_session_frames,
+)
+from services.feature_service import FeatureService
+
+from . import console_ns
+from .dify_builder_fields import (
+    DifyBuilderClearConversationPayload,
+    DifyBuilderCommandSubmissionResponse,
+    DifyBuilderConfirmRealCallPayload,
+    DifyBuilderConversationLifecyclePayload,
+    DifyBuilderConversationLifecycleResponse,
+    DifyBuilderConversationListQuery,
+    DifyBuilderConversationPageResponse,
+    DifyBuilderCreateBuildSessionPayload,
+    DifyBuilderCreateChecklistFixSessionPayload,
+    DifyBuilderCreatedSessionResponse,
+    DifyBuilderCreateEditSessionPayload,
+    DifyBuilderCreateSessionPayload,
+    DifyBuilderErrorResponse,
+    DifyBuilderExecuteRealCallPayload,
+    DifyBuilderFixControlQuery,
+    DifyBuilderFixControlResponse,
+    DifyBuilderFixIntentPayload,
+    DifyBuilderFixIntentResponse,
+    DifyBuilderNativeTestInputResponse,
+    DifyBuilderNativeTestResponse,
+    DifyBuilderPrepareRealCallPayload,
+    DifyBuilderRealCallConsentResponse,
+    DifyBuilderRealCallForbiddenResponse,
+    DifyBuilderRealCallRefusalResponse,
+    DifyBuilderSessionViewResponse,
+    DifyBuilderStreamEventResponse,
+    DifyBuilderSubmitActionPayload,
+    DifyBuilderSubmitMessagePayload,
+    DifyBuilderTaskControlPayload,
+)
+
+logger = logging.getLogger(__name__)
+
+
+register_schema_models(
+    console_ns,
+    NativeTestStartPayload,
+    NativeTestDecisionPayload,
+    NativeTestResumePayload,
+    NativeTestCancelPayload,
+    DifyBuilderCreateSessionPayload,
+    DifyBuilderConversationListQuery,
+    DifyBuilderSubmitActionPayload,
+    DifyBuilderSubmitMessagePayload,
+    DifyBuilderTaskControlPayload,
+    DifyBuilderConversationLifecyclePayload,
+    DifyBuilderClearConversationPayload,
+    DifyBuilderFixControlQuery,
+    DifyBuilderFixIntentPayload,
+    DifyBuilderPrepareRealCallPayload,
+    DifyBuilderConfirmRealCallPayload,
+    DifyBuilderExecuteRealCallPayload,
+)
+register_response_schema_models(
+    console_ns,
+    DifyBuilderCommandSubmissionResponse,
+    DifyBuilderCreatedSessionResponse,
+    DifyBuilderNativeTestInputResponse,
+    DifyBuilderNativeTestResponse,
+    DifyBuilderConversationPageResponse,
+    DifyBuilderSessionViewResponse,
+    DifyBuilderStreamEventResponse,
+    DifyBuilderErrorResponse,
+    DifyBuilderRealCallConsentResponse,
+    DifyBuilderRealCallRefusalResponse,
+    DifyBuilderRealCallForbiddenResponse,
+    DifyBuilderConversationLifecycleResponse,
+    DifyBuilderFixControlResponse,
+    DifyBuilderFixIntentResponse,
+)
+
+
+def dify_builder_required(func: Callable) -> Callable:
+    @functools.wraps(func)
+    def wrapper(self, current_tenant_id: str, *args, **kwargs):
+        if not FeatureService.get_features(current_tenant_id).dify_builder_enabled:
+            return {"code": "feature_unavailable"}, 403
+        return func(self, current_tenant_id, *args, **kwargs)
+
+    return wrapper
+
+
+def _require_no_request_sql() -> None:
+    """Refuse a real-call request whose request-scoped session holds a transaction.
+
+    The feature check's billing/enterprise calls and, inside the consent owner
+    and dispatch coordinator, external metadata reads, the Redis lease and the
+    enqueue must not run under an open request transaction. This guard never
+    ends one: a transaction it did not begin may hold another owner's flushed
+    or Core writes, which neither a rollback nor a commit may decide here.
+    """
+    session = db.session() if isinstance(db.session, scoped_session) else db.session
+    if session.in_transaction() or session.new or session.dirty or session.deleted:
+        raise RuntimeError("real-call request holds an open request-scoped transaction")
+
+
+def real_call_without_request_sql[**P, R](func: Callable[P, R]) -> Callable[P, R]:
+    """Require that the authenticated wrappers left no request-scoped SQL before any real-call work."""
+
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        _require_no_request_sql()
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def _actor(current_user, current_tenant_id: str) -> Actor:
+    return Actor(account_id=current_user.id, tenant_id=current_tenant_id)
+
+
+_SSE_HEADERS = {"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+
+
+class _FixArguments(TypedDict, total=False):
+    session_id: str
+    client_action_id: str
+
+
+class _AttachmentArguments(TypedDict, total=False):
+    attachments: list[str]
+
+
+def _create(body, actor: Actor) -> dict | tuple[dict, int]:
+    """Persist the opening context and return the session identity before dispatch."""
+    try:
+        payload = DifyBuilderCreateSessionPayload.model_validate(body).root
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+
+    service = build_service()
+    model_config = dataclasses.asdict(payload.model_config_data) if payload.model_config_data else None
+    attachments = [str(attachment.upload_file_id) for attachment in payload.attachments]
+    attachment_arguments: _AttachmentArguments = {"attachments": attachments} if attachments else {}
+    try:
+        if isinstance(payload, DifyBuilderCreateBuildSessionPayload):
+            session_id, opening = service.prepare_build_session(
+                app_id=payload.app_id,
+                actor=actor,
+                goal_text=payload.goal_text,
+                model_config=model_config,
+                derive_app_name=payload.derive_app_name,
+                **attachment_arguments,
+            )
+        elif isinstance(payload, DifyBuilderCreateEditSessionPayload):
+            session_id, opening = service.prepare_edit_session(
+                app_id=payload.app_id,
+                actor=actor,
+                model_config=model_config,
+                goal_text=payload.goal_text,
+                **attachment_arguments,
+            )
+        else:
+            fix_arguments: _FixArguments = {}
+            if payload.session_id is not None:
+                fix_arguments["session_id"] = payload.session_id
+            if payload.client_action_id is not None:
+                fix_arguments["client_action_id"] = payload.client_action_id
+            session_id, opening = service.prepare_fix_session(
+                app_id=payload.app_id,
+                actor=actor,
+                failed_run_id=payload.failed_run_id,
+                checklist_errors=(
+                    [error.model_dump() for error in payload.checklist_errors]
+                    if isinstance(payload, DifyBuilderCreateChecklistFixSessionPayload)
+                    else None
+                ),
+                model_config=model_config,
+                defer_existing=True,
+                **fix_arguments,
+                **attachment_arguments,
+            )
+        view = service.get_session_view(session_id, actor)
+    except Exception as exc:
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(
+        DifyBuilderCreatedSessionResponse,
+        {"session": session_view_to_dict(view), "requires_start": opening is not None},
+    )
+
+
+def _action_command_id(session_id: str, actor: Actor, client_action_id: str | None) -> str:
+    """Use the existing action namespace at both command admission and receipt reads."""
+    from uuid import NAMESPACE_URL, uuid5
+
+    return (
+        str(
+            uuid5(NAMESPACE_URL, f"builder-action:{actor.tenant_id}:{actor.account_id}:{session_id}:{client_action_id}")
+        )
+        if client_action_id
+        else ""
+    )
+
+
+def _command_response(session_id: str, submit: Callable[[], CommandSubmission]) -> dict | tuple[dict, int]:
+    """Return a short admission receipt and invalidate the read model after synchronous writes."""
+    try:
+        receipt = submit()
+    except Exception as exc:
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    if receipt.session is not None:
+        progress_bus.publish_session_change(session_id)
+    return dump_response(
+        DifyBuilderCommandSubmissionResponse,
+        {
+            "command_id": receipt.command_id,
+            "pending": receipt.pending,
+            "session": session_view_to_dict(receipt.session) if receipt.session is not None else None,
+        },
+    )
+
+
+def _action(session_id: str, body, actor: Actor) -> dict | tuple[dict, int]:
+    """Validate a user command and return its admission receipt."""
+    try:
+        payload = DifyBuilderSubmitActionPayload.model_validate(body)
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+    action = Action(
+        command_id=_action_command_id(session_id, actor, payload.client_action_id),
+        kind=resolve_submitted_action(payload.action_id, payload.payload),
+        receipt_snapshot=payload.receipt_snapshot.model_dump() if payload.receipt_snapshot is not None else None,
+        payload=payload.payload,
+        base_version=payload.base_version,
+        base_app_revision=payload.base_app_revision,
+    )
+    service = build_service()
+    submit = service.start_session if action.kind == "start_session" else service.submit_action_command
+    return _command_response(session_id, lambda: submit(session_id, actor, action))
+
+
+def _message(session_id: str, body, actor: Actor) -> dict | tuple[dict, int]:
+    """Validate a user turn and return its admission receipt."""
+    try:
+        payload = DifyBuilderSubmitMessagePayload.model_validate(body)
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+    return _command_response(
+        session_id,
+        lambda: build_service().submit_message_command(
+            session_id,
+            actor,
+            payload.text,
+            payload.base_version,
+            payload.client_turn_id,
+            **(
+                {"attachments": [str(item.upload_file_id) for item in payload.attachments]}
+                if payload.attachments
+                else {}
+            ),
+        ),
+    )
+
+
+def _task_control(session_id: str, body, actor: Actor, *, operation: Literal["stop", "resume"]) -> dict:
+    """Parse a fixed task operation and serialize its authoritative JSON projection."""
+    try:
+        payload = DifyBuilderTaskControlPayload.model_validate(body)
+    except ValidationError:
+        raise BadRequest("Invalid task control request.") from None
+    try:
+        service = build_service()
+        command = service.stop_task if operation == "stop" else service.resume_task
+        view = command(
+            session_id,
+            actor,
+            base_version=payload.base_version,
+            client_action_id=payload.client_action_id,
+            base_app_revision=payload.base_app_revision,
+        )
+    except NotFoundError:
+        raise NotFound("Session not found.") from None
+    except BadRequestError:
+        raise BadRequest("Invalid task control request.") from None
+    except (BusyError, ConflictError):
+        raise Conflict("Task state conflict.") from None
+    except BuilderExecutionPolicyError as error:
+        if error.reason_code in {"native_owner_mismatch", "execution_owner_mismatch"}:
+            raise NotFound("Session not found.") from None
+        if error.reason_code == "execution_permission_denied":
+            raise Forbidden("Task permission denied.") from None
+        if error.reason_code in {
+            "native_runtime_unavailable",
+            "native_profile_unavailable",
+            "native_binding_unavailable",
+            "native_disclosure_unavailable",
+        }:
+            raise ServiceUnavailable("Task capability unavailable.") from None
+        raise Conflict("Task state conflict.") from None
+    return dump_response(DifyBuilderSessionViewResponse, session_view_to_dict(view))
+
+
+def _conversation_control(session_id: str, body, actor: Actor, *, operation: Literal["clear", "abandon"]):
+    """Confirmed lifecycle controls deliberately have no app-revision input."""
+    payload_type = (
+        DifyBuilderClearConversationPayload if operation == "clear" else DifyBuilderConversationLifecyclePayload
+    )
+    try:
+        payload = payload_type.model_validate(body)
+    except ValidationError:
+        raise BadRequest("Invalid conversation control request.") from None
+    try:
+        service = build_service()
+        command = service.clear_conversation if operation == "clear" else service.abandon_task
+        receipt = command(session_id, actor, **payload.model_dump())
+    except Exception as error:
+        mapped = dify_builder_error_response(error)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(DifyBuilderConversationLifecycleResponse, receipt)
+
+
+def _fix_control_receipt(session_id: str, query, actor: Actor):
+    try:
+        payload = DifyBuilderFixControlQuery.model_validate(query)
+    except ValidationError:
+        raise BadRequest("Invalid Fix control receipt query.") from None
+    try:
+        arguments = payload.model_dump()
+        if payload.operation != "fix":
+            arguments["client_action_id"] = _action_command_id(session_id, actor, payload.client_action_id)
+        receipt = build_service().get_fix_control_receipt(session_id, actor, **arguments)
+    except Exception as error:
+        mapped = dify_builder_error_response(error)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(DifyBuilderFixControlResponse, {**receipt, "client_action_id": payload.client_action_id})
+
+
+def _fix_intent(session_id: str, body, actor: Actor):
+    try:
+        payload = DifyBuilderFixIntentPayload.model_validate(body)
+    except ValidationError:
+        raise BadRequest("Invalid Fix intent request.") from None
+    try:
+        receipt = build_service().prepare_fix_intent(
+            session_id,
+            actor,
+            base_version=payload.base_version,
+            client_action_id=payload.client_action_id,
+            failed_run_id=payload.failed_run_id,
+            checklist_errors=[item.model_dump() for item in payload.checklist_errors] or None,
+            model_config=dataclasses.asdict(payload.model_config_data) if payload.model_config_data else None,
+        )
+    except Exception as error:
+        mapped = dify_builder_error_response(error)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(
+        DifyBuilderFixIntentResponse,
+        {
+            "fix_intent_id": receipt.fix_intent_id,
+            "status": receipt.status,
+            "session": session_view_to_dict(receipt.session),
+        },
+    )
+
+
+def _get_session(session_id: str, actor: Actor) -> dict | tuple[dict, int]:
+    try:
+        view = build_service().get_session_view(session_id, actor)
+    except Exception as exc:
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(DifyBuilderSessionViewResponse, session_view_to_dict(view))
+
+
+def _conversation(session_id: str, query_args, actor: Actor) -> dict | tuple[dict, int]:
+    try:
+        query = DifyBuilderConversationListQuery.model_validate(query_args)
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+    try:
+        page = build_service().get_conversation_page(
+            session_id,
+            actor,
+            limit=query.limit,
+            before_seq=query.before_seq,
+            after_seq=query.after_seq,
+        )
+    except Exception as exc:
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(DifyBuilderConversationPageResponse, page)
+
+
+def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
+    """Authorize the session and subscribe before reading any reconnect state."""
+    service = build_service()
+    try:
+        service.authorize_session(session_id, actor)
+    except Exception as exc:
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+
+    subscription = progress_bus.subscribe(session_id)
+    try:
+        view = service.get_session_view(session_id, actor)
+        snapshot = (
+            progress_snapshot.read(tenant_id=actor.tenant_id, session_id=session_id) if view.command_pending else None
+        )
+    except Exception as exc:
+        subscription.close()
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+
+    app = app_ctx.app
+
+    def read_session_view() -> dict[str, object]:
+        """Reauthorize and project the current view in a short app context."""
+        with app.app_context():
+            return session_view_to_dict(service.get_session_view(session_id, actor))
+
+    return Response(
+        stream_session_frames(
+            session_view_to_dict(view),
+            subscription,
+            read_session_view=read_session_view,
+            initial_progress=snapshot if snapshot is not None and snapshot.at_version > view.version else None,
+            conversation_cleared=lambda: service.is_conversation_cleared(session_id, actor),
+        ),
+        mimetype="text/event-stream",
+        headers=_SSE_HEADERS,
+    )
+
+
+def _real_call_body() -> object:
+    """JSON body of a consent POST, or ``None`` for a non-JSON or malformed request.
+
+    ``None`` fails payload validation, so the route answers the fixed 400
+    before any consent or dispatch work instead of a framework 415/400 body.
+    """
+    if not request.is_json:
+        return None
+    try:
+        return console_ns.payload or {}
+    except BadRequest:  # malformed JSON; parser text is never echoed
+        return None
+
+
+def _real_call_response(read_receipt: Callable[[], ConsentReceipt], status: int) -> tuple[dict, int]:
+    """Serialize only the public receipt; map refusals to fixed codes, re-raise anything else."""
+    try:
+        receipt = read_receipt()
+    except Exception as exc:  # re-raised below if not a known consent/dispatch refusal
+        mapped = real_call_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(DifyBuilderRealCallConsentResponse, receipt), status
+
+
+def _prepare_real_call(session_id: str, body: object, actor: Actor) -> tuple[dict, int]:
+    """Freeze the binding and disclosure for review. Metadata only: nothing decrypts, refreshes or runs."""
+    try:
+        payload = DifyBuilderPrepareRealCallPayload.model_validate(body)
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+    return _real_call_response(
+        lambda: build_real_call_consent_service().prepare(
+            actor=actor,
+            session_id=session_id,
+            node_id=payload.node_id,
+            test_input_id=payload.test_input_id,
+            credential_id=payload.credential_id,
+            at_version=payload.at_version,
+            base_app_revision=payload.base_app_revision,
+            idempotency_key=payload.idempotency_key,
+        ),
+        201,
+    )
+
+
+def _confirm_real_call(session_id: str, consent_id: str, body: object, actor: Actor) -> tuple[dict, int]:
+    """Record one human decision; an identical replay returns the saved decision receipt. Never dispatches."""
+    try:
+        payload = DifyBuilderConfirmRealCallPayload.model_validate(body)
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+    return _real_call_response(
+        lambda: build_real_call_consent_service().confirm(
+            actor=actor,
+            session_id=session_id,
+            consent_id=consent_id,
+            decision=payload.decision,
+            scope_digest=payload.scope_digest,
+            at_version=payload.at_version,
+            idempotency_key=payload.idempotency_key,
+        ),
+        200,
+    )
+
+
+def _execute_real_call(session_id: str, consent_id: str, body: object, actor: Actor) -> tuple[dict, int]:
+    """Launch a confirmed call through the existing confirmed dispatch coordinator.
+
+    The coordinator holds the session's advance lease before the atomic
+    reservation, enqueues the reserved command at most once and answers a
+    matching duplicate with the current receipt.
+    """
+    try:
+        payload = DifyBuilderExecuteRealCallPayload.model_validate(body)
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+    return _real_call_response(
+        lambda: build_service().execute_confirmed_tool(
+            session_id,
+            actor,
+            consent_id=consent_id,
+            scope_digest=payload.scope_digest,
+            at_version=payload.at_version,
+            idempotency_key=payload.idempotency_key,
+        ),
+        202,
+    )
+
+
+def _get_real_call(session_id: str, consent_id: str, actor: Actor) -> tuple[dict, int]:
+    """Current authorized receipt. Read only: never executes."""
+    return _real_call_response(
+        lambda: build_real_call_consent_service().get(actor=actor, session_id=session_id, consent_id=consent_id),
+        200,
+    )
+
+
+def _ping(body, actor: Actor) -> tuple[dict, int]:
+    model_config = body.get("model_config") if isinstance(body, dict) else None
+    try:
+        from services.dify_builder.agent.ping import ping_model
+
+        return ping_model(actor.tenant_id, model_config, account_id=actor.account_id), 200
+    except Exception as exc:  # a health check returns ok:false rather than 500
+        logger.warning("dify_builder agent ping failed: %s", exc)
+        return {"ok": False, "error": str(exc)}, 200
+
+
+@console_ns.route("/dify-builder/sessions")
+class DifyBuilderSessionsApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderCreateSessionPayload.__name__])
+    @console_ns.response(
+        200,
+        "Dify Builder session created",
+        console_ns.models[DifyBuilderCreatedSessionResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user):
+        return _create(request.get_json(silent=True), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>")
+class DifyBuilderSessionApi(Resource):
+    @console_ns.response(
+        200,
+        "Dify Builder session state",
+        console_ns.models[DifyBuilderSessionViewResponse.__name__],
+    )
+    @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id):
+        return _get_session(session_id, _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/conversation")
+class DifyBuilderConversationApi(Resource):
+    @console_ns.doc(params=query_params_from_model(DifyBuilderConversationListQuery))
+    @console_ns.response(
+        200,
+        "Dify Builder conversation page",
+        console_ns.models[DifyBuilderConversationPageResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id):
+        return _conversation(
+            session_id,
+            request.args.to_dict(flat=True),
+            _actor(current_user, current_tenant_id),
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/stream")
+class DifyBuilderSessionStreamApi(Resource):
+    @typed_event_stream_response(console_ns, DifyBuilderStreamEventResponse)
+    @console_ns.response(
+        200,
+        "Dify Builder session event stream",
+        console_ns.models[DifyBuilderStreamEventResponse.__name__],
+    )
+    @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id):
+        return _stream(session_id, _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/actions")
+class DifyBuilderActionsApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderSubmitActionPayload.__name__])
+    @console_ns.response(
+        200,
+        "Dify Builder action submitted",
+        console_ns.models[DifyBuilderCommandSubmissionResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Session conflict", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _action(session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/stop")
+class DifyBuilderTaskStopApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderTaskControlPayload.__name__])
+    @console_ns.response(
+        200,
+        "Stopped task session state",
+        console_ns.models[DifyBuilderSessionViewResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _task_control(
+            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="stop"
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/resume")
+class DifyBuilderTaskResumeApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderTaskControlPayload.__name__])
+    @console_ns.response(
+        200,
+        "Resumed task session state",
+        console_ns.models[DifyBuilderSessionViewResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _task_control(
+            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="resume"
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/clear")
+class DifyBuilderConversationClearApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderClearConversationPayload.__name__])
+    @console_ns.response(
+        200, "Conversation cleared", console_ns.models[DifyBuilderConversationLifecycleResponse.__name__]
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _conversation_control(
+            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="clear"
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/abandon")
+class DifyBuilderTaskAbandonApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderConversationLifecyclePayload.__name__])
+    @console_ns.response(200, "Task abandoned", console_ns.models[DifyBuilderConversationLifecycleResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _conversation_control(
+            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="abandon"
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/fix-intents")
+class DifyBuilderFixIntentsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(DifyBuilderFixControlQuery))
+    @console_ns.response(
+        200, "Correlated durable Fix control receipt", console_ns.models[DifyBuilderFixControlResponse.__name__]
+    )
+    @console_ns.response(400, "Invalid receipt query", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(404, "Owned receipt not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Receipt task changed", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id):
+        return _fix_control_receipt(
+            session_id, request.args.to_dict(flat=True), _actor(current_user, current_tenant_id)
+        )
+
+    @console_ns.expect(console_ns.models[DifyBuilderFixIntentPayload.__name__])
+    @console_ns.response(200, "Validated Fix intent", console_ns.models[DifyBuilderFixIntentResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _fix_intent(session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/messages")
+class DifyBuilderMessagesApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderSubmitMessagePayload.__name__])
+    @console_ns.response(
+        200,
+        "Dify Builder message submitted",
+        console_ns.models[DifyBuilderCommandSubmissionResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Session conflict", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _message(session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/real-call-consents")
+class DifyBuilderRealCallConsentsApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderPrepareRealCallPayload.__name__])
+    @console_ns.response(
+        201,
+        "Real call consent prepared for review",
+        console_ns.models[DifyBuilderRealCallConsentResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(403, "Access refused", console_ns.models[DifyBuilderRealCallForbiddenResponse.__name__])
+    @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Real call refused", console_ns.models[DifyBuilderRealCallRefusalResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _prepare_real_call(session_id, _real_call_body(), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>")
+class DifyBuilderRealCallConsentApi(Resource):
+    @console_ns.response(
+        200,
+        "Current real call consent receipt",
+        console_ns.models[DifyBuilderRealCallConsentResponse.__name__],
+    )
+    @console_ns.response(403, "Access refused", console_ns.models[DifyBuilderRealCallForbiddenResponse.__name__])
+    @console_ns.response(404, "Consent not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Real call refused", console_ns.models[DifyBuilderRealCallRefusalResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id, consent_id):
+        return _get_real_call(session_id, consent_id, _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>/confirm")
+class DifyBuilderRealCallConsentConfirmApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderConfirmRealCallPayload.__name__])
+    @console_ns.response(
+        200,
+        "Saved decision receipt",
+        console_ns.models[DifyBuilderRealCallConsentResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(403, "Access refused", console_ns.models[DifyBuilderRealCallForbiddenResponse.__name__])
+    @console_ns.response(404, "Consent not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Real call refused", console_ns.models[DifyBuilderRealCallRefusalResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id, consent_id):
+        return _confirm_real_call(session_id, consent_id, _real_call_body(), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>/execute")
+class DifyBuilderRealCallConsentExecuteApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderExecuteRealCallPayload.__name__])
+    @console_ns.response(
+        202,
+        "Current receipt of the reserved real call",
+        console_ns.models[DifyBuilderRealCallConsentResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(403, "Access refused", console_ns.models[DifyBuilderRealCallForbiddenResponse.__name__])
+    @console_ns.response(404, "Consent not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Real call refused", console_ns.models[DifyBuilderRealCallRefusalResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id, consent_id):
+        return _execute_real_call(session_id, consent_id, _real_call_body(), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/agent/ping")
+class DifyBuilderAgentPingApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user):
+        return _ping(request.get_json(silent=True), _actor(current_user, current_tenant_id))
+
+
+def _native_command(
+    *,
+    actor: Actor,
+    session_id: str,
+    command: Literal["start", "get", "decide", "resume", "cancel"],
+    payload_model=None,
+    request_id=None,
+):
+    """Transport-only strict parsing; never include raw validation/owner errors."""
+    kwargs = {"actor": actor, "session_id": session_id}
+    if request_id is not None:
+        kwargs["request_id"] = request_id
+    if payload_model is not None:
+        try:
+            payload = payload_model.model_validate(request.get_json(silent=True))
+        except ValidationError:
+            raise BadRequest("Invalid native test request.") from None
+        kwargs.update(payload.model_dump(exclude={"schema_version"}))
+    try:
+        service = build_native_test_api_service(actor=actor)
+        commands: dict[str, Callable[..., object]] = {
+            "start": service.start,
+            "get": service.get,
+            "decide": service.decide,
+            "resume": service.resume,
+            "cancel": service.cancel,
+        }
+        receipt = commands[command](**kwargs)
+    except (BuilderExecutionPolicyError, NativeContextUnavailable) as error:
+        if error.reason_code in {"native_owner_mismatch", "execution_owner_mismatch"}:
+            raise NotFound("Native test not found.") from None
+        if error.reason_code == "execution_permission_denied":
+            raise Forbidden("Native test permission denied.") from None
+        if error.reason_code in {
+            "native_runtime_unavailable",
+            "native_profile_unavailable",
+            "native_binding_unavailable",
+            "native_disclosure_unavailable",
+        }:
+            raise ServiceUnavailable("Native test capability unavailable.") from None
+        raise Conflict("Native test state conflict.") from None
+    return dump_response(DifyBuilderNativeTestResponse, {"data": receipt})
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-test-input")
+class DifyBuilderNativeTestInputApi(Resource):
+    @console_ns.response(
+        200, "Current saved test input binding", console_ns.models[DifyBuilderNativeTestInputResponse.__name__]
+    )
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id):
+        actor = _actor(current_user, current_tenant_id)
+        try:
+            binding = build_native_test_input_binding_service(actor=actor).get(session_id=session_id)
+        except BuilderExecutionPolicyError as error:
+            if error.reason_code in {"native_owner_mismatch", "execution_owner_mismatch"}:
+                raise NotFound("Native test input not found.") from None
+            if error.reason_code == "execution_permission_denied":
+                raise Forbidden("Native test permission denied.") from None
+            raise Conflict("Current native test input unavailable or stale.") from None
+        return dump_response(DifyBuilderNativeTestInputResponse, {"data": binding})
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests")
+class DifyBuilderNativeTestsApi(Resource):
+    @console_ns.expect(console_ns.models[NativeTestStartPayload.__name__])
+    @console_ns.response(
+        200, "Native test admission receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
+    )
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _native_command(
+            actor=_actor(current_user, current_tenant_id),
+            session_id=session_id,
+            command="start",
+            payload_model=NativeTestStartPayload,
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>")
+class DifyBuilderNativeTestApi(Resource):
+    @console_ns.response(200, "Current native test receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__])
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id, request_id):
+        return _native_command(
+            actor=_actor(current_user, current_tenant_id), session_id=session_id, request_id=request_id, command="get"
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>/decisions")
+class DifyBuilderNativeTestDecisionsApi(Resource):
+    @console_ns.expect(console_ns.models[NativeTestDecisionPayload.__name__])
+    @console_ns.response(200, "Saved native test decision", console_ns.models[DifyBuilderNativeTestResponse.__name__])
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id, request_id):
+        return _native_command(
+            actor=_actor(current_user, current_tenant_id),
+            session_id=session_id,
+            request_id=request_id,
+            command="decide",
+            payload_model=NativeTestDecisionPayload,
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>/resume")
+class DifyBuilderNativeTestResumeApi(Resource):
+    @console_ns.expect(console_ns.models[NativeTestResumePayload.__name__])
+    @console_ns.response(
+        200, "Native test continuation receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
+    )
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id, request_id):
+        return _native_command(
+            actor=_actor(current_user, current_tenant_id),
+            session_id=session_id,
+            request_id=request_id,
+            command="resume",
+            payload_model=NativeTestResumePayload,
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>/cancel")
+class DifyBuilderNativeTestCancelApi(Resource):
+    @console_ns.expect(console_ns.models[NativeTestCancelPayload.__name__])
+    @console_ns.response(
+        200, "Native test cancellation receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
+    )
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id, request_id):
+        return _native_command(
+            actor=_actor(current_user, current_tenant_id),
+            session_id=session_id,
+            request_id=request_id,
+            command="cancel",
+            payload_model=NativeTestCancelPayload,
+        )

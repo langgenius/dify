@@ -721,3 +721,46 @@ def test_squid_block_with_internal_10_x_url_mentions_allowlist(mock_get_client, 
 
     assert "10.0.0.42" in str(exc_info.value)
     assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("sensitive", [False, True])
+def test_request_error_warnings_omit_urls_and_exception_messages(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, sensitive: bool
+) -> None:
+    """Actual SSRF owner over an explicitly synthetic lower HTTPX transport."""
+
+    def fail(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("private-canary-exception", request=request)
+
+    with httpx.Client(transport=httpx.MockTransport(fail)) as client:
+        monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda _verify: client)
+        with pytest.raises(httpx.ReadTimeout):
+            make_request("POST", "https://example.com/private-canary-url", max_retries=0, sensitive_request=sensitive)
+    assert "private-canary" not in caplog.text
+    if sensitive:
+        assert "Sensitive HTTP request failed on attempt 1" in caplog.text
+    else:
+        assert "HTTP request failed on attempt 1: ReadTimeout" in caplog.text
+
+
+@pytest.mark.parametrize("sensitive", [False, True])
+def test_sensitive_force_list_warnings_preserve_ordinary_retry_behavior(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, sensitive: bool
+) -> None:
+    sent: list[httpx.Request] = []
+
+    def reply(request: httpx.Request) -> httpx.Response:
+        sent.append(request)
+        return httpx.Response(503, request=request)
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
+    with httpx.Client(transport=httpx.MockTransport(reply)) as client:
+        monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda _verify: client)
+        with pytest.raises(max_retries_exceeded_error):
+            make_request("POST", "https://example.com/private-canary-url", max_retries=1, sensitive_request=sensitive)
+    assert len(sent) == 2
+    assert "private-canary" not in caplog.text
+    if sensitive:
+        assert "Sensitive HTTP request received retryable status code 503" in caplog.text
+    else:
+        assert "HTTP request received retryable status code 503" in caplog.text

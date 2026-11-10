@@ -18,35 +18,63 @@ import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from json import JSONDecodeError
 from types import TracebackType
-from typing import Any, Self, TypeVar, cast
+from typing import Any, Literal, Self, TypeVar, cast
 from urllib.parse import quote
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from pydantic_ai.messages import FunctionToolResultEvent
 
 from dify_agent.protocol import (
-    CancelRunRequest,
-    CancelRunResponse,
+    RUN_EVENT_ADAPTER,
     BindingFileDownloadRequest,
     BindingFileDownloadResponse,
     BindingFileListRequest,
     BindingFileListResponse,
     BindingFileReadRequest,
     BindingFileReadResponse,
-    CreateRunRequest,
-    CreateRunResponse,
+    CancelRunRequest,
+    CancelRunResponse,
     CreateExecutionBindingRequest,
     CreateExecutionBindingResponse,
     CreateHomeSnapshotFromBindingRequest,
+    CreateRunRequest,
+    CreateRunResponse,
     DeleteHomeSnapshotRequest,
     DestroyExecutionBindingRequest,
+    InspectExecutionBindingRequest,
+    InspectExecutionBindingResponse,
+    KeepAliveExecutionBindingRequest,
+    KeepAliveExecutionBindingResponse,
+    ReadExecutionBindingJobRequest,
+    ReadExecutionBindingJobResponse,
     HomeSnapshotResponse,
-    RUN_EVENT_ADAPTER,
     RunCancelledEvent,
     RunEvent,
     RunEventsResponse,
     RunStatusResponse,
+)
+from dify_agent.protocol.confirmed_recovery import (
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
+)
+from dify_agent.protocol.run_recovery import LookupRunRequest
+from dify_agent.protocol.native_continuation import (
+    MAX_CHECKPOINT_REQUEST_BYTES,
+    MAX_CHECKPOINT_RESPONSE_BYTES,
+    ReadNativeCheckpointRequest,
+    SelectedNativeCheckpoint,
+)
+from dify_agent.protocol.native_testing import (
+    ID,
+    MAX_AGENT_CONTROL_BYTES,
+    AgentRuntimeIdentity,
+    ContinuationClaim,
+    ContinueRunRequest,
+    NativeTestCapabilities,
+    NativeTestProtocolUnsupported,
+    ReadAgentRuntimeIdentity,
+    require_native_test_capabilities,
 )
 
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
@@ -347,6 +375,198 @@ class Client:
         if self._owns_sync_http_client and self._sync_http_client is not None:
             self.close_sync()
 
+    async def native_test_capabilities(
+        self, *, profile: Literal["isolated", "confirmed"] = "isolated"
+    ) -> NativeTestCapabilities:
+        """Negotiate fresh on every native create/continue; never use a stale cache."""
+        try:
+            response = await self._get_async_http_client().get(
+                self._url("/runs/capabilities"), headers=self._merged_headers(), timeout=self._timeout
+            )
+            capabilities = _parse_model_response(response, NativeTestCapabilities)
+            require_native_test_capabilities(capabilities, profile=profile)
+            return capabilities
+        except (httpx.HTTPError, DifyAgentClientError, ValueError) as exc:
+            raise NativeTestProtocolUnsupported() from exc
+
+    def native_test_capabilities_sync(
+        self, *, profile: Literal["isolated", "confirmed"] = "isolated"
+    ) -> NativeTestCapabilities:
+        try:
+            response = self._get_sync_http_client().get(
+                self._url("/runs/capabilities"), headers=self._merged_headers(), timeout=self._timeout
+            )
+            capabilities = _parse_model_response(response, NativeTestCapabilities)
+            require_native_test_capabilities(capabilities, profile=profile)
+            return capabilities
+        except (httpx.HTTPError, DifyAgentClientError, ValueError) as exc:
+            raise NativeTestProtocolUnsupported() from exc
+
+    async def read_run_identity(self, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity:
+        """Private authenticated bounded read, one attempt, no status/history fallback."""
+        payload = _identity_selection_json(run_id, selection)
+        try:
+            async with self._get_async_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(run_id, safe='')}/native-identity"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _identity_response_status(response)
+                body = bytearray()
+                async for chunk in response.aiter_bytes(chunk_size=MAX_AGENT_CONTROL_BYTES + 1):
+                    if len(body) + len(chunk) > MAX_AGENT_CONTROL_BYTES:
+                        raise DifyAgentValidationError("native identity unavailable")
+                    body.extend(chunk)
+                return _identity_response(body, run_id, selection)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("native identity unavailable") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("native identity unavailable") from None
+
+    def read_run_identity_sync(self, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity:
+        payload = _identity_selection_json(run_id, selection)
+        try:
+            with self._get_sync_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(run_id, safe='')}/native-identity"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _identity_response_status(response)
+                body = bytearray()
+                for chunk in response.iter_bytes(chunk_size=MAX_AGENT_CONTROL_BYTES + 1):
+                    if len(body) + len(chunk) > MAX_AGENT_CONTROL_BYTES:
+                        raise DifyAgentValidationError("native identity unavailable")
+                    body.extend(chunk)
+                return _identity_response(body, run_id, selection)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("native identity unavailable") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("native identity unavailable") from None
+
+    async def read_native_checkpoint(
+        self, run_id: str, request: ReadNativeCheckpointRequest
+    ) -> SelectedNativeCheckpoint:
+        """Read a selected private wait once, without public-event fallback or retries."""
+        payload = _native_checkpoint_request_json(run_id, request)
+        try:
+            async with self._get_async_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(run_id, safe='')}/native-checkpoint"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _check_native_checkpoint_response(response)
+                body = bytearray()
+                async for chunk in response.aiter_bytes(chunk_size=65536):
+                    if len(body) + len(chunk) > MAX_CHECKPOINT_RESPONSE_BYTES:
+                        raise DifyAgentValidationError("native checkpoint response unavailable")
+                    body.extend(chunk)
+                return _parse_native_checkpoint_response(body, run_id=run_id, request=request)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("native checkpoint read timed out") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("native checkpoint read failed") from None
+
+    def read_native_checkpoint_sync(
+        self, run_id: str, request: ReadNativeCheckpointRequest
+    ) -> SelectedNativeCheckpoint:
+        """Synchronous bounded private read; errors never contain checkpoint/history bytes."""
+        payload = _native_checkpoint_request_json(run_id, request)
+        try:
+            with self._get_sync_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(run_id, safe='')}/native-checkpoint"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _check_native_checkpoint_response(response)
+                body = bytearray()
+                for chunk in response.iter_bytes(chunk_size=65536):
+                    if len(body) + len(chunk) > MAX_CHECKPOINT_RESPONSE_BYTES:
+                        raise DifyAgentValidationError("native checkpoint response unavailable")
+                    body.extend(chunk)
+                return _parse_native_checkpoint_response(body, run_id=run_id, request=request)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("native checkpoint read timed out") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("native checkpoint read failed") from None
+
+    async def install_confirmed_recovery_successor(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt:
+        """Install once; an ACK loss is reconciled by resubmitting this exact request."""
+        payload = _recovery_request_json(request)
+        try:
+            async with self._get_async_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(request.successor.agent_run_id, safe='')}/confirmed-recovery-successor"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _check_recovery_response(response)
+                body = bytearray()
+                async for chunk in response.aiter_bytes(chunk_size=4096):
+                    if len(body) + len(chunk) > MAX_AGENT_CONTROL_BYTES:
+                        raise DifyAgentValidationError("confirmed recovery unavailable")
+                    body.extend(chunk)
+                return _recovery_receipt(body, request)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("confirmed recovery unavailable") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("confirmed recovery unavailable") from None
+
+    def install_confirmed_recovery_successor_sync(
+        self, request: InstallConfirmedRecoverySuccessorRequest
+    ) -> InstallConfirmedRecoverySuccessorReceipt:
+        """Synchronous bounded handoff; no automatic retry or payload diagnostics."""
+        payload = _recovery_request_json(request)
+        try:
+            with self._get_sync_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(request.successor.agent_run_id, safe='')}/confirmed-recovery-successor"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _check_recovery_response(response)
+                body = bytearray()
+                for chunk in response.iter_bytes(chunk_size=4096):
+                    if len(body) + len(chunk) > MAX_AGENT_CONTROL_BYTES:
+                        raise DifyAgentValidationError("confirmed recovery unavailable")
+                    body.extend(chunk)
+                return _recovery_receipt(body, request)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("confirmed recovery unavailable") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("confirmed recovery unavailable") from None
+
+    async def continue_run(
+        self, run_id: str, request: ContinueRunRequest, *, profile: Literal["isolated", "confirmed"] = "isolated"
+    ) -> ContinuationClaim:
+        await self.native_test_capabilities(profile=profile)
+        response = await self._post_async_json("continue_run", f"/runs/{quote(run_id, safe='')}/continue", request)
+        return _parse_model_response(response, ContinuationClaim)
+
+    def continue_run_sync(
+        self, run_id: str, request: ContinueRunRequest, *, profile: Literal["isolated", "confirmed"] = "isolated"
+    ) -> ContinuationClaim:
+        self.native_test_capabilities_sync(profile=profile)
+        response = self._post_sync_json("continue_run_sync", f"/runs/{quote(run_id, safe='')}/continue", request)
+        return _parse_model_response(response, ContinuationClaim)
+
     async def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
         """Create one run and return its accepted status response.
 
@@ -355,10 +575,12 @@ class Client:
         timeouts to ``DifyAgentTimeoutError``.
         """
         request_model = _validate_create_run_request(request)
+        if request_model.execution_mode == "builder_test":
+            await self.native_test_capabilities(profile=request_model.native_test_profile)
         try:
             response = await self._get_async_http_client().post(
                 self._url("/runs"),
-                content=request_model.model_dump_json(),
+                content=_create_run_json(request_model),
                 headers=self._merged_headers({"Content-Type": "application/json"}),
                 timeout=self._timeout,
             )
@@ -371,10 +593,12 @@ class Client:
     def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
         """Synchronous variant of ``create_run`` with the same no-retry contract."""
         request_model = _validate_create_run_request(request)
+        if request_model.execution_mode == "builder_test":
+            self.native_test_capabilities_sync(profile=request_model.native_test_profile)
         try:
             response = self._get_sync_http_client().post(
                 self._url("/runs"),
-                content=request_model.model_dump_json(),
+                content=_create_run_json(request_model),
                 headers=self._merged_headers({"Content-Type": "application/json"}),
                 timeout=self._timeout,
             )
@@ -382,6 +606,18 @@ class Client:
             raise DifyAgentTimeoutError("create_run_sync timed out") from exc
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"create_run_sync request failed: {exc}") from exc
+        return _parse_model_response(response, CreateRunResponse)
+
+    async def lookup_run(self, request: LookupRunRequest) -> CreateRunResponse:
+        """Read one retained create identity; never retry or fall back to create."""
+        selected = _validate_lookup_run_request(request)
+        response = await self._post_async_json("lookup_run", "/runs/lookup", selected)
+        return _parse_model_response(response, CreateRunResponse)
+
+    def lookup_run_sync(self, request: LookupRunRequest) -> CreateRunResponse:
+        """Synchronous read-only recovery with the same one-POST contract."""
+        selected = _validate_lookup_run_request(request)
+        response = self._post_sync_json("lookup_run_sync", "/runs/lookup", selected)
         return _parse_model_response(response, CreateRunResponse)
 
     async def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
@@ -571,6 +807,46 @@ class Client:
     def create_execution_binding_sync(self, request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
         response = self._post_sync_json("create_execution_binding_sync", "/execution-bindings", request)
         return _parse_model_response(response, CreateExecutionBindingResponse)
+
+    async def inspect_execution_binding(
+        self, request: InspectExecutionBindingRequest
+    ) -> InspectExecutionBindingResponse:
+        """Read bounded exact binding evidence; this never allocates or acquires."""
+        response = await self._post_async_json("inspect_execution_binding", "/execution-bindings/inspect", request)
+        return _parse_binding_inspection_response(response, request)
+
+    def inspect_execution_binding_sync(
+        self, request: InspectExecutionBindingRequest
+    ) -> InspectExecutionBindingResponse:
+        """Read bounded exact binding evidence through the private control plane."""
+        response = self._post_sync_json("inspect_execution_binding_sync", "/execution-bindings/inspect", request)
+        return _parse_binding_inspection_response(response, request)
+
+    async def read_execution_binding_job(
+        self, request: ReadExecutionBindingJobRequest
+    ) -> ReadExecutionBindingJobResponse:
+        response = await self._post_async_json("read_execution_binding_job", "/execution-bindings/job-status", request)
+        return _parse_model_response(response, ReadExecutionBindingJobResponse)
+
+    def read_execution_binding_job_sync(
+        self, request: ReadExecutionBindingJobRequest
+    ) -> ReadExecutionBindingJobResponse:
+        response = self._post_sync_json("read_execution_binding_job_sync", "/execution-bindings/job-status", request)
+        return _parse_model_response(response, ReadExecutionBindingJobResponse)
+
+    async def keep_alive_execution_binding(
+        self, request: KeepAliveExecutionBindingRequest
+    ) -> KeepAliveExecutionBindingResponse:
+        response = await self._post_async_json(
+            "keep_alive_execution_binding", "/execution-bindings/keep-alive", request
+        )
+        return _parse_model_response(response, KeepAliveExecutionBindingResponse)
+
+    def keep_alive_execution_binding_sync(
+        self, request: KeepAliveExecutionBindingRequest
+    ) -> KeepAliveExecutionBindingResponse:
+        response = self._post_sync_json("keep_alive_execution_binding_sync", "/execution-bindings/keep-alive", request)
+        return _parse_model_response(response, KeepAliveExecutionBindingResponse)
 
     async def destroy_execution_binding(self, request: DestroyExecutionBindingRequest) -> None:
         response = await self._post_async_json("destroy_execution_binding", "/execution-bindings/destroy", request)
@@ -955,6 +1231,79 @@ class Client:
             raise DifyAgentClientError(f"{operation} request failed: {exc}") from exc
 
 
+def _native_checkpoint_request_json(run_id: str, request: ReadNativeCheckpointRequest) -> bytes:
+    from dify_agent.protocol.native_testing import ID
+    from pydantic import TypeAdapter
+
+    try:
+        TypeAdapter(ID).validate_python(run_id)
+        if not isinstance(request, ReadNativeCheckpointRequest):
+            raise ValueError("invalid request")
+        # model_copy can bypass validation. Do not print its private input in
+        # serializer warnings; the strict reconstruction below still refuses it.
+        validated = ReadNativeCheckpointRequest.model_validate(request.model_dump(mode="json", warnings=False))
+        payload = validated.model_dump_json().encode()
+        if len(payload) > MAX_CHECKPOINT_REQUEST_BYTES:
+            raise ValueError("invalid request")
+        return payload
+    except (ValueError, TypeError):
+        raise DifyAgentValidationError("invalid native checkpoint selection") from None
+
+
+def _check_native_checkpoint_response(response: httpx.Response) -> None:
+    # Never parse untrusted error bodies: the ordinary error decoder may expose
+    # provider/private validation input, which is inappropriate for this read.
+    if response.status_code == 404:
+        raise DifyAgentNotFoundError(404, "native checkpoint unavailable")
+    if response.status_code == 422:
+        raise DifyAgentValidationError("native checkpoint unavailable")
+    if response.status_code >= 400:
+        raise DifyAgentHTTPError(response.status_code, "native checkpoint unavailable")
+    if response.status_code != 200 or response.headers.get("content-encoding", "identity").lower() != "identity":
+        raise DifyAgentValidationError("native checkpoint response unavailable")
+    try:
+        length = response.headers.get("content-length")
+        if length is not None and not 0 <= int(length) <= MAX_CHECKPOINT_RESPONSE_BYTES:
+            raise ValueError("response too large")
+    except ValueError:
+        raise DifyAgentValidationError("native checkpoint response unavailable") from None
+
+
+def _parse_native_checkpoint_response(
+    content: bytearray, *, run_id: str, request: ReadNativeCheckpointRequest
+) -> SelectedNativeCheckpoint:
+    try:
+        selected = SelectedNativeCheckpoint.model_validate_json(content)
+        selected.validate_selection(run_id=run_id, request=request)
+        return selected
+    except (ValueError, TypeError):
+        raise DifyAgentValidationError("native checkpoint response unavailable") from None
+
+
+def _create_run_json(request: CreateRunRequest) -> str:
+    """Preserve the strict pre-native ordinary wire, including its old defaults."""
+    if request.execution_mode == "ordinary":
+        return request.model_dump_json(
+            exclude={
+                "execution_mode",
+                "native_test_ref",
+                "native_test_protocol_version",
+                "native_parent_node",
+                "native_test_profile",
+            }
+        )
+    return request.model_dump_json()
+
+
+def _validate_lookup_run_request(request: LookupRunRequest) -> LookupRunRequest:
+    try:
+        if not isinstance(request, LookupRunRequest):
+            raise ValueError
+        return LookupRunRequest.model_validate(request.model_dump(mode="json"))
+    except (ValueError, TypeError):
+        raise DifyAgentValidationError("invalid create identity selection") from None
+
+
 def _validate_create_run_request(request: CreateRunRequest) -> CreateRunRequest:
     """Reject raw payloads so create-run uses the public request DTO boundary."""
     if isinstance(request, CreateRunRequest):
@@ -970,6 +1319,22 @@ def _build_request_model[_RequestModelT: BaseModel](
         return model_type.model_validate(payload)
     except ValidationError as exc:
         raise DifyAgentValidationError(detail=exc.errors(include_url=False)) from exc
+
+
+def _parse_binding_inspection_response(
+    response: httpx.Response, request: InspectExecutionBindingRequest
+) -> InspectExecutionBindingResponse:
+    """Require bounded evidence for the selected refs; foreign replies grant nothing."""
+    _raise_for_status(response)
+    try:
+        result = InspectExecutionBindingResponse.model_validate_json(response.content)
+        if (result.binding_ref, result.workspace_ref) != (request.binding_ref, request.workspace_ref):
+            raise ValueError("binding inspection identity mismatch")
+        return result
+    except ValueError:
+        raise DifyAgentValidationError(
+            detail={"code": "invalid_binding_inspection_response"}, status_code=response.status_code
+        ) from None
 
 
 def _parse_model_response(response: httpx.Response, model_type: type[_ResponseModelT]) -> _ResponseModelT:
@@ -989,6 +1354,8 @@ def _raise_for_status(response: httpx.Response) -> None:
     if response.status_code < 400:
         return
     detail = _extract_error_detail(response)
+    if isinstance(detail, dict) and detail.get("code") == NativeTestProtocolUnsupported.code:
+        raise NativeTestProtocolUnsupported()
     if response.status_code == 404:
         raise DifyAgentNotFoundError(status_code=response.status_code, detail=detail)
     if response.status_code == 422:
@@ -1016,7 +1383,7 @@ def _extract_error_detail(response: httpx.Response) -> object:
         return response.text or response.reason_phrase
     if isinstance(payload, dict) and "detail" in payload:
         return cast(object, payload["detail"])
-    return cast(object, payload)
+    return payload
 
 
 def _next_reconnect_attempt(
@@ -1104,3 +1471,95 @@ __all__ = [
     "DifyAgentTimeoutError",
     "DifyAgentValidationError",
 ]
+
+
+def _identity_selection_json(run_id: str, selection: ReadAgentRuntimeIdentity) -> bytes:
+    try:
+        TypeAdapter(ID).validate_python(run_id)
+        selected = ReadAgentRuntimeIdentity.model_validate(selection.model_dump(mode="json"))
+        payload = selected.model_dump_json().encode()
+        if len(payload) > MAX_AGENT_CONTROL_BYTES:
+            raise ValueError
+        return payload
+    except (ValueError, AttributeError):
+        raise DifyAgentValidationError("native identity unavailable") from None
+
+
+def _identity_response_status(response: httpx.Response) -> None:
+    if response.status_code != 200:
+        raise DifyAgentHTTPError(status_code=response.status_code, detail="native identity unavailable")
+    if response.headers.get("content-encoding", "identity") != "identity":
+        raise DifyAgentValidationError("native identity unavailable")
+
+
+def _identity_response(
+    body: bytes | bytearray, run_id: str, selection: ReadAgentRuntimeIdentity
+) -> AgentRuntimeIdentity:
+    try:
+        identity = AgentRuntimeIdentity.model_validate_json(body)
+        if (identity.run_id, identity.parent_node, identity.request_digest) != (
+            run_id,
+            selection.parent_node,
+            selection.request_digest,
+        ) or (identity.execution_mode == "builder_test") != (selection.parent_node is not None):
+            raise ValueError
+        return identity
+    except ValueError:
+        raise DifyAgentValidationError("native identity unavailable") from None
+
+
+def _recovery_request_json(request: InstallConfirmedRecoverySuccessorRequest) -> bytes:
+    try:
+        payload = request.model_dump_json().encode()
+        InstallConfirmedRecoverySuccessorRequest.model_validate_json(payload)
+        if len(payload) > MAX_CHECKPOINT_RESPONSE_BYTES:
+            raise ValueError
+        return payload
+    except (ValueError, TypeError):
+        raise DifyAgentValidationError("confirmed recovery unavailable") from None
+
+
+def _check_recovery_response(response: httpx.Response) -> None:
+    if response.status_code >= 400:
+        raise DifyAgentHTTPError(response.status_code, "confirmed recovery unavailable")
+    try:
+        if response.status_code != 200 or response.headers.get("content-encoding", "identity").lower() != "identity":
+            raise ValueError
+        length = response.headers.get("content-length")
+        if length is not None and not 0 <= int(length) <= MAX_AGENT_CONTROL_BYTES:
+            raise ValueError
+    except ValueError:
+        raise DifyAgentValidationError("confirmed recovery unavailable") from None
+
+
+def _recovery_receipt(
+    body: bytearray, request: InstallConfirmedRecoverySuccessorRequest
+) -> InstallConfirmedRecoverySuccessorReceipt:
+    try:
+        receipt = InstallConfirmedRecoverySuccessorReceipt.model_validate_json(body)
+        relation = request.successor
+        if (
+            receipt.attempt_id,
+            receipt.successor_digest,
+            receipt.agent_run_id,
+            receipt.parent_generation,
+            receipt.agent_generation,
+            receipt.workspace_generation,
+            receipt.config_ref,
+            receipt.config_digest,
+            receipt.checkpoint,
+        ) != (
+            relation.attempt_id,
+            request.successor_digest,
+            relation.agent_run_id,
+            relation.expected_parent_generation,
+            relation.expected_agent_generation,
+            relation.successor.workspace_generation,
+            relation.successor.config_ref,
+            relation.successor.config_digest,
+            relation.successor_checkpoint,
+        ) or receipt.waiting_event_id == relation.predecessor_waiting_event_id:
+            raise ValueError
+        return receipt
+    except (ValueError, TypeError):
+        raise DifyAgentValidationError("confirmed recovery unavailable") from None

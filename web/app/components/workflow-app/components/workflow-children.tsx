@@ -7,6 +7,7 @@ import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useCallback, useState } from 'react'
 import { useStoreApi } from 'reactflow'
+import { useWorkflowAppSelector as useStore } from '@/app/components/workflow-app/store/workflow'
 import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import {
   isChatflowAtom,
@@ -16,11 +17,10 @@ import { isExportSecretEnvironmentEvent } from '@/app/components/workflow/export
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
 import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from '@/app/components/workflow/hooks/use-panel-interactions'
+import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
-import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -82,7 +82,7 @@ const WorkflowChildren = () => {
   const setShouldAutoOpenStartNodeSelector = useStore((s) => s.setShouldAutoOpenStartNodeSelector)
   const reactFlowStore = useStoreApi()
   const availableNodesMetaData = useWorkflowNodeCatalog()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
   const { handleOnboardingClose } = useAutoOnboarding()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
   const { exportCheck, handleExportDSL, isExporting } = useDSL()

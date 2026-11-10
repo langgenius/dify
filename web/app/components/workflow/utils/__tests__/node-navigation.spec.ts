@@ -5,6 +5,31 @@ import {
   setupScrollToNodeListener,
 } from '../node-navigation'
 
+it('cancels queued automatic scrolling when the user takes over before it starts', () => {
+  vi.useFakeTimers()
+  const select = vi.fn()
+  const setCenter = vi.fn<Parameters<typeof setupScrollToNodeListener>[1]['setCenter']>()
+  const removeSelection = setupNodeSelectionListener(select)
+  const removeScroll = setupScrollToNodeListener([{ id: 'node', position: { x: 100, y: 200 } }], {
+    setCenter,
+  })
+  let shouldFocus = true
+  try {
+    selectWorkflowNode('node', true, () => shouldFocus)
+    shouldFocus = false
+    vi.advanceTimersByTime(100)
+    expect(select).toHaveBeenCalledWith('node')
+    expect(setCenter).not.toHaveBeenCalled()
+    scrollToWorkflowNode('node')
+    expect(setCenter).toHaveBeenCalledOnce()
+  } finally {
+    removeSelection()
+    removeScroll()
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  }
+})
+
 it('selects without moving the viewport by default, and focuses a requested node after selection', () => {
   vi.useFakeTimers()
   const handleSelect = vi.fn()

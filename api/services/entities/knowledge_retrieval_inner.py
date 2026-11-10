@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.rag.data_post_processor.data_post_processor import WeightsDict
@@ -136,6 +137,7 @@ class InnerKnowledgeRetrieveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     caller: InnerKnowledgeRetrieveCaller
+    native_dispatch: AgentPhysicalDispatchPayload | None = None
     dataset_ids: list[str]
     query: str | None = None
     retrieval: InnerKnowledgeRetrieveRetrievalConfig

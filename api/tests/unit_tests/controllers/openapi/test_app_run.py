@@ -247,6 +247,7 @@ def test_run_reads_everything_off_the_context_before_streaming(
     generate_mock = _generate_stub(monkeypatch, ["event: a\n\n", "event: b\n\n"])
     commits: list[Session] = []
     event.listen(unbound_session, "after_commit", commits.append)
+    transaction = unbound_session.begin()
     ctx = _ctx(AppMode.ADVANCED_CHAT, unbound_session)
     api = AdvancedChatRunApi()
     body = AdvancedChatRunPayload(inputs={}, query="hi")
@@ -258,6 +259,7 @@ def test_run_reads_everything_off_the_context_before_streaming(
     assert body == "event: a\n\nevent: b\n\n"
     assert generate_mock.call_args.kwargs["streaming"] is True
     assert commits == []
+    assert unbound_session.get_transaction() is transaction
 
 
 def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: pytest.MonkeyPatch):

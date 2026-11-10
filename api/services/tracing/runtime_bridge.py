@@ -36,6 +36,9 @@ class RuntimeApplicationTracingHooks(ApplicationTracingHooks):
 
     @override
     def prepare_agent_app(self, context: AgentAppRuntimeBuildContext) -> ApplicationTracingContext | None:
+        """Collect ordinary invocations; Builder and native-test policy prohibits external collection."""
+        if context.dify_context.native_test_required or context.dify_context.builder_execution is not None:
+            return None
         try:
             return self._traces.prepare_invocation(
                 tenant_id=context.dify_context.tenant_id,
@@ -74,6 +77,9 @@ class RuntimeApplicationTracingHooks(ApplicationTracingHooks):
     def prepare_workflow_agent(
         self, context: WorkflowAgentRuntimeBuildContext, conversation_id: str | None
     ) -> ApplicationTracingContext | None:
+        """Collect ordinary Agent nodes without bypassing the workflow's admitted tracing restriction."""
+        if context.dify_context.native_test_required or context.dify_context.builder_execution is not None:
+            return None
         try:
             # Hidden Tool nodes own a different app but share the caller's run and are
             # absent from its outer trace. Neither a source-app snapshot nor an orphan
@@ -108,7 +114,9 @@ class RuntimeApplicationTracingHooks(ApplicationTracingHooks):
         conversation_id: object,
         graph_data: object,
     ) -> None:
-        """Freeze policy immediately after the business workflow row is saved."""
+        """Freeze ordinary workflow policy after persistence; restricted runs never create a trace ledger."""
+        if entity.native_test_required or entity.builder_execution is not None:
+            return
         if not workflow_has_agent_v2(graph_data):
             return
         try:

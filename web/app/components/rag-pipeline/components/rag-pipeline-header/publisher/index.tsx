@@ -10,7 +10,7 @@ import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
@@ -23,7 +23,7 @@ const Publisher = () => {
   const { t } = useTranslation(['datasetPipeline', 'workflow'])
   const [open, setOpen] = useState(false)
   const [confirmVisible, { setFalse: hideConfirm, setTrue: showConfirm }] = useBoolean(false)
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
   const canPipelineRelease = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const docLink = useDocLink()
   const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId

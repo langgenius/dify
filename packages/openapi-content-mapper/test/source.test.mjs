@@ -231,7 +231,11 @@ for (const external of [false, true]) {
       root: frontend,
       logLevel: 'silent',
       plugins: [openapi()],
-      server: { port: 0, fs: { allow: [directory] } },
+      server: {
+        port: 0,
+        fs: { allow: [directory] },
+        watch: { useFsEvents: false, usePolling: false },
+      },
     })
     t.after(() => server.close())
     // New files created during the initial scan are ignored by Chokidar.

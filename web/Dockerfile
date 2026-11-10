@@ -40,6 +40,13 @@ WORKDIR /app
 COPY --from=packages /app/ .
 COPY . .
 
+# The `packages` stage resolves against an INCOMPLETE workspace: `cli` is a workspace member in
+# pnpm-workspace.yaml and the lockfile but its package.json is never copied, and web/e2e/sdks are
+# package.json stubs. The resulting layout satisfies Node's resolver but not Turbopack's, which
+# then cannot resolve any dependency of a `packages/*` file (`@orpc/contract`, `@base-ui/react/*`,
+# `cn`) while every `web/` import resolves fine. Re-resolve now that the real workspace is present.
+RUN pnpm install --frozen-lockfile --ignore-scripts --prefer-offline
+
 WORKDIR /app/web
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV pnpm_config_verify_deps_before_run=false

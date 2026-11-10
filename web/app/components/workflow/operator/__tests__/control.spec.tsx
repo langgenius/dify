@@ -8,11 +8,11 @@ import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
 import { ControlMode, WorkflowRunningStatus } from '../../types'
 import Control from '../control'
 
-vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-nodes-sync-draft')>()
+vi.mock('../../hooks/use-schedule-draft-save', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-schedule-draft-save')>()
   return {
     ...actual,
-    useNodesSyncDraft: () => ({
+    useScheduleDraftSave: () => ({
       handleSyncWorkflowDraft: vi.fn(),
     }),
   }
@@ -106,7 +106,7 @@ describe('Control', () => {
 
     expect(store.getState()).toMatchObject({
       candidateNode: undefined,
-      controlMode: ControlMode.Pointer,
+      controlMode: ControlMode.Hand,
       nodeAnimation: false,
     })
   })

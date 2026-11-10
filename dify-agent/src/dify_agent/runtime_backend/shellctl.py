@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 import logging
-from typing import Protocol
+from typing import Literal, Protocol
 
 from dify_agent.adapters.shell.protocols import CompleteShellCommandResult, ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import (
@@ -52,6 +54,27 @@ class ShellctlRuntimeLease:
             logger.warning("Failed to close owned shellctl transport after client close failed: %s", exc)
         if client_error is not None:
             raise client_error
+
+    async def close_for_inspection(self, *, deadline: float) -> bool:
+        """Close owned resources within the inspection's absolute cleanup deadline.
+
+        Preconditions: running asyncio loop and an owner-selected deadline.
+        Postconditions: each close is attempted at most once, a stalled client
+        cannot consume an owned transport's budget, and diagnostics contain only
+        fixed phase/category/status fields. Failure is reported, never retried.
+        """
+        if self._closed:
+            return True
+        self._closed = True
+        loop = asyncio.get_running_loop()
+        client_deadline = (loop.time() + deadline) / 2 if self.owned_transport is not None else deadline
+        client_closed = await _inspection_cleanup(self.client.close, phase="close_client", deadline=client_deadline)
+        transport_closed = True
+        if self.owned_transport is not None:
+            transport_closed = await _inspection_cleanup(
+                self.owned_transport.aclose, phase="close_transport", deadline=deadline
+            )
+        return client_closed and transport_closed
 
 
 def create_shellctl_lease(
@@ -140,10 +163,105 @@ async def run_shellctl_control_command(
             logger.warning("Failed to delete transient shellctl control job %s: %s", job_id, exc)
 
 
+async def _inspection_cleanup(
+    operation: Callable[[], Awaitable[object]],
+    *,
+    phase: Literal["delete", "close_client", "close_transport"],
+    deadline: float,
+) -> bool:
+    """Await one inspection cleanup within its budget; never log resource/error values."""
+    category: Literal["timeout", "error"]
+    try:
+        if asyncio.get_running_loop().time() >= deadline:
+            raise TimeoutError
+        async with asyncio.timeout_at(deadline):
+            await operation()
+        return True
+    except TimeoutError:
+        category = "timeout"
+    except Exception:
+        category = "error"
+    logger.warning(
+        "binding inspection cleanup unavailable",
+        extra={"inspection_phase": phase, "inspection_category": category, "inspection_status": "uncertain"},
+    )
+    return False
+
+
+async def run_shellctl_inspection_command(
+    lease: ShellctlRuntimeLease,
+    script: str,
+    *,
+    deadline: float,
+    cleanup_budget: float,
+) -> CompleteShellCommandResult:
+    """Run one fixed read-only inspection under a single absolute deadline.
+
+    Preconditions: an inspection-owned lease, positive cleanup reservation and
+    deadline measured before lease construction. Postconditions: no new binding
+    action; run/polls share the remaining probe budget, known-job deletion and
+    lease close share a bounded reserved cleanup budget. Cleanup timeout/error
+    invalidates the observation. External cancellation remains cancellation;
+    successful cleanup never proves remote process termination after a timeout.
+    """
+    loop = asyncio.get_running_loop()
+    if cleanup_budget <= 0:
+        raise ValueError("inspection requires positive cleanup budget")
+    probe_deadline = deadline - cleanup_budget
+    job_id: str | None = None
+    cleanup_ok = False
+    try:
+        if loop.time() >= probe_deadline:
+            raise TimeoutError
+        async with asyncio.timeout_at(probe_deadline):
+            result = await lease.commands.run(
+                script, cwd=None, env=None, timeout=probe_deadline - loop.time(), mode="stdio"
+            )
+            job_id = result.job_id
+            output_parts = [result.output]
+            output_size = len(result.output.encode("utf-8"))
+            while result.truncated or not result.done:
+                if loop.time() >= probe_deadline:
+                    raise TimeoutError
+                result = await lease.commands.wait(job_id, offset=result.offset, timeout=probe_deadline - loop.time())
+                output_parts.append(result.output)
+                output_size += len(result.output.encode("utf-8"))
+                if output_size > _CONTROL_COMMAND_OUTPUT_LIMIT:
+                    raise ValueError("inspection output limit")
+            if output_size > _CONTROL_COMMAND_OUTPUT_LIMIT:
+                raise ValueError("inspection output limit")
+            complete = CompleteShellCommandResult(
+                job_id=job_id,
+                status=result.status,
+                done=result.done,
+                exit_code=result.exit_code,
+                output="".join(output_parts),
+                output_complete=True,
+                incomplete_reason=None,
+                offset=result.offset,
+                output_path=result.output_path,
+            )
+    finally:
+        cleanup_deadline = min(deadline, loop.time() + cleanup_budget)
+        deleted = True
+        if job_id is not None:
+            delete_deadline = min(cleanup_deadline, loop.time() + cleanup_budget / 2)
+            selected_job_id = job_id
+            deleted = await _inspection_cleanup(
+                lambda: lease.commands.delete(selected_job_id, force=True), phase="delete", deadline=delete_deadline
+            )
+        closed = await lease.close_for_inspection(deadline=cleanup_deadline)
+        cleanup_ok = deleted and closed
+    if not cleanup_ok:
+        raise RuntimeError("inspection cleanup unavailable")
+    return complete
+
+
 __all__ = [
     "AsyncCloseable",
     "ShellctlRuntimeLease",
     "create_owned_shellctl_lease",
     "create_shellctl_lease",
     "run_shellctl_control_command",
+    "run_shellctl_inspection_command",
 ]

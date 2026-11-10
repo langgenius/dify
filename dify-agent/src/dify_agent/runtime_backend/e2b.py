@@ -235,6 +235,8 @@ class E2BExecutionBindingBackend:
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         """Create one paused E2B resource from a snapshot or deployment template."""
+        if spec.native_test_scope is not None:
+            raise BindingCreateError("native_scope_unavailable")
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current E2B backend cannot attach to an existing Workspace")
         sandbox: _E2BSandbox | None = None
@@ -279,6 +281,8 @@ class E2BExecutionBindingBackend:
             raise
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
+        if binding_ref.startswith("native:"):
+            raise BindingAcquireError("native_scope_unavailable")
         """Acquire operation-scoped shellctl access for an opaque Binding ref."""
         sandbox: _E2BSandbox | None = None
         lease: E2BRuntimeLease | None = None
@@ -343,6 +347,8 @@ class E2BExecutionBindingBackend:
             raise pause_base_error
 
     async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
+        if spec.binding_ref.startswith("native:"):
+            raise BindingDestroyError("native_scope_cleanup_unavailable")
         """Destroy the coupled physical Binding and Workspace idempotently."""
         if not spec.destroy_workspace:
             raise WorkspacePreservationUnsupportedError(

@@ -16,7 +16,6 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.agent import (
     Agent,
@@ -49,6 +48,7 @@ from services.workflow.node_output_inspector_service import (
     NodeStatus,
     _resolve_preview_url,
 )
+from services.workflow_runtime.agent_binding import WorkflowAgentBindingBundle
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures

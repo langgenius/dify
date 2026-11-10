@@ -1,3 +1,4 @@
+import type { WorkflowChecklistProps } from './checklist'
 import type { ViewHistoryProps } from './view-history'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
@@ -27,7 +28,7 @@ const PreviewMode = memo(({ disabled = false }: { disabled?: boolean }) => {
         if (!isDisabled) handleWorkflowStartRunInChatflow()
       }}
     >
-      <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
+      <span aria-hidden className="me-1 i-ri-play-large-line size-4" />
       {t(($) => $['common.debugAndPreview'], { ns: 'workflow' })}
     </button>
   )
@@ -40,6 +41,7 @@ export type RunAndHistoryProps = {
   showPreviewButton?: boolean
   viewHistoryProps?: ViewHistoryProps
   components?: {
+    Checklist?: React.ComponentType<WorkflowChecklistProps>
     RunMode?: React.ComponentType<{
       text?: string
       disabled?: boolean
@@ -56,6 +58,7 @@ const RunAndHistory = ({
   const { nodesReadOnly } = useNodesReadOnly()
   const canRun = useHooksStore((s) => s.accessControl.canRun)
   const { RunMode: CustomRunMode } = components || {}
+  const ChecklistComponent = components?.Checklist ?? Checklist
 
   return (
     <div className="flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs">
@@ -68,7 +71,7 @@ const RunAndHistory = ({
       {showPreviewButton && <PreviewMode disabled={!canRun} />}
       <div className="mx-0.5 h-3.5 w-px bg-divider-regular"></div>
       <ViewHistory {...viewHistoryProps} />
-      <Checklist disabled={nodesReadOnly} />
+      <ChecklistComponent disabled={nodesReadOnly} />
     </div>
   )
 }

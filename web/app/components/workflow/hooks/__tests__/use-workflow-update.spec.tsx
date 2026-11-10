@@ -1,6 +1,5 @@
 import { act, waitFor } from '@testing-library/react'
 import { useState } from 'react'
-import { useReactFlow } from 'reactflow'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { createEdge, createNode } from '../../__tests__/fixtures'
@@ -14,10 +13,10 @@ function useUpdateProbe() {
   eventEmitter?.useSubscription((event) => {
     if (typeof event === 'object' && event.type === WORKFLOW_DATA_UPDATE) setGraph(event.payload)
   })
-  return { ...useWorkflowUpdate(), flow: useReactFlow(), graph }
+  return { ...useWorkflowUpdate(), graph }
 }
 
-it('publishes initialized graph data and applies the supplied viewport', async () => {
+it('publishes initialized graph data and the supplied viewport to the canvas', async () => {
   const result = {} as { current: ReturnType<typeof useUpdateProbe> }
   function Probe() {
     result.current = useUpdateProbe()
@@ -31,7 +30,6 @@ it('publishes initialized graph data and applies the supplied viewport', async (
       reactFlowProps: { fitView: false, defaultViewport: { x: 80, y: 40, zoom: 1.5 } },
     },
   )
-  await waitFor(() => expect(result.current.flow.viewportInitialized).toBe(true))
 
   act(() =>
     result.current.handleUpdateWorkflowCanvas({
@@ -40,10 +38,9 @@ it('publishes initialized graph data and applies the supplied viewport', async (
       viewport: { x: 10, y: 20, zoom: 0.5 },
     }),
   )
-  await waitFor(() =>
-    expect(result.current.flow.getViewport()).toEqual({ x: 10, y: 20, zoom: 0.5 }),
-  )
+  await waitFor(() => expect(result.current.graph).toBeDefined())
   expect(result.current.graph).toMatchObject({
+    viewport: { x: 10, y: 20, zoom: 0.5 },
     nodes: [
       {
         id: 'source',

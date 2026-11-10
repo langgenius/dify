@@ -1,0 +1,28 @@
+from core.dify_builder.contract import RunStatus, SessionModel
+from services.dify_builder.service import SessionView
+
+
+def test_session_view_has_model_field_default_none() -> None:
+    # A minimally-constructed view defaults model to None.
+    view = SessionView(
+        session_id="s",
+        app_id="a",
+        version=1,
+        state="build.capability_check",
+        canvas_read_only=False,
+        run_status=RunStatus.WAITING_INPUT,
+        interrupted=False,
+        conversation_last_seq=-1,
+    )
+    assert view.model is None
+
+
+def test_session_model_shape() -> None:
+    m = SessionModel(
+        provider="openai",
+        name="gpt-4o",
+        mode="chat",
+        completion_params={"temperature": 0.2},
+    )
+    assert (m.provider, m.name, m.mode) == ("openai", "gpt-4o", "chat")
+    assert m.completion_params == {"temperature": 0.2}

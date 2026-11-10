@@ -138,6 +138,34 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type DifyBuilderPolicyResponse = {
+  available: boolean
+  default_model_id: string | null
+  enabled: boolean
+  fallback_model_ids: Array<string>
+  models: Array<CognitionModelResponse>
+  reason_code: 'builder_disabled' | 'model_availability_unknown' | 'model_unavailable' | null
+  revision: number
+  source: 'explicit' | 'workspace_default'
+}
+
+export type DifyBuilderFeatureUnavailableResponse = {
+  code: 'feature_unavailable'
+}
+
+export type DifyBuilderPolicyPayload = {
+  default_model_id: string | null
+  enabled: boolean
+  expected_revision: number
+  fallback_model_ids?: Array<string>
+  models: Array<CognitionModelPayload>
+}
+
+export type BuilderPolicyConflictError = ErrorResponse & {
+  code: 'builder_policy_conflict'
+  status: 409
+}
+
 export type EndpointCreatePayload = {
   name: string
   plugin_unique_identifier: string
@@ -1893,6 +1921,27 @@ export type Inner = {
   model?: string | null
   model_type: ModelType
   provider?: string | null
+}
+
+export type CognitionModelResponse = {
+  completion_params: {
+    [key: string]: unknown
+  }
+  health: 'configured' | 'unavailable' | 'unknown'
+  id: string
+  mode: string
+  name: string
+  provider: string
+}
+
+export type CognitionModelPayload = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  id: string
+  mode: 'chat' | 'completion'
+  name: string
+  provider: string
 }
 
 export type EndpointListItemResponse = {
@@ -4716,6 +4765,51 @@ export type PostWorkspacesCurrentDefaultModelResponses = {
 
 export type PostWorkspacesCurrentDefaultModelResponse =
   PostWorkspacesCurrentDefaultModelResponses[keyof PostWorkspacesCurrentDefaultModelResponses]
+
+export type GetWorkspacesCurrentDifyBuilderPolicyData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/dify-builder/policy'
+}
+
+export type GetWorkspacesCurrentDifyBuilderPolicyErrors = {
+  403: DifyBuilderFeatureUnavailableResponse | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentDifyBuilderPolicyError =
+  GetWorkspacesCurrentDifyBuilderPolicyErrors[keyof GetWorkspacesCurrentDifyBuilderPolicyErrors]
+
+export type GetWorkspacesCurrentDifyBuilderPolicyResponses = {
+  200: DifyBuilderPolicyResponse
+}
+
+export type GetWorkspacesCurrentDifyBuilderPolicyResponse =
+  GetWorkspacesCurrentDifyBuilderPolicyResponses[keyof GetWorkspacesCurrentDifyBuilderPolicyResponses]
+
+export type PutWorkspacesCurrentDifyBuilderPolicyData = {
+  body: DifyBuilderPolicyPayload
+  path?: never
+  query?: never
+  url: '/workspaces/current/dify-builder/policy'
+}
+
+export type PutWorkspacesCurrentDifyBuilderPolicyErrors = {
+  403: DifyBuilderFeatureUnavailableResponse | ErrorResponse
+  409: BuilderPolicyConflictError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentDifyBuilderPolicyError =
+  PutWorkspacesCurrentDifyBuilderPolicyErrors[keyof PutWorkspacesCurrentDifyBuilderPolicyErrors]
+
+export type PutWorkspacesCurrentDifyBuilderPolicyResponses = {
+  200: DifyBuilderPolicyResponse
+}
+
+export type PutWorkspacesCurrentDifyBuilderPolicyResponse =
+  PutWorkspacesCurrentDifyBuilderPolicyResponses[keyof PutWorkspacesCurrentDifyBuilderPolicyResponses]
 
 export type PostWorkspacesCurrentEndpointsData = {
   body: EndpointCreatePayload

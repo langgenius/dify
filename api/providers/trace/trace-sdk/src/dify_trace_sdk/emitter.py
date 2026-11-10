@@ -31,6 +31,7 @@ class TraceScope:
     app_id: str | None
     user_id: str | None
     correlation: TraceCorrelation
+    external_tracing_disabled: bool = False
 
     def emit(self, payload: TracePayload) -> None:
         """Report a finished operation. Call after its records are committed; never raises."""
@@ -44,6 +45,7 @@ class TraceScope:
                     occurred_at=datetime.now(UTC),
                     correlation=self.correlation,
                     payload=payload,
+                    external_tracing_disabled=self.external_tracing_disabled,
                 )
             )
         except Exception:

@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowAppStore as useWorkflowStore } from '@/app/components/workflow-app/store/workflow'
 
 export const useAutoOnboarding = () => {
   const store = useStoreApi()

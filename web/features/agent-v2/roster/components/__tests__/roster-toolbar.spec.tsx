@@ -1,19 +1,41 @@
+import type { Import } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  RecommendedAppDetailResponse,
+  RecommendedAppResponse,
+} from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { RosterToolbar } from '../roster-toolbar'
 
 const permissions = vi.hoisted(() => ({ canCreate: true, canImport: true }))
+const push = vi.hoisted(() => vi.fn())
+
+const agentTemplate = {
+  app_id: 'agent-template',
+  app: {
+    id: 'source-agent',
+    mode: 'agent',
+    name: 'Support Agent',
+    icon_type: 'emoji',
+    icon: '\u{1F916}',
+    icon_background: null,
+    icon_url: null,
+  },
+  can_trial: false,
+} satisfies RecommendedAppResponse
 
 vi.mock('@/features/agent-v2/permissions', () => ({
   useCanCreateAgents: () => permissions.canCreate,
   useCanImportAgents: () => permissions.canImport,
 }))
 
-vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
+vi.mock('@/features/app-creation/dsl-dialog', () => ({
   default: ({ show, onSuccess }: { show: boolean; onSuccess?: () => void }) =>
     show ? (
       <div role="dialog" aria-label="agentRoster.roster.importDSL">
@@ -22,25 +44,43 @@ vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
     ) : null,
 }))
 
-// The real template picker, plus a way to finish a creation without running the import flow.
-vi.mock('@/app/components/app/create-app-dialog', async (importOriginal) => {
-  const { default: CreateAppTemplateDialog } =
-    await importOriginal<typeof import('@/app/components/app/create-app-dialog')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
-    default: (props: Parameters<typeof CreateAppTemplateDialog>[0]) => (
-      <>
-        <CreateAppTemplateDialog {...props} />
-        {props.show && <button onClick={props.onCreated}>Finish template creation</button>}
-      </>
-    ),
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': async () => zGetFeaturesResponse.parse({ apps: { size: 0, limit: 0 } }),
+      'explore.apps.byAppId.get': async () =>
+        ({
+          id: agentTemplate.app_id,
+          name: agentTemplate.app.name,
+          mode: 'agent',
+          can_trial: false,
+          export_data: '',
+          version_id: 'version-1',
+        }) satisfies RecommendedAppDetailResponse,
+      'apps.imports.post': async () =>
+        ({
+          id: 'template-import',
+          app_id: 'created-agent-app',
+          app_mode: 'agent',
+          status: 'completed',
+        }) satisfies Import,
+      'apps.imports.byAppId.checkDependencies.get': async () => ({ leaked_dependencies: [] }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.get': async () =>
+        createAppDetailFixture({ id: 'created-agent-app', mode: 'agent' }),
+    }),
   }
 })
 
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-  }),
+  useRouter: () => ({ push }),
 }))
+vi.mock('@/utils/create-app-tracking', () => ({ trackCreateApp: vi.fn() }))
 
 const renderToolbar = ({
   deploymentEdition = 'CLOUD',
@@ -53,6 +93,7 @@ const renderToolbar = ({
 } = {}) => {
   const { queryClient, wrapper: ConsoleQueryProvider } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: deploymentEdition },
+    features: { apps: { size: 0, limit: 0 } },
   })
 
   const result = renderWithNuqs(
@@ -135,14 +176,17 @@ describe('RosterToolbar', () => {
       consoleQuery.explore.apps.get.queryOptions({
         input: { query: { language: 'en-US' } },
       }).queryKey,
-      { recommended_apps: [], categories: [] },
+      { recommended_apps: [agentTemplate], categories: [] },
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
     await user.click(screen.getByRole('menuitem', { name: 'app.newApp.startFromTemplate' }))
     const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
 
-    // Without a bound agent the redirect lands on this roster, so the picker must close itself.
-    await user.click(screen.getByRole('button', { name: 'Finish template creation', hidden: true }))
+    await user.click(
+      await screen.findByRole('button', { name: 'app.newApp.useTemplate Support Agent' }),
+    )
+    await user.click(screen.getByRole('button', { name: /^common\.operation\.create/ }))
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/agents'))
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
   })
 

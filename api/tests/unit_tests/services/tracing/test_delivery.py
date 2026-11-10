@@ -226,6 +226,31 @@ def test_enterprise_sink_is_skipped_on_redelivery() -> None:
     assert delivery.enterprise == []
 
 
+@pytest.mark.parametrize("enterprise_delivered", [False, True])
+def test_restricted_events_keep_enterprise_but_never_resolve_external_destinations(enterprise_delivered: bool) -> None:
+    delivery = _delivery(_record(workflow_run_id=None), [])
+    collector = _Collector(captures=False, fails=True)
+    event = _event().model_copy(update={"external_tracing_disabled": True})
+    restored = TraceEvent.model_validate_json(event.model_dump_json())
+
+    delivery.service(enterprise=True, collector=collector).deliver(restored, enterprise_delivered=enterprise_delivered)
+
+    assert len(delivery.enterprise) == (0 if enterprise_delivered else 1)
+    assert collector.seen == []
+    assert delivery.destinations.lookups == []
+    assert delivery.sent() == []
+    assert delivery.retries.scheduled == []
+
+
+@pytest.mark.parametrize("marker", ["false", 0, None, {}])
+def test_malformed_external_trace_policy_is_rejected_at_the_event_boundary(marker: object) -> None:
+    payload = _event().model_dump()
+    payload["external_tracing_disabled"] = marker
+
+    with pytest.raises(ValidationError):
+        TraceEvent.model_validate(payload)
+
+
 def test_records_the_collector_owns_never_reach_the_provider() -> None:
     delivery = _delivery(_record(workflow_run_id=None), [])
 

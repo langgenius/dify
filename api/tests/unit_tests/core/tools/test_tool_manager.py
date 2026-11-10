@@ -17,12 +17,13 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfig, ProviderConfigType
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.builtin_tool.providers.time.time import WikiPediaProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolEntity,
@@ -43,6 +44,7 @@ from graphon.runtime import VariablePool
 from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
+from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _provider
 
 
 class _CallableSessionProxy:
@@ -86,7 +88,7 @@ class _ToolDatabase:
 
 
 @pytest.fixture
-def tool_database(sqlite_engine: Engine) -> Iterator[_ToolDatabase]:
+def tool_database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[_ToolDatabase]:
     """Provide isolated provider tables through the same engine/session split used in production."""
 
     tables = [
@@ -95,7 +97,9 @@ def tool_database(sqlite_engine: Engine) -> Iterator[_ToolDatabase]:
     ]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield _ToolDatabase(engine=sqlite_engine, session=_CallableSessionProxy(session))
+        database = _ToolDatabase(engine=sqlite_engine, session=_CallableSessionProxy(session))
+        monkeypatch.setattr("services.tools.ordinary_tool_credentials.db", database)
+        yield database
 
 
 def _builtin_provider(
@@ -521,15 +525,38 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     assert refresh.call_args.kwargs["plugin_unique_identifier"] == expected_identifier
 
 
+def _credential_schema():
+    return [ProviderConfig(name="k", type=ProviderConfigType.SECRET_INPUT)]
+
+
+def _native_time_controller(tool_name="weekday"):
+    controller = WikiPediaProvider()
+    tool = controller.get_tool("weekday")
+    assert tool is not None
+    tool.entity.identity = tool.entity.identity.model_copy(update={"name": tool_name})
+    controller.entity = controller.entity.model_copy(update={"credentials_schema": _credential_schema()})
+    return controller
+
+
+def _plugin_controller(tool_name="weekday", *, needs_credentials=True):
+    declaration = _provider().declaration.model_copy(deep=True)
+    entity = declaration.tools[0]
+    entity.identity = entity.identity.model_copy(update={"name": tool_name})
+    declaration.tools = [entity]
+    declaration.credentials_schema = _credential_schema() if needs_credentials else []
+    declaration.oauth_schema = None
+    return PluginToolProviderController(
+        entity=declaration,
+        plugin_id="langgenius/json_process",
+        plugin_unique_identifier="unit-artifact",
+        tenant_id="tenant-1",
+    )
+
+
 def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error(
     monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase
 ):
-    tool = Mock()
-    controller = SimpleNamespace(
-        get_tool=Mock(return_value=tool),
-        need_credentials=True,
-        get_credentials_schema_by_type=Mock(return_value=[]),
-    )
+    controller = _native_time_controller()
     tenant_id = "00000000-0000-0000-0000-000000000001"
     builtin_provider = _builtin_provider(
         provider_id="00000000-0000-0000-0000-000000000002",
@@ -568,10 +595,7 @@ def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error
 def test_get_tool_runtime_builtin_plugin_credential_deleted_raises(
     monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase
 ):
-    plugin_controller = object.__new__(PluginToolProviderController)
-    plugin_controller.entity = SimpleNamespace(credentials_schema=[{"name": "k"}], oauth_schema=None)
-    plugin_controller.get_tool = Mock(return_value=Mock())
-    plugin_controller.get_credentials_schema_by_type = Mock(return_value=[])
+    plugin_controller = _plugin_controller()
 
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch.object(ToolManager, "get_builtin_provider", return_value=plugin_controller):
@@ -588,10 +612,7 @@ def test_get_tool_runtime_builtin_plugin_credential_deleted_raises(
 def test_get_tool_runtime_builtin_plugin_without_workspace_credential_raises(
     monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase
 ):
-    plugin_controller = object.__new__(PluginToolProviderController)
-    plugin_controller.entity = SimpleNamespace(credentials_schema=[{"name": "k"}], oauth_schema=None)
-    plugin_controller.get_tool = Mock(return_value=Mock())
-    plugin_controller.get_credentials_schema_by_type = Mock(return_value=[])
+    plugin_controller = _plugin_controller("send_draft")
 
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch.object(ToolManager, "get_builtin_provider", return_value=plugin_controller):
@@ -607,10 +628,7 @@ def test_get_tool_runtime_builtin_plugin_without_workspace_credential_raises(
 def test_get_tool_runtime_hardcoded_provider_without_credential_raises(
     monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase
 ):
-    controller = SimpleNamespace(
-        get_tool=Mock(return_value=Mock()),
-        need_credentials=True,
-    )
+    controller = _native_time_controller("legacy-tool")
 
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
     with patch.object(ToolManager, "get_builtin_provider", return_value=controller):
@@ -698,10 +716,12 @@ def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_da
 
 
 def test_get_tool_runtime_plugin_path():
-    with patch.object(
-        ToolManager,
-        "get_plugin_provider",
-        return_value=SimpleNamespace(get_tool=lambda _: "plugin-tool"),
+    controller = _plugin_controller("p", needs_credentials=False)
+    tool = controller.get_tool("p")
+    with (
+        patch.object(ToolManager, "get_plugin_provider", return_value=controller),
+        patch.object(controller, "get_tool", return_value=tool),
+        patch.object(tool, "fork_tool_runtime", return_value="plugin-tool"),
     ):
         assert (
             ToolManager.get_tool_runtime(

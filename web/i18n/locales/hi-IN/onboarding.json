@@ -44,6 +44,8 @@
   "stepByStepTour.guides.studio.empty.learnDify.title": "या Learn Dify से शुरू करें",
   "stepByStepTour.guides.studio.empty.template.description": "Dify के templates ब्राउज़ करें और वह चुनें जो आपकी ज़रूरत से मेल खाता हो। बिना शून्य से लिखे शुरू करने का यह बढ़िया तरीका है।",
   "stepByStepTour.guides.studio.empty.template.title": "template से बनाएं",
+  "stepByStepTour.guides.studio.empty.workflow.description": "ऐसे वर्कफ़्लो से शुरू करें जो एक बार चले और समाप्त हो जाए।",
+  "stepByStepTour.guides.studio.empty.workflow.title": "वर्कफ़्लो बनाएँ",
   "stepByStepTour.guides.studio.noCreate.empty.description": "आप इस वर्कस्पेस में ऐप देख सकते हैं, लेकिन अभी यहां कोई ऐप नहीं है। ऐप बनाने या संपादित करने के लिए वर्कस्पेस बदलें या Workspace Owner या Admin से एक्सेस मांगें।",
   "stepByStepTour.guides.studio.noCreate.empty.title": "देखने के लिए अभी कोई ऐप नहीं है",
   "stepByStepTour.guides.studio.noCreate.withApps.description": "आप इस वर्कस्पेस में ऐप ब्राउज़ और खोल सकते हैं, लेकिन ऐप बनाना या संपादित करना अनुमति मांगता है। ऐसे वर्कस्पेस में जाएं जहां आपके पास एक्सेस हो, या Workspace Owner या Admin से संपर्क करें।",

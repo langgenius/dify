@@ -391,7 +391,6 @@ def test_running_tool_keeps_materialized_definition_after_republication(
     sqlite_session_factory: sessionmaker[Session],
     resuming: bool,
 ) -> None:
-    from core.workflow.node_factory import DifyNodeFactory
     from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
     from graphon.engine import Engine
     from graphon.engine_events import NodeRunSucceededEvent
@@ -399,6 +398,7 @@ def test_running_tool_keeps_materialized_definition_after_republication(
     from graphon.graph import Graph
     from graphon.nodes.tool.entities import ToolNodeData
     from graphon.runtime import RuntimeState, VariablePool
+    from services.workflow_runtime.node_factory import DifyNodeFactory
     from services.workflow_tool_source_service import WorkflowToolSourceService
     from tests.workflow_test_utils import build_test_graph_init_params
 

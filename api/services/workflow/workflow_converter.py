@@ -2,7 +2,7 @@ import json
 from typing import Any, TypedDict
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -86,10 +86,6 @@ class WorkflowConverter:
         if not app_model_config:
             raise ValueError("App model config is required")
 
-        workflow = self.convert_app_model_config_to_workflow(
-            app_model=app_model, app_model_config=app_model_config, account_id=account.id, session=session
-        )
-
         # create new app
         new_app = App()
         new_app.tenant_id = app_model.tenant_id
@@ -110,6 +106,15 @@ class WorkflowConverter:
         session.add(new_app)
         session.flush()
 
+        # Build from the source configuration, but initialize only the new owner.
+        # Never commit a temporary draft under the source app.
+        workflow = self.convert_app_model_config_to_workflow(
+            app_model=app_model,
+            app_model_config=app_model_config,
+            account_id=account.id,
+            session=session,
+            destination_app=new_app,
+        )
         workflow.app_id = new_app.id
         session.commit()
 
@@ -119,7 +124,13 @@ class WorkflowConverter:
         return new_app
 
     def convert_app_model_config_to_workflow(
-        self, app_model: App, app_model_config: AppModelConfig, account_id: str, session: Session
+        self,
+        app_model: App,
+        app_model_config: AppModelConfig,
+        account_id: str,
+        session: Session,
+        *,
+        destination_app: App | None = None,
     ):
         """
         Convert app model config to workflow mode
@@ -220,10 +231,19 @@ class WorkflowConverter:
                     "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
                 }
 
-        # create workflow record
+        # Direct conversion callers initialize their existing owner; app copying
+        # supplies a fresh destination while retaining the source configuration.
+        from services.workflow_service import WorkflowService
+
+        owner = destination_app if destination_app is not None else app_model
+        existing = WorkflowService(sessionmaker(bind=session.get_bind())).get_draft_workflow_for_creation(
+            owner, session=session
+        )
+        if existing is not None:
+            raise ValueError("A draft workflow already exists for the conversion destination.")
         workflow = Workflow(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
+            tenant_id=owner.tenant_id,
+            app_id=owner.id,
             type=WorkflowType.from_app_mode(new_app_mode),
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps(graph),

@@ -1,0 +1,120 @@
+"""Only explicit server injection selects the confirmed Workflow Agent profile."""
+
+from collections.abc import Generator
+from typing import Never
+
+import pytest
+from sqlalchemy.orm import Session, sessionmaker
+
+import services.app_generate_service as module
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.features.rate_limiting import RateLimit
+from models.enums import EndUserType
+from models.model import Account, App, AppMode, EndUser
+from models.workflow import Workflow
+from services.app_generate_service import AppGenerateService
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
+from tests.unit_tests.services.dify_builder.native_testing.test_agent_context import marker
+
+
+@pytest.mark.parametrize("case", ["celery", "published", "advanced_chat", "end_user", "restricted", "agent_mode"])
+def test_confirmed_agent_refuses_unsupported_entry_before_guardrails(
+    monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
+
+    calls = []
+
+    def guardrails(**_kwargs: object) -> Never:
+        calls.append("dispatch")
+        raise AssertionError("refuse before dispatch")
+
+    monkeypatch.setattr(AppGenerateService, "_run_with_guardrails", guardrails)
+    app = App(id="app", tenant_id="tenant", mode=AppMode.ADVANCED_CHAT if case == "advanced_chat" else AppMode.WORKFLOW)
+    if case == "agent_mode":
+        app.mode = AppMode.AGENT
+    with Session() as session, pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
+        AppGenerateService.generate(
+            app_model=app,
+            user=EndUser(id="user", tenant_id="tenant", app_id="app", type=EndUserType.BROWSER, session_id="session")
+            if case == "end_user"
+            else Account(name="Actor", email="actor@example.invalid"),
+            args={"inputs": {}},
+            invoke_from=InvokeFrom.SERVICE_API if case == "published" else InvokeFrom.DEBUGGER,
+            session=session,
+            workflow_execution_mode="celery" if case == "celery" else "in_process",
+            builder_execution=context() if case == "restricted" else None,
+            builder_agent_execution=marker(),
+        )
+    assert calls == []
+
+
+@pytest.mark.parametrize("server_context", [False, True])
+def test_confirmed_agent_server_context_and_preallocated_run_reach_workflow(
+    monkeypatch: pytest.MonkeyPatch, server_context: bool
+) -> None:
+    app = App(id="app", tenant_id="tenant", mode=AppMode.WORKFLOW)
+    monkeypatch.setattr(app, "is_agent_with_session", lambda **_: False)
+    monkeypatch.setattr(
+        AppGenerateService, "_get_workflow", lambda *_, **__: Workflow(id="workflow", created_by="actor")
+    )
+    monkeypatch.setattr(AppGenerateService, "_admit_normal_draft_tools", lambda **_: None)
+    monkeypatch.setattr(AppGenerateService, "_ensure_workflow_service_mode_available", lambda **_: None)
+    monkeypatch.setattr(module.session_factory, "get_session_maker", sessionmaker)
+    monkeypatch.setattr(
+        AppGenerateService,
+        "_run_with_guardrails",
+        lambda **kw: kw["action"](RateLimit("app", 0), RateLimit("app", 0).enter("request")),
+    )
+    captured = {}
+
+    def generate(**kwargs: object) -> Generator[object]:
+        captured.update(kwargs)
+        yield from ()
+
+    monkeypatch.setattr(module.WorkflowAppGenerator, "generate", lambda _, **kw: generate(**kw))
+    context = marker() if server_context else None
+    with Session() as session:
+        list(
+            AppGenerateService.generate(
+                app_model=app,
+                user=Account(name="Actor", email="actor@example.invalid"),
+                args={"inputs": {}, "builder_agent_execution": marker().model_dump(mode="json")},
+                invoke_from=InvokeFrom.DEBUGGER,
+                session=session,
+                workflow_execution_mode="in_process",
+                builder_agent_execution=context,
+            )
+        )
+    assert captured["builder_agent_execution"] == context
+    if server_context:
+        assert context is not None
+        assert captured["workflow_run_id"] == context.native_run_id
+    assert captured["pause_state_config"] is not None
+
+
+def test_effective_agent_mode_cannot_drop_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = App(id="app", tenant_id="tenant", mode=AppMode.WORKFLOW)
+    monkeypatch.setattr(app, "is_agent_with_session", lambda **_: True)
+    calls = []
+
+    def generator(*_args: object, **_kwargs: object) -> Never:
+        calls.append("generate")
+        raise AssertionError("AgentChat must not lose the marker")
+
+    monkeypatch.setattr(module.AgentChatAppGenerator, "generate", generator)
+    with pytest.raises(BuilderExecutionPolicyError):
+        AppGenerateService._dispatch_generate(
+            app_model=app,
+            user=Account(name="Actor", email="actor@example.invalid"),
+            args={"inputs": {}},
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=True,
+            root_node_id=None,
+            session=Session(),
+            rate_limit=RateLimit("app", 0),
+            request_id="request",
+            workflow_execution_mode="in_process",
+            builder_agent_execution=marker(),
+        )
+    assert calls == []

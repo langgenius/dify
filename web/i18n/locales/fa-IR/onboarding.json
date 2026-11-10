@@ -44,6 +44,8 @@
   "stepByStepTour.guides.studio.empty.learnDify.title": "یا با Learn Dify شروع کنید",
   "stepByStepTour.guides.studio.empty.template.description": "قالب‌های Dify را مرور کنید و قالبی را انتخاب کنید که با آنچه می‌خواهید بسازید هماهنگ است. راهی عالی برای شروع بدون نوشتن همه چیز از صفر.",
   "stepByStepTour.guides.studio.empty.template.title": "ساخت از روی یک قالب",
+  "stepByStepTour.guides.studio.empty.workflow.description": "با گردش‌کاری شروع کنید که یک بار اجرا می‌شود و پایان می‌یابد.",
+  "stepByStepTour.guides.studio.empty.workflow.title": "ایجاد گردش‌کار",
   "stepByStepTour.guides.studio.noCreate.empty.description": "می‌توانید برنامه‌های این فضای کاری را مشاهده کنید، اما هنوز برنامه‌ای وجود ندارد. برای ساخت یا ویرایش برنامه‌ها، فضای کاری را تغییر دهید یا از مالک یا مدیر فضای کاری دسترسی بخواهید.",
   "stepByStepTour.guides.studio.noCreate.empty.title": "هنوز برنامه‌ای برای مشاهده وجود ندارد",
   "stepByStepTour.guides.studio.noCreate.withApps.description": "می‌توانید برنامه‌های این فضای کاری را مرور و باز کنید، اما ساخت یا ویرایش برنامه‌ها به مجوز نیاز دارد. به فضای کاری دارای دسترسی بروید یا با مالک یا مدیر فضای کاری تماس بگیرید.",
