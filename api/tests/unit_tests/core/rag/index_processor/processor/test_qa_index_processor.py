@@ -326,6 +326,23 @@ class TestQAIndexProcessor:
         mock_summary.assert_called_once_with(dataset, None, session=session)
         vector.delete.assert_called_once()
 
+    def test_clean_with_an_empty_batch_deletes_nothing(
+        self, processor: QAIndexProcessor, dataset: Dataset, sqlite_session: Session
+    ) -> None:
+        """An empty batch means "nothing to remove", not "the whole dataset"."""
+        session = sqlite_session
+        with (
+            patch(
+                "core.rag.index_processor.processor.qa_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
+            ) as mock_summary,
+            patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls,
+        ):
+            processor.clean(dataset, [], delete_summaries=True, session=session)
+
+        mock_vector_cls.return_value.delete.assert_not_called()
+        mock_vector_cls.return_value.delete_by_ids.assert_not_called()
+        mock_summary.assert_not_called()
+
     def test_index_adds_documents_and_vectors_for_high_quality(
         self,
         processor: QAIndexProcessor,
