@@ -15,12 +15,14 @@ from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import delete_cache_for_subscription
 from enums import QuotaType
 from extensions.ext_redis import RedisClientWrapper
+from extensions.ext_storage import storage
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerDispatchRepository
 from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
+from repositories.trigger.debug_repository import RedisTriggerDebugRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from repositories.trigger.schedule_repository import TriggerScheduleRepository
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
@@ -37,6 +39,8 @@ from services.file_service import FileService
 from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.quota_service import QuotaService
+from services.trigger.debug_service import TriggerDebugService
+from services.trigger.debug_store import TriggerDebugEventStore
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.event_gateway import PluginTriggerEventGateway
@@ -69,7 +73,11 @@ from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.trigger.webhook_gateway import ToolWebhookFiles
-from services.trigger.webhook_service import WebhookBindingService, WebhookFiles, WebhookService
+from services.trigger.webhook_service import (
+    WebhookBindingService,
+    WebhookFiles,
+    WebhookService,
+)
 from services.trigger.workflow_dispatch_service import PluginTriggerWorkflowDispatchService, TriggerEndUserProvisioner
 from services.workflow.queue_dispatcher import CeleryWorkflowQueuePublisher
 from services.workspace.gateways import (
@@ -118,6 +126,8 @@ class WorkspaceServices:
     trigger_builders: TriggerSubscriptionBuilderService
     trigger_endpoints: TriggerEndpointService
     trigger_events: TriggerEventService
+    trigger_debug: TriggerDebugService
+    trigger_debug_events: TriggerDebugEventStore
     workflow_dispatch: AsyncWorkflowService
     webhooks: WebhookService
     webhook_files: WebhookFiles
@@ -207,10 +217,12 @@ def build_workspace_services(
         invalidate_cache=delete_cache_for_subscription,
         invalidate_properties=invalidate_subscription_properties,
     )
+    trigger_requests = TriggerHttpRequestCachingService(storage=storage)
+    trigger_debug_events = RedisTriggerDebugRepository(redis=redis)
     trigger_events = TriggerEventService(
         subscriptions=trigger_subscriptions,
         plugins=PluginTriggerEventGateway(),
-        requests=TriggerHttpRequestCachingService,
+        requests=trigger_requests,
     )
     execution_logs = SQLAlchemyWorkflowTriggerDispatchRepository(session_factory=database_client)
     queues = CeleryWorkflowQueuePublisher()
@@ -265,6 +277,13 @@ def build_workspace_services(
             sync_bindings=partial(subscriptions.sync_workflow_bindings, session=session)
         ),
         trigger_events=trigger_events,
+        trigger_debug_events=trigger_debug_events,
+        trigger_debug=TriggerDebugService(
+            events=trigger_debug_events,
+            schedules=trigger_debug_events,
+            invoke_plugin_event=trigger_events.invoke_debug,
+            now=lambda: datetime.now(UTC),
+        ),
         workflow_dispatch=workflow_dispatch,
         webhooks=WebhookService(
             webhooks=app_triggers,
@@ -315,7 +334,7 @@ def build_workspace_services(
         trigger_endpoints=TriggerEndpointService(
             subscriptions=subscriptions,
             provider=PluginTriggerEndpointGateway(),
-            requests=TriggerHttpRequestCachingService,
+            requests=trigger_requests,
             publish=enqueue_triggered_workflows,
         ),
         trigger_oauth_clients=trigger_oauth_clients,

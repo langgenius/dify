@@ -11,9 +11,9 @@ from typing import Any
 
 from celery import shared_task
 
-from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
 from extensions.ext_application_services import application_services
+from services.trigger.debug_events import PluginTriggerDebugEvent, build_plugin_pool_key
+from services.trigger.debug_store import TriggerDebugEventStore
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from services.workflow.entities import PluginTriggerDispatchData
 
@@ -29,6 +29,8 @@ def dispatch_trigger_debug_event(
     timestamp: int,
     request_id: str,
     subscription: TriggerSubscriptionRuntime,
+    *,
+    debug_events: TriggerDebugEventStore,
 ) -> int:
     debug_dispatched = 0
     try:
@@ -47,7 +49,7 @@ def dispatch_trigger_debug_event(
                 subscription_id=subscription.id,
                 provider_id=subscription.provider_id,
             )
-            debug_dispatched += TriggerDebugEventBus.dispatch(
+            debug_dispatched += debug_events.dispatch(
                 tenant_id=subscription.tenant_id,
                 event=trigger_debug_event,
                 pool_key=pool_key,
@@ -123,6 +125,7 @@ def dispatch_triggered_workflows_async(
             timestamp=timestamp,
             request_id=request_id,
             subscription=subscription,
+            debug_events=application_services().workspaces.trigger_debug_events,
         )
 
         return {
