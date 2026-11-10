@@ -2,22 +2,23 @@
 
 import json
 from collections.abc import Iterator
-from flask import Flask
-from redis import Redis
-from enums import DeploymentEdition
-from extensions.ext_application_services import build_application_services
-from extensions.ext_redis import RedisClientWrapper
 from uuid import uuid4
 
 import pytest
+from flask import Flask
+from redis import Redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
-from events.event_handlers.sync_webhook_when_app_created import handle, handle_published
+from enums import DeploymentEdition
+from events.app_event import app_draft_workflow_was_synced
+from events.event_handlers.sync_webhook_when_app_created import handle
+from extensions.ext_application_services import build_application_services
+from extensions.ext_redis import RedisClientWrapper
 from models.model import App, AppMode
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
+from repositories.trigger.workflow_repository import WorkflowTriggerRepository
 from tests.unit_tests.repositories.trigger.test_webhook_runtime import WebhookSeed
 from tests.unit_tests.repositories.trigger.test_webhook_runtime import webhook_seed as _webhook_seed
 
@@ -84,7 +85,7 @@ def test_draft_listener_preserves_url_for_undo(
 
 
 @pytest.mark.parametrize("commit", [True, False], ids=["commit", "rollback"])
-def test_published_listener_removes_stale_bindings_in_publishers_transaction(
+def test_publication_repository_removes_stale_bindings_in_publishers_transaction(
     sqlite_session_factory: sessionmaker[Session], webhook_seed: WebhookSeed, commit: bool
 ) -> None:
     with sqlite_session_factory() as session:
@@ -93,7 +94,8 @@ def test_published_listener_removes_stale_bindings_in_publishers_transaction(
         published = _workflow(app, ["new"])
         session.add(published)
         app.workflow_id = published.id
-        handle_published(app, published_workflow=published, session=session)
+        WorkflowTriggerRepository.lock_app(session, app)
+        WorkflowTriggerRepository.sync_webhooks(session, app, ["new"], created_by=app.created_by, remove_stale=True)
         assert set(_bindings(session, app.id)) == {"new"}
         if commit:
             session.commit()
@@ -116,10 +118,8 @@ def test_non_workflow_app_is_ignored(sqlite_session_factory: sessionmaker[Sessio
         app.mode = AppMode.CHAT
         workflow = _workflow(app, ["new"])
         handle(app, synced_draft_workflow=workflow)
-        handle_published(app, published_workflow=workflow, session=session)
         assert _bindings(session, app.id) == {"hook": webhook_seed.webhook_id}
 
 
 def test_webhook_listeners_are_registered() -> None:
     assert handle in app_draft_workflow_was_synced.receivers_for(App())
-    assert handle_published in app_published_workflow_was_updated.receivers_for(App())
