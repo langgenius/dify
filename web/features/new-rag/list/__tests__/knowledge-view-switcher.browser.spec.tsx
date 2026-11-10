@@ -30,11 +30,26 @@ it('persists guide dismissal without changing the selected knowledge view', asyn
   await expect.element(page.getByRole('radio', { name: /knowledgeSpace.view.agent/ })).toBeChecked()
   expect(localStorage.getItem('dify-new-knowledge-guide-dismissed')).toBe('true')
 
-  await page.getByRole('button', { name: 'knowledgeSpace.guideTitle' }).click()
+  const trigger = page.getByRole('button', { name: 'knowledgeSpace.guideTitle' })
+  const agent = page.getByRole('radio', { name: /knowledgeSpace.view.agent/ })
+  const helpBounds = trigger.element().getBoundingClientRect()
+  const optionBounds = agent.element().getBoundingClientRect()
+  expect(page.getByRole('radiogroup').element()).not.toContainElement(trigger.element())
+  expect(helpBounds.left).toBeGreaterThanOrEqual(optionBounds.left)
+  expect(helpBounds.right).toBeLessThanOrEqual(optionBounds.right)
+  expect(helpBounds.top).toBeGreaterThanOrEqual(optionBounds.top)
+  expect(helpBounds.bottom).toBeLessThanOrEqual(optionBounds.bottom)
+  await trigger.click()
   await expect.element(guide).toBeVisible()
   await guide.getByRole('button', { name: 'knowledgeSpace.gotIt' }).click()
   await expect.element(guide).not.toBeInTheDocument()
   await expect.element(page.getByRole('radio', { name: /knowledgeSpace.view.agent/ })).toBeChecked()
+
+  await agent.click()
+  await userEvent.keyboard('{ArrowLeft}')
+  const classic = page.getByRole('radio', { name: 'knowledgeSpace.view.classic' })
+  await expect.element(classic).toHaveFocus()
+  expect(getComputedStyle(classic.element()).boxShadow).toContain('inset')
 })
 
 it('keeps existing focus for the automatic guide and focuses Got it when explicitly reopened', async () => {
