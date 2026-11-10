@@ -52,15 +52,21 @@ export function PricingContent() {
   const billingInterval = selectedBillingInterval ?? defaultBillingInterval
   const indicatorId = React.useId()
   const reducedMotion = useReducedMotion()
-  const intervalIndicator = (
-    <motion.span
-      aria-hidden="true"
-      initial={false}
-      layoutId={reducedMotion ? undefined : indicatorId}
-      transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
-      className="pointer-events-none absolute inset-0 -z-1 rounded-full bg-components-button-secondary-bg motion-reduce:transform-none! motion-reduce:opacity-100!"
-    />
-  )
+  const [keyboardInput, setKeyboardInput] = React.useState(false)
+  const indicatorClassName =
+    'pointer-events-none absolute inset-0 -z-1 rounded-full bg-components-button-secondary-bg'
+  const intervalIndicator =
+    reducedMotion || keyboardInput ? (
+      <span aria-hidden="true" className={indicatorClassName} />
+    ) : (
+      <motion.span
+        aria-hidden="true"
+        initial={false}
+        layoutId={indicatorId}
+        transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
+        className={indicatorClassName}
+      />
+    )
   const billing = currentCloudPlan
     ? {
         currentPlan: currentCloudPlan,
@@ -79,6 +85,8 @@ export function PricingContent() {
         aria-label={t(($) => $['pricing.billingInterval'], { ns: 'billing' })}
         value={billingInterval}
         onValueChange={setSelectedBillingInterval}
+        onKeyDownCapture={() => setKeyboardInput(true)}
+        onPointerDownCapture={() => setKeyboardInput(false)}
         className="relative isolate mx-auto my-8 min-h-[49px] w-full max-w-full gap-0 rounded-full border border-(--pricing-switch-border) bg-(--pricing-switch) p-1 sm:w-fit"
       >
         <RadioItem value="month" className={intervalOptionClassName}>
