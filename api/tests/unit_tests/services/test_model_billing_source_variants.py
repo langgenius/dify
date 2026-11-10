@@ -16,6 +16,7 @@ from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguratio
 from core.hosting_configuration import HostingProvider, PaidHostingQuota
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from services.entities.model_billing_embedding_mapping import SelectedEmbeddingSourceVariant
+from services.entities.model_billing_gemini_v8_mapping import SelectedGeminiV8SourceVariant
 from services.entities.model_billing_mapping import (
     ModelMapping,
     SelectedSourceVariant,
@@ -44,6 +45,7 @@ from services.model_billing_openai_provider110_adapter import (
 from services.model_billing_openai_provider110_adapter import _REVIEWED_CONTRACTS
 from services.model_billing_openai_provider110_adapter import _REVIEWED_CONTRACTS as CURRENT_SOURCE_CONTRACTS
 from services.model_billing_source_variants import SourceVariantContext, selection_payload, source_endpoint_class
+from tests.helpers.unit import model_billing_gemini_v8_profiles as gemini_v8
 from tests.helpers.unit.model_billing_source_profiles import (
     DAEMON_REVISION,
     EMBEDDING_MODELS,
@@ -2133,3 +2135,179 @@ def test_credit_llm_family_append_preserves_all_prior_registry_shapes_and_digest
         drifted.restore_selection(
             (SOURCE_PROVIDER, ModelType.LLM, frozen.source.model), selection_payload(frozen).model_dump(mode="json")
         )
+
+
+@pytest.mark.parametrize("source_uid", gemini_v8.SOURCE_UIDS)
+@pytest.mark.parametrize("model", [row["source_model"] for row in gemini_v8.profiles(gemini_v8.SOURCE_UIDS[0])])
+def test_v8_real_two_uid_resolution_factory_restore_and_prospective(source_uid: str, model: str) -> None:
+    from services import model_billing_gemini_credit_source_adapter as legacy
+    from services import model_billing_gemini_credit_source_v2_adapter as current
+    from services.entities.model_billing_gemini_v8_mapping import SourceGeminiV8VariantSelection
+    from services.model_billing_mapping_service import hosted_gemini_source_fact, mapping_has_required_operations
+
+    rows = gemini_v8.profiles(source_uid)
+    row = next(item for item in rows if item["source_model"] == model)
+    schemas = [gemini_v8.schema(item) for item in rows]
+    observed = gemini_v8.schema(row)
+    registry = source_mapping_revision(gemini_v8.registry(), gemini_v8.REVISION)
+    fact = hosted_gemini_source_fact(
+        provider=gemini_v8.SOURCE_PROVIDER,
+        source_uid=source_uid,
+        models=schemas,
+        credentials={"google_api_key": "unit-source-key-never-forwarded"},
+    )
+    selected = resolve_source_mapping(
+        registry,
+        (gemini_v8.SOURCE_PROVIDER, observed.model_type, model),
+        source_uid=source_uid,
+        fact=None,
+        gemini_fact=fact,
+        schema=observed,
+    )
+    assert type(selected) is SelectedGeminiV8SourceVariant
+    assert selected.variant.source_plugin_uid == source_uid
+    assert mapping_has_required_operations(selected)
+    contract = build_source_adapter_contract(
+        selected,
+        source_provider=gemini_v8.SOURCE_PROVIDER,
+        source_plugin_unique_identifier=source_uid,
+        source_schema=observed,
+        source_credentials=None,
+    )
+    expected_type = (
+        legacy.GeminiCreditSourceContract
+        if source_uid == gemini_v8.SOURCE_UIDS[0]
+        else current.GeminiCreditSourceV2Contract
+    )
+    assert type(contract) is expected_type
+    assert contract == restore_variant_source_contract(selected)
+    marker = source_parameter_marker(
+        contract,
+        source_provider=gemini_v8.SOURCE_PROVIDER,
+        source_model=model,
+        model_type=observed.model_type,
+        target_model=model,
+    )
+    assert marker["source_plugin_uid"] == source_uid
+    assert "unit-source-key" not in json.dumps(marker)
+    frozen = selection_payload(selected)
+    assert type(frozen) is SourceGeminiV8VariantSelection
+    assert frozen.schema_version == 8
+    assert (
+        registry.restore_selection(
+            (gemini_v8.SOURCE_PROVIDER, observed.model_type, model), frozen.model_dump(mode="json")
+        )
+        == selected
+    )
+    assert len(registry.selected_prospective()) == 18
+    validate_frozen_mapping_evidence(
+        selected,
+        provider=gemini_v8.SOURCE_PROVIDER,
+        model=model,
+        model_type=observed.model_type,
+        target_model=model,
+        operations=tuple(selected.operations),
+        source_contract=contract,
+        tts_contract=None,
+    )
+
+
+@pytest.mark.parametrize("source_uid", gemini_v8.SOURCE_UIDS)
+def test_v8_fresh_facts_unknown_uid_drift_and_wrong_context_cannot_authorize(source_uid: str) -> None:
+    from core.entities.provider_entities import HostedGeminiSourceFact
+    from services.entities.model_billing_gemini_mapping import GeminiSourceSettings
+    from services.model_billing_mapping_service import (
+        gemini_source_variant_context,
+        gemini_v8_source_variant_context,
+        hosted_gemini_source_fact,
+    )
+    from services.model_billing_source_variants import GeminiSourceVariantContext, GeminiV8SourceVariantContext
+
+    row = gemini_v8.profiles(source_uid)[0]
+    observed = gemini_v8.schema(row)
+    identity = (gemini_v8.SOURCE_PROVIDER, observed.model_type, row["source_model"])
+    registry = source_mapping_revision(gemini_v8.registry(), gemini_v8.REVISION)
+    fact = hosted_gemini_source_fact(
+        provider=gemini_v8.SOURCE_PROVIDER,
+        source_uid=source_uid,
+        models=[observed],
+        credentials={},
+    )
+    assert fact is not None
+
+    def context(value: HostedGeminiSourceFact | None) -> GeminiV8SourceVariantContext | None:
+        return gemini_v8_source_variant_context(
+            value,
+            provider=gemini_v8.SOURCE_PROVIDER,
+            source_uid=source_uid,
+            model_type=observed.model_type,
+            schema=observed,
+        )
+
+    assert context(fact) is not None
+    assert context(None) is None
+    assert context(replace(fact, plugin_unique_identifier="unknown")) is None
+    assert context(replace(fact, catalog_schema_digests=())) is None
+    assert context(replace(fact, llm_file_url_policy="unreviewed")) is None
+    assert (
+        hosted_gemini_source_fact(
+            provider=gemini_v8.SOURCE_PROVIDER,
+            source_uid=source_uid + "x",
+            models=[observed],
+            credentials={},
+        )
+        is None
+    )
+    assert (
+        hosted_gemini_source_fact(
+            provider=gemini_v8.SOURCE_PROVIDER,
+            source_uid=source_uid,
+            models=[observed],
+            credentials=None,
+        )
+        is None
+    )
+    with pytest.raises(ValueError, match="V8 Gemini fact family"):
+        registry.resolve(
+            identity, context=GeminiSourceVariantContext(source_uid, GeminiSourceSettings(**row["source_settings"]))
+        )
+    if source_uid == gemini_v8.SOURCE_UIDS[1]:
+        assert (
+            gemini_source_variant_context(
+                fact,
+                provider=gemini_v8.SOURCE_PROVIDER,
+                source_uid=source_uid,
+                model_type=observed.model_type,
+                schema=observed,
+            )
+            is None
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "error"),
+    [
+        ("schema_version", "integer 8"),
+        ("variant_id", "Frozen source variant changed"),
+        ("source_plugin_uid", "literal_error"),
+        ("registry_digest", "string_pattern_mismatch"),
+        ("source_runtime_schema_digest", "string_pattern_mismatch"),
+    ],
+)
+def test_v8_saved_selection_tampering_is_not_a_revision_rebase(field: str, error: str) -> None:
+    from services.entities.model_billing_gemini_mapping import GeminiSourceSettings
+    from services.model_billing_source_variants import GeminiV8SourceVariantContext
+
+    source_uid = gemini_v8.SOURCE_UIDS[1]
+    row = gemini_v8.profiles(source_uid)[0]
+    observed = gemini_v8.schema(row)
+    identity = (gemini_v8.SOURCE_PROVIDER, observed.model_type, row["source_model"])
+    registry = source_mapping_revision(gemini_v8.registry(), gemini_v8.REVISION)
+    selected = registry.resolve(
+        identity, context=GeminiV8SourceVariantContext(source_uid, GeminiSourceSettings(**row["source_settings"]))
+    )
+    assert isinstance(selected, SelectedGeminiV8SourceVariant)
+    payload = selection_payload(selected).model_dump(mode="json")
+    payload[field] = True if field == "schema_version" else "changed"
+    with pytest.raises(ValueError, match=error):
+        registry.restore_selection(identity, payload)

@@ -36,11 +36,12 @@ from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions import ext_hosting_provider
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from models.provider_ids import ModelProviderID
 from repositories.model_billing_dependency_repository import ModelBillingDependencyRepository
 from services.entities.model_billing_embedding_mapping import SelectedEmbeddingSourceVariant
 from services.entities.model_billing_gemini_mapping import SelectedGeminiSourceVariant
+from services.entities.model_billing_gemini_v8_mapping import SelectedGeminiV8SourceVariant
 from services.entities.model_billing_mapping import SourceParameterContract
 from services.entities.model_billing_tongyi_mapping import SelectedTongyiSourceVariant
 from services.model_billing_dependency_inventory import DependencyInventoryPolicy, SavedModelReference
@@ -73,7 +74,7 @@ from services.model_billing_mapping_service import (
     source_parameter_public_settings,
 )
 from services.model_billing_migration_inventory import RequiredSavedCreditModel, SavedDependencySourceEvidence
-from services.model_billing_source_variants import selection_payload
+from services.model_billing_source_variants import SelectedModelMapping, selection_payload
 
 
 class RedirectCapabilities(BaseModel):
@@ -574,21 +575,7 @@ class SavedDependencyMigrationEvidenceGateway:
             )
             if schema is None or schema.model_type != kind:
                 raise ModelRouteUnmapped
-            if (
-                isinstance(
-                    mapping,
-                    (
-                        SelectedAudioSourceVariant,
-                        SelectedXAISourceVariant,
-                        SelectedGeminiSourceVariant,
-                        SelectedTongyiSourceVariant,
-                    ),
-                )
-                and schema.model != mapping.target.model
-            ):
-                # These closed families have no alias exception. Do not erase
-                # an unexpected target identity by normalizing the hash below.
-                raise ModelRouteUnmapped
+            _assert_target_source_identity(mapping, schema)
             if mapping.parameter_adapter.id == "openai_credit_llm_source_v2" and schema.model not in {
                 mapping.source.model,
                 mapping.target.model,
@@ -612,19 +599,60 @@ class SavedDependencyMigrationEvidenceGateway:
             # Its exact versioned runtime schema was checked above; selected
             # source rows still retain the original dimension-contract check.
             # Neither path maps or infers a vector width from a model name.
-            if (
-                kind == ModelType.TEXT_EMBEDDING
-                and not (
-                    isinstance(
-                        mapping,
-                        (SelectedEmbeddingSourceVariant, SelectedGeminiSourceVariant, SelectedTongyiSourceVariant),
-                    )
-                    and prospective_only
-                )
-                and source["embedding_dimensions"] != embedding_dimensions_contract(schema)
-            ):
-                raise ModelRouteUnmapped
+            _assert_target_embedding_dimensions(
+                mapping=mapping,
+                kind=kind,
+                prospective_only=prospective_only,
+                source=source,
+                schema=schema,
+            )
         return expected
+
+
+def _assert_target_source_identity(mapping: SelectedModelMapping, schema: AIModelEntity) -> None:
+    """Closed families have no alias exception; never normalize a wrong target."""
+    if (
+        isinstance(
+            mapping,
+            (
+                SelectedAudioSourceVariant,
+                SelectedXAISourceVariant,
+                SelectedGeminiSourceVariant,
+                SelectedGeminiV8SourceVariant,
+                SelectedTongyiSourceVariant,
+            ),
+        )
+        and schema.model != mapping.target.model
+    ):
+        raise ModelRouteUnmapped
+
+
+def _assert_target_embedding_dimensions(
+    *,
+    mapping: SelectedModelMapping,
+    kind: ModelType,
+    prospective_only: bool,
+    source: Mapping[str, object],
+    schema: AIModelEntity,
+) -> None:
+    """Only prospective closed declarations omit the installed-source dimension fact."""
+    if (
+        kind == ModelType.TEXT_EMBEDDING
+        and not (
+            isinstance(
+                mapping,
+                (
+                    SelectedEmbeddingSourceVariant,
+                    SelectedGeminiSourceVariant,
+                    SelectedGeminiV8SourceVariant,
+                    SelectedTongyiSourceVariant,
+                ),
+            )
+            and prospective_only
+        )
+        and source["embedding_dimensions"] != embedding_dimensions_contract(schema)
+    ):
+        raise ModelRouteUnmapped
 
 
 def _name(plugin_id: str, provider: str) -> str:

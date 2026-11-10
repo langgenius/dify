@@ -1736,3 +1736,86 @@ def test_credit_llm_family_checks_selected_source_and_every_prospective_target(
         gateway.validate_target("tenant", _CREDIT_LLM_REVISION, inventory)
     with pytest.raises(ModelRouteUnmapped):
         gateway.validate_target("tenant", _CREDIT_LLM_REVISION, {**inventory, "prospective_variants": []})
+
+
+@pytest.mark.parametrize(
+    "source_uid",
+    [
+        "langgenius/gemini:0.9.12@9bb9eff3f9c99a8f1f87bdd5e0f178d5493918939dd0e02825ae8383bd0fd7ed",
+        "langgenius/gemini:0.9.13@4378187cfc50d4253573f4d96baa13228d8ed2eb746ac3bae492a8eaee2da458",
+    ],
+)
+@pytest.mark.parametrize("model", ["gemini-2.5-flash", "gemini-embedding-001", "gemini-embedding-2-preview"])
+def test_v8_real_target_identity_guard_never_normalizes_wrong_models(source_uid: str, model: str) -> None:
+    from services.entities.model_billing_gemini_mapping import GeminiSourceSettings
+    from services.model_billing_source_variants import GeminiV8SourceVariantContext, source_mapping_revision
+    from tests.helpers.unit import model_billing_gemini_v8_profiles as gemini
+
+    row = next(item for item in gemini.profiles(source_uid) if item["source_model"] == model)
+    observed = gemini.schema(row)
+    registry = source_mapping_revision(gemini.registry(), gemini.REVISION, normalize_provider=str)
+    selected = registry.resolve(
+        (gemini.SOURCE_PROVIDER, observed.model_type, model),
+        context=GeminiV8SourceVariantContext(source_uid, GeminiSourceSettings(**row["source_settings"])),
+    )
+    target = gemini.schema(row, runtime=True)
+    module._assert_target_source_identity(selected, target)
+    changed = target.model_dump(mode="json")
+    changed["model"] = "unreviewed-target-identity"
+    with pytest.raises(ModelRouteUnmapped):
+        module._assert_target_source_identity(selected, AIModelEntity.model_validate(changed))
+
+
+@pytest.mark.parametrize("version", [6, 8])
+@pytest.mark.parametrize("model", ["gemini-embedding-001", "gemini-embedding-2-preview"])
+def test_real_v6_v8_dimension_guards_keep_selected_and_prospective_distinct(version: int, model: str) -> None:
+    from services.entities.model_billing_gemini_mapping import GeminiSourceSettings
+    from services.model_billing_source_variants import (
+        GeminiSourceVariantContext,
+        GeminiV8SourceVariantContext,
+        source_mapping_revision,
+    )
+    from tests.helpers.unit import model_billing_gemini_profiles as legacy
+    from tests.helpers.unit import model_billing_gemini_v8_profiles as current
+
+    if version == 6:
+        row = next(item for item in legacy.profiles() if item["source_model"] == model)
+        registry = source_mapping_revision(legacy.registry(), legacy.REVISION, normalize_provider=str)
+        context = GeminiSourceVariantContext(legacy.SOURCE_UID, GeminiSourceSettings(**row["source_settings"]))
+    else:
+        uid = current.SOURCE_UIDS[1]
+        row = next(item for item in current.profiles(uid) if item["source_model"] == model)
+        registry = source_mapping_revision(current.registry(), current.REVISION, normalize_provider=str)
+        context = GeminiV8SourceVariantContext(uid, GeminiSourceSettings(**row["source_settings"]))
+    target = current.schema(row, runtime=True)
+    selected = registry.resolve((current.SOURCE_PROVIDER, target.model_type, model), context=context)
+    module._assert_target_source_identity(selected, target)
+    wrong_target = target.model_dump(mode="json")
+    wrong_target["model"] = "unreviewed-target-identity"
+    with pytest.raises(ModelRouteUnmapped):
+        module._assert_target_source_identity(selected, AIModelEntity.model_validate(wrong_target))
+    actual = module.embedding_dimensions_contract(target)
+    module._assert_target_embedding_dimensions(
+        mapping=selected,
+        kind=target.model_type,
+        prospective_only=False,
+        source={"embedding_dimensions": actual},
+        schema=target,
+    )
+    with pytest.raises(ModelRouteUnmapped):
+        module._assert_target_embedding_dimensions(
+            mapping=selected,
+            kind=target.model_type,
+            prospective_only=False,
+            source={"embedding_dimensions": "unreviewed-vector-space"},
+            schema=target,
+        )
+    # There is no installed-source dimension fact for a prospective row. The
+    # production path independently verifies its exact runtime schema first.
+    module._assert_target_embedding_dimensions(
+        mapping=selected,
+        kind=target.model_type,
+        prospective_only=True,
+        source={},
+        schema=target,
+    )

@@ -43,6 +43,10 @@ from services.entities.model_billing_gemini_mapping import (
     gemini_source_operations,
 )
 from services.entities.model_billing_gemini_mapping import SelectedGeminiSourceVariant as SelectedGeminiSourceVariant  # noqa: PLC0414
+from services.entities.model_billing_gemini_v8_mapping import GEMINI_0913_SOURCE_UID, SourceGeminiV8VariantMapping
+from services.entities.model_billing_gemini_v8_mapping import (
+    SelectedGeminiV8SourceVariant as SelectedGeminiV8SourceVariant,  # noqa: PLC0414
+)
 from services.entities.model_billing_mapping import ModelMapping, SourceVariantSettings
 from services.entities.model_billing_mapping import SelectedSourceVariant as SelectedSourceVariant  # noqa: PLC0414
 from services.entities.model_billing_mapping import SourceParameterContract as SourceParameterContract  # noqa: PLC0414
@@ -68,6 +72,16 @@ from services.model_billing_gemini_credit_source_adapter import (
     build_gemini_credit_source_contract,
     gemini_credit_source_marker,
     restore_gemini_credit_source_contract,
+)
+from services.model_billing_gemini_credit_source_v2_adapter import GeminiCreditSourceV2Contract
+from services.model_billing_gemini_credit_source_v2_adapter import (
+    build_gemini_credit_source_contract as build_gemini_credit_v2_source_contract,
+)
+from services.model_billing_gemini_credit_source_v2_adapter import (
+    gemini_credit_source_marker as gemini_credit_v2_source_marker,
+)
+from services.model_billing_gemini_credit_source_v2_adapter import (
+    restore_gemini_credit_source_contract as restore_gemini_credit_v2_source_contract,
 )
 from services.model_billing_migration_inventory import saved_dependency_inventory_policy
 from services.model_billing_openai_audio_adapter import (
@@ -134,6 +148,7 @@ from services.model_billing_source_variants import (
     AudioSourceVariantContext,
     EmbeddingSourceVariantContext,
     GeminiSourceVariantContext,
+    GeminiV8SourceVariantContext,
     MappingDeclaration,
     ModelMappingRevision,
     SelectedModelMapping,
@@ -215,6 +230,22 @@ def build_source_adapter_contract(
         if tongyi_contract != restore_variant_source_contract(mapping):
             raise ValueError("Tongyi source variant evidence changed")
         return tongyi_contract
+    if isinstance(mapping, SelectedGeminiV8SourceVariant):
+        build_gemini_v8 = (
+            build_gemini_credit_v2_source_contract
+            if mapping.variant.source_plugin_uid == GEMINI_0913_SOURCE_UID
+            else build_gemini_credit_source_contract
+        )
+        gemini_v8_contract = build_gemini_v8(
+            **arguments,
+            source_schema=source_schema,
+            expected_source_runtime_schema_digest=mapping.variant.source_runtime_schema_digest,
+            target_model=mapping.target.model,
+            source_settings=mapping.variant.source_settings,
+        )
+        if gemini_v8_contract != restore_variant_source_contract(mapping):
+            raise ValueError("V8 Gemini source variant evidence changed")
+        return gemini_v8_contract
     if isinstance(mapping, SelectedGeminiSourceVariant):
         gemini_contract = build_gemini_credit_source_contract(
             **arguments,
@@ -348,6 +379,8 @@ def source_parameter_marker(
     }
     if isinstance(contract, TongyiCreditSourceContract):
         return tongyi_credit_source_marker(contract, **arguments, model_type=model_type)
+    if isinstance(contract, GeminiCreditSourceV2Contract):
+        return gemini_credit_v2_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, GeminiCreditSourceContract):
         return gemini_credit_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, OpenAIAudioSourceContract):
@@ -639,7 +672,7 @@ def mapped_dynamic_source_candidates(
 def mapping_has_required_operations(mapping: SelectedModelMapping) -> bool:
     if isinstance(mapping, SelectedTongyiSourceVariant):
         return set(mapping.operations) == tongyi_source_operations(mapping.source.model)
-    if isinstance(mapping, SelectedGeminiSourceVariant):
+    if isinstance(mapping, (SelectedGeminiSourceVariant, SelectedGeminiV8SourceVariant)):
         return set(mapping.operations) == gemini_source_operations(mapping.source.model)
     required = {"model/schema", f"{mapping.source.model_type.value}/invoke"}
     if mapping.source.model_type == ModelType.LLM:
@@ -1197,13 +1230,13 @@ def hosted_gemini_source_fact(
 ) -> HostedGeminiSourceFact | None:
     """Capture actual SYSTEM dictionary classifications, before substitution.
 
-    Source0912 LLMs use only the reviewed None/exact Google-root base,
+    Source0912/0913 LLMs use only the reviewed None/exact Google-root base,
     None/disabled metadata and None/empty file prefix. Embeddings do not consume
     these three fields. Nothing retains a key, raw URL or credential dictionary.
     """
     if (
         str(ModelProviderID(provider)) != "langgenius/gemini/google"
-        or source_uid != GEMINI_SOURCE_UID
+        or source_uid not in {GEMINI_SOURCE_UID, GEMINI_0913_SOURCE_UID}
         or type(credentials) is not dict
     ):
         return None
@@ -1271,6 +1304,47 @@ def gemini_source_variant_context(
             source_base_policy="not_used", request_metadata_policy="not_used", file_url_policy="not_used"
         )
     return GeminiSourceVariantContext(source_uid, settings)
+
+
+def gemini_v8_source_variant_context(
+    fact: HostedGeminiSourceFact | None,
+    *,
+    provider: str,
+    source_uid: str,
+    model_type: ModelType,
+    schema: AIModelEntity | None = None,
+) -> GeminiV8SourceVariantContext | None:
+    if (
+        type(fact) is not HostedGeminiSourceFact
+        or fact.provider != str(ModelProviderID(provider))
+        or fact.plugin_unique_identifier != source_uid
+        or source_uid not in {GEMINI_SOURCE_UID, GEMINI_0913_SOURCE_UID}
+        or model_type not in {ModelType.LLM, ModelType.TEXT_EMBEDDING}
+    ):
+        return None
+    if schema is not None and [
+        digest
+        for kind, model, digest in fact.catalog_schema_digests
+        if (kind, model) == (schema.model_type, schema.model)
+    ] != [model_schema_digest(schema)]:
+        return None
+    if model_type is ModelType.LLM:
+        if (fact.llm_source_base_policy, fact.llm_request_metadata_policy, fact.llm_file_url_policy) != (
+            "unset_or_exact_google_root",
+            "system_false_only",
+            "actual_system_absent_or_empty_only",
+        ):
+            return None
+        settings = GeminiSourceSettings(
+            source_base_policy="unset_or_exact_google_root",
+            request_metadata_policy="system_false_only",
+            file_url_policy="actual_system_absent_or_empty_only",
+        )
+    else:
+        settings = GeminiSourceSettings(
+            source_base_policy="not_used", request_metadata_policy="not_used", file_url_policy="not_used"
+        )
+    return GeminiV8SourceVariantContext(source_uid, settings)
 
 
 def hosted_source_variant_fact(
@@ -1365,6 +1439,18 @@ def restore_variant_source_contract(
     }
     if isinstance(mapping, SelectedTongyiSourceVariant):
         return restore_tongyi_credit_source_contract(
+            marker,
+            **arguments,
+            source_settings=mapping.variant.source_settings,
+            expected_source_runtime_schema_digest=variant.source_runtime_schema_digest,
+        )
+    if isinstance(mapping, SelectedGeminiV8SourceVariant):
+        restore_gemini_v8 = (
+            restore_gemini_credit_v2_source_contract
+            if mapping.variant.source_plugin_uid == GEMINI_0913_SOURCE_UID
+            else restore_gemini_credit_source_contract
+        )
+        return restore_gemini_v8(
             marker,
             **arguments,
             source_settings=mapping.variant.source_settings,
@@ -1551,6 +1637,10 @@ def resolve_source_mapping(
     if isinstance(declaration, SourceTongyiVariantMapping):
         context = tongyi_source_variant_context(
             tongyi_fact, provider=identity[0], source_uid=source_uid, model_type=identity[1], schema=schema
+        )
+    elif isinstance(declaration, SourceGeminiV8VariantMapping):
+        context = gemini_v8_source_variant_context(
+            gemini_fact, provider=identity[0], source_uid=source_uid, model_type=identity[1], schema=schema
         )
     elif isinstance(declaration, SourceGeminiVariantMapping):
         context = gemini_source_variant_context(

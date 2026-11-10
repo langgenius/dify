@@ -41,6 +41,11 @@ from services.entities.model_billing_gemini_mapping import (
     SourceGeminiVariantMapping,
     SourceGeminiVariantSelection,
 )
+from services.entities.model_billing_gemini_v8_mapping import (
+    SelectedGeminiV8SourceVariant,
+    SourceGeminiV8VariantMapping,
+    SourceGeminiV8VariantSelection,
+)
 from services.entities.model_billing_mapping import (
     ModelMapping,
     SelectedSourceVariant,
@@ -70,6 +75,7 @@ type MappingDeclaration = (
     | SourceAudioVariantMapping
     | SourceXAIVariantMapping
     | SourceGeminiVariantMapping
+    | SourceGeminiV8VariantMapping
     | SourceTongyiVariantMapping
 )
 type SelectedSourceVariantMapping = (
@@ -78,6 +84,7 @@ type SelectedSourceVariantMapping = (
     | SelectedAudioSourceVariant
     | SelectedXAISourceVariant
     | SelectedGeminiSourceVariant
+    | SelectedGeminiV8SourceVariant
     | SelectedTongyiSourceVariant
 )
 type SelectedModelMapping = ModelMapping | SelectedSourceVariantMapping
@@ -87,6 +94,7 @@ type SourceVariantSelectionPayload = (
     | SourceAudioVariantSelection
     | SourceXAIVariantSelection
     | SourceGeminiVariantSelection
+    | SourceGeminiV8VariantSelection
     | SourceTongyiVariantSelection
 )
 
@@ -96,6 +104,7 @@ SOURCE_VARIANT_DECLARATION_TYPES = (
     SourceAudioVariantMapping,
     SourceXAIVariantMapping,
     SourceGeminiVariantMapping,
+    SourceGeminiV8VariantMapping,
     SourceTongyiVariantMapping,
 )
 SELECTED_SOURCE_VARIANT_TYPES = (
@@ -104,6 +113,7 @@ SELECTED_SOURCE_VARIANT_TYPES = (
     SelectedAudioSourceVariant,
     SelectedXAISourceVariant,
     SelectedGeminiSourceVariant,
+    SelectedGeminiV8SourceVariant,
     SelectedTongyiSourceVariant,
 )
 
@@ -163,6 +173,14 @@ class GeminiSourceVariantContext:
 
 
 @dataclass(frozen=True, slots=True)
+class GeminiV8SourceVariantContext:
+    """Exact V8 facts; never accepted by the immutable V6 selector."""
+
+    source_plugin_uid: str
+    settings: GeminiSourceSettings
+
+
+@dataclass(frozen=True, slots=True)
 class TongyiSourceVariantContext:
     source_plugin_uid: str
     settings: TongyiSourceSettings
@@ -174,6 +192,7 @@ type SourceContext = (
     | AudioSourceVariantContext
     | XAISourceVariantContext
     | GeminiSourceVariantContext
+    | GeminiV8SourceVariantContext
     | TongyiSourceVariantContext
 )
 
@@ -233,6 +252,17 @@ class ModelMappingRevision:
             if len(tongyi_matches) != 1:
                 raise ValueError("Unknown or ambiguous Tongyi source variant")
             selected = SelectedTongyiSourceVariant(declaration, tongyi_matches[0], self.digest)
+        elif isinstance(declaration, SourceGeminiV8VariantMapping):
+            if type(context) is not GeminiV8SourceVariantContext:
+                raise ValueError("Source V8 Gemini fact family changed")
+            gemini_v8_matches = [
+                item
+                for item in declaration.variants
+                if item.source_plugin_uid == context.source_plugin_uid and item.source_settings == context.settings
+            ]
+            if len(gemini_v8_matches) != 1:
+                raise ValueError("Unknown or ambiguous V8 Gemini source variant")
+            selected = SelectedGeminiV8SourceVariant(declaration, gemini_v8_matches[0], self.digest)
         elif isinstance(declaration, SourceGeminiVariantMapping):
             if type(context) is not GeminiSourceVariantContext:
                 raise ValueError("Source Gemini fact family changed")
@@ -305,6 +335,11 @@ class ModelMappingRevision:
                     SelectedTongyiSourceVariant(declaration, variant, self.digest)
                     for variant in sorted(declaration.variants, key=lambda item: item.variant_id)
                 )
+            elif isinstance(declaration, SourceGeminiV8VariantMapping):
+                result.extend(
+                    SelectedGeminiV8SourceVariant(declaration, variant, self.digest)
+                    for variant in sorted(declaration.variants, key=lambda item: item.variant_id)
+                )
             elif isinstance(declaration, SourceGeminiVariantMapping):
                 result.extend(
                     SelectedGeminiSourceVariant(declaration, variant, self.digest)
@@ -343,6 +378,11 @@ class ModelMappingRevision:
             record = SourceTongyiVariantSelection.model_validate(payload)
             selected = self.resolve(
                 identity, context=TongyiSourceVariantContext(record.source_plugin_uid, record.source_settings)
+            )
+        elif isinstance(declaration, SourceGeminiV8VariantMapping):
+            record = SourceGeminiV8VariantSelection.model_validate(payload)
+            selected = self.resolve(
+                identity, context=GeminiV8SourceVariantContext(record.source_plugin_uid, record.source_settings)
             )
         elif isinstance(declaration, SourceGeminiVariantMapping):
             record = SourceGeminiVariantSelection.model_validate(payload)
@@ -383,6 +423,16 @@ def selection_payload(
     if isinstance(selected, SelectedTongyiSourceVariant):
         return SourceTongyiVariantSelection(
             schema_version=7,
+            variant_id=selected.variant.variant_id,
+            source_plugin_uid=selected.variant.source_plugin_uid,
+            source_settings=selected.variant.source_settings,
+            source_schema_digest=selected.variant.source_schema_digest,
+            source_runtime_schema_digest=selected.variant.source_runtime_schema_digest,
+            registry_digest=selected.registry_digest,
+        )
+    if isinstance(selected, SelectedGeminiV8SourceVariant):
+        return SourceGeminiV8VariantSelection(
+            schema_version=8,
             variant_id=selected.variant.variant_id,
             source_plugin_uid=selected.variant.source_plugin_uid,
             source_settings=selected.variant.source_settings,
@@ -456,6 +506,7 @@ def source_mapping_revision(
                 | SourceAudioVariantMapping
                 | SourceXAIVariantMapping
                 | SourceGeminiVariantMapping
+                | SourceGeminiV8VariantMapping
                 | SourceTongyiVariantMapping,
                 Field(discriminator="schema_version"),
             ]
