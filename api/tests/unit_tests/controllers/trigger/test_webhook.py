@@ -332,6 +332,37 @@ def test_unknown_webhook_is_opaque_noncacheable_404(harness: _Harness, webhook: 
 
 
 @pytest.mark.parametrize("debug", [False, True])
+@pytest.mark.parametrize("broken_graph", ["missing-node", "empty-nodes", "malformed"])
+def test_webhook_distinguishes_missing_node_from_corrupt_workflow(
+    harness: _Harness, webhook: _Webhook, debug: bool, broken_graph: str
+) -> None:
+    workflow_id = webhook.draft_id if debug else webhook.workflow_id
+    with harness.session_factory.begin() as session:
+        workflow = session.get(Workflow, workflow_id)
+        assert workflow is not None
+        if broken_graph == "missing-node":
+            graph = json.loads(workflow.graph)
+            graph["nodes"][0]["id"] = "different-node"
+            workflow.graph = json.dumps(graph)
+        elif broken_graph == "empty-nodes":
+            workflow.graph = '{"nodes": [], "edges": []}'
+        else:
+            workflow.graph = "{malformed"
+
+    response = Context().run(harness.client.post, webhook.debug_url if debug else webhook.url, json={})
+
+    if broken_graph == "missing-node":
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        assert response.headers["Cache-Control"] == "no-store"
+    else:
+        assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+        assert response.get_json() == {"error": "Internal server error", "message": "An internal error has occurred."}
+    with harness.session_factory() as session:
+        assert session.scalar(select(WorkflowTriggerLog)) is None
+        assert session.scalar(select(EndUser)) is None
+
+
+@pytest.mark.parametrize("debug", [False, True])
 def test_body_limit_remains_413(harness: _Harness, webhook: _Webhook, debug: bool) -> None:
     with config_overrides_context(WEBHOOK_REQUEST_BODY_MAX_SIZE=4):
         response = Context().run(harness.client.post, webhook.debug_url if debug else webhook.url, json={"large": True})

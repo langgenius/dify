@@ -9,11 +9,10 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from models._workflow_exc import WorkflowDataError
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App, AppMode
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowDataError
 from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from services.trigger.webhook_service import WebhookBindingService, WebhookContext, WebhookNotFoundError
 

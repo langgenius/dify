@@ -12,7 +12,7 @@ from machinery.context import RequestContext
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App, AppMode
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
-from models.workflow import Workflow
+from models.workflow import NodeNotFoundError, Workflow
 from repositories.app.console_repository import require_console_app
 from services.app.console_service import ConsoleAppNotFoundError
 from services.trigger.app_trigger_store import (
@@ -100,7 +100,7 @@ class SQLAlchemyAppTriggerRepository(AppTriggerStore):
                 raise WebhookNotFoundError(f"Workflow not found for app {webhook.app_id}")
             try:
                 node_config = deepcopy(workflow.get_node_config_by_id(webhook.node_id))
-            except ValueError as error:
+            except NodeNotFoundError as error:
                 raise WebhookNotFoundError(str(error)) from error
             return WebhookContext(
                 tenant_id=webhook.tenant_id,
