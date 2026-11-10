@@ -28,6 +28,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 import logging
 import re
 import uuid
+from contextlib import suppress
 from dataclasses import replace
 from typing import Any
 
@@ -881,6 +882,18 @@ def model_config_error_text(run: Run) -> str | None:
         low = text.lower()
         if re.fullmatch(r"modelnotexisterror: [^\n]{1,512}", low):
             return "Model configuration unavailable."
+        # Native LLM nodes retain str(exc), not the exception class name.
+        # These exact forms come from core/app/llm/model_access.py; unlike a
+        # bare credential mention, they identify model setup specifically.
+        native_setup = re.fullmatch(
+            r"model [a-z0-9_./:@+\-]{1,128} (schema does not exist|credentials is not initialized)\.", low
+        )
+        if native_setup is not None:
+            return (
+                "Model schema unavailable."
+                if native_setup[1] == "schema does not exist"
+                else "Model credentials are not initialized."
+            )
         if re.fullmatch(
             r"(?:model|provider) [a-z0-9_./:@+\-]{1,128} (?:does not exist|not exist|not found|not configured)\.?",
             low,
@@ -1669,10 +1682,8 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 def publication_for_context(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> PublicationDecision:
     run = None
     if fc.verify_run_id:
-        try:
+        with suppress(NotFoundError):
             run = env.repo.get_run(fc.verify_run_id)
-        except NotFoundError:
-            pass
     graph, revision = env.dify.read_graph(s.app_id, turn.actor)
     from services.dify_builder.business_acceptance import context_publication_decision
 
