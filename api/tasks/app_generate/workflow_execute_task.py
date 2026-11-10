@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
+from core.app.apps.streaming_utils import STREAM_COMPLETE_SIGNAL
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -40,6 +41,7 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, Workfl
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
 from services.app_task_service import AppTaskService
+from services.human_input_v2.submission_service import HumanInputSubmissionService
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 
@@ -370,12 +372,13 @@ def _publish_streaming_response(
     inputs: Mapping[str, Any],
     started_reason: WorkflowStartReason,
 ) -> None:
-    """Publish workflow stream events and close broken streams with a failed terminal event.
+    """Publish app stream events in order and terminate successful or broken streams.
 
-    `_AppRunner.run()` only handles failures before the generator is returned.
-    Once we start iterating the runtime stream, this helper becomes the last
-    place that can guarantee SSE consumers eventually see a terminal workflow
-    lifecycle event.
+    Accept runtime events for the given app mode and run. A normally exhausted Advanced Chat
+    stream with a published message end, no workflow start, and no errors completes through an
+    internal transport signal after all output is published. It must not invent a workflow run.
+    Other streams require a workflow terminal event; missing terminals produce a failed fallback.
+    Iteration and publish errors also produce a fallback when possible, then propagate.
     """
     normalized_workflow_run_id = str(workflow_run_id)
 
@@ -428,6 +431,8 @@ def _publish_streaming_response(
     topic = MessageBasedAppGenerator.get_response_topic(app_mode, normalized_workflow_run_id)
     started_published = False
     terminal_published = False
+    message_end_published = False
+    stream_failed = False
     last_task_id = normalized_workflow_run_id
     stream_error_message: str | None = None
 
@@ -444,6 +449,7 @@ def _publish_streaming_response(
                 else:
                     payload = json.dumps(event, ensure_ascii=False, default=str)
             except (TypeError, ValueError):
+                stream_failed = True
                 logger.exception("error while encoding event")
                 continue
 
@@ -453,8 +459,21 @@ def _publish_streaming_response(
                 started_published = True
             elif event_name in terminal_events:
                 terminal_published = True
+            elif event_name == "message_end":
+                message_end_published = True
             elif event_name == "error":
+                stream_failed = True
                 stream_error_message = _get_error_message(event) or stream_error_message
+
+        if (
+            app_mode == AppMode.ADVANCED_CHAT
+            and message_end_published
+            and not started_published
+            and not terminal_published
+            and not stream_failed
+        ):
+            topic.publish(STREAM_COMPLETE_SIGNAL)
+            return
     except Exception as exc:
         if not terminal_published:
             logger.exception(
@@ -703,6 +722,11 @@ def _resume_advanced_chat(
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            restore_file_access=partial(
+                HumanInputSubmissionService(session_factory=session_factory).grant_submitted_file_access,
+                app_id=app_model.id,
+                workflow_run_id=workflow_run_id,
+            ),
             session=session,
         )
     except Exception:
@@ -770,6 +794,11 @@ def _resume_workflow(
             workflow_node_execution_repository=workflow_node_execution_repository,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            restore_file_access=partial(
+                HumanInputSubmissionService(session_factory=session_factory).grant_submitted_file_access,
+                app_id=app_model.id,
+                workflow_run_id=workflow_run_id,
+            ),
         )
     except Exception:
         logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)

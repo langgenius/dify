@@ -69,7 +69,7 @@ def _persist_annotation(session: Session) -> MessageAnnotation:
 
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
 class TestAnnotationReplyFeature:
-    def test_query_returns_none_when_setting_missing(self, sqlite_session: Session):
+    def test_query_returns_none_when_setting_missing(self, sqlite_session: Session) -> None:
         binding = _persist_binding(sqlite_session)
         _persist_setting(sqlite_session, app_id="other-app", collection_binding_id=binding.id)
 
@@ -84,7 +84,7 @@ class TestAnnotationReplyFeature:
 
         assert result is None
 
-    def test_query_returns_none_when_binding_missing(self, sqlite_session: Session):
+    def test_query_returns_none_when_binding_missing(self, sqlite_session: Session) -> None:
         _persist_setting(sqlite_session, collection_binding_id="missing-binding")
 
         result = AnnotationReplyFeature().query(
@@ -98,7 +98,7 @@ class TestAnnotationReplyFeature:
 
         assert result is None
 
-    def test_query_returns_annotation_and_persists_history_for_api(self, sqlite_session: Session):
+    def test_query_returns_annotation_and_persists_history_for_api(self, sqlite_session: Session) -> None:
         binding = _persist_binding(sqlite_session)
         _persist_setting(sqlite_session, collection_binding_id=binding.id, score_threshold=0)
         annotation = _persist_annotation(sqlite_session)
@@ -134,7 +134,7 @@ class TestAnnotationReplyFeature:
         assert history.source == ConversationFromSource.API
         assert history.score == 0.8
 
-    def test_query_returns_annotation_and_persists_history_for_console(self, sqlite_session: Session):
+    def test_query_returns_annotation_and_persists_history_for_console(self, sqlite_session: Session) -> None:
         binding = _persist_binding(sqlite_session)
         _persist_setting(sqlite_session, collection_binding_id=binding.id)
         annotation = _persist_annotation(sqlite_session)
@@ -157,7 +157,9 @@ class TestAnnotationReplyFeature:
         assert history is not None
         assert history.source == ConversationFromSource.CONSOLE
 
-    def test_query_logs_and_returns_none_on_exception(self, sqlite_session: Session, caplog: pytest.LogCaptureFixture):
+    def test_query_logs_and_returns_none_on_exception(
+        self, sqlite_session: Session, caplog: pytest.LogCaptureFixture
+    ) -> None:
         binding = _persist_binding(sqlite_session)
         _persist_setting(sqlite_session, collection_binding_id=binding.id)
         vector_instance = Mock()

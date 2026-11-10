@@ -32,7 +32,7 @@ vi.mock('@/service/share', async (importOriginal) => ({
 }))
 
 const setup = (options: Parameters<typeof renderChatHistory>[1] = {}) =>
-  renderChatHistory(<HeaderInMobile />, { ...options, ownerProps: { isMobile: true } })
+  renderChatHistory(<HeaderInMobile />, { ...options, ownerProps: { isBelowSm: true } })
 
 beforeEach(() => {
   vi.mocked(fetchChatList).mockResolvedValue({ data: [] })

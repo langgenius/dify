@@ -1,13 +1,18 @@
 import json
+from collections.abc import Iterator
 from io import BytesIO
-from types import SimpleNamespace
 
 import pytest
 from pytest_mock import MockerFixture
 from werkzeug import Request
 from werkzeug.datastructures import Headers
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.test import EnvironBuilder
 
+from core.plugin.entities.plugin_daemon import (
+    PluginOAuthAuthorizationUrlResponse,
+    PluginOAuthCredentialsResponse,
+)
 from core.plugin.impl.oauth import OAuthHandler
 
 
@@ -29,12 +34,12 @@ def _build_request(body: bytes = b"payload") -> Request:
 
 
 class TestOAuthHandler:
-    def test_get_authorization_url(self, mocker: MockerFixture):
+    def test_get_authorization_url(self, mocker: MockerFixture) -> None:
         handler = OAuthHandler()
         stream_mock = mocker.patch.object(
             handler,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(authorization_url="https://auth.example.com")]),
+            return_value=iter([PluginOAuthAuthorizationUrlResponse(authorization_url="https://auth.example.com")]),
         )
 
         response = handler.get_authorization_url(
@@ -49,7 +54,7 @@ class TestOAuthHandler:
         assert response.authorization_url == "https://auth.example.com"
         assert stream_mock.call_count == 1
 
-    def test_get_authorization_url_no_response_raises(self, mocker: MockerFixture):
+    def test_get_authorization_url_no_response_raises(self, mocker: MockerFixture) -> None:
         handler = OAuthHandler()
         mocker.patch.object(handler, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -63,13 +68,15 @@ class TestOAuthHandler:
                 system_credentials={},
             )
 
-    def test_get_credentials(self, mocker: MockerFixture):
+    def test_get_credentials(self, mocker: MockerFixture) -> None:
         handler = OAuthHandler()
-        captured_data = {}
+        captured_data: dict[str, object] = {}
 
-        def fake_stream[**P](*args: P.args, **kwargs: P.kwargs):
-            captured_data.update(kwargs["data"])
-            return iter([SimpleNamespace(credentials={"token": "abc"}, metadata={}, expires_at=1)])
+        def fake_stream[**P](*args: P.args, **kwargs: P.kwargs) -> Iterator[PluginOAuthCredentialsResponse]:
+            data = kwargs["data"]
+            assert isinstance(data, dict)
+            captured_data.update(data)
+            return iter([PluginOAuthCredentialsResponse(credentials={"token": "abc"}, metadata={}, expires_at=1)])
 
         stream_mock = mocker.patch.object(
             handler, "_request_with_plugin_daemon_response_stream", side_effect=fake_stream
@@ -86,10 +93,12 @@ class TestOAuthHandler:
         )
 
         assert response.credentials == {"token": "abc"}
-        assert "raw_http_request" in captured_data["data"]
+        captured = captured_data["data"]
+        assert isinstance(captured, dict)
+        assert "raw_http_request" in captured
         assert stream_mock.call_count == 1
 
-    def test_get_credentials_no_response_raises(self, mocker: MockerFixture):
+    def test_get_credentials_no_response_raises(self, mocker: MockerFixture) -> None:
         handler = OAuthHandler()
         mocker.patch.object(handler, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -104,12 +113,14 @@ class TestOAuthHandler:
                 request=_build_request(),
             )
 
-    def test_refresh_credentials(self, mocker: MockerFixture):
+    def test_refresh_credentials(self, mocker: MockerFixture) -> None:
         handler = OAuthHandler()
         stream_mock = mocker.patch.object(
             handler,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(credentials={"token": "new"}, metadata={}, expires_at=1)]),
+            return_value=iter(
+                [PluginOAuthCredentialsResponse(credentials={"token": "new"}, metadata={}, expires_at=1)]
+            ),
         )
 
         response = handler.refresh_credentials(
@@ -125,7 +136,7 @@ class TestOAuthHandler:
         assert response.credentials == {"token": "new"}
         assert stream_mock.call_count == 1
 
-    def test_refresh_credentials_no_response_raises(self, mocker: MockerFixture):
+    def test_refresh_credentials_no_response_raises(self, mocker: MockerFixture) -> None:
         handler = OAuthHandler()
         mocker.patch.object(handler, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -140,7 +151,7 @@ class TestOAuthHandler:
                 credentials={},
             )
 
-    def test_convert_request_to_raw_data(self):
+    def test_convert_request_to_raw_data(self) -> None:
         handler = OAuthHandler()
         request = _build_request(b"body-data")
 
@@ -217,3 +228,21 @@ def test_oauth_convert_request_to_raw_data_with_json_body() -> None:
     assert b'"code": "abc123"' in raw_request_bytes
     assert b'"state": "xyz789"' in raw_request_bytes
     assert b'"grant_type": "authorization_code"' in raw_request_bytes
+
+
+def test_get_credentials_preserves_error_wrapper_when_callback_body_exceeds_limit() -> None:
+    with Request.from_values(method="POST", data="over-limit") as request:
+        request.max_content_length = 1
+
+        with pytest.raises(ValueError, match="Error getting credentials: 413") as raised:
+            OAuthHandler().get_credentials(
+                tenant_id="tenant-id",
+                user_id="user-id",
+                plugin_id="langgenius/github",
+                provider="github",
+                redirect_uri="https://console.example.test/oauth/callback",
+                system_credentials={},
+                request=request,
+            )
+
+    assert isinstance(raised.value.__cause__, RequestEntityTooLarge)

@@ -11395,7 +11395,7 @@ Initiate OAuth login process
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
-**Handle OAuth callback for trigger provider**
+**Complete the cookie-bound flow without requiring a Console login**
 
 #### Parameters
 
@@ -11408,6 +11408,9 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth callback page |  |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[TriggerOauthContextInvalidError](#triggeroauthcontextinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerOauthProviderError](#triggeroauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /oauth/provider
@@ -15217,6 +15220,8 @@ Set or reset the IM override for a contact. This endpoint is used to override th
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/human-input/v2/im-sync-runs
+**Start or reuse a workspace run using the authenticated Account ID**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15228,7 +15233,7 @@ Set or reset the IM override for a contact. This endpoint is used to override th
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/im-sync-runs/latest
-Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; the response does not include started_by.
+Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; initiator_display_name is resolved from the initiating Account.
 
 #### Responses
 
@@ -18421,7 +18426,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Remove custom OAuth client configuration**
+**Remove the workspace's custom OAuth client configuration**
 
 #### Parameters
 
@@ -18437,7 +18442,7 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Get OAuth client configuration for a provider**
+**Get the masked OAuth client configuration for a provider**
 
 #### Parameters
 
@@ -18450,10 +18455,11 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client retrieved successfully | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/oauth/client
-**Configure custom OAuth client for a provider**
+**Configure the workspace's custom OAuth client for a provider**
 
 #### Parameters
 
@@ -18472,6 +18478,8 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerOauthClientChangedError](#triggeroauthclientchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
@@ -18495,6 +18503,9 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription builder built successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [TriggerSubscriptionLimitReachedError](#triggersubscriptionlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerSubscriptionNameConflictError](#triggersubscriptionnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/create
@@ -18630,10 +18641,12 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth authorization URL generated successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerOauthProviderError](#triggeroauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
-**Verify credentials for an existing subscription (edit mode only)**
+**Verify credentials against the subscription's own provider without updating it**
 
 #### Parameters
 
@@ -18653,10 +18666,13 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription verified successfully | **application/json**: [TriggerVerificationResponse](#triggerverificationresponse)<br> |
+| 400 | Bad Request | **application/json**: [TriggerSubscriptionInvalidError](#triggersubscriptioninvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [TriggerSubscriptionNotFoundError](#triggersubscriptionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
-**Delete a subscription instance**
+**Delete the subscription and its workflow trigger bindings**
 
 #### Parameters
 
@@ -18669,10 +18685,13 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Not Found | **application/json**: [TriggerSubscriptionNotFoundError](#triggersubscriptionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerSubscriptionChangedError](#triggersubscriptionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/update
-**Update a subscription instance**
+**Rename a subscription or rebuild its provider configuration**
 
 #### Parameters
 
@@ -18691,6 +18710,9 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Not Found | **application/json**: [TriggerSubscriptionNotFoundError](#triggersubscriptionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TriggerSubscriptionChangedError](#triggersubscriptionchangederror)<br>[TriggerSubscriptionNameConflictError](#triggersubscriptionnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerSubscriptionProviderError](#triggersubscriptionprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/triggers
@@ -26321,6 +26343,7 @@ Effective feature availability and limits for the current workspace.
 | model_load_balancing_enabled | boolean |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
+| workflow_collaboration_enabled | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### Feedback
@@ -26677,7 +26700,7 @@ Response body for reading the latest IM sync run summary.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
+| attachment_ids | [ string ] | Upload file UUIDs to include in the retrieval context. Omit or use an empty list when there are no attachments. | No |
 | external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
 | query | string | Search query text. | Yes |
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
@@ -26756,6 +26779,7 @@ A trimmed version of `HumanInputContact` that only includes the fields needed fo
 | ---- | ---- | ----------- | -------- |
 | avatar_url | string | URL of the contact's avatar. | No |
 | created_at | integer | Timestamp when the contact was created. | Yes |
+| email | string | Primary contact email if one exists. | No |
 | id | string | Unique contact identifier. | Yes |
 | name | string | Display name shown in the contact directory. | Yes |
 
@@ -27118,8 +27142,8 @@ Stable reconciliation bucket for one synchronized directory entry.
 
 One IM sync run snapshot.
 
-The latest-only UI displays ``finished_at`` as the explicit sync time. The
-transport contract intentionally does not expose a ``started_by`` actor.
+The latest-only UI displays ``finished_at`` as the explicit sync time.
+The initiator display name is resolved from the initiating Dify Account.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -27128,6 +27152,7 @@ transport contract intentionally does not expose a ``started_by`` actor.
 | error_message | string | Terminal error message. Present only when the sync run status is `failed`. | No |
 | finished_at | integer | Unix timestamp in seconds when the sync run finished. This is the sync time displayed by the latest-only UI and is None while the run is unfinished. | No |
 | id | string | Unique sync run identifier. | Yes |
+| initiator_display_name | string | Current initiating Account name; empty for EE administrators or an unavailable Account. | Yes |
 | provider | [IMProvider](#improvider) | IM provider associated with the sync run. | Yes |
 | result_counts | [IMSyncRunResultCounts](#imsyncrunresultcounts) | Aggregate reconciliation counts for the current run snapshot. | Yes |
 | started_at | integer | Unix timestamp in seconds when the sync run started. | No |
@@ -35562,7 +35587,6 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
 | enable_email_code_login | boolean |  | Yes |
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
@@ -36511,6 +36535,38 @@ the app is not allowed to be trial.
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
 
+#### TriggerOauthClientChangedError
+
+The trigger OAuth client configuration changed. Reload it before saving again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthClientChangedError |  | The trigger OAuth client configuration changed. Reload it before saving again. |  |
+
+#### TriggerOauthClientConfigInvalidError
+
+The stored trigger OAuth client configuration is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthClientConfigInvalidError |  | The stored trigger OAuth client configuration is invalid. |  |
+
+#### TriggerOauthContextInvalidError
+
+The trigger OAuth context is missing, expired or invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthContextInvalidError |  | The trigger OAuth context is missing, expired or invalid. |  |
+
+#### TriggerOauthProviderError
+
+The trigger provider could not complete OAuth authorization.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthProviderError |  | The trigger provider could not complete OAuth authorization. |  |
+
 #### TriggerProviderApiEntity
 
 | Name | Type | Description | Required |
@@ -36618,6 +36674,54 @@ The identity of the trigger provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | No |
+
+#### TriggerSubscriptionChangedError
+
+The trigger subscription changed. Reload it before trying again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionChangedError |  | The trigger subscription changed. Reload it before trying again. |  |
+
+#### TriggerSubscriptionInvalidError
+
+The trigger subscription configuration or credentials are invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionInvalidError |  | The trigger subscription configuration or credentials are invalid. |  |
+
+#### TriggerSubscriptionLimitReachedError
+
+The maximum number of trigger subscriptions for this provider has been reached.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionLimitReachedError |  | The maximum number of trigger subscriptions for this provider has been reached. |  |
+
+#### TriggerSubscriptionNameConflictError
+
+A trigger subscription with this name already exists for the provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionNameConflictError |  | A trigger subscription with this name already exists for the provider. |  |
+
+#### TriggerSubscriptionNotFoundError
+
+The trigger subscription does not exist in this workspace and provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionNotFoundError |  | The trigger subscription does not exist in this workspace and provider. |  |
+
+#### TriggerSubscriptionProviderError
+
+The trigger provider could not complete the subscription operation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionProviderError |  | The trigger provider could not complete the subscription operation. |  |
 
 #### TriggerSubscriptionVerifyPayload
 

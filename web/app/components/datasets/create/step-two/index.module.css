@@ -384,15 +384,6 @@
   color: #344054;
 }
 
-.previewWrap {
-  flex-shrink: 0;
-  width: 524px;
-}
-
-.previewWrap.isMobile {
-  max-width: 524px;
-}
-
 /*
  * `fixed` must under `previewHeader` because of style override would not work
  */

@@ -1,6 +1,7 @@
 import logging
 from contextlib import nullcontext
 from datetime import datetime
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import Mock, patch
@@ -11,7 +12,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.exc import ModerationInvocationError
 from core.entities.knowledge_entities import PreviewDetail
+from core.entities.provider_configuration import ProviderModelBundle
+from core.entities.provider_entities import CustomProviderConfiguration
 from core.model_manager import ModelManager
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
@@ -19,7 +23,7 @@ from core.rag.models.document import AttachmentDocument, Document
 from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelType
 from models.account import Account
 from models.dataset import Dataset, DocumentCreatedFrom, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
@@ -75,7 +79,7 @@ class TestParagraphIndexProcessor:
         return document
 
     @pytest.fixture
-    def process_rule(self) -> dict:
+    def process_rule(self) -> dict[str, object]:
         return {
             "mode": "custom",
             "rules": {"segmentation": {"max_tokens": 256, "chunk_overlap": 10, "separator": "\n"}},
@@ -585,6 +589,104 @@ class TestParagraphIndexProcessor:
                     {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
                     session=self.session,
                 )
+
+    @pytest.mark.parametrize(
+        ("model_output", "expected_summary"),
+        [
+            pytest.param(
+                "<think>\nstep one\nstep two\n</think>\nFinal summary.",
+                "Final summary.",
+                id="closed-multiline",
+            ),
+            pytest.param("<THINK>hidden</THINK>Visible", "Visible", id="case-insensitive"),
+            pytest.param(
+                '<think type="reasoning">hidden</think>Visible',
+                "Visible",
+                id="tag-attributes",
+            ),
+            pytest.param(
+                "Start<think>one</think> middle <think>two</think>end",
+                "Start middle end",
+                id="multiple-blocks",
+            ),
+            pytest.param(
+                "Visible summary\n<think>unfinished",
+                "Visible summary",
+                id="trailing-unclosed",
+            ),
+            pytest.param("<think>unfinished", "", id="reasoning-only-unclosed"),
+            pytest.param("Plain summary", "Plain summary", id="no-reasoning"),
+        ],
+    )
+    def test_generate_summary_from_inputs_strips_reasoning_and_preserves_usage(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        model_output: str,
+        expected_summary: str,
+    ) -> None:
+        model_config = make_model_config(provider="provider-a", model="model-a", mode="chat")
+        bundle = model_config.provider_model_bundle
+        credentials = {"api_key": "test-key"}
+        bundle.configuration.tenant_id = "tenant-1"
+        bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(credentials=credentials)
+
+        assembly = create_plugin_model_assembly(tenant_id="tenant-1")
+
+        def get_provider_model_bundle(*, tenant_id: str, provider: str, model_type: ModelType) -> ProviderModelBundle:
+            assert (tenant_id, provider, model_type) == ("tenant-1", "provider-a", ModelType.LLM)
+            return bundle
+
+        def for_tenant(*, tenant_id: str) -> ModelManager:
+            assert tenant_id == "tenant-1"
+            return assembly.model_manager
+
+        def get_model_schema(model: str, resolved_credentials: dict[str, Any]) -> AIModelEntity:
+            assert model == "model-a"
+            assert resolved_credentials == credentials
+            return model_config.model_schema
+
+        usage = LLMUsage(
+            prompt_tokens=11,
+            prompt_unit_price=Decimal("0.001"),
+            prompt_price_unit=Decimal("0.001"),
+            prompt_price=Decimal("0.011"),
+            completion_tokens=7,
+            completion_unit_price=Decimal("0.002"),
+            completion_price_unit=Decimal("0.001"),
+            completion_price=Decimal("0.014"),
+            total_tokens=18,
+            total_price=Decimal("0.025"),
+            currency="USD",
+            latency=0.25,
+        )
+        llm_result = LLMResult(
+            model="model-a",
+            message=AssistantPromptMessage(content=model_output),
+            usage=usage,
+        )
+        invocations: list[dict[str, object]] = []
+
+        def invoke(**kwargs: object) -> LLMResult:
+            invocations.append(kwargs)
+            return llm_result
+
+        monkeypatch.setattr(assembly.provider_manager, "get_provider_model_bundle", get_provider_model_bundle)
+        monkeypatch.setattr(ModelManager, "for_tenant", staticmethod(for_tenant))
+        monkeypatch.setattr(bundle.model_type_instance, "get_model_schema", get_model_schema)
+        monkeypatch.setattr(bundle.model_type_instance, "invoke", invoke)
+
+        summary, returned_usage = ParagraphIndexProcessor.generate_summary_from_inputs(
+            "tenant-1",
+            "text content",
+            {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
+            document_language="English",
+            image_loader=lambda: [],
+        )
+
+        assert summary == expected_summary
+        assert returned_usage is usage
+        assert len(invocations) == 1
+        assert invocations[0]["stream"] is False
 
     def test_generate_summary_handles_vision_and_image_conversion(self) -> None:
         model_instance = Mock()

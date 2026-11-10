@@ -44,6 +44,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.nodes.llm.reasoning import split_reasoning
 from libs import helper
 from models import UploadFile
 from models.account import Account
@@ -442,7 +443,14 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         document_language: str | None,
         image_loader: Callable[[], list[File]],
     ) -> tuple[str, LLMUsage]:
-        """Generate a summary after an explicit loader materializes any required images."""
+        """Generate summary text with model reasoning removed.
+
+        Requires enabled settings naming a provider and model. The image loader
+        materializes images only for vision-capable models. Returns cleaned text
+        and the original LLMUsage object; output containing only reasoning returns
+        empty text for the caller to handle. Invalid settings or a response other
+        than LLMResult raise ValueError.
+        """
         if not summary_index_setting or not summary_index_setting.get("enable"):
             raise ValueError("summary_index_setting is required and must be enabled to generate summary.")
 
@@ -525,7 +533,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if not isinstance(result, LLMResult):
             raise ValueError("Expected LLMResult when stream=False")
 
-        summary_content = result.message.get_text_content()
+        summary_content, _ = split_reasoning(result.message.get_text_content(), "separated")
         usage = result.usage
 
         return summary_content, usage
