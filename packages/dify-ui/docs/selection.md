@@ -10,8 +10,7 @@ domain value type through its public API.
 - `SegmentedControl` selects one mode, filter, or view. It follows radio-group semantics: an active
   item cannot be toggled off, `Tab` enters on the selected item, and arrow keys move and select.
   The primitive owns the track, focus ring and selection motion. Preserve the existing density,
-  dimensions and documented surface treatments when adopting it. Items use an outer focus ring;
-  apply `focus-visible:ring-inset` when the surface clips that ring.
+  dimensions and documented surface treatments when adopting it.
   Use `RadioGroup` with `RadioItem` for a custom single-choice surface such as separate filter pills.
 - `Tabs` selects a panel and provides `tablist` and `tabpanel` semantics.
 - [`Autocomplete`] accepts free-form text with optional suggestions.
