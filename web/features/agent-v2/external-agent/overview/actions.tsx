@@ -16,16 +16,14 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { Input } from '@langgenius/dify-ui/input'
-import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { Menu, MenuContent, MenuLinkItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useAtomValue } from 'jotai'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import Link from '@/next/link'
 import { ExternalAgentManageMenu } from '../manage-menu'
-
-type AppKind = ExternalAgentListItem['apps'][number]['kind']
 
 function TestAgentForm({ sampleResponse }: { sampleResponse: string }) {
   const { t } = useTranslation(['agentRoster', 'common'])
@@ -74,42 +72,6 @@ function TestAgentForm({ sampleResponse }: { sampleResponse: string }) {
   )
 }
 
-function CreateAppForm({ onCreate }: { onCreate: (name: string) => void }) {
-  const { t } = useTranslation(['agentRoster', 'common', 'app'])
-
-  return (
-    <Form<{ name: string }> className="contents" onFormSubmit={({ name }) => onCreate(name.trim())}>
-      <DialogBody>
-        <Field
-          name="name"
-          validate={(value) =>
-            typeof value === 'string' && value.trim()
-              ? null
-              : t(($) => $['external.overview.appNameRequired'])
-          }
-        >
-          <FieldLabel>{t(($) => $['external.overview.appName'])}</FieldLabel>
-          <Input
-            autoComplete="off"
-            maxLength={255}
-            placeholder={t(($) => $.appNamePlaceholder, { ns: 'app' })}
-            required
-          />
-          <FieldError>{t(($) => $['external.overview.appNameRequired'])}</FieldError>
-        </Field>
-      </DialogBody>
-      <DialogFooter>
-        <DialogClose render={<Button variant="secondary" />}>
-          {t(($) => $['operation.cancel'], { ns: 'common' })}
-        </DialogClose>
-        <Button type="submit" variant="primary">
-          {t(($) => $['external.overview.createApp'])}
-        </Button>
-      </DialogFooter>
-    </Form>
-  )
-}
-
 export function ExternalAgentOverviewActions({
   agent,
   onUpdate,
@@ -121,13 +83,6 @@ export function ExternalAgentOverviewActions({
 }) {
   const { t } = useTranslation(['agentRoster', 'common', 'app'])
   const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const createTriggerRef = useRef<HTMLButtonElement>(null)
-  const [appKind, setAppKind] = useState<AppKind>('workflow')
-  const [createOpen, setCreateOpen] = useState(false)
-  const selectAppKind = (kind: AppKind) => {
-    setAppKind(kind)
-    setCreateOpen(true)
-  }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -150,52 +105,26 @@ export function ExternalAgentOverviewActions({
       </Dialog>
       {canManage && (
         <Menu>
-          <MenuTrigger
-            render={<Button ref={createTriggerRef} variant="primary" disabled={!agent.enabled} />}
-          >
+          <MenuTrigger render={<Button variant="primary" disabled={!agent.enabled} />}>
             <span aria-hidden className="i-ri-add-line size-4" />
             {t(($) => $['external.overview.createApp'])}
             <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
           </MenuTrigger>
-          <MenuContent align="end">
-            <MenuItem onClick={() => selectAppKind('workflow')}>
-              <span aria-hidden>⚙️</span>
-              {t(($) => $['types.workflow'], { ns: 'app' })}
-            </MenuItem>
-            <MenuItem onClick={() => selectAppKind('chatflow')}>
-              <span aria-hidden>💬</span>
-              {t(($) => $['types.advanced'], { ns: 'app' })}
-            </MenuItem>
+          <MenuContent align="end" className="min-w-64">
+            <MenuLinkItem render={<Link href="/apps?create=blank&mode=workflow" />}>
+              <span
+                aria-hidden
+                className="i-ri-exchange-2-line size-4 shrink-0 text-text-primary"
+              />
+              <span className="px-1">{t(($) => $['types.workflow'], { ns: 'app' })}</span>
+            </MenuLinkItem>
+            <MenuLinkItem render={<Link href="/apps?create=blank&mode=advanced-chat" />}>
+              <span aria-hidden className="i-ri-message-3-line size-4 shrink-0 text-text-primary" />
+              <span className="px-1">{t(($) => $['types.advanced'], { ns: 'app' })}</span>
+            </MenuLinkItem>
           </MenuContent>
         </Menu>
       )}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="w-120" finalFocus={createTriggerRef}>
-          <DialogHeader>
-            <DialogTitle>{t(($) => $['external.overview.createApp'])}</DialogTitle>
-            <DialogDescription>
-              {t(($) => $['external.overview.mockNotice'])}
-              {' · '}
-              {appKind === 'workflow'
-                ? t(($) => $['types.workflow'], { ns: 'app' })
-                : t(($) => $['types.advanced'], { ns: 'app' })}
-            </DialogDescription>
-            <DialogHeaderCloseButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            />
-          </DialogHeader>
-          <CreateAppForm
-            onCreate={(name) => {
-              onUpdate({
-                ...agent,
-                apps: [...agent.apps, { id: crypto.randomUUID(), name, kind: appKind }],
-                updatedAt: Date.now(),
-              })
-              setCreateOpen(false)
-            }}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

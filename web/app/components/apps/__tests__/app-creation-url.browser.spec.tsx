@@ -124,13 +124,23 @@ it('closes a creation dialog when browser Back leaves its entry', async () => {
   await expect.element(templates).not.toBeInTheDocument()
 })
 
-it('closes a dialog opened from a link in place, keeping Back to the previous page', async () => {
-  const { screen, goBack } = await setup('/apps?create=blank&mode=workflow')
-  const blank = screen.getByRole('dialog', { name: 'Create from Blank' })
-  await expect.element(blank.getByRole('heading', { name: 'Workflow', level: 4 })).toBeVisible()
+it.each([
+  { mode: 'workflow', selectedType: 'Workflow', otherType: 'Chatflow' },
+  { mode: 'advanced-chat', selectedType: 'Chatflow', otherType: 'Workflow' },
+])(
+  'preselects $selectedType from a creation link and closes in place, keeping Back to the previous page',
+  async ({ mode, selectedType, otherType }) => {
+    const { screen, goBack } = await setup(`/apps?create=blank&mode=${mode}`)
+    const blank = screen.getByRole('dialog', { name: 'Create from Blank' })
+    // Both type cards are always visible; the preview heading reflects the actual selection.
+    await expect.element(blank.getByRole('heading', { name: selectedType, level: 4 })).toBeVisible()
+    await expect
+      .element(blank.getByRole('heading', { name: otherType, level: 4 }))
+      .not.toBeInTheDocument()
 
-  await userEvent.keyboard('{Escape}')
-  await expect.element(blank).not.toBeInTheDocument()
-  await expect.poll(currentUrl).toBe('/apps')
-  await goBack('/previous-page')
-})
+    await userEvent.keyboard('{Escape}')
+    await expect.element(blank).not.toBeInTheDocument()
+    await expect.poll(currentUrl).toBe('/apps')
+    await goBack('/previous-page')
+  },
+)

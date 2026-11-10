@@ -244,21 +244,15 @@ it('explains deletion and requires confirmation when choosing disable instead', 
   await expect.poll(() => router.push.mock.calls).toEqual([['/agents?agent_type=external']])
 })
 
-it('includes newly created apps in the overview and deletion impact count', async () => {
+it('links each app type to the existing app creation flow with the matching default selection', async () => {
   await setup()
   await page.getByRole('button', { name: 'Create app', exact: true }).click()
-  await page.getByRole('menuitem', { name: /Workflow/ }).click()
-  const createDialog = page.getByRole('dialog', { name: 'Create app', exact: true })
-  await createDialog
-    .getByRole('textbox', { name: 'App name', exact: true })
-    .fill('Legal review workflow')
-  await createDialog.getByRole('button', { name: 'Create app', exact: true }).click()
-  await expect.element(createDialog).not.toBeInTheDocument()
-  await expect.element(page.getByRole('link', { name: /Legal review workflow/ })).toBeVisible()
-  await manage('Delete agent')
-  const deletion = page.getByRole('alertdialog', { name: 'Delete agent?', exact: true })
-  await expect.element(deletion.getByText('4 apps', { exact: true })).toBeVisible()
-  await expect.element(deletion.getByText('3 apps', { exact: true })).not.toBeInTheDocument()
+  await expect
+    .element(page.getByRole('menuitem', { name: 'Workflow', exact: true }))
+    .toHaveAttribute('href', '/apps?create=blank&mode=workflow')
+  await expect
+    .element(page.getByRole('menuitem', { name: 'Chatflow', exact: true }))
+    .toHaveAttribute('href', '/apps?create=blank&mode=advanced-chat')
 })
 
 it.each([
