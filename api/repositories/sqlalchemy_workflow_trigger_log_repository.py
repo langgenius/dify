@@ -297,7 +297,8 @@ class SQLAlchemyWorkflowTriggerExecutionRepository:
                 )
                 .values(status=WorkflowTriggerStatus.RUNNING)
             )
-            if not cast(CursorResult, result).rowcount:
+            assert isinstance(result, CursorResult)
+            if not result.rowcount:
                 return None
             row = session.get(WorkflowTriggerLog, log_id)
             assert row is not None
@@ -374,7 +375,9 @@ class SQLAlchemyWorkflowTriggerExecutionRepository:
         if abort_reason is not None:
             statement = statement.values(error=abort_reason)
         with self._session_factory.begin() as session:
-            return bool(cast(CursorResult, session.execute(statement)).rowcount)
+            result = session.execute(statement)
+            assert isinstance(result, CursorResult)
+            return bool(result.rowcount)
 
     def get_execution_models(self, execution: TriggerExecution) -> tuple[App, Workflow, Account | EndUser]:
         """Load the legacy generator's scalar ORM fields, then detach before runtime I/O.
