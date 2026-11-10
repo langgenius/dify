@@ -398,6 +398,54 @@ class TestAgentObservabilityServiceCases:
         assert payload["charts"]["daily_messages"] == [{"date": "2026-11-07", "message_count": 1}]
 
     @staticmethod
+    def test_statistics_summary_midnight_end_includes_first_minute_only(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        # Pins the end-bound contract for #45793 (GYJ99 review): the end is
+        # inclusive of the minute it names, so an explicit midnight end
+        # (\"2026-11-07 00:00\") includes a message at 00:00:30 but nothing
+        # after 00:01:00. The +1 minute extends the bound by exactly the
+        # named minute, never further.
+        app = _agent_observability_service_app()
+        first_minute_message = _agent_observability_service_message(created_at=datetime(2026, 11, 7, 0, 0, 30))
+        first_minute_message.from_end_user_id = "end-user-1"
+        second_minute_message = _agent_observability_service_message(
+            message_id="message-2",
+            conversation_id="conversation-2",
+            created_at=datetime(2026, 11, 7, 0, 1, 30),
+        )
+        second_minute_message.from_end_user_id = "end-user-1"
+        sqlite_session.add_all(
+            [
+                app,
+                _agent_observability_service_conversation(),
+                _agent_observability_service_conversation(conversation_id="conversation-2"),
+                first_minute_message,
+                second_minute_message,
+            ]
+        )
+        sqlite_session.commit()
+
+        apply_config_overrides(monkeypatch, DB_TYPE="mysql")
+        monkeypatch.setattr(observability_service_module, "convert_datetime_to_date", lambda field: f"DATE({field})")
+        connection = sqlite_session.connection().connection.dbapi_connection
+        assert isinstance(connection, Connection)
+        connection.create_function("JSON_UNQUOTE", 1, lambda value: value)
+        service = AgentObservabilityService(sqlite_session)
+
+        payload = service.get_statistics_summary(
+            app=app,
+            agent_id="agent-1",
+            params=AgentStatisticsQueryParams(
+                start=datetime(2026, 11, 6),
+                end=datetime(2026, 11, 7, 0, 0),
+            ),
+        )
+
+        assert payload["summary"]["total_messages"] == 1
+        assert payload["charts"]["daily_messages"] == [{"date": "2026-11-07", "message_count": 1}]
+
+    @staticmethod
     def test_merge_daily_statistics_combines_webapp_and_workflow_rows() -> None:
         rows = [
             {
