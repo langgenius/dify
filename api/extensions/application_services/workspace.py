@@ -7,7 +7,9 @@ from functools import partial
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.file_access import DatabaseFileAccessController
 from core.plugin.impl.oauth import OAuthHandler
+from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import delete_cache_for_subscription
 from extensions.ext_redis import RedisClientWrapper
@@ -16,6 +18,7 @@ from repositories.app.console_repository import ConsoleAppRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerDispatchRepository
+from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
 from repositories.trigger.subscription_repository import (
@@ -60,6 +63,8 @@ from services.trigger.subscription_renewal_service import TriggerSubscriptionRen
 from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
+from services.trigger.webhook_gateway import ToolWebhookFiles
+from services.trigger.webhook_service import WebhookBindingService, WebhookFiles, WebhookService
 from services.trigger.workflow_dispatch_service import PluginTriggerWorkflowDispatchService, TriggerEndUserProvisioner
 from services.workflow.queue_dispatcher import CeleryWorkflowQueuePublisher
 from services.workspace.gateways import (
@@ -109,6 +114,10 @@ class WorkspaceServices:
     trigger_endpoints: TriggerEndpointService
     trigger_events: TriggerEventService
     workflow_dispatch: AsyncWorkflowService
+    webhooks: WebhookService
+    webhook_files: WebhookFiles
+    webhook_draft_bindings: WebhookBindingService
+    create_webhook_publication_service: Callable[[Session], WebhookBindingService]
     trigger_workflow_dispatch: PluginTriggerWorkflowDispatchService
     trigger_oauth_clients: TriggerOAuthClientService
     trigger_oauth: TriggerOAuthService
@@ -201,6 +210,7 @@ def build_workspace_services(
     workflow_dispatch = AsyncWorkflowService(
         workflows=workflow_queries, logs=execution_logs, queues=queues, reserve_quota=QuotaService.reserve
     )
+    app_triggers = SQLAlchemyAppTriggerRepository(session_factory=database_client)
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
         management=WorkspaceService(
@@ -248,6 +258,19 @@ def build_workspace_services(
         ),
         trigger_events=trigger_events,
         workflow_dispatch=workflow_dispatch,
+        webhooks=WebhookService(
+            webhooks=app_triggers,
+            end_users=trigger_end_users,
+            dispatch=workflow_dispatch,
+            reserve_quota=QuotaService.reserve,
+            mark_rate_limited=mark_rate_limited,
+        ),
+        webhook_files=ToolWebhookFiles(manager=ToolFileManager(), access=DatabaseFileAccessController()),
+        webhook_draft_bindings=WebhookBindingService(sync_bindings=app_triggers.sync_draft_webhooks),
+        # Publish binding changes atomically with the workflow that owns them.
+        create_webhook_publication_service=lambda session: WebhookBindingService(
+            sync_bindings=partial(app_triggers.sync_webhooks, session=session, remove_stale=True)
+        ),
         trigger_workflow_dispatch=PluginTriggerWorkflowDispatchService(
             workflows=workflow_queries,
             logs=execution_logs,
