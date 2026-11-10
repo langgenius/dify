@@ -1,4 +1,4 @@
-"""Canonical Console v2 provider credential DTOs and owner mappings."""
+"""Shared Human Input v2 provider credential DTOs and owner mappings."""
 
 from __future__ import annotations
 

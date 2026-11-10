@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from controllers.console.human_input_v2.providers import MSTeamsCredentialsInput as MSTeamsCredentialUpdate
+from controllers.common.human_input_v2.providers import MSTeamsCredentialsInput as MSTeamsCredentialUpdate
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import credentials as provider_credentials
 

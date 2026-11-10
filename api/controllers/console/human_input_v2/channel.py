@@ -13,6 +13,19 @@ from flask.typing import ResponseReturnValue
 from flask_restx import Resource
 from pydantic import Field, StringConstraints
 
+from controllers.common.human_input_v2._common import StrictModel
+from controllers.common.human_input_v2.provider_updates import (
+    EmailProviderCredentialsUpdateInput,
+    IMProviderCredentialsUpdateInput,
+    UnchangedInput,
+)
+from controllers.common.human_input_v2.provider_views import (
+    IMProviderCredentialsResponse,
+    Redacted,
+    ResendCredentialsResponse,
+    im_credentials_response,
+)
+from controllers.common.human_input_v2.providers import EmailProviderCredentials, IMProviderCredentialsInput
 from controllers.common.schema import (
     query_params_from_model,
     register_response_schema_models,
@@ -68,7 +81,6 @@ from services.human_input_v2.im_channel_service_composition import (
     build_workspace_im_channel_service,
 )
 
-from ._common import StrictModel
 from ._decorators import (
     require_admin_or_owner,
     workspace_channel_api_admission,
@@ -89,14 +101,6 @@ from .errors import (
     ChannelProviderConfigurationUpdatedHttpError,
     ChannelReplacementRequiredHttpError,
 )
-from .provider_updates import EmailProviderCredentialsUpdateInput, IMProviderCredentialsUpdateInput, UnchangedInput
-from .provider_views import (
-    IMProviderCredentialsResponse,
-    Redacted,
-    ResendCredentialsResponse,
-    im_credentials_response,
-)
-from .providers import EmailProviderCredentials, IMProviderCredentialsInput
 
 type ChannelId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 type ConfigVersion = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -656,6 +660,7 @@ class IMChannelTestApi(WorkspaceChannelResource):
 
 @console_ns.route("/workspaces/current/human-input/v2/channels/im/<uuid:channel_id>/test")
 class IMChannelSavedTestApi(WorkspaceChannelResource):
+    # TODO(QuantumGhost): this API should use a dedicated request model
     @console_ns.expect(console_ns.models[IMChannelUpdatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
     @console_ns.response(

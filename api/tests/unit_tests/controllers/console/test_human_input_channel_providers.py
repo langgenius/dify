@@ -6,8 +6,8 @@ from typing import Annotated, get_args, get_origin
 import pytest
 from pydantic import SecretStr, TypeAdapter, ValidationError
 
-from controllers.console.human_input_v2._common import StrictModel
-from controllers.console.human_input_v2.providers import (
+from controllers.common.human_input_v2._common import StrictModel
+from controllers.common.human_input_v2.providers import (
     DingTalkCredentialsInput,
     EmailProviderCredentials,
     FeishuCredentialsInput,
@@ -17,7 +17,7 @@ from controllers.console.human_input_v2.providers import (
     SlackCredentialsInput,
     WeComCredentialsInput,
 )
-from controllers.console.human_input_v2.providers import (
+from controllers.common.human_input_v2.providers import (
     IMProviderCredentialsInput as ConsoleIMProviderCredentials,
 )
 from core.human_input_v2.entities import IMProvider
@@ -388,7 +388,7 @@ def test_new_credentials_never_accept_retention_markers(operation: str) -> None:
 
 @pytest.mark.parametrize("agent_id", ["agent-id", "00123", "0"])
 def test_wecom_update_does_not_validate_agent_id_format(agent_id: str) -> None:
-    from controllers.console.human_input_v2.provider_updates import WeComCredentialsUpdateInput
+    from controllers.common.human_input_v2.provider_updates import WeComCredentialsUpdateInput
 
     credentials = WeComCredentialsUpdateInput.model_validate(
         {
