@@ -140,6 +140,11 @@ class SchedulePublicationService:
         self._now = now
 
     def sync(self, *, tenant_id: str, app_id: str, graph: Mapping[str, Any]) -> None:
+        """Synchronize a published graph in the writer's transaction.
+
+        Invalid schedule configuration raises before the writer is called; a graph
+        without a schedule removes any existing plan.
+        """
         config = ScheduleService.extract_schedule_config(graph)
         next_run_at = (
             calculate_next_run_at(config.cron_expression, config.timezone, self._now()) if config is not None else None
@@ -153,7 +158,7 @@ class ScheduleQuotaCharge(Protocol):
 
 
 class ScheduleWorkflowDispatcher(Protocol):
-    def __call__(self, *, account_id: str, tenant_id: str, app_id: str, node_id: str) -> None: ...
+    def __call__(self, *, account_id: str, tenant_id: str, app_id: str, node_id: str) -> str: ...
 
 
 class TriggerScheduleService:
@@ -179,6 +184,11 @@ class TriggerScheduleService:
         self._max_dispatch_per_tick = max_dispatch_per_tick
 
     def poll(self) -> int:
+        """Claim due schedules, advance them, and return the number dispatched.
+
+        Each batch is published before its claim transaction commits; publication
+        failures propagate and roll back that batch's schedule updates.
+        """
         total_dispatched = 0
         has_more = True
         while has_more:
@@ -203,6 +213,12 @@ class TriggerScheduleService:
         return total_dispatched
 
     def execute(self, schedule_id: str) -> None:
+        """Dispatch an existing schedule using its tenant owner or admin.
+
+        Quota exhaustion marks the tenant rate-limited and skips dispatch. A
+        successful dispatch commits the reservation. Dispatch or commit failure
+        attempts a refund and raises ScheduleExecutionError if the refund succeeds.
+        """
         execution = self._schedules.get_for_execution(schedule_id)
         schedule = execution.schedule
         try:
@@ -212,7 +228,7 @@ class TriggerScheduleService:
             logger.info("Tenant %s rate limited, skipping schedule trigger %s", schedule.tenant_id, schedule_id)
             return
         try:
-            self._dispatch(
+            trigger_log_id = self._dispatch(
                 account_id=execution.account_id,
                 tenant_id=schedule.tenant_id,
                 app_id=schedule.app_id,
@@ -224,3 +240,4 @@ class TriggerScheduleService:
             raise ScheduleExecutionError(
                 f"Failed to trigger workflow for schedule {schedule_id}, app {schedule.app_id}"
             ) from exc
+        logger.info("Schedule %s triggered workflow: %s", schedule_id, trigger_log_id)

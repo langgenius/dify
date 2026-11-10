@@ -1,5 +1,6 @@
 """Real SQL and broker tests for scheduled publication, polling, and execution."""
 
+import logging
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import closing
 from dataclasses import dataclass, field
@@ -45,12 +46,13 @@ class _Dispatch:
     error: Exception | None = None
     connections: set[object] | None = None
 
-    def __call__(self, *, account_id: str, tenant_id: str, app_id: str, node_id: str) -> None:
+    def __call__(self, *, account_id: str, tenant_id: str, app_id: str, node_id: str) -> str:
         if self.connections is not None:
             assert not self.connections
         self.calls.append({"account_id": account_id, "tenant_id": tenant_id, "app_id": app_id, "node_id": node_id})
         if self.error is not None:
             raise self.error
+        return "trigger-log-id"
 
 
 @pytest.fixture
@@ -442,7 +444,10 @@ def test_wired_publication_handler_uses_the_publishers_transaction(harness: _Har
         ) == commit
 
 
-def test_wired_schedule_tasks_enqueue_workflow_with_tenant_owner(harness: _Harness, broker: SimpleQueue) -> None:
+def test_wired_schedule_tasks_enqueue_workflow_with_tenant_owner(
+    harness: _Harness, broker: SimpleQueue, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.INFO, logger="services.trigger.schedule_service")
     from celery import current_app
 
     from models.enums import CreatorUserRole, WorkflowTriggerStatus
@@ -509,6 +514,7 @@ def test_wired_schedule_tasks_enqueue_workflow_with_tenant_owner(harness: _Harne
         assert log.created_by == harness.account_id
         assert log.created_by_role == CreatorUserRole.ACCOUNT
         assert log.status == WorkflowTriggerStatus.QUEUED
+        assert f"Schedule {plan.id} triggered workflow: {log.id}" in caplog.messages
         queued = broker.get(block=False)
         assert queued.payload[0] == [{"workflow_trigger_log_id": log.id}]
         assert queued.headers["id"] == log.celery_task_id
