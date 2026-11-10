@@ -20,7 +20,6 @@
   "selectedFiles": "Вибрані файли ({{valid}} з {{total}} дійсні)",
   "startWith": "Почніть з",
   "startWithHelp": "Ви можете будь-коли додати більше джерел або документів.",
-  "uploadCharactersUnavailable": "Символи: —",
   "uploadCompleted": "Додано",
   "uploadDocuments": "Завантажити документи",
   "uploadDropZoneTitle": "Перетягніть файли або виберіть їх",

@@ -132,6 +132,7 @@ def runtime_gateway(
     generator = create_autospec(AppGenerateService, spec_set=True)
     generator.generate_workflow_stream.side_effect = generate
     gateway = WorkflowRuntimeGateway(
+        invoke_plugin_event=lambda **_: None,
         runtime=build_workflow_execution_dependencies(factory),
         session_factory=factory,
         workflows=workflows,

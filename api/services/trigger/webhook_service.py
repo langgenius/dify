@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any, NotRequired, Protocol, TypedDict
 
 import orjson
-from flask import request
+from flask import g, has_request_context, request
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
@@ -27,18 +27,18 @@ from factories import file_factory
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.file import FileTransferMethod
 from graphon.variables.types import ArrayValidation, SegmentType
-from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
+from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, EndUserType
 from models.model import App, EndUser
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from repositories.trigger.workflow_repository import WorkflowTriggerRepository
-from services.async_workflow_service import AsyncWorkflowService
+from services.async_workflow_service import TriggerWorkflowDispatcher
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.errors import WebhookBodyTooLargeError
 from services.trigger.workflow_policy import webhook_node_ids
-from services.workflow.entities import WebhookTriggerData
+from services.workflow.entities import TriggerActor, WebhookTriggerData
 from services.workflow_service import WorkflowService
 
 try:
@@ -48,6 +48,10 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
+
+# Request-local cache of the trigger end user resolved for each (tenant_id, app_id), so the files a
+# webhook request uploads and the run it queues always share the same owner.
+_TRIGGER_END_USER_CACHE_KEY = "_webhook_trigger_end_users"
 
 
 class RawWebhookDataDict(TypedDict):
@@ -178,13 +182,18 @@ class WebhookService:
 
     @classmethod
     def extract_and_validate_webhook_data(
-        cls, webhook_trigger: WorkflowWebhookTrigger, node_config: NodeConfigDict
+        cls,
+        webhook_trigger: WorkflowWebhookTrigger,
+        node_config: NodeConfigDict,
+        *,
+        end_users: WebhookEndUserProvisioner,
     ) -> RawWebhookDataDict:
         """Extract and validate webhook data in a single unified process.
 
         Args:
             webhook_trigger: The webhook trigger object containing metadata
             node_config: The node configuration containing validation rules
+            end_users: Provisioner for the trigger end user that owns uploaded files
 
         Returns:
             dict[str, Any]: Processed and validated webhook data with correct types
@@ -193,7 +202,7 @@ class WebhookService:
             ValueError: If validation fails (HTTP method mismatch, missing required fields, type errors)
         """
         # Extract raw data first
-        raw_data = cls.extract_webhook_data(webhook_trigger)
+        raw_data = cls.extract_webhook_data(webhook_trigger, end_users=end_users)
 
         # Validate HTTP metadata (method, content-type)
         node_data = WebhookData.model_validate(node_config["data"], from_attributes=True)
@@ -207,11 +216,14 @@ class WebhookService:
         return processed_data
 
     @classmethod
-    def extract_webhook_data(cls, webhook_trigger: WorkflowWebhookTrigger) -> RawWebhookDataDict:
+    def extract_webhook_data(
+        cls, webhook_trigger: WorkflowWebhookTrigger, *, end_users: WebhookEndUserProvisioner
+    ) -> RawWebhookDataDict:
         """Extract raw data from incoming webhook request without type conversion.
 
         Args:
             webhook_trigger: The webhook trigger object for file processing context
+            end_users: Provisioner for the trigger end user that owns uploaded files
 
         Returns:
             dict[str, Any]: Raw webhook data containing:
@@ -238,8 +250,8 @@ class WebhookService:
         extractors: dict[str, Callable[[], tuple[dict[str, Any], dict[str, Any]]]] = {
             "application/json": cls._extract_json_body,
             "application/x-www-form-urlencoded": cls._extract_form_body,
-            "multipart/form-data": lambda: cls._extract_multipart_body(webhook_trigger),
-            "application/octet-stream": lambda: cls._extract_octet_stream_body(webhook_trigger),
+            "multipart/form-data": lambda: cls._extract_multipart_body(webhook_trigger, end_users),
+            "application/octet-stream": lambda: cls._extract_octet_stream_body(webhook_trigger, end_users),
             "text/plain": cls._extract_text_body,
         }
 
@@ -340,11 +352,14 @@ class WebhookService:
         return dict(request.form), {}
 
     @classmethod
-    def _extract_multipart_body(cls, webhook_trigger: WorkflowWebhookTrigger) -> tuple[dict[str, Any], dict[str, Any]]:
+    def _extract_multipart_body(
+        cls, webhook_trigger: WorkflowWebhookTrigger, end_users: WebhookEndUserProvisioner
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract multipart/form-data body and files from request.
 
         Args:
             webhook_trigger: Webhook trigger for file processing context
+            end_users: Provisioner for the trigger end user that owns uploaded files
 
         Returns:
             tuple: (body_data, files_data) where:
@@ -352,17 +367,18 @@ class WebhookService:
                 - files_data: Processed file objects indexed by field name
         """
         body = dict(request.form)
-        files = cls._process_file_uploads(request.files, webhook_trigger) if request.files else {}
+        files = cls._process_file_uploads(request.files, webhook_trigger, end_users) if request.files else {}
         return body, files
 
     @classmethod
     def _extract_octet_stream_body(
-        cls, webhook_trigger: WorkflowWebhookTrigger
+        cls, webhook_trigger: WorkflowWebhookTrigger, end_users: WebhookEndUserProvisioner
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Extract binary data as file from request.
 
         Args:
             webhook_trigger: Webhook trigger for file processing context
+            end_users: Provisioner for the trigger end user that owns the uploaded file
 
         Returns:
             tuple: (body_data, files_data) where:
@@ -373,7 +389,8 @@ class WebhookService:
             file_content = request.get_data()
             if file_content:
                 mimetype = cls._detect_binary_mimetype(file_content)
-                file_obj = cls._create_file_from_binary(file_content, mimetype, webhook_trigger)
+                end_user = cls._resolve_trigger_end_user(webhook_trigger, end_users)
+                file_obj = cls._create_file_from_binary(file_content, mimetype, webhook_trigger, end_user)
                 return {"raw": file_obj.to_dict()}, {}
             else:
                 return {"raw": None}, {}
@@ -413,27 +430,59 @@ class WebhookService:
                 logger.debug("python-magic detection failed for octet-stream payload")
         return "application/octet-stream"
 
+    @staticmethod
+    def _resolve_trigger_end_user(
+        webhook_trigger: WorkflowWebhookTrigger, end_users: WebhookEndUserProvisioner
+    ) -> EndUser:
+        """Return the app's trigger end user, the identity that webhook workflow runs execute as.
+
+        Within a request, the end user is resolved once and reused from request-local context. A
+        second lookup could select another trigger end user that a concurrent request created in
+        the meantime, and the run would then not own the files this request uploaded.
+        """
+        cache: dict[tuple[str, str], EndUser] | None = (
+            g.setdefault(_TRIGGER_END_USER_CACHE_KEY, {}) if has_request_context() else None
+        )
+        key = (webhook_trigger.tenant_id, webhook_trigger.app_id)
+        if cache is not None and key in cache:
+            return cache[key]
+
+        end_user = end_users.get_or_create_end_user_by_type(
+            type=EndUserType.TRIGGER,
+            tenant_id=webhook_trigger.tenant_id,
+            app_id=webhook_trigger.app_id,
+            user_id=None,
+        )
+        if cache is not None:
+            cache[key] = end_user
+        return end_user
+
     @classmethod
     def _process_file_uploads(
-        cls, files: Mapping[str, FileStorage], webhook_trigger: WorkflowWebhookTrigger
+        cls,
+        files: Mapping[str, FileStorage],
+        webhook_trigger: WorkflowWebhookTrigger,
+        end_users: WebhookEndUserProvisioner,
     ) -> dict[str, Any]:
         """Process file uploads using ToolFileManager.
 
         Args:
             files: Flask request files object containing uploaded files
-            webhook_trigger: Webhook trigger for tenant and user context
+            webhook_trigger: Webhook trigger for tenant and app context
+            end_users: Provisioner for the trigger end user that owns uploaded files
 
         Returns:
             dict[str, Any]: Processed file objects indexed by field name
         """
         processed_files = {}
+        end_user = cls._resolve_trigger_end_user(webhook_trigger, end_users)
 
         for name, file in files.items():
             if file and file.filename:
                 try:
                     file_content = file.stream.read()
                     mimetype = file.content_type or mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
-                    file_obj = cls._create_file_from_binary(file_content, mimetype, webhook_trigger)
+                    file_obj = cls._create_file_from_binary(file_content, mimetype, webhook_trigger, end_user)
                     processed_files[name] = file_obj.to_dict()
                 except Exception:
                     logger.exception("Failed to process file upload '%s'", name)
@@ -443,14 +492,16 @@ class WebhookService:
 
     @classmethod
     def _create_file_from_binary(
-        cls, file_content: bytes, mimetype: str, webhook_trigger: WorkflowWebhookTrigger
+        cls, file_content: bytes, mimetype: str, webhook_trigger: WorkflowWebhookTrigger, end_user: EndUser
     ) -> Any:
         """Create a file object from binary content using ToolFileManager.
 
         Args:
             file_content: The binary content of the file
             mimetype: The MIME type of the file
-            webhook_trigger: Webhook trigger for tenant and user context
+            webhook_trigger: Webhook trigger for tenant context
+            end_user: Trigger end user that owns the file. The async workflow run executes as this
+                end user, and its file access scope only loads tool files the end user owns.
 
         Returns:
             Any: A file object built from the binary content
@@ -459,7 +510,7 @@ class WebhookService:
 
         # Create file using ToolFileManager
         tool_file = tool_file_manager.create_file_by_raw(
-            user_id=webhook_trigger.created_by,
+            user_id=end_user.id,
             tenant_id=webhook_trigger.tenant_id,
             conversation_id=None,
             file_binary=file_content,
@@ -684,12 +735,28 @@ class WebhookService:
         if param_type_enum is None:
             return value
 
-        if not param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL):
+        matches_type = param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL)
+        if not matches_type or cls._is_boolean_for_number(value, param_type_enum):
             actual_type = type(value).__name__
             expected_type = cls._expected_type_label(param_type_enum)
             raise ValueError(f"Expected {expected_type}, got {actual_type}")
 
         return value
+
+    @staticmethod
+    def _is_boolean_for_number(value: Any, param_type: SegmentType) -> bool:
+        """Return True when a JSON boolean is given for a number parameter.
+
+        JSON ``true``/``false`` decode to ``bool``, a subclass of ``int``, so
+        ``SegmentType.is_valid`` accepts them as numbers.
+        """
+        match param_type:
+            case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
+                return isinstance(value, bool)
+            case SegmentType.ARRAY_NUMBER:
+                return isinstance(value, list) and any(isinstance(item, bool) for item in value)
+            case _:
+                return False
 
     @classmethod
     def _coerce_segment_type(cls, param_type: SegmentType | str, *, param_name: str) -> SegmentType | None:
@@ -824,6 +891,8 @@ class WebhookService:
         workflow: Workflow,
         *,
         end_users: WebhookEndUserProvisioner,
+        trigger_status: AppTriggerService,
+        workflow_dispatch: TriggerWorkflowDispatcher,
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
 
@@ -848,24 +917,18 @@ class WebhookService:
                 tenant_id=webhook_trigger.tenant_id,
             )
 
-            end_user = end_users.get_or_create_end_user_by_type(
-                type=EndUserType.TRIGGER,
-                tenant_id=webhook_trigger.tenant_id,
-                app_id=webhook_trigger.app_id,
-                user_id=None,
-            )
+            end_user = cls._resolve_trigger_end_user(webhook_trigger, end_users)
 
             try:
                 quota_charge = QuotaService.reserve(QuotaType.TRIGGER, webhook_trigger.tenant_id)
             except QuotaExceededError:
-                AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
+                trigger_status.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
                 raise
 
             try:
-                # NOTE: don not use `with sessionmaker(bind=db.engine, expire_on_commit=False).begin()`
-                # trigger_workflow_async need to handle multiple session commits internally
-                with Session(db.engine, expire_on_commit=False) as session:
-                    AsyncWorkflowService.trigger_workflow_async(end_user, trigger_data, session=session)
+                workflow_dispatch.trigger_workflow_async(
+                    actor=TriggerActor(id=end_user.id, role=CreatorUserRole.END_USER), trigger_data=trigger_data
+                )
                 quota_charge.commit()
             except Exception:
                 quota_charge.refund()

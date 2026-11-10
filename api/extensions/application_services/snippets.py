@@ -22,11 +22,12 @@ def build_snippet_generation_service(
     *, database_client: sessionmaker[Session], variables: WorkflowExecutionVariables
 ) -> SnippetGenerateService:
     from services.snippet_generate_service import SnippetGenerateService
+    from services.snippet_service import SnippetWorkflowSnapshotReader
     from services.workflow_service import WorkflowService
 
     return SnippetGenerateService(
         runtime=build_workflow_execution_dependencies(database_client),
-        snippets=build_snippet_service(database_client),
+        snippets=SnippetWorkflowSnapshotReader(build_snippet_service(database_client)),
         variables=variables,
         workflows=WorkflowService(database_client, runtime=build_workflow_execution_dependencies(database_client)),
     )

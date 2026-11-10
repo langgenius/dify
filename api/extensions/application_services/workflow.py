@@ -14,6 +14,7 @@ from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackH
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMeta
+from core.trigger.debug.event_selectors import PluginTriggerEventInvoker
 from extensions.ext_redis import RedisClientWrapper
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from models.annotation_reply import AnnotationReplies
@@ -252,6 +253,7 @@ def build_console_workflow_service(
     redis: RedisClientWrapper,
     variables: WorkflowExecutionVariables,
     rbac_members: MemberService,
+    invoke_plugin_event: PluginTriggerEventInvoker,
 ) -> ConsoleWorkflowService[WorkflowAgentBindingStore]:
     from core.app.file_access import DatabaseFileAccessController
     from core.helper.encrypter import decrypt_token
@@ -290,12 +292,14 @@ def build_console_workflow_service(
             converter=WorkflowConverter(),
             decrypt_token=decrypt_token,
             notify_created=AppService.notify_created_app,
+            inherit_access=EnterpriseConsoleAppAccess(members=rbac_members).inherit_access,
         ),
         agent_services=WorkflowAgentPublishService,
         definitions=definitions,
         drafts=build_workflow_draft_service(drafts, lifecycle, database_client),
         lifecycle=lifecycle,
         runtime=WorkflowRuntimeGateway(
+            invoke_plugin_event=invoke_plugin_event,
             runtime=build_workflow_execution_dependencies(database_client),
             variables=variables,
             session_factory=database_client,

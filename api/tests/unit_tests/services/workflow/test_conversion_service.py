@@ -132,6 +132,7 @@ def test_conversion_releases_reads_and_commits_target_once(
         converter=WorkflowConverter(),
         decrypt_token=decrypt,
         notify_created=created,
+        inherit_access=lambda *_: None,
     )
     new_id = service.convert(CONTEXT, "app-1", {"name": "", "icon_type": "", "icon": "", "icon_background": ""})
     assert len(notifications) == 1
@@ -197,6 +198,7 @@ def test_failed_conversion_rolls_back_entire_target(sessions: sessionmaker[Sessi
         converter=WorkflowConverter(),
         decrypt_token=lambda *_: "key",
         notify_created=lambda **kwargs: notifications.append(kwargs),
+        inherit_access=lambda *_: None,
     )
     with pytest.raises(RuntimeError, match="write failed"):
         service.convert(CONTEXT, "app-1", {})
@@ -237,6 +239,7 @@ def test_conversion_rejects_invalid_owned_data_before_creating_target(
         converter=WorkflowConverter(),
         decrypt_token=lambda *args: decryptions.append(args) or "key",
         notify_created=lambda **kwargs: notifications.append(kwargs),
+        inherit_access=lambda *_: None,
     )
     with pytest.raises(WorkflowConversionError):
         service.convert(CONTEXT, "app-1", {})
@@ -253,6 +256,7 @@ def test_conversion_rejects_other_tenant(sessions: sessionmaker[Session]) -> Non
         converter=WorkflowConverter(),
         decrypt_token=lambda *_: "key",
         notify_created=lambda **_: None,
+        inherit_access=lambda *_: None,
     )
     with pytest.raises(ConsoleAppNotFoundError):
         service.convert(CONTEXT._replace(active_workspace_id="other-tenant"), "app-1", {})
@@ -267,6 +271,7 @@ def test_decryption_failure_creates_no_target(sessions: sessionmaker[Session]) -
         converter=WorkflowConverter(),
         decrypt_token=fail,
         notify_created=lambda **_: None,
+        inherit_access=lambda *_: None,
     )
     with pytest.raises(RuntimeError, match="key service unavailable"):
         service.convert(CONTEXT, "app-1", {})

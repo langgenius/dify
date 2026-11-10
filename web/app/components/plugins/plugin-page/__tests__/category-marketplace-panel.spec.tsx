@@ -5,8 +5,8 @@ import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { zGetWorkspacesCurrentPluginMarketplacePkgResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ThemeProvider } from 'next-themes'
 import { marketplaceLinks } from '@/features/marketplace/links'
+import { ThemeProvider } from '@/features/theme/provider'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createMarketplacePluginFixture, createPluginEntity } from '@/test/fixtures/plugin'
@@ -67,7 +67,7 @@ const setup = (
   const queryClient = createConsoleQueryClient()
   seedModelProviderQueries(queryClient)
   const rendered = renderWithConsoleQuery(
-    <ThemeProvider defaultTheme="light" forcedTheme="light" enableSystem={false}>
+    <ThemeProvider defaultPreference="light">
       <CategoryMarketplacePanel
         marketplace={marketplaceLinks}
         category={Category.trigger}

@@ -929,6 +929,12 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         return err
 
     def _save_message(self, *, graph_runtime_state: RuntimeState | None = None, paused: bool = False):
+        """Save current output for the initialized message and its admitted owner.
+
+        A pause save supplies the current run ID so persistence can serialize
+        its state check with durable stop. Success commits content and usage;
+        persistence failures propagate without marking the message as saved.
+        """
         usage = graph_runtime_state.llm_usage if graph_runtime_state else None
         self._task_state.metadata.usage = usage or LLMUsage.empty_usage()
         if self._task_state.is_streaming_response and self._task_state.first_token_time:
@@ -956,7 +962,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 metadata=self._task_state.metadata.model_dump(),
                 files=files,
                 usage=usage,
-                paused=paused,
+                paused_workflow_run_id=self._workflow_run_id if paused else None,
             ),
         )
 
