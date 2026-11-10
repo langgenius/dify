@@ -8,14 +8,7 @@ export default function Header() {
   return (
     <div className={styles.header}>
       <DialogTitle className={styles.title}>
-        <img src="/logo/logo.svg" alt="Dify" width={60} height={27} className="dark:hidden" />
-        <img
-          src="/pricing/logo-dark.svg"
-          alt="Dify"
-          width={60}
-          height={27}
-          className="hidden dark:block"
-        />
+        <span role="img" aria-label="Dify" className={styles.logo} />
         <span>Cloud</span>
       </DialogTitle>
       <DialogDescription className={styles.description}>
