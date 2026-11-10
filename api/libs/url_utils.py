@@ -3,7 +3,10 @@ from urllib.parse import urlsplit, urlunsplit
 
 def normalize_api_base_url(base_url: str) -> str:
     """Normalize a base URL to always end with /v1, avoiding double /v1 suffixes."""
-    return base_url.rstrip("/").removesuffix("/v1").rstrip("/") + "/v1"
+    base_url = base_url.strip()
+    parsed = urlsplit(base_url)
+    path = parsed.path.rstrip("/").removesuffix("/v1").rstrip("/") + "/v1"
+    return urlunsplit(parsed._replace(path=path))
 
 
 def github_blob_to_raw_url(url: str) -> str:
