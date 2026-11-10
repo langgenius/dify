@@ -60,7 +60,12 @@ class WeightRerankRunner(BaseRerankRunner):
         documents = unique_documents
 
         query_scores = self._calculate_keyword_score(query, documents)
-        query_vector_scores = self._calculate_cosine(self.tenant_id, query, documents, self.weights.vector_setting)
+        # A zero vector weight discards the semantic score, so skip the embedding calls behind it.
+        query_vector_scores = (
+            [0.0] * len(documents)
+            if self.weights.vector_setting.vector_weight == 0
+            else self._calculate_cosine(self.tenant_id, query, documents, self.weights.vector_setting)
+        )
 
         rerank_documents = []
         for document, query_score, query_vector_score in zip(

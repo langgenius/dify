@@ -823,6 +823,37 @@ class TestWeightRerankRunner:
         mock_model_manager.assert_called_once_with(tenant_id="tenant123")
         mock_cache_embedding.return_value.embed_documents.assert_called_once_with(["keyword match"])
 
+    def test_zero_vector_weight_skips_embedding(
+        self, mock_model_manager: MagicMock, mock_cache_embedding: MagicMock, mock_jieba_handler: MagicMock
+    ) -> None:
+        """A zero vector weight discards the semantic score, so no embedding may be resolved for it."""
+        weights = Weights(
+            vector_setting=VectorSetting(
+                vector_weight=0.0,
+                embedding_provider_name="openai",
+                embedding_model_name="text-embedding-ada-002",
+            ),
+            keyword_setting=KeywordSetting(keyword_weight=1.0),
+        )
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights)
+        documents = [
+            Document(page_content="semantic match", metadata={"doc_id": "doc1", "score": 0.82}, provider="dify"),
+            Document(
+                page_content="keyword match",
+                metadata={"doc_id": "doc2", "score": 7.4, SCORE_FROM_FULL_TEXT_METADATA_KEY: True},
+                provider="dify",
+            ),
+        ]
+        mock_jieba_handler.return_value.extract_keywords.return_value = {"python"}
+
+        result = runner.run(query="python", documents=documents)
+
+        assert [doc.metadata["score"] for doc in result] == pytest.approx([1.0, 1.0])
+        assert all(SCORE_FROM_FULL_TEXT_METADATA_KEY not in doc.metadata for doc in result)
+        mock_model_manager.assert_not_called()
+        mock_cache_embedding.assert_not_called()
+        mock_cache_embedding.get_cached_query_embedding.assert_not_called()
+
     @pytest.fixture
     def sample_documents_with_vectors(self):
         """Create sample documents with vector embeddings."""
