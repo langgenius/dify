@@ -14,6 +14,9 @@ import styles from './pricing.module.css'
 
 type BillingInterval = GetBillingSubscriptionData['query']['interval']
 
+const intervalOptionClassName =
+  'flex min-w-0 flex-1 cursor-pointer flex-wrap items-center justify-center gap-1 rounded-full px-3 py-1 text-lg leading-6 font-medium text-(--pricing-subdued) focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-text-accent data-checked:bg-components-button-secondary-bg data-checked:text-(--pricing-ink) sm:min-w-[190px] sm:flex-none sm:px-6 sm:text-2xl sm:leading-[30px]'
+
 export function PricingContent() {
   const { t } = useTranslation(['appApi', 'billing', 'common'])
   const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
@@ -56,20 +59,22 @@ export function PricingContent() {
     : undefined
 
   return (
-    <div className={styles.content}>
+    <div
+      className={`${styles.content} relative isolate min-h-full bg-background-default px-4 py-6 text-(--pricing-ink) sm:px-6 xl:px-13 xl:pt-10`}
+    >
       <Header />
       <RadioGroup
         aria-label={t(($) => $['pricing.billingInterval'], { ns: 'billing' })}
         value={billingInterval}
         onValueChange={setSelectedBillingInterval}
-        className={styles.billingInterval}
+        className="mx-auto my-8 min-h-[49px] w-full max-w-full gap-0 rounded-full border border-(--pricing-switch-border) bg-(--pricing-switch) p-1 sm:w-fit"
       >
-        <RadioItem value="month" className={styles.intervalOption}>
+        <RadioItem value="month" className={intervalOptionClassName}>
           {t(($) => $['pricing.monthly'], { ns: 'billing' })}
         </RadioItem>
-        <RadioItem value="year" className={styles.intervalOption}>
+        <RadioItem value="year" className={intervalOptionClassName}>
           {t(($) => $['pricing.annually'], { ns: 'billing' })}
-          <span className={styles.savings}>
+          <span className="font-[PricingInter,sans-serif] text-sm leading-[inherit] font-semibold text-text-accent sm:text-xl sm:leading-[inherit]">
             {t(($) => $['pricing.savings'], { ns: 'billing', percent: 17 })}
           </span>
         </RadioItem>
@@ -97,7 +102,7 @@ export function PricingContent() {
             </span>
           )
         )}
-        <div className={styles.plans}>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <CloudPlanItem plan="sandbox" billingInterval={billingInterval} billing={billing} />
           <CloudPlanItem plan="professional" billingInterval={billingInterval} billing={billing} />
           <CloudPlanItem plan="team" billingInterval={billingInterval} billing={billing} />

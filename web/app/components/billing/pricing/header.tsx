@@ -1,18 +1,25 @@
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
-import styles from './pricing.module.css'
 
 export default function Header() {
   const { t } = useTranslation(['billing'])
 
   return (
-    <div className={styles.header}>
-      <DialogTitle className={styles.title}>
-        <span role="img" aria-label="Dify" className={styles.logo} />
-        <span>Cloud</span>
+    <div className="min-h-16 pe-11">
+      <DialogTitle>
+        <span className="flex items-center gap-2 text-2xl leading-[37px] font-normal">
+          <span
+            role="img"
+            aria-label="Dify"
+            className="h-[27px] w-15 bg-[url(/logo/logo.svg)] bg-contain bg-center bg-no-repeat dark:bg-[url(/pricing/logo-dark.svg)]"
+          />
+          <span>Cloud</span>
+        </span>
       </DialogTitle>
-      <DialogDescription className={styles.description}>
-        {t(($) => $['plansCommon.title.description'])}
+      <DialogDescription>
+        <span className="mt-[3px] block font-[PricingInter,sans-serif] text-base leading-6 text-text-tertiary">
+          {t(($) => $['plansCommon.title.description'])}
+        </span>
       </DialogDescription>
     </div>
   )

@@ -1,7 +1,6 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { useTranslation } from 'react-i18next'
 import { ALL_PLANS } from '../../../../config'
-import styles from '../../../pricing.module.css'
 import { CloudPlanFeature } from './item'
 
 export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
@@ -123,7 +122,7 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
   ]
 
   return (
-    <ul className={styles.features}>
+    <ul className="mt-8 flex flex-col gap-2.5">
       {features.map((feature) => (
         <CloudPlanFeature
           key={feature.id}

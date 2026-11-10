@@ -2,6 +2,7 @@
 import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,6 @@ import { consoleClient } from '@/service/console'
 import { billingErrorMessageKey } from '../../../billing-error'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
-import styles from '../../pricing.module.css'
 import { CloudPlanFeatures } from './list'
 
 type CloudPlanItemProps = {
@@ -46,6 +46,9 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
   const isYearly = billingInterval === 'year'
   const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === 'sandbox'
+  const isPromotedUpgrade =
+    (currentPlan === 'sandbox' && plan === 'professional') ||
+    (currentPlan === 'professional' && plan === 'team')
   const isMostPopularPlan = plan === 'professional'
   const planInfo = ALL_PLANS[plan]
   const isCurrent = plan === currentPlan
@@ -161,46 +164,51 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
     setShowEducationPricingConfirm(false)
   }
   return (
-    <div className={styles.card} data-plan={plan}>
-      <div className={styles.cardHeader}>
-        <div className={styles.planHeading}>
-          <div className={styles.planHeading}>
-            <div className={styles.planNameRow}>
-              <h3 className={styles.planName}>
-                {t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })}
-              </h3>
-              {canManageBilling && (isCurrentSubscription || (isCurrent && isFreePlan)) && (
-                <span>{t(($) => $['plansCommon.currentPlan'], { ns: 'billing' })}</span>
-              )}
-              {isMostPopularPlan && (
-                <div className={styles.badge}>
-                  <span>{t(($) => $['plansCommon.mostPopular'], { ns: 'billing' })}</span>
-                </div>
-              )}
-            </div>
-            <div className={styles.planDescription}>
-              {t(($) => $[`${i18nPrefix}.description`], { ns: 'billing' })}
-            </div>
+    <div
+      className="min-w-0 rounded-2xl border border-(--pricing-card-border) bg-background-default px-6 py-8 xl:min-h-[750px] xl:px-[23px] xl:pt-10 xl:pb-11"
+      data-plan={plan}
+    >
+      <div className="flex flex-col gap-[27px]">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-3xl leading-10 font-medium tracking-[-0.864px] sm:text-4xl sm:leading-10">
+              {t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })}
+            </h3>
+            {canManageBilling && (isCurrentSubscription || (isCurrent && isFreePlan)) && (
+              <span>{t(($) => $['plansCommon.currentPlan'], { ns: 'billing' })}</span>
+            )}
+            {isMostPopularPlan && (
+              <div className="flex h-[26px] items-center rounded-sm bg-state-accent-hover-alt px-2 text-xs leading-[15px] font-semibold text-text-accent uppercase">
+                <span>{t(($) => $['plansCommon.mostPopular'], { ns: 'billing' })}</span>
+              </div>
+            )}
+          </div>
+          <div className="relative top-px min-h-[34px] text-sm leading-[17px] text-(--pricing-muted)">
+            {t(($) => $[`${i18nPrefix}.description`], { ns: 'billing' })}
           </div>
         </div>
-        {/* Price */}
-        <div className={styles.price}>
+        <div className="relative -top-[3px] flex min-h-[30px] flex-wrap items-baseline gap-1.5">
           {isFreePlan && (
-            <span className={styles.priceAmount}>
+            <span className="text-2xl leading-[30px] font-medium">
               {t(($) => $['plansCommon.free'], { ns: 'billing' })}
             </span>
           )}
           {!isFreePlan && (
             <>
               {isYearly && (
-                <span className={styles.originalPrice}>
+                <span className="text-xl leading-[25px] text-(--pricing-subdued) line-through">
                   <span className="sr-only">
                     {t(($) => $['plansCommon.originalAnnualPrice'], { ns: 'billing' })}
                   </span>
                   {`$${planInfo.price * 12}`}
                 </span>
               )}
-              <span className={styles.priceAmount}>
+              <span
+                className={cn(
+                  'text-2xl leading-[30px] font-medium',
+                  isMostPopularPlan && 'text-text-primary',
+                )}
+              >
                 {isYearly && (
                   <span className="sr-only">
                     {t(($) => $['plansCommon.discountedAnnualPrice'], { ns: 'billing' })}
@@ -208,27 +216,27 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
                 )}
                 {`$${isYearly ? planInfo.price * 10 : planInfo.price}`}
               </span>
-              <span className={styles.priceSuffix}>
+              <span className="text-xl leading-[25px]">
                 {t(($) => $['plansCommon.priceTip'], { ns: 'billing' })}
                 {t(($) => $[`plansCommon.${isYearly ? 'year' : 'month'}`], { ns: 'billing' })}
               </span>
             </>
           )}
         </div>
-        <div className={styles.actionSlot}>
+        <div className="relative min-h-15">
           {showPlanButton && (
             <>
               <Button
                 data-plan={plan}
-                data-promoted={
-                  (currentPlan === 'sandbox' && plan === 'professional') ||
-                  (currentPlan === 'professional' && plan === 'team') ||
-                  undefined
-                }
                 variant="tertiary"
                 size={null}
                 disabled={isPlanDisabled}
-                className={styles.planButton}
+                className={cn(
+                  'h-auto min-h-15 w-full rounded-lg border p-3 text-2xl leading-[30px] font-medium whitespace-normal shadow-none disabled:cursor-default',
+                  isPromotedUpgrade
+                    ? 'border-saas-dify-blue-static bg-saas-dify-blue-static text-white enabled:hover:bg-saas-dify-blue-static-hover'
+                    : 'border-(--pricing-button-border) bg-(--pricing-button-bg) text-(--pricing-muted) enabled:hover:bg-components-button-secondary-bg-hover',
+                )}
                 onClick={handlePlanButtonClick}
               >
                 <span className="min-w-0">{buttonLabel}</span>
