@@ -2950,6 +2950,8 @@ a4_expected.update(
             "test_authoritative_selector_refuses_complete_alternate_graph_before_hydration": 2,
             "test_generation_refuses_authoritative_selector_before_alternate_builder": 2,
             "test_generic_tool_choice_without_selector_still_generates_installed_tool": 1,
+            "test_normalized_authoritative_selectors_never_fall_back_to_prose": 4,
+            "test_normalized_valid_typed_selector_binds_exact_identity_despite_unrelated_prose": 1,
         },
         "tests.unit_tests.services.dify_builder.test_credential_failure_attribution": {
             "test_handler_attributes_global_credentials_to_exact_failed_tool": 6,
