@@ -11,6 +11,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from kombu.simple import SimpleQueue
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -47,6 +48,8 @@ from services.trigger.subscription_query_service import TriggerSubscriptionRunti
 from services.workflow.entities import TriggerActor, TriggerData
 from services.workflow_service import WorkflowService
 from tasks import trigger_processing_tasks
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.unit_tests.controllers.trigger import test_webhook as native_webhook_tests
 
 from .conftest import RecordingScheduleTask
 
@@ -54,6 +57,8 @@ from .conftest import RecordingScheduleTask
 WEBHOOK_ID_PRODUCTION = "wh1234567890123456789012"
 WEBHOOK_ID_DEBUG = "whdebug1234567890123456"
 TEST_TRIGGER_URL = "https://trigger.example.com/base"
+
+broker = native_webhook_tests.broker
 
 
 def _build_workflow_graph(root_node_id: str, trigger_type: str) -> str:
@@ -156,7 +161,7 @@ def test_webhook_trigger_creates_trigger_log(
     db_session_with_containers: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
-    monkeypatch: pytest.MonkeyPatch,
+    broker: SimpleQueue,
 ) -> None:
     """Production webhook trigger should create a trigger log in the database."""
     tenant, account = tenant_and_account
@@ -198,39 +203,10 @@ def test_webhook_trigger_creates_trigger_log(
     db_session_with_containers.add_all([webhook_trigger, app_trigger])
     db_session_with_containers.commit()
 
-    def _fake_trigger_workflow_async(
-        self: AsyncWorkflowService, *, actor: TriggerActor, trigger_data: TriggerData
-    ) -> SimpleNamespace:
-        session = db_session_with_containers
-        log = WorkflowTriggerLog(
-            tenant_id=trigger_data.tenant_id,
-            app_id=trigger_data.app_id,
-            workflow_id=trigger_data.workflow_id,
-            root_node_id=trigger_data.root_node_id,
-            trigger_metadata=trigger_data.trigger_metadata.model_dump_json() if trigger_data.trigger_metadata else "{}",
-            trigger_type=trigger_data.trigger_type,
-            workflow_run_id=None,
-            outputs=None,
-            trigger_data=trigger_data.model_dump_json(),
-            inputs=json.dumps(dict(trigger_data.inputs)),
-            status=WorkflowTriggerStatus.SUCCEEDED,
-            error="",
-            queue_name="triggered_workflow_dispatcher",
-            celery_task_id="celery-test",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=account.id,
+    with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY):
+        response = test_client_with_containers.post(
+            f"/triggers/webhook/{webhook_trigger.webhook_id}", json={"foo": "bar"}
         )
-        session.add(log)
-        session.commit()
-        return SimpleNamespace(workflow_trigger_log_id=log.id, task_id=None, status="queued", queue="test")
-
-    monkeypatch.setattr(
-        AsyncWorkflowService,
-        "trigger_workflow_async",
-        _fake_trigger_workflow_async,
-    )
-
-    response = test_client_with_containers.post(f"/triggers/webhook/{webhook_trigger.webhook_id}", json={"foo": "bar"})
 
     assert response.status_code == 200
 
@@ -238,7 +214,14 @@ def test_webhook_trigger_creates_trigger_log(
     logs = db_session_with_containers.scalars(
         select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id)
     ).all()
-    assert logs, "Webhook trigger should create trigger log"
+    assert len(logs) == 1
+    assert logs[0].status == WorkflowTriggerStatus.QUEUED
+    assert logs[0].root_node_id == webhook_node_id
+    assert json.loads(logs[0].inputs)["webhook_body"] == {"foo": "bar"}
+    message = broker.get(block=False)
+    assert message.payload[0] == [{"workflow_trigger_log_id": logs[0].id}]
+    assert message.headers["id"] == logs[0].celery_task_id
+    message.ack()
 
 
 @pytest.mark.parametrize("schedule_type", ["visual", "cron"])
@@ -390,7 +373,6 @@ def test_webhook_debug_dispatches_event(
     db_session_with_containers: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Webhook single-step debug should dispatch debug event and be pollable."""
     tenant, account = tenant_and_account
@@ -421,13 +403,6 @@ def test_webhook_debug_dispatches_event(
     db_session_with_containers.add(webhook_trigger)
     db_session_with_containers.commit()
 
-    debug_events: list[dict[str, Any]] = []
-    original_dispatch = TriggerDebugEventBus.dispatch
-    monkeypatch.setattr(
-        "controllers.trigger.webhook.TriggerDebugEventBus.dispatch",
-        lambda **kwargs: (debug_events.append(kwargs), original_dispatch(**kwargs))[1],
-    )
-
     # Listener polls first to enter waiting pool
     poller = WebhookTriggerDebugEventPoller(
         tenant_id=tenant.id,
@@ -445,12 +420,14 @@ def test_webhook_debug_dispatches_event(
     )
 
     assert response.status_code == 200
-    assert debug_events, "Debug event should be sent to event bus"
     # Second poll should get the event
     event = poller.poll()
     assert event is not None
     assert event.workflow_args["inputs"]["webhook_body"]["foo"] == "bar"
-    assert debug_events[0]["pool_key"].endswith(f":{app_model.id}:{webhook_node_id}")
+    assert (
+        db_session_with_containers.scalar(select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id))
+        is None
+    )
 
 
 def test_schedule_trigger_creates_trigger_log(
