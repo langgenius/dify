@@ -232,7 +232,7 @@ def harness(
             clients=TriggerOAuthClientRepository(session_factory=sqlite_session_factory),
             providers=metadata,
         )
-        services = replace(services, workspaces=replace(services.workspaces, trigger_oauth_clients=oauth_clients))
+        services = replace(services, triggers=replace(services.triggers, oauth_clients=oauth_clients))
         app.extensions["application_services"] = services
         bind_account_loader(app, services.accounts.identity.load_user)
         login_manager = DifyLoginManager()
@@ -426,7 +426,7 @@ def test_concurrent_save_preserves_winning_secret(harness: _Harness, existing: b
         assert response.status_code == HTTPStatus.OK
 
     def save_during_provider_lookup() -> None:
-        application_services().workspaces.trigger_oauth_clients.save(
+        application_services().triggers.oauth_clients.save(
             tenant_id=harness.tenant_id,
             provider_id=TriggerProviderID(_PROVIDER),
             client_params={"client_id": "winning-client", "client_secret": winning_secret},

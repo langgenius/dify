@@ -8,10 +8,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_manager import ModelInstance
 from core.rag.embedding.embedding_base import Embeddings
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
@@ -50,23 +50,22 @@ class CacheEmbedding(Embeddings):
         # use doc embedding cache or store if not exists
         text_embeddings: list[Any] = [None for _ in range(len(texts))]
         embedding_queue_indices = []
-        for i, text in enumerate(texts):
-            hash = helper.generate_text_hash(text)
-            embedding = db.session.scalar(
-                select(Embedding)
-                .where(
-                    Embedding.model_name == self._model_instance.model_name,
-                    Embedding.hash == hash,
-                    Embedding.provider_name == self._model_instance.provider,
+        with session_factory.create_session() as session:
+            for i, text in enumerate(texts):
+                hash = helper.generate_text_hash(text)
+                embedding = session.scalar(
+                    select(Embedding)
+                    .where(
+                        Embedding.model_name == self._model_instance.model_name,
+                        Embedding.hash == hash,
+                        Embedding.provider_name == self._model_instance.provider,
+                    )
+                    .limit(1)
                 )
-                .limit(1)
-            )
-            if embedding:
-                text_embeddings[i] = embedding.get_embedding()
-            else:
-                embedding_queue_indices.append(i)
-
-        # NOTE: avoid closing the shared scoped session here; downstream code may still have pending work
+                if embedding:
+                    text_embeddings[i] = embedding.get_embedding()
+                else:
+                    embedding_queue_indices.append(i)
 
         if embedding_queue_indices:
             embedding_queue_texts = [texts[i] for i in embedding_queue_indices]
@@ -102,31 +101,29 @@ class CacheEmbedding(Embeddings):
                                 logger.warning("Normalized embedding is nan: %s", normalized_embedding)
                                 continue
                             text_embeddings[queue_index] = normalized_embedding
-                        except IntegrityError:
-                            db.session.rollback()
                         except Exception:
                             logger.exception("Failed transform embedding")
                 cache_embeddings = []
-                try:
-                    for queue_index in embedding_queue_indices:
-                        n_embedding = text_embeddings[queue_index]
-                        if n_embedding is None:
-                            continue
-                        hash = helper.generate_text_hash(texts[queue_index])
-                        if hash not in cache_embeddings:
-                            embedding_cache = Embedding(
-                                model_name=self._model_instance.model_name,
-                                hash=hash,
-                                provider_name=self._model_instance.provider,
-                                embedding=pickle.dumps(n_embedding, protocol=pickle.HIGHEST_PROTOCOL),
-                            )
-                            db.session.add(embedding_cache)
-                            cache_embeddings.append(hash)
-                    db.session.commit()
-                except IntegrityError:
-                    db.session.rollback()
+                with session_factory.create_session() as session:
+                    try:
+                        for queue_index in embedding_queue_indices:
+                            n_embedding = text_embeddings[queue_index]
+                            if n_embedding is None:
+                                continue
+                            hash = helper.generate_text_hash(texts[queue_index])
+                            if hash not in cache_embeddings:
+                                embedding_cache = Embedding(
+                                    model_name=self._model_instance.model_name,
+                                    hash=hash,
+                                    provider_name=self._model_instance.provider,
+                                    embedding=pickle.dumps(n_embedding, protocol=pickle.HIGHEST_PROTOCOL),
+                                )
+                                session.add(embedding_cache)
+                                cache_embeddings.append(hash)
+                        session.commit()
+                    except IntegrityError:
+                        session.rollback()
             except Exception as ex:
-                db.session.rollback()
                 logger.exception("Failed to embed documents")
                 raise ex
 
@@ -138,23 +135,22 @@ class CacheEmbedding(Embeddings):
         # use doc embedding cache or store if not exists
         multimodel_embeddings: list[Any] = [None for _ in range(len(multimodel_documents))]
         embedding_queue_indices = []
-        for i, multimodel_document in enumerate(multimodel_documents):
-            file_id = multimodel_document["file_id"]
-            embedding = db.session.scalar(
-                select(Embedding)
-                .where(
-                    Embedding.model_name == self._model_instance.model_name,
-                    Embedding.hash == file_id,
-                    Embedding.provider_name == self._model_instance.provider,
+        with session_factory.create_session() as session:
+            for i, multimodel_document in enumerate(multimodel_documents):
+                file_id = multimodel_document["file_id"]
+                embedding = session.scalar(
+                    select(Embedding)
+                    .where(
+                        Embedding.model_name == self._model_instance.model_name,
+                        Embedding.hash == file_id,
+                        Embedding.provider_name == self._model_instance.provider,
+                    )
+                    .limit(1)
                 )
-                .limit(1)
-            )
-            if embedding:
-                multimodel_embeddings[i] = embedding.get_embedding()
-            else:
-                embedding_queue_indices.append(i)
-
-        # NOTE: avoid closing the shared scoped session here; downstream code may still have pending work
+                if embedding:
+                    multimodel_embeddings[i] = embedding.get_embedding()
+                else:
+                    embedding_queue_indices.append(i)
 
         if embedding_queue_indices:
             embedding_queue_multimodel_documents = [multimodel_documents[i] for i in embedding_queue_indices]
@@ -190,32 +186,30 @@ class CacheEmbedding(Embeddings):
                                 logger.warning("Normalized embedding is nan: %s", normalized_embedding)
                                 continue
                             multimodel_embeddings[queue_index] = normalized_embedding
-                        except IntegrityError:
-                            db.session.rollback()
                         except Exception:
                             logger.exception("Failed transform embedding")
                 cache_embeddings = []
-                try:
-                    for queue_index in embedding_queue_indices:
-                        n_embedding = multimodel_embeddings[queue_index]
-                        if n_embedding is None:
-                            continue
-                        file_id = multimodel_documents[queue_index]["file_id"]
-                        if file_id not in cache_embeddings:
-                            embedding_cache = Embedding(
-                                model_name=self._model_instance.model_name,
-                                hash=file_id,
-                                provider_name=self._model_instance.provider,
-                                embedding=pickle.dumps(n_embedding, protocol=pickle.HIGHEST_PROTOCOL),
-                            )
-                            embedding_cache.set_embedding(n_embedding)
-                            db.session.add(embedding_cache)
-                            cache_embeddings.append(file_id)
-                    db.session.commit()
-                except IntegrityError:
-                    db.session.rollback()
+                with session_factory.create_session() as session:
+                    try:
+                        for queue_index in embedding_queue_indices:
+                            n_embedding = multimodel_embeddings[queue_index]
+                            if n_embedding is None:
+                                continue
+                            file_id = multimodel_documents[queue_index]["file_id"]
+                            if file_id not in cache_embeddings:
+                                embedding_cache = Embedding(
+                                    model_name=self._model_instance.model_name,
+                                    hash=file_id,
+                                    provider_name=self._model_instance.provider,
+                                    embedding=pickle.dumps(n_embedding, protocol=pickle.HIGHEST_PROTOCOL),
+                                )
+                                embedding_cache.set_embedding(n_embedding)
+                                session.add(embedding_cache)
+                                cache_embeddings.append(file_id)
+                        session.commit()
+                    except IntegrityError:
+                        session.rollback()
             except Exception as ex:
-                db.session.rollback()
                 logger.exception("Failed to embed documents")
                 raise ex
 
