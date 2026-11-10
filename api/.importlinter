@@ -1566,3 +1566,12 @@ forbidden_modules =
     services.trigger.execution_gateway
     services.trigger.execution_layer
 allow_indirect_imports = True
+
+[importlinter:contract:trigger-builder-repository-boundary]
+name = Trigger builder persistence depends on contracts rather than its service
+type = forbidden
+source_modules =
+    repositories.trigger.subscription_builder_repository
+forbidden_modules =
+    services.trigger.trigger_subscription_builder_service
+allow_indirect_imports = True

@@ -8,7 +8,7 @@ from pydantic import TypeAdapter
 
 from extensions.ext_redis import RedisClientWrapper
 from services.trigger.builder_entities import RequestLog, SubscriptionBuilder
-from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderStore
+from services.trigger.builder_store import TriggerSubscriptionBuilderStore
 
 _request_logs_adapter = TypeAdapter(list[RequestLog])
 _BUILDER_TTL_SECONDS = 30 * 60
