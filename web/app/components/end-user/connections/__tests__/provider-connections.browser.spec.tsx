@@ -12,14 +12,19 @@ import ProviderConnectionsPage from '../provider-connections-page'
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
   info: vi.fn(),
+  success: vi.fn(),
   list: vi.fn<() => Response | Promise<Response>>(),
+  providers: vi.fn<() => Response | Promise<Response>>(),
+  remove: vi.fn<() => Response | Promise<Response>>(),
 }))
 vi.mock('@/next/navigation', () => {
   const router = { replace: mocks.replace }
   return { useRouter: () => router }
 })
 vi.mock('@/context/i18n', () => ({ useGetLanguage: () => 'en_US' }))
-vi.mock('@/app/notifications', () => ({ toast: { info: mocks.info, error: vi.fn() } }))
+vi.mock('@/app/notifications', () => ({
+  toast: { info: mocks.info, success: mocks.success, error: vi.fn() },
+}))
 
 const providerId = 'langgenius/firecrawl/firecrawl'
 const providerIcon = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="orange"/></svg>')}`
@@ -51,20 +56,24 @@ beforeEach(() => {
   mocks.list
     .mockReset()
     .mockImplementation(() => connectionPage(hasConnections ? [connection] : []))
+  mocks.providers.mockReset().mockImplementation(() =>
+    Response.json({
+      data: hasConnections ? [provider] : [],
+      has_more: false,
+      next_cursor: null,
+    }),
+  )
+  mocks.remove.mockReset().mockImplementation(() => {
+    hasConnections = false
+    return new Response(null, { status: 204 })
+  })
   window.history.replaceState({}, '', `/connections/${encodeURIComponent(providerId)}`)
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const request = new Request(input, init)
     const path = new URL(request.url).pathname
-    if (request.method === 'DELETE' && path === `/api/me/connections/${connection.key}`) {
-      hasConnections = false
-      return new Response(null, { status: 204 })
-    }
-    if (path === '/api/me/connections')
-      return Response.json({
-        data: hasConnections ? [provider] : [],
-        has_more: false,
-        next_cursor: null,
-      })
+    if (request.method === 'DELETE' && path === `/api/me/connections/${connection.key}`)
+      return mocks.remove()
+    if (path === '/api/me/connections') return mocks.providers()
     if (decodeURIComponent(path) === `/api/me/connections/providers/${providerId}/connections`)
       return mocks.list()
     throw new Error(`Unexpected request: ${request.method} ${path}`)
@@ -87,17 +96,27 @@ function showProvider() {
   )
 }
 
-it('notifies and returns to Connections after the last connection is disconnected', async () => {
+it('waits for invalidated queries before reporting a successful final disconnection and redirecting', async () => {
   const screen = await showProvider()
   await expect.element(screen.getByRole('heading', { level: 1, name: 'Firecrawl' })).toBeVisible()
+  const refresh = createDeferred<Response>()
+  mocks.providers.mockReturnValueOnce(refresh.promise)
   await screen.getByRole('button', { name: 'app.endUser.deleteKey' }).click()
   await screen
     .getByRole('alertdialog')
     .getByRole('button', { name: 'app.endUser.disconnect' })
     .click()
 
+  await expect.element(screen.getByRole('progressbar', { name: 'common.loading' })).toBeVisible()
+  await expect.poll(() => mocks.providers.mock.calls.length).toBe(2)
+  expect(mocks.replace).not.toHaveBeenCalled()
+  expect(mocks.success).not.toHaveBeenCalled()
+  expect(mocks.info).not.toHaveBeenCalled()
+
+  refresh.resolve(Response.json({ data: [], has_more: false, next_cursor: null }))
   await expect.poll(() => mocks.replace.mock.calls).toEqual([['/connections']])
-  expect(mocks.info).toHaveBeenCalledExactlyOnceWith('app.endUser.noProviderConnections')
+  expect(mocks.success).toHaveBeenCalledExactlyOnceWith('common.api.actionSuccess')
+  expect(mocks.info).not.toHaveBeenCalled()
   await expect
     .element(screen.getByRole('heading', { level: 1, name: providerId }))
     .not.toBeInTheDocument()
@@ -109,9 +128,31 @@ it('redirects a direct visit to an empty provider without showing its ID as a he
 
   await expect.poll(() => mocks.replace.mock.calls).toEqual([['/connections']])
   expect(mocks.info).toHaveBeenCalledExactlyOnceWith('app.endUser.noProviderConnections')
+  expect(mocks.success).not.toHaveBeenCalled()
   await expect
     .element(screen.getByRole('heading', { level: 1, name: providerId }))
     .not.toBeInTheDocument()
+})
+
+it('keeps the connection after a failed disconnection without success feedback or navigation', async () => {
+  mocks.remove.mockReturnValueOnce(
+    Response.json(
+      { code: 'connection_conflict', message: 'Connection is busy.', status: 409 },
+      { status: 409 },
+    ),
+  )
+  const screen = await showProvider()
+  await screen.getByRole('button', { name: 'app.endUser.deleteKey' }).click()
+  const dialog = screen.getByRole('alertdialog')
+  await dialog.getByRole('button', { name: 'app.endUser.disconnect' }).click()
+  await expect.element(dialog.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
+  expect(mocks.success).not.toHaveBeenCalled()
+  expect(mocks.info).not.toHaveBeenCalled()
+  expect(mocks.replace).not.toHaveBeenCalled()
+
+  await dialog.getByRole('button', { name: 'common.operation.cancel' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('row', { name: /Personal API Key/ })).toBeVisible()
 })
 
 it('does not treat a pending connection list as an empty provider', async () => {

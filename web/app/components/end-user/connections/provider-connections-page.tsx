@@ -64,11 +64,12 @@ export default function ProviderConnectionsPage({ providerId }: { providerId: st
     list.isSuccess && !list.isFetching && !list.hasNextPage && connections.length === 0
 
   useEffect(() => {
-    if (!noConnections || hasRedirectedRef.current) return
+    if (!noConnections || removal.isPending || hasRedirectedRef.current) return
     hasRedirectedRef.current = true
-    toast.info(t(($) => $['endUser.noProviderConnections'], { ns: 'app' }))
+    if (removal.isSuccess) toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+    else toast.info(t(($) => $['endUser.noProviderConnections'], { ns: 'app' }))
     router.replace('/connections')
-  }, [noConnections, router, t])
+  }, [noConnections, removal.isPending, removal.isSuccess, router, t])
 
   if (metadata.isPending || list.isPending || noConnections)
     return <LoadingPlaceholder className="py-8" />
