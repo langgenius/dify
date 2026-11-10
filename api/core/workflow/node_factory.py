@@ -89,6 +89,7 @@ if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
     from core.tools.workflow_as_tool.tool import WorkflowTool
     from graphon.runtime import InitParams, RuntimeState
+    from providers.a2a.workflow_node import ExternalAgentNodeDependencies
 
 LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
@@ -356,7 +357,15 @@ class DifyNodeFactory(NodeFactory):
         use_workflow_tool_containers: bool = True,
         workflow_tools: dict[str, "WorkflowTool"] | None = None,
         execution_driver: "WorkflowRunDriver | None" = None,
+        external_agent_dependencies: "ExternalAgentNodeDependencies | None" = None,
     ) -> None:
+        """Bind frame state and capture External ports only for graphs using them.
+
+        A root graph containing External nodes must be initialized inside its
+        admitted application context, or receive already captured ports. Child
+        frame factories reuse those ports and never resolve Flask-local state.
+        Graphs without External nodes retain their context-free construction.
+        """
         self.init_params = init_params
         self.runtime_state = runtime_state
         self._dify_context = self._resolve_dify_context(init_params.run_context)
@@ -370,6 +379,11 @@ class DifyNodeFactory(NodeFactory):
                 if isinstance(human_input_run_context, DifyRunContext)
                 else self._resolve_dify_context(human_input_run_context)
             )
+        )
+        self._external_agent_dependencies = (
+            external_agent_dependencies
+            if external_agent_dependencies is not None
+            else self._capture_external_agent_dependencies()
         )
         self._code_executor: CodeExecutorProtocol = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
@@ -433,8 +447,42 @@ class DifyNodeFactory(NodeFactory):
         self._agent_runtime_support = AgentRuntimeSupport()
         self._agent_message_transformer = AgentMessageTransformer()
 
+    def _capture_external_agent_dependencies(self) -> "ExternalAgentNodeDependencies | None":
+        """Capture narrow ports while the root graph still owns its app context.
+
+        Only an explicit External marker in the complete graph admits this
+        lookup. Unsupported cross-App tool delegation fails before resolving
+        services. Graphs without that External profile perform no Flask lookup.
+        """
+        nodes = self.init_params.graph_config.get("nodes", [])
+        has_external = isinstance(nodes, list | tuple) and any(
+            isinstance(node, Mapping)
+            and isinstance(node.get("data"), Mapping | BaseNodeData)
+            and node["data"].get("type") == BuiltinNodeTypes.AGENT
+            and str(node["data"].get("version")) == "2"
+            and node["data"].get("agent_node_kind") == "external_a2a"
+            for node in nodes
+        )
+        if not has_external:
+            return None
+
+        from extensions.ext_application_services import application_services
+        from providers.a2a.workflow_node import ExternalAgentNodeDependencies, ensure_supported_workflow_owner
+
+        ensure_supported_workflow_owner(self._dify_context, self._human_input_run_context.app_id)
+        external = application_services().external_agents
+        return ExternalAgentNodeDependencies(
+            service=external.runtime,
+            store=external.repository,
+            bindings=external.repository,
+            enqueue=external.enqueue,
+            enabled=external.enabled,
+            root_app_id=self._human_input_run_context.app_id,
+        )
+
     @override
     def with_runtime_state(self, runtime_state: "RuntimeState") -> "DifyNodeFactory":
+        """Clone frame-local state while preserving captured ports and root identity."""
         return DifyNodeFactory(
             init_params=self.init_params,
             runtime_state=runtime_state,
@@ -442,6 +490,7 @@ class DifyNodeFactory(NodeFactory):
             use_workflow_tool_containers=self._use_workflow_tool_containers,
             workflow_tools=self.workflow_tools,
             execution_driver=self._execution_driver,
+            external_agent_dependencies=self._external_agent_dependencies,
         )
 
     @override
@@ -695,17 +744,9 @@ class DifyNodeFactory(NodeFactory):
         from providers.a2a.workflow_node import ExternalAgentNode
 
         if node_class is ExternalAgentNode:
-            from extensions.ext_application_services import application_services
-
-            external = application_services().external_agents
-            return {
-                "service": external.runtime,
-                "store": external.repository,
-                "bindings": external.repository,
-                "enqueue": external.enqueue,
-                "enabled": external.enabled,
-                "root_app_id": self._human_input_run_context.app_id,
-            }
+            if self._external_agent_dependencies is None:
+                raise ValueError("External node dependencies were not captured by the admitted root graph.")
+            return {"dependencies": self._external_agent_dependencies}
         if issubclass(node_class, DifyAgentNode):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client

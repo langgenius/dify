@@ -228,6 +228,7 @@ def build_external_agent_services(
         assets=ExternalAssetService(
             store=assets,
             access=access,
+            reference_access=observation_access,
             gateway=gateway,
             secrets=codec,
             clock=clock.now,

@@ -580,7 +580,14 @@ def _extract_text_from_doc(
             suffix=".doc",
             unstructured_api_config=unstructured_api_config,
         )
-        return "\n".join([getattr(element, "text", "") for element in elements])
+        return "\n".join([
+            (
+                getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+                    element, "text", ""
+                )
+            )
+            for element in elements
+        ])
     except Exception as e:
         msg = f"Failed to extract text from DOC: {e!s}"
         raise TextExtractionError(msg) from e
@@ -1055,7 +1062,9 @@ def _load_partition_pptx() -> Callable[..., Sequence[Any]]:
 
 
 def _render_unstructured_text_element(element: Any) -> str:
-    return getattr(element, "text", "")
+    return getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+        element, "text", ""
+    )
 
 
 def _extract_text_from_eml(file_content: bytes) -> str:

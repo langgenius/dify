@@ -829,7 +829,11 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         handler_name = _VALUE_TRANSFORMER_NAMES.get(parameter.type)
         if handler_name is None:
             return _TRANSFORM_RESULT_UNSET
-        return getattr(self, handler_name)(param_value)
+        return (
+            getattr(  # guard-ignore: no-new-getattr -- upstream type handler
+                self, handler_name
+            )
+        )(param_value)
 
     def _transform_array_parameter_value(
         self,
@@ -847,7 +851,11 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             return segment_value
 
         for item in param_value:
-            transformed_item = getattr(self, handler_name)(item)
+            transformed_item = (
+                getattr(  # guard-ignore: no-new-getattr -- upstream type handler
+                    self, handler_name
+                )
+            )(item)
             if transformed_item is not _TRANSFORM_RESULT_UNSET:
                 segment_value.value.append(transformed_item)
         return segment_value

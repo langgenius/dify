@@ -180,12 +180,18 @@ class BaseNodeData(ABC, BaseModel):
         """
         # First, check declared model fields
         if key in self.__class__.model_fields:
-            return getattr(self, key)
+            return getattr(  # guard-ignore: no-new-getattr -- upstream dynamic field
+                self, key
+            )
 
         # Then, check undeclared compatibility fields stored in Pydantic's extra dict.
-        extras = getattr(self, "__pydantic_extra__", None)
+        extras = getattr(  # guard-ignore: no-new-getattr -- upstream dynamic field
+            self, "__pydantic_extra__", None
+        )
         if extras is None:
-            extras = getattr(self, "model_extra", None)
+            extras = getattr(  # guard-ignore: no-new-getattr -- upstream dynamic field
+                self, "model_extra", None
+            )
         if extras is not None and key in extras:
             return extras[key]
 
@@ -194,11 +200,17 @@ class BaseNodeData(ABC, BaseModel):
     def get(self, key: str, default: Any = None) -> Any:
         """Dict-style .get() without calling model_dump() on every lookup."""
         if key in self.__class__.model_fields:
-            return getattr(self, key)
+            return getattr(  # guard-ignore: no-new-getattr -- upstream dynamic field
+                self, key
+            )
 
-        extras = getattr(self, "__pydantic_extra__", None)
+        extras = getattr(  # guard-ignore: no-new-getattr -- upstream dynamic field
+            self, "__pydantic_extra__", None
+        )
         if extras is None:
-            extras = getattr(self, "model_extra", None)
+            extras = getattr(  # guard-ignore: no-new-getattr -- upstream dynamic field
+                self, "model_extra", None
+            )
         if extras is not None and key in extras:
             return extras.get(key, default)
 

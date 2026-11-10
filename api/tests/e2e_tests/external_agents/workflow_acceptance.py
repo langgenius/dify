@@ -148,7 +148,7 @@ class WorkflowAcceptance(ConsoleAcceptance):
         """Retain only identity/status/reason metadata, never raw message content."""
         result = []
         started = time.monotonic()
-        with client.stream("POST", url, json=payload, headers=headers) as response:
+        with client.stream("POST", url, json=payload, headers=headers, timeout=self.timeout) as response:
             require(
                 response.status_code == 200, f"Streaming API returned HTTP {response.status_code} during {self.phase}."
             )
@@ -170,6 +170,8 @@ class WorkflowAcceptance(ConsoleAcceptance):
                                 "conversation_id": value.get("conversation_id"),
                                 "status": data.get("status"),
                                 "reasons": data.get("reasons") or [],
+                                "error": data.get("error")
+                                or (value.get("message") if value.get("event") == "error" else None),
                             }
                         )
         require(result, "The streaming API returned no events.")

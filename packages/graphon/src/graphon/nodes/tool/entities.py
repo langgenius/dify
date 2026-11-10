@@ -153,5 +153,9 @@ class ToolNodeData(BaseNodeData, ToolEntity):
             case dict():
                 result = tool_input.get("value") is not None
             case _:
-                result = getattr(tool_input, "value", None) is not None
+                result = (
+                    getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+                        tool_input, "value", None
+                    )
+                ) is not None
         return result

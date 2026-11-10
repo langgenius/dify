@@ -65,17 +65,17 @@ required-version = '>=0.15'
 [tool.ruff.lint]
 select = ['ALL']
 ignore = [
-    'missing-trailing-comma',  # Conflicts with `ruff format`.
-    'commented-out-code',  # False positives are common.
-    'TC',      # Runtime use of typing constructs is common now.
-    'CPY',     # Covered by the standalone LICENSE file.
+    'missing-trailing-comma', # Conflicts with `ruff format`.
+    'commented-out-code', # False positives are common.
+    'TC', # Runtime use of typing constructs is common now.
+    'CPY', # Covered by the standalone LICENSE file.
     'too-many-arguments', # Explicit is better than implicit.
     'too-many-positional-arguments', # Complex is better than complicated.
     'no-self-use', # Violates the usual practice.
-    'D',       # Too verbose.
-    'FBT',     # Too strict.
-    'relative-imports',  # Too absolute.
-    'any-type',  # We hope to enforce this, but typing is still evolving.
+    'D', # Too verbose.
+    'FBT', # Too strict.
+    'relative-imports', # Too absolute.
+    'any-type', # We hope to enforce this, but typing is still evolving.
 ]
 
 [tool.ruff.lint.pydoclint]
@@ -83,7 +83,7 @@ ignore-one-line-docstrings = true
 
 [tool.ruff.lint.per-file-ignores]
 'tests/**/*.py' = [
-    'assert',    # Assert statements used for pytest.
+    'assert', # Assert statements used for pytest.
     'magic-value-comparison', # Magic value used in test cases.
     'import-private-name', # Allow import private members from graphon module.
     'compare-to-empty-string', # be more precise about assertion in tests.

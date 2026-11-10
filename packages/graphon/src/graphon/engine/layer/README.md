@@ -1,6 +1,7 @@
 <!-- knowledge
 last_checked: "2026-09-08T17:04:02Z"
 -->
+
 # Layers
 
 Pluggable middleware for engine extensions.

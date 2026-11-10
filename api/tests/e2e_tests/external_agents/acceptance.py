@@ -73,6 +73,20 @@ class ConsoleAcceptance:
     def call(self, method: str, path: str, *, expected: tuple[int, ...] = (200,), **kwargs) -> dict:
         response = self.client.request(method, self.base + path, **kwargs)
         if response.status_code not in expected:
+            # Admit only bounded error scalars, never an echoed request/DSL or
+            # raw SSE body. The host helper also redacts all fixture credentials.
+            try:
+                error = response.json()
+            except ValueError:
+                error = {}
+            self.report["last_http_error"] = {
+                "status": response.status_code,
+                **{
+                    key: value[:600]
+                    for key, value in error.items()
+                    if key in {"code", "message", "error", "status"} and isinstance(value, str)
+                },
+            }
             raise AcceptanceError(f"Console {method} returned HTTP {response.status_code} during {self.phase}.")
         return response.json() if response.content else {}
 

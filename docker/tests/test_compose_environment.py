@@ -708,6 +708,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
             "api",
             "api_websocket",
             "worker",
+            "worker_external_agents",
             "worker_knowledge_fs_upgrade",
             "worker_beat",
             "knowledge_fs_document_worker",

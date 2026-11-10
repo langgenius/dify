@@ -89,6 +89,14 @@ class ExternalTestFileResponse(ResponseModel):
     expires_at: datetime
 
 
+class ExternalTestCancelResponse(ResponseModel):
+    result: Literal["requested"]
+
+
+class ExternalTestLeaveResponse(ResponseModel):
+    result: Literal["success"]
+
+
 class ExternalAgentCapabilitiesResponse(ResponseModel):
     enabled: bool
     protocol: str
@@ -100,7 +108,12 @@ class ExternalAgentCapabilitiesResponse(ResponseModel):
 
 register_schema_models(console_ns, ExternalTestPayload, ExternalPasteLinkPayload, ExternalTestPagePayload)
 register_response_schema_models(
-    console_ns, ExternalTestStatusResponse, ExternalTestFileResponse, ExternalAgentCapabilitiesResponse
+    console_ns,
+    ExternalTestStatusResponse,
+    ExternalTestFileResponse,
+    ExternalTestCancelResponse,
+    ExternalTestLeaveResponse,
+    ExternalAgentCapabilitiesResponse,
 )
 
 
@@ -169,12 +182,13 @@ class ExternalAgentTestResultApi(Resource):
 
 @console_ns.route("/external-agents/<uuid:agent_id>/tests/<uuid:invocation_id>/cancel")
 class ExternalAgentTestCancelApi(Resource):
+    @console_ns.response(202, "Cancellation requested", console_ns.models[ExternalTestCancelResponse.__name__])
     @console_account_admission()
     def post(self, context: RequestContext, agent_id: UUID, invocation_id: UUID):
         services = application_services().external_agents
         _call(lambda: services.tests.cancel(context, agent_id=str(agent_id), invocation_id=str(invocation_id)))
         services.enqueue()
-        return {"result": "requested"}, 202
+        return dump_response(ExternalTestCancelResponse, {"result": "requested"}), 202
 
 
 @console_ns.route("/external-agents/<uuid:agent_id>/test-files")
@@ -235,6 +249,7 @@ class ExternalAgentTestFileReleaseApi(Resource):
 @console_ns.route("/external-agent-tests/leave-page")
 class ExternalAgentTestLeaveApi(Resource):
     @console_ns.expect(console_ns.models[ExternalTestPagePayload.__name__])
+    @console_ns.response(202, "Test page left", console_ns.models[ExternalTestLeaveResponse.__name__])
     @console_account_admission()
     def post(self, context: RequestContext):
         payload = ExternalTestPagePayload.model_validate(request.get_json())
@@ -244,4 +259,4 @@ class ExternalAgentTestLeaveApi(Resource):
             page_session_id=payload.page_session_id,
             now=datetime.now(UTC),
         )
-        return {"result": "success"}, 202
+        return dump_response(ExternalTestLeaveResponse, {"result": "success"}), 202

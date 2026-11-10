@@ -10,6 +10,13 @@ export const zExternalTestPagePayload = z.object({
 })
 
 /**
+ * ExternalTestLeaveResponse
+ */
+export const zExternalTestLeaveResponse = z.object({
+  result: z.literal('success'),
+})
+
+/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -28,6 +35,6 @@ export const zErrorResponse = z.object({
 export const zPostExternalAgentTestsLeavePageBody = zExternalTestPagePayload
 
 /**
- * Success
+ * Test page left
  */
-export const zPostExternalAgentTestsLeavePageResponse = z.record(z.string(), z.unknown())
+export const zPostExternalAgentTestsLeavePageResponse = zExternalTestLeaveResponse

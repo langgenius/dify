@@ -109,7 +109,11 @@ class CommandProcessor:
                     except ValueError as exc:
                         logger.warning(
                             "Skipping invalid variable selector %s for workflow %s: %s",
-                            getattr(variable, "selector", None),
+                            (
+                                getattr(  # guard-ignore: no-new-getattr -- selector
+                                    variable, "selector", None
+                                )
+                            ),
                             self._graph_execution.workflow_id,
                             exc,
                         )

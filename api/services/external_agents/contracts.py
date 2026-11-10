@@ -146,6 +146,29 @@ class AssetPage:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalAssetAppReference:
+    """One readable current draft/published App reference, never historical usage."""
+
+    app_id: str
+    name: str
+    mode: str
+    node_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalAssetReferences:
+    """Advisory deletion preflight: scoped App rows plus a coarse asset-wide warning.
+
+    The warning includes unresolved remote work outside the visible App list;
+    it never exposes hidden App identities, counts or Invocation contents.
+    Neither false nor a prior read proves that remote work cannot start later.
+    """
+
+    apps: tuple[ExternalAssetAppReference, ...]
+    may_have_in_flight: bool
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class OperationResult:
     id: str
     tenant_id: str
@@ -167,6 +190,16 @@ class ExternalAssetAccess(Protocol):
     def role(self, context: RequestContext) -> str | None: ...
 
     def visible_agent_ids(self, context: RequestContext) -> frozenset[str] | None: ...
+
+
+class ExternalReferenceAccess(Protocol):
+    def reference_app_ids(self, context: RequestContext, agent_id: str) -> frozenset[str]:
+        """Return the same trusted readable-App scope used by asset Monitoring.
+
+        Reject Normal and inaccessible/foreign assets; an empty set admits no
+        App details. Implementations translate denials to ExternalAgentError.
+        """
+        ...
 
 
 class ExternalAssetStore(Protocol):
@@ -236,6 +269,12 @@ class ExternalAssetStore(Protocol):
 
     def operation(self, *, context: RequestContext, operation_id: str) -> OperationResult: ...
 
-    def references(
-        self, *, tenant_id: str, agent_id: str, app_ids: frozenset[str] | None
-    ) -> tuple[dict[str, Any], ...]: ...
+    def references(self, *, tenant_id: str, agent_id: str, app_ids: frozenset[str] | None) -> ExternalAssetReferences:
+        """Read current draft/published references and possible in-flight work.
+
+        Scope every query to the tenant and asset; filter App rows by app_ids.
+        The aggregate boolean may include hidden Apps but must not reveal their
+        identifiers or counts. Include unresolved ContextSlots whose Invocation
+        bodies expired. This is an advisory read, never a lease or delete lock.
+        """
+        ...

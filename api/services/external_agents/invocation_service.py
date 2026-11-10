@@ -235,6 +235,12 @@ class ExternalInvocationService:
             )
 
     def _dispatch(self, queued: Invocation) -> None:
+        """Send once using the permit-pinned Card, not caller-supplied job flags.
+
+        Raw input construction precedes the durable send marker. Once marked,
+        a missing receipt stays unknown; streaming failure never falls back to
+        another business submission.
+        """
         if not self._settings.admission_enabled:
             if queued.submission_state == SubmissionState.PREPARED:
                 self._commit(
@@ -290,7 +296,7 @@ class ExternalInvocationService:
             receipt = self._gateway.send(
                 connection,
                 request,
-                streaming=bool(value.job.get("streaming", False)),
+                streaming=connection.supports_streaming,
                 timeout_seconds=min(timeout, self._settings.sse_window_seconds),
             )
         except GatewayError as error:

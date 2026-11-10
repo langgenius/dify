@@ -65,7 +65,11 @@ class _ResponseSession:
 
     @classmethod
     def from_node(cls, node: NodeProtocol) -> _ResponseSession:
-        get_streaming_template = getattr(node, "get_streaming_template", None)
+        get_streaming_template = (
+            getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+                node, "get_streaming_template", None
+            )
+        )
         if not callable(get_streaming_template):
             msg = (
                 "Response streaming requires get_streaming_template() on response nodes"
@@ -703,10 +707,10 @@ class ResponseStreamFilter:
 
     def _get_text_segment_selector(self, response_node_id: _NodeID) -> Sequence[str]:
         response_node = self._bound_graph.nodes[response_node_id]
-        get_streaming_text_selector = getattr(
-            response_node,
-            "get_streaming_text_selector",
-            None,
+        get_streaming_text_selector = (
+            getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+                response_node, "get_streaming_text_selector", None
+            )
         )
         if callable(get_streaming_text_selector):
             selector = get_streaming_text_selector()

@@ -102,6 +102,11 @@ class ExternalAgentDetailResponse(ResponseModel):
     connection: dict[str, Any]
 
 
+class ExternalAgentConnectionWarningsResponse(ResponseModel):
+    technical: tuple[str, ...]
+    business: tuple[str, ...]
+
+
 class ExternalAgentVerificationResponse(ResponseModel):
     verification_id: str
     expires_at: datetime
@@ -109,6 +114,7 @@ class ExternalAgentVerificationResponse(ResponseModel):
     interface_url: str
     card: dict[str, Any]
     capabilities: dict[str, Any]
+    warnings: ExternalAgentConnectionWarningsResponse
 
 
 class ExternalAgentOperationResponse(ResponseModel):
@@ -116,6 +122,18 @@ class ExternalAgentOperationResponse(ResponseModel):
     resource_id: str
     kind: str
     result: dict[str, Any]
+
+
+class ExternalAgentAppReferenceResponse(ResponseModel):
+    app_id: str
+    name: str
+    mode: str
+    node_ids: tuple[str, ...]
+
+
+class ExternalAgentReferencesResponse(ResponseModel):
+    apps: tuple[ExternalAgentAppReferenceResponse, ...]
+    may_have_in_flight: bool
 
 
 register_schema_models(
@@ -133,7 +151,10 @@ register_response_schema_models(
     ExternalAgentListResponse,
     ExternalAgentDetailResponse,
     ExternalAgentVerificationResponse,
+    ExternalAgentConnectionWarningsResponse,
     ExternalAgentOperationResponse,
+    ExternalAgentAppReferenceResponse,
+    ExternalAgentReferencesResponse,
 )
 
 
@@ -206,7 +227,8 @@ class ExternalAgentVerifyApi(Resource):
                 "auth_check": result.auth_check,
                 "interface_url": result.interface_url,
                 "card": result.card,
-                "capabilities": result.capabilities,
+                "capabilities": {k: v for k, v in result.capabilities.items() if k != "connection_change_warnings"},
+                "warnings": result.capabilities.get("connection_change_warnings", {"technical": [], "business": []}),
             },
         )
 
@@ -221,10 +243,25 @@ class ExternalAgentApi(Resource):
         result = external_call(lambda: application_services().external_agents.assets.detail(context, str(agent_id)))
         return dump_response(ExternalAgentDetailResponse, result)
 
+    @console_ns.response(204, "External asset deleted")
     @console_account_admission()
     def delete(self, context: RequestContext, agent_id: UUID):
         external_call(lambda: application_services().external_agents.assets.delete(context, str(agent_id)))
         return "", 204
+
+
+@console_ns.route("/external-agents/<uuid:agent_id>/references")
+class ExternalAgentReferencesApi(Resource):
+    @console_ns.response(
+        200,
+        "Readable current App references and possible in-flight warning",
+        console_ns.models[ExternalAgentReferencesResponse.__name__],
+    )
+    @console_account_admission()
+    def get(self, context: RequestContext, agent_id: UUID):
+        """Read advisory deletion impact; neither mutate nor cancel any work."""
+        result = external_call(lambda: application_services().external_agents.assets.references(context, str(agent_id)))
+        return dump_response(ExternalAgentReferencesResponse, asdict(result))
 
 
 @console_ns.route("/external-agents/<uuid:agent_id>/info")

@@ -203,7 +203,9 @@ class _StreamingInvokeAccumulator:
 
 
 def _close_chunk_iterator(chunks: Iterator[LLMResultChunk]) -> None:
-    close = getattr(chunks, "close", None)
+    close = getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+        chunks, "close", None
+    )
     if callable(close):
         close()
 

@@ -309,6 +309,9 @@ class TestCelerySslCases:
 
             # Mock all the scheduler configs
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+            mock_config.EXTERNAL_AGENTS_ENABLED = False
+            mock_config.EXTERNAL_AGENTS_QUEUE = "external_agents"
+            mock_config.EXTERNAL_AGENTS_SWEEP_SECONDS = 30
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
@@ -366,6 +369,9 @@ class TestCelerySslCases:
             mock_config.CELERY_TASK_ANNOTATIONS = {}
 
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+            mock_config.EXTERNAL_AGENTS_ENABLED = False
+            mock_config.EXTERNAL_AGENTS_QUEUE = "external_agents"
+            mock_config.EXTERNAL_AGENTS_SWEEP_SECONDS = 30
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5

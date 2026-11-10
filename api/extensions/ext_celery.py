@@ -17,6 +17,23 @@ from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handl
 
 logger = logging.getLogger(__name__)
 
+_celery_application_factory: type[Celery] = Celery
+_celery_application_created = False
+
+
+def configure_worker_application_factory(factory: type[Celery]) -> None:
+    """Select an internal worker bootstrap factory before creating any Dify app.
+
+    Ordinary API/worker startup retains Celery and its existing FlaskTask closure.
+    The dedicated cold-spawn bootstrap supplies a process-local reconstruction
+    subclass. Changing factories after construction is rejected so one process
+    cannot silently mix worker serialization or application-context contracts.
+    """
+    global _celery_application_factory
+    if _celery_application_created and factory is not _celery_application_factory:
+        raise RuntimeError("The worker application factory must be selected before Dify initialization.")
+    _celery_application_factory = factory
+
 
 class _CelerySentinelKwargsDict(TypedDict):
     socket_timeout: float | None
@@ -131,6 +148,8 @@ def get_celery_redis_global_keyprefix() -> str | None:
 
 
 def init_app(app: DifyApp) -> Celery:
+    global _celery_application_created
+
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
             from core.logging.context import init_request_context
@@ -142,12 +161,13 @@ def init_app(app: DifyApp) -> Celery:
 
     broker_transport_options = get_celery_broker_transport_options()
 
-    celery_app = Celery(
+    celery_app = _celery_application_factory(
         app.name,
         task_cls=FlaskTask,
         broker=dify_config.CELERY_BROKER_URL,
         backend=dify_config.CELERY_BACKEND,
     )
+    _celery_application_created = True
 
     celery_app.conf.update(
         result_backend=dify_config.CELERY_RESULT_BACKEND,

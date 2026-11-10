@@ -1,4 +1,5 @@
 import base64
+from typing import override
 
 import pytest
 
@@ -61,6 +62,80 @@ def test_total_file_limit_fails_without_truncation() -> None:
             reader=reader,
             agent_input_modes=["text/plain"],
             limits=FileLimits(max_total_bytes=6),
+        )
+    assert error.value.code == "file_total_too_large"
+
+
+def test_stricter_document_cap_does_not_shrink_the_independent_image_cap() -> None:
+    """A 2/3/6 MiB deployment preserves image, document and aggregate limits.
+
+    The bounded reader rejects a requested read cap below the authorized file's
+    size, so this exercises the real adapter's contract rather than accepting a
+    stub that ignores max_bytes. Larger read admission cannot relax MIME caps.
+    """
+    mib = 1024 * 1024
+    limits = FileLimits(max_document_bytes=2 * mib, max_image_bytes=3 * mib, max_total_bytes=6 * mib)
+
+    class BoundedReader(AuthorizedReader):
+        @override
+        def read_authorized(self, scope: FileScope, reference: FileReference, *, max_bytes: int) -> FileBlob:
+            blob = super().read_authorized(scope, reference, max_bytes=max_bytes)
+            if len(blob.data) > max_bytes:
+                raise ExternalIOError("file_too_large", "The authorized file exceeds the requested read budget.")
+            return blob
+
+    image = FileBlob(filename="exact.png", media_type="image/png", data=b"i" * (3 * mib))
+    reader = BoundedReader(
+        {
+            "image": image,
+            "document": FileBlob(filename="exact.pdf", media_type="application/pdf", data=b"d" * (2 * mib)),
+            "oversized-document": FileBlob(
+                filename="over.pdf", media_type="application/pdf", data=b"d" * (2 * mib + 1)
+            ),
+            "extra": FileBlob(filename="extra.txt", media_type="text/plain", data=b"x"),
+        }
+    )
+    modes = ["text/plain", "image/png", "application/pdf"]
+    parts = build_input_parts(
+        "Exactly six MiB of images",
+        [FileReference(file_id="image"), FileReference(file_id="image")],
+        scope=SCOPE,
+        reader=reader,
+        agent_input_modes=modes,
+        limits=limits,
+    )
+    assert len(parts) == 3
+    for part in parts[1:]:
+        raw = part["raw"]
+        assert isinstance(raw, str)
+        assert base64.b64decode(raw) == image.data
+    document = build_input_parts(
+        "Exactly two MiB of document",
+        [FileReference(file_id="document")],
+        scope=SCOPE,
+        reader=reader,
+        agent_input_modes=modes,
+        limits=limits,
+    )
+    assert len(document) == 2
+    with pytest.raises(ExternalIOError) as error:
+        build_input_parts(
+            "Document limit is still enforced",
+            [FileReference(file_id="oversized-document")],
+            scope=SCOPE,
+            reader=reader,
+            agent_input_modes=modes,
+            limits=limits,
+        )
+    assert error.value.code == "file_too_large"
+    with pytest.raises(ExternalIOError) as error:
+        build_input_parts(
+            "Aggregate limit is still enforced",
+            [FileReference(file_id="image"), FileReference(file_id="image"), FileReference(file_id="extra")],
+            scope=SCOPE,
+            reader=reader,
+            agent_input_modes=modes,
+            limits=limits,
         )
     assert error.value.code == "file_total_too_large"
 

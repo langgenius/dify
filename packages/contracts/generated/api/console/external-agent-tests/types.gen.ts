@@ -8,6 +8,10 @@ export type ExternalTestPagePayload = {
   page_session_id: string
 }
 
+export type ExternalTestLeaveResponse = {
+  result: 'success'
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -33,9 +37,7 @@ export type PostExternalAgentTestsLeavePageError =
   PostExternalAgentTestsLeavePageErrors[keyof PostExternalAgentTestsLeavePageErrors]
 
 export type PostExternalAgentTestsLeavePageResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  202: ExternalTestLeaveResponse
 }
 
 export type PostExternalAgentTestsLeavePageResponse =

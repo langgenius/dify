@@ -551,6 +551,141 @@ def test_real_runtime_send_once_result_reads_do_not_consume_and_early_wake_retri
     assert repo.get(scope, value.id).local_state == LocalState.SUCCEEDED
 
 
+@pytest.mark.parametrize(
+    ("capabilities", "requested_streaming", "expected"),
+    [
+        ({"streaming": True}, False, True),
+        ({"streaming": False}, True, False),
+        ({"streaming": "true"}, True, False),
+        ({"streaming": 1}, True, False),
+        ({}, True, False),
+    ],
+)
+def test_dispatch_streaming_comes_only_from_verified_card_not_job_or_cached_summary(
+    domain: Domain, capabilities: dict[str, object], requested_streaming: bool, expected: bool
+) -> None:
+    """A real SQL-backed dispatch uses strict Card booleans despite conflicting job flags."""
+    _, sessions, scope, agent, revision_id = domain
+    with sessions.begin() as session:
+        revision = stored(session, ExternalAgentConnectionRevision, revision_id)
+        revision.agent_card = {"defaultInputModes": ["text/plain"], "capabilities": capabilities}
+        revision.capabilities = {"streaming": not expected}
+    gateway = RemoteAgent(direct=True)
+    runtime, clock, *_ = service(domain, gateway)
+    runtime.start(
+        scope,
+        draft(
+            agent,
+            job={"page_session_id": "page", "input_lease_ids": [], "streaming": requested_streaming},
+            declared_outputs=(OutputField(name="text", kind="string"),),
+        ),
+    )
+    command(domain, runtime, clock, "dispatch")
+    assert gateway.streaming is expected
+    assert gateway.last_connection.supports_streaming is expected
+    assert len(gateway.sent) == 1
+
+
+def _replace_connection(domain: Domain, *, streaming: bool) -> str:
+    """Install a new immutable revision and atomically advance the test asset head."""
+    _, sessions, scope, agent, _ = domain
+    revision_id = uid()
+    with sessions.begin() as session:
+        session.add(
+            ExternalAgentConnectionRevision(
+                id=revision_id,
+                tenant_id=scope.tenant_id,
+                agent_id=agent,
+                endpoint="https://example.com/" + revision_id,
+                interface_url="https://example.com/" + revision_id,
+                auth_type="none",
+                credential_ciphertext=None,
+                agent_card={"defaultInputModes": ["text/plain"], "capabilities": {"streaming": streaming}},
+                capabilities={"streaming": not streaming},
+                fingerprint="b" * 64,
+                auth_check="not_exercised",
+                created_by=scope.initiator_id,
+                verified_at=NOW.replace(tzinfo=None),
+            )
+        )
+        stored(session, ExternalAgentHead, agent).active_connection_revision_id = revision_id
+    return revision_id
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+def test_overview_inflight_streaming_uses_original_revision_after_connection_edit(
+    domain: Domain, streaming: bool
+) -> None:
+    """A later saved Card cannot retarget a test already pinned to its original connection."""
+    repo, sessions, scope, agent, revision_id = domain
+    with sessions.begin() as session:
+        stored(session, ExternalAgentConnectionRevision, revision_id).agent_card = {
+            "defaultInputModes": ["text/plain"],
+            "capabilities": {"streaming": streaming},
+        }
+    gateway = RemoteAgent(direct=True)
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(scope, draft(agent, declared_outputs=(OutputField(name="text", kind="string"),)))
+    assert value.connection_revision_id == revision_id
+    newer_id = _replace_connection(domain, streaming=not streaming)
+    command(domain, runtime, clock, "dispatch")
+    assert gateway.streaming is streaming
+    assert gateway.last_connection.endpoint == "https://example.com/a2a"
+    assert repo.get(scope, value.id).connection_revision_id == revision_id
+    assert repo.read(scope, agent, newer_id).supports_streaming is not streaming
+
+
+def test_queued_workflow_streaming_is_frozen_from_latest_card_at_dispatch_permit(
+    workflow_domain: WorkflowDomain,
+) -> None:
+    """Production queueing does not pin an old Card; acquiring its permit does."""
+    domain, identity, _, _ = workflow_domain
+    repo, _, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(scope, draft(agent, identity=identity, job={"streaming": False}))
+    assert value.connection_revision_id is None
+    admitted_revision = _replace_connection(domain, streaming=True)
+    command(domain, runtime, clock, "dispatch")
+    assert gateway.streaming is True
+    assert repo.get(scope, value.id).connection_revision_id == admitted_revision
+    _replace_connection(domain, streaming=False)
+    assert repo.read(scope, agent, admitted_revision).supports_streaming is True
+
+
+def test_streamed_known_task_transitions_to_get_without_another_business_send(domain: Domain) -> None:
+    """SSE's known Task is observed with GetTask, never a fallback plain Send."""
+    repo, _, scope, agent, _ = domain
+    _replace_connection(domain, streaming=True)
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(scope, draft(agent, declared_outputs=(OutputField(name="text", kind="string"),)))
+    command(domain, runtime, clock, "dispatch")
+    assert gateway.streaming is True
+    gateway.state = "completed"
+    clock.value += timedelta(seconds=6)  # The scheduled interval also includes bounded jitter.
+    command(domain, runtime, clock, "poll")
+    assert gateway.reads == 1
+    assert len(gateway.sent) == 1
+    assert runtime.result(scope, value.id).outputs == {"text": "result"}
+    assert repo.get(scope, value.id).local_state == LocalState.SUCCEEDED
+
+
+def test_unknown_streamed_submission_never_falls_back_to_plain_send(domain: Domain) -> None:
+    """An uncertain streaming POST retains Unknown through redelivery with Send count one."""
+    repo, _, scope, agent, _ = domain
+    _replace_connection(domain, streaming=True)
+    gateway = RemoteAgent(unknown=True)
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(scope, draft(agent))
+    identifier = command(domain, runtime, clock, "dispatch")
+    runtime.run_command(scope, identifier)
+    assert gateway.streaming is True
+    assert len(gateway.sent) == 1
+    assert gateway.reads == gateway.cancels == 0
+    assert repo.get(scope, value.id).submission_state == SubmissionState.UNKNOWN
+
+
 def test_unknown_send_does_not_retry_and_output_failure_does_not_replay(domain: Domain) -> None:
     repo, _, scope, agent, _ = domain
     gateway = RemoteAgent(unknown=True)
@@ -784,12 +919,20 @@ def test_uncertain_cancel_only_queries_within_original_confirmation_window(domai
     assert len(gateway.sent) == 1
 
 
-def test_confirmed_cancel_retry_handoff_keeps_input_lease_until_child_is_atomic(domain: Domain) -> None:
+def test_confirmed_cancel_retry_handoff_keeps_input_lease_until_child_is_atomic(
+    domain: Domain, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from repositories.external_agents.file_lifecycle_repository import ExternalFileLifecycleRepository
     from repositories.external_agents.observability_repository import ExternalObservabilityRepository
     from services.external_agents.io_contracts import FileReference, FileScope
     from services.external_agents.traceability import TraceLimits
 
+    # Runtime transitions and provenance checks must share the controlled clock;
+    # the fixed fixture date must not expire when this suite runs the next day.
+    monkeypatch.setattr(
+        "repositories.external_agents.file_lifecycle_repository._now",
+        lambda: (NOW + timedelta(seconds=66)).replace(tzinfo=None),
+    )
     repo, sessions, scope, agent, _ = domain
     lease_id, file_id = uid(), uid()
     with sessions.begin() as session:
@@ -1231,7 +1374,12 @@ def test_graphon_external_checkpoint_restores_same_execution_and_reads_fixed_res
     from graphon.engine import Engine
     from graphon.engine_events import GraphRunPausedEvent, NodeRunSucceededEvent
     from graphon.runtime import RuntimeState, VariablePool
-    from providers.a2a.workflow_node import DifyExternalWorkflowWake, ExternalAgentNode, ExternalAgentNodeData
+    from providers.a2a.workflow_node import (
+        DifyExternalWorkflowWake,
+        ExternalAgentNode,
+        ExternalAgentNodeData,
+        ExternalAgentNodeDependencies,
+    )
     from tests.workflow_test_utils import build_test_graph_init_params
 
     domain, identity, workflow_id, job = workflow_domain
@@ -1259,11 +1407,14 @@ def test_graphon_external_checkpoint_restores_same_execution_and_reads_fixed_res
             ExternalAgentNodeData.model_validate(data),
             init_params=params,
             runtime_state=runtime_state,
-            service=runtime,
-            store=repo,
-            bindings=repo,
-            enqueue=lambda: None,
-            enabled=True,
+            dependencies=ExternalAgentNodeDependencies(
+                service=runtime,
+                store=repo,
+                bindings=repo,
+                enqueue=lambda: None,
+                enabled=True,
+                root_app_id=required_id(scope.app_id),
+            ),
         )
         return Graph(nodes={"external": node}, root_node=node)
 
@@ -1370,7 +1521,12 @@ def test_node_debug_returns_pause_then_writes_terminal_last_run_and_draft_variab
     workflow_domain: WorkflowDomain, distinct_caller_pk: bool
 ) -> None:
     from graphon.runtime import VariablePool
-    from providers.a2a.workflow_node import DifyExternalWorkflowWake, ExternalAgentNode, ExternalAgentNodeData
+    from providers.a2a.workflow_node import (
+        DifyExternalWorkflowWake,
+        ExternalAgentNode,
+        ExternalAgentNodeData,
+        ExternalAgentNodeDependencies,
+    )
     from services.workflow_service import WorkflowService
     from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -1409,11 +1565,14 @@ def test_node_debug_returns_pause_then_writes_terminal_last_run_and_draft_variab
         ),
         init_params=params,
         runtime_state=state,
-        service=runtime,
-        store=repo,
-        bindings=repo,
-        enqueue=lambda: None,
-        enabled=True,
+        dependencies=ExternalAgentNodeDependencies(
+            service=runtime,
+            store=repo,
+            bindings=repo,
+            enqueue=lambda: None,
+            enabled=True,
+            root_app_id=required_id(scope.app_id),
+        ),
     )
     node.bind_execution_id(identity.execution_id)
     result = WorkflowService(session_maker=sessions)._handle_single_step_result(

@@ -1,6 +1,7 @@
 <!-- knowledge
 last_checked: "2026-09-08T17:04:02Z"
 -->
+
 # Model Runtime
 
 This package defines provider schemas, credential validation, capability-specific

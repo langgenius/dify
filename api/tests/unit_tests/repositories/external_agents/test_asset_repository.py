@@ -11,15 +11,20 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
-from models.agent import Agent
+from models.agent import Agent, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent_config_entities import WorkflowNodeJobConfig
 from models.base import TypeBase
 from models.external_agent import (
     ExternalAgentConnectionRevision,
+    ExternalAgentContextSlot,
     ExternalAgentHead,
+    ExternalAgentInvocation,
     ExternalAgentOperation,
     ExternalAgentVerification,
 )
 from models.external_agent_trace import ExternalAgentDataTombstone
+from models.model import App, AppMode
+from models.workflow import Workflow, WorkflowType
 from repositories.external_agents.asset_repository import ExternalAssetRepository
 from services.external_agents.contracts import (
     ExternalAgentConflictError,
@@ -55,6 +60,11 @@ def domain() -> Iterator[AssetDomain]:
                 ExternalAgentOperation,
                 ExternalAgentVerification,
                 ExternalAgentDataTombstone,
+                ExternalAgentInvocation,
+                ExternalAgentContextSlot,
+                App,
+                Workflow,
+                WorkflowAgentNodeBinding,
             )
         ],
     )
@@ -111,6 +121,155 @@ def create(
         context=context, evidence_id=proof.id, metadata={}, operation_key="create", fingerprint="fp"
     )
     return repo.get_asset(tenant_id=context.active_workspace_id, agent_id=result.resource_id), proof, result
+
+
+def test_references_are_current_graphs_under_the_complete_readable_app_scope(domain: AssetDomain) -> None:
+    """Delete impact includes unused drafts, not old releases or hidden/foreign Apps."""
+    repo, sessions, context = domain
+    asset, _, _ = create(repo, context)
+    visible, hidden, foreign, old_only = (uid() for _ in range(4))
+    current = uid()
+    other_tenant = uid()
+    with sessions.begin() as session:
+        for app_id, tenant, name, published in (
+            (visible, context.active_workspace_id, "Visible", current),
+            (hidden, context.active_workspace_id, "Hidden", None),
+            (foreign, other_tenant, "Foreign", None),
+            (old_only, context.active_workspace_id, "Historical only", None),
+        ):
+            session.add(
+                App(
+                    id=app_id,
+                    tenant_id=tenant,
+                    name=name,
+                    mode=AppMode.WORKFLOW,
+                    enable_site=False,
+                    enable_api=False,
+                    workflow_id=published,
+                )
+            )
+        for workflow_id, app_id, tenant, version, node_id in (
+            (uid(), visible, context.active_workspace_id, Workflow.VERSION_DRAFT, "draft"),
+            (current, visible, context.active_workspace_id, "current", "current"),
+            (uid(), visible, context.active_workspace_id, "obsolete", "obsolete"),
+            (uid(), hidden, context.active_workspace_id, Workflow.VERSION_DRAFT, "hidden"),
+            (uid(), foreign, other_tenant, Workflow.VERSION_DRAFT, "foreign"),
+            (uid(), old_only, context.active_workspace_id, "old-release", "historical"),
+        ):
+            session.add(
+                Workflow(
+                    id=workflow_id,
+                    tenant_id=tenant,
+                    app_id=app_id,
+                    type=WorkflowType.WORKFLOW,
+                    version=version,
+                    graph="{}",
+                    _features="{}",
+                    created_by=context.account_id,
+                )
+            )
+            session.add(
+                WorkflowAgentNodeBinding(
+                    tenant_id=tenant,
+                    app_id=app_id,
+                    workflow_id=workflow_id,
+                    workflow_version=version,
+                    node_id=node_id,
+                    agent_id=asset.id,
+                    binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+                    node_job_config=WorkflowNodeJobConfig(),
+                )
+            )
+    result = repo.references(tenant_id=context.active_workspace_id, agent_id=asset.id, app_ids=frozenset({visible}))
+    assert len(result.apps) == 1
+    assert result.apps[0].app_id == visible
+    assert result.apps[0].name == "Visible"
+    assert result.apps[0].node_ids == ("current", "draft")
+    assert result.may_have_in_flight is False
+    all_visible = repo.references(tenant_id=context.active_workspace_id, agent_id=asset.id, app_ids=None)
+    assert {row.app_id for row in all_visible.apps} == {visible, hidden}
+    empty = repo.references(tenant_id=context.active_workspace_id, agent_id=asset.id, app_ids=frozenset())
+    assert empty.apps == ()
+    with pytest.raises(ExternalAgentNotFoundError):
+        repo.references(tenant_id=other_tenant, agent_id=asset.id, app_ids=None)
+
+
+@pytest.mark.parametrize(
+    ("remote", "submission", "local", "expected"),
+    [
+        ("completed", "accepted", "succeeded", False),
+        ("canceled", "accepted", "ended", False),
+        ("working", "accepted", "ended", True),
+        (None, "submission_unknown", "failed", True),
+        (None, "send_started", "waiting", True),
+    ],
+)
+def test_reference_warning_does_not_confuse_local_end_with_remote_termination(
+    domain: AssetDomain, remote: str | None, submission: str, local: str, expected: bool
+) -> None:
+    """An aggregate warning may see hidden work without exposing its App identity."""
+    repo, sessions, context = domain
+    asset, _, _ = create(repo, context)
+    with sessions.begin() as session:
+        session.add(
+            ExternalAgentInvocation(
+                id=uid(),
+                tenant_id=context.active_workspace_id,
+                agent_id=asset.id,
+                request_key=uid(),
+                execution_key=uid(),
+                origin="production",
+                app_id=uid(),
+                remote_task_id=uid() if remote else None,
+                remote_state=remote,
+                submission_state=submission,
+                local_state=local,
+            )
+        )
+    result = repo.references(tenant_id=context.active_workspace_id, agent_id=asset.id, app_ids=frozenset())
+    assert result.apps == ()
+    assert result.may_have_in_flight is expected
+
+
+def test_reference_warning_keeps_unresolved_context_after_invocation_body_expiry(domain: AssetDomain) -> None:
+    """No Invocation body does not prove that the reserved remote context stopped."""
+    repo, sessions, context = domain
+    asset, _, _ = create(repo, context)
+    with sessions.begin() as session:
+        session.add(
+            ExternalAgentContextSlot(
+                key="slot",
+                tenant_id=context.active_workspace_id,
+                app_id=uid(),
+                conversation_id=uid(),
+                node_id="external",
+                agent_id=asset.id,
+                connection_revision_id=asset.active_connection_revision_id,
+                binding_epoch=uid(),
+                unresolved=True,
+                reserved_invocation_id=uid(),
+            )
+        )
+    result = repo.references(tenant_id=context.active_workspace_id, agent_id=asset.id, app_ids=frozenset())
+    assert result.apps == ()
+    assert result.may_have_in_flight is True
+
+
+def test_verification_change_warnings_are_not_saved_as_current_connection_capabilities(domain: AssetDomain) -> None:
+    """A warning compares one proposed edit; it cannot become a permanent service capability."""
+    repo, _, context = domain
+    proof = replace(
+        evidence(context),
+        capabilities={
+            "streaming": True,
+            "connection_change_warnings": {"technical": ["streaming_removed"], "business": []},
+        },
+    )
+    asset, _, _ = create(repo, context, proof)
+    revision = repo.get_connection(
+        tenant_id=context.active_workspace_id, agent_id=asset.id, revision_id=asset.active_connection_revision_id
+    )
+    assert revision.capabilities == {"streaming": True}
 
 
 def test_creation_consumes_proof_and_idempotency_is_atomic(domain: AssetDomain) -> None:

@@ -30,6 +30,39 @@ FILE_BYTES = b"%PDF-1.4\nBYOA acceptance fixture\n%%EOF\n"
 MODES = ["text/plain", "application/pdf", "text/markdown", "image/png", "image/jpeg"]
 SCENARIO = re.compile(r"^\[byoa:([a-z-]+)(?::([A-Za-z0-9_-]+))?\]")
 CAPACITY_PREFIXES = frozenset(f"/capacity-{index}" for index in range(1, 6))
+CARD_VARIANTS = frozenset(
+    {
+        "missing-required",
+        "optional-omitted",
+        "invalid-null",
+        "unsupported-required-extension",
+        "text-only",
+        "changed-skills",
+        "changed-info",
+        "auth-changed",
+        "without-trace",
+        "streamless",
+        "combined",
+    }
+)
+MATRIX_MAX_FILE_BYTES = 15 * 1024 * 1024 + 1
+_MATRIX_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZlSAAAAAASUVORK5CYII="
+)
+
+
+def matrix_file_bytes(descriptor: dict) -> bytes:
+    """Generate deterministic bounded bytes without caching large fixture bodies.
+
+    File descriptors are registered only on the private acceptance network.
+    Trailing padding preserves a valid tiny PNG while exercising exact byte caps.
+    """
+    size = descriptor["bytes"]
+    prefix = _MATRIX_PNG if descriptor["media_type"] == "image/png" else FILE_BYTES
+    prefix += descriptor["seed"].encode("ascii")
+    if size < len(prefix):
+        prefix = prefix[:size]
+    return prefix + b"f" * (size - len(prefix))
 
 
 class FixtureState:
@@ -50,6 +83,8 @@ class FixtureState:
         self.receipt_barriers: dict[str, threading.Event] = {}
         self.scenario_attempts: dict[tuple[str, str], int] = {}
         self.previous_tasks: dict[tuple[str, str], str] = {}
+        self.matrix_cases: dict[tuple[str, str], dict] = {}
+        self.query_io: dict[str, dict[str, Any]] = {}
         self.counts = dict.fromkeys(
             (
                 "send",
@@ -103,6 +138,7 @@ class FixtureState:
                 "counts": dict(self.counts),
                 "messages": copy.deepcopy(self.messages),
                 "exports": copy.deepcopy(self.exports),
+                "query_io": copy.deepcopy(self.query_io),
                 "tasks": {
                     identifier: {
                         "scenario": task["scenario"],
@@ -119,6 +155,54 @@ class FixtureState:
                     for identifier, task in self.tasks.items()
                 },
             }
+
+    def card_variant(self, case: str) -> dict[str, Any]:
+        """Return a fixed read-only Card case, never an arbitrary admin rewrite."""
+        if case not in CARD_VARIANTS:
+            raise ValueError("Unknown fixed Agent Card case.")
+        card = self.card()
+        if case == "missing-required":
+            card.pop("name")
+        elif case == "optional-omitted":
+            card["capabilities"] = {}
+            card["skills"] = [
+                {
+                    "id": "acceptance",
+                    "name": "Acceptance",
+                    "description": "Controlled contract scenarios",
+                    "tags": ["acceptance"],
+                }
+            ]
+        elif case == "invalid-null":
+            card["defaultInputModes"] = None
+        elif case == "unsupported-required-extension":
+            card["capabilities"]["extensions"].append({"uri": "https://unsupported.example/required", "required": True})
+        if case in {"text-only", "combined"}:
+            card["defaultInputModes"] = ["text/plain"]
+            card["defaultOutputModes"] = ["text/plain"]
+        if case in {"streamless", "combined"}:
+            card["capabilities"]["streaming"] = False
+        if case in {"changed-skills", "combined"}:
+            card["skills"] = [
+                {
+                    "id": "changed",
+                    "name": "Changed skill",
+                    "description": "Changed service declaration",
+                    "tags": ["changed"],
+                    "inputModes": ["application/pdf"],
+                }
+            ]
+        if case in {"changed-info", "combined"}:
+            card["name"] = "Changed remote service name"
+            card["description"] = "Changed remote service description"
+        if case in {"without-trace", "combined"}:
+            card["capabilities"]["extensions"] = []
+        if case in {"auth-changed", "combined"}:
+            card["securitySchemes"] = {"fixture": {"httpAuthSecurityScheme": {"scheme": "bearer"}}}
+            # The empty alternative remains satisfiable by None auth. The
+            # change is a warning, not a fabricated failed credential probe.
+            card["securityRequirements"] = [{"schemes": {}}, {"schemes": {"fixture": {"list": []}}}]
+        return card
 
     def send(self, payload: dict) -> tuple[str, dict]:
         message = payload["message"]
@@ -158,8 +242,21 @@ class FixtureState:
                 "input_files": inputs,
                 "attempt": attempt,
                 "accepted_at": datetime.now(UTC).isoformat(),
+                "task_text_sha256": hashlib.sha256(text.encode()).hexdigest(),
                 "previous_task_state_at_send": previous["value"]["status"]["state"] if previous else None,
             }
+            if scenario == "matrix-output":
+                key = text[match.end() :].strip() if match is not None else ""
+                descriptor = self.matrix_cases.get((run, key))
+                if descriptor is None:
+                    raise ValueError("matrix_case_not_registered")
+                task = {
+                    "id": str(uuid4()),
+                    "contextId": context,
+                    "status": {"state": "TASK_STATE_COMPLETED"},
+                    "artifacts": self.matrix_artifacts(run, key, descriptor),
+                }
+                return scenario, {"task": task}
             if scenario == "direct":
                 return scenario, {
                     "message": {
@@ -172,6 +269,8 @@ class FixtureState:
             task_id = str(uuid4())
             working = (scenario == "timeout-retry" and attempt == 1) or scenario in {
                 "working",
+                "load-hold",
+                "working-echo",
                 "hold",
                 "cancel-rejected",
                 "cancel-unsupported",
@@ -194,6 +293,7 @@ class FixtureState:
                 "message_id": message_id,
                 "attempt": attempt,
                 "cancel_count": 0,
+                "echo": text[match.end() :].strip() if match and scenario == "working-echo" else None,
             }
             self.previous_tasks[attempt_key] = task_id
             self.messages[message_id]["created_task_id"] = task_id
@@ -250,7 +350,83 @@ class FixtureState:
             result.append({"artifactId": "trace", "extensions": [TRACE_URI], "parts": [{"data": trace}]})
         return result
 
-    def get(self, identifier: str) -> dict | None:
+    def register_matrix(self, payload: dict) -> None:
+        """Admit small, bounded response descriptors; never cache file byte arrays."""
+        run, key = payload.get("run"), payload.get("case")
+        if (
+            not isinstance(run, str)
+            or not isinstance(key, str)
+            or not all(re.fullmatch(r"[A-Za-z0-9_-]{1,80}", value) for value in (run, key))
+        ):
+            raise ValueError("invalid_matrix_identity")
+        artifacts = payload.get("artifacts", [])
+        files = payload.get("files", [])
+        if not isinstance(artifacts, list) or len(artifacts) > 8 or len(json.dumps(artifacts)) > 64 * 1024:
+            raise ValueError("invalid_matrix_artifacts")
+        if not isinstance(files, list) or len(files) > 6:
+            raise ValueError("invalid_matrix_files")
+        for item in files:
+            if (
+                not isinstance(item, dict)
+                or type(item.get("bytes")) is not int
+                or not 0 <= item["bytes"] <= MATRIX_MAX_FILE_BYTES
+                or item.get("media_type") not in MODES
+                or not isinstance(item.get("filename"), str)
+                or not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", item["filename"])
+                or not isinstance(item.get("seed"), str)
+                or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", item["seed"])
+                or item.get("transfer") not in {"raw", "url"}
+                or ("name" in item and (not isinstance(item["name"], str) or len(item["name"]) > 100))
+            ):
+                raise ValueError("invalid_matrix_file_descriptor")
+        if sum(item["bytes"] for item in files) > 31 * 1024 * 1024 + 6:
+            raise ValueError("matrix_total_limit")
+        with self.lock:
+            if len(self.matrix_cases) >= 1024 and (run, key) not in self.matrix_cases:
+                raise ValueError("matrix_case_limit")
+            self.matrix_cases[run, key] = {"artifacts": copy.deepcopy(artifacts), "files": copy.deepcopy(files)}
+
+    def matrix_artifacts(self, run: str, key: str, descriptor: dict) -> list[dict]:
+        """Build final Artifact wire values from the registered small descriptor."""
+        result = copy.deepcopy(descriptor["artifacts"])
+        for index, item in enumerate(descriptor["files"]):
+            content = (
+                {"raw": base64.b64encode(matrix_file_bytes(item)).decode("ascii")}
+                if item["transfer"] == "raw"
+                else {"url": f"{self.public_url}/matrix-files/{run}/{key}/{index}"}
+            )
+            artifact = {
+                "artifactId": f"matrix-file-{index}",
+                "parts": [{**content, "filename": item["filename"], "mediaType": item["media_type"]}],
+            }
+            if "name" in item:
+                artifact["name"] = item["name"]
+            result.append(artifact)
+        return result
+
+    def get(self, identifier: str, *, endpoint: str = "") -> dict | None:
+        """Read a Task; load-hold observes bounded real I/O outside the state lock."""
+        with self.lock:
+            value = self.tasks.get(identifier)
+            delayed = value is not None and value["scenario"] == "load-hold"
+            message = self.messages.get(value.get("message_id", ""), {}) if value is not None else {}
+            scopes = ("all", "run:" + message.get("run", ""), "endpoint:" + endpoint)
+            if delayed:
+                for scope in scopes:
+                    metrics = self.query_io.setdefault(scope, {"active": 0, "peak": 0, "started": 0, "finished": 0})
+                    metrics["active"] += 1
+                    metrics["peak"] = max(metrics["peak"], metrics["active"])
+                    metrics["started"] += 1
+                    metrics["last_get_started"] = datetime.now(UTC).isoformat()
+        if delayed:
+            try:
+                time.sleep(2)
+            finally:
+                with self.lock:
+                    for scope in scopes:
+                        self.query_io[scope]["active"] -= 1
+                        self.query_io[scope]["finished"] += 1
+                        self.query_io[scope]["last_get_finished"] = datetime.now(UTC).isoformat()
         with self.lock:
             self.counts["get"] += 1
             task = self.tasks.get(identifier)
@@ -259,6 +435,11 @@ class FixtureState:
                 if task["scenario"] == "working":
                     task["value"]["status"] = {"state": "TASK_STATE_COMPLETED"}
                     task["value"]["artifacts"] = self.artifacts("completed", [])
+                if task["scenario"] == "working-echo" and task["gets"] >= 2:
+                    task["value"]["status"] = {"state": "TASK_STATE_COMPLETED"}
+                    task["value"]["artifacts"] = [
+                        {"artifactId": "business", "parts": [{"data": {"text": task["echo"]}}]}
+                    ]
                 return copy.deepcopy(task["value"])
             return None
 
@@ -342,12 +523,40 @@ class FixtureHandler(BaseHTTPRequestHandler):
         path = unquote(urlsplit(self.path).path)
         if path == "/admin/stats":
             self.reply(self.state.snapshot())
+        elif path.startswith("/matrix-files/"):
+            parts = path.strip("/").split("/")
+            descriptor = None
+            if len(parts) == 4 and parts[3].isdigit():
+                with self.state.lock:
+                    case = self.state.matrix_cases.get((parts[1], parts[2]))
+                    index = int(parts[3])
+                    if case is not None and 0 <= index < len(case["files"]):
+                        descriptor = case["files"][index]
+                    self.state.counts["file_head" if self.command == "HEAD" else "file_get"] += 1
+                    self.state.counts["file_authorization"] += bool(self.headers.get("Authorization"))
+            if descriptor is None:
+                self.reply({"code": "matrix_file_not_found"}, status=404)
+            else:
+                self.send_response(200)
+                self.send_header("Content-Type", descriptor["media_type"])
+                self.send_header("Content-Length", str(descriptor["bytes"]))
+                self.end_headers()
+                if self.command != "HEAD":
+                    self.wfile.write(matrix_file_bytes(descriptor))
         elif path in {"/v1/projects", "/asset/v1/projects", "/app/v1/projects"}:
             # PhoenixProvider.verify requires a real project-page JSON shape.
             self.reply({"data": [], "next_cursor": None})
         elif path.endswith("/.well-known/agent-card.json"):
             prefix = path.removesuffix("/.well-known/agent-card.json")
-            if prefix.startswith("/capacity-") and prefix not in CAPACITY_PREFIXES:
+            if prefix.startswith("/cards/"):
+                case = prefix.removeprefix("/cards/")
+                if case not in CARD_VARIANTS:
+                    self.reply({"code": "not_found"}, status=404)
+                else:
+                    with self.state.lock:
+                        self.state.counts["verify"] += 1
+                    self.reply(self.state.card_variant(case))
+            elif prefix.startswith("/capacity-") and prefix not in CAPACITY_PREFIXES:
                 self.reply({"code": "not_found"}, status=404)
             else:
                 with self.state.lock:
@@ -372,7 +581,7 @@ class FixtureHandler(BaseHTTPRequestHandler):
             if path.endswith("/extendedAgentCard"):
                 self.reply(self.state.card(protected=True))
             elif "/tasks/" in path and not path.endswith(":subscribe"):
-                task = self.state.get(path.rsplit("/", 1)[1])
+                task = self.state.get(path.rsplit("/", 1)[1], endpoint=path.rsplit("/tasks/", 1)[0])
                 self.reply(task or {"code": "task_not_found"}, status=200 if task else 404)
             else:
                 if path.endswith(":subscribe"):
@@ -398,7 +607,10 @@ class FixtureHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
             payload = self.body()
-            if path == "/admin/export-control":
+            if path == "/admin/matrix-case":
+                self.state.register_matrix(payload)
+                self.reply({"registered": True})
+            elif path == "/admin/export-control":
                 failures = payload.get("failures", {})
                 if not isinstance(failures, dict) or any(
                     key not in {"/v1/traces", "/asset/v1/traces", "/app/v1/traces"} or value not in {429, 500, 503}
@@ -412,6 +624,13 @@ class FixtureHandler(BaseHTTPRequestHandler):
                 output_scenario = payload.get("output_scenario", "completed")
                 if output_scenario not in {"completed", "file-output", "file-url", "trace"}:
                     raise ValueError("invalid_release_output")
+                output_text = payload.get("output_text")
+                if "output_text" in payload and (
+                    not isinstance(output_text, str)
+                    or len(output_text) > 256
+                    or any(ord(char) < 32 or 127 <= ord(char) < 160 for char in output_text)
+                ):
+                    raise ValueError("invalid_release_text")
                 with self.state.lock:
                     for identifier, task in self.state.tasks.items():
                         if (
@@ -423,7 +642,11 @@ class FixtureHandler(BaseHTTPRequestHandler):
                             )
                         ):
                             task["value"]["status"] = {"state": "TASK_STATE_COMPLETED"}
-                            task["value"]["artifacts"] = self.state.artifacts(output_scenario, [])
+                            task["value"]["artifacts"] = (
+                                [{"artifactId": "release-text", "parts": [{"data": {"text": output_text}}]}]
+                                if output_text is not None
+                                else self.state.artifacts(output_scenario, [])
+                            )
                             barrier = self.state.receipt_barriers.get(identifier)
                             if barrier is not None:
                                 barrier.set()

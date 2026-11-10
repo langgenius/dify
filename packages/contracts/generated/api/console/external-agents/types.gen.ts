@@ -69,6 +69,7 @@ export type ExternalAgentVerificationResponse = {
   expires_at: string
   interface_url: string
   verification_id: string
+  warnings: ExternalAgentConnectionWarningsResponse
 }
 
 export type ExternalAgentDetailResponse = {
@@ -125,6 +126,11 @@ export type ExternalMonitoringResponse = {
   summary: ExternalMetricValuesResponse
 }
 
+export type ExternalAgentReferencesResponse = {
+  apps: Array<ExternalAgentAppReferenceResponse>
+  may_have_in_flight: boolean
+}
+
 export type ExternalTestFileResponse = {
   expires_at: string
   file_id: string
@@ -164,6 +170,10 @@ export type ExternalTestStatusResponse = {
   state: string
 }
 
+export type ExternalTestCancelResponse = {
+  result: 'requested'
+}
+
 export type ExternalTracingConfigEnvelopeResponse = {
   configuration: ExternalTracingConfigurationResponse | null
 }
@@ -188,6 +198,11 @@ export type ExternalTracingConfigurationResponse = {
   }
 }
 
+export type ExternalAgentConnectionWarningsResponse = {
+  business: Array<string>
+  technical: Array<string>
+}
+
 export type ExternalMetricDayResponse = {
   date: string
   metrics: ExternalMetricValuesResponse
@@ -200,6 +215,13 @@ export type ExternalMetricValuesResponse = {
   token_reporting_coverage: number | null
   token_reporting_denominator: number
   token_reporting_numerator: number
+}
+
+export type ExternalAgentAppReferenceResponse = {
+  app_id: string
+  mode: string
+  name: string
+  node_ids: Array<string>
 }
 
 export type ExternalTestOutputField = {
@@ -336,9 +358,7 @@ export type DeleteExternalAgentsByAgentIdError =
   DeleteExternalAgentsByAgentIdErrors[keyof DeleteExternalAgentsByAgentIdErrors]
 
 export type DeleteExternalAgentsByAgentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteExternalAgentsByAgentIdResponse =
@@ -463,6 +483,29 @@ export type GetExternalAgentsByAgentIdMonitoringResponses = {
 
 export type GetExternalAgentsByAgentIdMonitoringResponse =
   GetExternalAgentsByAgentIdMonitoringResponses[keyof GetExternalAgentsByAgentIdMonitoringResponses]
+
+export type GetExternalAgentsByAgentIdReferencesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/external-agents/{agent_id}/references'
+}
+
+export type GetExternalAgentsByAgentIdReferencesErrors = {
+  default: ErrorResponse
+}
+
+export type GetExternalAgentsByAgentIdReferencesError =
+  GetExternalAgentsByAgentIdReferencesErrors[keyof GetExternalAgentsByAgentIdReferencesErrors]
+
+export type GetExternalAgentsByAgentIdReferencesResponses = {
+  200: ExternalAgentReferencesResponse
+}
+
+export type GetExternalAgentsByAgentIdReferencesResponse =
+  GetExternalAgentsByAgentIdReferencesResponses[keyof GetExternalAgentsByAgentIdReferencesResponses]
 
 export type PostExternalAgentsByAgentIdTestFilesData = {
   body?: never
@@ -599,9 +642,7 @@ export type PostExternalAgentsByAgentIdTestsByInvocationIdCancelError =
   PostExternalAgentsByAgentIdTestsByInvocationIdCancelErrors[keyof PostExternalAgentsByAgentIdTestsByInvocationIdCancelErrors]
 
 export type PostExternalAgentsByAgentIdTestsByInvocationIdCancelResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  202: ExternalTestCancelResponse
 }
 
 export type PostExternalAgentsByAgentIdTestsByInvocationIdCancelResponse =

@@ -196,7 +196,9 @@ def migrate_graph_state(state: RuntimeState, graph: GraphProtocol) -> None:
             has no matching run, or any saved scope cannot be converted exactly.
 
     """
-    graph_config = getattr(graph, "graph_config", None)
+    graph_config = getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+        graph, "graph_config", None
+    )
     if graph_config is None:
         if not state._container_frames and (
             set(graph.nodes) == set(state._pending_graph_node_states)

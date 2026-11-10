@@ -14,6 +14,8 @@ import {
   zGetExternalAgentsByAgentIdMonitoringQuery,
   zGetExternalAgentsByAgentIdMonitoringResponse,
   zGetExternalAgentsByAgentIdPath,
+  zGetExternalAgentsByAgentIdReferencesPath,
+  zGetExternalAgentsByAgentIdReferencesResponse,
   zGetExternalAgentsByAgentIdResponse,
   zGetExternalAgentsByAgentIdTestsByInvocationIdPath,
   zGetExternalAgentsByAgentIdTestsByInvocationIdResponse,
@@ -162,6 +164,25 @@ export const monitoring = {
   get: get2,
 }
 
+/**
+ * Read advisory deletion impact; neither mutate nor cancel any work
+ */
+export const get3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getExternalAgentsByAgentIdReferences',
+    path: '/external-agents/{agent_id}/references',
+    summary: 'Read advisory deletion impact; neither mutate nor cancel any work',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetExternalAgentsByAgentIdReferencesPath }))
+  .output(zGetExternalAgentsByAgentIdReferencesResponse)
+
+export const references = {
+  get: get3,
+}
+
 export const post2 = oc
   .route({
     inputStructure: 'detailed',
@@ -223,6 +244,7 @@ export const post4 = oc
     method: 'POST',
     operationId: 'postExternalAgentsByAgentIdTestsByInvocationIdCancel',
     path: '/external-agents/{agent_id}/tests/{invocation_id}/cancel',
+    successStatus: 202,
     tags: ['console'],
   })
   .input(z.object({ params: zPostExternalAgentsByAgentIdTestsByInvocationIdCancelPath }))
@@ -232,7 +254,7 @@ export const cancel = {
   post: post4,
 }
 
-export const get3 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -244,7 +266,7 @@ export const get3 = oc
   .output(zGetExternalAgentsByAgentIdTestsByInvocationIdResponse)
 
 export const byInvocationId = {
-  get: get3,
+  get: get4,
   cancel,
 }
 
@@ -307,7 +329,7 @@ export const delete2 = oc
   )
   .output(zDeleteExternalAgentsByAgentIdTracingConfigByProviderResponse)
 
-export const get4 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -336,7 +358,7 @@ export const put4 = oc
 
 export const byProvider = {
   delete: delete2,
-  get: get4,
+  get: get5,
   put: put4,
 }
 
@@ -350,12 +372,13 @@ export const delete3 = oc
     method: 'DELETE',
     operationId: 'deleteExternalAgentsByAgentId',
     path: '/external-agents/{agent_id}',
+    successStatus: 204,
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteExternalAgentsByAgentIdPath }))
   .output(zDeleteExternalAgentsByAgentIdResponse)
 
-export const get5 = oc
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -368,18 +391,19 @@ export const get5 = oc
 
 export const byAgentId = {
   delete: delete3,
-  get: get5,
+  get: get6,
   connection,
   enabled,
   info,
   monitoring,
+  references,
   testFiles,
   tests,
   tracing,
   tracingConfig,
 }
 
-export const get6 = oc
+export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -403,7 +427,7 @@ export const post6 = oc
   .output(zPostExternalAgentsResponse)
 
 export const externalAgents = {
-  get: get6,
+  get: get7,
   post: post6,
   capabilities,
   verify,

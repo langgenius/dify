@@ -60,10 +60,10 @@ MAX_RESOLVED_VALUE_LENGTH = 1024
 def fetch_model_schema(*, model_instance: LLMProtocol) -> AIModelEntity:
     model_schema = model_instance.get_model_schema()
     if not model_schema:
-        msg = (
-            "Model schema not found for "
-            f"{getattr(model_instance, 'model_name', 'unknown model')}"
+        model_name = getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+            model_instance, "model_name", "unknown model"
         )
+        msg = f"Model schema not found for {model_name}"
         raise ValueError(msg)
     return model_schema
 

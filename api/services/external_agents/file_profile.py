@@ -85,7 +85,12 @@ def build_input_parts(
         raise ExternalIOError("too_many_files", "The request exceeds the effective file count limit.")
     if not _mode_supported("text/plain", agent_input_modes):
         raise ExternalIOError("agent_text_mode_unsupported", "The Agent defaults do not accept task text.")
-    blobs = tuple(reader.read_authorized(scope, ref, max_bytes=limits.max_document_bytes) for ref in references)
+    # MIME is known only after the admitted reader resolves the stored record.
+    # A stricter document deployment cap must not also shrink the independently
+    # advertised image cap. The reader and validate_blob still enforce the
+    # resolved file's own MIME limit, and total bytes remain a separate gate.
+    read_bound = min(max(limits.max_document_bytes, limits.max_image_bytes), limits.max_total_bytes)
+    blobs = tuple(reader.read_authorized(scope, ref, max_bytes=read_bound) for ref in references)
     total = 0
     parts: list[JsonObject] = [{"text": task_text, "mediaType": "text/plain"}]
     for blob in blobs:

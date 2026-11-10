@@ -19,6 +19,10 @@ Local framework patch:
 - `tests/test_external_wait.py`: Boolean default round trips and rejection of
   scalar string coercion, alongside unchanged legacy Number conversion.
 
+Upstream dynamic attribute lookups retain their original behavior. Each is
+annotated with the local no-new-getattr guard rationale rather than rewriting
+provider, parser, snapshot or streaming compatibility during vendoring.
+
 The patch contains no Dify tenant, authentication, transport or timeout policy.
 The host persists external work and re-reads its result on resumption. Upstream
 updates must rebase this explicit patch and rerun snapshot compatibility tests.

@@ -48,6 +48,8 @@ class ConnectionSpec:
 
     remote_tenant is the remote Card routing value, never a Dify tenant ID.
     enabled_extensions contains only explicitly enabled supported URI profiles.
+    supports_streaming is read from the immutable verified Card revision for
+    execution, never from a caller job. It is false before Card discovery.
     """
 
     endpoint: str
@@ -55,6 +57,7 @@ class ConnectionSpec:
     interface_url: str | None = None
     remote_tenant: str | None = None
     enabled_extensions: tuple[str, ...] = ()
+    supports_streaming: bool = False
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

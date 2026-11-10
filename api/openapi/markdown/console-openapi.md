@@ -4715,6 +4715,27 @@ Update environment variables for workflow draft
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /apps/{app_id}/workflows/draft/external-agent-bindings/{node_id}/rebind
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalWorkflowRebindPayload](#externalworkflowrebindpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Committed binding set | **application/json**: [ExternalWorkflowRebindResponse](#externalworkflowrebindresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /apps/{app_id}/workflows/draft/features
 Update draft workflow features
 
@@ -7575,6 +7596,448 @@ Delete an API key for a dataset
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RecommendedAppDetailResponse](#recommendedappdetailresponse)<br> |
 | 404 | Recommended app not found | **application/json**: [RecommendedAppNotFoundError](#recommendedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agent-invocations/{invocation_id}/trace
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| offset | query |  | No | integer |
+| revision | query |  | No | integer |
+| invocation_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Owned nullable external steps | **application/json**: [ExternalTraceResponse](#externaltraceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agent-invocations/{invocation_id}/trace-deliveries
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| invocation_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Independent frozen destination delivery states | **application/json**: [ExternalTraceDeliveryListResponse](#externaltracedeliverylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /external-agent-invocations/{invocation_id}/trace-deliveries/{delivery_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| delivery_id | path |  | Yes | string (uuid) |
+| invocation_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalTraceRetryPayload](#externaltraceretrypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | The same frozen delivery payload was requeued |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agent-invocations/{invocation_id}/trace/steps/{step_key}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| invocation_id | path |  | Yes | string (uuid) |
+| step_key | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Same-record authorized redacted Raw data | **application/json**: [ExternalTraceRawResponse](#externaltracerawresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agent-operations/{operation_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| operation_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Owned operation receipt | **application/json**: [ExternalAgentOperationResponse](#externalagentoperationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /external-agent-tests/leave-page
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalTestPagePayload](#externaltestpagepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Test page left | **application/json**: [ExternalTestLeaveResponse](#externaltestleaveresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connected_by_me | query |  | No | boolean |
+| enabled | query |  | No | boolean |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Accessible external assets | **application/json**: [ExternalAgentListResponse](#externalagentlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /external-agents
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalAgentCreatePayload](#externalagentcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Committed save operation | **application/json**: [ExternalAgentOperationResponse](#externalagentoperationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents/capabilities
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Authenticated effective profile | **application/json**: [ExternalAgentCapabilitiesResponse](#externalagentcapabilitiesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /external-agents/verify
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalAgentVerifyPayload](#externalagentverifypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Read-only verification scope | **application/json**: [ExternalAgentVerificationResponse](#externalagentverificationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /external-agents/{agent_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | External asset deleted |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents/{agent_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Asset and safe saved connection | **application/json**: [ExternalAgentDetailResponse](#externalagentdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /external-agents/{agent_id}/connection
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalAgentConnectionPayload](#externalagentconnectionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved immutable connection | **application/json**: [ExternalAgentOperationResponse](#externalagentoperationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /external-agents/{agent_id}/enabled
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalAgentSwitchPayload](#externalagentswitchpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved availability | **application/json**: [ExternalAgentAssetResponse](#externalagentassetresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /external-agents/{agent_id}/info
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalAgentInfoPayload](#externalagentinfopayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved local display metadata | **application/json**: [ExternalAgentAssetResponse](#externalagentassetresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents/{agent_id}/monitoring
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | query |  | No | string |
+| end | query |  | Yes | dateTime |
+| start | query |  | Yes | dateTime |
+| timezone | query |  | No | string |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Production dispatch metrics under one authorized scope | **application/json**: [ExternalMonitoringResponse](#externalmonitoringresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents/{agent_id}/references
+**Read advisory deletion impact; neither mutate nor cancel any work**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Readable current App references and possible in-flight warning | **application/json**: [ExternalAgentReferencesResponse](#externalagentreferencesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /external-agents/{agent_id}/test-files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Temporary owned test input | **application/json**: [ExternalTestFileResponse](#externaltestfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /external-agents/{agent_id}/test-files/paste-link
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalPasteLinkPayload](#externalpastelinkpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Fetched owned temporary copy | **application/json**: [ExternalTestFileResponse](#externaltestfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /external-agents/{agent_id}/test-files/{lease_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| lease_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Owned unsubmitted input cleared; admitted input remains intact |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /external-agents/{agent_id}/tests
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalTestPayload](#externaltestpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Accepted explicit saved-configuration test | **application/json**: [ExternalTestStatusResponse](#externalteststatusresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents/{agent_id}/tests/{invocation_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| invocation_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Current test result | **application/json**: [ExternalTestStatusResponse](#externalteststatusresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /external-agents/{agent_id}/tests/{invocation_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| invocation_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Cancellation requested | **application/json**: [ExternalTestCancelResponse](#externaltestcancelresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /external-agents/{agent_id}/tracing
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalAgentSwitchPayload](#externalagentswitchpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved collection preference | **application/json**: [ExternalAgentAssetResponse](#externalagentassetresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /external-agents/{agent_id}/tracing-config/{provider}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_revision | query |  | Yes | integer |
+| agent_id | path |  | Yes | string (uuid) |
+| provider | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Current external target configuration removed |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents/{agent_id}/tracing-config/{provider}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| provider | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Write-only-secret external asset target | **application/json**: [ExternalTracingConfigEnvelopeResponse](#externaltracingconfigenveloperesponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /external-agents/{agent_id}/tracing-config/{provider}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| provider | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalTracingConfigPayload](#externaltracingconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Verified target saved under owner and revision checks | **application/json**: [ExternalTracingConfigurationResponse](#externaltracingconfigurationresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /features
@@ -26180,6 +26643,172 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | total_price | string |  | No |
 | total_tokens | integer |  | Yes |
 
+#### ExternalAgentAppReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+| node_ids | [ string ] |  | Yes |
+
+#### ExternalAgentAssetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_connection_revision_id | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| created_by | string |  | Yes |
+| deleted_at | string |  | Yes |
+| description | string |  | Yes |
+| enabled | boolean |  | Yes |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | string |  | Yes |
+| id | string |  | Yes |
+| metadata_revision | integer |  | Yes |
+| name | string |  | Yes |
+| overrides | [ string ] |  | Yes |
+| role | string |  | Yes |
+| row_version | integer |  | Yes |
+| tenant_id | string |  | Yes |
+| test_display_generation | integer |  | Yes |
+| tracing_enabled | boolean |  | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### ExternalAgentCapabilitiesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authentication | [ string ] |  | Yes |
+| enabled | boolean |  | Yes |
+| input_file_modes | [ string ] |  | Yes |
+| limits | object |  | Yes |
+| protocol | string |  | Yes |
+| transport | string |  | Yes |
+
+#### ExternalAgentConnectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_revision_id | string (uuid) |  | Yes |
+| idempotency_key | string |  | Yes |
+| verification_id | string (uuid) |  | Yes |
+
+#### ExternalAgentConnectionWarningsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| business | [ string ] |  | Yes |
+| technical | [ string ] |  | Yes |
+
+#### ExternalAgentCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| idempotency_key | string |  | Yes |
+| metadata | object |  | No |
+| verification_id | string (uuid) |  | Yes |
+
+#### ExternalAgentDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| asset | [ExternalAgentAssetResponse](#externalagentassetresponse) |  | Yes |
+| connection | object |  | Yes |
+
+#### ExternalAgentInfoPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| changes | object |  | Yes |
+| expected_revision | integer |  | Yes |
+
+#### ExternalAgentJsonValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalAgentJsonValue | boolean<br>integer<br>number<br>string<br>[ [ExternalAgentJsonValue](#externalagentjsonvalue) ]<br>object |  |  |
+
+#### ExternalAgentListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connected_by_me | boolean |  | No |
+| enabled | boolean |  | No |
+| keyword | string |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### ExternalAgentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [ExternalAgentAssetResponse](#externalagentassetresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### ExternalAgentOperationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| kind | string |  | Yes |
+| resource_id | string |  | Yes |
+| result | object |  | Yes |
+
+#### ExternalAgentReferencesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| apps | [ [ExternalAgentAppReferenceResponse](#externalagentappreferenceresponse) ] |  | Yes |
+| may_have_in_flight | boolean |  | Yes |
+
+#### ExternalAgentSwitchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+
+#### ExternalAgentTimeoutPolicy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalAgentTimeoutPolicy | string |  |  |
+
+#### ExternalAgentVerificationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_check | string |  | Yes |
+| capabilities | object |  | Yes |
+| card | object |  | Yes |
+| expires_at | dateTime |  | Yes |
+| interface_url | string |  | Yes |
+| verification_id | string |  | Yes |
+| warnings | [ExternalAgentConnectionWarningsResponse](#externalagentconnectionwarningsresponse) |  | Yes |
+
+#### ExternalAgentVerifyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | No |
+| auth_type | string, <br>**Available values:** "bearer", "none" | *Enum:* `"bearer"`, `"none"` | Yes |
+| credential | string |  | No |
+| credential_action | string, <br>**Available values:** "keep", "remove", "replace", <br>**Default:** remove | *Enum:* `"keep"`, `"remove"`, `"replace"` | No |
+| endpoint | string |  | Yes |
+| expected_connection_revision_id | string |  | No |
+
+#### ExternalAgentWaitPolicy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| additional_retries | integer, <br>**Default:** 1 |  | No |
+| on_timeout | [ExternalAgentTimeoutPolicy](#externalagenttimeoutpolicy) |  | No |
+| retry_interval_seconds | integer, <br>**Default:** 5 |  | No |
+| wait_seconds | integer |  | No |
+
 #### ExternalApiTemplateListQuery
 
 | Name | Type | Description | Required |
@@ -26311,12 +26940,226 @@ Flask blueprint initialization.
 | api_key | string |  | No |
 | endpoint | string |  | No |
 
+#### ExternalMetricDayResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | date |  | Yes |
+| metrics | [ExternalMetricValuesResponse](#externalmetricvaluesresponse) |  | Yes |
+
+#### ExternalMetricValuesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| average_call_duration | number |  | Yes |
+| calls | integer |  | Yes |
+| reported_tokens | integer |  | Yes |
+| token_reporting_coverage | number |  | Yes |
+| token_reporting_denominator | integer |  | Yes |
+| token_reporting_numerator | integer |  | Yes |
+
+#### ExternalMonitoringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| apps | [ object ] |  | No |
+| days | [ [ExternalMetricDayResponse](#externalmetricdayresponse) ] |  | Yes |
+| summary | [ExternalMetricValuesResponse](#externalmetricvaluesresponse) |  | Yes |
+
+#### ExternalPasteLinkPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| filename | string |  | Yes |
+| media_type | string |  | Yes |
+| page_session_id | string |  | Yes |
+| url | string |  | Yes |
+
 #### ExternalRecipient
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | type | string, <br>**Default:** external |  | No |
+
+#### ExternalTestCancelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
+#### ExternalTestFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | dateTime |  | Yes |
+| file_id | string |  | Yes |
+| filename | string |  | Yes |
+| lease_id | string |  | Yes |
+| media_type | string |  | Yes |
+| size | integer |  | Yes |
+
+#### ExternalTestLeaveResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
+#### ExternalTestOutputField
+
+Public six-type profile; internal JSON-schema aliases are not wire types.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| children | [ [ExternalTestOutputField](#externaltestoutputfield) ], <br>**Default:**  |  | No |
+| default | [ExternalAgentJsonValue](#externalagentjsonvalue) |  | No |
+| has_default | boolean |  | No |
+| item | [ExternalTestOutputField](#externaltestoutputfield) |  | No |
+| kind | string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" | *Enum:* `"array"`, `"boolean"`, `"file"`, `"number"`, `"object"`, `"string"` | Yes |
+| name | string |  | Yes |
+| required | boolean, <br>**Default:** true |  | No |
+
+#### ExternalTestPagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| page_session_id | string |  | Yes |
+
+#### ExternalTestPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_generation | integer |  | Yes |
+| idempotency_key | string |  | Yes |
+| input_lease_ids | [ string ], <br>**Default:**  |  | No |
+| outputs | [ [ExternalTestOutputField](#externaltestoutputfield) ], <br>**Default:** [object Object] |  | No |
+| page_session_id | string |  | Yes |
+| policy | [ExternalAgentWaitPolicy](#externalagentwaitpolicy) |  | No |
+| task_text | string |  | Yes |
+
+#### ExternalTestStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error_code | string |  | Yes |
+| error_message | string |  | Yes |
+| invocation_id | string |  | Yes |
+| metadata | object |  | Yes |
+| outputs | object |  | Yes |
+| state | string |  | Yes |
+
+#### ExternalTraceDeliveryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ExternalTraceDeliveryStatusResponse](#externaltracedeliverystatusresponse) ] |  | Yes |
+
+#### ExternalTraceDeliveryStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attempts | integer |  | Yes |
+| config_revision | string |  | Yes |
+| error_code | string |  | Yes |
+| id | string |  | Yes |
+| payload_revision | integer |  | Yes |
+| provider | string |  | Yes |
+| state | string |  | Yes |
+| target_id | string |  | Yes |
+| target_kind | string |  | Yes |
+| trace_url | string |  | Yes |
+
+#### ExternalTraceRawResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | object |  | Yes |
+
+#### ExternalTraceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| diagnostics | [ string ] |  | Yes |
+| invocation_id | string |  | Yes |
+| next_offset | integer |  | Yes |
+| received_steps | integer |  | Yes |
+| revision | integer |  | Yes |
+| state | string |  | Yes |
+| steps | [ [ExternalTraceStepResponse](#externaltracestepresponse) ] |  | Yes |
+
+#### ExternalTraceRetryPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| acknowledge_possible_duplicates | boolean |  | No |
+
+#### ExternalTraceStepResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| duration_seconds | number |  | Yes |
+| ended_at | string |  | Yes |
+| error | string |  | Yes |
+| key | string |  | Yes |
+| kind | string |  | Yes |
+| name | string |  | Yes |
+| parent_step_id | string |  | Yes |
+| resolved_parent_key | string |  | Yes |
+| started_at | string |  | Yes |
+| status | string |  | Yes |
+| step_id | string |  | Yes |
+| total_tokens | integer |  | Yes |
+| trace_id | string |  | Yes |
+| trace_path | [ string ] |  | Yes |
+
+#### ExternalTracingConfigEnvelopeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configuration | [ExternalTracingConfigurationResponse](#externaltracingconfigurationresponse) |  | Yes |
+
+#### ExternalTracingConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| capture_content | boolean |  | Yes |
+| config | object |  | Yes |
+| enabled | boolean |  | Yes |
+| expected_revision | integer |  | Yes |
+
+#### ExternalTracingConfigurationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| capture_content | boolean |  | Yes |
+| configured_secrets | [ string ] |  | Yes |
+| enabled | boolean |  | Yes |
+| provider | string |  | Yes |
+| revision | integer |  | Yes |
+| values | object |  | Yes |
+
+#### ExternalTracingRevisionQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_revision | integer |  | Yes |
+
+#### ExternalWorkflowRebindPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_hash | string |  | Yes |
+| include_matching | boolean, <br>**Default:** true |  | No |
+| target_agent_id | string (uuid) |  | Yes |
+
+#### ExternalWorkflowRebindResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binding_epochs | object |  | Yes |
+| hash | string |  | Yes |
+| node_ids | [ string ] |  | Yes |
+| workflow_id | string |  | Yes |
 
 #### FeatureModel
 
@@ -31425,6 +32268,15 @@ Model with provider entity.
 | provider | [SimpleProviderEntityResponse](#simpleproviderentityresponse) |  | Yes |
 | status | [ModelStatus](#modelstatus) | Model availability status. `active` when ready to use. | Yes |
 
+#### MonitoringQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | No |
+| end | dateTime |  | Yes |
+| start | dateTime |  | Yes |
+| timezone | string |  | No |
+
 #### MoreLikeThisQuery
 
 | Name | Type | Description | Required |
@@ -36131,6 +36983,14 @@ Adapter support declarations, not successful-delivery or platform-verification r
 | session | boolean |  | Yes |
 | span_url | boolean |  | Yes |
 | trace_url | boolean |  | Yes |
+
+#### TraceQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 50 |  | No |
+| offset | integer |  | No |
+| revision | integer |  | No |
 
 #### TraceRunQuery
 

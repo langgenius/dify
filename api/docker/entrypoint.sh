@@ -2,9 +2,15 @@
 
 set -e
 
+CELERY_APPLICATION_MODULE="celery_entrypoint.celery"
+
 # Resolve the dedicated queue from the container's merged env_file environment,
 # exactly as API/Beat configuration does, rather than Compose interpolation.
 if [[ "${MODE}" == "external_agent_worker" ]]; then
+  CELERY_APPLICATION_MODULE="external_agent_celery_entrypoint.celery"
+  # Spawn starts a new Python interpreter; preserve the API import root beyond
+  # Celery CLI's temporary import-from-cwd lookup, including configured paths.
+  export PYTHONPATH="${PWD}${PYTHONPATH:+:$PYTHONPATH}"
   export CELERY_WORKER_QUEUES="${EXTERNAL_AGENTS_QUEUE:-external_agents}"
   export CELERY_WORKER_POOL=prefork
   export CELERY_PREFETCH_MULTIPLIER=1
@@ -106,7 +112,7 @@ if [[ "${MODE}" == "worker" ]]; then
   esac
   echo "Starting Celery worker with queues: ${DEFAULT_QUEUES}"
 
-  exec celery -A celery_entrypoint.celery worker -P ${WORKER_POOL} $CONCURRENCY_OPTION \
+  exec celery -A "${CELERY_APPLICATION_MODULE}" worker -P ${WORKER_POOL} $CONCURRENCY_OPTION \
     --max-tasks-per-child ${MAX_TASKS_PER_CHILD:-50} --loglevel ${LOG_LEVEL:-INFO} \
     -Q "${DEFAULT_QUEUES}" \
     --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-1}

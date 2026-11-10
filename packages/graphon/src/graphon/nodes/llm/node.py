@@ -578,7 +578,9 @@ class LLMNode(Node[LLMNodeData]):
     def _polling_config(
         polling_model: LLMPollingCapableProtocol,
     ) -> LLMPollingConfig:
-        raw_config = getattr(polling_model, "polling_config", None)
+        raw_config = getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+            polling_model, "polling_config", None
+        )
         if isinstance(raw_config, LLMPollingConfig):
             return raw_config
         if raw_config is None:
@@ -1076,10 +1078,10 @@ class LLMNode(Node[LLMNodeData]):
         model_instance: LLMProtocol,
         error: Exception,
     ) -> bool:
-        is_structured_output_parse_error = getattr(
-            model_instance,
-            "is_structured_output_parse_error",
-            None,
+        is_structured_output_parse_error = (
+            getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+                model_instance, "is_structured_output_parse_error", None
+            )
         )
         return bool(
             callable(is_structured_output_parse_error)
@@ -1592,7 +1594,11 @@ class LLMNode(Node[LLMNodeData]):
             # Reasoning content for workflow variables and downstream nodes
             reasoning_content=reasoning_content,
             # Pass structured output if enabled
-            structured_output=getattr(invoke_result, "structured_output", None),
+            structured_output=(
+                getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+                    invoke_result, "structured_output", None
+                )
+            ),
         )
         if request_latency is not None:
             event.usage.latency = round(request_latency, 3)

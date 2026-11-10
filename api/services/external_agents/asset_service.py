@@ -3,7 +3,7 @@
 import hashlib
 import json
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import asdict
 from datetime import datetime, timedelta
 from typing import Any
@@ -12,17 +12,21 @@ from machinery.context import RequestContext
 
 from .contracts import (
     AssetPage,
+    ConnectionRevision,
     ExternalAgentForbiddenError,
     ExternalAgentInvalidInputError,
     ExternalAgentLimits,
     ExternalAgentVerificationFailedError,
     ExternalAsset,
     ExternalAssetAccess,
+    ExternalAssetReferences,
     ExternalAssetStore,
+    ExternalReferenceAccess,
     ExternalSecretCodec,
     OperationResult,
     VerificationEvidence,
 )
+from .file_profile import normalize_media_type
 from .protocol import TRACEABILITY_URI, ConnectionSpec, GatewayError, GatewayPort, NoAuth, SealedBearerAuth
 
 
@@ -32,12 +36,67 @@ def configuration_fingerprint(value: dict[str, Any]) -> str:
     ).hexdigest()
 
 
+def _declared_modes_narrowed(previous: Sequence[str], proposed: Sequence[str]) -> bool:
+    """Compare MIME coverage without rewriting either original Card declaration.
+
+    Preconditions: values are string modes from verified Cards. Postcondition:
+    return true if an old normalized mode is not covered by the proposed exact,
+    type wildcard or universal declaration. A finite list cannot cover an old
+    wildcard, while documented aliases and MIME parameters do not change scope.
+    """
+    modes = frozenset(normalize_media_type(value) for value in proposed)
+    return any(
+        mode not in modes and "*/*" not in modes and f"{mode.split('/')[0]}/*" not in modes
+        for mode in (normalize_media_type(value) for value in previous)
+    )
+
+
+def connection_change_warnings(previous: ConnectionRevision | None, card: dict[str, Any]) -> dict[str, list[str]]:
+    """Compare verified declarations without guessing business compatibility.
+
+    Preconditions: both Cards passed the frozen wire validation. Postcondition:
+    both inputs remain unchanged and only stable advisory codes are returned.
+    Technical warnings describe a narrowed/removed supported service contract;
+    business warnings describe advertised identity/skills only. Both groups may
+    coexist. No warning authorizes execution, expands accepted file formats, or
+    blocks saving an otherwise verified connection. First connection is empty.
+    """
+    warnings: dict[str, list[str]] = {"technical": [], "business": []}
+    if previous is not None:
+        old = previous.card
+        for field, code in (
+            ("defaultInputModes", "input_modes_narrowed"),
+            ("defaultOutputModes", "output_modes_narrowed"),
+        ):
+            if _declared_modes_narrowed(old.get(field, []), card.get(field, [])):
+                warnings["technical"].append(code)
+        old_cap, new_cap = old.get("capabilities", {}), card.get("capabilities", {})
+        if old_cap.get("streaming", False) and not new_cap.get("streaming", False):
+            warnings["technical"].append("streaming_removed")
+        if configuration_fingerprint(
+            {"requirements": old.get("securityRequirements", []), "schemes": old.get("securitySchemes", {})}
+        ) != configuration_fingerprint(
+            {"requirements": card.get("securityRequirements", []), "schemes": card.get("securitySchemes", {})}
+        ):
+            warnings["technical"].append("auth_requirements_changed")
+        old_extensions = {item.get("uri") for item in old_cap.get("extensions", []) if isinstance(item, dict)}
+        new_extensions = {item.get("uri") for item in new_cap.get("extensions", []) if isinstance(item, dict)}
+        if TRACEABILITY_URI in old_extensions and TRACEABILITY_URI not in new_extensions:
+            warnings["technical"].append("traceability_removed")
+        if old.get("name") != card.get("name") or old.get("description") != card.get("description"):
+            warnings["business"].append("agent_info_changed")
+        if old.get("skills", []) != card.get("skills", []):
+            warnings["business"].append("skills_changed")
+    return warnings
+
+
 class ExternalAssetService:
     def __init__(
         self,
         *,
         store: ExternalAssetStore,
         access: ExternalAssetAccess,
+        reference_access: ExternalReferenceAccess,
         gateway: GatewayPort,
         secrets: ExternalSecretCodec,
         clock: Callable[[], datetime],
@@ -46,6 +105,7 @@ class ExternalAssetService:
     ) -> None:
         self._store = store
         self._access = access
+        self._reference_access = reference_access
         self._gateway = gateway
         self._secrets = secrets
         self._clock = clock
@@ -197,6 +257,7 @@ class ExternalAssetService:
             "remote_tenant": result.remote_tenant,
             "required_extensions": list(result.required_extensions),
             "traceability_supported": any(x.get("uri") == TRACEABILITY_URI for x in extensions if isinstance(x, dict)),
+            "connection_change_warnings": connection_change_warnings(previous, result.card),
         }
         now = self._clock()
         evidence = VerificationEvidence(
@@ -294,6 +355,19 @@ class ExternalAssetService:
     def delete(self, context: RequestContext, agent_id: str) -> None:
         self._require(context, manage=True)
         self._store.archive(context=context, agent_id=agent_id)
+
+    def references(self, context: RequestContext, agent_id: str) -> ExternalAssetReferences:
+        """Return deletion preflight without disclosing unreadable App details.
+
+        Preconditions: an Owner/Admin/Editor can read this asset. Postcondition:
+        the App list uses the same admitted App scope as Monitoring; only an
+        asset-wide boolean warns about possible unresolved work elsewhere.
+        This read does not reserve a revision, cancel work or authorize deletion.
+        """
+        self._require(context, manage=False)
+        self._visible(context, agent_id)
+        app_ids = self._reference_access.reference_app_ids(context, agent_id)
+        return self._store.references(tenant_id=context.active_workspace_id, agent_id=agent_id, app_ids=app_ids)
 
     def operation(self, context: RequestContext, operation_id: str) -> OperationResult:
         self._require(context, manage=True)

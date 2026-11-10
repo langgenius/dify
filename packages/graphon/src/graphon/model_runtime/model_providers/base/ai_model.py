@@ -44,7 +44,11 @@ class AIModel[RuntimeT: ModelProviderRuntime]:
         *,
         started_at: float = 0,
     ) -> None:
-        if getattr(type(self), "model_type", None) is None:
+        if (
+            getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+                type(self), "model_type", None
+            )
+        ) is None:
             msg = "AIModel subclasses must define model_type as a class attribute"
             raise TypeError(msg)
 
@@ -206,9 +210,10 @@ class AIModel[RuntimeT: ModelProviderRuntime]:
     ) -> None:
         for field_name in ("max", "min", "default", "precision", "required"):
             if (
-                getattr(parameter_rule, field_name)
-                or field_name not in default_parameter_rule
-            ):
+                getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+                    parameter_rule, field_name
+                )
+            ) or field_name not in default_parameter_rule:
                 continue
             setattr(parameter_rule, field_name, default_parameter_rule[field_name])
 

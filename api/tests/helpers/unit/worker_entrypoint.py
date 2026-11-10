@@ -17,8 +17,8 @@ def worker_configuration(
     report = '\nprintf "%s\\n" "$DEFAULT_QUEUES"'
     if include_worker_environment:
         report = (
-            '\nprintf "%s\\n" "$MODE" "$EXTERNAL_AGENTS_ENABLED" "$WORKER_POOL" '
-            '"$CELERY_PREFETCH_MULTIPLIER" "$DEFAULT_QUEUES"'
+            '\nprintf "%s\\n" "$PYTHONPATH" "$CELERY_APPLICATION_MODULE" "$MODE" '
+            '"$EXTERNAL_AGENTS_ENABLED" "$WORKER_POOL" "$CELERY_PREFETCH_MULTIPLIER" "$DEFAULT_QUEUES"'
         )
     return subprocess.run(
         ["bash", "-c", mode_setup + script[start:end] + report],

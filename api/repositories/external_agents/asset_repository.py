@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from itertools import starmap
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -16,7 +16,9 @@ from models.agent import Agent, AgentIconType, AgentKind, AgentScope, AgentSourc
 from models.enums import AppStatus
 from models.external_agent import (
     ExternalAgentConnectionRevision,
+    ExternalAgentContextSlot,
     ExternalAgentHead,
+    ExternalAgentInvocation,
     ExternalAgentOperation,
     ExternalAgentVerification,
 )
@@ -32,6 +34,8 @@ from services.external_agents.contracts import (
     ExternalAgentInvalidInputError,
     ExternalAgentNotFoundError,
     ExternalAsset,
+    ExternalAssetAppReference,
+    ExternalAssetReferences,
     OperationResult,
     VerificationEvidence,
 )
@@ -291,7 +295,9 @@ class ExternalAssetRepository:
             auth_type=proof.auth_type,
             credential_ciphertext=proof.credential_ciphertext,
             agent_card=dict(proof.agent_card),
-            capabilities=dict(proof.capabilities),
+            capabilities={
+                key: value for key, value in proof.capabilities.items() if key != "connection_change_warnings"
+            },
             fingerprint=proof.fingerprint,
             auth_check=proof.auth_check,
             created_by=actor,
@@ -456,6 +462,13 @@ class ExternalAssetRepository:
     def update_info(
         self, *, context: RequestContext, agent_id: str, expected_revision: int, changes: dict[str, Any]
     ) -> ExternalAsset:
+        """Save admitted display changes under the current metadata revision.
+
+        Preconditions: the caller owns management access and changes use the
+        presentation allowlist validated by the application service. Success
+        updates only changed fields and invalidates stale test generations;
+        denied or stale requests commit no metadata or context changes.
+        """
         try:
             with self._sessions.begin() as session:
                 self._manager(session, context)
@@ -464,12 +477,20 @@ class ExternalAssetRepository:
                     raise ExternalAgentConflictError("Agent information changed concurrently.")
                 changed = False
                 changed_fields: set[str] = set()
+                current_info = {
+                    "name": agent.name,
+                    "description": agent.description,
+                    "role": agent.role,
+                    "icon_type": agent.icon_type,
+                    "icon": agent.icon,
+                    "icon_background": agent.icon_background,
+                }
                 for key, value in changes.items():
                     if key in {"description", "role"} and value is None:
                         value = ""
                     if key == "icon_type" and value is not None:
                         value = AgentIconType(value)
-                    if getattr(agent, key) != value:
+                    if current_info[key] != value:
                         setattr(agent, key, value)
                         changed = True
                         changed_fields.add(key)
@@ -545,9 +566,16 @@ class ExternalAssetRepository:
                 raise ExternalAgentNotFoundError("Operation not found.")
             return self._operation_result(op)
 
-    def references(
-        self, *, tenant_id: str, agent_id: str, app_ids: frozenset[str] | None
-    ) -> tuple[dict[str, Any], ...]:
+    def references(self, *, tenant_id: str, agent_id: str, app_ids: frozenset[str] | None) -> ExternalAssetReferences:
+        """Read active graph references and a conservative, identity-free warning.
+
+        All statements use the validated tenant/asset. App rows additionally
+        use the admitted readable-App set and only draft/current published
+        graphs. Retained unknown submissions and occupied ContextSlots still
+        warn after local waiting or parent retention ends; time alone does not
+        prove that remote work stopped. This snapshot cannot serialize a later
+        dispatch against deletion and deliberately supplies no such guarantee.
+        """
         with self._sessions() as session:
             self._rows(session, tenant_id, agent_id)
             stmt = (
@@ -581,4 +609,49 @@ class ExternalAssetRepository:
                 item = grouped.setdefault(id, {"app_id": id, "name": name, "mode": str(mode), "node_ids": []})
                 if node not in item["node_ids"]:
                     item["node_ids"].append(node)
-            return tuple(grouped[k] for k in sorted(grouped))
+            active = session.scalar(
+                select(ExternalAgentInvocation.id)
+                .where(
+                    ExternalAgentInvocation.tenant_id == tenant_id,
+                    ExternalAgentInvocation.agent_id == agent_id,
+                    or_(
+                        ExternalAgentInvocation.local_state.in_(("queued", "waiting", "retry_pending")),
+                        ExternalAgentInvocation.submission_state.in_(("send_started", "submission_unknown")),
+                        (
+                            ExternalAgentInvocation.remote_task_id.is_not(None)
+                            & or_(
+                                ExternalAgentInvocation.remote_state.is_(None),
+                                ExternalAgentInvocation.remote_state.not_in(
+                                    ("completed", "canceled", "failed", "rejected")
+                                ),
+                            )
+                        ),
+                    ),
+                )
+                .limit(1)
+            )
+            occupied = session.scalar(
+                select(ExternalAgentContextSlot.key)
+                .where(
+                    ExternalAgentContextSlot.tenant_id == tenant_id,
+                    ExternalAgentContextSlot.agent_id == agent_id,
+                    or_(
+                        ExternalAgentContextSlot.reserved_invocation_id.is_not(None),
+                        ExternalAgentContextSlot.unresolved.is_(True),
+                    ),
+                )
+                .limit(1)
+            )
+            return ExternalAssetReferences(
+                apps=tuple(
+                    ExternalAssetAppReference(
+                        app_id=item["app_id"],
+                        name=item["name"],
+                        mode=item["mode"],
+                        node_ids=tuple(sorted(item["node_ids"])),
+                    )
+                    for key in sorted(grouped)
+                    for item in (grouped[key],)
+                ),
+                may_have_in_flight=active is not None or occupied is not None,
+            )

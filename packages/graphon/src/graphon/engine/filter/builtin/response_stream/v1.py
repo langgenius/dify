@@ -165,7 +165,9 @@ def _legacy_edge_ids(graph: GraphProtocol) -> dict[str, str]:
         TypeError: If imported graph configuration has an invalid shape.
         ValueError: If a programmatic graph cannot prove stable legacy IDs.
     """
-    graph_config = getattr(graph, "graph_config", None)
+    graph_config = getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+        graph, "graph_config", None
+    )
     if graph_config is None:
         expected_edge_ids = {
             f"edge_{edge_index}" for edge_index in range(len(graph.edges))
@@ -233,7 +235,11 @@ def _referenced_selectors(node: NodeProtocol) -> set[Selector]:
     Raises:
         TypeError: If a response node does not expose a streaming template.
     """
-    get_streaming_template = getattr(node, "get_streaming_template", None)
+    get_streaming_template = (
+        getattr(  # guard-ignore: no-new-getattr -- upstream optional hook
+            node, "get_streaming_template", None
+        )
+    )
     if not callable(get_streaming_template):
         msg = "Response streaming requires get_streaming_template() on response nodes"
         raise TypeError(msg)

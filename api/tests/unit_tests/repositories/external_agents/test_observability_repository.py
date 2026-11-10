@@ -44,6 +44,7 @@ from repositories.external_agents.observability_repository import (
     DatabaseExternalObservationAccess,
     ExternalObservabilityRepository,
 )
+from services.external_agents.contracts import ExternalAgentForbiddenError, ExternalAgentNotFoundError
 from services.external_agents.io_contracts import FileScope, JsonObject, StoredFile
 from services.external_agents.observability import (
     ExternalObservabilityService,
@@ -282,6 +283,26 @@ def services(
         access,
         permissions,
     )
+
+
+def test_reference_details_use_monitoring_app_scope_and_reject_normal_demotion(
+    sessions: sessionmaker[Session],
+) -> None:
+    """Reuse actual permission admission; Normal's aggregate never becomes all Apps."""
+    _, _, access, permissions = services(sessions)
+    permissions.allowed = frozenset({APP})
+    context = CONTEXT._replace(account_id=EDITOR, resource_app_ids=frozenset({APP2}))
+    assert access.reference_app_ids(context, AGENT) == frozenset()
+    assert access.reference_app_ids(CONTEXT._replace(account_id=EDITOR), AGENT) == frozenset({APP})
+    with pytest.raises(ExternalAgentForbiddenError):
+        access.reference_app_ids(CONTEXT._replace(account_id=NORMAL), AGENT)
+    with sessions.begin() as session:
+        membership = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == EDITOR)).one()
+        membership.role = TenantAccountRole.NORMAL
+    with pytest.raises(ExternalAgentForbiddenError):
+        access.reference_app_ids(CONTEXT._replace(account_id=EDITOR), AGENT)
+    with pytest.raises(ExternalAgentNotFoundError):
+        access.reference_app_ids(CONTEXT, uid())
 
 
 def test_record_duplicate_enrichment_conflict_and_owned_read(sessions: sessionmaker[Session]) -> None:

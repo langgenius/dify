@@ -268,6 +268,12 @@ class ExternalRuntimeRepository:
 
     @staticmethod
     def _write(row: ExternalAgentInvocation, value: Invocation) -> None:
+        """Project one validated invocation into its already scoped mutable row.
+
+        The caller owns a short write transaction and concurrency fence. The
+        snapshot and explicit timestamp columns remain equivalent; this helper
+        performs no I/O or commit and preserves unknown timestamps as absent.
+        """
         row.runtime_snapshot = _snapshot(value)
         row.job_config = dict(value.job)
         row.node_execution_id = value.caller_execution_id
@@ -280,17 +286,15 @@ class ExternalRuntimeRepository:
         row.remote_context_id = value.remote_context_id
         row.remote_state = value.remote_state
         row.started_at = _db_time(value.started_at) if value.dispatched_at is not None else None
-        for name in (
-            "dispatched_at",
-            "ended_at",
-            "local_wait_ended_at",
-            "wait_deadline",
-            "logical_deadline",
-            "cancellation_deadline",
-            "tracking_deadline",
-        ):
-            item = getattr(value, name)
-            setattr(row, name, _db_time(item) if item is not None else None)
+        row.dispatched_at = _db_time(value.dispatched_at) if value.dispatched_at is not None else None
+        row.ended_at = _db_time(value.ended_at) if value.ended_at is not None else None
+        row.local_wait_ended_at = _db_time(value.local_wait_ended_at) if value.local_wait_ended_at is not None else None
+        row.wait_deadline = _db_time(value.wait_deadline) if value.wait_deadline is not None else None
+        row.logical_deadline = _db_time(value.logical_deadline) if value.logical_deadline is not None else None
+        row.cancellation_deadline = (
+            _db_time(value.cancellation_deadline) if value.cancellation_deadline is not None else None
+        )
+        row.tracking_deadline = _db_time(value.tracking_deadline) if value.tracking_deadline is not None else None
         row.outputs = value.outputs
         row.error_code = value.error_code
         row.error_message = value.error_message
@@ -1043,6 +1047,12 @@ class ExternalRuntimeRepository:
             return True
 
     def read(self, scope: RuntimeScope, agent_id: str, revision_id: str) -> ConnectionSpec:
+        """Read exactly the admitted revision, including its verified Card profile.
+
+        Ownership is rechecked before materializing connection values. Later
+        connection edits cannot change in-flight streaming selection, routing
+        or credentials; a missing capability conservatively selects plain Send.
+        """
         with self._sessions() as session:
             self._owner(session, scope)
             row = session.scalar(
@@ -1059,12 +1069,14 @@ class ExternalRuntimeRepository:
                 if row.auth_type == "none"
                 else SealedBearerAuth(tenant_id=scope.tenant_id, ciphertext=row.credential_ciphertext or "")
             )
+            card_capabilities = row.agent_card.get("capabilities")
             return ConnectionSpec(
                 endpoint=row.endpoint,
                 authentication=auth,
                 interface_url=row.interface_url,
                 remote_tenant=row.capabilities.get("remote_tenant"),
                 enabled_extensions=tuple(row.capabilities.get("required_extensions", ())),
+                supports_streaming=isinstance(card_capabilities, dict) and card_capabilities.get("streaming") is True,
             )
 
     def lease_command(

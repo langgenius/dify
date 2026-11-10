@@ -13,6 +13,7 @@ export const post = oc
     method: 'POST',
     operationId: 'postExternalAgentTestsLeavePage',
     path: '/external-agent-tests/leave-page',
+    successStatus: 202,
     tags: ['console'],
   })
   .input(z.object({ body: zPostExternalAgentTestsLeavePageBody }))

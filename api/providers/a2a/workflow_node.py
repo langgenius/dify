@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Generator, Mapping, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, Literal, override
@@ -154,6 +154,24 @@ def _graph_value(value: object, field: OutputField) -> object:
     return value
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalAgentNodeDependencies:
+    """Thread-safe ports captured once by the admitted root graph factory.
+
+    These are long-lived services and immutable admission settings, never a
+    Flask proxy, SQL session or child-frame runtime state. The trusted root App
+    identity survives nested-frame factory copies and cannot be replaced by a
+    delegated source App.
+    """
+
+    service: ExternalInvocationService
+    store: InvocationStore
+    bindings: WorkflowBindingReader
+    enqueue: Callable[[], None]
+    enabled: bool
+    root_app_id: str
+
+
 class ExternalAgentNode(Node[ExternalAgentNodeData]):
     node_type = BuiltinNodeTypes.AGENT
 
@@ -164,18 +182,22 @@ class ExternalAgentNode(Node[ExternalAgentNodeData]):
         *,
         init_params: InitParams,
         runtime_state: RuntimeState,
-        service: ExternalInvocationService,
-        store: InvocationStore,
-        bindings: WorkflowBindingReader,
-        enqueue: Callable[[], None],
-        enabled: bool,
-        root_app_id: str | None = None,
+        dependencies: ExternalAgentNodeDependencies,
     ) -> None:
+        """Bind one frame to root-captured ports without framework-local lookup.
+
+        Preconditions: the root factory admitted these dependencies and the
+        supplied state belongs to this frame. Construction only retains ports;
+        execution still revalidates binding ownership and the root App profile.
+        """
         super().__init__(node_id=node_id, data=data, init_params=init_params, runtime_state=runtime_state)
-        self._runtime = ExternalWorkflowRuntime(service, store)
-        self._store, self._bindings, self._enqueue, self._enabled = store, bindings, enqueue, enabled
+        self._runtime = ExternalWorkflowRuntime(dependencies.service, dependencies.store)
+        self._store = dependencies.store
+        self._bindings = dependencies.bindings
+        self._enqueue = dependencies.enqueue
+        self._enabled = dependencies.enabled
         self._default_forbidden = False
-        self._root_app_id = root_app_id
+        self._root_app_id = dependencies.root_app_id
 
     @classmethod
     @override
@@ -228,6 +250,12 @@ class ExternalAgentNode(Node[ExternalAgentNodeData]):
 
     @override
     def _run(self) -> Generator[NodeEventPayload]:
+        """Run an admitted saved binding or resume its fixed invocation result.
+
+        Valid run context and binding ownership are rechecked before dispatch.
+        Success emits a result or an identity-only pause; configuration errors
+        emit a failed node event and never create an implicit business retry.
+        """
         try:
             context = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
             ensure_supported_workflow_owner(context, self._root_app_id)
@@ -320,7 +348,7 @@ class ExternalAgentNode(Node[ExternalAgentNodeData]):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     outputs={},
                     error=str(error),
-                    error_type=getattr(error, "code", "external_node_configuration_error"),
+                    error_type=error.code if isinstance(error, RuntimeError) else "external_node_configuration_error",
                 )
             )
 

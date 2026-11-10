@@ -62,18 +62,6 @@ export const zExternalAgentVerifyPayload = z.object({
 })
 
 /**
- * ExternalAgentVerificationResponse
- */
-export const zExternalAgentVerificationResponse = z.object({
-  auth_check: z.string(),
-  capabilities: z.record(z.string(), z.unknown()),
-  card: z.record(z.string(), z.unknown()),
-  expires_at: z.iso.datetime(),
-  interface_url: z.string(),
-  verification_id: z.string(),
-})
-
-/**
  * ExternalAgentConnectionPayload
  */
 export const zExternalAgentConnectionPayload = z.object({
@@ -175,6 +163,13 @@ export const zExternalTestStatusResponse = z.object({
 })
 
 /**
+ * ExternalTestCancelResponse
+ */
+export const zExternalTestCancelResponse = z.object({
+  result: z.literal('requested'),
+})
+
+/**
  * ExternalTracingConfigPayload
  */
 export const zExternalTracingConfigPayload = z.object({
@@ -204,6 +199,27 @@ export const zExternalTracingConfigEnvelopeResponse = z.object({
 })
 
 /**
+ * ExternalAgentConnectionWarningsResponse
+ */
+export const zExternalAgentConnectionWarningsResponse = z.object({
+  business: z.array(z.string()),
+  technical: z.array(z.string()),
+})
+
+/**
+ * ExternalAgentVerificationResponse
+ */
+export const zExternalAgentVerificationResponse = z.object({
+  auth_check: z.string(),
+  capabilities: z.record(z.string(), z.unknown()),
+  card: z.record(z.string(), z.unknown()),
+  expires_at: z.iso.datetime(),
+  interface_url: z.string(),
+  verification_id: z.string(),
+  warnings: zExternalAgentConnectionWarningsResponse,
+})
+
+/**
  * ExternalMetricValuesResponse
  */
 export const zExternalMetricValuesResponse = z.object({
@@ -230,6 +246,24 @@ export const zExternalMonitoringResponse = z.object({
   apps: z.array(z.record(z.string(), z.string())).nullish(),
   days: z.array(zExternalMetricDayResponse),
   summary: zExternalMetricValuesResponse,
+})
+
+/**
+ * ExternalAgentAppReferenceResponse
+ */
+export const zExternalAgentAppReferenceResponse = z.object({
+  app_id: z.string(),
+  mode: z.string(),
+  name: z.string(),
+  node_ids: z.array(z.string()),
+})
+
+/**
+ * ExternalAgentReferencesResponse
+ */
+export const zExternalAgentReferencesResponse = z.object({
+  apps: z.array(zExternalAgentAppReferenceResponse),
+  may_have_in_flight: z.boolean(),
 })
 
 export const zExternalAgentJsonValue = z
@@ -351,9 +385,9 @@ export const zDeleteExternalAgentsByAgentIdPath = z.object({
 })
 
 /**
- * Success
+ * External asset deleted
  */
-export const zDeleteExternalAgentsByAgentIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteExternalAgentsByAgentIdResponse = z.void()
 
 export const zGetExternalAgentsByAgentIdPath = z.object({
   agent_id: z.uuid(),
@@ -413,6 +447,15 @@ export const zGetExternalAgentsByAgentIdMonitoringQuery = z.object({
  */
 export const zGetExternalAgentsByAgentIdMonitoringResponse = zExternalMonitoringResponse
 
+export const zGetExternalAgentsByAgentIdReferencesPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Readable current App references and possible in-flight warning
+ */
+export const zGetExternalAgentsByAgentIdReferencesResponse = zExternalAgentReferencesResponse
+
 export const zPostExternalAgentsByAgentIdTestFilesPath = z.object({
   agent_id: z.uuid(),
 })
@@ -470,12 +513,10 @@ export const zPostExternalAgentsByAgentIdTestsByInvocationIdCancelPath = z.objec
 })
 
 /**
- * Success
+ * Cancellation requested
  */
-export const zPostExternalAgentsByAgentIdTestsByInvocationIdCancelResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostExternalAgentsByAgentIdTestsByInvocationIdCancelResponse =
+  zExternalTestCancelResponse
 
 export const zPutExternalAgentsByAgentIdTracingBody = zExternalAgentSwitchPayload
 

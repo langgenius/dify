@@ -55,7 +55,12 @@ from models.external_agent_trace import (
 )
 from models.model import App, Message, TraceAppConfig, UploadFile
 from repositories.app.tracing_config_repository import trace_settings_from_column
-from services.external_agents.contracts import ExternalAssetAccess, ExternalSecretCodec
+from services.external_agents.contracts import (
+    ExternalAgentForbiddenError,
+    ExternalAgentNotFoundError,
+    ExternalAssetAccess,
+    ExternalSecretCodec,
+)
 from services.external_agents.observability import (
     InvocationMetric,
     InvocationObservationOwner,
@@ -164,6 +169,24 @@ class DatabaseExternalObservationAccess:
         if context.resource_app_ids is not None:
             allowed &= context.resource_app_ids
         return MonitoringScope(False, allowed, timezone)
+
+    def reference_app_ids(self, context: RequestContext, agent_id: str) -> frozenset[str]:
+        """Reuse Monitoring's exact App policy, with no Normal detail bypass.
+
+        Preconditions: the asset service admitted a detail-capable role.
+        Recheck membership/asset visibility here; a concurrent demotion to
+        Normal remains denied instead of converting its aggregate scope to all
+        App details. Translate this adapter's errors to the asset port contract.
+        """
+        try:
+            scope = self.monitor(context, agent_id)
+        except ObservationAccessDeniedError as error:
+            raise ExternalAgentForbiddenError("The External Agent is not accessible.") from error
+        except ObservationNotFoundError as error:
+            raise ExternalAgentNotFoundError("External Agent not found.") from error
+        if scope.normal_aggregate or scope.app_ids is None:
+            raise ExternalAgentForbiddenError("The workspace role does not allow App reference details.")
+        return scope.app_ids
 
     def trace_read(self, context: RequestContext, owner: InvocationObservationOwner) -> None:
         role = self._assets.role(context)

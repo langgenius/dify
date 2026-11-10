@@ -187,6 +187,43 @@ def test_export_never_enters_native_package_or_exports_connection(domain: Bindin
         assert exported["edges"] == workflow.graph_dict["edges"]
 
 
+@pytest.mark.parametrize("preserve_agent_bindings", [False, True])
+@pytest.mark.parametrize("include_secret", [False, True])
+def test_app_copy_and_yaml_export_keep_external_references_portable(
+    domain: BindingDomain, preserve_agent_bindings: bool, include_secret: bool
+) -> None:
+    """The real App export path cannot demand a Native pin for an External row.
+
+    The copy path enables preserve_agent_bindings for Native roster references;
+    External nodes still use the portable allowlist and never export an epoch.
+    """
+    sessions, context, app_id, workflow_id, agent_a, _b = domain
+    with sessions.begin() as session:
+        workflow = stored(session, Workflow, workflow_id)
+        sync_external_bindings(session=session, workflow=workflow, account_id=context.account_id)
+        original_epoch = session.scalars(select(WorkflowAgentNodeBinding.binding_epoch)).one()
+        assert isinstance(original_epoch, str)
+        exported: dict[str, object] = {}
+        dependencies = AppDslService._append_workflow_export_data(
+            export_data=exported,
+            app_model=stored(session, App, app_id),
+            include_secret=include_secret,
+            session=session,
+            preserve_agent_bindings=preserve_agent_bindings,
+        )
+        assert dependencies == []
+        assert "agent_packages" not in exported
+        workflow_data = exported["workflow"]
+        assert isinstance(workflow_data, dict)
+        exported_graph = workflow_data["graph"]
+        assert isinstance(exported_graph, dict)
+        binding = exported_graph["nodes"][0]["data"]["agent_binding"]
+        assert set(binding) == {"binding_type", "original_reference"}
+        assert binding["original_reference"]["agent_id"] == agent_a
+        assert original_epoch not in json.dumps(exported)
+        assert exported_graph["edges"] == workflow.graph_dict["edges"]
+
+
 @pytest.mark.parametrize("allowed", [True, False])
 def test_disabled_same_workspace_dsl_reference_restores_only_when_currently_accessible(
     domain: BindingDomain, allowed: bool
