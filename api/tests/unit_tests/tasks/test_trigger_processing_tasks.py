@@ -272,29 +272,31 @@ def test_dispatch_commits_quota_and_publishes_actual_workflow_task(
     celery_app.conf.update(task_always_eager=False, task_serializer="json")
     celery_app.set_current()
     try:
-        with celery_app.connection_for_write() as connection:
-            with SimpleQueue(connection.channel(), AsyncWorkflowQueue.SANDBOX_QUEUE) as queue:
-                queue.clear()
-                try:
-                    assert dispatch.run(harness) == 1
+        with (
+            celery_app.connection_for_write() as connection,
+            SimpleQueue(connection.channel(), AsyncWorkflowQueue.SANDBOX_QUEUE) as queue,
+        ):
+            queue.clear()
+            try:
+                assert dispatch.run(harness) == 1
 
-                    message = queue.get(block=False)
-                    with harness.session_factory() as session:
-                        log = session.scalar(select(WorkflowTriggerLog))
-                        end_user = session.scalar(select(EndUser).where(EndUser.app_id == dispatch.app_id))
-                        assert log is not None
-                        assert end_user is not None
-                        assert end_user.type == EndUserType.TRIGGER
-                        assert log.status == WorkflowTriggerStatus.QUEUED
-                        assert log.created_by == end_user.id
-                        assert json.loads(log.inputs) == {"ref": "main"}
-                        assert message.payload[0] == [{"workflow_trigger_log_id": log.id}]
-                        assert message.headers["id"] == log.celery_task_id
-                    assert message.headers["task"] == execute_workflow_sandbox.name
-                    message.ack()
-                    assert queue.qsize() == 0
-                finally:
-                    queue.clear()
+                message = queue.get(block=False)
+                with harness.session_factory() as session:
+                    log = session.scalar(select(WorkflowTriggerLog))
+                    end_user = session.scalar(select(EndUser).where(EndUser.app_id == dispatch.app_id))
+                    assert log is not None
+                    assert end_user is not None
+                    assert end_user.type == EndUserType.TRIGGER
+                    assert log.status == WorkflowTriggerStatus.QUEUED
+                    assert log.created_by == end_user.id
+                    assert json.loads(log.inputs) == {"ref": "main"}
+                    assert message.payload[0] == [{"workflow_trigger_log_id": log.id}]
+                    assert message.headers["id"] == log.celery_task_id
+                assert message.headers["task"] == execute_workflow_sandbox.name
+                message.ack()
+                assert queue.qsize() == 0
+            finally:
+                queue.clear()
     finally:
         previous_app.set_current()
         celery_app.close()

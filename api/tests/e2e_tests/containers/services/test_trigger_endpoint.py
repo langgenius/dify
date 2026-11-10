@@ -80,34 +80,33 @@ def runtime(harness: _Harness) -> Iterator[_Runtime]:
     celery_app.conf.update(task_always_eager=False, task_serializer="json")
     celery_app.set_current()
     try:
-        with celery_app.connection_for_write() as connection:
-            with SimpleQueue(connection.channel(), TRIGGER_QUEUE) as queue:
-                queue.clear()
-                runtime = _Runtime(queue)
+        with celery_app.connection_for_write() as connection, SimpleQueue(connection.channel(), TRIGGER_QUEUE) as queue:
+            queue.clear()
+            runtime = _Runtime(queue)
 
-                def observe_publication(sender: str, body: object, **_kwargs: object) -> None:
-                    if sender != dispatch_triggered_workflows_async.name:
-                        return
-                    assert isinstance(body, tuple)
-                    args = body[0]
-                    assert isinstance(args, tuple)
-                    data = PluginTriggerDispatchData.model_validate(args[0])
-                    runtime.publications.append(
-                        _Publication(
-                            data=data,
-                            persisted_request=storage.load_once(f"triggers/{data.request_id}.raw"),
-                            persisted_payload=storage.load_once(f"triggers/{data.request_id}.payload"),
-                            open_transactions=any(session.in_transaction() for session in harness.metadata.sessions),
-                        )
+            def observe_publication(sender: str, body: object, **_kwargs: object) -> None:
+                if sender != dispatch_triggered_workflows_async.name:
+                    return
+                assert isinstance(body, tuple)
+                args = body[0]
+                assert isinstance(args, tuple)
+                data = PluginTriggerDispatchData.model_validate(args[0])
+                runtime.publications.append(
+                    _Publication(
+                        data=data,
+                        persisted_request=storage.load_once(f"triggers/{data.request_id}.raw"),
+                        persisted_payload=storage.load_once(f"triggers/{data.request_id}.payload"),
+                        open_transactions=any(session.in_transaction() for session in harness.metadata.sessions),
                     )
+                )
 
-                before_task_publish.connect(observe_publication, weak=False)
-                try:
-                    yield runtime
-                finally:
-                    # Installed Celery stubs omit the public Signal.disconnect API.
-                    before_task_publish.disconnect(observe_publication)  # pyrefly: ignore[missing-attribute]
-                    queue.clear()
+            before_task_publish.connect(observe_publication, weak=False)
+            try:
+                yield runtime
+            finally:
+                # Installed Celery stubs omit the public Signal.disconnect API.
+                before_task_publish.disconnect(observe_publication)  # pyrefly: ignore[missing-attribute]
+                queue.clear()
     finally:
         previous_app.set_current()
         celery_app.close()

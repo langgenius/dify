@@ -75,10 +75,12 @@ class TestWebhookRequestParserUnit:
             parser._validate_json_value("amount", value, kind)
 
     def test_rejects_oversized_request(self, parser: WebhookRequestParser, flask_app: Flask) -> None:
-        with config_overrides_context(WEBHOOK_REQUEST_BODY_MAX_SIZE=1):
-            with flask_app.test_request_context("/webhook", method="POST", data="ab"):
-                with pytest.raises(RequestEntityTooLarge):
-                    parser.extract_webhook_data(_webhook_trigger())
+        with (
+            config_overrides_context(WEBHOOK_REQUEST_BODY_MAX_SIZE=1),
+            flask_app.test_request_context("/webhook", method="POST", data="ab"),
+            pytest.raises(RequestEntityTooLarge),
+        ):
+            parser.extract_webhook_data(_webhook_trigger())
 
     def test_extract_webhook_data_json(self, parser: WebhookRequestParser) -> None:
         """Test webhook data extraction from JSON request."""

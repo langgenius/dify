@@ -146,8 +146,10 @@ class TestRBACConnectionPooling:
         from services.errors.enterprise import EnterpriseAPIForbiddenError
 
         client = EnterpriseRequest._get_rbac_client()
-        with patch.object(client, "request", return_value=httpx.Response(403, json={"message": "denied"})):
-            with pytest.raises(EnterpriseAPIForbiddenError):
-                EnterpriseRequest.send_inner_rbac_request("GET", "/permissions", tenant_id="tenant-a")
+        with (
+            patch.object(client, "request", return_value=httpx.Response(403, json={"message": "denied"})),
+            pytest.raises(EnterpriseAPIForbiddenError),
+        ):
+            EnterpriseRequest.send_inner_rbac_request("GET", "/permissions", tenant_id="tenant-a")
         assert not client.is_closed
         assert EnterpriseRequest.send_inner_rbac_request("GET", "/permissions", tenant_id="tenant-a") == {"ok": True}

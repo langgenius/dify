@@ -24,22 +24,21 @@ def test_enqueue_triggered_workflows_publishes_worker_payload_to_existing_queue(
     celery_app.conf.update(task_always_eager=False, task_serializer="json")
     celery_app.set_current()
     try:
-        with celery_app.connection_for_write() as connection:
-            with SimpleQueue(connection.channel(), TRIGGER_QUEUE) as queue:
-                queue.clear()
-                try:
-                    enqueue_triggered_workflows(data)
+        with celery_app.connection_for_write() as connection, SimpleQueue(connection.channel(), TRIGGER_QUEUE) as queue:
+            queue.clear()
+            try:
+                enqueue_triggered_workflows(data)
 
-                    message = queue.get(block=False)
-                    assert message.headers["task"] == dispatch_triggered_workflows_async.name
-                    assert message.delivery_info["routing_key"] == TRIGGER_QUEUE
-                    assert message.content_type == "application/json"
-                    assert message.payload[0] == [data.model_dump(mode="json")]
-                    assert message.payload[1] == {}
-                    message.ack()
-                    assert queue.qsize() == 0
-                finally:
-                    queue.clear()
+                message = queue.get(block=False)
+                assert message.headers["task"] == dispatch_triggered_workflows_async.name
+                assert message.delivery_info["routing_key"] == TRIGGER_QUEUE
+                assert message.content_type == "application/json"
+                assert message.payload[0] == [data.model_dump(mode="json")]
+                assert message.payload[1] == {}
+                message.ack()
+                assert queue.qsize() == 0
+            finally:
+                queue.clear()
     finally:
         previous_app.set_current()
         celery_app.close()

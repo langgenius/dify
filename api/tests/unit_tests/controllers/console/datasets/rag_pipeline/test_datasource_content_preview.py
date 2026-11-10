@@ -83,16 +83,16 @@ class TestDataSourceContentPreviewApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(ValueError, match=r"datasource_type\n\s+Field required"),
         ):
-            with pytest.raises(ValueError, match=r"datasource_type\n\s+Field required"):
-                method(
-                    api,
-                    DatasourceContentPreviewPayload.model_validate(payload),
-                    unbound_session,
-                    account,
-                    pipeline,
-                    "node-1",
-                )
+            method(
+                api,
+                DatasourceContentPreviewPayload.model_validate(payload),
+                unbound_session,
+                account,
+                pipeline,
+                "node-1",
+            )
 
     def test_post_without_credential_id(self, app: Flask, unbound_session: Session) -> None:
         api = DataSourceContentPreviewApi()

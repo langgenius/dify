@@ -339,12 +339,11 @@ def test_renewal_preserves_concurrent_name_and_visibility_changes(
     for key in keys:
         redis_client.setex(key, 1800, '{"value":"cached-before-renewal"}')
 
-    with _paused_refresh(harness, daemon, subscription.id, path):
-        with harness.session_factory.begin() as session:
-            row = session.get(TriggerSubscription, subscription.id)
-            assert row is not None
-            row.name = "Renamed while renewing"
-            row.visibility = PermissionEnum.ONLY_ME
+    with _paused_refresh(harness, daemon, subscription.id, path), harness.session_factory.begin() as session:
+        row = session.get(TriggerSubscription, subscription.id)
+        assert row is not None
+        row.name = "Renamed while renewing"
+        row.visibility = PermissionEnum.ONLY_ME
 
     saved = _read(harness, subscription.id)
     assert saved.name == "Renamed while renewing"
@@ -388,14 +387,13 @@ def test_renewal_rejects_concurrently_changed_provider_inputs(
     for key in keys:
         redis_client.setex(key, 1800, '{"value":"cached-before-renewal"}')
 
-    with _paused_refresh(harness, daemon, subscription.id, path):
-        with harness.session_factory.begin() as session:
-            row = session.get(TriggerSubscription, subscription.id)
-            assert row is not None
-            if stage == "oauth":
-                row.credentials = {"token": replacement_token, "username": "concurrent"}
-            else:
-                row.parameters = {"event": "concurrent-change"}
+    with _paused_refresh(harness, daemon, subscription.id, path), harness.session_factory.begin() as session:
+        row = session.get(TriggerSubscription, subscription.id)
+        assert row is not None
+        if stage == "oauth":
+            row.credentials = {"token": replacement_token, "username": "concurrent"}
+        else:
+            row.parameters = {"event": "concurrent-change"}
 
     saved = _read(harness, subscription.id)
     assert saved.credential_expires_at == subscription.credential_expires_at

@@ -248,14 +248,16 @@ class TestWorkflowCases:
         monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
         current_user = _workflow_Account(name="Test", email="test@example.com")
         current_user.id = "account-1"
-        with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
-            with pytest.raises(RuntimeError, match="publish failed"):
-                inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
-                    workflow_module.PublishedWorkflowApi(),
-                    workflow_module.PublishWorkflowPayload.model_validate({}),
-                    current_user,
-                    app_model,
-                )
+        with (
+            app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}),
+            pytest.raises(RuntimeError, match="publish failed"),
+        ):
+            inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+                workflow_module.PublishedWorkflowApi(),
+                workflow_module.PublishWorkflowPayload.model_validate({}),
+                current_user,
+                app_model,
+            )
 
         sqlite_session.expire_all()
         persisted_app = sqlite_session.get(_workflow_App, app_model.id)

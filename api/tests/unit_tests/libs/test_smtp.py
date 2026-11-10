@@ -361,9 +361,11 @@ def test_real_smtp_preserves_failure_and_cleanup(
     reject_at: str, error: type[smtplib.SMTPResponseException], fail_quit: bool, smtp_tls_context: ssl.SSLContext
 ) -> None:
     """A protocol rejection propagates without resend, even when cleanup disconnects."""
-    with _SMTPRelay(smtp_tls_context, "starttls", reject_at=reject_at, fail_quit=fail_quit) as relay:
-        with pytest.raises(error) as failure:
-            _relay_client(relay, username="test-user", password="test-password").send(_mail())
+    with (
+        _SMTPRelay(smtp_tls_context, "starttls", reject_at=reject_at, fail_quit=fail_quit) as relay,
+        pytest.raises(error) as failure,
+    ):
+        _relay_client(relay, username="test-user", password="test-password").send(_mail())
     assert failure.value.smtp_code == {"starttls": 454, "auth": 535, "mail": 550, "data": 554}[reject_at]
     assert relay.commands.count("quit") == 1
     assert sum(line.startswith("mail ") for line in relay.commands) <= 1

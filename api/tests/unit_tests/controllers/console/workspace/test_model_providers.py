@@ -454,9 +454,8 @@ class TestModelProviderCredentialApi:
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
-        with app.test_request_context(f"/?credential_id={INVALID_UUID}"):
-            with pytest.raises(ValidationError):
-                method(api, ParserCredentialId.model_validate(_payload()), "tenant1", provider="openai")
+        with app.test_request_context(f"/?credential_id={INVALID_UUID}"), pytest.raises(ValidationError):
+            method(api, ParserCredentialId.model_validate(_payload()), "tenant1", provider="openai")
 
     def test_post_create_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
@@ -496,9 +495,9 @@ class TestModelProviderCredentialApi:
                 "controllers.console.workspace.model_providers.ModelProviderService.create_provider_credential",
                 side_effect=CredentialsValidateFailedError("bad"),
             ),
+            pytest.raises(ValueError, match="bad"),
         ):
-            with pytest.raises(ValueError, match="bad"):
-                method(api, ParserCredentialCreate.model_validate(_payload()), "tenant1", provider="openai")
+            method(api, ParserCredentialCreate.model_validate(_payload()), "tenant1", provider="openai")
 
     def test_put_update_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
@@ -530,9 +529,8 @@ class TestModelProviderCredentialApi:
 
         payload = {"credential_id": INVALID_UUID, "credentials": {"a": "b"}}
 
-        with app.test_request_context("/", json=payload):
-            with pytest.raises(ValidationError):
-                method(api, ParserCredentialUpdate.model_validate(_payload()), "tenant1", provider="openai")
+        with app.test_request_context("/", json=payload), pytest.raises(ValidationError):
+            method(api, ParserCredentialUpdate.model_validate(_payload()), "tenant1", provider="openai")
 
     def test_delete_success(self, app: Flask) -> None:
         api = ModelProviderCredentialApi()
@@ -587,9 +585,8 @@ class TestModelProviderCredentialSwitchApi:
 
         payload = {"credential_id": INVALID_UUID}
 
-        with app.test_request_context("/", json=payload):
-            with pytest.raises(ValidationError):
-                method(api, ParserCredentialSwitch.model_validate(_payload()), "tenant1", provider="openai")
+        with app.test_request_context("/", json=payload), pytest.raises(ValidationError):
+            method(api, ParserCredentialSwitch.model_validate(_payload()), "tenant1", provider="openai")
 
 
 class TestModelProviderValidateApi:
@@ -661,11 +658,9 @@ class TestModelProviderIconApi:
                 "controllers.console.workspace.model_providers.ModelProviderService.get_model_provider_icon",
                 return_value=(None, None),
             ),
+            pytest.raises(ValueError, match="icon not found for provider openai, icon_type icon_small, lang en_US"),
         ):
-            with pytest.raises(
-                ValueError, match="icon not found for provider openai, icon_type icon_small, lang en_US"
-            ):
-                api.get(VALID_UUID, "openai", "icon_small", "en_US")
+            api.get(VALID_UUID, "openai", "icon_small", "en_US")
 
     @pytest.mark.parametrize(
         ("tenant_id", "icon_type", "invalid_field"),
@@ -725,9 +720,8 @@ class TestPreferredProviderTypeUpdateApi:
 
         payload = {"preferred_provider_type": "invalid"}
 
-        with app.test_request_context("/", json=payload):
-            with pytest.raises(ValidationError):
-                method(api, ParserPreferredProviderType.model_validate(_payload()), "tenant1", provider="openai")
+        with app.test_request_context("/", json=payload), pytest.raises(ValidationError):
+            method(api, ParserPreferredProviderType.model_validate(_payload()), "tenant1", provider="openai")
 
 
 class TestModelProviderPaymentCheckoutUrlApi:
@@ -757,9 +751,8 @@ class TestModelProviderPaymentCheckoutUrlApi:
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 
-        with app.test_request_context("/"):
-            with pytest.raises(ValueError, match="provider name openai is invalid"):
-                method(api, "tenant1", make_account(), provider="openai")
+        with app.test_request_context("/"), pytest.raises(ValueError, match="provider name openai is invalid"):
+            method(api, "tenant1", make_account(), provider="openai")
 
     def test_checkout_rejects_non_privileged_role(self, app: Flask) -> None:
         api = ModelProviderPaymentCheckoutUrlApi()

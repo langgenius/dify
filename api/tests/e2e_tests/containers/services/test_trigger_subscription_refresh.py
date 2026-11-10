@@ -47,13 +47,15 @@ def broker() -> Iterator[tuple[Celery, SimpleQueue]]:
     app.conf.update(task_always_eager=False, task_serializer="json")
     app.set_current()
     try:
-        with app.connection_for_write() as connection:
-            with SimpleQueue(connection.channel(), "trigger_refresh_executor") as queue:
+        with (
+            app.connection_for_write() as connection,
+            SimpleQueue(connection.channel(), "trigger_refresh_executor") as queue,
+        ):
+            queue.clear()
+            try:
+                yield app, queue
+            finally:
                 queue.clear()
-                try:
-                    yield app, queue
-                finally:
-                    queue.clear()
     finally:
         previous_app.set_current()
         app.close()

@@ -133,13 +133,15 @@ def broker() -> Iterator[SimpleQueue]:
     app.conf.update(task_always_eager=False, task_serializer="json")
     app.set_current()
     try:
-        with app.connection_for_write() as connection:
-            with SimpleQueue(connection.channel(), AsyncWorkflowQueue.SANDBOX_QUEUE) as queue:
+        with (
+            app.connection_for_write() as connection,
+            SimpleQueue(connection.channel(), AsyncWorkflowQueue.SANDBOX_QUEUE) as queue,
+        ):
+            queue.clear()
+            try:
+                yield queue
+            finally:
                 queue.clear()
-                try:
-                    yield queue
-                finally:
-                    queue.clear()
     finally:
         previous_app.set_current()
         app.close()
