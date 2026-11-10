@@ -86,6 +86,14 @@
   line-height: 37px;
   font-weight: 400;
 }
+.logo {
+  width: 60px;
+  height: 27px;
+  background: url('/logo/logo.svg') center / contain no-repeat;
+}
+:global(html[data-theme='dark']) .logo {
+  background-image: url('/pricing/logo-dark.svg');
+}
 .description {
   margin-top: 3px;
   color: var(--color-text-tertiary);
