@@ -6,7 +6,7 @@ import { BlockEnum, VarType } from '@/app/components/workflow/types'
 const getDefaultValueByType = (type: VarType) => {
   if (type === VarType.string) return ''
 
-  if (type === VarType.number) return 0
+  if (type === VarType.number || type === VarType.integer) return 0
 
   if (type === VarType.object) return '{}'
 

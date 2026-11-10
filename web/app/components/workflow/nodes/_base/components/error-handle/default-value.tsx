@@ -22,7 +22,8 @@ const DefaultValue = ({ forms, onFormChange }: DefaultValueProps) => {
       </div>
       <div className="space-y-1">
         {forms.map((form, index) => {
-          const isInput = form.type === VarType.string || form.type === VarType.number
+          const isNumber = form.type === VarType.number || form.type === VarType.integer
+          const isInput = form.type === VarType.string || isNumber
           const inputId = `${id}-${index}`
           return (
             <div key={index} className="py-1">
@@ -39,7 +40,7 @@ const DefaultValue = ({ forms, onFormChange }: DefaultValueProps) => {
               {isInput && (
                 <Input
                   id={inputId}
-                  type={form.type === VarType.number ? 'number' : 'text'}
+                  type={isNumber ? 'number' : 'text'}
                   placeholder={t(($) => $['placeholder.input'], { ns: 'common' })}
                   value={form.value || (form.type === VarType.string ? '' : 0)}
                   onValueChange={(value) => onFormChange({ key: form.key, type: form.type, value })}
