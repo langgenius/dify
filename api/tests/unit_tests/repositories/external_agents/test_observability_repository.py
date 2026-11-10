@@ -51,6 +51,7 @@ from services.external_agents.io_contracts import FileScope, JsonObject, StoredF
 from services.external_agents.observability import (
     ExternalObservabilityService,
     MonitoringQuery,
+    MonitoringScope,
     ObservationAccessDeniedError,
     ObservationConflictError,
     ObservationExpiredError,
@@ -58,7 +59,7 @@ from services.external_agents.observability import (
     TraceQuery,
 )
 from services.external_agents.retention import ExternalDeletionScope, ExternalRetentionService
-from services.external_agents.traceability import ReportedCallUsage, TraceabilityNormalizer, TraceLimits
+from services.external_agents.traceability import ReportedCallUsage, TraceabilityNormalizer, TraceLimits, TraceState
 from services.external_agents.tracing_config import ExternalTraceDeliveryService, build_external_trace
 from services.rbac.contracts import MyPermissionsResponse, ResourcePermissionKeys, ResourcePermissionSnapshot
 
@@ -1488,3 +1489,271 @@ def test_unknown_send_uses_completion_time_and_does_not_offer_safe_retry(
         row = required(session.get(ExternalAgentTraceDelivery, delivery_id), ExternalAgentTraceDelivery)
         assert row.state == ("stopped" if expires_during_send else "uncertain")
         assert row.error_code == ("source_deleted_or_expired" if expires_during_send else "provider_outcome_unknown")
+
+
+@pytest.mark.parametrize(
+    ("enabled", "ended", "expected"),
+    [
+        (False, True, TraceState.NOT_REQUESTED),
+        (True, False, TraceState.COLLECTING),
+        (True, True, TraceState.NOT_RETURNED),
+    ],
+)
+def test_missing_trace_snapshot_explains_collection_without_inventing_steps(
+    sessions: sessionmaker[Session], enabled: bool, ended: bool, expected: TraceState
+) -> None:
+    """An absent carrier has distinct requested/running/ended states, not a fake empty trace."""
+    identifier = invocation(sessions, tracing_enabled=enabled, ended_at=DBNOW if ended else None)
+    _, service, _, _ = services(sessions)
+    page = service.trace(CONTEXT, identifier, TraceQuery(), now=NOW)
+    assert page.state == expected
+    assert page.steps == ()
+    assert page.next_offset is None
+    with pytest.raises(ObservationNotFoundError, match="trace_step_not_found"):
+        service.raw_data(CONTEXT, identifier, "missing", now=NOW)
+    with pytest.raises(ObservationConflictError, match="trace_revision_changed"):
+        service.trace(CONTEXT, identifier, TraceQuery(revision=9), now=NOW)
+
+
+def test_ended_collecting_snapshot_becomes_not_returned_and_usage_is_independent(
+    sessions: sessionmaker[Session],
+) -> None:
+    """A placeholder snapshot cannot leave an ended call indefinitely collecting."""
+    identifier = invocation(sessions)
+    with sessions.begin() as session:
+        session.add(
+            ExternalAgentTraceRecord(
+                invocation_id=identifier, tenant_id=TENANT, agent_id=AGENT, state=TraceState.COLLECTING, revision=3
+            )
+        )
+    repository, service, _, _ = services(sessions)
+    result = service.trace(CONTEXT, identifier, TraceQuery(revision=3), now=NOW)
+    assert result.state == TraceState.NOT_RETURNED
+    assert result.revision == 3
+    service.record_usage(
+        tenant_id=TENANT,
+        invocation_id=identifier,
+        usage=ReportedCallUsage(total_tokens=0, source_path="verified-call-total", adapter="trusted-total"),
+        revision=1,
+        received_at=NOW,
+    )
+    snapshot = repository.snapshot(tenant_id=TENANT, invocation_id=identifier)
+    assert snapshot is not None
+    assert snapshot.call_total_tokens == 0
+
+
+@pytest.mark.parametrize(
+    ("offset", "start", "end", "zone"),
+    [
+        (0, NOW, NOW, "UTC"),
+        (0, NOW, NOW + timedelta(days=367), "UTC"),
+        (0, NOW, NOW + timedelta(days=1), "Not/A_Real_Zone"),
+    ],
+)
+def test_monitoring_rejects_invalid_intervals_and_timezone_before_aggregation(
+    sessions: sessionmaker[Session], offset: int, start: datetime, end: datetime, zone: str
+) -> None:
+    """Invalid request windows cannot turn into unexpected scans or timezone fallback."""
+    del offset
+    _, service, _, _ = services(sessions)
+    with pytest.raises(ValueError, match="invalid_monitoring_"):
+        service.monitoring(CONTEXT, AGENT, MonitoringQuery(start=start, end=end, timezone=zone), now=NOW)
+
+
+def test_monitor_and_trace_recheck_membership_actor_and_admitted_app_scope(sessions: sessionmaker[Session]) -> None:
+    """A valid invocation ID never widens current membership or App permissions."""
+    identifier = invocation(sessions)
+    repository, service, access, permissions = services(sessions)
+    owner = repository.owner(tenant_id=TENANT, invocation_id=identifier, now=NOW)
+    access.manage(CONTEXT, AGENT)
+    with pytest.raises(ObservationAccessDeniedError):
+        access.manage(CONTEXT._replace(account_id=EDITOR), AGENT)
+    with pytest.raises(ObservationAccessDeniedError):
+        access.monitor(CONTEXT._replace(account_id=uid()), AGENT)
+    with pytest.raises(ObservationNotFoundError):
+        access.monitor(CONTEXT, uid())
+    with pytest.raises(ObservationAccessDeniedError):
+        access.trace_read(CONTEXT._replace(active_workspace_id=OTHER), owner)
+    with pytest.raises(ObservationAccessDeniedError):
+        access.trace_read(CONTEXT._replace(resource_app_ids=frozenset()), owner)
+    with pytest.raises(ObservationAccessDeniedError, match="test_owner_required"):
+        access.trace_read(CONTEXT, replace(owner, origin="overview_test", app_id=None, initiator_id=EDITOR))
+    permissions.allowed = frozenset()
+    with pytest.raises(ObservationAccessDeniedError):
+        service.trace(CONTEXT, identifier, TraceQuery(), now=NOW)
+    with pytest.raises(ObservationAccessDeniedError, match="app_filter_not_allowed"):
+        service.monitoring(CONTEXT, AGENT, MonitoringQuery(start=NOW, end=NOW + timedelta(days=1), app_id=APP), now=NOW)
+
+
+def test_direct_metric_query_retains_exact_app_scope_and_no_history_reassignment(
+    sessions: sessionmaker[Session],
+) -> None:
+    """The legacy row-level query has the same cohort as the SQL bucket owner."""
+    first = invocation(sessions)
+    second = invocation(sessions, app_id=APP2)
+    invocation(sessions, app_id=APP2, origin="overview_test")
+    repository, _, _, _ = services(sessions)
+    query = MonitoringQuery(start=NOW - timedelta(seconds=1), end=NOW + timedelta(days=1))
+    all_rows = repository.metrics(
+        tenant_id=TENANT, agent_id=AGENT, scope=MonitoringScope(False, None), query=query, now=NOW
+    )
+    assert {row.id for row in all_rows} == {first, second}
+    own = repository.metrics(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        scope=MonitoringScope(False, frozenset({APP})),
+        query=query.model_copy(update={"app_id": APP}),
+        now=NOW,
+    )
+    assert [row.id for row in own] == [first]
+    assert (
+        repository.metrics(
+            tenant_id=TENANT, agent_id=AGENT, scope=MonitoringScope(False, frozenset()), query=query, now=NOW
+        )
+        == []
+    )
+    apps = repository.apps(tenant_id=TENANT, agent_id=AGENT, scope=MonitoringScope(False, None))
+    assert {row["id"] for row in apps} == {APP, APP2}
+
+
+@pytest.mark.parametrize("state", ["pending", "exported", "exporting"])
+def test_trace_delivery_retry_refuses_non_failed_outcomes(sessions: sessionmaker[Session], state: str) -> None:
+    """Manual retry cannot duplicate a queued, in-flight or acknowledged export."""
+    identifier = invocation(sessions)
+    delivery = uid()
+    with sessions.begin() as session:
+        session.add(
+            ExternalAgentTraceDelivery(
+                id=delivery,
+                tenant_id=TENANT,
+                invocation_id=identifier,
+                delivery_key=uid(),
+                target_kind="asset",
+                target_id=AGENT,
+                provider="phoenix",
+                config_revision="1",
+                payload_revision=1,
+                encrypted_config={},
+                trace_payload={},
+                capture_content=False,
+                state=state,
+            )
+        )
+    repository, _, _, _ = services(sessions)
+    with pytest.raises(ObservationConflictError, match="not_retryable"):
+        repository.retry_delivery(
+            tenant_id=TENANT,
+            invocation_id=identifier,
+            delivery_id=delivery,
+            acknowledge_possible_duplicates=True,
+            now=NOW,
+        )
+    with pytest.raises(ObservationNotFoundError):
+        repository.retry_delivery(
+            tenant_id=TENANT, invocation_id=identifier, delivery_id=uid(), acknowledge_possible_duplicates=True, now=NOW
+        )
+
+
+@pytest.mark.parametrize("field", ["deleted_at", "retention_expires_at", "test_expires_at"])
+def test_trace_owner_rechecks_deleted_and_expired_records(sessions: sessionmaker[Session], field: str) -> None:
+    """Stored identities do not override source deletion or earlier retention expiry."""
+    identifier = invocation(sessions, **{field: DBNOW})
+    repository, _, _, _ = services(sessions)
+    expected = ObservationNotFoundError if field == "deleted_at" else ObservationExpiredError
+    with pytest.raises(expected):
+        repository.owner(tenant_id=TENANT, invocation_id=identifier, now=NOW)
+
+
+def test_missing_app_and_conversation_tombstone_close_trace_ingestion(sessions: sessionmaker[Session]) -> None:
+    """Conversation lineage survives through its slot and blocks late Trace writes."""
+    identifier = invocation(sessions, app_id=uid())
+    repository, _, _, _ = services(sessions)
+    with pytest.raises(ObservationNotFoundError, match="source_app_not_found"):
+        repository.owner(tenant_id=TENANT, invocation_id=identifier, now=NOW)
+    identifier = invocation(sessions, context_slot_key="retired-context")
+    conversation = uid()
+    with sessions.begin() as session:
+        session.add(
+            ExternalAgentContextSlot(
+                key="retired-context",
+                tenant_id=TENANT,
+                app_id=APP,
+                conversation_id=conversation,
+                node_id="external",
+                agent_id=AGENT,
+                connection_revision_id=REVISION,
+                binding_epoch="epoch",
+                unresolved=True,
+            )
+        )
+        session.add(
+            ExternalAgentDataTombstone(
+                id=uid(), tenant_id=TENANT, owner_kind="conversation", owner_id=conversation, deleted_at=DBNOW
+            )
+        )
+    with pytest.raises(ObservationNotFoundError):
+        repository.owner(tenant_id=TENANT, invocation_id=identifier, now=NOW)
+
+
+@pytest.mark.parametrize(
+    "change",
+    ["trace_off", "connection_changed", "not_dispatched", "no_connection", "tracking_elapsed", "fixed_late_window"],
+)
+def test_record_revalidates_dispatch_and_fixed_tracking_contract(sessions: sessionmaker[Session], change: str) -> None:
+    """A previously admitted owner cannot authorize ingestion after its source changes."""
+    identifier = invocation(sessions)
+    repository, _, _, _ = services(sessions)
+    owner = repository.owner(tenant_id=TENANT, invocation_id=identifier, now=NOW)
+    with sessions.begin() as session:
+        row = session.get(ExternalAgentInvocation, identifier)
+        assert row is not None
+        if change == "trace_off":
+            row.tracing_enabled = False
+        elif change == "connection_changed":
+            row.connection_revision_id = uid()
+        elif change == "not_dispatched":
+            row.dispatched_at = None
+        elif change == "no_connection":
+            row.connection_revision_id = None
+        elif change == "tracking_elapsed":
+            row.tracking_deadline = DBNOW
+        else:
+            row.local_wait_ended_at = DBNOW - timedelta(hours=24)
+            row.tracking_deadline = None
+    trace = TraceabilityNormalizer(TraceLimits()).normalize({"trace_id": "remote", "steps": []}, source_id="late")
+    expected = (
+        ObservationExpiredError if change in {"tracking_elapsed", "fixed_late_window"} else ObservationConflictError
+    )
+    with pytest.raises(expected):
+        repository.record(owner=owner, trace=trace, now=NOW)
+    assert repository.snapshot(tenant_id=TENANT, invocation_id=identifier) is None
+
+
+@pytest.mark.parametrize("limited", ["bytes", "steps", "receipts"])
+def test_trace_accumulation_limits_remain_persisted_and_do_not_grow_unbounded(
+    sessions: sessionmaker[Session], limited: str
+) -> None:
+    """Distinct incremental carriers cannot bypass cumulative size/step/receipt caps."""
+    identifier = invocation(sessions)
+    limits = TraceLimits(max_bytes=1, max_steps=1) if limited == "bytes" else TraceLimits(max_steps=1)
+    repository = ExternalObservabilityRepository(sessions=sessions, limits=limits)
+    owner = repository.owner(tenant_id=TENANT, invocation_id=identifier, now=NOW)
+    normalizer = TraceabilityNormalizer(TraceLimits())
+    trace = normalizer.normalize(
+        {"trace_id": "remote", "steps": [{"step_id": "one", "name": "one"}, {"step_id": "two", "name": "two"}]},
+        source_id="first",
+    )
+    first = repository.record(owner=owner, trace=trace, now=NOW)
+    if limited == "bytes":
+        assert first.steps == ()
+        assert "trace_payload_limit" in first.diagnostics
+    else:
+        assert len(first.steps) == 1
+        assert "trace_step_limit" in first.diagnostics
+    if limited == "receipts":
+        next_trace = normalizer.normalize(
+            {"trace_id": "remote", "steps": [{"step_id": "three", "name": "three"}]}, source_id="second"
+        )
+        second = repository.record(owner=owner, trace=next_trace, now=NOW)
+        assert len(second.steps) == 1
+        assert "trace_receipt_limit" in second.diagnostics

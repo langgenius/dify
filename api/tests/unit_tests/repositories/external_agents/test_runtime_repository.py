@@ -1,13 +1,13 @@
 """Real SQL transactions for dispatch fencing, recovery and durable command admission."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from typing import Unpack, override
+from typing import Literal, Unpack, override
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, create_engine, select
+from sqlalchemy import Engine, create_engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from typing_extensions import TypedDict
@@ -55,14 +55,17 @@ from services.external_agents.protocol import (
     VerificationResult,
 )
 from services.external_agents.runtime_contracts import (
+    CancelState,
     CommandDraft,
     CommandKind,
     ContextBusyError,
     ContextKey,
+    ContextSlot,
     ExecutionIdentity,
     Invocation,
     InvocationDraft,
     LocalState,
+    RequestPartsBuilder,
     RuntimeError,
     RuntimeScope,
     RuntimeSettings,
@@ -401,8 +404,20 @@ class Ids:
 class RemoteAgent:
     """A deterministic stateful port, exercising the real orchestration and SQL adapters."""
 
-    def __init__(self, *, direct: bool = False, unknown: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        direct: bool = False,
+        unknown: bool = False,
+        errors: dict[Literal["send", "get", "cancel"], GatewayError] | None = None,
+        hooks: dict[Literal["send", "get", "cancel"], Callable[[], None]] | None = None,
+    ) -> None:
         self.direct, self.unknown = direct, unknown
+        self.errors = errors or {}
+        self.hooks = hooks or {}
+        self.timeouts: list[tuple[str, float]] = []
+        self.task_id = "task"
+        self.context_id: str | None = "context"
         self.sent = []
         self.reads = 0
         self.cancels = 0
@@ -422,15 +437,15 @@ class RemoteAgent:
 
     def receipt(self) -> GatewayReceipt:
         if self.direct:
-            return GatewayReceipt(kind="message", context_id="context", payload={"parts": [{"text": "result"}]})
+            return GatewayReceipt(kind="message", context_id=self.context_id, payload={"parts": [{"text": "result"}]})
         return GatewayReceipt(
             kind="task",
-            task_id="task",
-            context_id="context",
+            task_id=self.task_id,
+            context_id=self.context_id,
             state="TASK_STATE_" + self.state.upper(),
             payload={
-                "id": "task",
-                "contextId": "context",
+                "id": self.task_id,
+                "contextId": self.context_id,
                 "status": {"state": "TASK_STATE_" + self.state.upper()},
                 "artifacts": [{"artifactId": "final", "parts": [{"text": "result"}]}],
             },
@@ -443,6 +458,7 @@ class RemoteAgent:
         self.streaming = streaming
         self.last_connection = connection
         self.sent.append(request)
+        self._operation("send", timeout_seconds)
         if self.unknown:
             raise GatewayError("submission_unknown", "Unknown acceptance", submission_unknown=True)
         return self.receipt()
@@ -452,6 +468,7 @@ class RemoteAgent:
         assert timeout_seconds > 0
         self.last_connection = connection
         self.reads += 1
+        self._operation("get", timeout_seconds)
         return self.receipt()
 
     def cancel_task(self, connection: ConnectionSpec, task_id: str, *, timeout_seconds: float = 30) -> GatewayReceipt:
@@ -459,11 +476,27 @@ class RemoteAgent:
         assert timeout_seconds > 0
         self.last_connection = connection
         self.cancels += 1
+        self._operation("cancel", timeout_seconds)
         return self.receipt()
+
+    def _operation(self, kind: Literal["send", "get", "cancel"], timeout: float) -> None:
+        """Model one port completion/failure and a one-shot concurrent event."""
+        self.timeouts.append((kind, timeout))
+        hook = self.hooks.pop(kind, None)
+        if hook is not None:
+            hook()
+        error = self.errors.get(kind)
+        if error is not None:
+            raise error
 
 
 class Inputs:
+    def __init__(self, hook: Callable[[Invocation], None] | None = None) -> None:
+        self._hook = hook
+
     def build(self, invocation: Invocation) -> SendRequest:
+        if self._hook is not None:
+            self._hook(invocation)
         return SendRequest(
             message_id=invocation.message_id, parts=invocation.parts, context_id=invocation.carried_context_id
         )
@@ -483,10 +516,13 @@ class Outputs:
 
 class Observer:
     def __init__(self) -> None:
+        self.fail = False
         self.states = []
         self.invocations = []
 
     def observe(self, invocation: Invocation, receipt: GatewayReceipt) -> None:
+        if self.fail:
+            raise ValueError("The independent trace collector is unavailable.")
         self.invocations.append(invocation.id)
         self.states.append(receipt.state)
 
@@ -499,20 +535,26 @@ class Wake:
         return self.ready
 
 
-def service(domain: Domain, gateway: GatewayPort) -> tuple[ExternalInvocationService, Clock, Wake, Observer]:
+def service(
+    domain: Domain,
+    gateway: GatewayPort,
+    *,
+    settings: RuntimeSettings | None = None,
+    inputs: RequestPartsBuilder | None = None,
+) -> tuple[ExternalInvocationService, Clock, Wake, Observer]:
     repo, sessions, scope, agent, _ = domain
     clock, wake, observer = Clock(), Wake(), Observer()
     runtime = ExternalInvocationService(
         store=repo,
         connections=repo,
         gateway=gateway,
-        inputs=Inputs(),
+        inputs=inputs if inputs is not None else Inputs(),
         outputs=Outputs(),
         observer=observer,
         wake=wake,
         clock=clock,
         ids=Ids(),
-        settings=RuntimeSettings(),
+        settings=settings if settings is not None else RuntimeSettings(),
     )
     return runtime, clock, wake, observer
 
@@ -1601,3 +1643,867 @@ def test_node_debug_returns_pause_then_writes_terminal_last_run_and_draft_variab
         assert variable.node_execution_id == caller_pk
         assert len(session.scalars(select(WorkflowNodeExecutionModel)).all()) == 1
     assert len(gateway.sent) == 1
+
+
+def waiting_task(
+    domain: Domain, gateway: RemoteAgent, *, policy: WaitPolicy | None = None, settings: RuntimeSettings | None = None
+) -> tuple[ExternalInvocationService, Clock, Invocation]:
+    """Submit through the service and a controlled GatewayPort, not a stored receipt."""
+    repo, _, scope, agent, _ = domain
+    runtime, clock, *_ = service(domain, gateway, settings=settings)
+    value = runtime.start(
+        scope,
+        draft(
+            agent,
+            policy=policy or WaitPolicy(wait_seconds=60),
+            declared_outputs=(OutputField(name="text", kind="string"),),
+        ),
+    )
+    command(domain, runtime, clock, "dispatch")
+    return runtime, clock, repo.get(scope, value.id)
+
+
+@pytest.mark.parametrize("background", [False, True])
+@pytest.mark.parametrize("code", ["authentication_failed", "permission_denied", "invalid_task"])
+def test_read_refusal_blocks_future_queries_without_resubmitting_business(
+    domain: Domain, background: bool, code: str
+) -> None:
+    """Terminal read/auth failures stop local querying while retaining the accepted Task."""
+    repo, sessions, scope, *_ = domain
+    gateway = RemoteAgent(errors={"get": GatewayError(code, "The task read is not admitted.")})
+    runtime, clock, value = waiting_task(domain, gateway)
+    if background:
+        clock.value += timedelta(seconds=60)
+        command(domain, runtime, clock, "deadline")
+        clock.value += timedelta(seconds=61)
+    else:
+        clock.value += timedelta(seconds=6)
+    command(domain, runtime, clock, "poll")
+    closed = repo.get(scope, value.id)
+    assert closed.queries_blocked
+    assert closed.observation_error_code == code
+    assert closed.submission_state == SubmissionState.ACCEPTED
+    assert closed.remote_task_id == "task"
+    assert closed.outputs is None
+    assert len(gateway.sent) == gateway.reads == 1
+    with sessions() as session:
+        assert not session.scalars(
+            select(ExternalAgentCommand).where(
+                ExternalAgentCommand.invocation_id == value.id,
+                ExternalAgentCommand.kind == "poll",
+                ExternalAgentCommand.state == "ready",
+            )
+        ).all()
+
+
+@pytest.mark.parametrize(
+    "code", ["cancellation_unsupported", "operation_unsupported", "cancellation_rejected", "authentication_failed"]
+)
+def test_explicit_cancel_rejection_is_not_retried_and_never_creates_a_new_task(domain: Domain, code: str) -> None:
+    """A rejected/unsupported cancel is distinct from a confirmed canceled task."""
+    repo, sessions, scope, *_ = domain
+    gateway = RemoteAgent(errors={"cancel": GatewayError(code, "Cancellation was not accepted.")})
+    runtime, clock, value = waiting_task(
+        domain, gateway, policy=WaitPolicy(wait_seconds=60, on_timeout=TimeoutPolicy.CANCEL_AND_RETRY)
+    )
+    runtime.cancel(scope, value.id)
+    command(domain, runtime, clock, "cancel")
+    closed = repo.get(scope, value.id)
+    assert closed.cancel_state != CancelState.CONFIRMED
+    assert closed.error_code == code
+    assert gateway.cancels == len(gateway.sent) == 1
+    if code == "authentication_failed":
+        assert closed.queries_blocked
+    with sessions() as session:
+        assert len(session.scalars(select(ExternalAgentInvocation)).all()) == 1
+        assert not session.scalars(
+            select(ExternalAgentCommand).where(
+                ExternalAgentCommand.invocation_id == value.id, ExternalAgentCommand.kind == "retry"
+            )
+        ).all()
+
+
+@pytest.mark.parametrize("background", [False, True])
+def test_retry_after_beyond_fixed_query_window_schedules_nothing(domain: Domain, background: bool) -> None:
+    """429 backoff consumes the existing window and never extends it or sends again."""
+    repo, sessions, scope, *_ = domain
+    gateway = RemoteAgent(
+        errors={"get": GatewayError("rate_limited", "Back off.", retryable=True, retry_after_seconds=90000)}
+    )
+    runtime, clock, value = waiting_task(domain, gateway)
+    if background:
+        clock.value += timedelta(seconds=60)
+        command(domain, runtime, clock, "deadline")
+        clock.value += timedelta(seconds=61)
+    else:
+        clock.value += timedelta(seconds=6)
+    command(domain, runtime, clock, "poll")
+    observed = repo.get(scope, value.id)
+    assert observed.logical_deadline == value.logical_deadline
+    assert not observed.queries_blocked
+    assert len(gateway.sent) == gateway.reads == 1
+    with sessions() as session:
+        assert not session.scalars(
+            select(ExternalAgentCommand).where(
+                ExternalAgentCommand.invocation_id == value.id,
+                ExternalAgentCommand.kind == "poll",
+                ExternalAgentCommand.state == "ready",
+            )
+        ).all()
+
+
+def test_background_read_counts_only_admitted_query_and_keeps_late_results_out_of_outputs(domain: Domain) -> None:
+    """After End waiting, a temporary network failure retains only bounded history tracking."""
+    repo, sessions, scope, *_ = domain
+    gateway = RemoteAgent(errors={"get": GatewayError("network_failure", "Temporarily unavailable.", retryable=True)})
+    runtime, clock, value = waiting_task(domain, gateway)
+    clock.value += timedelta(seconds=60)
+    command(domain, runtime, clock, "deadline")
+    ended = repo.get(scope, value.id)
+    clock.value += timedelta(seconds=61)
+    command(domain, runtime, clock, "poll")
+    observed = repo.get(scope, value.id)
+    assert observed.background_queries == 1
+    assert observed.local_state == LocalState.ENDED
+    assert observed.outputs is None
+    assert observed.tracking_deadline == ended.tracking_deadline
+    with sessions() as session:
+        due = session.scalars(
+            select(ExternalAgentCommand.next_run_at).where(
+                ExternalAgentCommand.invocation_id == value.id,
+                ExternalAgentCommand.kind == "poll",
+                ExternalAgentCommand.state == "ready",
+            )
+        ).one()
+    clock.value = due.replace(tzinfo=UTC) + timedelta(seconds=1)
+    gateway.errors.clear()
+    command(domain, runtime, clock, "poll")
+    assert repo.get(scope, value.id).background_queries == 2
+    gateway.state = "completed"
+    clock.value += timedelta(seconds=301)
+    command(domain, runtime, clock, "poll")
+    final = repo.get(scope, value.id)
+    assert final.remote_state == "completed"
+    assert final.outputs is None
+    assert final.local_state == LocalState.ENDED
+    assert len(gateway.sent) == 1
+
+
+def test_stop_during_input_preparation_loses_send_permit_without_any_gateway_request(domain: Domain) -> None:
+    """A genuine CAS winner before begin_send fences the old prepared dispatch."""
+    repo, _, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(domain, gateway)
+
+    def stop_preparing(value: Invocation) -> None:
+        runtime.stop(scope, value.id)
+
+    runtime = ExternalInvocationService(
+        store=repo,
+        connections=repo,
+        gateway=gateway,
+        inputs=Inputs(stop_preparing),
+        outputs=Outputs(),
+        observer=Observer(),
+        wake=Wake(),
+        clock=clock,
+        ids=Ids(),
+        settings=RuntimeSettings(),
+    )
+    value = runtime.start(scope, draft(agent))
+    command(domain, runtime, clock, "dispatch")
+    assert repo.get(scope, value.id).submission_state == SubmissionState.REJECTED
+    assert repo.get(scope, value.id).dispatched_at is None
+    assert not gateway.sent
+    stopped = runtime.stop(scope, value.id)
+    assert runtime.stop(scope, value.id) == stopped
+
+
+def test_input_preparation_spends_original_deadline_and_is_rejected_before_send(domain: Domain) -> None:
+    """Input I/O cannot replenish the original execution budget before HTTP starts."""
+    repo, _, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(domain, gateway)
+
+    def slow_input(_value: Invocation) -> None:
+        clock.value += timedelta(hours=1, seconds=1)
+
+    runtime = ExternalInvocationService(
+        store=repo,
+        connections=repo,
+        gateway=gateway,
+        inputs=Inputs(slow_input),
+        outputs=Outputs(),
+        observer=Observer(),
+        wake=Wake(),
+        clock=clock,
+        ids=Ids(),
+        settings=RuntimeSettings(),
+    )
+    value = runtime.start(scope, draft(agent))
+    command(domain, runtime, clock, "dispatch")
+    closed = repo.get(scope, value.id)
+    assert closed.error_code == "deadline_exceeded"
+    assert closed.dispatched_at is None
+    assert closed.submission_state == SubmissionState.REJECTED
+    assert closed.logical_deadline == value.logical_deadline
+    assert not gateway.sent
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+def test_gateway_known_receipt_is_observed_without_replaying_business(domain: Domain, streaming: bool) -> None:
+    """A transport cut after an authoritative Task receipt switches to GetTask."""
+    repo, _, scope, agent, _ = domain
+    _replace_connection(domain, streaming=streaming)
+    gateway = RemoteAgent()
+    gateway.errors["send"] = GatewayError(
+        "stream_interrupted", "Stream ended after receipt.", known_receipt=gateway.receipt()
+    )
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(scope, draft(agent, declared_outputs=(OutputField(name="text", kind="string"),)))
+    command(domain, runtime, clock, "dispatch")
+    assert repo.get(scope, value.id).remote_task_id == "task"
+    assert gateway.streaming is streaming
+    gateway.state = "completed"
+    clock.value += timedelta(seconds=6)
+    command(domain, runtime, clock, "poll")
+    assert runtime.result(scope, value.id).outputs == {"text": "result"}
+    assert len(gateway.sent) == gateway.reads == 1
+
+
+def test_independent_observer_failure_cannot_fail_or_resubmit_completed_business(domain: Domain) -> None:
+    repo, _, scope, agent, _ = domain
+    gateway = RemoteAgent(direct=True)
+    runtime, clock, _, observer = service(domain, gateway)
+    observer.fail = True
+    value = runtime.start(scope, draft(agent, declared_outputs=(OutputField(name="text", kind="string"),)))
+    command(domain, runtime, clock, "dispatch")
+    assert runtime.result(scope, value.id).outputs == {"text": "result"}
+    assert repo.get(scope, value.id).local_state == LocalState.SUCCEEDED
+    assert len(gateway.sent) == 1
+
+
+def test_completion_wins_cancel_cas_without_another_get_or_send(domain: Domain) -> None:
+    """A user cancel committed during GetTask cannot discard a valid live completion."""
+    repo, _, scope, *_ = domain
+    gateway = RemoteAgent()
+    runtime, clock, value = waiting_task(
+        domain, gateway, policy=WaitPolicy(wait_seconds=60, on_timeout=TimeoutPolicy.REQUEST_CANCELLATION)
+    )
+    gateway.state = "completed"
+
+    def user_cancel() -> None:
+        runtime.cancel(scope, value.id)
+
+    gateway.hooks["get"] = user_cancel
+    clock.value += timedelta(seconds=6)
+    command(domain, runtime, clock, "poll")
+    result = runtime.result(scope, value.id)
+    assert result.state == LocalState.SUCCEEDED
+    assert result.outputs == {"text": "result"}
+    assert len(gateway.sent) == gateway.reads == 1
+    assert gateway.cancels == 0
+    assert repo.get(scope, value.id).cancel_trigger == "user"
+    command(domain, runtime, clock, "cancel")
+    assert gateway.cancels == 0
+
+
+def test_actual_stop_committed_during_get_prevents_late_success_outputs(workflow_domain: WorkflowDomain) -> None:
+    """The workflow stop fence wins a late gateway completion and never revives the run."""
+    domain, identity, _, _ = workflow_domain
+    repo, sessions, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(
+        scope, draft(agent, identity=identity, job={}, declared_outputs=(OutputField(name="text", kind="string"),))
+    )
+    command(domain, runtime, clock, "dispatch")
+
+    def stop_run() -> None:
+        with sessions.begin() as session:
+            row = stored(session, WorkflowRun, identity.workflow_run_id)
+            row.stop_requested_at = clock.value.replace(tzinfo=None)
+            row.status = WorkflowExecutionStatus.STOPPED
+
+    gateway.hooks["get"] = stop_run
+    gateway.state = "completed"
+    clock.value += timedelta(seconds=6)
+    command(domain, runtime, clock, "poll")
+    final = repo.get(scope, value.id)
+    assert final.local_state == LocalState.STOPPED
+    assert final.outputs is None
+    assert final.remote_state == "completed"
+    assert len(gateway.sent) == gateway.reads == 1
+
+
+def test_storage_parent_deletion_race_drops_completed_output_without_another_gateway_read(domain: Domain) -> None:
+    """A commit losing to a real tombstone marker does not repeat output or remote I/O."""
+    repo, sessions, scope, *_ = domain
+    gateway = RemoteAgent()
+    runtime, clock, value = waiting_task(domain, gateway)
+
+    def delete_call() -> None:
+        with sessions.begin() as session:
+            stored(session, ExternalAgentInvocation, value.id).deleted_at = clock.value.replace(tzinfo=None)
+
+    gateway.hooks["get"] = delete_call
+    gateway.state = "completed"
+    clock.value += timedelta(seconds=6)
+    command(domain, runtime, clock, "poll")
+    with pytest.raises(RuntimeError, match="expired"):
+        runtime.result(scope, value.id)
+    assert repo.get(scope, value.id).outputs is None
+    assert len(gateway.sent) == gateway.reads == 1
+
+
+def test_active_io_timeout_is_clamped_to_remaining_node_budget(domain: Domain) -> None:
+    gateway = RemoteAgent()
+    runtime, clock, _ = waiting_task(domain, gateway)
+    clock.value += timedelta(seconds=55)
+    command(domain, runtime, clock, "poll")
+    assert gateway.timeouts[-1] == ("get", 5.0)
+    assert len(gateway.sent) == gateway.reads == 1
+
+
+def test_cancel_io_uses_remaining_confirmation_window_after_node_deadline(domain: Domain) -> None:
+    repo, _, scope, *_ = domain
+    gateway = RemoteAgent()
+    runtime, clock, value = waiting_task(
+        domain, gateway, policy=WaitPolicy(wait_seconds=60, on_timeout=TimeoutPolicy.REQUEST_CANCELLATION)
+    )
+    clock.value += timedelta(seconds=60)
+    command(domain, runtime, clock, "deadline")
+    clock.value += timedelta(seconds=25)
+    gateway.state = "canceled"
+    command(domain, runtime, clock, "cancel")
+    assert gateway.timeouts[-1] == ("cancel", 5.0)
+    assert repo.get(scope, value.id).cancel_state == CancelState.CONFIRMED
+    assert len(gateway.sent) == 1
+
+
+def test_query_database_delay_consumes_budget_before_any_network_read(domain: Domain) -> None:
+    """Slow local connection lookup is bounded by the same absolute deadline."""
+    from sqlalchemy import event
+
+    repo, sessions, scope, *_ = domain
+    gateway = RemoteAgent()
+    runtime, clock, value = waiting_task(domain, gateway)
+    clock.value += timedelta(seconds=6)
+    advanced = False
+
+    def delay_lookup(
+        _connection: object, _cursor: object, statement: str, _params: object, _context: object, _many: bool
+    ) -> None:
+        nonlocal advanced
+        if "external_agent_connection_revisions.agent_card" in statement and not advanced:
+            advanced = True
+            clock.value += timedelta(seconds=60)
+
+    engine = bound_engine(sessions)
+    event.listen(engine, "before_cursor_execute", delay_lookup)
+    try:
+        command(domain, runtime, clock, "poll")
+    finally:
+        event.remove(engine, "before_cursor_execute", delay_lookup)
+    assert repo.get(scope, value.id).error_code == "external_wait_timeout"
+    assert gateway.reads == 0
+    assert len(gateway.sent) == 1
+
+
+def test_stopped_workflow_queued_dispatch_cannot_enter_gateway(workflow_domain: WorkflowDomain) -> None:
+    domain, identity, *_ = workflow_domain
+    repo, sessions, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(scope, draft(agent, identity=identity, job={}))
+    with sessions.begin() as session:
+        stored(session, WorkflowRun, identity.workflow_run_id).status = WorkflowExecutionStatus.STOPPED
+    command(domain, runtime, clock, "dispatch")
+    assert repo.get(scope, value.id).local_state == LocalState.STOPPED
+    assert not gateway.sent
+
+
+def test_admitted_test_result_expires_at_fixed_tracking_cutoff(domain: Domain) -> None:
+    _, _, scope, agent, _ = domain
+    gateway = RemoteAgent(direct=True)
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(scope, draft(agent))
+    command(domain, runtime, clock, "dispatch")
+    clock.value += timedelta(hours=24)
+    with pytest.raises(RuntimeError, match="expired"):
+        runtime.result(scope, value.id)
+    assert len(gateway.sent) == 1
+
+
+class SQLContextPort:
+    """Adapt the repository's overloaded get(scope) to ContextStore's keyword contract.
+
+    Every operation delegates to the real SQL adapter; there is no in-memory
+    reservation or fabricated result. The separate role gives the context port
+    its declared get(key=...) signature without changing production code.
+    """
+
+    def __init__(self, repository: ExternalRuntimeRepository) -> None:
+        self._repository = repository
+
+    def get(self, key: ContextKey) -> ContextSlot | None:
+        return self._repository.get(key)
+
+    def reserve(self, key: ContextKey, invocation_id: str) -> ContextSlot:
+        return self._repository.reserve(key, invocation_id)
+
+    def settle(
+        self, key: ContextKey, invocation_id: str, *, context_id: str | None, remote_terminal: bool, unresolved: bool
+    ) -> bool:
+        return self._repository.settle(
+            key, invocation_id, context_id=context_id, remote_terminal=remote_terminal, unresolved=unresolved
+        )
+
+
+def persist_caller(domain: Domain, identity: ExecutionIdentity, workflow_id: str) -> None:
+    """Materialize the exact caller row required before a real dispatch permit."""
+    _, sessions, scope, _, _ = domain
+    with sessions.begin() as session:
+        session.add(
+            WorkflowNodeExecutionModel(
+                id=identity.execution_id,
+                tenant_id=scope.tenant_id,
+                app_id=required_id(scope.app_id),
+                workflow_id=workflow_id,
+                workflow_run_id=identity.workflow_run_id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                index=1,
+                node_id=identity.node_id,
+                node_type="agent",
+                title="External",
+                status=WorkflowNodeExecutionStatus.RUNNING,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=scope.initiator_id,
+            )
+        )
+
+
+def test_missing_caller_requeues_only_preparation_then_sends_once_after_persistence(
+    workflow_domain: WorkflowDomain,
+) -> None:
+    """The async history-persistence gap cannot dispatch before its owner exists."""
+    domain, identity, workflow_id, _ = workflow_domain
+    repo, sessions, scope, agent, _ = domain
+    with sessions.begin() as session:
+        session.execute(
+            delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == identity.execution_id)
+        )
+    gateway = RemoteAgent(direct=True)
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(
+        scope, draft(agent, identity=identity, job={}, declared_outputs=(OutputField(name="text", kind="string"),))
+    )
+    command(domain, runtime, clock, "dispatch")
+    assert not gateway.sent
+    assert repo.get(scope, value.id).submission_state == SubmissionState.PREPARED
+    persist_caller(domain, identity, workflow_id)
+    clock.value += timedelta(seconds=1)
+    command(domain, runtime, clock, "dispatch")
+    assert len(gateway.sent) == 1
+    assert runtime.result(scope, value.id).outputs == {"text": "result"}
+
+
+@pytest.mark.parametrize("retired", [False, True])
+def test_management_change_before_production_permit_rejects_dispatch(
+    workflow_domain: WorkflowDomain, retired: bool
+) -> None:
+    """Disable/retirement linearizes before permit acquisition and cannot issue Send."""
+    domain, identity, *_ = workflow_domain
+    repo, sessions, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(scope, draft(agent, identity=identity, job={}))
+    with sessions.begin() as session:
+        head = stored(session, ExternalAgentHead, agent)
+        if retired:
+            head.deleted_at = NOW.replace(tzinfo=None)
+        else:
+            head.enabled = False
+    command(domain, runtime, clock, "dispatch")
+    failed = repo.get(scope, value.id)
+    assert failed.error_code == ("agent_not_found" if retired else "agent_disabled")
+    assert failed.submission_state == SubmissionState.REJECTED
+    assert not gateway.sent
+
+
+def test_worker_loss_before_send_marker_is_reconciled_without_replaying_preparation(domain: Domain) -> None:
+    """A lost preparation lease is not mistaken for an entered/unknown business POST."""
+    repo, sessions, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    clock = Clock()
+
+    def lost_worker(_value: Invocation) -> None:
+        raise SystemExit("Controlled worker loss before POST.")
+
+    runtime = ExternalInvocationService(
+        store=repo,
+        connections=repo,
+        gateway=gateway,
+        inputs=Inputs(lost_worker),
+        outputs=Outputs(),
+        observer=Observer(),
+        wake=Wake(),
+        clock=clock,
+        ids=Ids(),
+        settings=RuntimeSettings(),
+    )
+    value = runtime.start(scope, draft(agent))
+    with pytest.raises(SystemExit, match="Controlled worker loss"):
+        command(domain, runtime, clock, "dispatch")
+    with sessions() as session:
+        leased = session.scalars(
+            select(ExternalAgentCommand).where(
+                ExternalAgentCommand.invocation_id == value.id, ExternalAgentCommand.kind == "dispatch"
+            )
+        ).one()
+        assert leased.state == "leased"
+        identifier = leased.id
+    clock.value += timedelta(seconds=121)
+    assert runtime.reconcile(scope) == 1
+    failed = repo.get(scope, value.id)
+    assert failed.error_code == "preparation_interrupted"
+    assert failed.submission_state == SubmissionState.REJECTED
+    assert failed.dispatched_at is None
+    runtime.run_command(scope, identifier)
+    assert not gateway.sent
+
+
+def test_deleted_invocation_command_finishes_without_touching_gateway(domain: Domain) -> None:
+    repo, sessions, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(scope, draft(agent))
+    with sessions.begin() as session:
+        stored(session, ExternalAgentInvocation, value.id).deleted_at = NOW.replace(tzinfo=None)
+    command(domain, runtime, clock, "dispatch")
+    assert not gateway.sent
+    with pytest.raises(RuntimeError, match="expired"):
+        runtime.result(scope, value.id)
+
+
+@pytest.mark.parametrize(
+    ("state", "direct"),
+    [("completed", False), ("canceled", False), ("failed", False), ("rejected", False), ("completed", True)],
+)
+@pytest.mark.parametrize("frame", ["root", "loop/outer/iteration-0"])
+def test_context_service_settles_only_its_full_owned_reservation(
+    workflow_domain: WorkflowDomain, state: str, direct: bool, frame: str
+) -> None:
+    """Exercise the ContextStore contract with SQL permits and typed gateway observations."""
+    from services.external_agents.context_service import ExternalContextService
+
+    domain, identity, workflow_id, _ = workflow_domain
+    repo, sessions, scope, agent, revision = domain
+    with sessions.begin() as session:
+        conversation = Conversation(
+            app_id=required_id(scope.app_id),
+            mode=AppMode.ADVANCED_CHAT,
+            name="Context test",
+            from_source=ConversationFromSource.CONSOLE,
+            from_account_id=scope.initiator_id,
+        )
+        session.add(conversation)
+    identity = replace(identity, conversation_id=conversation.id, binding_epoch="epoch", frame_id=frame)
+    value = repo.create(scope, draft(agent, identity=identity, job={}), now=NOW)
+    contexts = ExternalContextService(SQLContextPort(repo))
+    with pytest.raises(RuntimeError, match="admitted connection"):
+        contexts.reserve(value)
+    permit = present(repo.acquire_dispatch(scope, value.id, now=NOW))
+    held = contexts.reserve(permit)
+    assert held is not None
+    assert held.context_id is None
+    assert held.key.frame_scope == ("" if frame == "root" else frame)
+    connection = repo.read(scope, agent, revision)
+    gateway = RemoteAgent()
+    receipt = gateway.send(connection, SendRequest(message_id=permit.message_id, parts=permit.parts), streaming=False)
+    assert contexts.observe(permit, receipt)
+    with pytest.raises(RuntimeError, match="conflicts"):
+        contexts.observe(replace(permit, carried_context_id="different-context"), receipt)
+    gateway.state = state
+    gateway.direct = direct
+    terminal = gateway.get_task(connection, "task")
+    assert contexts.observe(permit, terminal)
+    with sessions() as session:
+        settled = session.scalars(select(ExternalAgentContextSlot)).one()
+        assert settled.reserved_invocation_id is None
+        assert settled.server_context_id == "context"
+        assert not settled.unresolved
+    next_identity = replace(identity, execution_id=uid())
+    persist_caller(domain, next_identity, workflow_id)
+    next_value = repo.create(scope, draft(agent, identity=next_identity, job={}), now=NOW)
+    next_permit = present(repo.acquire_dispatch(scope, next_value.id, now=NOW))
+    assert next_permit.carried_context_id == "context"
+    assert not contexts.observe(permit, terminal)
+    with sessions() as session:
+        assert session.scalars(select(ExternalAgentContextSlot.reserved_invocation_id)).one() == next_value.id
+    assert len(gateway.sent) == 1
+
+
+def test_debug_context_and_direct_message_do_not_create_production_affinity(domain: Domain) -> None:
+    from services.external_agents.context_service import ExternalContextService
+
+    repo, sessions, scope, agent, _ = domain
+    value = repo.create(scope, draft(agent), now=NOW)
+    contexts = ExternalContextService(SQLContextPort(repo))
+    assert contexts.reserve(value) is None
+    gateway = RemoteAgent(direct=True)
+    receipt = gateway.send(
+        repo.read(scope, agent, required_id(value.connection_revision_id)),
+        SendRequest(message_id=value.message_id, parts=value.parts),
+        streaming=False,
+    )
+    assert contexts.observe(value, receipt)
+    with sessions() as session:
+        assert not session.scalars(select(ExternalAgentContextSlot)).all()
+
+
+def test_workflow_runtime_rejects_changed_revision_without_replaying_or_consuming(domain: Domain) -> None:
+    from services.external_agents.workflow_runtime import ExternalWorkflowRuntime
+
+    repo, sessions, scope, agent, _ = domain
+    gateway = RemoteAgent(direct=True)
+    service_runtime, clock, *_ = service(domain, gateway)
+    workflow = ExternalWorkflowRuntime(service_runtime, repo)
+    request = draft(
+        agent,
+        identity=ExecutionIdentity(execution_id=uid(), node_id="node", frame_id="root", workflow_revision="original"),
+        declared_outputs=(OutputField(name="text", kind="string"),),
+    )
+    first = workflow.enter(scope, request)
+    with pytest.raises(RuntimeError, match="graph has changed"):
+        workflow.enter(scope, replace(request, identity=replace(request.identity, workflow_revision="modified")))
+    assert workflow.enter(scope, request) == first
+    command(domain, service_runtime, clock, "dispatch")
+    assert workflow.enter(scope, request).outputs == {"text": "result"}
+    assert len(gateway.sent) == 1
+    with sessions() as session:
+        assert len(session.scalars(select(ExternalAgentInvocation)).all()) == 1
+
+
+@pytest.mark.parametrize(
+    ("declaration", "message"),
+    [
+        ({"name": "x", "type": "string", "check": {"enabled": True}}, "model-based"),
+        ({"name": "x", "type": "file", "file": {"format": "pdf"}}, "file format"),
+        ({"name": "x", "type": "array", "array_item": {"type": "array"}}, "array\\[array\\]"),
+        ({"name": "x", "type": "string", "children": [{"name": "child", "type": "string"}]}, "Only object"),
+        ({"name": "x", "type": "string", "array_item": {"type": "string"}}, "Only array"),
+        ({"name": "x", "type": "string", "failure_strategy": {"on_failure": "continue"}}, "configured node"),
+        ({"name": "x", "type": "string", "failure_strategy": {"retry": {"enabled": True}}}, "cannot retry"),
+    ],
+)
+def test_output_declarations_reject_unsupported_execution_policy_before_dispatch(
+    declaration: JsonObject, message: str
+) -> None:
+    """Editor declarations cannot smuggle model calls or business retries through a node job."""
+    from services.external_agents.workflow_runtime import ExternalOutputDeclaration
+
+    with pytest.raises(ValueError, match=message):
+        ExternalOutputDeclaration.model_validate(declaration).field()
+
+
+@pytest.mark.parametrize("bound", [False, True])
+def test_publish_requires_both_a_binding_and_nonempty_task(bound: bool) -> None:
+    from services.external_agents.workflow_runtime import ExternalGraphBinding
+
+    binding = ExternalGraphBinding(agent_id="agent", binding_epoch="epoch") if bound else ExternalGraphBinding()
+    job = ExternalNodeJob(agent_task="   ")
+    with pytest.raises(ValueError, match="Enter a task" if bound else "Select an external"):
+        job.validate_for_publish(binding)
+
+
+def test_cancel_response_lost_past_confirmation_window_never_reposts_cancel_or_task(domain: Domain) -> None:
+    repo, sessions, scope, *_ = domain
+    gateway = RemoteAgent(
+        errors={"cancel": GatewayError("network_failure", "Cancellation response unavailable.", retryable=True)}
+    )
+    runtime, clock, value = waiting_task(domain, gateway)
+    runtime.cancel(scope, value.id)
+
+    def network_window_elapsed() -> None:
+        clock.value += timedelta(seconds=31)
+
+    gateway.hooks["cancel"] = network_window_elapsed
+    command(domain, runtime, clock, "cancel")
+    ended = repo.get(scope, value.id)
+    assert ended.cancel_state == CancelState.UNCONFIRMED
+    assert ended.error_code == "cancellation_unconfirmed"
+    assert len(gateway.sent) == gateway.cancels == 1
+    with sessions() as session:
+        assert len(session.scalars(select(ExternalAgentInvocation)).all()) == 1
+
+
+def test_timed_out_get_completion_updates_history_and_makes_queued_background_read_unnecessary(domain: Domain) -> None:
+    """Deadline CAS races preserve terminal history but cannot refill downstream outputs."""
+    repo, _, scope, *_ = domain
+    gateway = RemoteAgent()
+    runtime, clock, value = waiting_task(domain, gateway)
+
+    def deadline_fires_during_get() -> None:
+        clock.value += timedelta(seconds=60)
+        command(domain, runtime, clock, "deadline")
+
+    gateway.hooks["get"] = deadline_fires_during_get
+    gateway.state = "completed"
+    clock.value += timedelta(seconds=6)
+    command(domain, runtime, clock, "poll")
+    result = repo.get(scope, value.id)
+    assert result.local_state == LocalState.ENDED
+    assert result.outputs is None
+    assert result.remote_state == "completed"
+    clock.value += timedelta(seconds=61)
+    command(domain, runtime, clock, "poll")
+    assert gateway.reads == len(gateway.sent) == 1
+
+
+def test_background_query_deadline_cannot_be_extended_by_queued_command(domain: Domain) -> None:
+    repo, _, scope, *_ = domain
+    gateway = RemoteAgent()
+    runtime, clock, value = waiting_task(domain, gateway)
+    clock.value += timedelta(seconds=60)
+    command(domain, runtime, clock, "deadline")
+    ended = repo.get(scope, value.id)
+    assert ended.tracking_deadline is not None
+    clock.value = ended.tracking_deadline
+    command(domain, runtime, clock, "poll")
+    assert gateway.reads == 0
+    assert len(gateway.sent) == 1
+    assert repo.get(scope, value.id).tracking_deadline == ended.tracking_deadline
+
+
+def test_task_id_conflict_from_gateway_cannot_normalize_or_succeed_old_task(domain: Domain) -> None:
+    repo, _, scope, *_ = domain
+    gateway = RemoteAgent()
+    runtime, clock, value = waiting_task(domain, gateway)
+    gateway.task_id, gateway.state = "other-task", "completed"
+    clock.value += timedelta(seconds=6)
+    command(domain, runtime, clock, "poll")
+    failed = repo.get(scope, value.id)
+    assert failed.error_code == "response_correlation_error"
+    assert failed.local_state == LocalState.FAILED
+    assert failed.remote_task_id == "task"
+    assert failed.outputs is None
+    assert gateway.reads == len(gateway.sent) == 1
+
+
+def test_repeated_user_cancel_is_idempotent_and_stale_cancel_has_bounded_cas_attempts(domain: Domain) -> None:
+    from services.external_agents.runtime_contracts import RuntimeConflictError
+
+    repo, _, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(domain, gateway)
+    prepared = runtime.start(scope, draft(agent))
+    command(domain, runtime, clock, "dispatch")
+    with pytest.raises(RuntimeConflictError):
+        runtime._cancel_exact(prepared, attempts=1)
+    requested = runtime.cancel(scope, prepared.id)
+    assert runtime.cancel(scope, prepared.id) == requested
+    assert repo.get(scope, prepared.id).cancel_trigger == "user"
+    assert gateway.cancels == 0
+    assert len(gateway.sent) == 1
+
+
+@pytest.mark.parametrize("disabled", [False, True])
+def test_confirmed_retry_rechecks_admission_and_persistent_logical_budget(domain: Domain, disabled: bool) -> None:
+    """A retry authorized earlier cannot bypass a later deployment stop or exhausted budget."""
+    repo, sessions, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(domain, gateway)
+    value = runtime.start(
+        scope,
+        draft(
+            agent,
+            policy=WaitPolicy(wait_seconds=60, on_timeout=TimeoutPolicy.CANCEL_AND_RETRY),
+            logical_deadline=NOW + timedelta(seconds=70),
+        ),
+    )
+    command(domain, runtime, clock, "dispatch")
+    clock.value += timedelta(seconds=60)
+    command(domain, runtime, clock, "deadline")
+    gateway.state = "canceled"
+    command(domain, runtime, clock, "cancel")
+    assert repo.get(scope, value.id).local_state == LocalState.RETRY_PENDING
+    if disabled:
+        runtime, other_clock, *_ = service(domain, gateway, settings=RuntimeSettings(admission_enabled=False))
+        other_clock.value = clock.value + timedelta(seconds=5)
+        clock = other_clock
+    else:
+        clock.value = NOW + timedelta(seconds=70)
+    command(domain, runtime, clock, "retry")
+    assert repo.get(scope, value.id).local_state != LocalState.RETRY_PENDING
+    assert len(gateway.sent) == 1
+    with sessions() as session:
+        assert len(session.scalars(select(ExternalAgentInvocation)).all()) == 1
+
+
+def test_live_due_poll_precedes_background_tracking_without_starving_next_fixed_due_time(domain: Domain) -> None:
+    """Real DB lease admission yields to active work without resending either task."""
+    repo, _, scope, agent, _ = domain
+    gateway = RemoteAgent()
+    runtime, clock, background = waiting_task(domain, gateway)
+    clock.value += timedelta(seconds=60)
+    command(domain, runtime, clock, "deadline")
+    active = runtime.start(scope, draft(agent, policy=WaitPolicy(wait_seconds=600)))
+    command(domain, runtime, clock, "dispatch")
+    clock.value += timedelta(seconds=61)
+    with domain[1]() as session:
+        polls = session.scalars(
+            select(ExternalAgentCommand).where(
+                ExternalAgentCommand.kind == "poll", ExternalAgentCommand.state == "ready"
+            )
+        ).all()
+        background_id = next(row.id for row in polls if row.invocation_id == background.id)
+        active_id = next(row.id for row in polls if row.invocation_id == active.id)
+    runtime.run_command(scope, background_id)
+    assert gateway.reads == 0
+    runtime.run_command(scope, active_id)
+    assert gateway.reads == 1
+    runtime.run_command(scope, background_id)
+    assert gateway.reads == 2
+    assert len(gateway.sent) == 2
+    assert repo.get(scope, background.id).outputs is None
+
+
+def test_real_sql_query_leases_enforce_workspace_and_endpoint_caps(domain: Domain) -> None:
+    """Independent verified endpoints share the workspace ceiling, not each other's endpoint cap."""
+    _, sessions, scope, agent, revision = domain
+    settings = RuntimeSettings(workspace_query_concurrency=2, endpoint_query_concurrency=1)
+    repo = ExternalRuntimeRepository(sessions, settings)
+    configured = (repo, sessions, scope, agent, revision)
+    gateway = RemoteAgent()
+    runtime, clock, *_ = service(configured, gateway, settings=settings)
+    identifiers: list[str] = []
+    for _ in range(2):
+        value = runtime.start(scope, draft(agent))
+        command(configured, runtime, clock, "dispatch")
+        identifiers.append(value.id)
+    for _ in range(2):
+        _replace_connection(configured, streaming=False)
+        value = runtime.start(scope, draft(agent))
+        command(configured, runtime, clock, "dispatch")
+        identifiers.append(value.id)
+    clock.value += timedelta(seconds=6)
+    with sessions() as session:
+        by_invocation = {
+            row.invocation_id: row.id
+            for row in session.scalars(
+                select(ExternalAgentCommand).where(
+                    ExternalAgentCommand.kind == "poll", ExternalAgentCommand.state == "ready"
+                )
+            )
+        }
+    first = present(repo.lease_command(scope, by_invocation[identifiers[0]], now=clock.value, lease_seconds=120))
+    assert repo.lease_command(scope, by_invocation[identifiers[1]], now=clock.value, lease_seconds=120) is None
+    second = present(repo.lease_command(scope, by_invocation[identifiers[2]], now=clock.value, lease_seconds=120))
+    assert repo.lease_command(scope, by_invocation[identifiers[3]], now=clock.value, lease_seconds=120) is None
+    repo.complete_command(first)
+    third = present(repo.lease_command(scope, by_invocation[identifiers[3]], now=clock.value, lease_seconds=120))
+    repo.complete_command(second)
+    repo.complete_command(third)
+    assert gateway.reads == 0
+    assert len(gateway.sent) == 4

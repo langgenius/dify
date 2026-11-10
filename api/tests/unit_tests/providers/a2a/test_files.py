@@ -16,14 +16,18 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_storage import Storage
 from extensions.storage.opendal_storage import OpenDALStorage
+from machinery.context import RequestContext
 from models import UploadFile
 from models.enums import CreatorUserRole
 from models.external_agent import ExternalAgentContextSlot, ExternalAgentFileLease, ExternalAgentInvocation
 from models.external_agent_trace import ExternalAgentDataTombstone
 from models.model import App, AppMode
+from models.tools import ToolFile
 from providers.a2a.files import DifyFileAdapter
+from providers.a2a.test_files import ExternalTestFileUpload
 from providers.a2a.transport import BoundedTransport
 from repositories.external_agents.file_lifecycle_repository import ExternalFileLifecycleRepository
+from services.external_agents.file_profile import FileLimits
 from services.external_agents.io_contracts import (
     ExternalIOError,
     FileBlob,
@@ -84,8 +88,13 @@ class Lifecycle:
 
 
 class FileEgress:
-    def __init__(self, payload: bytes) -> None:
+    def __init__(
+        self, payload: bytes, *, head_status: int = 200, get_status: int = 200, unavailable: bool = False
+    ) -> None:
         self.payload = payload
+        self.head_status = head_status
+        self.get_status = get_status
+        self.unavailable = unavailable
         self.requests = []
 
     def request(self, method: str, url: str, **kwargs: object) -> httpx.Response:
@@ -95,8 +104,11 @@ class FileEgress:
         assert "Authorization" not in headers
         assert kwargs["max_retries"] == 0
         assert kwargs["follow_redirects"] is False
+        assert kwargs["ssl_verify"] is True
+        if self.unavailable:
+            raise httpx.ConnectError("controlled network failure")
         return httpx.Response(
-            200,
+            self.head_status if method == "HEAD" else self.get_status,
             content=b"" if method == "HEAD" else self.payload,
             headers={"content-type": "application/pdf", "content-length": str(len(self.payload))},
         )
@@ -108,6 +120,9 @@ def file_domain(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[Fi
     table = UploadFile.__table__
     assert isinstance(table, Table)
     table.create(engine)
+    tool_table = ToolFile.__table__
+    assert isinstance(tool_table, Table)
+    tool_table.create(engine)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     storage = Storage()
     storage.storage_runner = OpenDALStorage(scheme="fs", root=str(tmp_path))
@@ -209,6 +224,228 @@ def test_raw_size_failure_happens_before_upload(file_domain: FileDomain) -> None
         )
     with sessions() as session:
         assert list(session.scalars(select(UploadFile))) == []
+
+
+@pytest.mark.parametrize(
+    ("part", "budget", "code"),
+    [
+        ({"raw": "YQ==", "filename": "x.txt"}, None, "invalid_file_part"),
+        ({"raw": "YQ==", "mediaType": "text/plain"}, None, "invalid_file_part"),
+        ({"raw": "YQ==", "filename": "x.txt", "mediaType": "text/plain"}, -1, "file_total_too_large"),
+        ({"raw": "!!!!", "filename": "x.txt", "mediaType": "text/plain"}, None, "invalid_file_part"),
+        ({"filename": "x.txt", "mediaType": "text/plain"}, None, "invalid_file_part"),
+        (
+            {"raw": "YQ==", "url": "https://files.example/x", "filename": "x.txt", "mediaType": "text/plain"},
+            None,
+            "invalid_file_part",
+        ),
+        ({"raw": "YWJj", "filename": "x.txt", "mediaType": "text/plain"}, 2, "file_too_large"),
+    ],
+)
+def test_invalid_file_receipt_never_creates_a_durable_upload(
+    file_domain: FileDomain, part: JsonObject, budget: int | None, code: str
+) -> None:
+    """Malformed peer values cannot become files or consume another output's budget."""
+    adapter, _, _, sessions, egress = file_domain
+    with pytest.raises(ExternalIOError) as error:
+        adapter.materialize(scope(), part, artifact_id="invalid", part_index=0, max_bytes=budget)
+    assert error.value.code == code
+    assert egress.requests == []
+    with sessions() as session:
+        assert tuple(session.scalars(select(UploadFile))) == ()
+
+
+def test_reusing_a_stored_file_still_checks_the_remaining_aggregate_budget(file_domain: FileDomain) -> None:
+    """Idempotent replay must not let an existing larger file bypass aggregate limits."""
+    adapter, _, _, sessions, _ = file_domain
+    part: JsonObject = {"raw": "YWJj", "filename": "x.txt", "mediaType": "text/plain"}
+    stored = adapter.materialize(scope(), part, artifact_id="cached", part_index=0)
+    with pytest.raises(ExternalIOError) as error:
+        adapter.materialize(scope(), part, artifact_id="cached", part_index=0, max_bytes=2)
+    assert error.value.code == "file_total_too_large"
+    assert (
+        adapter.store(
+            scope(),
+            FileBlob(filename="x.txt", media_type="text/plain", data=b"abc"),
+            artifact_id="cached",
+            part_index=0,
+        )
+        == stored
+    )
+    with sessions() as session:
+        assert len(tuple(session.scalars(select(UploadFile)))) == 1
+
+
+@pytest.mark.parametrize("kind", ["tool", "datasource"])
+def test_tool_generated_file_uses_its_owned_record_and_bytes(file_domain: FileDomain, kind: str) -> None:
+    """Datasource fallback may read a ToolFile, never a different principal's bytes."""
+    adapter, _, _, sessions, _ = file_domain
+    key = "generated/report.txt"
+    with sessions.begin() as session:
+        tool = ToolFile(
+            user_id="actor-a",
+            tenant_id="tenant-a",
+            conversation_id=None,
+            file_key=key,
+            mimetype="text/plain",
+            name="report.txt",
+            size=3,
+        )
+        session.add(tool)
+        session.flush()
+        identifier = tool.id
+    adapter._storage.save(key, b"abc")
+    reference = FileReference(file_id=identifier, kind="tool" if kind == "tool" else "datasource")
+    assert adapter.read_authorized(scope(), reference, max_bytes=3).data == b"abc"
+    with pytest.raises(ExternalIOError) as error:
+        adapter.read_authorized(scope(actor="actor-b"), reference, max_bytes=3)
+    assert error.value.code == "file_not_available"
+
+
+def test_storage_growth_after_authorization_does_not_escape_the_byte_cap(file_domain: FileDomain) -> None:
+    """A correct DB size does not authorize a larger changed storage object."""
+    adapter, files, _, sessions, _ = file_domain
+    uploaded = files.upload_file_for_actor(
+        actor=FileUploadActor(id="actor-a", creator_role=CreatorUserRole.END_USER),
+        resource_tenant_id="tenant-a",
+        filename="x.txt",
+        content=b"a",
+        mimetype="text/plain",
+    )
+    with sessions() as session:
+        row = session.get(UploadFile, uploaded.id)
+        assert row is not None
+        key = row.key
+    with pytest.raises(ExternalIOError) as metadata_error:
+        adapter.read_authorized(scope(), FileReference(file_id=uploaded.id), max_bytes=0)
+    assert metadata_error.value.code == "file_too_large"
+    adapter._storage.save(key, b"changed")
+    with pytest.raises(ExternalIOError) as storage_error:
+        adapter.read_authorized(scope(), FileReference(file_id=uploaded.id), max_bytes=1)
+    assert storage_error.value.code == "file_too_large"
+
+
+@pytest.mark.parametrize(
+    ("head", "get", "unavailable", "code", "methods"),
+    [
+        (401, 200, False, "file_access_denied", ["HEAD"]),
+        (403, 200, False, "file_access_denied", ["HEAD"]),
+        (302, 200, False, "file_redirect_rejected", ["HEAD"]),
+        (404, 200, False, "file_fetch_failed", ["HEAD"]),
+        (200, 403, False, "file_fetch_failed", ["HEAD", "GET"]),
+        (200, 200, True, "file_fetch_failed", ["HEAD"]),
+    ],
+)
+def test_remote_output_failure_never_becomes_a_usable_file(
+    file_domain: FileDomain, head: int, get: int, unavailable: bool, code: str, methods: list[str]
+) -> None:
+    """No redirect, remote auth challenge or failed network read can create an output."""
+    adapter, _, _, sessions, egress = file_domain
+    egress.head_status, egress.get_status, egress.unavailable = head, get, unavailable
+    with pytest.raises(ExternalIOError) as error:
+        adapter.materialize(
+            scope(),
+            {"url": "https://files.example/report", "filename": "report.pdf", "mediaType": "application/pdf"},
+            artifact_id="remote",
+            part_index=0,
+        )
+    assert error.value.code == code
+    assert [item[0] for item in egress.requests] == methods
+    with sessions() as session:
+        assert tuple(session.scalars(select(UploadFile))) == ()
+
+
+@pytest.mark.parametrize("status", [405, 501])
+def test_remote_file_can_use_a_bounded_get_when_head_is_not_supported(file_domain: FileDomain, status: int) -> None:
+    """HEAD support is optional; a successful unauthenticated bounded GET remains valid."""
+    adapter, _, _, _, egress = file_domain
+    egress.head_status = status
+    result = adapter.materialize(
+        scope(),
+        {"url": "https://files.example/report", "filename": "report.pdf", "mediaType": "application/pdf"},
+        artifact_id="fallback",
+        part_index=0,
+    )
+    assert result.size == len(egress.payload)
+    assert [item[0] for item in egress.requests] == ["HEAD", "GET"]
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://files.example/report#fragment",
+        "https://files.example/report?x=\rheader",
+        "https://files.example/report?x=\nheader",
+    ],
+)
+def test_invalid_output_url_is_rejected_before_network_io(file_domain: FileDomain, url: str) -> None:
+    """Fragments and control characters cannot turn a file URL into another request."""
+    adapter, _, _, _, egress = file_domain
+    with pytest.raises(ExternalIOError) as error:
+        adapter.materialize(
+            scope(),
+            {"url": url, "filename": "x.pdf", "mediaType": "application/pdf"},
+            artifact_id="bad-url",
+            part_index=0,
+        )
+    assert error.value.code == "invalid_file_url"
+    assert egress.requests == []
+
+
+def test_overview_upload_plan_save_fetch_and_remove_use_actual_owned_files(
+    file_domain: FileDomain, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Temporary upload adapters preserve exact owner, reserved ID and byte values."""
+    adapter, files, _, sessions, egress = file_domain
+    monkeypatch.setattr("providers.a2a.test_files.storage", adapter._storage)
+    uploads = ExternalTestFileUpload(files=files, remote=BoundedTransport(egress), limits=FileLimits())
+    context = RequestContext("upload", None, "actor-a", "tenant-a")
+    blob = FileBlob(filename="input.txt", media_type="text/plain", data=b"owned bytes")
+    planned = uploads.plan(context, blob)
+    assert uploads.upload(context, blob, reserved_file_id=planned.file_id) == planned.file_id
+    with sessions() as session:
+        row = session.get(UploadFile, planned.file_id)
+        assert row is not None
+        assert (row.created_by, row.tenant_id, row.key) == ("actor-a", "tenant-a", planned.storage_key)
+    fetched = uploads.fetch(
+        context,
+        url="https://files.example/report?signature=opaque",
+        filename="remote.pdf",
+        media_type="application/pdf; version=1",
+    )
+    assert fetched == FileBlob(filename="remote.pdf", media_type="application/pdf", data=egress.payload)
+    assert [item[0] for item in egress.requests] == ["GET"]
+    uploads.remove(planned)
+    assert not adapter._storage.exists(planned.storage_key)
+    with sessions() as session:
+        assert session.get(UploadFile, planned.file_id) is None
+
+
+@pytest.mark.parametrize(
+    ("status", "unavailable", "url", "code"),
+    [
+        (403, False, "https://files.example/report", "file_fetch_failed"),
+        (200, True, "https://files.example/report", "file_fetch_failed"),
+        (200, False, "https://files.example/report#fragment", "invalid_file_url"),
+    ],
+)
+def test_paste_link_failure_does_not_create_or_forward_a_credential(
+    file_domain: FileDomain, status: int, unavailable: bool, url: str, code: str
+) -> None:
+    """Paste-link is a fetch-only capability; failed links never create upload rows."""
+    _, files, _, sessions, egress = file_domain
+    egress.get_status, egress.unavailable = status, unavailable
+    uploads = ExternalTestFileUpload(files=files, remote=BoundedTransport(egress), limits=FileLimits())
+    with pytest.raises(ExternalIOError) as error:
+        uploads.fetch(
+            RequestContext("paste", None, "actor-a", "tenant-a"),
+            url=url,
+            filename="x.pdf",
+            media_type="application/pdf",
+        )
+    assert error.value.code == code
+    with sessions() as session:
+        assert tuple(session.scalars(select(UploadFile))) == ()
 
 
 def test_crash_after_upload_reuses_the_previously_reserved_storage_and_db_identity(file_domain: FileDomain) -> None:
@@ -535,3 +772,139 @@ def test_overview_input_requires_its_exact_live_bound_lease_but_survives_page_le
         }
     with pytest.raises(ExternalIOError, match="source"):
         adapter.read_authorized(scope, FileReference(file_id=uploaded.id), max_bytes=1024)
+
+
+def test_failed_output_binding_compensates_its_own_fresh_upload(
+    file_domain: FileDomain, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A rejected lifecycle commit deletes its newly owned copy, never publishes it."""
+    adapter, _, lifecycle, sessions, _ = file_domain
+
+    def reject(_scope: FileScope, *, artifact_id: str, part_index: int, file: StoredFile) -> StoredFile:
+        assert artifact_id == "rejected"
+        assert part_index == 0
+        assert file.size == 3
+        raise ExternalIOError("file_scope_revoked", "The owner was revoked before binding.")
+
+    monkeypatch.setattr(lifecycle, "record_stored", reject)
+    with pytest.raises(ExternalIOError) as error:
+        adapter.store(
+            scope(),
+            FileBlob(filename="x.txt", media_type="text/plain", data=b"abc"),
+            artifact_id="rejected",
+            part_index=0,
+        )
+    assert error.value.code == "file_scope_revoked"
+    assert lifecycle.allowed is False
+    with sessions() as session:
+        assert tuple(session.scalars(select(UploadFile))) == ()
+    assert not adapter._storage.exists(lifecycle.plans[("invocation-a", "rejected", 0)].storage_key)
+
+
+def test_unexpected_storage_binding_failure_is_safe_and_leaves_no_upload(
+    file_domain: FileDomain, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Internal adapter errors expose no storage details and retain cleanup ownership."""
+    adapter, _, lifecycle, sessions, _ = file_domain
+
+    def reject(_scope: FileScope, *, artifact_id: str, part_index: int, file: StoredFile) -> StoredFile:
+        assert artifact_id
+        assert part_index == 0
+        assert file.file_id
+        raise ValueError("private/storage/location")
+
+    monkeypatch.setattr(lifecycle, "record_stored", reject)
+    with pytest.raises(ExternalIOError) as error:
+        adapter.store(
+            scope(),
+            FileBlob(filename="x.txt", media_type="text/plain", data=b"abc"),
+            artifact_id="internal",
+            part_index=0,
+        )
+    assert error.value.code == "file_store_failed"
+    assert "private" not in str(error.value)
+    with sessions() as session:
+        assert tuple(session.scalars(select(UploadFile))) == ()
+
+
+def test_cleanup_failure_keeps_the_pending_write_intent_without_logging_private_locations(
+    file_domain: FileDomain, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Revoked authorization after upload cannot erase the reserved-key cleanup marker."""
+    adapter, _, lifecycle, sessions, _ = file_domain
+
+    def revoke(_scope: FileScope, *, artifact_id: str, part_index: int, file: StoredFile) -> StoredFile:
+        assert file.file_id
+        assert artifact_id
+        assert part_index == 0
+        lifecycle.allowed = False
+        raise ExternalIOError("file_scope_revoked", "revoked")
+
+    monkeypatch.setattr(lifecycle, "record_stored", revoke)
+    with pytest.raises(ExternalIOError):
+        adapter.store(
+            scope(),
+            FileBlob(filename="x.txt", media_type="text/plain", data=b"abc"),
+            artifact_id="pending",
+            part_index=0,
+        )
+    assert ("invocation-a", "pending", 0) in lifecycle.plans
+    assert "compensation remains pending" in caplog.text
+    with sessions() as session:
+        assert len(tuple(session.scalars(select(UploadFile)))) == 1
+
+
+def test_atomic_plan_can_return_a_concurrent_winner_without_another_upload(
+    file_domain: FileDomain, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A winner discovered between read and reserve is returned without replacing its bytes."""
+    adapter, _, lifecycle, sessions, _ = file_domain
+    winner = StoredFile(
+        file_id="already-committed", size=3, media_type="text/plain", value={"upload_file_id": "already-committed"}
+    )
+
+    def reserve(
+        _scope: FileScope, blob: FileBlob, *, artifact_id: str, part_index: int, file_id: str, storage_key: str
+    ) -> FileWriteReservation:
+        assert blob.data == b"abc"
+        assert artifact_id == "race"
+        assert part_index == 0
+        return FileWriteReservation(file_id=file_id, storage_key=storage_key, existing=winner)
+
+    monkeypatch.setattr(lifecycle, "prepare_stored", reserve)
+    assert (
+        adapter.store(
+            scope(), FileBlob(filename="x.txt", media_type="text/plain", data=b"abc"), artifact_id="race", part_index=0
+        )
+        == winner
+    )
+    with sessions() as session:
+        assert tuple(session.scalars(select(UploadFile))) == ()
+
+
+def test_incompatible_reserved_storage_key_stops_before_any_write(
+    file_domain: FileDomain, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stale reservation for another filename cannot be silently repurposed."""
+    adapter, _, lifecycle, sessions, _ = file_domain
+
+    def reserve(
+        _scope: FileScope, blob: FileBlob, *, artifact_id: str, part_index: int, file_id: str, storage_key: str
+    ) -> FileWriteReservation:
+        assert blob.filename
+        assert artifact_id
+        assert part_index == 0
+        assert storage_key
+        return FileWriteReservation(file_id=file_id, storage_key="different-original-key")
+
+    monkeypatch.setattr(lifecycle, "prepare_stored", reserve)
+    with pytest.raises(ExternalIOError) as error:
+        adapter.store(
+            scope(),
+            FileBlob(filename="x.txt", media_type="text/plain", data=b"abc"),
+            artifact_id="wrong-key",
+            part_index=0,
+        )
+    assert error.value.code == "file_materialization_conflict"
+    with sessions() as session:
+        assert tuple(session.scalars(select(UploadFile))) == ()
