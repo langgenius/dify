@@ -476,3 +476,39 @@ class TestQAIndexProcessor:
         parsed = processor._format_split_text("Q1: First?\nA1: One.\nQ2: Second?\nA2: Two.\n")
 
         assert parsed == [{"question": "First?", "answer": "One."}, {"question": "Second?", "answer": "Two."}]
+
+    def test_format_split_text_keeps_a_question_that_wraps(self, processor: QAIndexProcessor) -> None:
+        """A long question must not take its pair down with it.
+
+        ``GENERATOR_QA_PROMPT`` asks for ``Q1:\\nA1:``, so the question starts
+        on the line after the label and may wrap again when it is long. A
+        pattern that cannot cross a line break reads it as empty and the
+        whole pair is dropped.
+        """
+        text = (
+            "Q1:\nWhat did the report say about the Q2 earnings for\nthe next quarter?\nA1:\nGuidance raised 12%.\n"
+            "Q2:\nWhich segment grew?\nA2:\nCloud, 31%."
+        )
+
+        parsed = processor._format_split_text(text)
+
+        assert len(parsed) == 2
+        assert parsed[0]["question"].startswith("What did the report say")
+        assert parsed[0]["answer"] == "Guidance raised 12%."
+        assert parsed[1]["question"] == "Which segment grew?"
+
+    def test_format_split_text_keeps_an_answer_that_mentions_a_label(self, processor: QAIndexProcessor) -> None:
+        """A ``Q2:`` inside an answer is prose, not the start of a new pair."""
+        text = "Q1: What happened in Q2?\nA1: In Q2: revenue grew 12%.\nQ2: And Q3?\nA2: Even more."
+
+        parsed = processor._format_split_text(text)
+
+        assert len(parsed) == 2
+        assert parsed[0]["answer"] == "In Q2: revenue grew 12%."
+        assert parsed[1]["question"] == "And Q3?"
+
+    def test_format_split_text_strips_emphasis_from_labels(self, processor: QAIndexProcessor) -> None:
+        """Models often wrap the labels in markdown emphasis."""
+        parsed = processor._format_split_text("**Q1:** What is A?\n**A1:** Because B.")
+
+        assert parsed == [{"question": "What is A?", "answer": "Because B."}]

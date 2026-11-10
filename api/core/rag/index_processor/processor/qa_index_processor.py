@@ -34,6 +34,25 @@ from services.knowledge.summaries.adapters import SummaryIndexAdapter
 logger = logging.getLogger(__name__)
 
 
+def _clean_block(value: str) -> str:
+    """Squash the leading emphasis markers and repeated whitespace in a QA half.
+
+    Models often wrap the labels in markdown emphasis (``**Q1:**``), which
+    leaves the markers at the start of the captured text. Line breaks are
+    kept as single newlines so a multi-line answer keeps its structure.
+
+    Args:
+        value (`str`):
+            The captured question or answer text.
+
+    Returns:
+        `str`:
+            The text without leading emphasis markers, with runs of
+            whitespace collapsed to a single newline.
+    """
+    return re.sub(r"\n\s*", "\n", value.strip().strip("*").strip())
+
+
 class QAFormatPreviewDict(TypedDict):
     chunk_structure: str
     qa_preview: list[dict[str, Any]]
@@ -279,7 +298,33 @@ class QAIndexProcessor(BaseIndexProcessor):
             all_qa_documents.extend(format_documents)
 
     def _format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q\d+:|$)"
+        """Parse ``Q<n>:``/``A<n>:`` pairs out of generated QA text.
+
+        ``GENERATOR_QA_PROMPT`` asks the model for ``Q1:\\nA1:\\nQ2:\\nA2:``,
+        so both halves may continue on the following lines and a long
+        question routinely wraps. A pattern that cannot cross a line break
+        reads such a question as empty and the pair is discarded by the
+        filter below, silently losing generated content.
+
+        A new pair starts only at a line that begins with ``Q<n>:``, so an
+        answer that happens to mention ``Q2:`` mid-sentence keeps its text
+        instead of being cut there.
+
+        Args:
+            text (`str`):
+                The generated QA text.
+
+        Returns:
+            `list[dict]`:
+                One ``{"question": ..., "answer": ...}`` entry per pair that
+                has both halves. Surrounding markdown emphasis and repeated
+                whitespace are stripped.
+        """
+        regex = r"(?m)^[\s*]*Q(\d+)\s*:\s*([\s\S]*?)\s*^[\s*]*A\1\s*:\s*([\s\S]*?)(?=^[\s*]*Q\d+\s*:|\Z)"
         matches = re.findall(regex, text, re.UNICODE)
 
-        return [{"question": q, "answer": re.sub(r"\n\s*", "\n", a.strip())} for q, a in matches if q and a]
+        return [
+            {"question": _clean_block(question), "answer": _clean_block(answer)}
+            for _number, question, answer in matches
+            if _clean_block(question) and _clean_block(answer)
+        ]
