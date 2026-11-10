@@ -1,10 +1,5 @@
 {
   "account.account": "Rekening",
-  "account.appearanceDark": "Gelap",
-  "account.appearanceFollowSystem": "Follow system",
-  "account.appearanceLabel": "Tampilan",
-  "account.appearanceLight": "Terang",
-  "account.appearanceSystem": "Sistem",
   "account.changeEmail.authTip": "Setelah email Anda diubah, akun Google atau GitHub yang ditautkan ke email lama Anda tidak akan dapat lagi masuk ke akun ini.",
   "account.changeEmail.changeTo": "Ubah ke {{email}}",
   "account.changeEmail.codeLabel": "Kode verifikasi",

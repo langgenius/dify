@@ -207,7 +207,7 @@ class TestGenerateAndCreate:
         usage = _usage()
         generate = _install_summary_generator(monkeypatch, usage=usage)
 
-        def call_model(**kwargs):
+        def call_model(**kwargs: object) -> tuple[str, MagicMock]:
             assert not sqlite_session.in_transaction()
             return "generated summary", usage
 
@@ -315,7 +315,7 @@ class TestVectorizeSummary:
         summary = _persist_summary(sqlite_session, dataset, document, segment)
         vector = _install_vector_dependencies(monkeypatch)
 
-        def write_vector(*args, **kwargs):
+        def write_vector(*args: object, **kwargs: object) -> None:
             assert not sqlite_session.in_transaction()
             if vector.add_texts.call_count == 1:
                 raise ConnectionError("connection timeout")
@@ -447,12 +447,12 @@ class TestBatchAndGeneration:
         sqlite_session.commit()
         sessions = []
 
-        def create_session():
+        def create_session() -> Session:
             session = sqlite_session_factory()
             sessions.append(session)
             return session
 
-        def generate(**kwargs):
+        def generate(**kwargs: object) -> list[object]:
             assert sessions
             assert all(not session.in_transaction() for session in sessions)
             return []

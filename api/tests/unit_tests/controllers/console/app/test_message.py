@@ -19,7 +19,9 @@ from models.enums import (
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
-    InvokeFrom,
+)
+from models.enums import (
+    InvokeFrom as ModelInvokeFrom,
 )
 from models.model import (
     App,
@@ -67,7 +69,7 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         system_instruction="",
         system_instruction_tokens=0,
         status=ConversationStatus.NORMAL,
-        invoke_from=InvokeFrom.DEBUGGER,
+        invoke_from=ModelInvokeFrom.DEBUGGER,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id="account-1",
@@ -89,7 +91,7 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         provider_response_latency=0,
         total_price=Decimal(0),
         currency="USD",
-        invoke_from=InvokeFrom.DEBUGGER,
+        invoke_from=ModelInvokeFrom.DEBUGGER,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id="account-1",

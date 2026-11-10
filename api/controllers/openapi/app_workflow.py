@@ -220,6 +220,14 @@ class AppVersionListApi(Resource):
         returns=(HTTPStatus.OK, VersionListResponse, "Version list"),
     )
     def get(self, ctx: Context, app_id: str, *, query: VersionListQuery):
+        """Return one page of published versions, newest first.
+
+        Preconditions:
+            ``query`` has positive page and limit values from the endpoint contract.
+        Postconditions:
+            The draft neither appears nor consumes a page slot, and ``has_more``
+            describes the remaining published versions only.
+        """
         workflows, has_more = application_services().console_workflows.versions(
             ctx.request_context,
             ctx.app.id,
@@ -227,8 +235,8 @@ class AppVersionListApi(Resource):
             limit=query.limit,
             user_id=None,
             named_only=query.named_only,
+            include_draft=False,
         )
-        workflows = [workflow for workflow in workflows if workflow.version != Workflow.VERSION_DRAFT]
         page = VersionListResponse(
             page=query.page,
             limit=query.limit,

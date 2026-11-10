@@ -45,6 +45,7 @@ from models.model import AppMode
 from models.pipeline_execution import PipelineDocumentStore
 from services.app.generation.input_adapter import AppInputAdapter
 from services.data_source.provider_service import DatasourceProviderService
+from services.errors.app import WorkflowNotFoundError
 from services.rag_pipeline.document_preparation import prepare_pipeline_document
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow.contracts import WorkflowSnapshot
@@ -97,9 +98,19 @@ class PipelineGenerator(AppInputAdapter):
         self._datasource_providers = datasource_providers
 
     def load_workflow(self, pipeline: Pipeline, invoke_from: InvokeFrom) -> WorkflowSnapshot:
-        return self._runtime.contexts.pipeline_workflow(
-            tenant_id=pipeline.tenant_id, pipeline_id=pipeline.id, draft=invoke_from == InvokeFrom.DEBUGGER
-        )
+        """Load the requested workflow while preserving the pipeline generation error contract.
+
+        The pipeline must belong to the supplied tenant. A missing draft or published
+        workflow is reported as ``ValueError`` with the legacy caller-facing message;
+        successful loads return an immutable execution snapshot.
+        """
+        draft = invoke_from == InvokeFrom.DEBUGGER
+        try:
+            return self._runtime.contexts.pipeline_workflow(
+                tenant_id=pipeline.tenant_id, pipeline_id=pipeline.id, draft=draft
+            )
+        except WorkflowNotFoundError as error:
+            raise ValueError("Workflow not initialized" if draft else "Workflow not published") from error
 
     @overload
     def generate(

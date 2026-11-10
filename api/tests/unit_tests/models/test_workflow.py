@@ -107,7 +107,7 @@ class TestConversationVariableCases:
 
 class TestWorkflowCases:
     @staticmethod
-    def test_environment_variables():
+    def test_environment_variables() -> None:
         # tenant_id context variable removed - using current_user.current_tenant_id directly
 
         # Create a Workflow instance
@@ -141,7 +141,7 @@ class TestWorkflowCases:
             assert workflow.environment_variables == variables
 
     @staticmethod
-    def test_llm_environment_variable_round_trip():
+    def test_llm_environment_variable_round_trip() -> None:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
@@ -167,7 +167,7 @@ class TestWorkflowCases:
         assert workflow.to_dict()["environment_variables"][0]["value_type"] == "llm"
 
     @staticmethod
-    def test_update_environment_variables():
+    def test_update_environment_variables() -> None:
         # tenant_id context variable removed - using current_user.current_tenant_id directly
 
         # Create a Workflow instance
@@ -220,7 +220,7 @@ class TestWorkflowCases:
             assert workflow.environment_variables[2].value == variable3.value
 
     @staticmethod
-    def test_to_dict():
+    def test_to_dict() -> None:
         # tenant_id context variable removed - using current_user.current_tenant_id directly
 
         # Create a Workflow instance
@@ -258,7 +258,7 @@ class TestWorkflowCases:
 
     @staticmethod
     @pytest.mark.parametrize("sqlite_session", [(_workflow_Workflow, Account)], indirect=True)
-    def test_workflow_account_accessors_use_caller_session(sqlite_session: Session):
+    def test_workflow_account_accessors_use_caller_session(sqlite_session: Session) -> None:
         created_account = Account(name="Created Account", email="created@example.com")
         created_account.id = "created-account-id"
         updated_account = Account(name="Updated Account", email="updated@example.com")
@@ -285,7 +285,7 @@ class TestWorkflowCases:
 
     @staticmethod
     @pytest.mark.parametrize("sqlite_session", [(_workflow_Workflow, WorkflowToolProvider)], indirect=True)
-    def test_workflow_tool_published_accessor_uses_caller_session(sqlite_session: Session):
+    def test_workflow_tool_published_accessor_uses_caller_session(sqlite_session: Session) -> None:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
@@ -321,10 +321,11 @@ class TestWorkflowCases:
         sqlite_session.flush()
 
         with pytest.warns(DeprecationWarning, match="not accurate"):
-            assert workflow.tool_published(sqlite_session) is True
+            # The deprecated accessor is the compatibility surface under test.
+            assert workflow.tool_published(sqlite_session) is True  # pyrefly: ignore[deprecated]
 
     @staticmethod
-    def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():
+    def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value() -> None:
         normalized = _workflow_Workflow.normalize_environment_variable_mappings(
             [
                 {
@@ -339,7 +340,7 @@ class TestWorkflowCases:
         assert normalized[0]["value"] == HIDDEN_VALUE
 
     @staticmethod
-    def test_normalize_environment_variable_mappings_keeps_hidden_value():
+    def test_normalize_environment_variable_mappings_keeps_hidden_value() -> None:
         normalized = _workflow_Workflow.normalize_environment_variable_mappings(
             [
                 {
@@ -354,7 +355,7 @@ class TestWorkflowCases:
         assert normalized[0]["value"] == HIDDEN_VALUE
 
     class TestWorkflowNodeExecution:
-        def test_execution_metadata_dict(self):
+        def test_execution_metadata_dict(self) -> None:
             node_exec = WorkflowNodeExecutionModel(
                 execution_metadata=None,
             )
@@ -365,7 +366,7 @@ class TestWorkflowCases:
             assert node_exec.execution_metadata_dict == original
 
     class TestIsSystemVariableEditable:
-        def test_is_system_variable(self):
+        def test_is_system_variable(self) -> None:
             cases = [
                 ("query", True),
                 ("files", True),
@@ -382,7 +383,7 @@ class TestWorkflowCases:
             assert is_system_variable_editable("invalid_or_new_system_variable") is False
 
     class TestWorkflowDraftVariableGetValue:
-        def test_get_value_by_case(self):
+        def test_get_value_by_case(self) -> None:
             @dataclasses.dataclass
             class TestCase:
                 name: str
@@ -454,7 +455,7 @@ class TestWorkflowCases:
                 draft_var.set_value(c.value)
                 assert c.value == draft_var.get_value(), fail_msg
 
-        def test_file_variable_preserves_all_fields(self):
+        def test_file_variable_preserves_all_fields(self) -> None:
             """Test that File type variables preserve all fields during encoding/decoding."""
 
             # Create a File with specific field values
@@ -493,7 +494,7 @@ class TestWorkflowCases:
             # Verify the segments have the same type and the important fields match
             assert file_segment.value_type == retrieved_segment.value_type
 
-        def test_file_variable_rebuilds_storage_backed_payloads_with_app_tenant(self):
+        def test_file_variable_rebuilds_storage_backed_payloads_with_app_tenant(self) -> None:
             persisted_file = File(
                 file_id="test_file_id",
                 file_type=FileType.DOCUMENT,
@@ -519,7 +520,7 @@ class TestWorkflowCases:
                 app_id="app-1",
             )
             draft_var.set_value(build_segment(persisted_file))
-            draft_var._WorkflowDraftVariable__value = None
+            draft_var._WorkflowDraftVariable__value = None  # pyrefly: ignore[missing-attribute]
 
             with (
                 mock.patch("models.workflow._resolve_workflow_app_tenant_id", return_value="tenant-1"),
@@ -531,7 +532,7 @@ class TestWorkflowCases:
             rebuild_file.assert_called_once()
             assert rebuild_file.call_args.kwargs["tenant_id"] == "tenant-1"
 
-        def test_get_and_set_value(self):
+        def test_get_and_set_value(self) -> None:
             draft_var = WorkflowDraftVariable()
             int_var = IntegerSegment(value=1)
             draft_var.set_value(int_var)
@@ -660,7 +661,7 @@ class TestWorkflowFeatureCompatibilityCases:
         workflow = _workflow_feature_compatibility_Workflow(
             tenant_id="",
             app_id="",
-            type="",
+            type=WorkflowType.WORKFLOW,
             version="",
             graph="",
             _features=json.dumps(OLD_VERSION_WORKFLOW_FEATURES),
@@ -1175,7 +1176,7 @@ class TestWorkflowModelsCases:
                 tenant_id=str(uuid4()),
                 app_id=str(uuid4()),
                 workflow_id=str(uuid4()),
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
                 workflow_run_id=None,  # Single-step has no workflow run
                 index=1,
                 node_id="llm_test",
@@ -2051,7 +2052,7 @@ def _run(role: CreatorUserRole, created_by: str) -> WorkflowRun:
         type=ModelWorkflowType.WORKFLOW,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1.0",
-        status="succeeded",
+        status=WorkflowExecutionStatus.SUCCEEDED,
         created_by_role=role,
         created_by=created_by,
     )

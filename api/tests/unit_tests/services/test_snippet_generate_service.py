@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from unittest.mock import create_autospec
 
 import pytest
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -27,9 +28,9 @@ from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class SnippetReader:
-    workflow: Workflow | None = None
+    workflow: WorkflowSnapshot | None = None
 
-    def get_draft_workflow(self, snippet: CustomizedSnippet) -> Workflow | None:
+    def get_draft_workflow(self, snippet: CustomizedSnippet) -> WorkflowSnapshot | None:
         assert snippet.id == "snippet-1"
         return self.workflow
 
@@ -120,7 +121,7 @@ def test_debug_generators_use_injected_variable_dependencies(
     from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 
     workflow = _workflow({"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []})
-    snippet_reader.workflow = workflow
+    snippet_reader.workflow = workflow_snapshot(workflow)
     user = _account()
     calls: list[str] = []
 
@@ -412,8 +413,8 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(
         ]
     )
     generator = _WorkflowGeneratorStub(generate=_TrackedMethod(return_value=raw_stream))
-    snippet_reader.workflow = workflow
     expected_workflow = workflow_snapshot(workflow)
+    snippet_reader.workflow = expected_workflow
     ensure_start_node = _TrackedMethod(return_value=expected_workflow)
     monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
@@ -452,7 +453,8 @@ def test_run_draft_node_delegates_to_workflow_service(
     workflow_service = create_autospec(WorkflowService, instance=True, spec_set=True)
     workflow_service.run_draft_workflow_node.return_value = execution
 
-    snippet_reader.workflow = workflow
+    expected_workflow = workflow_snapshot(workflow)
+    snippet_reader.workflow = expected_workflow
     generation._workflows = workflow_service
 
     result = generation.run_draft_node(
@@ -469,7 +471,7 @@ def test_run_draft_node_delegates_to_workflow_service(
     kwargs = workflow_service.run_draft_workflow_node.call_args.kwargs
     assert kwargs["app_model"].id == "snippet-1"
     assert isinstance(kwargs["draft_workflow"], WorkflowSnapshot)
-    assert kwargs["draft_workflow"] == workflow_snapshot(workflow)
+    assert kwargs["draft_workflow"] == expected_workflow
     assert kwargs["node_id"] == "llm-1"
     assert kwargs["user_inputs"] == {"query": "hello"}
     assert kwargs["account"] is account
@@ -504,7 +506,8 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
     user = _account()
     response = iter(["event"])
     generator = _WorkflowGeneratorStub(single_iteration_generate=_TrackedMethod(return_value=response))
-    snippet_reader.workflow = workflow
+    expected_workflow = workflow_snapshot(workflow)
+    snippet_reader.workflow = expected_workflow
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
 
     result = generation.generate_single_iteration(
@@ -519,7 +522,7 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
     kwargs = generator.single_iteration_generate.call_args.kwargs
     assert kwargs["app_model"].id == "snippet-1"
     assert isinstance(kwargs["workflow"], WorkflowSnapshot)
-    assert kwargs["workflow"] == workflow_snapshot(workflow)
+    assert kwargs["workflow"] == expected_workflow
     assert kwargs["node_id"] == "iteration-1"
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
@@ -551,7 +554,8 @@ def test_generate_single_loop_delegates_to_workflow_generator(
     user = _account()
     response = iter(["event"])
     generator = _WorkflowGeneratorStub(single_loop_generate=_TrackedMethod(return_value=response))
-    snippet_reader.workflow = workflow
+    expected_workflow = workflow_snapshot(workflow)
+    snippet_reader.workflow = expected_workflow
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
 
     result = generation.generate_single_loop(
@@ -566,7 +570,7 @@ def test_generate_single_loop_delegates_to_workflow_generator(
     kwargs = generator.single_loop_generate.call_args.kwargs
     assert kwargs["app_model"].id == "snippet-1"
     assert isinstance(kwargs["workflow"], WorkflowSnapshot)
-    assert kwargs["workflow"] == workflow_snapshot(workflow)
+    assert kwargs["workflow"] == expected_workflow
     assert kwargs["node_id"] == "loop-1"
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True

@@ -291,7 +291,7 @@ class WorkflowTool(Tool):
 
     def _resolve_user(self, user_id: str) -> Account | EndUser | None:
         """
-        Resolve a tenant-scoped actor through the injected tool repository.
+        Resolve an admitted Account or tenant-scoped EndUser through the injected tool repository.
 
         Returns:
             Account | EndUser | None: The resolved user object, or None if resolution fails.

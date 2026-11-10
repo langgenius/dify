@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from types import SimpleNamespace
 from typing import cast
@@ -6,10 +7,20 @@ from unittest.mock import create_autospec
 
 import pytest
 from dify_agent.layers.config import DifyConfigLayerConfig, DifyConfigSkillConfig
-from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
-from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
+from dify_agent.layers.dify_core_tools import (
+    DifyCoreToolConfig,
+    DifyCoreToolsLayerConfig,
+)
+from dify_agent.layers.dify_plugin import (
+    DifyPluginToolConfig,
+    DifyPluginToolsLayerConfig,
+)
 from dify_agent.layers.prompt import Config as PromptConfig
-from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
+from dify_agent.protocol import (
+    DIFY_AGENT_HISTORY_LAYER_ID,
+    DIFY_AGENT_MODEL_LAYER_ID,
+    DIFY_AGENT_OUTPUT_LAYER_ID,
+)
 from dify_agent.protocol.snapshot import SessionSnapshot
 from flask import Flask
 from sqlalchemy.orm import Session
@@ -25,9 +36,15 @@ from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, Us
 from core.workflow.file_reference import build_file_reference
 from extensions.application_services.workflow import WorkflowExecutionDependencies
 from extensions.tracing import bind_tracing
-from graphon.file import File, FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.runtime.variable_pool import VariablePool
-from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
+from graphon.variables.segments import (
+    ArrayFileSegment,
+    FileSegment,
+    Segment,
+    StringSegment,
+)
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
@@ -51,7 +68,9 @@ from models.workflow import Workflow
 from services.tools.provider_queries import ToolProviders
 from services.tracing.adapters import CeleryTraceEmitter
 from services.workflow.execution.adapters.agent_node import AgentNode as LegacyAgentNode
-from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
+from services.workflow.execution.adapters.agent_v2.dify_tools_builder import (
+    WorkflowAgentDifyToolsBuilder,
+)
 from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
@@ -62,7 +81,11 @@ from services.workflow.execution.adapters.agent_v2.runtime_request_builder impor
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
-from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
+from tests.helpers.unit.services.tracing_ports import (
+    NoTracingPolicies,
+    RecordingTracingHooks,
+    kernel_trace_scopes,
+)
 
 
 def _workflow_queries() -> WorkflowToolQueries:
@@ -70,7 +93,9 @@ def _workflow_queries() -> WorkflowToolQueries:
 
 
 @pytest.fixture
-def runtime_builder(tool_providers: ToolProviders) -> WorkflowAgentRuntimeRequestBuilder:
+def runtime_builder(
+    tool_providers: ToolProviders,
+) -> WorkflowAgentRuntimeRequestBuilder:
     """Build with explicit tool-query ports for metadata-filter contract tests."""
     return WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
@@ -95,7 +120,9 @@ class FakeCredentialsProvider:
 
 
 @pytest.fixture(autouse=True)
-def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[object, str, str]]:
+def model_context_window_calls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[tuple[object, str, str]]:
     calls: list[tuple[object, str, str]] = []
 
     def resolve(*, run_context: object, provider_name: str, model_name: str) -> int:
@@ -160,7 +187,11 @@ class CapturingPluginLayerBuilder:
                         credentials={},
                         runtime_parameters={},
                         parameters=[],
-                        parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                        parameters_json_schema={
+                            "type": "object",
+                            "properties": {},
+                            "required": [],
+                        },
                     )
                 ]
             ),
@@ -187,7 +218,11 @@ class FakeCoreLayerBuilder:
                         description="Transcribe audio.",
                         runtime_parameters={},
                         parameters=[],
-                        parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                        parameters_json_schema={
+                            "type": "object",
+                            "properties": {},
+                            "required": [],
+                        },
                     )
                 ]
             ),
@@ -208,7 +243,13 @@ class FakeVariablePool:
 
 
 def _context() -> WorkflowAgentRuntimeBuildContext:
-    agent = Agent(scope=AgentScope.ROSTER, source=AgentSource.ROSTER, id="agent-1", tenant_id="tenant-1", name="Agent")
+    agent = Agent(
+        scope=AgentScope.ROSTER,
+        source=AgentSource.ROSTER,
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Agent",
+    )
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
         tenant_id="tenant-1",
@@ -268,7 +309,10 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
 def test_builder_passes_inline_or_preview_context_to_application_tracing(tool_providers, preview: bool):
     from uuid import uuid4
 
-    from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
+    from dify_agent.layers.execution_context import (
+        ApplicationTracingContext,
+        DifyExecutionContextLayerConfig,
+    )
 
     tracing = ApplicationTracingContext(
         run_id=uuid4(),
@@ -319,7 +363,11 @@ def _metadata_filter_context() -> WorkflowAgentRuntimeBuildContext:
                     "conditions": {
                         "logical_operator": "and",
                         "conditions": [
-                            {"name": name, "comparison_operator": "=", "value": "{{#start." + name + "#}}"}
+                            {
+                                "name": name,
+                                "comparison_operator": "=",
+                                "value": "{{#start." + name + "#}}",
+                            }
                             for name in ("guide_program_id", "guide_item_id")
                         ],
                     },
@@ -331,7 +379,9 @@ def _metadata_filter_context() -> WorkflowAgentRuntimeBuildContext:
     return context
 
 
-def test_workflow_metadata_filters_resolve_current_run_values_without_mutating_snapshot(runtime_builder):
+def test_workflow_metadata_filters_resolve_current_run_values_without_mutating_snapshot(
+    runtime_builder,
+):
     context = _metadata_filter_context()
     saved_snapshot = context.snapshot.config_snapshot_dict
     builder = runtime_builder
@@ -349,14 +399,20 @@ def test_workflow_metadata_filters_resolve_current_run_values_without_mutating_s
         assert filtering["conditions"] == {
             "logical_operator": "and",
             "conditions": [
-                {"name": "guide_program_id", "comparison_operator": "=", "value": program_id},
+                {
+                    "name": "guide_program_id",
+                    "comparison_operator": "=",
+                    "value": program_id,
+                },
                 {"name": "guide_item_id", "comparison_operator": "=", "value": item_id},
             ],
         }
         assert context.snapshot.config_snapshot_dict == saved_snapshot
 
 
-def test_workflow_metadata_filter_rejects_missing_variable_before_starting_agent(runtime_builder):
+def test_workflow_metadata_filter_rejects_missing_variable_before_starting_agent(
+    runtime_builder,
+):
     context = _metadata_filter_context()
     with pytest.raises(WorkflowAgentRuntimeRequestBuildError, match="start.guide_program_id"):
         runtime_builder.build(replace(context, variable_pool=VariablePool()))
@@ -380,7 +436,11 @@ def test_value_free_metadata_filters_ignore_retained_variable_template(runtime_b
         "conditions"
     ]
     assert conditions[0]["comparison_operator"] == operator
-    assert conditions[1] == {"name": "guide_item_id", "comparison_operator": "=", "value": 456}
+    assert conditions[1] == {
+        "name": "guide_item_id",
+        "comparison_operator": "=",
+        "value": 456,
+    }
     assert saved_conditions[0]["value"] == "{{#start.guide_program_id#}}"
 
 
@@ -412,7 +472,12 @@ def test_single_step_loads_variables_referenced_only_by_knowledge_filters(
                 "nodes": [
                     {
                         "id": context.node_id,
-                        "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent", "title": "Agent"},
+                        "data": {
+                            "type": "agent",
+                            "version": "2",
+                            "agent_node_kind": "dify_agent",
+                            "title": "Agent",
+                        },
                     }
                 ],
                 "edges": [],
@@ -468,7 +533,16 @@ def test_single_step_legacy_agent_v2_does_not_resolve_new_agent_binding(monkeypa
         app_id="app-id",
         graph=json.dumps(
             {
-                "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2", "title": "Legacy Agent"}}],
+                "nodes": [
+                    {
+                        "id": "legacy-agent",
+                        "data": {
+                            "type": "agent",
+                            "version": "2",
+                            "title": "Legacy Agent",
+                        },
+                    }
+                ],
                 "edges": [],
             }
         ),
@@ -489,8 +563,14 @@ def test_single_step_legacy_agent_v2_does_not_resolve_new_agent_binding(monkeypa
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        ("program:{{#start.guide_program_id#}}/{{#start.guide_item_id#}}", "program:123/00456"),
-        (["{{#start.guide_program_id#}}", "{{#start.guide_item_id#}}", "constant"], ["123", "00456", "constant"]),
+        (
+            "program:{{#start.guide_program_id#}}/{{#start.guide_item_id#}}",
+            "program:123/00456",
+        ),
+        (
+            ["{{#start.guide_program_id#}}", "{{#start.guide_item_id#}}", "constant"],
+            ["123", "00456", "constant"],
+        ),
         (0, 0),
         (None, None),
         ("", ""),
@@ -509,7 +589,11 @@ def test_metadata_filters_resolve_templates_and_lists_preserving_constants(runti
     conditions = _request_layers(result)["knowledge"]["config"]["sets"][0]["metadata_filtering"]["conditions"][
         "conditions"
     ]
-    assert conditions[0] == {"name": "guide_program_id", "comparison_operator": "=", "value": expected}
+    assert conditions[0] == {
+        "name": "guide_program_id",
+        "comparison_operator": "=",
+        "value": expected,
+    }
 
 
 @pytest.mark.parametrize("mode", ["disabled", "automatic"])
@@ -700,7 +784,9 @@ def test_normalizes_langgenius_model_provider_for_agent_backend_transport(tool_p
     assert model_config["model_provider"] == "openai"
 
 
-def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metadata(tool_providers):
+def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metadata(
+    tool_providers,
+):
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -732,13 +818,23 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
             {
                 "declared_outputs": [
                     {"name": "report", "type": DeclaredOutputType.FILE},
-                    {"name": "confidence", "type": DeclaredOutputType.NUMBER, "required": False},
+                    {
+                        "name": "confidence",
+                        "type": DeclaredOutputType.NUMBER,
+                        "required": False,
+                    },
                 ],
             }
         ),
     )
     dify_context = context.dify_context.model_copy(update={"invoke_from": InvokeFrom.SERVICE_API})
-    context = replace(context, dify_context=dify_context, workflow_run_id=None, snapshot=snapshot, binding=binding)
+    context = replace(
+        context,
+        dify_context=dify_context,
+        workflow_run_id=None,
+        snapshot=snapshot,
+        binding=binding,
+    )
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
@@ -796,7 +892,14 @@ def test_build_maps_agent_soul_shell_settings_to_shell_layer(tool_providers, mon
                 model_provider="openai",
                 model="gpt-test",
             ),
-            tools={"cli_tools": [{"name": "ripgrep", "install_commands": ["apt-get install -y ripgrep"]}]},
+            tools={
+                "cli_tools": [
+                    {
+                        "name": "ripgrep",
+                        "install_commands": ["apt-get install -y ripgrep"],
+                    }
+                ]
+            },
             env={"variables": [{"name": "PROJECT_NAME", "value": "demo"}]},
             sandbox={"provider": "independent", "config": {"cpu": 2}},
         ),
@@ -852,9 +955,24 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "node", "install_commands": ["apt-get install -y nodejs"], "env": [], "secret_refs": []},
-        {"name": "python", "install_commands": ["pip install pytest"], "env": [], "secret_refs": []},
-        {"name": None, "install_commands": ["apk add git"], "env": [], "secret_refs": []},
+        {
+            "name": "node",
+            "install_commands": ["apt-get install -y nodejs"],
+            "env": [],
+            "secret_refs": [],
+        },
+        {
+            "name": "python",
+            "install_commands": ["pip install pytest"],
+            "env": [],
+            "secret_refs": [],
+        },
+        {
+            "name": None,
+            "install_commands": ["apk add git"],
+            "env": [],
+            "secret_refs": [],
+        },
     ]
     assert config["env"] == [
         {"name": "PROJECT_NAME", "value": "demo"},
@@ -878,7 +996,12 @@ def test_build_shell_layer_config_maps_typed_command_field():
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []}
+        {
+            "name": "jq",
+            "install_commands": ["apt-get install -y jq"],
+            "env": [],
+            "secret_refs": [],
+        }
     ]
 
 
@@ -889,7 +1012,11 @@ def test_build_shell_layer_config_skips_disabled_cli_tools():
             "tools": {
                 "cli_tools": [
                     {"name": "jq", "command": "apt-get install -y jq"},
-                    {"name": "ripgrep", "command": "apt-get install -y ripgrep", "enabled": False},
+                    {
+                        "name": "ripgrep",
+                        "command": "apt-get install -y ripgrep",
+                        "enabled": False,
+                    },
                 ]
             }
         }
@@ -898,7 +1025,12 @@ def test_build_shell_layer_config_skips_disabled_cli_tools():
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []}
+        {
+            "name": "jq",
+            "install_commands": ["apt-get install -y jq"],
+            "env": [],
+            "secret_refs": [],
+        }
     ]
 
 
@@ -909,8 +1041,16 @@ def test_build_shell_layer_config_skips_unauthorized_or_unacknowledged_cli_tools
             "tools": {
                 "cli_tools": [
                     {"name": "jq", "command": "apt-get install -y jq"},
-                    {"name": "github", "command": "gh auth status", "authorization_status": "denied"},
-                    {"name": "curl-sh", "command": "curl https://example.test/install.sh | sh", "dangerous": True},
+                    {
+                        "name": "github",
+                        "command": "gh auth status",
+                        "authorization_status": "denied",
+                    },
+                    {
+                        "name": "curl-sh",
+                        "command": "curl https://example.test/install.sh | sh",
+                        "dangerous": True,
+                    },
                     {
                         "name": "accepted-risk",
                         "command": "curl https://example.test/install.sh | sh",
@@ -925,7 +1065,12 @@ def test_build_shell_layer_config_skips_unauthorized_or_unacknowledged_cli_tools
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []},
+        {
+            "name": "jq",
+            "install_commands": ["apt-get install -y jq"],
+            "env": [],
+            "secret_refs": [],
+        },
         {
             "name": "accepted-risk",
             "install_commands": ["curl https://example.test/install.sh | sh"],
@@ -945,7 +1090,12 @@ def test_build_shell_layer_config_maps_cli_tool_scoped_env():
                         "command": "apt-get install -y gh",
                         "env": {
                             "variables": [{"name": "GH_HOST", "value": "github.com"}],
-                            "secret_refs": [{"name": "GITHUB_TOKEN", "credential_id": "credential-1"}],
+                            "secret_refs": [
+                                {
+                                    "name": "GITHUB_TOKEN",
+                                    "credential_id": "credential-1",
+                                }
+                            ],
                         },
                     }
                 ]
@@ -994,7 +1144,9 @@ def test_build_shell_layer_config_maps_cli_tool_inline_secret_value_to_env():
     ]
 
 
-def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: pytest.MonkeyPatch):
+def test_builds_workflow_run_request_with_dify_plugin_tools_layer(
+    monkeypatch: pytest.MonkeyPatch,
+):
     apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
     context = _context()
     snapshot = AgentConfigSnapshot(
@@ -1073,7 +1225,10 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config(tool_provider
                                 "mode": "multiple",
                                 "top_k": 6,
                                 "score_threshold": 0.4,
-                                "reranking_model": {"provider": "cohere", "model": "rerank-v3"},
+                                "reranking_model": {
+                                    "provider": "cohere",
+                                    "model": "rerank-v3",
+                                },
                                 "weights": {
                                     "weight_type": "weighted_score",
                                     "vector_setting": {"vector_weight": 0.7},
@@ -1165,7 +1320,13 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config(tool_provider
                 "metadata_model_config": None,
                 "conditions": {
                     "logical_operator": "and",
-                    "conditions": [{"name": "category", "comparison_operator": "contains", "value": "auth"}],
+                    "conditions": [
+                        {
+                            "name": "category",
+                            "comparison_operator": "contains",
+                            "value": "auth",
+                        }
+                    ],
                 },
             },
         },
@@ -1256,7 +1417,9 @@ def test_build_knowledge_layer_maps_disabled_score_threshold_to_zero(tool_provid
     assert legacy.model_dump(mode="json")["sets"][0]["retrieval"]["score_threshold"] == 0.0
 
 
-def test_build_runs_classic_and_agent_knowledge_together(monkeypatch: pytest.MonkeyPatch):
+def test_build_runs_classic_and_agent_knowledge_together(
+    monkeypatch: pytest.MonkeyPatch,
+):
     apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
     monkeypatch.setattr(
         "services.agent.knowledge_runtime_config.DifyModelFactory",
@@ -1530,7 +1693,10 @@ def test_nested_declared_output_emits_object_and_array_child_schema():
     schema = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(profile_output)
 
     assert schema["properties"]["email"] == {"type": "string"}
-    assert schema["properties"]["nickname"] == {"type": "string", "description": "Optional display name"}
+    assert schema["properties"]["nickname"] == {
+        "type": "string",
+        "description": "Optional display name",
+    }
     assert schema["properties"]["addresses"]["items"]["properties"]["city"] == {"type": "string"}
     assert schema["properties"]["addresses"]["items"]["description"] == "Address item"
     assert schema["properties"]["addresses"]["items"]["required"] == ["city"]
@@ -1577,7 +1743,9 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak(tool_provide
     assert "{{#" not in user_prompt
 
 
-def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_context(tool_providers):
+def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_context(
+    tool_providers,
+):
     file_reference = build_file_reference(record_id="tool-file-1")
 
     class FileVariablePool(FakeVariablePool):
@@ -1619,7 +1787,9 @@ def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_
     }
 
 
-def test_previous_node_file_mapping_strips_extra_fields_in_workflow_context(tool_providers):
+def test_previous_node_file_mapping_strips_extra_fields_in_workflow_context(
+    tool_providers,
+):
     file_reference = build_file_reference(record_id="tool-file-1")
 
     class FileMappingVariablePool(FakeVariablePool):
@@ -1654,7 +1824,9 @@ def test_previous_node_file_mapping_strips_extra_fields_in_workflow_context(tool
     }
 
 
-def test_scalar_previous_node_output_appears_in_workflow_context_section(tool_providers):
+def test_scalar_previous_node_output_appears_in_workflow_context_section(
+    tool_providers,
+):
     context = _context()
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
@@ -1674,7 +1846,9 @@ def test_scalar_previous_node_output_appears_in_workflow_context_section(tool_pr
     assert "  - previous-node.text: Previous result" in user_prompt
 
 
-def test_stale_previous_node_refs_are_ignored_when_workflow_prompt_has_no_frontend_markers(tool_providers):
+def test_stale_previous_node_refs_are_ignored_when_workflow_prompt_has_no_frontend_markers(
+    tool_providers,
+):
     context = _context()
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
@@ -1695,7 +1869,9 @@ def test_stale_previous_node_refs_are_ignored_when_workflow_prompt_has_no_fronte
     assert "Previous node outputs:" not in _workflow_user_prompt(result)
 
 
-def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_context(tool_providers):
+def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_context(
+    tool_providers,
+):
     first_reference = build_file_reference(record_id="tool-file-1")
     build_file_reference(record_id="tool-file-2")
 
@@ -1799,7 +1975,107 @@ def test_uploaded_workflow_files_are_included_without_prompt_marker(tool_provide
     assert "Previous node outputs:" not in user_prompt
 
 
-def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_context(tool_providers):
+@pytest.mark.parametrize("supports_vision", [True, False])
+def test_workflow_mixed_uploads_keep_references_and_only_send_images_to_vision_models(
+    monkeypatch: pytest.MonkeyPatch,
+    supports_vision: bool,
+    tool_providers: ToolProviders,
+) -> None:
+    class UploadedFilesVariablePool:
+        def get(self, selector: Sequence[str]) -> Segment | None:
+            if list(selector) == ["sys", "files"]:
+                return ArrayFileSegment(
+                    value=[
+                        File(
+                            type=FileType.IMAGE,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            reference=build_file_reference(record_id="image-1"),
+                            filename="image.png",
+                            extension=".png",
+                            mime_type="image/png",
+                            size=5,
+                        ),
+                        File(
+                            type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            reference=build_file_reference(record_id="doc-1"),
+                            filename="doc.pdf",
+                            extension=".pdf",
+                            mime_type="application/pdf",
+                            size=5,
+                        ),
+                    ]
+                )
+            return FakeVariablePool().get(selector)
+
+        def get_by_prefix(self, prefix: str) -> Mapping[str, object]:
+            return FakeVariablePool().get_by_prefix(prefix)
+
+    import services.workflow.execution.adapters.agent_v2.runtime_request_builder as runtime_builder
+
+    monkeypatch.setattr(
+        runtime_builder,
+        "resolve_model_supports_vision",
+        lambda **_kwargs: supports_vision,
+        raising=False,
+    )
+    converted = []
+
+    def convert(file: File, **_kwargs: object) -> ImagePromptMessageContent:
+        converted.append(file.filename)
+        return ImagePromptMessageContent(format="png", base64_data="aW1hZ2U=", mime_type="image/png")
+
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", convert)
+    context = replace(_context(), variable_pool=UploadedFilesVariablePool())
+    result = WorkflowAgentRuntimeRequestBuilder(
+        dify_tools_builder=WorkflowAgentDifyToolsBuilder(
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
+        )
+    ).build(context)
+    layers = _request_layers(result)
+    assert converted == (["image.png"] if supports_vision else [])
+    config = layers["user_prompt" if supports_vision else "workflow_user_prompt"]["config"]
+    assert isinstance(config, dict)
+    prompt = config["text" if supports_vision else "user"]
+    assert isinstance(prompt, str)
+    assert build_file_reference(record_id="image-1") in prompt
+    assert build_file_reference(record_id="doc-1") in prompt
+    if supports_vision:
+        files = config["files"]
+        assert isinstance(files, list)
+        assert len(files) == 1
+        assert isinstance(files[0], dict)
+        assert files[0]["delivery"] == "multimodal"
+        assert result.redacted_request["composition"]["layers"][2]["config"]["files"][0]["base64_data"] == "[REDACTED]"
+
+
+def test_workflow_image_conversion_rejects_non_image_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import services.workflow.execution.adapters.agent_v2.runtime_request_builder as runtime_builder
+
+    image = File(
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="image-1"),
+        filename="image.png",
+        extension=".png",
+        mime_type="image/png",
+        size=5,
+    )
+    monkeypatch.setattr(runtime_builder, "get_system_value", lambda *_args: [image])
+    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: True)
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", lambda *_args, **_kwargs: None)
+
+    with pytest.raises(WorkflowAgentRuntimeRequestBuildError, match="cannot send file 'image.png'") as exc_info:
+        WorkflowAgentRuntimeRequestBuilder._build_user_images(_context(), "provider", "model", [])
+
+    assert exc_info.value.error_code == "agent_user_file_unsupported"
+
+
+def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_context(
+    tool_providers,
+):
     remote_url = "https://example.com/" + ("a" * 2100) + ".pdf"
 
     class LongRemoteUrlVariablePool(FakeVariablePool):
@@ -1850,14 +2126,28 @@ def _soul_with_config_assets() -> AgentSoulConfig:
             )
         },
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
-        config_skills=[{"name": "tender-analyzer", "description": "Parses RFPs.", "file_id": "tool-file-1"}],
-        config_files=[{"name": "sample.pdf", "file_kind": "upload_file", "file_id": "upload-file-1"}],
+        config_skills=[
+            {
+                "name": "tender-analyzer",
+                "description": "Parses RFPs.",
+                "file_id": "tool-file-1",
+            }
+        ],
+        config_files=[
+            {
+                "name": "sample.pdf",
+                "file_kind": "upload_file",
+                "file_id": "upload-file-1",
+            }
+        ],
         config_note="Read the proposal first.",
     )
 
 
 def test_build_config_layer_config_includes_soul_context_and_mentions():
-    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import build_config_layer_config
+    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
+        build_config_layer_config,
+    )
 
     config, warnings = build_config_layer_config(
         _soul_with_config_assets(),
@@ -1880,7 +2170,9 @@ def test_build_config_layer_config_includes_soul_context_and_mentions():
 
 
 def test_build_config_layer_config_includes_runtime_agent_skills():
-    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import build_config_layer_config
+    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
+        build_config_layer_config,
+    )
 
     soul = AgentSoulConfig(
         prompt={"system_prompt": "Use [§skill:workspace-skill:Workspace Skill§]."},
@@ -1904,7 +2196,9 @@ def test_build_config_layer_config_includes_runtime_agent_skills():
 
 
 def test_build_config_layer_config_returns_empty_config_for_empty_agent_soul():
-    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import build_config_layer_config
+    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
+        build_config_layer_config,
+    )
 
     soul = AgentSoulConfig(
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test")
@@ -2041,7 +2335,9 @@ def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt(tool_prov
     assert "[§" not in PromptConfig.model_validate(soul_prompt.config).prefix
 
 
-def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name(tool_providers):
+def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name(
+    tool_providers,
+):
     context = _context()
     context.snapshot.config_snapshot = AgentSoulConfig(
         prompt={
@@ -2069,11 +2365,19 @@ def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name(t
 
 
 def test_build_config_layer_config_missing_mentions_warn_without_catalog():
-    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import build_config_layer_config
+    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
+        build_config_layer_config,
+    )
 
     soul = AgentSoulConfig(
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
-        config_skills=[{"name": "tender-analyzer", "description": "Parses RFPs.", "file_id": "tool-file-1"}],
+        config_skills=[
+            {
+                "name": "tender-analyzer",
+                "description": "Parses RFPs.",
+                "file_id": "tool-file-1",
+            }
+        ],
         prompt={"system_prompt": "Use [§skill:ghost-skill:Ghost§]"},
     )
     config, warnings = build_config_layer_config(soul)
@@ -2084,13 +2388,22 @@ def test_build_config_layer_config_missing_mentions_warn_without_catalog():
 
 
 def test_build_config_layer_config_excludes_missing_assets_from_runtime():
-    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import build_config_layer_config
+    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
+        build_config_layer_config,
+    )
 
     soul = AgentSoulConfig.model_validate(
         {
             "prompt": {"system_prompt": "Use [§skill:missing-skill:Missing Skill§]."},
             "config_skills": [{"name": "missing-skill", "file_id": "", "is_missing": True}],
-            "config_files": [{"name": "missing.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}],
+            "config_files": [
+                {
+                    "name": "missing.txt",
+                    "file_kind": "upload_file",
+                    "file_id": "",
+                    "is_missing": True,
+                }
+            ],
         }
     )
 
@@ -2107,10 +2420,23 @@ def test_build_config_layer_config_excludes_missing_assets_from_runtime():
 
 
 def test_feature_manifest_marks_human_reserved_when_configured():
-    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import (
+        build_runtime_feature_manifest,
+    )
 
     soul = AgentSoulConfig.model_validate(
-        {"human": {"contacts": [{"id": "c-1", "name": "David", "email": "d@acme.com", "channel": "email"}]}}
+        {
+            "human": {
+                "contacts": [
+                    {
+                        "id": "c-1",
+                        "name": "David",
+                        "email": "d@acme.com",
+                        "channel": "email",
+                    }
+                ]
+            }
+        }
     )
     manifest = build_runtime_feature_manifest(soul)
     assert "human" not in manifest["supported"]
@@ -2120,7 +2446,9 @@ def test_feature_manifest_marks_human_reserved_when_configured():
 
 
 def test_feature_manifest_marks_knowledge_supported_without_warning_when_configured():
-    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import (
+        build_runtime_feature_manifest,
+    )
 
     soul = AgentSoulConfig.model_validate(
         {
@@ -2146,7 +2474,9 @@ def test_feature_manifest_marks_knowledge_supported_without_warning_when_configu
 
 
 def test_feature_manifest_treats_empty_knowledge_sets_as_not_configured():
-    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import (
+        build_runtime_feature_manifest,
+    )
 
     soul = AgentSoulConfig.model_validate(
         {
@@ -2169,7 +2499,11 @@ def test_runtime_request_adds_required_route_selection_with_resolved_conditions(
             "output_routes": {
                 "enabled": True,
                 "routes": [
-                    {"id": "accept", "name": "Matches {{#sys.query#}}", "label": "Accepted"},
+                    {
+                        "id": "accept",
+                        "name": "Matches {{#sys.query#}}",
+                        "label": "Accepted",
+                    },
                     {"id": "reject", "name": "Does not match"},
                 ],
             },
@@ -2182,3 +2516,159 @@ def test_runtime_request_adds_required_route_selection_with_resolved_conditions(
     assert "Matches Summarize the report." in schema["properties"]["switch"]["description"]
     assert schema["required"] == (["switch", "summary"] if custom else ["switch"])
     assert schema["properties"]["text"] == {"type": "string"}
+
+
+@pytest.mark.parametrize("source", ["start", "upstream"])
+@pytest.mark.parametrize("is_array", [False, True])
+@pytest.mark.parametrize("supports_vision", [True, False])
+def test_referenced_workflow_images_reach_vision_models(
+    monkeypatch: pytest.MonkeyPatch,
+    source: str,
+    is_array: bool,
+    supports_vision: bool,
+    tool_providers,
+) -> None:
+    import services.workflow.execution.adapters.agent_v2.runtime_request_builder as runtime_builder
+
+    image = File(
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="referenced-image"),
+        filename="referenced.png",
+        mime_type="image/png",
+    )
+    document = File(
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="referenced-document"),
+        filename="document.pdf",
+        mime_type="application/pdf",
+    )
+    pool = VariablePool()
+    pool.add([source, "attachment"], [image, document] if is_array else image)
+    context = replace(_context(), variable_pool=pool)
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {"workflow_prompt": f"Describe {{{{#{source}.attachment#}}}}"}
+    )
+    monkeypatch.setattr(
+        runtime_builder,
+        "resolve_model_supports_vision",
+        lambda **_kwargs: supports_vision,
+    )
+    converted: list[str | None] = []
+
+    def convert(file: File, **_kwargs: object) -> ImagePromptMessageContent:
+        converted.append(file.filename)
+        return ImagePromptMessageContent(format="png", base64_data="aW1hZ2U=", mime_type="image/png")
+
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", convert)
+    result = WorkflowAgentRuntimeRequestBuilder(
+        dify_tools_builder=WorkflowAgentDifyToolsBuilder(
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
+        )
+    ).build(context)
+
+    assert converted == (["referenced.png"] if supports_vision else [])
+    layers = _request_layers(result)
+    config = layers["user_prompt" if supports_vision else "workflow_user_prompt"]["config"]
+    assert isinstance(config, dict)
+    text = config["text" if supports_vision else "user"]
+    assert isinstance(text, str)
+    assert isinstance(image.reference, str)
+    assert image.reference in text
+    if is_array:
+        assert isinstance(document.reference, str)
+        assert document.reference in text
+    if supports_vision:
+        files = config["files"]
+        assert isinstance(files, list)
+        assert len(files) == 1
+        assert isinstance(files[0], dict)
+        assert files[0]["delivery"] == "multimodal"
+
+
+def test_workflow_images_deduplicate_uploads_and_referenced_files(
+    monkeypatch: pytest.MonkeyPatch, tool_providers
+) -> None:
+    import services.workflow.execution.adapters.agent_v2.runtime_request_builder as runtime_builder
+
+    image = File(
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="shared-image"),
+        filename="shared.png",
+        mime_type="image/png",
+    )
+    remote = File(
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.com/remote.png",
+        filename="remote.png",
+        mime_type="image/png",
+    )
+    pool = VariablePool()
+    pool.add(["sys", "files"], [image])
+    pool.add(["start", "image"], image.model_copy())
+    pool.add(["upstream", "images"], [image.model_copy(), remote, remote.model_copy()])
+    context = replace(_context(), variable_pool=pool)
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {"workflow_prompt": "Describe {{#start.image#}} and {{#upstream.images#}}"}
+    )
+    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: True)
+    converted: list[str | None] = []
+
+    def convert(file: File, **_kwargs: object) -> ImagePromptMessageContent:
+        converted.append(file.filename)
+        return ImagePromptMessageContent(format="png", base64_data="aW1hZ2U=", mime_type="image/png")
+
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", convert)
+    result = WorkflowAgentRuntimeRequestBuilder(
+        dify_tools_builder=WorkflowAgentDifyToolsBuilder(
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
+        )
+    ).build(context)
+
+    assert converted == ["shared.png", "remote.png"]
+    config = _request_layers(result)["user_prompt"]["config"]
+    assert isinstance(config, dict)
+    files = config["files"]
+    assert isinstance(files, list)
+    assert len(files) == 2
+
+
+def test_unreferenced_workflow_image_is_not_attached(monkeypatch: pytest.MonkeyPatch, tool_providers) -> None:
+    import services.workflow.execution.adapters.agent_v2.runtime_request_builder as runtime_builder
+
+    pool = VariablePool()
+    pool.add(["sys", "query"], "Describe the current request")
+    pool.add(
+        ["start", "image"],
+        File(
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=build_file_reference(record_id="stale-image"),
+            filename="stale.png",
+            mime_type="image/png",
+        ),
+    )
+    context = replace(_context(), variable_pool=pool)
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Use only the current request.",
+            "previous_node_output_refs": [{"selector": ["start", "image"]}],
+        }
+    )
+    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: True)
+
+    def unexpected_conversion(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("Unreferenced image must not be converted")
+
+    monkeypatch.setattr(file_manager, "to_prompt_message_content", unexpected_conversion)
+    result = WorkflowAgentRuntimeRequestBuilder(
+        dify_tools_builder=WorkflowAgentDifyToolsBuilder(
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
+        )
+    ).build(context)
+
+    assert "workflow_user_prompt" in _request_layers(result)
+    assert "stale-image" not in _workflow_user_prompt(result)
