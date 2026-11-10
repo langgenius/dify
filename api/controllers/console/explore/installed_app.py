@@ -4,7 +4,7 @@ import logging
 from http import HTTPStatus
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, TypeAdapter, computed_field
 
 from controllers.common.fields import SimpleResultMessageResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -25,10 +25,13 @@ from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.model import AppMode, IconType
+from services.entities.app_list_entities import AppListSortBy
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_service import (
-    InstalledAppCursor,
+    InstalledAppListMode,
+    InstalledAppPageCursor,
     InstalledAppRecord,
+    InstalledAppSortCursor,
     InstalledAppUnavailableError,
 )
 from services.webapp_access_query_service import WebAppAccessUnavailableError
@@ -41,6 +44,15 @@ class InstalledAppUpdatePayload(BaseModel):
 class InstalledAppsListQuery(BaseModel):
     app_id: str | None = Field(default=None, description="App ID to filter by")
     name: str | None = Field(default=None, max_length=100, description="App name to search for")
+    mode: InstalledAppListMode = Field(default="all", description="App mode filter, using the same values as Studio")
+    sort_by: AppListSortBy | None = Field(
+        default=None,
+        description=(
+            "Sort by app modification or creation time, using the same values as Studio. "
+            "When omitted, pinned apps come first, then recently used apps. "
+            "Restart pagination when changing sort order."
+        ),
+    )
     cursor: str | None = Field(default=None, description="Opaque cursor returned by the previous page")
     limit: int = Field(
         default=20,
@@ -51,6 +63,7 @@ class InstalledAppsListQuery(BaseModel):
 
 
 logger = logging.getLogger(__name__)
+_installed_app_cursor_adapter = TypeAdapter(InstalledAppPageCursor)
 
 
 def _build_icon_url(icon_type: IconType | None, icon: str | None) -> str | None:
@@ -61,19 +74,31 @@ def _build_icon_url(icon_type: IconType | None, icon: str | None) -> str | None:
     return file_helpers.get_signed_file_url(icon)
 
 
-def _encode_installed_app_cursor(cursor: InstalledAppCursor) -> str:
+def _encode_installed_app_cursor(cursor: InstalledAppPageCursor) -> str:
+    """Encode a validated usage or app-time key as an opaque URL-safe cursor without side effects."""
     payload = cursor.model_dump_json().encode()
     return base64.urlsafe_b64encode(payload).decode().rstrip("=")
 
 
-def _decode_installed_app_cursor(cursor: str | None) -> InstalledAppCursor | None:
+def _decode_installed_app_cursor(
+    cursor: str | None, *, sort_by: AppListSortBy | None = None
+) -> InstalledAppPageCursor | None:
+    """Decode an optional cursor for the validated ordering without accessing persistence.
+
+    None starts a page; malformed cursors or cursors for another ordering raise the
+    existing invalid-cursor HTTP error before any application service is called.
+    """
     if cursor is None:
         return None
 
     try:
         padded_cursor = cursor + "=" * (-len(cursor) % 4)
         payload = base64.b64decode(padded_cursor, altchars=b"-_", validate=True)
-        return InstalledAppCursor.model_validate_json(payload)
+        decoded = _installed_app_cursor_adapter.validate_json(payload)
+        cursor_sort_by = decoded.sort_by if isinstance(decoded, InstalledAppSortCursor) else None
+        if cursor_sort_by != sort_by:
+            raise ValueError("Cursor ordering does not match sort_by")
+        return decoded
     except (binascii.Error, UnicodeDecodeError, ValueError) as error:
         raise InstalledAppInvalidCursorError() from error
 
@@ -146,7 +171,13 @@ class InstalledAppsListApi(Resource):
     @console_account_admission()
     @model_validate(InstalledAppsListQuery)
     def get(self, query: InstalledAppsListQuery, request_context: RequestContext) -> dict[str, object]:
-        cursor = _decode_installed_app_cursor(query.cursor)
+        """Return published, authorized installations matching the validated query.
+
+        Require an admitted workspace account; preserve the cursor response shape
+        and translate invalid cursors or unavailable access checks into API errors.
+        No installation state changes on success or failure.
+        """
+        cursor = _decode_installed_app_cursor(query.cursor, sort_by=query.sort_by)
         try:
             page = application_services().installed_apps.management.get_visible_page(
                 tenant_id=request_context.active_workspace_id,
@@ -155,6 +186,8 @@ class InstalledAppsListApi(Resource):
                 limit=query.limit,
                 app_id=query.app_id,
                 name=query.name,
+                mode=query.mode,
+                sort_by=query.sort_by,
             )
         except WebAppAccessUnavailableError as error:
             logger.exception(

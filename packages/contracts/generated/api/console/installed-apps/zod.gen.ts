@@ -1623,7 +1623,21 @@ export const zGetInstalledAppsQuery = z.object({
   app_id: z.string().optional(),
   cursor: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
+  mode: z
+    .enum([
+      'advanced-chat',
+      'agent',
+      'agent-chat',
+      'all',
+      'channel',
+      'chat',
+      'completion',
+      'workflow',
+    ])
+    .optional()
+    .default('all'),
   name: z.string().max(100).optional(),
+  sort_by: z.enum(['earliest_created', 'last_modified', 'recently_created']).optional(),
 })
 
 /**
