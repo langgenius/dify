@@ -186,6 +186,19 @@ describe('AudioPlayer', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('keeps playback when the same sources are passed as a new array', async () => {
+    const interaction = user()
+    const { rerender } = render(<AudioPlayer srcs={['https://example.com/a.mp3']} />)
+    loadMetadata()
+    await interaction.click(playButton())
+    expect(screen.getByRole('button', { name: 'common.operation.pause' })).toBeEnabled()
+
+    rerender(<AudioPlayer srcs={['https://example.com/a.mp3']} />)
+
+    expect(HTMLMediaElement.prototype.load).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'common.operation.pause' })).toBeEnabled()
+  })
+
   it.each(['mouse', 'touch'] as const)(
     'seeks to the %s position and avoids restarting active playback',
     async (kind) => {
