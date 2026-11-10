@@ -3,15 +3,13 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
-from urllib.parse import urlsplit
 from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_serializer
-from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
+from werkzeug.exceptions import NotFound, ServiceUnavailable
 
-from configs import dify_config
 from controllers.common.end_user_connections import (
     ConnectionConflictHTTPError,
     ConnectionNotFoundHTTPError,
@@ -19,60 +17,22 @@ from controllers.common.end_user_connections import (
 )
 from controllers.common.schema import query_params_from_model, register_response_schema_models
 from controllers.web import web_ns
+from controllers.web.account_admission import web_account_identity as _identity
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.datetime_utils import to_utc_timestamp
 from libs.external_api import error_responses
 from libs.helper import dump_response
-from libs.token import extract_webapp_cookie_token
 from services.consumer_service import (
     ConsumerApp,
     ConsumerAppNotFoundError,
     ConsumerAppsQuery,
     ConsumerConnection,
     ConsumerConnectionProvider,
-    ConsumerIdentity,
 )
 from services.end_user_connection_labels import mask_account_label
 from services.end_user_connections.errors import ConnectionError
-from services.web_identity_service import WebIdentityError
-from services.web_passport_service import WebPassportUnauthorizedError
 from services.webapp_access_query_service import WebAppAccessUnavailableError
-
-
-def _origin(url: str) -> tuple[str, str, int]:
-    parsed = urlsplit(url)
-    if (
-        parsed.scheme not in {"http", "https"}
-        or parsed.hostname is None
-        or parsed.username is not None
-        or parsed.password is not None
-        or parsed.query
-        or parsed.fragment
-    ):
-        raise ValueError("Invalid origin.")
-    port = parsed.port
-    return parsed.scheme, parsed.hostname, port if port is not None else (443 if parsed.scheme == "https" else 80)
-
-
-def _identity() -> ConsumerIdentity:
-    """Cookie authentication requires a trusted browser origin for account-wide mutations."""
-    origin = request.headers.get("Origin")
-    if origin is not None or request.method not in {"GET", "HEAD", "OPTIONS"}:
-        try:
-            trusted = next(
-                url
-                for url in (dify_config.APP_WEB_URL, dify_config.CONSOLE_WEB_URL, request.host_url)
-                if urlsplit(url).netloc
-            )
-            if origin is None or _origin(origin) != _origin(trusted):
-                raise ValueError("Untrusted origin.")
-        except ValueError:
-            raise Forbidden("WebApp request origin is not allowed.") from None
-    try:
-        return application_services().consumer.authenticate(extract_webapp_cookie_token(request))
-    except (WebIdentityError, WebPassportUnauthorizedError):
-        raise Unauthorized("WebApp Account login required.") from None
 
 
 @contextmanager

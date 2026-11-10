@@ -213,6 +213,8 @@ name = Account consumer transport uses application services
 type = forbidden
 source_modules =
     controllers.web.me
+    controllers.web.account
+    controllers.web.account_admission
 forbidden_modules =
     repositories
     models

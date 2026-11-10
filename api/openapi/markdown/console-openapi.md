@@ -212,6 +212,11 @@ Get account avatar url
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/password
+**Change admitted Account credentials only while password login is enabled**
+
+Existing passwords require verification. Disabled policy rejects before
+payload validation or credential writes; failures leave credentials unchanged.
+
 #### Request Body
 
 | Required | Schema |

@@ -6,11 +6,11 @@ from unittest.mock import MagicMock, PropertyMock, create_autospec, patch
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
-from flask import Flask, Response, request
+from flask import Flask, Response, g, request
 from jsonschema import Draft202012Validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
-from werkzeug.exceptions import NotFound, UnprocessableEntity
+from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 from controllers.console import console_ns
 from controllers.console.auth.error import (
@@ -27,6 +27,7 @@ from controllers.console.error import (
     EmailDomainSuspendedError,
     InvalidAccountPasswordRequestError,
 )
+from controllers.console.workspace import account as account_controller
 from controllers.console.workspace.account import (
     AccountAvatarApi,
     AccountAvatarQuery,
@@ -60,6 +61,7 @@ from controllers.console.workspace.error import (
     InvalidAccountDeletionCodeError,
     MissingInvitationCodeRequestError,
 )
+from enums import DeploymentEdition
 from extensions.application_services.account import AccountServices
 from extensions.ext_application_services import ApplicationServices
 from libs.exception import BaseHTTPException
@@ -69,6 +71,7 @@ from models import Account, Tenant, TenantAccountJoin
 from models import AccountStatus as _workspace_account_AccountStatus
 from models.account import AccountStatus as _accounts_AccountStatus
 from models.account import TenantAccountRole
+from repositories.account.repository import SQLAlchemyAccountRepository
 from services import account_errors
 from services.account_education_service import AccountEducationService
 from services.account_email import normalize_email
@@ -85,6 +88,7 @@ from services.account_errors import (
     InvalidChangeEmailCodeError,
     MissingInvitationCodeError,
 )
+from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.billing_client import billing
 from services.entities.account_entities import (
     AccountEducationActivation,
@@ -107,7 +111,7 @@ from services.entities.auth_entities import (
 from services.errors.billing import (
     UnknownErrorReason,
 )
-from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 from tests.helpers.unit.model_factories import make_account_snapshot
 
 
@@ -712,6 +716,57 @@ def persist_account_with_tenant(
     account._current_tenant = tenant
     account.role = TenantAccountRole.OWNER
     return account, tenant
+
+
+@pytest.mark.parametrize("password_login_enabled", [False, True])
+@pytest.mark.parametrize("password_set", [False, True])
+def test_console_password_changes_respect_password_login_policy(
+    app: Flask,
+    account_application_services: ApplicationServices,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    password_login_enabled: bool,
+    password_set: bool,
+) -> None:
+    account, _ = persist_account_with_tenant(sqlite_session)
+    accounts = SQLAlchemyAccountRepository(sqlite_session_factory)
+    passwords = DefaultAccountPasswordHasher()
+    if password_set:
+        accounts.update_password(account.id, passwords.hash("old-password1"))
+    previous = accounts.get_credentials(account.id)
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        LOGIN_DISABLED=True,
+        ENABLE_EMAIL_PASSWORD_LOGIN=password_login_enabled,
+    )
+    monkeypatch.setattr(account_controller, "application_services", lambda: account_application_services)
+    with app.test_request_context(
+        "/console/api/account/password",
+        method="POST",
+        json={"password": "old-password1", "new_password": "new-password2", "repeat_new_password": "new-password2"},
+    ):
+        g._login_user = account
+        if password_login_enabled:
+            result = AccountPasswordApi().post()
+            assert isinstance(result, dict)
+            assert result["is_password_set"] is True
+        else:
+            with pytest.raises(Forbidden) as error:
+                AccountPasswordApi().post()
+            assert error.value.code == 403
+
+    credentials = accounts.get_credentials(account.id)
+    if password_login_enabled:
+        assert credentials is not None
+        assert credentials.password_hash is not None
+        assert credentials.password_salt is not None
+        assert passwords.verify(
+            "new-password2", password_hash=credentials.password_hash, password_salt=credentials.password_salt
+        )
+    else:
+        assert credentials == previous
 
 
 class TestAccountsCases:

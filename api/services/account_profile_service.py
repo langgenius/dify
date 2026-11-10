@@ -27,7 +27,14 @@ class AccountProfileService:
             raise AccountNotFoundError
         return account
 
-    def update(self, context: RequestContext, changes: AccountProfileChanges) -> AccountSnapshot:
+    def update(
+        self, context: AccountRequestContext | RequestContext, changes: AccountProfileChanges
+    ) -> AccountSnapshot:
+        """Apply submitted fields to the admitted Account, without requiring a workspace.
+
+        Empty changes are a read-only no-op. A missing Account raises
+        AccountNotFoundError and cannot cause creation or membership changes.
+        """
         if changes.has_changes():
             account = self._accounts.update_profile(context.account_id, changes)
         else:
