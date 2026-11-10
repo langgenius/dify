@@ -512,3 +512,20 @@ class TestQAIndexProcessor:
         parsed = processor._format_split_text("**Q1:** What is A?\n**A1:** Because B.")
 
         assert parsed == [{"question": "What is A?", "answer": "Because B."}]
+
+    def test_format_split_text_preserves_answer_markdown(self, processor: QAIndexProcessor) -> None:
+        """Emphasis inside an answer belongs to the content, not the label.
+
+        Cleaning ``*`` from both captured halves turned ``A1: **Yes**`` into
+        ``Yes`` and ``A1: **Yes** is bold.`` into ``Yes** is bold.``, which is
+        malformed Markdown. Only the label wrappers may be consumed.
+        """
+        parsed = processor._format_split_text("Q1: What is bold?\nA1: **Yes** is bold.")
+
+        assert parsed == [{"question": "What is bold?", "answer": "**Yes** is bold."}]
+
+    def test_format_split_text_keeps_a_fully_emphasised_answer(self, processor: QAIndexProcessor) -> None:
+        """An answer that is entirely bold must keep both markers."""
+        parsed = processor._format_split_text("Q1: What is bold?\nA1: **Yes**")
+
+        assert parsed == [{"question": "What is bold?", "answer": "**Yes**"}]

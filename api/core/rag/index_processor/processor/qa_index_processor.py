@@ -35,11 +35,16 @@ logger = logging.getLogger(__name__)
 
 
 def _clean_block(value: str) -> str:
-    """Squash the leading emphasis markers and repeated whitespace in a QA half.
+    """Trim a captured QA half and collapse its whitespace.
 
-    Models often wrap the labels in markdown emphasis (``**Q1:**``), which
-    leaves the markers at the start of the captured text. Line breaks are
-    kept as single newlines so a multi-line answer keeps its structure.
+    The emphasis markers that models put around the *labels* (``**Q1:**``)
+    are already consumed by the surrounding pattern, so anything left here
+    belongs to the question or the answer itself. Stripping ``*`` from it
+    would drop the answer's own Markdown emphasis and leave the remaining
+    markers unbalanced.
+
+    Line breaks are kept as single newlines so a multi-line answer keeps
+    its structure.
 
     Args:
         value (`str`):
@@ -47,10 +52,10 @@ def _clean_block(value: str) -> str:
 
     Returns:
         `str`:
-            The text without leading emphasis markers, with runs of
-            whitespace collapsed to a single newline.
+            The trimmed text, with runs of whitespace collapsed to a
+            single newline.
     """
-    return re.sub(r"\n\s*", "\n", value.strip().strip("*").strip())
+    return re.sub(r"\n\s*", "\n", value.strip())
 
 
 class QAFormatPreviewDict(TypedDict):
@@ -317,10 +322,15 @@ class QAIndexProcessor(BaseIndexProcessor):
         Returns:
             `list[dict]`:
                 One ``{"question": ..., "answer": ...}`` entry per pair that
-                has both halves. Surrounding markdown emphasis and repeated
-                whitespace are stripped.
+                has both halves. Emphasis markers wrapping the *labels* are
+                consumed by the pattern; the question and answer text keeps
+                its own Markdown untouched.
         """
-        regex = r"(?m)^[\s*]*Q(\d+)\s*:\s*([\s\S]*?)\s*^[\s*]*A\1\s*:\s*([\s\S]*?)(?=^[\s*]*Q\d+\s*:|\Z)"
+        regex = (
+            r"(?m)^[ \t]*(?:\*\*)?Q(\d+)\s*:(?:\*\*)?[ \t]*([\s\S]*?)"
+            r"\s*^[ \t]*(?:\*\*)?A\1\s*:(?:\*\*)?[ \t]*([\s\S]*?)"
+            r"(?=^[ \t]*(?:\*\*)?Q\d+\s*:(?:\*\*)?|\Z)"
+        )
         matches = re.findall(regex, text, re.UNICODE)
 
         return [
