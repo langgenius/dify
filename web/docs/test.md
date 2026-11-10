@@ -40,7 +40,7 @@ Test the behavior owner. Barrel exports, pass-through wrappers, and purely prese
 
 ### Browser Mode Admission
 
-Rendered React component and feature tests default to the `browser` project in Playwright Chromium. This includes dialogs, forms, pages, editors, canvas, and hooks exercised through a rendered owner. Use `*.browser.spec.{ts,tsx}` under `{app,features}/**`; one scenario belongs to one project. Do not duplicate unit cases in Browser Mode.
+Rendered React component and feature tests default to the `browser` project in Playwright Chromium. This includes dialogs, forms, pages, editors, canvas, and hooks exercised through a rendered owner. Use `*.browser.spec.{ts,tsx}` under `{app,features,utils}/**`; `utils` is for DOM helpers whose contract needs real browser behavior, such as focus restoration. One scenario belongs to one project. Do not duplicate unit cases in Browser Mode.
 
 Keep `unit` in `happy-dom` when a browser adds no useful evidence: pure functions, types and schemas, request builders, stores or hooks without DOM, and Node or build tooling. Files outside the browser project's include paths also remain in `unit`. If a required capability is unavailable in Browser Mode, explain the concrete blocker in the PR and propose the missing infrastructure instead of emulating browser behavior or weakening the test.
 
@@ -116,7 +116,7 @@ Mocks must preserve the public contract needed by the test. A mock must not reim
 
 ## Dify Test Setup
 
-- Following [Vite+ testing configuration], tests under `web/` use two explicit projects; rendered component and feature tests default to `browser`, and non-DOM logic stays in `unit`. Both projects are configured in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
+- Following [Vite+ testing configuration], tests under `web/` use two explicit projects; rendered component and feature tests default to `browser`, and non-DOM logic stays in `unit`. Both projects are configured in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features,utils}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
 - Browser string locators use Vitest 5's exact, case-sensitive matching. Use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`; a regular-expression check against rendered text can use `expect(element.textContent).toMatch(pattern)` when the Vitest 5 browser matcher types conflict with jest-dom's `toHaveTextContent` overload.
 - Tests in one browser file share a page. `web/vitest.browser.setup.ts` resets the viewport and pointer before each test; set the viewport a test depends on inside that test.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
