@@ -882,6 +882,18 @@ def model_config_error_text(run: Run) -> str | None:
         low = text.lower()
         if re.fullmatch(r"modelnotexisterror: [^\n]{1,512}", low):
             return "Model configuration unavailable."
+        # Native LLM nodes retain str(exc), not the exception class name.
+        # These exact forms come from core/app/llm/model_access.py; unlike a
+        # bare credential mention, they identify model setup specifically.
+        native_setup = re.fullmatch(
+            r"model [a-z0-9_./:@+\-]{1,128} (schema does not exist|credentials is not initialized)\.", low
+        )
+        if native_setup is not None:
+            return (
+                "Model schema unavailable."
+                if native_setup[1] == "schema does not exist"
+                else "Model credentials are not initialized."
+            )
         if re.fullmatch(
             r"(?:model|provider) [a-z0-9_./:@+\-]{1,128} (?:does not exist|not exist|not found|not configured)\.?",
             low,

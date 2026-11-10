@@ -287,3 +287,112 @@ def test_legacy_model_exception_details_are_not_echoed_to_public_copy() -> None:
     assert message is not None
     assert "SECRET_CANARY" not in message
     assert "https://private" not in message
+
+
+@pytest.mark.parametrize("failure_kind", ["schema", "credentials"])
+def test_actual_native_model_configuration_errors_are_recognized(failure_kind: str) -> None:
+    from core.errors.error import ProviderTokenNotInitError
+    from graphon.nodes.llm.exc import ModelNotExistError
+
+    failure = (
+        ModelNotExistError("Model gpt-5.6 schema does not exist.")
+        if failure_kind == "schema"
+        else ProviderTokenNotInitError("Model gpt-5.6 credentials is not initialized.")
+    )
+    message = handlers_fix.model_config_error_text(Run(status="failed", error=str(failure)))
+    assert message is not None
+    assert failure_kind in message.lower()
+
+
+@pytest.mark.parametrize("flow", ["build", "edit", "fix"])
+@pytest.mark.parametrize("failure_kind", ["schema", "credentials"])
+def test_native_model_setup_failures_keep_existing_handler_gate_without_graph_repair(
+    flow: str, failure_kind: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from core.errors.error import ProviderTokenNotInitError
+    from graphon.nodes.llm.exc import ModelNotExistError
+    from services.dify_builder.revision import executable_graph_revision
+    from tests.unit_tests.core.dify_builder.fakes import StubAgent
+
+    failure = (
+        ModelNotExistError("Model gpt-5.6 schema does not exist.")
+        if failure_kind == "schema"
+        else ProviderTokenNotInitError("Model gpt-5.6 credentials is not initialized.")
+    )
+    error = str(failure)
+    helpers = importlib.import_module(f"tests.unit_tests.core.dify_builder.test_handlers_{flow}")
+    env, repo = helpers._new_env()
+    env.agent = StubAgent()
+    graph: Graph = {
+        "nodes": [{"id": "llm", "data": {"type": "llm", "model": {"provider": "openai", "name": "gpt-5.6"}}}],
+        "edges": [],
+    }
+    env.fake_dify.graph = graph
+    session = helpers._session(
+        current_state={
+            "build": PcState.BUILD_TEST_AND_REPAIR,
+            "edit": PcState.EDIT_TEST_AFFECTED_PATHS,
+            "fix": PcState.FIX_VERIFY,
+        }[flow]
+    )
+    context = saved_test_context(repo, session.id)
+    raw = credential_run()
+    assert raw.verification is not None
+    assert raw.verification.execution_evidence is not None
+    raw.verification.executed_graph_revision = executable_graph_revision(graph)
+    raw.verification.executed_node_ids = ["llm"]
+    raw.error = error
+    raw.per_node = [NodeOutput(node_id="llm", status="failed", error=error)]
+    original_evidence = raw.verification.execution_evidence.model_dump()
+    calls: list[str] = []
+
+    def run_draft(
+        app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None], **kwargs: object
+    ) -> Run:
+        del inputs, on_event
+        assert app_id == session.app_id
+        assert actor == helpers._actor()
+        assert kwargs["test_input_id"] == context.test_input_ref
+        calls.append(app_id)
+        return raw
+
+    monkeypatch.setattr(env.dify, "run_draft", run_draft)
+    result = {
+        "build": handlers_build.handle_test_and_repair,
+        "edit": handlers_edit.handle_test_affected_paths,
+        "fix": handlers_fix.handle_verify,
+    }[flow](env, Turn(actor=helpers._actor()), session, context)
+    assert result.context is not None
+    assert result.context.staged_repair == []
+    assert not any(item.kind == "change_set" for item in result.items)
+    card = next(item for item in result.items if item.kind == "test_result")
+    assert "model" in english_text(card.payload["failure_reason"]).lower()
+    assert (
+        result.next
+        == {
+            "build": PcState.BUILD_AWAIT_REPAIR,
+            "edit": PcState.EDIT_AWAIT_REPAIR,
+            "fix": PcState.FIX_AWAIT_DECISION,
+        }[flow]
+    )
+    assert result.run is not None
+    assert result.run.status == "failed"
+    assert result.run.dify_run_id == "native"
+    assert result.run.verification is not None
+    assert result.run.verification.execution_evidence is not None
+    assert result.run.verification.execution_evidence.model_dump() == original_evidence
+    assert calls == [session.app_id]
+    assert raw.error == error
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        "Tool gpt-5.6 credentials is not initialized.",
+        "Failed to get tool runtime: Model gpt-5.6 credentials is not initialized.",
+        "Model gpt-5.6 credentials is not initialized. token=SECRET_CANARY",
+        "Model https://private?token=SECRET_CANARY schema does not exist.",
+    ],
+)
+def test_native_model_setup_matcher_does_not_admit_tool_or_secret_bearing_variants(error: str) -> None:
+    assert handlers_fix.model_config_error_text(Run(status="failed", error=error)) is None
