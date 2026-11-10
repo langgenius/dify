@@ -1349,7 +1349,7 @@ Read a text/binary preview file in an Agent App conversation sandbox
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| end | query | End date (YYYY-MM-DD HH:MM). The named end minute is included in the results. | No | string |
 | source | query | Filter by a structured webapp:<app_id> or workflow:<app_id> source ID. Legacy invoke sources and exact workflow version/node source IDs remain supported. | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 | agent_id | path |  | Yes | string (uuid) |
@@ -20995,7 +20995,7 @@ Origin that created or imported the Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| end | string | End date (YYYY-MM-DD HH:MM) | No |
+| end | string | End date (YYYY-MM-DD HH:MM). The named end minute is included in the results. | No |
 | source | string | Filter by a structured webapp:<app_id> or workflow:<app_id> source ID. Legacy invoke sources and exact workflow version/node source IDs remain supported. | No |
 | start | string | Start date (YYYY-MM-DD HH:MM) | No |
 
