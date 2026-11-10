@@ -3933,6 +3933,25 @@ Create a new tracing configuration for an application
 | 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /apps/{app_id}/trace-configs
+List tracing configurations for an application
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| include_config | query | Include obfuscated provider configurations in the response | No | boolean |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tracing configurations retrieved successfully | **application/json**: [TraceAppConfigListResponse](#traceappconfiglistresponse)<br> |
+| 404 | Application not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /apps/{app_id}/trace-runs/{source_kind}/{source_id}
 #### Parameters
 
@@ -36057,6 +36076,13 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | ToolSelectorScope | string |  |  |
 
+#### TraceAppConfigListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configs | [ [TraceAppConfigResponse](#traceappconfigresponse) ] |  | No |
+| configured_providers | [ string ] |  | No |
+
 #### TraceAppConfigResponse
 
 | Name | Type | Description | Required |
@@ -36080,6 +36106,12 @@ A tracing configuration already exists for this provider.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TraceConfigAlreadyExistsError |  | A tracing configuration already exists for this provider. |  |
+
+#### TraceConfigListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_config | boolean | Include obfuscated provider configurations in the response | No |
 
 #### TraceConfigNotFoundError
 

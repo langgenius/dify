@@ -1076,6 +1076,14 @@ export const zTraceConfigAlreadyExistsError = zErrorResponse.and(
 )
 
 /**
+ * TraceAppConfigListResponse
+ */
+export const zTraceAppConfigListResponse = z.object({
+  configs: z.array(zTraceAppConfigResponse).nullish(),
+  configured_providers: z.array(z.string()).optional(),
+})
+
+/**
  * TracingNodeNotFoundError
  *
  * The Agent node invocation does not belong to this trace.
@@ -7891,6 +7899,19 @@ export const zPostAppsByAppIdTraceConfigPath = z.object({
  * Tracing configuration created successfully
  */
 export const zPostAppsByAppIdTraceConfigResponse = zTraceAppConfigResponse
+
+export const zGetAppsByAppIdTraceConfigsPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdTraceConfigsQuery = z.object({
+  include_config: z.boolean().optional().default(false),
+})
+
+/**
+ * Tracing configurations retrieved successfully
+ */
+export const zGetAppsByAppIdTraceConfigsResponse = zTraceAppConfigListResponse
 
 export const zGetAppsByAppIdTraceRunsBySourceKindBySourceIdPath = z.object({
   app_id: z.uuid(),
