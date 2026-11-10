@@ -27,8 +27,7 @@ export function RollingPrice({ monthly, annual, isYearly }: RollingPriceProps) {
               key={place}
               className={cn(
                 'flex h-lh justify-end overflow-hidden mask-[linear-gradient(to_bottom,transparent,black_16%,black_84%,transparent)]',
-                'motion-safe:transition-[width,opacity] motion-safe:duration-300 motion-safe:ease-out',
-                collapsed ? 'w-0 opacity-0' : 'w-[1ch] opacity-100',
+                collapsed ? 'w-0' : 'w-[1ch]',
               )}
             >
               <span
