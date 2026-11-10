@@ -163,8 +163,6 @@ project-excludes = [
   "core/tools/utils/test_parser.py",
   "core/tools/utils/test_web_reader_tool.py",
   "core/tools/workflow_as_tool/test_tool.py",
-  "context/test_execution_context.py",
-  "context/test_flask_app_context.py",
   "../e2e_tests/contracts/core/workflow/entities/test_private_workflow_pause.py",
   "core/workflow/generator/test_runner.py",
   "core/app/workflow/layers/conftest.py",
