@@ -5,18 +5,18 @@ errors so legacy task handling and HTTP/SSE transports preserve the same public
 classification without importing concrete moderation gateways.
 """
 
-from core.app.apps.exc import AppGenerateError
+from core.app.apps.exc import ModerationInvocationError
 from services.moderation_service import ModerationRejectedError
 
 
-class ModerationRejectedInvocationError(ModerationRejectedError, AppGenerateError):
+class ModerationRejectedInvocationError(ModerationRejectedError, ModerationInvocationError):
     """Preserve a strict rejection while exposing the existing app-generation error contract."""
 
     error_code = "moderation_rejected"
     status_code = 400
 
 
-class ModerationUnavailableInvocationError(AppGenerateError):
+class ModerationUnavailableInvocationError(ModerationInvocationError):
     """Fail closed without exposing provider credentials, plugin errors, or rejected content."""
 
     error_code = "moderation_unavailable"

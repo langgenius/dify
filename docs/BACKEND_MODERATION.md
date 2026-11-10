@@ -236,3 +236,16 @@ infrastructure, not moderated business entry points.
 The API adapter loads tenant-scoped extension records in a short repository
 session, then decrypts credentials and performs HTTP outside that session. It
 requires an explicit boolean `flagged` field in every API verdict.
+
+## RAG failure handling
+
+`ModerationInvocationError` identifies model moderation failures without exposing
+application-service dependencies to RAG consumers. Both rejection and service
+unavailability remain terminal for the affected operation, not best-effort empty
+results. Input failures precede model usage; output failures retain consumed
+model charges.
+
+QA formatting propagates moderation failures in preview and indexing mode.
+Bounded worker futures return failures to the indexing coordinator, which marks
+the document as errored instead of completing an empty or partial QA index.
+Ordinary QA generation failures retain their existing best-effort handling.

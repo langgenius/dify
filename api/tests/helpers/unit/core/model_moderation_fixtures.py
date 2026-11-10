@@ -27,6 +27,8 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.model_runtime.model_providers.base.moderation_model import ModerationModel
 from models.provider import ProviderType
+from services.moderation_adapters import LLMModerationGuard
+from services.moderation_service import ModerationPhase, ModerationRejectedError
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
@@ -146,6 +148,23 @@ def make_moderated_model(
         if quota
         else ModelInstance(provider_model_bundle=bundle, model="test-model", credentials={}, moderation=moderation)
     )
+    return instance, provider
+
+
+def make_failing_moderated_model(
+    *, phase: ModerationPhase, unavailable: bool
+) -> tuple[RecordingQuotaModelInstance, RecordingLLM]:
+    """Bind a real invocation guard that rejects or fails at one phase, retaining provider and quota evidence."""
+
+    def check(_text: str, checked_phase: ModerationPhase) -> None:
+        if checked_phase == phase:
+            if unavailable:
+                raise RuntimeError("Moderation backend is unavailable")
+            raise ModerationRejectedError(phase, "Content rejected by moderation")
+
+    guard = LLMModerationGuard(tenant_id="test-tenant-id", check=check, check_input=True, check_output=True)
+    instance, provider = make_moderated_model(quota=True, parts=["safe"], moderation=guard)
+    assert isinstance(instance, RecordingQuotaModelInstance)
     return instance, provider
 
 
