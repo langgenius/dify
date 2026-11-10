@@ -14,7 +14,6 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 
 from datetime import UTC, datetime
 from operator import itemgetter
-from typing import cast
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -170,12 +169,13 @@ class TestRerankModelRunner(_UsesSQLiteSession):
                 provider="dify",
             )
         ]
-        cast(Mock, mock_model_instance.invoke_rerank).return_value = RerankResult(
+        rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[RerankDocument(index=0, text="keyword match", score=0.7)],
         )
 
-        result = rerank_runner.run(query="python", documents=documents)
+        with patch.object(mock_model_instance, "invoke_rerank", return_value=rerank_result):
+            result = rerank_runner.run(query="python", documents=documents)
 
         assert result[0].metadata["score"] == 0.7
         assert SCORE_FROM_FULL_TEXT_METADATA_KEY not in result[0].metadata
