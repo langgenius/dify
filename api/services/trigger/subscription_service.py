@@ -61,7 +61,7 @@ class TriggerSubscriptionSnapshot:
     credential_type: CredentialType
     parameters: Mapping[str, Any]
     properties: Mapping[str, Any]
-    credentials: Mapping[str, str]
+    credentials: Mapping[str, object]
     credential_expires_at: int
     expires_at: int
     visibility: PermissionEnum
@@ -114,7 +114,7 @@ class TriggerSubscriptionProviderGateway(Protocol):
         user_id: str,
         endpoint: str,
         parameters: Mapping[str, Any],
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription: ...
 
@@ -125,7 +125,7 @@ class TriggerSubscriptionProviderGateway(Protocol):
         provider_id: TriggerProviderID,
         user_id: str,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> UnsubscribeResult: ...
 
@@ -161,7 +161,6 @@ class TriggerSubscriptionService:
 
     TODO: The shared RSA key provider still owns a scoped DB session for encryption;
     remove that dependency when its tenant key reads return detached values.
-    TODO: Coordinate the legacy subscription renewal task with this same lease.
     """
 
     def __init__(
@@ -190,7 +189,7 @@ class TriggerSubscriptionService:
         credential_type: CredentialType,
         parameters: Mapping[str, Any],
         properties: Mapping[str, Any],
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         subscription_id: str,
         credential_expires_at: int,
         expires_at: int,
