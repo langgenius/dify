@@ -52,6 +52,7 @@ from extensions.ext_application_services import AppScopedEndUserServices
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
+from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.moderation_session import ModerationSession
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -371,7 +372,10 @@ def test_plugin_app_invocation_binds_isolated_scope_and_restores_it_on_failure(
     flask_app = Flask(__name__)
     repository = AppScopedEndUserRepo(session_factory=sqlite_session_factory)
     flask_app.extensions["application_services"] = PluginAppServices(
-        AppScopedEndUserServices(commands=AppScopedEndUserService(end_users=repository), queries=repository)
+        AppScopedEndUserServices(
+            commands=AppScopedEndUserService(end_users=repository),
+            queries=AppScopedEndUserQueryService(end_users=repository),
+        )
     )
     app = make_app()
     user = make_end_user(app_id=app.id)
