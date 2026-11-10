@@ -17,7 +17,6 @@ Web application API operations
 
 A same-origin Account cookie is required. Existing credentials require the
 current password; confirmation and policy failures leave credentials unchanged.
-Concurrent credential changes cannot overwrite a password verified earlier.
 
 #### Request Body
 

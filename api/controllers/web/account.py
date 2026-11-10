@@ -117,7 +117,6 @@ class WebAccountPasswordApi(Resource):
 
         A same-origin Account cookie is required. Existing credentials require the
         current password; confirmation and policy failures leave credentials unchanged.
-        Concurrent credential changes cannot overwrite a password verified earlier.
         """
         context = web_account_context()
         payload = WebAccountPasswordPayload.model_validate(web_ns.payload or {})

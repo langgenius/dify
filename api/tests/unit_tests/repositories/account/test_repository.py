@@ -18,13 +18,7 @@ from models.account import (
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from services.account_email import normalize_email
-from services.account_errors import CurrentAccountPasswordIncorrectError
-from services.entities.account_entities import (
-    AccountCredentials,
-    AccountInitialization,
-    AccountPasswordDigest,
-    AccountProfileChanges,
-)
+from services.entities.account_entities import AccountInitialization, AccountPasswordDigest, AccountProfileChanges
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
     PasswordLoginCompletion,
@@ -42,39 +36,6 @@ def _persist_account(session: Session) -> Account:
     session.add(account)
     session.commit()
     return account
-
-
-@pytest.mark.parametrize("initial_password", [None, AccountPasswordDigest("initial-hash", "initial-salt")])
-def test_change_password_rejects_stale_credentials(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-    initial_password: AccountPasswordDigest | None,
-) -> None:
-    account = _persist_account(sqlite_session)
-    accounts = SQLAlchemyAccountRepository(sqlite_session_factory)
-    if initial_password is not None:
-        accounts.update_password(account.id, initial_password)
-    expected = accounts.get_credentials(account.id)
-    assert expected is not None
-    newer = AccountPasswordDigest("newer-hash", "newer-salt")
-    accounts.update_password(account.id, newer)
-
-    with pytest.raises(CurrentAccountPasswordIncorrectError):
-        accounts.change_password(
-            account.id, expected=expected, password=AccountPasswordDigest("stale-hash", "stale-salt")
-        )
-
-    assert accounts.get_credentials(account.id) == AccountCredentials("newer-hash", "newer-salt")
-
-
-def test_change_password_returns_none_for_missing_account(sqlite_session_factory: sessionmaker[Session]) -> None:
-    accounts = SQLAlchemyAccountRepository(sqlite_session_factory)
-    assert (
-        accounts.change_password(
-            "missing", expected=AccountCredentials(None, None), password=AccountPasswordDigest("hash", "salt")
-        )
-        is None
-    )
 
 
 @pytest.mark.parametrize("role", [None, TenantAccountRole.NORMAL, TenantAccountRole.OWNER])

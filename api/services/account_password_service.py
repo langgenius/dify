@@ -1,33 +1,16 @@
 """Application service for changing a current account password."""
 
-from typing import Protocol
-
 from machinery.context import AccountRequestContext, RequestContext
 from services.account_errors import AccountNotFoundError, CurrentAccountPasswordIncorrectError
-from services.account_ports import AccountPasswordHasher
-from services.entities.account_entities import AccountCredentials, AccountPasswordDigest, AccountSnapshot
-
-
-class AccountPasswordStore(Protocol):
-    def get_credentials(self, account_id: str) -> AccountCredentials | None: ...
-
-    def change_password(
-        self, account_id: str, *, expected: AccountCredentials, password: AccountPasswordDigest
-    ) -> AccountSnapshot | None:
-        """Atomically replace credentials only if both stored digest fields still match.
-
-        Scope the conditional write by Account ID and expected credentials in one
-        transaction. Return None for a deleted Account; a concurrent credential
-        change raises CurrentAccountPasswordIncorrectError without overwriting it.
-        """
-        ...
+from services.account_ports import AccountPasswordHasher, AccountRepository
+from services.entities.account_entities import AccountSnapshot
 
 
 class AccountPasswordService:
     def __init__(
         self,
         *,
-        accounts: AccountPasswordStore,
+        accounts: AccountRepository,
         passwords: AccountPasswordHasher,
     ) -> None:
         self._accounts = accounts
@@ -39,8 +22,8 @@ class AccountPasswordService:
         """Set or change only the admitted Account's password, without workspace scope.
 
         Existing credentials require current-password verification; an unset
-        password does not. Invalid input, missing Accounts and concurrent changes
-        fail without overwriting credentials. Hashing occurs outside transactions.
+        password does not. Invalid input and missing Accounts fail without a
+        password update. Hashing occurs outside write transactions.
         """
         credentials = self._accounts.get_credentials(context.account_id)
         if credentials is None:
@@ -57,7 +40,7 @@ class AccountPasswordService:
             raise CurrentAccountPasswordIncorrectError
 
         password = self._passwords.hash(new_password)
-        account = self._accounts.change_password(context.account_id, expected=credentials, password=password)
+        account = self._accounts.update_password(context.account_id, password)
         if account is None:
             raise AccountNotFoundError
         return account

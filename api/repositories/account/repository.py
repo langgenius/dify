@@ -22,8 +22,7 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemy
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthAccountRepository
 from services.account_email import normalize_email
-from services.account_errors import AccountNormalizedEmailAlreadyInUseError, CurrentAccountPasswordIncorrectError
-from services.account_password_service import AccountPasswordStore
+from services.account_errors import AccountNormalizedEmailAlreadyInUseError
 from services.account_ports import AccountRepository
 from services.account_profile_service import AccountProfileStore
 from services.entities.account_entities import (
@@ -46,9 +45,7 @@ from services.entities.account_login_entities import (
 )
 
 
-class SQLAlchemyAccountRepository(
-    AccountRepository, ConsoleAuthAccountRepository, AccountProfileStore, AccountPasswordStore
-):
+class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepository, AccountProfileStore):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -317,28 +314,6 @@ class SQLAlchemyAccountRepository(
                 account.timezone = changes.timezone
 
             session.flush()
-            return self._to_snapshot(account)
-
-    @override
-    def change_password(
-        self, account_id: str, *, expected: AccountCredentials, password: AccountPasswordDigest
-    ) -> AccountSnapshot | None:
-        """Commit an Account-scoped compare-and-swap; stale credentials never overwrite newer ones."""
-        with self._session_factory.begin() as session:
-            result = session.connection().execute(
-                update(Account)
-                .where(
-                    Account.id == account_id,
-                    Account.password == expected.password_hash,
-                    Account.password_salt == expected.password_salt,
-                )
-                .values(password=password.password_hash, password_salt=password.password_salt)
-            )
-            account = session.get(Account, account_id)
-            if account is None:
-                return None
-            if result.rowcount != 1:
-                raise CurrentAccountPasswordIncorrectError
             return self._to_snapshot(account)
 
     @override

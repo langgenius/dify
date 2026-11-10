@@ -259,12 +259,11 @@ import {
  *
  * A same-origin Account cookie is required. Existing credentials require the
  * current password; confirmation and policy failures leave credentials unchanged.
- * Concurrent credential changes cannot overwrite a password verified earlier.
  */
 export const post = oc
   .route({
     description:
-      'A same-origin Account cookie is required. Existing credentials require the\ncurrent password; confirmation and policy failures leave credentials unchanged.\nConcurrent credential changes cannot overwrite a password verified earlier.',
+      'A same-origin Account cookie is required. Existing credentials require the\ncurrent password; confirmation and policy failures leave credentials unchanged.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAccountPassword',
