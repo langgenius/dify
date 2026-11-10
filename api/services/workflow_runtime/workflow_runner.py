@@ -82,7 +82,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             runtime=native_runtime,
             host=native_host,
         )
-        if native_host is not None and (graph_engine_layers or application_generate_entity.trace_manager is not None):
+        if native_host is not None and (graph_engine_layers or application_generate_entity.trace_scope is not None):
             raise NativeContextUnavailable("native_observation_unqualified")
         self._native_host = native_host
         super().__init__(
@@ -211,6 +211,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 native_runtime=self._native_runtime,
                 builder_mocked_node_ids=entity.builder_mocked_node_ids,
                 builder_tool_credential_bindings=entity.builder_tool_credential_bindings,
+                builder_api_tool_bindings=entity.builder_api_tool_bindings,
                 execution_recorder=self._execution_recorder,
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
@@ -295,6 +296,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 native_runtime=self._native_runtime,
                 builder_mocked_node_ids=entity.builder_mocked_node_ids,
                 builder_tool_credential_bindings=entity.builder_tool_credential_bindings,
+                builder_api_tool_bindings=entity.builder_api_tool_bindings,
                 execution_recorder=self._execution_recorder,
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,

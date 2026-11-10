@@ -7,9 +7,9 @@ sandboxed code and read-only calls are disclosed but need no separate
 confirmation (they are L2 cost and access, approved with the plan).
 
 Pure: reads one draft graph mapping, account metadata, and optional test inputs. The
-classification is deliberately conservative: an unknown node type or a Tool
-whose name does not read as a lookup is a side effect, so it is mocked unless
-confirmed. A confirmation is bound to the node's effect signature (type,
+classification is deliberately conservative: custom API Tools require owned
+operation facts and saved semantic assessment; missing facts are mocked. Other
+Tools retain their existing disclosure policy. A confirmation is bound to the node's effect signature (type,
 target, account and constant parameters), so a repair that changes what a node
 would touch drops that node's confirmation while unrelated repairs keep it.
 """
@@ -252,6 +252,7 @@ def disclose(
     scope_binding: str = "",
     code_risk_assessments: Mapping[str, Any] | None = None,
     code_facts_digests: Mapping[str, str] | None = None,
+    api_tool_definitions: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> EffectDisclosure:
     """Disclose configuration, resolved accounts, and direct invocation inputs.
 
@@ -262,7 +263,8 @@ def disclose(
     variable state; its values are never returned as part of the disclosure.
     """
     from runtime_contracts.builder.execution import canonical_digest
-    from services.dify_builder.code_risk_assessment import UNAVAILABLE, validated_assessments
+    from services.dify_builder.api_tool_effects import is_api_tool
+    from services.dify_builder.code_risk_assessment import UNAVAILABLE, _safe_urls, validated_assessments
 
     code_risks = validated_assessments(code_risk_assessments)
     names = accounts or {}
@@ -333,13 +335,16 @@ def disclose(
         config_tier, config_target, _ = _classify(node_type, data)
         risk_notice, assessment_digest, assessment_status = "", "", ""
         code_identity = None
-        if node_type == "code":
+        api_tool = is_api_tool(data)
+        if node_type == "code" or api_tool:
             risk = code_risks.get(node_id)
             if risk is not None and risk["facts_digest"] == (code_facts_digests or {}).get(node_id):
                 risk_notice = risk["risk_notice"]
                 assessment_digest = canonical_digest(risk)
                 assessment_status = risk["status"]
                 tier = _CODE_TIERS[risk["classification"]]
+                if api_tool and tier == "sandboxed":
+                    tier = "read"
             else:
                 assessment_status = "unavailable"
                 risk_notice = UNAVAILABLE
@@ -351,12 +356,27 @@ def disclose(
             bound_inputs = {}
             graph_binding = None
             config_tier = tier
-            target = config_target = "Code runtime (destinations depend on the bound source and inputs)"
-            obj = ""
+            if api_tool:
+                definition = (api_tool_definitions or {}).get(node_id, {})
+                bundle = definition.get("bundle") or {}
+                target = config_target = (
+                    f"{str(bundle.get('method', '')).upper()} {_host(str(bundle.get('server_url', '')))}"
+                )
+                obj = _truncate(
+                    "; ".join(part for part in (_safe_urls(str(bundle.get("server_url") or "")), obj) if part)
+                )
+                account = str(definition.get("account") or account)
+                if not definition:
+                    assessment_status = "unavailable"
+                    tier = config_tier = "side_effect"
+            else:
+                target = config_target = "Code runtime (destinations depend on the bound source and inputs)"
+                obj = ""
             code_identity = {
                 "assessment": assessment_digest,
                 "status": assessment_status,
                 "facts": (code_facts_digests or {}).get(node_id, ""),
+                **({"api_definition": (api_tool_definitions or {}).get(node_id)} if api_tool else {}),
             }
         title = data.get("title") if isinstance(data.get("title"), str) else ""
         items.append(

@@ -95,6 +95,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from runtime_contracts.builder.execution import canonical_digest
 from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
+from services.dify_builder.api_tool_effects import is_api_tool, owned_api_definitions
 from services.dify_builder.application.execution_policy import (
     BuilderExecutionContext,
     BuilderExecutionObservation,
@@ -811,6 +812,7 @@ class WorkflowServiceDifyPort:
                     model_config=context.model_config,
                     scope_binding=_code_scope_binding(draft),
                     reply_language=context.reply_language,
+                    api_tool_definitions=owned_api_definitions(session, app.tenant_id, draft.graph_dict),
                 )
 
         before = current_facts()
@@ -820,7 +822,11 @@ class WorkflowServiceDifyPort:
             saved = prior.get(node_id)
             if saved is not None and saved["facts_digest"] == facts.digest:
                 results[node_id] = saved
-            elif not assessment_goal(context) or not context.model_config:
+            elif (
+                not assessment_goal(context)
+                or not context.model_config
+                or ("api_tool" in facts.model_facts and not facts.model_facts["api_tool"])
+            ):
                 results[node_id] = unavailable(facts).model_dump(mode="json")
             else:
                 results[node_id] = assess_code(
@@ -865,6 +871,7 @@ class WorkflowServiceDifyPort:
             from services.dify_builder.code_risk_assessment import assessment_goal, code_facts
 
             context = code_risk_context or DifyBuilderContext()
+            api_definitions = owned_api_definitions(session, app.tenant_id, graph)
             facts = code_facts(
                 graph,
                 inputs=inputs or {},
@@ -872,6 +879,7 @@ class WorkflowServiceDifyPort:
                 model_config=context.model_config,
                 scope_binding=_code_scope_binding(workflow),
                 reply_language=context.reply_language,
+                api_tool_definitions=api_definitions,
             )
             return disclose(
                 graph,
@@ -881,6 +889,7 @@ class WorkflowServiceDifyPort:
                 scope_binding=_effect_scope_binding(workflow),
                 code_risk_assessments=context.code_risk_assessments,
                 code_facts_digests={node_id: fact.digest for node_id, fact in facts.items()},
+                api_tool_definitions=api_definitions,
             )
 
     def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]:
@@ -1735,7 +1744,10 @@ class WorkflowServiceDifyPort:
         from services.dify_builder.code_risk_assessment import assessment_goal, code_facts, validated_assessments
         from services.dify_builder.serde import context_from_dict
 
-        if not any(node.get("data", {}).get("type") == "code" for node in graph.get("nodes", [])):
+        if not any(
+            node.get("data", {}).get("type") == "code" or is_api_tool(node.get("data", {}))
+            for node in graph.get("nodes", [])
+        ):
             return {}, {}
         commit = session.scalar(
             select(DifyBuilderSessionCommit)
@@ -1756,6 +1768,7 @@ class WorkflowServiceDifyPort:
             model_config=context.model_config,
             scope_binding=_code_scope_binding(draft),
             reply_language=context.reply_language,
+            api_tool_definitions=owned_api_definitions(session, owner.tenant_id, graph),
         )
         risks = validated_assessments(context.code_risk_assessments)
         if any(
@@ -1810,6 +1823,7 @@ class WorkflowServiceDifyPort:
             before_revision = execution_revision(draft)
             before_graph_revision = executable_graph_revision(graph)
             names, bindings = _tool_account_metadata(session, tenant_id, graph)
+            api_definitions = owned_api_definitions(session, tenant_id, graph)
             reservation_id = str(uuid5(NAMESPACE_URL, f"dify-builder-full-run:{session_id}:{test_input_id}"))
             existing = session.get(DifyBuilderRun, reservation_id)
             # Recovery observes its old mock set/Run even if a later edit makes
@@ -1829,6 +1843,7 @@ class WorkflowServiceDifyPort:
                     scope_binding=_effect_scope_binding(draft),
                     code_risk_assessments=risks,
                     code_facts_digests=digests,
+                    api_tool_definitions=api_definitions,
                 ).mocked_node_ids(effect_confirmation)
             else:
                 mocked = frozenset()  # _reserve_full_run returns the immutable old reservation below.
@@ -1925,7 +1940,10 @@ class WorkflowServiceDifyPort:
                 # Only native generation owns this session; Builder reads and
                 # the durable reservation committed before any provider I/O.
                 with _session_factory()() as session:
-                    if any(node.get("data", {}).get("type") == "code" for node in graph.get("nodes", [])):
+                    if any(
+                        node.get("data", {}).get("type") == "code" or is_api_tool(node.get("data", {}))
+                        for node in graph.get("nodes", [])
+                    ):
                         current_owner = session.get(DifyBuilderSession, session_id)
                         current_input = session.get(DifyBuilderTestInput, test_input_id)
                         current_draft = _load_draft_workflow_or_raise(app, session=session)
@@ -1950,6 +1968,9 @@ class WorkflowServiceDifyPort:
                             )
                         except BuilderExecutionPolicyError as error:
                             return _unsupported_run(error)
+                        # Preparation only reads facts. Release that transaction
+                        # before native generation can perform provider I/O.
+                        session.rollback()
                     with observation.track():
                         response = AppGenerateService.generate(
                             app_model=app,
@@ -1963,6 +1984,11 @@ class WorkflowServiceDifyPort:
                             builder_expected_revision=before_revision,
                             builder_tool_credential_bindings={
                                 node_id: binding for node_id, binding in bindings.items() if node_id not in mocked
+                            },
+                            builder_api_tool_bindings={
+                                node_id: canonical_digest(definition)
+                                for node_id, definition in api_definitions.items()
+                                if node_id not in mocked
                             },
                             builder_agent_execution=agent_context,
                         )
