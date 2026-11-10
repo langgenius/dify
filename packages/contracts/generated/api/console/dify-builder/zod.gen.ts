@@ -877,6 +877,7 @@ export const zBuilderCopyId = z.enum([
   'actions.confirmTestOperation',
   'actions.continue',
   'actions.continueAdjusting',
+  'actions.continueTest',
   'actions.discardThisChangePlan',
   'actions.finish',
   'actions.fixAgain',
@@ -918,6 +919,8 @@ export const zBuilderCopyId = z.enum([
   'decision.howShouldBuilderRecover',
   'decision.isThisChangePlanReadyToApply',
   'decision.isThisWorkflowPlanReadyToApply',
+  'decision.testOperationApproval',
+  'decision.testOperationApprovalDescription',
   'decision.whatShouldBuilderDoNext',
   'decision.whatShouldBuilderDoWithTheAppliedFix',
   'decision.whatShouldBuilderDoWithTheBuiltWorkflow',
@@ -1230,82 +1233,6 @@ export const zDifyBuilderPlanConversationItemResponse = z.object({
 })
 
 /**
- * TestResultCard
- */
-export const zTestResultCard = z.object({
-  action_reason_code: z.string().nullish(),
-  action_state: z.enum(['completed', 'failed', 'unknown']).nullish(),
-  blocked_node_ids: z.array(z.string()).optional(),
-  business_acceptance_case_id: z.string().nullish(),
-  business_acceptance_state: z.enum(['failed', 'passed', 'unverified']).nullish(),
-  consent_id: z.string().nullish(),
-  dify_run_id: z.string().optional().default(''),
-  executed_node_ids: z.array(z.string()).optional(),
-  execution_mode: z.enum(['confirmed_run', 'confirmed_tool', 'mock', 'restricted']).nullish(),
-  failure_code: z
-    .enum([
-      'authentication',
-      'authorization_lookup_failed',
-      'connection_refused',
-      'credential_unavailable',
-      'permission_denied',
-      'rate_limit',
-      'service_unavailable',
-      'timeout',
-      'unknown',
-    ])
-    .nullish(),
-  failure_node_ids: z.array(z.string()).optional(),
-  failure_phase: z.enum(['execution', 'preparation']).nullish(),
-  failure_reason: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
-  failure_resource: z.string().nullish(),
-  outcome: z
-    .enum([
-      'execution_failed',
-      'execution_succeeded_needs_review',
-      'execution_unknown',
-      'required_output_unresolved',
-    ])
-    .nullish(),
-  policy_version: z
-    .enum([
-      'builder-confirmed-gmail-read-v1',
-      'builder-confirmed-run-v1',
-      'builder-json-parse-v1',
-      'builder-restricted-v1',
-    ])
-    .nullish(),
-  reply_language: z.string().optional().default(''),
-  review_note: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
-  safety_outcome: z
-    .enum([
-      'confirmed_run_completed',
-      'confirmed_tool_completed',
-      'execution_blocked',
-      'execution_evidence_unknown',
-      'native_failed',
-      'preparation_failed',
-      'restricted_execution_completed',
-      'simulation_completed',
-      'unsupported_safe_execution',
-    ])
-    .nullish(),
-  simulated_node_ids: z.array(z.string()).optional(),
-  status: z.enum(['failed', 'succeeded']),
-  terminal_outputs: z.record(z.string(), z.unknown()).nullish(),
-})
-
-/**
- * DifyBuilderTestResultConversationItemResponse
- */
-export const zDifyBuilderTestResultConversationItemResponse = z.object({
-  at_version: z.int(),
-  kind: z.literal('test_result'),
-  payload: zTestResultCard,
-  seq: z.int(),
-})
-
-/**
  * OptionInput
  */
 export const zOptionInput = z.object({
@@ -1376,175 +1303,6 @@ export const zPendingActionDisclosure = z.object({
   target: zJsonValue,
   version: z.int().gte(0).lte(9223372036854776000),
   wait_reason: z.enum(['approval', 'configuration', 'interaction']),
-})
-
-/**
- * NativeTestPublicReceipt
- */
-export const zNativeTestPublicReceipt = z.object({
-  can_resume: z.boolean().optional().default(false),
-  cancellation: zCancellationReceipt.nullish(),
-  decision_public_revision: z.int().gte(0).lte(9223372036854776000).optional().default(0),
-  evidence_refs: z.array(z.string().min(1).max(128)),
-  generation: z.int().gte(0).lte(9223372036854776000),
-  native_run_id: z.string().min(1).max(128).nullable(),
-  native_status: z.string().nullable(),
-  outcome: z.enum(['cancelled', 'failed', 'succeeded', 'unknown']).nullable(),
-  pending: z.array(zPendingActionDisclosure),
-  request_id: z.string().min(1).max(128),
-  resume_blocked_reason: z
-    .enum([
-      'approval_required',
-      'native_expired',
-      'native_resolution_unavailable',
-      'not_waiting',
-      'state_unavailable',
-    ])
-    .nullish()
-    .default('state_unavailable'),
-  schema_version: z.literal('builder-native-test-v1').optional().default('builder-native-test-v1'),
-  status: z.enum(['prepared', 'running', 'terminal', 'waiting']),
-  version: z.int().gte(0).lte(9223372036854776000),
-  wait_reason: z.enum(['approval', 'configuration', 'interaction']).nullable(),
-})
-
-/**
- * DifyBuilderSessionViewResponse
- */
-export const zDifyBuilderSessionViewResponse = z.object({
-  actions: z.array(zDifyBuilderActionResponse).optional(),
-  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
-  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
-  attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
-  canvas_read_only: z.boolean(),
-  command_pending: z.boolean().optional().default(false),
-  conversation_cleared: z.boolean().optional().default(false),
-  conversation_last_seq: z.int(),
-  decision: zDecision.nullish(),
-  diagnostics: z.array(z.record(z.string(), z.unknown())).max(33).optional(),
-  interrupted: z.boolean(),
-  last_command_id: z.string().optional().default(''),
-  lifecycle_settlement: z.enum(['pending', 'settled', 'unknown']).nullish(),
-  model: zSessionModel.nullish(),
-  pending_fix_context: z.union([zRunContextCard, zPreflightContextCard]).nullish(),
-  phase: zPhase,
-  recovery: zRecoveryRef.nullish(),
-  reply_language: z.string(),
-  run_status: zRunStatus,
-  session_id: z.string(),
-  task_id: z.string().optional().default(''),
-  task_status: z.enum(['abandoned', 'active', 'completed', 'paused']).optional().default('active'),
-  task_summaries: z.array(zTaskSummary).max(8).optional(),
-  test_execution: zNativeTestPublicReceipt.nullish(),
-  version: z.int(),
-})
-
-/**
- * DifyBuilderCreatedSessionResponse
- */
-export const zDifyBuilderCreatedSessionResponse = z.object({
-  requires_start: z.boolean(),
-  session: zDifyBuilderSessionViewResponse,
-})
-
-/**
- * DifyBuilderCommandSubmissionResponse
- */
-export const zDifyBuilderCommandSubmissionResponse = z.object({
-  command_id: z.string(),
-  pending: z.boolean(),
-  session: zDifyBuilderSessionViewResponse.nullish(),
-})
-
-/**
- * DifyBuilderFixIntentResponse
- */
-export const zDifyBuilderFixIntentResponse = z.object({
-  fix_intent_id: z.string(),
-  session: zDifyBuilderSessionViewResponse,
-  status: z.string(),
-})
-
-/**
- * DifyBuilderNativeTestResponse
- *
- * Strict public native receipt; domain DTO also owns generated schemas.
- */
-export const zDifyBuilderNativeTestResponse = z.object({
-  data: zNativeTestPublicReceipt,
-})
-
-/**
- * DifyBuilderSessionReadyEventResponse
- */
-export const zDifyBuilderSessionReadyEventResponse = z.object({
-  data: zDifyBuilderSessionViewResponse,
-  event: z.literal('session_ready'),
-})
-
-/**
- * DifyBuilderSessionStateEventResponse
- */
-export const zDifyBuilderSessionStateEventResponse = z.object({
-  data: zDifyBuilderSessionViewResponse,
-  event: z.literal('session_state'),
-})
-
-/**
- * DifyBuilderCommandFinishedEventData
- */
-export const zDifyBuilderCommandFinishedEventData = z.object({
-  actions: z.array(zDifyBuilderActionResponse).optional(),
-  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
-  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
-  attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
-  canvas_read_only: z.boolean(),
-  command_id: z.string(),
-  command_pending: z.boolean().optional().default(false),
-  conversation_cleared: z.boolean().optional().default(false),
-  conversation_last_seq: z.int(),
-  decision: zDecision.nullish(),
-  diagnostics: z.array(z.record(z.string(), z.unknown())).max(33).optional(),
-  interrupted: z.boolean(),
-  lifecycle_settlement: z.enum(['pending', 'settled', 'unknown']).nullish(),
-  model: zSessionModel.nullish(),
-  pending_fix_context: z.union([zRunContextCard, zPreflightContextCard]).nullish(),
-  phase: zPhase,
-  post_canvas_action_id: z.string().nullish(),
-  recovery: zRecoveryRef.nullish(),
-  reply_language: z.string(),
-  run_status: zRunStatus,
-  session_id: z.string(),
-  task_id: z.string().optional().default(''),
-  task_status: z.enum(['abandoned', 'active', 'completed', 'paused']).optional().default('active'),
-  task_summaries: z.array(zTaskSummary).max(8).optional(),
-  test_execution: zNativeTestPublicReceipt.nullish(),
-  version: z.int(),
-})
-
-/**
- * DifyBuilderCommandFinishedEventResponse
- */
-export const zDifyBuilderCommandFinishedEventResponse = z.object({
-  data: zDifyBuilderCommandFinishedEventData,
-  event: z.literal('command_finished'),
-})
-
-/**
- * DifyBuilderNativeExecutionEventData
- */
-export const zDifyBuilderNativeExecutionEventData = z.object({
-  cursor: z.string().regex(/^[a-f0-9]{64}$/),
-  receipt: zNativeTestPublicReceipt,
-  session_id: z.string(),
-})
-
-/**
- * DifyBuilderNativeExecutionEventResponse
- */
-export const zDifyBuilderNativeExecutionEventResponse = z.object({
-  data: zDifyBuilderNativeExecutionEventData,
-  event: z.literal('native_execution'),
 })
 
 /**
@@ -1775,6 +1533,208 @@ export const zDifyBuilderProgressSnapshotEventResponse = z.object({
   event: z.literal('progress_snapshot'),
 })
 
+export const zNativeCanvasNodeStatus = z.enum([
+  'exception',
+  'failed',
+  'paused',
+  'retry',
+  'running',
+  'stopped',
+  'succeeded',
+])
+
+/**
+ * NativeCanvasEdge
+ */
+export const zNativeCanvasEdge = z.object({
+  edge_id: z.string().nullable(),
+  source: z.string(),
+  source_handle: z.string(),
+  source_status: zNativeCanvasNodeStatus.nullish(),
+  target: z.string(),
+  target_handle: z.string(),
+  target_status: zNativeCanvasNodeStatus.nullish(),
+})
+
+/**
+ * NativeCanvasPath
+ */
+export const zNativeCanvasPath = z.object({
+  edges: z.array(zNativeCanvasEdge),
+  native_run_id: z.string(),
+  revision: z.int(),
+})
+
+/**
+ * NativeTestPublicReceipt
+ */
+export const zNativeTestPublicReceipt = z.object({
+  can_resume: z.boolean().optional().default(false),
+  cancellation: zCancellationReceipt.nullish(),
+  canvas_path: zNativeCanvasPath.nullish(),
+  decision_public_revision: z.int().gte(0).lte(9223372036854776000).optional().default(0),
+  evidence_refs: z.array(z.string().min(1).max(128)),
+  generation: z.int().gte(0).lte(9223372036854776000),
+  native_run_id: z.string().min(1).max(128).nullable(),
+  native_status: z.string().nullable(),
+  outcome: z.enum(['cancelled', 'failed', 'succeeded', 'unknown']).nullable(),
+  pending: z.array(zPendingActionDisclosure),
+  request_id: z.string().min(1).max(128),
+  resume_blocked_reason: z
+    .enum([
+      'approval_required',
+      'native_expired',
+      'native_resolution_unavailable',
+      'not_waiting',
+      'state_unavailable',
+    ])
+    .nullish()
+    .default('state_unavailable'),
+  schema_version: z.literal('builder-native-test-v1').optional().default('builder-native-test-v1'),
+  status: z.enum(['prepared', 'running', 'terminal', 'waiting']),
+  version: z.int().gte(0).lte(9223372036854776000),
+  wait_reason: z.enum(['approval', 'configuration', 'interaction']).nullable(),
+})
+
+/**
+ * DifyBuilderSessionViewResponse
+ */
+export const zDifyBuilderSessionViewResponse = z.object({
+  actions: z.array(zDifyBuilderActionResponse).optional(),
+  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
+  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
+  attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
+  canvas_read_only: z.boolean(),
+  command_pending: z.boolean().optional().default(false),
+  conversation_cleared: z.boolean().optional().default(false),
+  conversation_last_seq: z.int(),
+  decision: zDecision.nullish(),
+  diagnostics: z.array(z.record(z.string(), z.unknown())).max(33).optional(),
+  interrupted: z.boolean(),
+  last_command_id: z.string().optional().default(''),
+  lifecycle_settlement: z.enum(['pending', 'settled', 'unknown']).nullish(),
+  model: zSessionModel.nullish(),
+  pending_fix_context: z.union([zRunContextCard, zPreflightContextCard]).nullish(),
+  phase: zPhase,
+  recovery: zRecoveryRef.nullish(),
+  reply_language: z.string(),
+  run_status: zRunStatus,
+  session_id: z.string(),
+  task_id: z.string().optional().default(''),
+  task_status: z.enum(['abandoned', 'active', 'completed', 'paused']).optional().default('active'),
+  task_summaries: z.array(zTaskSummary).max(8).optional(),
+  test_execution: zNativeTestPublicReceipt.nullish(),
+  version: z.int(),
+})
+
+/**
+ * DifyBuilderCreatedSessionResponse
+ */
+export const zDifyBuilderCreatedSessionResponse = z.object({
+  requires_start: z.boolean(),
+  session: zDifyBuilderSessionViewResponse,
+})
+
+/**
+ * DifyBuilderCommandSubmissionResponse
+ */
+export const zDifyBuilderCommandSubmissionResponse = z.object({
+  command_id: z.string(),
+  pending: z.boolean(),
+  session: zDifyBuilderSessionViewResponse.nullish(),
+})
+
+/**
+ * DifyBuilderFixIntentResponse
+ */
+export const zDifyBuilderFixIntentResponse = z.object({
+  fix_intent_id: z.string(),
+  session: zDifyBuilderSessionViewResponse,
+  status: z.string(),
+})
+
+/**
+ * DifyBuilderNativeTestResponse
+ *
+ * Strict public native receipt; domain DTO also owns generated schemas.
+ */
+export const zDifyBuilderNativeTestResponse = z.object({
+  data: zNativeTestPublicReceipt,
+})
+
+/**
+ * DifyBuilderSessionReadyEventResponse
+ */
+export const zDifyBuilderSessionReadyEventResponse = z.object({
+  data: zDifyBuilderSessionViewResponse,
+  event: z.literal('session_ready'),
+})
+
+/**
+ * DifyBuilderSessionStateEventResponse
+ */
+export const zDifyBuilderSessionStateEventResponse = z.object({
+  data: zDifyBuilderSessionViewResponse,
+  event: z.literal('session_state'),
+})
+
+/**
+ * DifyBuilderCommandFinishedEventData
+ */
+export const zDifyBuilderCommandFinishedEventData = z.object({
+  actions: z.array(zDifyBuilderActionResponse).optional(),
+  active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
+  app_revision: zDifyBuilderAppRevisionResponse.nullish(),
+  attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
+  canvas_read_only: z.boolean(),
+  command_id: z.string(),
+  command_pending: z.boolean().optional().default(false),
+  conversation_cleared: z.boolean().optional().default(false),
+  conversation_last_seq: z.int(),
+  decision: zDecision.nullish(),
+  diagnostics: z.array(z.record(z.string(), z.unknown())).max(33).optional(),
+  interrupted: z.boolean(),
+  lifecycle_settlement: z.enum(['pending', 'settled', 'unknown']).nullish(),
+  model: zSessionModel.nullish(),
+  pending_fix_context: z.union([zRunContextCard, zPreflightContextCard]).nullish(),
+  phase: zPhase,
+  post_canvas_action_id: z.string().nullish(),
+  recovery: zRecoveryRef.nullish(),
+  reply_language: z.string(),
+  run_status: zRunStatus,
+  session_id: z.string(),
+  task_id: z.string().optional().default(''),
+  task_status: z.enum(['abandoned', 'active', 'completed', 'paused']).optional().default('active'),
+  task_summaries: z.array(zTaskSummary).max(8).optional(),
+  test_execution: zNativeTestPublicReceipt.nullish(),
+  version: z.int(),
+})
+
+/**
+ * DifyBuilderCommandFinishedEventResponse
+ */
+export const zDifyBuilderCommandFinishedEventResponse = z.object({
+  data: zDifyBuilderCommandFinishedEventData,
+  event: z.literal('command_finished'),
+})
+
+/**
+ * DifyBuilderNativeExecutionEventData
+ */
+export const zDifyBuilderNativeExecutionEventData = z.object({
+  cursor: z.string().regex(/^[a-f0-9]{64}$/),
+  receipt: zNativeTestPublicReceipt,
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderNativeExecutionEventResponse
+ */
+export const zDifyBuilderNativeExecutionEventResponse = z.object({
+  data: zDifyBuilderNativeExecutionEventData,
+  event: z.literal('native_execution'),
+})
+
 /**
  * ExecutionActivity
  */
@@ -1817,6 +1777,92 @@ export const zDifyBuilderAssistantTurnConversationItemResponse = z.object({
   at_version: z.int(),
   kind: z.literal('assistant_turn'),
   payload: zAssistantTurnItem,
+  seq: z.int(),
+})
+
+/**
+ * ResumedTestProgress
+ */
+export const zResumedTestProgress = z.object({
+  execution: zExecutionProgress,
+  source_seq: z.int(),
+})
+
+/**
+ * TestResultCard
+ */
+export const zTestResultCard = z.object({
+  action_reason_code: z.string().nullish(),
+  action_state: z.enum(['completed', 'failed', 'unknown']).nullish(),
+  blocked_node_ids: z.array(z.string()).optional(),
+  business_acceptance_case_id: z.string().nullish(),
+  business_acceptance_state: z.enum(['failed', 'passed', 'unverified']).nullish(),
+  consent_id: z.string().nullish(),
+  dify_run_id: z.string().optional().default(''),
+  executed_node_ids: z.array(z.string()).optional(),
+  execution_mode: z.enum(['confirmed_run', 'confirmed_tool', 'mock', 'restricted']).nullish(),
+  failure_code: z
+    .enum([
+      'authentication',
+      'authorization_lookup_failed',
+      'connection_refused',
+      'credential_unavailable',
+      'permission_denied',
+      'rate_limit',
+      'service_unavailable',
+      'timeout',
+      'unknown',
+    ])
+    .nullish(),
+  failure_node_ids: z.array(z.string()).optional(),
+  failure_phase: z.enum(['execution', 'preparation']).nullish(),
+  failure_reason: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
+  failure_resource: z.string().nullish(),
+  native_canvas_path: zNativeCanvasPath.nullish(),
+  outcome: z
+    .enum([
+      'execution_failed',
+      'execution_succeeded_needs_review',
+      'execution_unknown',
+      'required_output_unresolved',
+    ])
+    .nullish(),
+  policy_version: z
+    .enum([
+      'builder-confirmed-gmail-read-v1',
+      'builder-confirmed-run-v1',
+      'builder-json-parse-v1',
+      'builder-restricted-v1',
+    ])
+    .nullish(),
+  reply_language: z.string().optional().default(''),
+  resumed_progress: zResumedTestProgress.nullish(),
+  review_note: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
+  safety_outcome: z
+    .enum([
+      'confirmed_run_completed',
+      'confirmed_tool_completed',
+      'execution_blocked',
+      'execution_evidence_unknown',
+      'native_failed',
+      'preparation_failed',
+      'restricted_execution_completed',
+      'simulation_completed',
+      'unsupported_safe_execution',
+    ])
+    .nullish(),
+  simulated_node_ids: z.array(z.string()).optional(),
+  status: z.enum(['failed', 'succeeded']),
+  terminal_outputs: z.record(z.string(), z.unknown()).nullish(),
+})
+
+/**
+ * DifyBuilderTestResultConversationItemResponse
+ */
+export const zDifyBuilderTestResultConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('test_result'),
+  payload: zTestResultCard,
   seq: z.int(),
 })
 
@@ -1878,7 +1924,7 @@ export const zDifyBuilderConversationItemAppendedEventResponse = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData = z.object({
+export const zIterationNodeStartStreamResponseData = z.object({
   created_at: z.int(),
   extras: z.record(z.string(), z.unknown()).optional(),
   id: z.string(),
@@ -1894,7 +1940,7 @@ export const zCoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData = 
  * WorkflowStreamEvent[Literal['iteration_started'], IterationNodeStartStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralIterationStartedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData,
+  data: zIterationNodeStartStreamResponseData,
   event: z.literal('iteration_started'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1905,7 +1951,7 @@ export const zWorkflowStreamEventLiteralIterationStartedData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData = z.object({
+export const zIterationNodeNextStreamResponseData = z.object({
   created_at: z.int(),
   extras: z.record(z.string(), z.unknown()).optional(),
   id: z.string(),
@@ -1919,7 +1965,7 @@ export const zCoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData = z
  * WorkflowStreamEvent[Literal['iteration_next'], IterationNodeNextStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralIterationNextData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData,
+  data: zIterationNodeNextStreamResponseData,
   event: z.literal('iteration_next'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1930,7 +1976,7 @@ export const zWorkflowStreamEventLiteralIterationNextData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData = z.object({
+export const zLoopNodeStartStreamResponseData = z.object({
   created_at: z.int(),
   extras: z.record(z.string(), z.unknown()).optional(),
   id: z.string(),
@@ -1946,7 +1992,7 @@ export const zCoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData = z.obj
  * WorkflowStreamEvent[Literal['loop_started'], LoopNodeStartStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralLoopStartedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData,
+  data: zLoopNodeStartStreamResponseData,
   event: z.literal('loop_started'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1957,7 +2003,7 @@ export const zWorkflowStreamEventLiteralLoopStartedData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData = z.object({
+export const zLoopNodeNextStreamResponseData = z.object({
   created_at: z.int(),
   extras: z.record(z.string(), z.unknown()).optional(),
   id: z.string(),
@@ -1972,7 +2018,7 @@ export const zCoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData = z.obje
  * WorkflowStreamEvent[Literal['loop_next'], LoopNodeNextStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralLoopNextData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData,
+  data: zLoopNodeNextStreamResponseData,
   event: z.literal('loop_next'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1983,7 +2029,7 @@ export const zWorkflowStreamEventLiteralLoopNextData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesTextChunkStreamResponseData = z.object({
+export const zTextChunkStreamResponseData = z.object({
   from_variable_selector: z.array(z.string()).nullish(),
   text: z.string(),
 })
@@ -1992,7 +2038,7 @@ export const zCoreAppEntitiesTaskEntitiesTextChunkStreamResponseData = z.object(
  * WorkflowStreamDataEvent[Literal['text_chunk'], TextChunkStreamResponse.Data]
  */
 export const zWorkflowStreamDataEventLiteralTextChunkData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesTextChunkStreamResponseData,
+  data: zTextChunkStreamResponseData,
   event: z.literal('text_chunk'),
   task_id: z.string(),
   workflow_run_id: z.string().nullish(),
@@ -2003,7 +2049,7 @@ export const zWorkflowStreamDataEventLiteralTextChunkData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData = z.object({
+export const zTextReplaceStreamResponseData = z.object({
   text: z.string(),
 })
 
@@ -2011,7 +2057,7 @@ export const zCoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData = z.objec
  * WorkflowStreamDataEvent[Literal['text_replace'], TextReplaceStreamResponse.Data]
  */
 export const zWorkflowStreamDataEventLiteralTextReplaceData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData,
+  data: zTextReplaceStreamResponseData,
   event: z.literal('text_replace'),
   task_id: z.string(),
   workflow_run_id: z.string().nullish(),
@@ -2022,7 +2068,7 @@ export const zWorkflowStreamDataEventLiteralTextReplaceData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData = z.object({
+export const zReasoningChunkStreamResponseData = z.object({
   is_final: z.boolean().optional().default(false),
   message_id: z.string().nullish(),
   node_id: z.string().nullish(),
@@ -2033,7 +2079,7 @@ export const zCoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData = z.ob
  * WorkflowStreamDataEvent[Literal['reasoning_chunk'], ReasoningChunkStreamResponse.Data]
  */
 export const zWorkflowStreamDataEventLiteralReasoningChunkData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData,
+  data: zReasoningChunkStreamResponseData,
   event: z.literal('reasoning_chunk'),
   task_id: z.string(),
   workflow_run_id: z.string().nullish(),
@@ -2044,7 +2090,7 @@ export const zWorkflowStreamDataEventLiteralReasoningChunkData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesAgentLogStreamResponseData = z.object({
+export const zAgentLogStreamResponseData = z.object({
   data: z.record(z.string(), z.unknown()),
   error: z.string().nullish(),
   id: z.string(),
@@ -2060,7 +2106,7 @@ export const zCoreAppEntitiesTaskEntitiesAgentLogStreamResponseData = z.object({
  * WorkflowStreamDataEvent[Literal['agent_log'], AgentLogStreamResponse.Data]
  */
 export const zWorkflowStreamDataEventLiteralAgentLogData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesAgentLogStreamResponseData,
+  data: zAgentLogStreamResponseData,
   event: z.literal('agent_log'),
   task_id: z.string(),
   workflow_run_id: z.string().nullish(),
@@ -2071,7 +2117,7 @@ export const zWorkflowStreamDataEventLiteralAgentLogData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData = z.object({
+export const zHumanInputFormFilledResponseData = z.object({
   action_id: z.string(),
   action_text: z.string(),
   form_id: z.string(),
@@ -2085,7 +2131,7 @@ export const zCoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData = z.ob
  * WorkflowStreamEvent[Literal['human_input_form_filled'], HumanInputFormFilledResponse.Data]
  */
 export const zWorkflowStreamEventLiteralHumanInputFormFilledData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData,
+  data: zHumanInputFormFilledResponseData,
   event: z.literal('human_input_form_filled'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2096,7 +2142,7 @@ export const zWorkflowStreamEventLiteralHumanInputFormFilledData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData = z.object({
+export const zHumanInputFormTimeoutResponseData = z.object({
   expiration_time: z.int(),
   form_id: z.string(),
   node_id: z.string(),
@@ -2107,7 +2153,7 @@ export const zCoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData = z.o
  * WorkflowStreamEvent[Literal['human_input_form_timeout'], HumanInputFormTimeoutResponse.Data]
  */
 export const zWorkflowStreamEventLiteralHumanInputFormTimeoutData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData,
+  data: zHumanInputFormTimeoutResponseData,
   event: z.literal('human_input_form_timeout'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2125,7 +2171,7 @@ export const zWorkflowStartReason = z.enum(['initial', 'resumption'])
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = z.object({
+export const zWorkflowStartStreamResponseData = z.object({
   created_at: z.int(),
   id: z.string(),
   inputs: z.record(z.string(), z.unknown()),
@@ -2137,7 +2183,7 @@ export const zCoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = z.obj
  * WorkflowStreamEvent[Literal['workflow_started'], WorkflowStartStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralWorkflowStartedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData,
+  data: zWorkflowStartStreamResponseData,
   event: z.literal('workflow_started'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2161,7 +2207,7 @@ export const zWorkflowExecutionStatus = z.enum([
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData = z.object({
+export const zWorkflowFinishStreamResponseData = z.object({
   created_at: z.int(),
   created_by: z.record(z.string(), z.unknown()).optional(),
   elapsed_time: z.number(),
@@ -2181,7 +2227,7 @@ export const zCoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData = z.ob
  * WorkflowStreamEvent[Literal['workflow_finished'], WorkflowFinishStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralWorkflowFinishedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData,
+  data: zWorkflowFinishStreamResponseData,
   event: z.literal('workflow_finished'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2192,7 +2238,7 @@ export const zWorkflowStreamEventLiteralWorkflowFinishedData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData = z.object({
+export const zWorkflowPauseStreamResponseData = z.object({
   created_at: z.int(),
   elapsed_time: z.number(),
   outputs: z.record(z.string(), z.unknown()).optional(),
@@ -2208,7 +2254,7 @@ export const zCoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData = z.obj
  * WorkflowStreamEvent[Literal['workflow_paused'], WorkflowPauseStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralWorkflowPausedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData,
+  data: zWorkflowPauseStreamResponseData,
   event: z.literal('workflow_paused'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2227,7 +2273,7 @@ export const zAgentStrategyInfo = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesNodeStartStreamResponseData = z.object({
+export const zNodeStartStreamResponseData = z.object({
   agent_strategy: zAgentStrategyInfo.nullish(),
   created_at: z.int(),
   extras: z.record(z.string(), z.unknown()).optional(),
@@ -2247,7 +2293,7 @@ export const zCoreAppEntitiesTaskEntitiesNodeStartStreamResponseData = z.object(
  * WorkflowStreamEvent[Literal['node_started'], NodeStartStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralNodeStartedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesNodeStartStreamResponseData,
+  data: zNodeStartStreamResponseData,
   event: z.literal('node_started'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2304,7 +2350,7 @@ export const zWorkflowNodeExecutionStatus = z.enum([
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData = z.object({
+export const zNodeFinishStreamResponseData = z.object({
   created_at: z.int(),
   elapsed_time: z.number(),
   error: z.string().nullish(),
@@ -2332,7 +2378,7 @@ export const zCoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData = z.object
  * WorkflowStreamEvent[Literal['node_finished'], NodeFinishStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralNodeFinishedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData,
+  data: zNodeFinishStreamResponseData,
   event: z.literal('node_finished'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2343,7 +2389,7 @@ export const zWorkflowStreamEventLiteralNodeFinishedData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData = z.object({
+export const zNodeRetryStreamResponseData = z.object({
   created_at: z.int(),
   elapsed_time: z.number(),
   error: z.string().nullish(),
@@ -2372,7 +2418,7 @@ export const zCoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData = z.object(
  * WorkflowStreamEvent[Literal['node_retry'], NodeRetryStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralNodeRetryData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData,
+  data: zNodeRetryStreamResponseData,
   event: z.literal('node_retry'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2383,7 +2429,7 @@ export const zWorkflowStreamEventLiteralNodeRetryData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData = z.object({
+export const zIterationNodeCompletedStreamResponseData = z.object({
   created_at: z.int(),
   elapsed_time: z.number(),
   error: z.string().nullish(),
@@ -2407,7 +2453,7 @@ export const zCoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseDat
  * WorkflowStreamEvent[Literal['iteration_completed'], IterationNodeCompletedStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralIterationCompletedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData,
+  data: zIterationNodeCompletedStreamResponseData,
   event: z.literal('iteration_completed'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2418,7 +2464,7 @@ export const zWorkflowStreamEventLiteralIterationCompletedData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData = z.object({
+export const zLoopNodeCompletedStreamResponseData = z.object({
   created_at: z.int(),
   elapsed_time: z.number(),
   error: z.string().nullish(),
@@ -2442,7 +2488,7 @@ export const zCoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData = z
  * WorkflowStreamEvent[Literal['loop_completed'], LoopNodeCompletedStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralLoopCompletedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData,
+  data: zLoopNodeCompletedStreamResponseData,
   event: z.literal('loop_completed'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2567,7 +2613,7 @@ export const zFormInputConfig = z.discriminatedUnion('type', [
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = z.object({
+export const zHumanInputRequiredResponseData = z.object({
   actions: z.array(zUserActionConfig).optional(),
   approval_channels: z.array(z.string()).optional(),
   display_in_ui: z.boolean().optional().default(false),
@@ -2575,6 +2621,7 @@ export const zCoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = z.obje
   form_content: z.string(),
   form_id: z.string(),
   form_token: z.string().nullish(),
+  form_version: z.enum(['1', '2']).optional().default('1'),
   inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),
@@ -2585,7 +2632,7 @@ export const zCoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = z.obje
  * WorkflowStreamEvent[Literal['human_input_required'], HumanInputRequiredResponse.Data]
  */
 export const zWorkflowStreamEventLiteralHumanInputRequiredData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData,
+  data: zHumanInputRequiredResponseData,
   event: z.literal('human_input_required'),
   task_id: z.string(),
   workflow_run_id: z.string(),

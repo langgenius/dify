@@ -15,7 +15,7 @@ from typing_extensions import TypedDict
 
 from models.account import Account
 from models.workflow import Workflow
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     NativeDeliveryMessage,
     require_instance,
 )
@@ -31,24 +31,24 @@ if TYPE_CHECKING:
         NativeTestContextRef,
     )
     from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
-    from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
         RuntimeDeliveryCase,
     )
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+    from tests.e2e_tests.containers.core.workflow import test_builder_restricted_native as _fixture_types_0
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+    from tests.e2e_tests.containers.core.workflow import test_builder_restricted_native as _fixture_types_0
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+    from tests.e2e_tests.containers.core.workflow import test_builder_restricted_native as _fixture_types_0
 
 
 import json
@@ -82,30 +82,30 @@ from services.dify_builder.native_testing.lifecycle import NativeDispatchRef, Na
 from services.dify_builder.native_testing.observation_repository import bind_native_repository_observation
 from services.dify_builder.native_testing.repository import OwnedNativeTest
 from services.dify_builder.native_testing.runtime import DifyNativeRuntime, DifyNativeRuntimeOwner, build_native_api
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     RuntimeDeliveryCase,
     advance_builder_context,
     require_present,
 )
-from tests.test_containers_integration_tests.core.workflow.builder_native_runtime_diagnostics import (
+from tests.e2e_tests.containers.core.workflow.builder_native_runtime_diagnostics import (
     native_runtime_resume_diagnostics as native_runtime_resume_diagnostics,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_dispatch_claims import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_dispatch_claims import (
     migrated_dispatch_claims as migrated_dispatch_claims,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     native_owner as native_owner,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     no_live as no_live,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_http_binding import literal_data
+from tests.e2e_tests.containers.core.workflow.test_builder_native_http_binding import literal_data
 
 
 class PauseArguments(TypedDict, closed=True):
@@ -129,6 +129,7 @@ def published_callback(c: RuntimeDeliveryCase) -> Callable[..., None]:
 
 
 def initial_graph(kind: str = "root") -> Graph:
+    """Build a test graph with one approved HTTP node and the requested topology."""
     graph: Graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
@@ -151,6 +152,12 @@ def initial_graph(kind: str = "root") -> Graph:
     }
 
     if kind == "root":
+        return graph
+    if kind == "branch":
+        graph["nodes"].append({"id": "other-end", "data": {"type": "end", "title": "Other output", "outputs": []}})
+        graph["edges"].append(
+            {"id": "http-other-end", "source": "http", "target": "other-end", "sourceHandle": "source"}
+        )
         return graph
     http = graph["nodes"][1]
     http_data = http["data"]

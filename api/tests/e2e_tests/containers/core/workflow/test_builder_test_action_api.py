@@ -21,41 +21,41 @@ from services.dify_builder.native_testing.confirmed_agent_commands import Profil
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from services.dify_builder.test_actions import BuilderTestActions
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     RuntimeDeliveryCase,
     advance_builder_context,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_console_api import (
     ConsoleCase,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_console_api import (
     console_case as console_case,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_console_api import (
     continuation_case as continuation_case,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_console_api import (
     ledger_case as ledger_case,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_console_api import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_console_api import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_console_api import (
     native_owner as native_owner,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_console_api import (
     no_live as no_live,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_console_api import (
     pending_console as pending_console,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_runtime import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_runtime import (
     migrated_dispatch_claims as migrated_dispatch_claims,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_runtime import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_runtime import (
     runtime_case as runtime_case,  # noqa: PLC0414
 )
 from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
@@ -166,14 +166,19 @@ def test_confirm_and_refresh_use_only_existing_session_action_transport(action_c
     assert before.test_execution.pending[0].decision_status == "awaiting_decision"
     body, result = _control(c, base, "confirm_test_operation", "one-approval")
     assert result.test_execution is not None
-    assert result.test_execution.pending[0].decision == "confirm"
+    assert result.test_execution.status == "running"
+    assert result.test_execution.native_run_id == before.test_execution.native_run_id
+    assert result.test_execution.generation == before.test_execution.generation + 1
+    assert "resume_test" not in {action.id for action in result.actions}
     assert c.ledger.dispatched_attempt_count() == 0
     again = c.client.post(base + "/actions", json=body.model_dump())
     assert again.status_code == 200
     refreshed = _view(c, base)
     assert refreshed.test_execution is not None
-    assert refreshed.test_execution.pending[0].decision == "confirm"
-    assert len(service.get_conversation_page(sid, c.ledger.actor, limit=20).data) == 1
+    assert refreshed.test_execution == result.test_execution
+    (item,) = service.get_conversation_page(sid, c.ledger.actor, limit=20).data
+    assert item.kind == "interaction_response"
+    assert item.payload["submitted_data"] == {"option_id": "confirm_test_operation"}
     assert c.ledger.dispatched_attempt_count() == 0
     _evidence(
         "confirm-refresh",
@@ -225,7 +230,17 @@ def test_expired_current_test_remains_readonly_and_cannot_continue(
     assert initial.test_execution is not None
     pending = initial.test_execution.pending[0]
     if approval_state == "confirmed":
-        _control(c, base, "confirm_test_operation", "approve-before-expiry")
+        assert pending.scope_digest is not None
+        c.api.decide(
+            actor=c.ledger.actor,
+            session_id=sid,
+            request_id=c.ref.request_id,
+            pending_operation_id=pending.pending_operation_id,
+            decision="confirm",
+            scope_digest=pending.scope_digest,
+            expected_version=pending.version,
+            idempotency_key="approve-before-expiry",
+        )
     with c.factory.begin() as sql:
         scope = sql.get(NativeTestScope, c.ref.request_id)
         assert scope is not None
@@ -326,7 +341,7 @@ def test_action_transport_still_requires_console_login_and_csrf(action_console: 
     )
 
 
-def test_native_resume_through_choice_reuses_one_durable_dispatch(
+def test_approval_stream_reports_one_durable_continuation(
     action_console: ActionConsole, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from sqlalchemy import func, select
@@ -352,17 +367,16 @@ def test_native_resume_through_choice_reuses_one_durable_dispatch(
         ).root
         assert isinstance(ready, DifyBuilderSessionReadyEventResponse)
         assert ready.data.test_execution == first.test_execution
-        _control(c, base, "confirm_test_operation", "confirm-1")
+        body, result = _control(c, base, "confirm_test_operation", "confirm-1")
         event = DifyBuilderStreamEventResponse.model_validate_json(
             next(chunks).splitlines()[1].removeprefix(b"data: ")
         ).root
         assert event.event == "session_state"
         assert event.data.test_execution is not None
         assert event.data.test_execution.request_id == first.test_execution.request_id
-        assert event.data.test_execution.pending[0].decision == "confirm"
+        assert event.data.test_execution.status == "running"
     finally:
         stream.close()
-    body, result = _control(c, base, "resume_test", "resume-1")
     assert result.test_execution is not None
     assert result.test_execution.request_id == c.ref.request_id
     assert result.run_status == "processing"
@@ -394,7 +408,7 @@ def test_native_cancel_through_choice_does_not_claim_external_rollback(action_co
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-@pytest.mark.parametrize("runtime_case", ["root", "loop", "iteration"], indirect=True)
+@pytest.mark.parametrize("runtime_case", ["root", "branch", "loop", "iteration"], indirect=True)
 def test_action_controls_complete_real_graphon_run_without_repeated_http(
     runtime_case: RuntimeDeliveryCase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -416,7 +430,7 @@ def test_action_controls_complete_real_graphon_run_without_repeated_http(
     from models.model import DifySetup
     from models.workflow import WorkflowRun
     from services.entities.feature_entities import FeatureModel
-    from tests.test_containers_integration_tests.core.workflow.test_builder_native_runtime import (
+    from tests.e2e_tests.containers.core.workflow.test_builder_native_runtime import (
         delivery,
         execute,
         published_callback,
@@ -472,13 +486,15 @@ def test_action_controls_complete_real_graphon_run_without_repeated_http(
             receipt = current.test_execution
             assert receipt is not None
             assert receipt.request_id == c.request_id
+            if index == 0 and c.kind in {"root", "branch"}:
+                assert receipt.canvas_path is not None
+                assert receipt.canvas_path.native_run_id == waiting.native_run_id
+                assert [(edge.edge_id, edge.target_status) for edge in receipt.canvas_path.edges] == [
+                    ("start-http", "paused"),
+                ]
             if receipt.status == "terminal":
                 break
-            kind = (
-                "confirm_test_operation"
-                if any(action.id == "confirm_test_operation" for action in current.actions)
-                else "resume_test"
-            )
+            kind = "confirm_test_operation"
             selected = next(action for action in current.actions if action.id == kind)
             body = {
                 "action_id": "confirm",
@@ -494,7 +510,9 @@ def test_action_controls_complete_real_graphon_run_without_repeated_http(
             assert client.post(base + "/actions", json=body).status_code == 200
             assert len(c.sends) == before_replay
             trace.append({"action": body, "result": settled.model_dump(mode="json"), "http_calls": len(c.sends)})
-            if kind == "resume_test":
+            assert settled.test_execution is not None
+            assert settled.test_execution.native_run_id == waiting.native_run_id
+            if settled.test_execution.status == "running":
                 # Deliver the existing durable outbox, never call another start.
                 c.api.lifecycle.publish_pending(publish=published_callback(c))
                 message = c.published[-1]
@@ -511,6 +529,16 @@ def test_action_controls_complete_real_graphon_run_without_repeated_http(
         assert final.test_execution is not None
         assert final.test_execution.status == "terminal"
         assert final.test_execution.native_run_id == waiting.native_run_id
+        if c.kind in {"root", "branch"}:
+            path = final.test_execution.canvas_path
+            assert path is not None
+            assert path.native_run_id == waiting.native_run_id
+            expected_edges = {"start-http", "http-end"}
+            if c.kind == "branch":
+                expected_edges.add("http-other-end")
+            assert {edge.edge_id for edge in path.edges} == expected_edges
+            assert all(edge.source_handle == "source" for edge in path.edges)
+            assert all(edge.source_status == edge.target_status == "succeeded" for edge in path.edges)
         with c.factory() as sql:
             run = sql.get(WorkflowRun, waiting.native_run_id)
             assert run is not None

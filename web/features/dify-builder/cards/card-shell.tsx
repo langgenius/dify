@@ -8,6 +8,7 @@ export type DifyBuilderCardStatus = {
   className?: string
   icon?: ReactNode
   label?: string
+  live?: boolean
   state?: DifyBuilderCardStatusState
 }
 
@@ -87,7 +88,11 @@ export const DifyBuilderCard = ({
                   (statusStyle && (
                     <span aria-hidden className={cn('size-3.5 shrink-0', statusStyle.icon)} />
                   ))}
-                {status.label && <span className="max-w-40 text-end">{status.label}</span>}
+                {status.label && (
+                  <span role={status.live ? 'status' : undefined} className="max-w-40 text-end">
+                    {status.label}
+                  </span>
+                )}
               </span>
             )}
           </span>

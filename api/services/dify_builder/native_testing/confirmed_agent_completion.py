@@ -11,9 +11,19 @@ from uuid import NAMESPACE_URL, uuid5
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import String, cast, select
+from sqlalchemy.orm import Session as SqlSession
 
+from core.dify_builder.contract import (
+    AssistantTurnItem,
+    ExecutionActivity,
+    ExecutionActivityState,
+    ExecutionProgress,
+    ExecutionProgressStatus,
+    ResumedTestProgress,
+)
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.models import Actor, EntryMode
+from core.dify_builder.models import Actor, EntryMode, Run
+from core.dify_builder.progress import node_activity_state
 from core.dify_builder.state import PcState
 from models.dify_builder import (
     DifyBuilderConversationItem,
@@ -44,11 +54,18 @@ from services.dify_builder.application.verification import has_output_blocker, r
 from services.dify_builder.business_acceptance import business_failure_context, record_run_acceptance
 from services.dify_builder.conversation_tasks import active_entry_mode
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
+from services.dify_builder.native_testing.canvas_path import read_canvas_path
 from services.dify_builder.native_testing.repository import admitted_workflow_revision
 from services.dify_builder.repository import SqlDifyBuilderRepository
 
 CANCELLED_CHILD_OBSERVATION = "confirmed_agent_cancelled_child_v1"
 STOP_CONTROL = "confirmed_agent_stop_v1"
+_WAIT_PROGRESS_TURN = TypeAdapter(AssistantTurnItem)
+_TEST_RUN_ACTIVITY: dict[str, str] = {
+    PcState.BUILD_TEST_AND_REPAIR: "build-run-test",
+    PcState.EDIT_TEST_AFFECTED_PATHS: "edit-run-test",
+    PcState.FIX_VERIFY: "fix-run-validation",
+}
 
 
 def _native_run_id(request: DifyBuilderExecutionRequest) -> str | None:
@@ -591,7 +608,71 @@ def reconcile_builder_run(*, sessions, actor: Actor, ref: NativeTestContextRef) 
         session_lock.release(request.session_id, token)
 
 
+def _resumed_test_progress(
+    sql: SqlSession, *, request: DifyBuilderExecutionRequest, run: Run, outcome: NativeWorkflowOutcome
+) -> ResumedTestProgress | None:
+    """Settle the admitted Run's original progress using its verified terminal node records.
+
+    The caller has checked the request, original commit and terminal proof under
+    the session lock. Without a matching paused test turn there is nothing to
+    update. The result carries the update so forward-only history reads see it.
+    """
+    rows = sql.scalars(
+        select(DifyBuilderConversationItem)
+        .where(
+            DifyBuilderConversationItem.session_id == request.session_id,
+            DifyBuilderConversationItem.at_version == request.context["expected_version"] + 1,
+            DifyBuilderConversationItem.kind == "assistant_turn",
+            DifyBuilderConversationItem.payload["stage_id"].as_string().in_(_TEST_RUN_ACTIVITY),
+        )
+        .limit(2)
+    ).all()
+    if len(rows) != 1:
+        return None
+    row = rows[0]
+    try:
+        turn = _WAIT_PROGRESS_TURN.validate_python(row.payload)
+    except ValidationError:
+        return None
+    if turn.card_state == "invalidated" or turn.execution.status != "stopped":
+        return None
+    activity_id = _TEST_RUN_ACTIVITY[turn.stage_id]
+    activities = turn.execution.activities
+    if not any(item.id == activity_id and item.state == "stopped" for item in activities):
+        return None
+
+    status: ExecutionProgressStatus
+    state: ExecutionActivityState
+    if outcome.native_status == "stopped":
+        status, state = "stopped", "stopped"
+    elif run.status == "succeeded":
+        status, state = "completed", "done"
+    else:
+        status, state = "error", "failed"
+
+    nodes = {
+        f"node:{node.node_id}": ExecutionActivity(
+            id=f"node:{node.node_id}",
+            label=node.title or node.node_id,
+            state=node_activity_state(node.status) if node.status != "running" else "stopped",
+            kind="node",
+            parent_id=activity_id,
+        )
+        for node in run.per_node
+        if node.node_id and node.status not in {"skip", "skipped"}
+    }
+    states: dict[str, ExecutionActivityState] = {
+        activity_id: state,
+        **{node_id: activity.state for node_id, activity in nodes.items()},
+    }
+    settled = [replace(activity, state=states.get(activity.id, activity.state)) for activity in activities]
+    existing_ids = {activity.id for activity in activities}
+    settled.extend(node for node in nodes.values() if node.id not in existing_ids)
+    return ResumedTestProgress(source_seq=row.seq, execution=ExecutionProgress(status=status, activities=settled))
+
+
 def _project(*, sessions, actor, ref, request):
+    """Commit terminal evidence, result, and progress for the original owned attempt."""
     repo = SqlDifyBuilderRepository(sessions)
     session_id, test_input_id, native_run_id = request.session_id, request.test_input_id, _native_run_id(request)
     if native_run_id is None:
@@ -604,6 +685,9 @@ def _project(*, sessions, actor, ref, request):
     elif mode == EntryMode.EDIT:
         pending_states = {PcState.EDIT_TEST_AFFECTED_PATHS, PcState.EDIT_AWAIT_REPAIR}
         review_state, repair_state = PcState.EDIT_REVIEW, PcState.EDIT_AWAIT_REPAIR
+    elif mode == EntryMode.FIX:
+        pending_states = {PcState.FIX_AWAIT_DECISION}
+        review_state = repair_state = PcState.FIX_AWAIT_DECISION
     else:
         return False
     if (
@@ -688,9 +772,7 @@ def _project(*, sessions, actor, ref, request):
     if declined:
         run.error = "Test declined by the user; continue adjusting to revise the plan."
     card = result_card(run)
-    items = append_card(context, card)
-    for item in items:
-        item.at_version = owner.version + 1
+    card.native_canvas_path = read_canvas_path(request.canvas_path, native_run_id)
     context.diagnosis, context.staged_repair, context.unknown_outcome_count = None, [], 0
     if declined:
         context.confirmed_consent_id, context.confirmed_command_id = "", ""
@@ -729,7 +811,7 @@ def _project(*, sessions, actor, ref, request):
                 or fresh is None
                 or admitted_workflow_revision(workflow, fresh.context) != fresh.context.get("execution_revision")
                 or canonical_digest(saved.inputs) != fresh.context.get("input_revision")
-                or _terminal_proof(sql, request=fresh, ref=ref) is None
+                or (terminal := _terminal_proof(sql, request=fresh, ref=ref)) is None
             ):
                 return False
             current = sql.get(DifyBuilderRun, context.verify_run_id, with_for_update=True)
@@ -746,6 +828,10 @@ def _project(*, sessions, actor, ref, request):
                 return False
             _write_run(current, run)
             _write_run(reservation, run)
+            card.resumed_progress = _resumed_test_progress(sql, request=fresh, run=run, outcome=terminal)
+            items = append_card(context, card)
+            for item in items:
+                item.at_version = owner.version + 1
             repo._compare_and_advance_in_session(sql, session_id, owner.version, next_state, context, items)
         from services.dify_builder import progress_bus
 
@@ -761,7 +847,7 @@ def _control_only_versions(sql, *, request, current_version):
     A user edit/recovery/model/input transition cannot inherit this exception.
     The original immutable request/context and admission version stay unchanged.
     """
-    from services.dify_builder.test_actions import TEST_ACTIONS
+    from services.dify_builder.test_actions import TEST_ACTIONS, TEST_CONTROL_RECEIPT_KINDS
 
     baseline = request.context.get("expected_version", -2) + 1
     if current_version < baseline:
@@ -791,7 +877,7 @@ def _control_only_versions(sql, *, request, current_version):
                 DifyBuilderConversationItem.session_id == request.session_id,
                 DifyBuilderConversationItem.at_version == commit.version,
                 DifyBuilderConversationItem.seq == previous.context.get("next_seq"),
-                DifyBuilderConversationItem.kind == "decision",
+                DifyBuilderConversationItem.kind.in_(TEST_CONTROL_RECEIPT_KINDS),
             )
         )
         if (

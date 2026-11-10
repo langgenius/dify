@@ -25,6 +25,7 @@ import { useSetAtom, useStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
 import {
@@ -126,6 +127,7 @@ export function useDifyBuilderSessionController(
   const { t } = useTranslation(['difyBuilder'])
 
   const onSessionStateChanged = runEvents?.onSessionStateChanged
+  const onNativeCanvasPath = runEvents?.onNativeCanvasPath
 
   const onAttachmentsAccepted = runEvents?.onAttachmentsAccepted
 
@@ -400,6 +402,9 @@ export function useDifyBuilderSessionController(
         onAttachmentsAccepted?.(material.attachments, material.text)
       }
       if (projectLifecycleSettlement(projected, reading)) return true
+      const path = projected.test_execution?.canvas_path
+      if (path && path.native_run_id === projected.test_execution?.native_run_id)
+        onNativeCanvasPath?.(projected.session_id, projected.version, path)
       onSessionStateChanged?.(projected)
       const canvasCursor = canvasCursorRef.current
       if (
@@ -414,6 +419,7 @@ export function useDifyBuilderSessionController(
     },
     [
       onAttachmentsAccepted,
+      onNativeCanvasPath,
       onSessionStateChanged,
       projectLifecycleSettlement,
       setActiveSessionId,
@@ -445,7 +451,7 @@ export function useDifyBuilderSessionController(
       const throughSequence = projected.conversation_last_seq
       const afterSequence = (items[0]?.seq ?? 0) - 1
       const covered = hasConversationRange(items, afterSequence, throughSequence)
-      if (restoreRun && covered && items.length) runEvents?.restoreRun(view.session_id, items)
+      if (restoreRun && covered) runEvents?.restoreRun(view.session_id, items, projected)
       const historyApplied =
         covered ||
         (items.length
@@ -1231,7 +1237,7 @@ export function useDifyBuilderSessionController(
           receiptSnapshot,
         ])
         if (pendingActionRef.current?.signature !== signature)
-          pendingActionRef.current = { signature, id: globalThis.crypto.randomUUID() }
+          pendingActionRef.current = { signature, id: uuid4() }
         clientActionId = pendingActionRef.current.id
       }
       let requestView = view
@@ -1343,7 +1349,7 @@ export function useDifyBuilderSessionController(
         requestedTurnId?.trim() ||
         (pending?.sessionId === view.session_id && pending.text === normalizedText
           ? pending.turnId
-          : globalThis.crypto.randomUUID())
+          : uuid4())
       const retryableMessage = store.get(difyBuilderRetryableMessageAtom)
       const retrying =
         retryableMessage?.sessionId === view.session_id && retryableMessage.turnId === clientTurnId
