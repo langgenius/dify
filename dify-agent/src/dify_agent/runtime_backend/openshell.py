@@ -248,13 +248,12 @@ class OpenShellSDKControlPlane:
     ) -> None:
         def call() -> None:
             client = self._client()
-            ref = client.create(
+            client.create(
                 workspace=self.workspace,
                 spec=self._sandbox_spec(),
                 name=name,
                 labels=labels,
             )
-            client
 
         await asyncio.to_thread(self._run_normalizing_not_found, call)
 
