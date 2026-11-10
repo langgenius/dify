@@ -2,7 +2,6 @@ import type { Locale } from '@/i18n/locale'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Link from '@/next/link'
-import styles from './pricing.module.css'
 
 const websiteLocalePaths: Partial<Record<Locale, string>> = {
   'zh-Hans': '/zh',
@@ -16,7 +15,7 @@ export function PricingFooter() {
   const { t } = useTranslation(['billing'])
 
   return (
-    <div className={styles.footer}>
+    <div className="flex pt-6 font-[PricingInter,sans-serif] xl:px-6">
       <div className="flex min-w-0 grow flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col text-text-tertiary">
           <span className="system-md-regular">

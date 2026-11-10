@@ -13,7 +13,6 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { PricingContent } from './content'
-import styles from './pricing.module.css'
 
 export function PricingDialogContent() {
   const { t } = useTranslation(['common'])
@@ -27,7 +26,7 @@ export function PricingDialogContent() {
             <IconButton
               variant="secondary"
               size="xl"
-              className={styles.close}
+              className="absolute end-5 top-6 z-1 rounded-full xl:end-[34px] xl:top-[45px]"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             >
               <span aria-hidden className="i-ri-close-line size-5" />
