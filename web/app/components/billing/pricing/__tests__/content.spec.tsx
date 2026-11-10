@@ -92,26 +92,23 @@ it('shows prices and disables purchase buttons while features load', async () =>
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
-it('distinguishes original and discounted annual prices in readable text', async () => {
+it('shows only the payable prices for the selected interval', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
   seedFeatures(queryClient)
   show()
-  expect(screen.queryByText('billing.plansCommon.originalAnnualPrice')).not.toBeInTheDocument()
-  expect(screen.queryByText('billing.plansCommon.discountedAnnualPrice')).not.toBeInTheDocument()
 
   await user.click(screen.getByRole('radio', { name: /billing\.pricing\.annually/ }))
+  expect(screen.getByText('$590')).toBeVisible()
+  expect(screen.getByText('$1590')).toBeVisible()
+  expect(screen.queryByText('$708')).not.toBeInTheDocument()
+  expect(screen.queryByText('$1908')).not.toBeInTheDocument()
 
-  for (const amount of ['$708', '$1908']) {
-    expect(screen.getByText(amount)).toHaveTextContent(
-      `billing.plansCommon.originalAnnualPrice${amount}`,
-    )
-  }
-  for (const amount of ['$590', '$1590']) {
-    expect(screen.getByText(amount)).toHaveTextContent(
-      `billing.plansCommon.discountedAnnualPrice${amount}`,
-    )
-  }
+  await user.click(screen.getByRole('radio', { name: /billing\.pricing\.monthly/ }))
+  expect(screen.getByText('$59')).toBeVisible()
+  expect(screen.getByText('$159')).toBeVisible()
+  expect(screen.queryByText('$590')).not.toBeInTheDocument()
+  expect(screen.queryByText('$1590')).not.toBeInTheDocument()
 })
 
 it('preserves a billing interval selected before education eligibility arrives', async () => {
