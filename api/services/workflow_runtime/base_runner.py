@@ -47,10 +47,16 @@ from core.credit_usage import CreditUsageAppType
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord
-from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
+from core.workflow.agent_log_events import NodeRunAgentLogEvent
+from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReason
+from core.workflow.nodes.human_input_v2.events import (
+    NodeRunHumanInputV2FormFilledEvent,
+    NodeRunHumanInputV2FormTimeoutEvent,
+)
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -117,7 +123,7 @@ from services.workflow_runtime.node_factory import (
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
-from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
+from tasks.mail_human_input_delivery_task import dispatch_human_input_form_delivery_task
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_execution import NativeHostLaunch
@@ -260,6 +266,8 @@ class WorkflowBasedAppRunner:
         native_runtime: NativeRuntimeBridge | None = None,
         builder_mocked_node_ids: frozenset[str] = frozenset(),
         builder_tool_credential_bindings: Mapping[str, str] | None = None,
+        builder_api_tool_bindings: Mapping[str, str] | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Graph:
         """
         Init graph
@@ -272,9 +280,11 @@ class WorkflowBasedAppRunner:
         # extras, before Graph.init introduces typed node data.
 
         # Create explicit graph init context for Graph.init.
-        if (builder_mocked_node_ids or builder_tool_credential_bindings is not None) and (
-            builder_execution is not None or native_test_ref is not None
-        ):
+        if (
+            builder_mocked_node_ids
+            or builder_tool_credential_bindings is not None
+            or builder_api_tool_bindings is not None
+        ) and (builder_execution is not None or native_test_ref is not None):
             raise BuilderExecutionPolicyError("unsupported_execution_policy")
         run_context = build_dify_run_context(
             builder_execution=builder_execution,
@@ -283,6 +293,7 @@ class WorkflowBasedAppRunner:
             builder_agent_execution=builder_agent_execution,
             builder_mocked_node_ids=builder_mocked_node_ids,
             builder_tool_credential_bindings=builder_tool_credential_bindings,
+            builder_api_tool_bindings=builder_api_tool_bindings,
             tenant_id=tenant_id or "",
             app_id=self._app_id,
             user_id=user_id,
@@ -290,6 +301,7 @@ class WorkflowBasedAppRunner:
             invoke_from=invoke_from,
             app_type=app_type,
             trace_session_id=trace_session_id,
+            capture_agent_evaluation_trace=capture_agent_evaluation_trace,
         )
         graph_init_context = DifyGraphInitContext(
             execution_driver=self._execution_driver,
@@ -580,9 +592,10 @@ class WorkflowBasedAppRunner:
         published_form_ids: set[str],
     ) -> None:
         """Publish materialized completions supplied by run orchestration."""
+        variable_pool = workflow_entry.graph_engine.runtime_state.variable_pool
         for form_id, reason in pending_forms.items():
             form = forms[form_id]
-            node_id = reason.node_id
+            node_id = resolve_human_input_node_id(node_id=reason.node_id, form_id=form_id, variable_pool=variable_pool)
             node_title = reason.node_title or form.definition.node_title or form.node_id
             if form.status == HumanInputFormStatus.TIMEOUT:
                 self._publish_event(
@@ -629,9 +642,10 @@ class WorkflowBasedAppRunner:
         node_run_index: int = 1,
         node_execution_snapshots: tuple[NodeExecutionSnapshot, ...] = (),
         pause_reasons: Sequence[PauseReason] = (),
+        human_input_v2_forms: Mapping[str, PreparedForm] | None = None,
     ) -> None:
         """
-        Handle event
+        Project ordered engine events without reinterpreting Graphon's failure strategy or terminal cause.
         :param workflow_entry: workflow entry
         :param event: event
         """
@@ -644,10 +658,15 @@ class WorkflowBasedAppRunner:
         loop_id = node_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
         match event:
             case NodeRunHumanInputFormFilledEvent():
+                form_id = event.form_id if isinstance(event, NodeRunHumanInputV2FormFilledEvent) else event.id
                 self._publish_event(
                     QueueHumanInputFormFilledEvent(
-                        form_id=event.id,
-                        node_id=event.node_id,
+                        form_id=form_id,
+                        node_id=resolve_human_input_node_id(
+                            node_id=event.node_id,
+                            form_id=form_id,
+                            variable_pool=workflow_entry.graph_engine.runtime_state.variable_pool,
+                        ),
                         node_type=event.node_type,
                         node_title=event.node_title,
                         rendered_content=event.rendered_content,
@@ -657,10 +676,15 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case NodeRunHumanInputFormTimeoutEvent():
+                form_id = event.form_id if isinstance(event, NodeRunHumanInputV2FormTimeoutEvent) else event.id
                 self._publish_event(
                     QueueHumanInputFormTimeoutEvent(
-                        form_id=event.id,
-                        node_id=event.node_id,
+                        form_id=form_id,
+                        node_id=resolve_human_input_node_id(
+                            node_id=event.node_id,
+                            form_id=form_id,
+                            variable_pool=workflow_entry.graph_engine.runtime_state.variable_pool,
+                        ),
                         node_type=event.node_type,
                         node_title=event.node_title,
                         expiration_time=event.expiration_time,
@@ -678,7 +702,10 @@ class WorkflowBasedAppRunner:
                 )
             case GraphRunFailedEvent():
                 self._publish_event(
-                    QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count)
+                    QueueWorkflowFailedEvent(
+                        error=event.error,
+                        exceptions_count=event.exceptions_count,
+                    )
                 )
             case GraphRunAbortedEvent():
                 self._publish_event(
@@ -691,12 +718,24 @@ class WorkflowBasedAppRunner:
                 paused_nodes = list(
                     dict.fromkeys(reason.node_id for reason in pause_reasons if isinstance(reason, HumanInputRequired))
                 )
-                self._enqueue_human_input_notifications(pause_reasons)
+                forms = {
+                    reason.form_id: (human_input_v2_forms or {})[reason.form_id]
+                    for reason in pause_reasons
+                    if isinstance(reason, HumanInputRequired) and reason.form_version == "2"
+                }
+                self._enqueue_human_input_v1_notifications(
+                    [
+                        reason
+                        for reason in pause_reasons
+                        if isinstance(reason, HumanInputRequired) and reason.form_version == "1"
+                    ]
+                )
                 self._publish_event(
                     QueueWorkflowPausedEvent(
                         reasons=list(pause_reasons),
                         outputs=event.outputs,
                         paused_nodes=paused_nodes,
+                        human_input_v2_forms=forms,
                     )
                 )
             case NodeRunRetryEvent():
@@ -944,19 +983,17 @@ class WorkflowBasedAppRunner:
                     )
                 )
 
-    def _enqueue_human_input_notifications(self, reasons: Sequence[object]) -> None:
+    def _enqueue_human_input_v1_notifications(self, reasons: Sequence[HumanInputRequired]) -> None:
         for reason in reasons:
-            if not isinstance(reason, HumanInputRequired):
-                continue
             if not reason.form_id:
                 continue
             try:
-                dispatch_human_input_email_task.apply_async(
+                dispatch_human_input_form_delivery_task.apply_async(
                     kwargs={"form_id": reason.form_id, "node_title": reason.node_title},
                     queue="mail",
                 )
             except Exception:  # pragma: no cover - defensive logging
-                logger.exception("Failed to enqueue human input email task for form %s", reason.form_id)
+                logger.exception("Failed to enqueue human input form delivery task for form %s", reason.form_id)
 
     def _publish_event(self, event: AppQueueEvent):
         self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)
