@@ -2518,6 +2518,53 @@ describe('CreateKnowledgePage', () => {
     })
   })
 
+  it('lets users retry a failed GitHub repository preview', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, githubDatasourcePlugin]
+    datasourceQueryMock.auth.data = {
+      result: [firecrawlDatasourceAuth, githubDatasourceAuth],
+    }
+    serviceMock.previewInitialSource
+      .mockRejectedValueOnce(new Error('GitHub is temporarily unavailable'))
+      .mockResolvedValueOnce({
+        documents: [
+          {
+            has_children: true,
+            last_edited_time: '2026-11-10T00:00:00Z',
+            name: 'dify',
+            page_id: 'repo:FFXN/dify',
+            parent_id: null,
+            provider_item_id: '["github-user-1","repo:FFXN/dify"]',
+            type: 'repository',
+            workspace_id: 'github-user-1',
+            workspace_name: "FFXN's GitHub",
+          },
+        ],
+        kind: 'online_document',
+        next_cursor: null,
+      })
+
+    await renderPage()
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'GitHub Repository' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+
+    const failure = await screen.findByRole('alert')
+    expect(failure).toHaveTextContent('knowledgeSpace.providerLoadFailed')
+    await user.click(
+      within(failure).getByRole('button', { name: 'knowledgeSpace.retryProviderLoad' }),
+    )
+
+    expect(await screen.findByRole('checkbox', { name: 'dify' })).toBeInTheDocument()
+    expect(
+      serviceMock.previewInitialSource.mock.calls.map(([request]) => request.body.parameters),
+    ).toEqual([
+      { limit: 10, view: 'tree' },
+      { limit: 10, view: 'tree' },
+    ])
+  })
+
   it('does not inject website defaults when switching connected document providers', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
