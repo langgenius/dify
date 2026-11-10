@@ -2947,6 +2947,9 @@ a4_expected.update(
             "test_colliding_untyped_lookup_refuses_and_routed_catalogue_retains_native_types": 1,
             "test_valid_mcp_sibling_reaches_native_resolver_with_boolean_property_schema": 1,
             "test_collision_namespaced_pinning_and_explicit_type_remain_authoritative": 1,
+            "test_authoritative_selector_refuses_complete_alternate_graph_before_hydration": 2,
+            "test_generation_refuses_authoritative_selector_before_alternate_builder": 2,
+            "test_generic_tool_choice_without_selector_still_generates_installed_tool": 1,
         },
         "tests.unit_tests.services.dify_builder.test_credential_failure_attribution": {
             "test_handler_attributes_global_credentials_to_exact_failed_tool": 6,
