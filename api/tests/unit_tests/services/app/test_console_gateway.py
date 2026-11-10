@@ -31,7 +31,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
@@ -537,6 +537,7 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(
 def test_real_dsl_export_releases_connection_before_plugin_request(
     sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, mode: AppMode, remote_fails: bool, surface: str
 ) -> None:
+    """Export model-backed Apps without holding SQL connections during plugin I/O, including failures."""
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id, workspace, actor = str(uuid4()), str(uuid4()), str(uuid4())
     with factory.begin() as session:
@@ -550,14 +551,44 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
                     app_id=app_id,
                     type=WorkflowType.WORKFLOW,
                     version=Workflow.VERSION_DRAFT,
-                    graph='{"nodes":[],"edges":[]}',
+                    graph=json.dumps(
+                        {
+                            "nodes": [
+                                {
+                                    "id": "llm",
+                                    "data": {
+                                        "type": "llm",
+                                        "title": "LLM",
+                                        "model": {
+                                            "provider": "langgenius/openai/openai",
+                                            "name": "example",
+                                            "mode": "chat",
+                                        },
+                                        "prompt_template": [{"role": "system", "text": "Example"}],
+                                        "context": {"enabled": False},
+                                    },
+                                }
+                            ],
+                            "edges": [],
+                        }
+                    ),
                     _features="{}",
                     created_by=actor,
                 )
             )
         elif mode == AppMode.AGENT:
             AgentRosterService(session).create_backing_agent_for_app(
-                tenant_id=workspace, account_id=actor, app_id=app_id, name="Example"
+                tenant_id=workspace,
+                account_id=actor,
+                app_id=app_id,
+                name="Example",
+                initial_soul=AgentSoulConfig(
+                    model=AgentSoulModelConfig(
+                        plugin_id="langgenius/openai",
+                        model_provider="langgenius/openai/openai",
+                        model="example",
+                    )
+                ),
             )
         else:
             config = AppModelConfig(app_id=app_id, model='{"provider":"langgenius/openai/openai","name":"example"}')
@@ -576,6 +607,7 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
 
     def fetch_plugins(_self: PluginInstaller, tenant_id: str, plugin_ids: list[str]) -> list[PluginInstallation]:
         assert tenant_id == workspace
+        assert plugin_ids == ["langgenius/openai"]
         assert not checked_out, "Plugin daemon I/O must run after returning the database connection"
         calls.append(plugin_ids)
         if remote_fails:

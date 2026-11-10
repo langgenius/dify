@@ -2,7 +2,9 @@
 
 import json
 from collections.abc import Iterator, Mapping
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -59,6 +61,9 @@ from services.external_agents.retention import ExternalDeletionScope, ExternalRe
 from services.external_agents.traceability import ReportedCallUsage, TraceabilityNormalizer, TraceLimits
 from services.external_agents.tracing_config import ExternalTraceDeliveryService, build_external_trace
 from services.rbac.contracts import MyPermissionsResponse, ResourcePermissionKeys, ResourcePermissionSnapshot
+
+if TYPE_CHECKING:
+    from extensions.ext_application_services import ApplicationServices
 
 
 def uid() -> str:
@@ -1169,9 +1174,8 @@ def test_revoked_origin_marker_survives_storage_and_shared_grants_until_both_are
 def test_composed_conversation_hook_fences_real_owned_data(
     sessions: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    account_application_services: "ApplicationServices",
 ) -> None:
-    from types import SimpleNamespace
-
     import extensions.ext_application_services as composition
     from services import conversation_service
 
@@ -1194,11 +1198,13 @@ def test_composed_conversation_hook_fences_real_owned_data(
         )
     repository, _, _, _ = services(sessions)
     retention = ExternalRetentionService(store=repository, files=UnexpectedIO())
-    monkeypatch.setattr(
-        composition,
-        "application_services",
-        lambda: SimpleNamespace(external_agents=SimpleNamespace(retention=retention)),
+    # Retain the real composition-root types and their constructor invariants;
+    # only this hook's retention adapter uses the fixture's actual SQL records.
+    application = replace(
+        account_application_services,
+        external_agents=replace(account_application_services.external_agents, retention=retention),
     )
+    monkeypatch.setattr(composition, "application_services", lambda: application)
 
     def skip_broker_publication(conversation_id: str) -> None:
         del conversation_id

@@ -33,9 +33,9 @@ Graphon is currently easiest to evaluate from a source checkout.
 ### Requirements
 
 - Python 3.12 or 3.13
-- [`uv`](https://docs.astral.sh/uv/)
-- [`just`](https://just.systems/)
-- [`fd`](https://github.com/sharkdp/fd)
+- [`uv`]
+- [`just`]
+- [`fd`]
 
 Python 3.14 is currently unsupported because `unstructured`, which backs part
 of the document extraction stack, currently declares `Requires-Python: <3.14`.
@@ -49,14 +49,14 @@ just test
 ```
 
 `just dev` installs the project, syncs development dependencies, and sets up
-[`prek`](https://prek.j178.dev/) Git hooks. `just test` is the progressive
+[`prek`] Git hooks. `just test` is the progressive
 local validation entrypoint: it formats, applies lint fixes, runs `ty check`,
-and then runs [`pytest`](https://docs.pytest.org/).
+and then runs [`pytest`].
 
 ## Run the Example Workflows
 
 The repository includes minimal runnable Slim LLM examples at
-[`examples/slim_llm`](examples/slim_llm).
+[`examples/slim_llm`].
 
 Both versions execute this workflow:
 
@@ -86,7 +86,7 @@ The example currently expects:
 - for remote mode, `daemon_addr` and `daemon_key`
 
 For the exact credential shape and runtime notes, see
-[examples/slim_llm/README.md](examples/slim_llm/README.md).
+[examples/slim_llm/README.md].
 
 ## How Graphon Fits Together
 
@@ -114,12 +114,12 @@ engine = loads(
 events = list(engine.run())
 ```
 
-See [examples/slim_llm/dsl.py](examples/slim_llm/dsl.py) for the DSL import
-version and [examples/slim_llm/code.py](examples/slim_llm/code.py) for the
+See [examples/slim_llm/dsl.py] for the DSL import
+version and [examples/slim_llm/code.py] for the
 Python graph construction version.
 
 The default DSL node set is defined by
-[`SlimDslNodeFactory.NODE_BUILDERS`](src/graphon/dsl/node_factory.py).
+[`SlimDslNodeFactory.NODE_BUILDERS`].
 HTTP request import covers text request bodies and text responses; file request
 bodies still require application-level file adapters.
 
@@ -149,15 +149,15 @@ planned as a separate follow-up.
 
 ## Internal Docs
 
-- [Repository knowledge](docs/README.md): architecture, development guide,
+- [Repository knowledge]: architecture, development guide,
   component references, and maintenance
-- [Architecture](ARCHITECTURE.md): execution flow, boundaries, and invariants
-- [Contributing](CONTRIBUTING.md): contributor workflow, CI, commit/PR rules
+- [Architecture]: execution flow, boundaries, and invariants
+- [Contributing]: contributor workflow, CI, commit/PR rules
 
 ## Development
 
 Contributor setup, tooling details, CLA notes, and commit/PR conventions live
-in [CONTRIBUTING.md](CONTRIBUTING.md).
+in [CONTRIBUTING.md].
 
 CI currently validates pull request titles, runs `just check` including
 `uv.lock` freshness validation, and runs `uv run pytest` on Python 3.12 and
@@ -166,4 +166,20 @@ support it.
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE].
+
+[Architecture]: ARCHITECTURE.md
+[CONTRIBUTING.md]: CONTRIBUTING.md
+[Contributing]: CONTRIBUTING.md
+[LICENSE]: LICENSE
+[Repository knowledge]: docs/README.md
+[`SlimDslNodeFactory.NODE_BUILDERS`]: src/graphon/dsl/node_factory.py
+[`examples/slim_llm`]: examples/slim_llm
+[`fd`]: https://github.com/sharkdp/fd
+[`just`]: https://just.systems
+[`prek`]: https://prek.j178.dev
+[`pytest`]: https://docs.pytest.org
+[`uv`]: https://docs.astral.sh/uv
+[examples/slim_llm/README.md]: examples/slim_llm/README.md
+[examples/slim_llm/code.py]: examples/slim_llm/code.py
+[examples/slim_llm/dsl.py]: examples/slim_llm/dsl.py

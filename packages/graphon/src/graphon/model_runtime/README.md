@@ -9,8 +9,8 @@ runtime contracts, and model wrappers. Host applications supply concrete runtime
 adapters; any provider-selection or credential UI belongs to the host.
 
 For graph-facing LLM nodes, start with
-[LLMProtocol](../nodes/llm/runtime_protocols.py) and
-[SlimLLM](../dsl/slim/llm.py). Those adapters are distinct from the provider and
+[LLMProtocol] and
+[SlimLLM]. Those adapters are distinct from the provider and
 capability wrappers described below.
 
 ## Features
@@ -26,9 +26,9 @@ capability wrappers described below.
 
 - Provider and model metadata
 
-  [ModelProviderFactory](model_providers/model_provider_factory.py) exposes provider
+  [ModelProviderFactory] exposes provider
   schemas, model lists, icons, and credential validation through an injected
-  runtime. [Entity definitions](entities/) describe model parameters and credential
+  runtime. [Entity definitions] describe model parameters and credential
   form rules that host applications can use.
 
 - Provider/model credential authentication
@@ -69,6 +69,13 @@ Model Runtime is divided into protocol and implementation layers:
 
 ## Documentation
 
-Follow [model dispatch tests](../../../tests/model_runtime/test_model_dispatch.py)
+Follow [model dispatch tests]
 for capability-specific adapters and the
-[development guide](../../../docs/development.md) for host integration points.
+[development guide] for host integration points.
+
+[Entity definitions]: entities/
+[LLMProtocol]: ../nodes/llm/runtime_protocols.py
+[ModelProviderFactory]: model_providers/model_provider_factory.py
+[SlimLLM]: ../dsl/slim/llm.py
+[development guide]: ../../../docs/development.md
+[model dispatch tests]: ../../../tests/model_runtime/test_model_dispatch.py

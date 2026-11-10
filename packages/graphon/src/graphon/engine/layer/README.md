@@ -29,15 +29,14 @@ Base class with optional lifecycle hooks for layers.
 Return a fresh context manager for each task. It surrounds node hooks and
 consumption of the node or resume generator; graph and event hooks run outside
 this scope. Entry/exit exceptions are logged and isolated, and the manager cannot
-suppress node execution errors. See the [worker](../worker/worker.py) and
-[context tests](../../../../tests/engine/test_layer_node_run_context.py).
+suppress node execution errors. See the [worker] and
+[context tests].
 
 ## Usage
 
 ```python
 from graphon.engine.layer import Layer
 from graphon.engine_events import EngineEvent, NodeRunSucceededEvent
-
 
 class MetricsLayer(Layer):
     def __init__(self):
@@ -63,5 +62,9 @@ class MetricsLayer(Layer):
 callbacks (including terminal events) raise `RuntimeError` if they try to take
 a runtime snapshot. Persist in `on_graph_end` after execution threads have stopped,
 or after fully consuming the run iterator. See the
-[serialization tests](../../../../tests/engine/test_runtime_state_serialization.py)
+[serialization tests]
 for resumable pauses and shutdown timeouts.
+
+[context tests]: ../../../../tests/engine/test_layer_node_run_context.py
+[serialization tests]: ../../../../tests/engine/test_runtime_state_serialization.py
+[worker]: ../worker/worker.py
