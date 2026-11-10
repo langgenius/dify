@@ -3176,8 +3176,8 @@ describe('CreateKnowledgePage', () => {
       }),
     ).toBeNull()
     expect(
-      within(policyRow as HTMLElement).getByText('knowledgeCreate.uploadCharactersUnavailable'),
-    ).toBeVisible()
+      within(policyRow as HTMLElement).queryByText('knowledgeCreate.uploadingFiles'),
+    ).not.toBeInTheDocument()
     expect(
       within(policyRow as HTMLElement).getByRole('button', {
         name: 'knowledgeSpace.preview',
