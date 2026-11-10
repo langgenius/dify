@@ -1645,7 +1645,7 @@ def test_terminal_output_to_answer_handles_plain_string_and_dict() -> None:
     assert AgentAppRunner._terminal_output_to_answer({"a": 1}) == '{"a": 1}'
 
 
-def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch, *, app_records) -> None:
     contexts: list[AgentAppRuntimeBuildContext] = []
     build = AgentAppRuntimeRequestBuilder.build
 
@@ -1654,7 +1654,7 @@ def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch)
         return build(self, context)
 
     monkeypatch.setattr(AgentAppRuntimeRequestBuilder, "build", record_build)
-    runner = _runner(FakeAgentBackendRunClient(), _FakeSessionStore())
+    runner = _runner(FakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records)
     inputs = {"name": "世界", "count": 0}
     runner.run(
         dify_context=_dify_ctx(),
