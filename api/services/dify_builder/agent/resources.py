@@ -301,6 +301,10 @@ def _tool_readiness(entry: ToolCatalogueEntry, authorized: set[str] | None) -> t
     with a note saying it could not be verified. Runtime authorization
     remains the final gate either way.
     """
+    if entry.get("provider_type") == "mcp":
+        # Native MCP configuration is workspace-scoped, not a builtin credential
+        # row. Cached auth does not establish current remote authorization.
+        return ("ready", "") if entry.get("mcp_cached_auth") else ("missing_config", SETUP_REQUIRED_NOTE)
     # API authorization belongs to its native owner, never builtin credential
     # rows. Public metadata cannot prove authorization even for an API tool
     # that uses no credentials; keep it bindable with an honest setup note.
@@ -357,6 +361,7 @@ def _tool_ref(entry: ToolCatalogueEntry, authorized: set[str] | None) -> Resourc
         else None,
         declaration_digest=canonical_digest(
             {
+                **({"input_schema": entry["input_schema"]} if "input_schema" in entry else {}),
                 "parameters": entry.get("parameters", []),
                 "output_schema": entry.get("output_schema", {}),
             }
@@ -450,7 +455,7 @@ def list_tenant_resources(
         authorized: set[str] | None = None
         if any(
             t.get("needs_credentials")
-            and t.get("provider_type") != "api"
+            and t.get("provider_type") not in {"api", "mcp"}
             and t.get("authorization_metadata") != "unverified"
             for t in tools
         ):

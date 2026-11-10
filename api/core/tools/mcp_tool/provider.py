@@ -9,6 +9,7 @@ from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolEntity,
     ToolIdentity,
+    ToolParameter,
     ToolProviderEntityWithPlugin,
     ToolProviderIdentity,
     ToolProviderType,
@@ -81,7 +82,7 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
                     provider=entity.server_identifier,
                     icon=entity.icon if isinstance(entity.icon, str) else "",
                 ),
-                parameters=ToolTransformService.convert_mcp_schema_to_parameter(remote_mcp_tool.inputSchema),
+                parameters=cls.parameters_from_schema(remote_mcp_tool.inputSchema),
                 description=ToolDescription(
                     human=I18nObject(
                         en_US=remote_mcp_tool.description or "", zh_Hans=remote_mcp_tool.description or ""
@@ -116,6 +117,15 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
             sse_read_timeout=entity.sse_read_timeout,
             identity_mode=entity.identity_mode,
         )
+
+    @staticmethod
+    def parameters_from_schema(schema: dict[str, Any]) -> list[ToolParameter]:
+        """Convert a public cached input declaration without constructing a provider.
+
+        Uses the ordinary native MCP mapping, with no credentials, sessions or
+        transport. Invalid schemas retain the native converter's failure behavior.
+        """
+        return ToolTransformService.convert_mcp_schema_to_parameter(schema)
 
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """

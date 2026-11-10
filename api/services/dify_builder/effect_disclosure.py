@@ -609,6 +609,10 @@ def _tool(data: Mapping[str, Any]) -> tuple[EffectTier, str, str]:
         return "destructive", target, obj
     if words & _WRITE_WORDS:
         return "side_effect", target, obj
+    if provider_type == "mcp":
+        # Remote names and cached annotations cannot authorize opaque actions.
+        # Retain explicit confirmation even for names such as docs_search.
+        return "side_effect", target, obj
     if words & _READ_WORDS or provider_type == "dataset-retrieval":
         return "read", target, obj
     return "side_effect", target, obj
