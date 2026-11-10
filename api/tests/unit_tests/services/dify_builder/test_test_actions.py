@@ -580,10 +580,18 @@ def test_approval_only_resumes_the_eligible_saved_wait(
     )
     current = saved.model_copy(update={"generation": int(case == "newer_wait"), "can_resume": case != "blocked"})
     running = current.model_copy(update={"status": "running", "generation": 1, "pending": (), "can_resume": False})
-    owner = mocker.Mock(spec=ProfiledNativeTestCommands)
-    owner.decide.return_value = saved
-    owner.peek.return_value = current
-    owner.resume.return_value = running
+    def unexpected_profile() -> Never:
+        pytest.fail("the patched command must not resolve a runtime profile")
+
+    owner = ProfiledNativeTestCommands(
+        sessions=sqlite_session_factory,
+        actor=actor,
+        confirmed_factory=unexpected_profile,
+        legacy_factory=unexpected_profile,
+    )
+    mocker.patch.object(owner, "decide", return_value=saved)
+    mocker.patch.object(owner, "peek", return_value=current)
+    resume = mocker.patch.object(owner, "resume", return_value=running)
     actions = BuilderTestActions(sqlite_session_factory, lambda **_kwargs: owner)
     mocker.patch.object(actions, "_current_id", return_value="request-1")
     command = parse_test_action(
@@ -596,7 +604,7 @@ def test_approval_only_resumes_the_eligible_saved_wait(
     )
 
     if case == "last":
-        owner.resume.assert_called_once_with(
+        resume.assert_called_once_with(
             actor=actor,
             session_id=sid,
             request_id="request-1",
@@ -606,7 +614,7 @@ def test_approval_only_resumes_the_eligible_saved_wait(
         assert receipt.native_run_id == "run-1"
         assert receipt.status == "running"
     else:
-        owner.resume.assert_not_called()
+        resume.assert_not_called()
 
 
 def test_standard_choice_envelope_can_submit_native_control() -> None:
