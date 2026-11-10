@@ -100,7 +100,7 @@ def test_table_to_markdown_replaces_cell_newlines(tmp_path: Path):
     path = tmp_path / "table-with-breaks.docx"
     doc.save(str(path))
 
-    extractor = WordExtractor.__new__(WordExtractor)
+    extractor = WordExtractor(str(path), "tenant_id", "user_id")
     markdown = extractor._table_to_markdown(Document(str(path)).tables[0], {})
 
     assert markdown.splitlines() == [
