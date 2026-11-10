@@ -17,11 +17,7 @@ def is_conversation_cleared(context: DifyBuilderContext) -> bool:
 
 
 def lifecycle_settlement(context: DifyBuilderContext) -> Literal["settled", "pending", "unknown"] | None:
-    """Project only the current clear/abandon's known execution state.
-
-    This is not physical cleanup proof. Clear retains its durable acknowledgment
-    state; no missing execution references or later Run can upgrade it.
-    """
+    """Project the current clear/abandon's recorded state, without inferring execution cleanup."""
     if not is_conversation_cleared(context) and context.task_status != "abandoned":
         return None
     controls = context.task_control

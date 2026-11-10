@@ -41,10 +41,30 @@ export const projectSessionView = (
     )
       return null
   }
+  const previous = current?.test_execution
+  const incoming = next.test_execution
+  const path = previous?.canvas_path
+  if (
+    current?.session_id === next.session_id &&
+    path &&
+    incoming &&
+    previous.request_id === incoming.request_id &&
+    path.native_run_id === incoming.native_run_id &&
+    path.revision > (incoming.canvas_path?.revision ?? 0)
+  )
+    return { ...next, test_execution: { ...incoming, canvas_path: path } }
   return next
 }
 
 export const isActiveView = (view: SessionView) => view.command_pending === true
+
+export const hasUnresolvedNativeTest = (view: SessionView | null) =>
+  Boolean(
+    view?.test_execution &&
+    (view.test_execution.status !== 'terminal' ||
+      view.test_execution.outcome === 'unknown' ||
+      view.test_execution.cancellation?.status === 'cancelling'),
+  )
 
 export const mergeConversationPage = (current: ConversationItem[], page: ConversationItem[]) => {
   const versions = new Map(current.map((item) => [item.seq, item.at_version]))

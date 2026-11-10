@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from controllers.console.dify_builder_fields import DifyBuilderSessionViewResponse, DifyBuilderSubmitActionPayload
 from core.dify_builder.contract import SessionView
 from core.dify_builder.models import Actor
-from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt, PendingActionDisclosure
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from services.dify_builder.test_actions import TestCommand as NativeCommand
@@ -453,10 +453,22 @@ def test_response_loss_retries_same_action_without_a_second_native_command(actio
             sid,
             actor,
             Action(
-                kind="resume_test",
-                payload={"request_id": "request-1", "expected_generation": 0},
+                kind="confirm_test_operation",
+                payload={
+                    "request_id": "request-1",
+                    "pending_operation_id": "p1",
+                    "pending_version": 4,
+                    "scope_digest": "a" * 64,
+                },
                 base_version=version,
                 base_app_revision="revision",
+                receipt_snapshot={
+                    "interaction_kind": "choice",
+                    "question": "测试操作审批",
+                    "answer": "允许本次操作",
+                    "reply_language": "zh-Hans",
+                    "fields": [],
+                },
             ),
         )
 
@@ -464,7 +476,12 @@ def test_response_loss_retries_same_action_without_a_second_native_command(actio
     again = submit()
     assert first.version == again.version
     assert len(commands.commands) == 1
-    assert len(repo.list_conversation(sid)) == 1
+    (item,) = repo.list_conversation(sid)
+    assert item.kind == "interaction_response"
+    assert item.payload["question"] == "测试操作审批"
+    assert item.payload["answer"] == "允许本次操作"
+    assert item.payload["submitted_data"] == {"option_id": "confirm_test_operation"}
+    assert "text" not in item.payload
 
 
 def test_readonly_session_sse_retains_receipt_and_explicit_action_payload(action_case: ActionCase) -> None:
@@ -493,15 +510,12 @@ def test_unknown_result_does_not_allow_run_test_or_implicit_replay(action_case: 
     assert commands.commands == []
 
 
-def test_waiting_operation_uses_existing_choice_with_concrete_risk_details(action_case: ActionCase) -> None:
+def _pending_approval() -> PendingActionDisclosure:
     from datetime import UTC, datetime, timedelta
 
     from runtime_contracts.builder.native.approval_contracts import NativeApprovalTerms
-    from services.dify_builder.native_testing.public_contracts import PendingActionDisclosure
-    from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
-    svc, actor, sid, _, commands, _ = action_case
-    pending = PendingActionDisclosure(
+    return PendingActionDisclosure(
         pending_operation_id="p1",
         wait_reason="approval",
         version=4,
@@ -521,18 +535,78 @@ def test_waiting_operation_uses_existing_choice_with_concrete_risk_details(actio
         ),
         decision_status="awaiting_decision",
     )
+
+
+def test_waiting_operation_uses_existing_choice_with_concrete_risk_details(action_case: ActionCase) -> None:
+    from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
+
+    svc, actor, sid, _, commands, _ = action_case
+    pending = _pending_approval()
     commands.receipt = commands.receipt.model_copy(update={"pending": (pending,), "can_resume": False})
     view = svc.get_session_view(sid, actor)
     assert view.run_status == "waiting_confirmation"
     assert view.decision is not None
-    assert "synthetic-1" in english_text(view.decision.description)
-    assert "Reads one test message" in english_text(view.decision.description)
+    assert english_text(view.decision.title) == "Test operation approval"
+    assert "resumes automatically" in english_text(view.decision.description)
+    assert view.test_execution is not None
+    assert view.test_execution["pending"] == [pending.model_dump(mode="json")]
     assert view.actions[0].payload == {
         "request_id": "request-1",
         "pending_operation_id": "p1",
         "pending_version": 4,
         "scope_digest": "a" * 64,
     }
+
+
+@pytest.mark.parametrize("case", ["last", "more_pending", "newer_wait", "blocked", "denied"])
+def test_approval_only_resumes_the_eligible_saved_wait(
+    action_case: ActionCase, sqlite_session_factory: sessionmaker[SqlSession], mocker: MockerFixture, case: str
+) -> None:
+    from runtime_contracts.builder.execution import canonical_digest
+    from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+    from services.dify_builder.test_actions import BuilderTestActions, parse_test_action
+
+    _, actor, sid, _, commands, _ = action_case
+    selected = _pending_approval()
+    confirmed = selected.model_copy(update={"decision": "confirm", "decision_status": "confirmed"})
+    saved = commands.receipt.model_copy(
+        update={
+            "pending": (confirmed, selected.model_copy(update={"pending_operation_id": "p2"}))
+            if case == "more_pending"
+            else (confirmed,),
+            "can_resume": False,
+            "decision_public_revision": 2,
+        }
+    )
+    current = saved.model_copy(update={"generation": int(case == "newer_wait"), "can_resume": case != "blocked"})
+    running = current.model_copy(update={"status": "running", "generation": 1, "pending": (), "can_resume": False})
+    owner = mocker.Mock(spec=ProfiledNativeTestCommands)
+    owner.decide.return_value = saved
+    owner.peek.return_value = current
+    owner.resume.return_value = running
+    actions = BuilderTestActions(sqlite_session_factory, lambda **_kwargs: owner)
+    mocker.patch.object(actions, "_current_id", return_value="request-1")
+    command = parse_test_action(
+        "deny_test_operation" if case == "denied" else "confirm_test_operation",
+        {"request_id": "request-1", "pending_operation_id": "p1", "pending_version": 4, "scope_digest": "a" * 64},
+    )
+
+    receipt = actions.execute(
+        actor=actor, session_id=sid, test_input_id="input-1", command=command, idempotency_key="one-choice"
+    )
+
+    if case == "last":
+        owner.resume.assert_called_once_with(
+            actor=actor,
+            session_id=sid,
+            request_id="request-1",
+            expected_generation=0,
+            idempotency_key=canonical_digest({"builder_approval": "one-choice"}),
+        )
+        assert receipt.native_run_id == "run-1"
+        assert receipt.status == "running"
+    else:
+        owner.resume.assert_not_called()
 
 
 def test_standard_choice_envelope_can_submit_native_control() -> None:
