@@ -22,9 +22,8 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { usePluginManifestInfo } from '@/service/use-plugins'
-import { Theme } from '@/types/app'
 import { useAgentOrchestrateReadOnly } from '../../read-only-context'
 
 function ProviderIcon({
@@ -146,7 +145,7 @@ function UninstalledPluginStatus({
   return (
     <span className="flex h-6 shrink-0 items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 system-xs-medium text-components-button-secondary-text shadow-xs backdrop-blur-[5px]">
       {t(($) => $['detailPanel.toolSelector.uninstalledTitle'], { ns: 'plugin' })}
-      <StatusDot className="ml-2" status="warning" />
+      <StatusDot className="ms-2" status="warning" />
     </span>
   )
 }
@@ -225,9 +224,9 @@ const ProviderToolActionItem = memo(
     }, [action.id, onRemoveAction])
 
     return (
-      <div className="group relative flex min-h-7 items-center gap-1 rounded-md py-px pr-0 pl-1 hover:bg-state-base-hover">
-        <div className="absolute top-0 bottom-0 left-[13.5px] w-px bg-divider-regular" />
-        <div className="flex min-w-0 flex-1 items-center py-1 pl-7">
+      <div className="group relative flex min-h-7 items-center gap-1 rounded-md py-px ps-1 pe-0 hover:bg-state-base-hover">
+        <div className="absolute inset-s-[13.5px] top-0 bottom-0 w-px bg-divider-regular" />
+        <div className="flex min-w-0 flex-1 items-center py-1 ps-7">
           <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
             {action.name}
           </span>
@@ -299,14 +298,14 @@ export const AgentProviderToolItem = memo(
   }) => {
     const { t } = useTranslation(['agentV2'])
     const readOnly = useAgentOrchestrateReadOnly()
-    const { theme } = useTheme()
+    const theme = useResolvedTheme()
     const shouldFetchPluginManifest =
       isInstalled === false && !!tool.pluginId && !tool.pluginUniqueIdentifier
     const { data: pluginManifestData } = usePluginManifestInfo(
       shouldFetchPluginManifest ? tool.pluginId! : '',
     )
     const pluginManifest = pluginManifestData?.data.plugin
-    const configuredIcon = theme === Theme.dark && tool.iconDark ? tool.iconDark : tool.icon
+    const configuredIcon = theme === 'dark' && tool.iconDark ? tool.iconDark : tool.icon
     const icon =
       configuredIcon ??
       (pluginManifest && tool.pluginId ? getMarketplacePluginIconUrl(tool.pluginId) : undefined)
@@ -322,8 +321,8 @@ export const AgentProviderToolItem = memo(
         onOpenChange={onOpenChange}
         className="overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
       >
-        <div className="flex min-h-7 items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-1">
-          <CollapsibleTrigger className="group/collapsible flex min-h-0 w-full min-w-0 flex-1 touch-manipulation items-center justify-start gap-2 rounded-md pr-1 text-left system-sm-medium text-text-secondary select-none">
+        <div className="flex min-h-7 items-center gap-1 rounded-lg py-0.5 ps-1 pe-0.5">
+          <CollapsibleTrigger className="group/collapsible flex min-h-0 w-full min-w-0 flex-1 touch-manipulation items-center justify-start gap-2 rounded-md pe-1 text-start system-sm-medium text-text-secondary select-none">
             <ProviderIcon icon={icon} iconClassName={tool.iconClassName} />
             <span className="flex min-w-0 items-center">
               <span className="min-w-0 truncate system-sm-medium text-text-primary">

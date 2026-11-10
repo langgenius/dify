@@ -2,19 +2,17 @@ import base64
 import logging
 import pickle
 from collections.abc import Callable
-from dataclasses import dataclass
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import Engine, event, func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from core.entities.embedding_type import EmbeddingInputType
-from core.rag.embedding import cached_embedding
-from core.rag.embedding import cached_embedding as cached_embedding_module
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
@@ -35,9 +33,11 @@ This test file covers the methods not fully tested in test_embedding_service.py:
 """
 
 
-@dataclass(frozen=True)
-class _DatabaseBinding:
-    session: Session
+def _assert_no_checked_out_connection(engine: Engine) -> None:
+    """Assert that CacheEmbedding left no session or transaction open on the engine."""
+    pool = engine.pool
+    assert isinstance(pool, QueuePool)
+    assert pool.checkedout() == 0
 
 
 def _cached_embedding_persist_embedding(
@@ -63,10 +63,9 @@ def _cached_embedding_persist_embedding(
 class TestCachedEmbeddingCases:
     @staticmethod
     @pytest.fixture
-    def embedding_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-        """Bind CacheEmbedding to the shared SQLite session."""
+    def embedding_session(sqlite_session: Session) -> Session:
+        """Seed and inspect the SQLite cache that CacheEmbedding's own sessions write to."""
 
-        monkeypatch.setattr(cached_embedding_module, "db", _DatabaseBinding(session=sqlite_session))
         return sqlite_session
 
     class TestCacheEmbeddingMultimodalDocuments:
@@ -367,7 +366,7 @@ class TestCachedEmbeddingCases:
             assert embedding_session.scalar(select(func.count()).select_from(Embedding)) == 25
 
         def test_embed_multimodal_documents_api_error(
-            self, mock_model_instance: Mock, embedding_session: Session
+            self, mock_model_instance: Mock, embedding_session: Session, sqlite_engine: Engine
         ) -> None:
             """Test handling of API errors during multimodal embedding."""
             cache_embedding = CacheEmbedding(mock_model_instance)
@@ -378,7 +377,7 @@ class TestCachedEmbeddingCases:
             with pytest.raises(Exception, match="API Error"):
                 cache_embedding.embed_multimodal_documents(documents)
 
-            assert not embedding_session.in_transaction()
+            _assert_no_checked_out_connection(sqlite_engine)
             assert embedding_session.scalar(select(func.count()).select_from(Embedding)) == 0
 
         def test_embed_multimodal_documents_integrity_error_during_transform(
@@ -386,6 +385,8 @@ class TestCachedEmbeddingCases:
             mock_model_instance: Mock,
             sample_multimodal_result: EmbeddingResult,
             embedding_session: Session,
+            sqlite_engine: Engine,
+            sqlite_session_factory: sessionmaker[Session],
         ) -> None:
             """Test handling of IntegrityError during embedding transformation."""
             cache_embedding = CacheEmbedding(mock_model_instance)
@@ -410,14 +411,14 @@ class TestCachedEmbeddingCases:
                 )
                 injected = True
 
-            event.listen(embedding_session, "before_flush", add_competing_row)
+            event.listen(sqlite_session_factory, "before_flush", add_competing_row)
             try:
                 result = cache_embedding.embed_multimodal_documents(documents)
             finally:
-                event.remove(embedding_session, "before_flush", add_competing_row)
+                event.remove(sqlite_session_factory, "before_flush", add_competing_row)
 
             assert len(result) == 1
-            assert not embedding_session.in_transaction()
+            _assert_no_checked_out_connection(sqlite_engine)
             assert embedding_session.scalar(select(func.count()).select_from(Embedding)) == 0
 
     class TestCacheEmbeddingMultimodalQuery:
@@ -664,13 +665,6 @@ SQLAlchemy statements. Model providers and Redis remain mocked external I/O.
 """
 
 
-@dataclass(frozen=True)
-class _Database:
-    """Expose a real session through the interface used by the cache."""
-
-    session: Session
-
-
 def _vector(dimension: int = 8, *, offset: float = 0) -> np.ndarray:
     return np.arange(1 + offset, dimension + 1 + offset, dtype=float)
 
@@ -713,10 +707,9 @@ def _embedding_service_persist_embedding(
 class TestEmbeddingServiceCases:
     @staticmethod
     @pytest.fixture
-    def sqlite_embedding_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-        """Bind the shared SQLite session to the document-cache implementation."""
+    def sqlite_embedding_session(sqlite_session: Session) -> Session:
+        """Seed and inspect the SQLite cache that CacheEmbedding's own sessions write to."""
 
-        monkeypatch.setattr(cached_embedding, "db", _Database(sqlite_session))
         return sqlite_session
 
     @staticmethod
@@ -745,6 +738,22 @@ class TestEmbeddingServiceCases:
             persisted = sqlite_embedding_session.scalar(select(Embedding))
             assert persisted is not None
             assert persisted.get_embedding() == result[0]
+
+        def test_model_call_holds_no_database_connection(
+            self, sqlite_embedding_session: Session, sqlite_engine: Engine, model_instance: Mock
+        ) -> None:
+            def invoke_text_embedding(*, texts: list[str], input_type: EmbeddingInputType) -> EmbeddingResult:
+                assert input_type == EmbeddingInputType.DOCUMENT
+                _assert_no_checked_out_connection(sqlite_engine)
+                return _result(*(_vector(offset=index) for index in range(len(texts))))
+
+            model_instance.invoke_text_embedding.side_effect = invoke_text_embedding
+
+            result = CacheEmbedding(model_instance).embed_documents(["first", "second"])
+
+            assert len(result) == 2
+            model_instance.invoke_text_embedding.assert_called_once()
+            assert len(sqlite_embedding_session.scalars(select(Embedding)).all()) == 2
 
         def test_cache_hit_uses_persisted_vector(self, sqlite_embedding_session: Session, model_instance: Mock) -> None:
             cached_vector = (_vector() / np.linalg.norm(_vector())).tolist()
@@ -797,6 +806,7 @@ class TestEmbeddingServiceCases:
         def test_provider_error_rolls_back_real_transaction(
             self,
             sqlite_embedding_session: Session,
+            sqlite_engine: Engine,
             model_instance: Mock,
             provider_error: Exception,
         ) -> None:
@@ -805,25 +815,29 @@ class TestEmbeddingServiceCases:
             with pytest.raises(type(provider_error)):
                 CacheEmbedding(model_instance).embed_documents(["failure"])
 
-            assert not sqlite_embedding_session.in_transaction()
+            _assert_no_checked_out_connection(sqlite_engine)
             assert sqlite_embedding_session.scalar(select(Embedding)) is None
 
         def test_integrity_race_rolls_back_without_losing_result(
-            self, sqlite_embedding_session: Session, model_instance: Mock
+            self,
+            sqlite_embedding_session: Session,
+            sqlite_engine: Engine,
+            sqlite_session_factory: sessionmaker[Session],
+            model_instance: Mock,
         ) -> None:
             model_instance.invoke_text_embedding.return_value = _result(_vector())
 
             def raise_integrity_error(_session: Session) -> None:
                 raise IntegrityError("duplicate embedding", {}, RuntimeError("unique constraint"))
 
-            event.listen(sqlite_embedding_session, "before_commit", raise_integrity_error)
+            event.listen(sqlite_session_factory, "before_commit", raise_integrity_error)
             try:
                 result = CacheEmbedding(model_instance).embed_documents(["racing insert"])
             finally:
-                event.remove(sqlite_embedding_session, "before_commit", raise_integrity_error)
+                event.remove(sqlite_session_factory, "before_commit", raise_integrity_error)
 
             assert np.linalg.norm(result[0]) == pytest.approx(1.0)
-            assert not sqlite_embedding_session.in_transaction()
+            _assert_no_checked_out_connection(sqlite_engine)
             assert sqlite_embedding_session.scalar(select(Embedding)) is None
 
         def test_nan_vector_is_skipped_and_logged(
