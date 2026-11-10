@@ -36,7 +36,7 @@ export const InteractionDockShell = ({
           {title}
         </h2>
       </header>
-      {description && (
+      {Boolean(description) && (
         <ScrollArea className="relative mx-4 mb-2 shrink-0 rounded-sm">
           <ScrollAreaViewport
             role="region"
