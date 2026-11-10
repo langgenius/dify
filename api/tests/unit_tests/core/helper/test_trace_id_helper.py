@@ -16,6 +16,24 @@ from core.helper.trace_id_helper import (
 )
 
 
+@pytest.mark.parametrize(
+    ("trace_id", "expected"),
+    [
+        ("abc", True),
+        ("a" * 128, True),
+        ("a" * 129, False),
+        # `$` also matches before a trailing newline, so "abc\n" used to slip
+        # through the character filter and the 128-character ceiling.
+        ("abc\n", False),
+        ("\nabc", False),
+        ("a" * 128 + "\n", False),
+        ("abc\r", False),
+    ],
+)
+def test_is_valid_trace_id_boundaries(trace_id: str, expected: bool) -> None:
+    assert is_valid_trace_id(trace_id) is expected
+
+
 def test_extract_trace_session_id_from_args_for_generator_extras():
     assert extract_trace_session_id_from_args({"trace_session_id": "session-1"}) == {
         "trace_session_id": "session-1",

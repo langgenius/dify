@@ -5720,7 +5720,7 @@ export const zDocumentTextUpdate = z.intersection(
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.uuid()).nullish(),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),

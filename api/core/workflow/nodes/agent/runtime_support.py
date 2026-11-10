@@ -59,6 +59,13 @@ class AgentRuntimeSupport:
             agent_input = node_data.agent_parameters[parameter_name]
             match agent_input.type:
                 case "variable":
+                    if agent_input.value is None:
+                        # Unset optional param: the canvas stores it as
+                        # {"type": "variable", "value": null}. Treat it as not
+                        # provided instead of passing None to variable_pool.get,
+                        # which raises TypeError: object of type 'NoneType' has no len().
+                        result[parameter_name] = None
+                        continue
                     variable = variable_pool.get(agent_input.value)  # type: ignore[arg-type]
                     if variable is None:
                         raise AgentVariableNotFoundError(str(agent_input.value))

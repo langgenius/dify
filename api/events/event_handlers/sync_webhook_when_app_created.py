@@ -1,32 +1,31 @@
-import logging
+from sqlalchemy.orm import Session
 
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
+from extensions.ext_application_services import application_services
 from models.model import App, AppMode
 from models.workflow import Workflow
-from services.trigger.webhook_service import WebhookService
-
-logger = logging.getLogger(__name__)
 
 
 @app_draft_workflow_was_synced.connect
-def handle(sender, synced_draft_workflow: Workflow, **kwargs):
-    """
-    While creating a workflow or updating a workflow, we may need to sync
-    its webhook relationships in DB.
-    """
-    app: App = sender
-    if app.mode != AppMode.WORKFLOW.value:
-        # only handle workflow app, chatflow is not supported yet
+def handle(sender: App, synced_draft_workflow: Workflow, **kwargs: object) -> None:
+    if sender.mode != AppMode.WORKFLOW.value:
         return
-
-    WebhookService.sync_webhook_relationships(app, synced_draft_workflow, remove_stale=False)
+    application_services().triggers.webhook_draft_bindings.sync(
+        tenant_id=sender.tenant_id,
+        app_id=sender.id,
+        created_by=sender.created_by,
+        node_ids=[node_id for node_id, _ in synced_draft_workflow.walk_nodes(TRIGGER_WEBHOOK_NODE_TYPE)],
+    )
 
 
 @app_published_workflow_was_updated.connect
-def handle_published(sender, published_workflow: Workflow, **kwargs):
-    """Remove stale webhook relationships after their node deletion is published."""
-    app: App = sender
-    if app.mode != AppMode.WORKFLOW.value:
+def handle_published(sender: App, published_workflow: Workflow, *, session: Session, **kwargs: object) -> None:
+    if sender.mode != AppMode.WORKFLOW.value:
         return
-
-    WebhookService.sync_webhook_relationships(app, published_workflow, remove_stale=True)
+    application_services().triggers.create_webhook_publication_service(session).sync(
+        tenant_id=sender.tenant_id,
+        app_id=sender.id,
+        created_by=sender.created_by,
+        node_ids=[node_id for node_id, _ in published_workflow.walk_nodes(TRIGGER_WEBHOOK_NODE_TYPE)],
+    )

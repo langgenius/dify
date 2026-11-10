@@ -249,3 +249,42 @@ class TestMagicImportWarnings:
         finally:
             if original_metadata is not None:
                 sys.modules[remote_file_metadata.__name__] = original_metadata
+
+
+def test_quoted_content_disposition_filename_strips_quotes() -> None:
+    """A quoted filename must not keep the trailing quote."""
+    response = make_response(
+        url="https://example.com/",
+        headers={"Content-Disposition": 'attachment; filename="report.pdf"'},
+    )
+
+    info = guess_file_info_from_response(response)
+
+    assert info.filename == "report.pdf"
+    assert info.extension == ".pdf"
+
+
+def test_quoted_content_disposition_filename_with_semicolon() -> None:
+    """Quoted filenames may legitimately contain semicolons."""
+    response = make_response(
+        url="https://example.com/",
+        headers={"Content-Disposition": 'attachment; filename="a;b.csv"'},
+    )
+
+    info = guess_file_info_from_response(response)
+
+    assert info.filename == "a;b.csv"
+    assert info.extension == ".csv"
+
+
+def test_unquoted_content_disposition_filename_regression() -> None:
+    """Regression: unquoted filenames keep working."""
+    response = make_response(
+        url="https://example.com/",
+        headers={"Content-Disposition": "attachment; filename=myfile.csv"},
+    )
+
+    info = guess_file_info_from_response(response)
+
+    assert info.filename == "myfile.csv"
+    assert info.extension == ".csv"
