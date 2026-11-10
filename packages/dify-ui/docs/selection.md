@@ -6,9 +6,7 @@ domain value type through its public API.
 ## Primitive choice
 
 - [`RadioGroup`] selects one persistent field value from a visible set of options. Every `Radio` or
-  `RadioItem` belongs to a group; do not render a standalone radio. To animate a custom selected surface, place
-  `RadioGroupIndicator` first inside a positioned, isolated group and give its items relative
-  positioning. Keyboard focus and reduced-motion preferences select the new surface immediately.
+  `RadioItem` belongs to a group; do not render a standalone radio.
 - `SegmentedControl` selects one mode, filter, or view. It follows radio-group semantics: an active
   item cannot be toggled off, `Tab` enters on the selected item, and arrow keys move and select.
   The primitive owns the track, focus ring and selection motion. Preserve the existing density,

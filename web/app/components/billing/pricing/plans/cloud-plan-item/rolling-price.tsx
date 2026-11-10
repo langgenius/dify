@@ -1,3 +1,5 @@
+import { cn } from '@langgenius/dify-ui/cn'
+
 type RollingPriceProps = {
   monthly: number
   annual: number
@@ -23,10 +25,14 @@ export function RollingPrice({ monthly, annual, isYearly }: RollingPriceProps) {
           return (
             <span
               key={place}
-              className={collapsed ? 'h-lh w-0 overflow-hidden' : 'h-lh w-[1ch] overflow-hidden'}
+              className={cn(
+                'flex h-lh justify-end overflow-hidden mask-[linear-gradient(to_bottom,transparent,black_16%,black_84%,transparent)]',
+                'motion-safe:transition-[width,opacity] motion-safe:duration-300 motion-safe:ease-out',
+                collapsed ? 'w-0 opacity-0' : 'w-[1ch] opacity-100',
+              )}
             >
               <span
-                className="block text-center whitespace-pre motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]"
+                className="block w-[1ch] shrink-0 text-center whitespace-pre motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]"
                 style={{ transform: `translateY(-${isYearly ? steps : 0}lh)` }}
               >
                 {reel.join('\n')}

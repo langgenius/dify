@@ -89,8 +89,6 @@ function RadioSkeleton({ className, ...props }: RadioSkeletonProps) {
   )
 }
 
-export { RadioGroupIndicator } from './indicator'
-
 export { Radio, RadioControl, RadioGroup, RadioItem, RadioSkeleton }
 
 export type {
