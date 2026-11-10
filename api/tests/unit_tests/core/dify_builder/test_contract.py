@@ -249,6 +249,8 @@ def test_card_shapes_round_trip() -> None:
         "failure_code": None,
         "failure_resource": None,
         "failure_node_ids": [],
+        "native_canvas_path": None,
+        "resumed_progress": None,
     }
 
     # assistant_turn keeps model reasoning separate from observable execution.

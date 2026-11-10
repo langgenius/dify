@@ -97,5 +97,6 @@ def test_public_receipt_has_no_private_execution_fields() -> None:
         "decision_public_revision",
         "can_resume",
         "resume_blocked_reason",
+        "canvas_path",
     }
     assert schema["additionalProperties"] is False
