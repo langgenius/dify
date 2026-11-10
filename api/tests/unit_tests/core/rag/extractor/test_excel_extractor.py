@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 
 import pandas as pd
@@ -369,3 +370,20 @@ class TestExcelExtractor:
 
         populated = _FakeSheet(header_rows=[("value",)], data_rows=[])
         assert extractor._sheet_has_values(populated) is True
+
+    def test_extract_warns_when_a_populated_sheet_has_no_header(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
+        """A sheet dropped for lack of a header must not vanish silently."""
+        sheet = _FakeSheet(header_rows=[("Some value",)], data_rows=[])
+        workbook = _FakeWorkbook({"Sheet1": sheet})
+
+        monkeypatch.setattr(excel_module, "load_workbook", lambda *a, **k: workbook)
+        monkeypatch.setattr(excel_module.ExcelExtractor, "_find_header_and_columns", lambda self, s: (0, {}, 0))
+
+        with caplog.at_level(logging.WARNING, logger=excel_module.__name__):
+            documents = ExcelExtractor("book.xlsx").extract()
+
+        assert documents == []
+        assert "No header row found in sheet" in caplog.text
+        assert "Sheet1" in caplog.text
