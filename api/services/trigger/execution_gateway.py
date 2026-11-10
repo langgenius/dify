@@ -16,7 +16,7 @@ from models.account import Account
 from models.model import App, EndUser
 from models.workflow import Workflow
 from services.trigger.execution_layer import TriggerPostLayer
-from services.trigger.execution_service import TriggerExecution, TriggerExecutionStore
+from services.trigger.execution_store import TriggerExecution, TriggerExecutionStore
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 

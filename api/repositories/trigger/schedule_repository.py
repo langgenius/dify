@@ -121,6 +121,10 @@ class TriggerScheduleRepository:
             yield _ClaimedSchedules(plans)
 
     def get_for_execution(self, schedule_id: str) -> ScheduleExecution:
+        """Return a detached schedule and its tenant owner or admin account ID.
+
+        Raise ScheduleNotFoundError or AccountNotFoundError when either is missing.
+        """
         with self._session_factory() as session:
             schedule = session.get(WorkflowSchedulePlan, schedule_id)
             if schedule is None:

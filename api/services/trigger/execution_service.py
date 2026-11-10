@@ -1,51 +1,9 @@
 """Own trigger execution status transitions independently of workflow runtime models."""
 
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, Protocol
 
-from models.enums import WorkflowTriggerStatus
-from services.workflow.entities import TriggerActor, TriggerData
-
-
-@dataclass(frozen=True, slots=True)
-class TriggerExecutionRef:
-    id: str
-    tenant_id: str
-    app_id: str
-    queue_name: str
-
-
-@dataclass(frozen=True, slots=True)
-class TriggerExecution:
-    log: TriggerExecutionRef
-    workflow_id: str
-    actor: TriggerActor
-    data: TriggerData
-
-
-class TriggerExecutionStore(Protocol):
-    def start(self, log_id: str) -> TriggerExecution | None:
-        """Claim a pending task; return None if it is missing or already claimed."""
-        ...
-
-    def find_for_run(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> TriggerExecutionRef | None: ...
-
-    def fail(self, *, log: TriggerExecutionRef, error: str, finished_at: datetime, elapsed_time: float) -> None: ...
-
-    def finish(
-        self,
-        *,
-        log: TriggerExecutionRef,
-        status: WorkflowTriggerStatus,
-        workflow_run_id: str,
-        outputs: Mapping[str, Any],
-        total_tokens: int,
-        finished_at: datetime,
-        elapsed_time: float,
-        abort_reason: str | None,
-    ) -> bool: ...
+from services.trigger.execution_store import TriggerExecution, TriggerExecutionStore
 
 
 class TriggerExecutionService:
@@ -59,6 +17,11 @@ class TriggerExecutionService:
         self._run = run
 
     def execute(self, log_id: str) -> None:
+        """Run a claimable log once; skip missing or already claimed work.
+
+        Runner failures are recorded through the store without retrying. Errors
+        from claiming or recording a failure propagate to the caller.
+        """
         execution = self._logs.start(log_id)
         if execution is None:
             return

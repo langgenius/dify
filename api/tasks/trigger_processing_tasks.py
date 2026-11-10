@@ -13,7 +13,7 @@ from celery import shared_task
 
 from extensions.ext_application_services import application_services
 from services.trigger.debug_events import PluginTriggerDebugEvent, build_plugin_pool_key
-from services.trigger.debug_service import TriggerDebugEventStore
+from services.trigger.debug_store import TriggerDebugEventStore
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from services.workflow.entities import PluginTriggerDispatchData
 

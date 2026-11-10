@@ -69,7 +69,7 @@ def masked_credentials(
     schemas: list[ProviderConfig],
     credentials: Mapping[str, str],
 ) -> Mapping[str, str]:
-    masked_credentials = {}
+    masked_credentials: dict[str, str] = {}
     configs = {x.name: x.to_basic_provider_config() for x in schemas}
     for key, value in credentials.items():
         config = configs.get(key)

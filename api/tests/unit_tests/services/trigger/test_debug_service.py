@@ -36,6 +36,17 @@ def test_event_bus_redis_failure_is_best_effort(application_redis: RedisClientWr
     assert events.poll(WebhookDebugEvent, pool, "tenant", "user", "app", "node") is None
 
 
+def test_webhook_dispatch_returns_zero_when_redis_is_unavailable(harness: _Harness) -> None:
+    event = WebhookDebugEvent(timestamp=1, request_id="request", node_id="node")
+    with harness.app.app_context():
+        assert (
+            application_services().triggers.debug.dispatch_webhook_debug(
+                tenant_id=harness.tenant_id, app_id=str(uuid4()), event=event
+            )
+            == 0
+        )
+
+
 def test_unsupported_node_keeps_validation_error(harness: _Harness) -> None:
     with harness.app.app_context():
         from graphon.entities.graph_config import NodeConfigDictAdapter

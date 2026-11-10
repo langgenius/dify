@@ -17,12 +17,12 @@ from libs.datetime_utils import ensure_naive_utc
 from libs.schedule_utils import calculate_next_run_at
 from models.provider_ids import TriggerProviderID
 from services.trigger.debug_events import (
-    BaseDebugEvent,
     PluginTriggerDebugEvent,
     WebhookDebugEvent,
     build_plugin_pool_key,
     build_webhook_pool_key,
 )
+from services.trigger.debug_store import ScheduleDebugRuntime, ScheduleDebugRuntimeStore, TriggerDebugEventStore
 from services.trigger.schedule_service import ScheduleService
 from services.trigger.webhook_service import build_webhook_workflow_inputs
 
@@ -32,34 +32,15 @@ class TriggerDebugEvent(BaseModel):
     node_id: str
 
 
-class ScheduleDebugRuntime(BaseModel):
-    cache_key: str
-    timezone: str
-    cron_expression: str
-    next_run_at: datetime
-
-
 class PluginTriggerEventInvoker(Protocol):
     def __call__(
         self, *, tenant_id: str, user_id: str, node_config: NodeConfigDict, event: PluginTriggerDebugEvent
     ) -> TriggerInvokeEventResponse: ...
 
 
-class TriggerDebugEventStore(Protocol):
-    def dispatch(self, tenant_id: str, event: BaseDebugEvent, pool_key: str) -> int: ...
-
-    def poll[T: BaseDebugEvent](
-        self, event_type: type[T], pool_key: str, tenant_id: str, user_id: str, app_id: str, node_id: str
-    ) -> T | None: ...
-
-
-class ScheduleDebugRuntimeStore(Protocol):
-    def get_runtime(self, cache_key: str) -> ScheduleDebugRuntime | None: ...
-    def save_runtime(self, runtime: ScheduleDebugRuntime) -> None: ...
-    def delete_runtime(self, cache_key: str) -> None: ...
-
-
 class TriggerDebugService:
+    """Route debug events and schedule ticks through injected runtime stores."""
+
     def __init__(
         self,
         *,
@@ -73,9 +54,18 @@ class TriggerDebugService:
         self._invoke_plugin_event = invoke_plugin_event
         self._now = now
 
+    def dispatch_webhook_debug(self, *, tenant_id: str, app_id: str, event: WebhookDebugEvent) -> int:
+        """Deliver an event to waiting listeners for its tenant, app, and node."""
+        pool_key = build_webhook_pool_key(tenant_id, app_id, event.node_id)
+        return self._events.dispatch(tenant_id=tenant_id, event=event, pool_key=pool_key)
+
     def poll(
         self, *, node_config: NodeConfigDict, tenant_id: str, user_id: str, app_id: str
     ) -> TriggerDebugEvent | None:
+        """Poll a supported trigger node for this user; return None when no event is ready.
+
+        Unsupported node types raise ValueError; store and plugin errors propagate.
+        """
         node_type = node_config["data"].type
         node_id = node_config["id"]
         if node_type == TRIGGER_PLUGIN_NODE_TYPE:
@@ -112,6 +102,7 @@ class TriggerDebugService:
     def _poll_plugin(
         self, *, node_config: NodeConfigDict, tenant_id: str, user_id: str, app_id: str
     ) -> TriggerDebugEvent | None:
+        """Consume and invoke a plugin event; cancelled or absent events return None."""
         node = TriggerEventNodeData.model_validate(node_config["data"], from_attributes=True)
         pool_key = build_plugin_pool_key(
             tenant_id, str(TriggerProviderID(node.provider_id)), node.subscription_id, node.event_name
@@ -136,6 +127,7 @@ class TriggerDebugService:
     def _poll_schedule(
         self, *, node_config: NodeConfigDict, tenant_id: str, user_id: str, app_id: str
     ) -> TriggerDebugEvent | None:
+        """Initialize or consume a user's schedule tick according to its stored next run time."""
         config = ScheduleService.to_schedule_config(node_config)
         cron_hash = hashlib.sha256(config.cron_expression.encode()).hexdigest()
         cache_key = f"schedule_debug_runtime:{tenant_id}:{user_id}:{app_id}:{node_config['id']}:{cron_hash}"

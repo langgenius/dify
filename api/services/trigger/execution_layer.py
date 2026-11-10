@@ -14,7 +14,7 @@ from graphon.engine_events import (
     GraphRunSucceededEvent,
 )
 from models.enums import WorkflowTriggerStatus
-from services.trigger.execution_service import TriggerExecutionRef, TriggerExecutionStore
+from services.trigger.execution_store import TriggerExecutionRef, TriggerExecutionStore
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,11 @@ class TriggerPostLayer(Layer):
 
     @override
     def on_event(self, event: EngineEvent) -> None:
+        """Persist terminal or pause events for the active run, ignoring other events.
+
+        A workflow run ID must be present. Advance the segment timer only when
+        the store accepts the update, avoiding double-counting after a pause.
+        """
         if not isinstance(event, tuple(self._STATUS_MAP)):
             return
         now = datetime.now(UTC)
