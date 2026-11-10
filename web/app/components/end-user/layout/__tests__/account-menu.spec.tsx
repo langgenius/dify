@@ -29,6 +29,11 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/service/refresh-token', () => ({ refreshAccessTokenOrReLogin: vi.fn() }))
 
 const profile: WebAccountProfileResponse = {
+  email: 'joel@example.com',
+  is_password_set: false,
+  interface_language: 'en-US',
+  interface_theme: 'system',
+  timezone: 'UTC',
   name: 'Joel',
   avatar: null,
   avatar_url: 'https://example.com/joel.png',

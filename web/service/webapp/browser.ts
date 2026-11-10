@@ -39,7 +39,7 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
     }
     if (
       path.startsWith('/me/') ||
-      path === '/account/profile' ||
+      path.startsWith('/account/') ||
       path === '/logout' ||
       path.startsWith('/migration/')
     ) {

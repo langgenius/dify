@@ -106,8 +106,13 @@ beforeEach(() => {
     .mockResolvedValue('https://accounts.example/signin?code_challenge=challenge')
   vi.mocked(webAppClient.account.profile.get).mockResolvedValue({
     name: 'Reader',
+    email: 'reader@example.com',
     avatar: null,
     avatar_url: null,
+    is_password_set: false,
+    interface_language: null,
+    interface_theme: null,
+    timezone: null,
   })
   vi.mocked(webAppClient.migration.claimablePassports.post).mockResolvedValue({
     data: [

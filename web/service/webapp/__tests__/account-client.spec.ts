@@ -2,6 +2,7 @@ import type {
   ConsumerAppsResponse,
   ConsumerConnectionProvidersResponse,
   ConsumerConnectionsResponse,
+  WebAccountProfileResponse,
   WebSystemFeatureResponse,
 } from '@dify/contracts/api/web/types.gen'
 import { MutationObserver, QueryClient } from '@tanstack/react-query'
@@ -80,6 +81,17 @@ const providers: ConsumerConnectionProvidersResponse = {
   next_cursor: null,
 }
 
+const accountProfile: WebAccountProfileResponse = {
+  name: 'Joel',
+  email: 'joel@example.com',
+  avatar: null,
+  avatar_url: null,
+  is_password_set: true,
+  interface_language: 'en-US',
+  interface_theme: 'light',
+  timezone: 'UTC',
+}
+
 const systemFeatures = {
   ...createSystemFeaturesFixture(),
   account_login_url: 'https://accounts.example/console/signin?source=portal',
@@ -143,6 +155,48 @@ describe('generated account Web App client', () => {
     expect(fetch).toHaveBeenCalledOnce()
     expectAccountRequest(...fetch.mock.calls[0]!, '/account/profile', 'GET')
   })
+
+  it.each([
+    {
+      path: '/account/profile',
+      method: 'PATCH',
+      body: { name: 'Updated name' },
+      save: () => webAppClient.account.profile.patch({ body: { name: 'Updated name' } }),
+    },
+    {
+      path: '/account/password',
+      method: 'POST',
+      body: {
+        password: 'old-password',
+        new_password: 'new-password',
+        repeat_new_password: 'new-password',
+      },
+      save: () =>
+        webAppClient.account.password.post({
+          body: {
+            password: 'old-password',
+            new_password: 'new-password',
+            repeat_new_password: 'new-password',
+          },
+        }),
+    },
+  ])(
+    'saves $path with the account cookie and JSON body without App credentials',
+    async ({ path, method, body, save }) => {
+      window.history.replaceState({}, '', '/my-account')
+      setWebAppAccessToken('unused-account-bearer', 'end_user')
+      setWebAppPassport({ kind: 'default', code: 'previous-app' }, 'unused-passport')
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(Response.json(accountProfile))
+
+      await expect(save()).resolves.toEqual(accountProfile)
+
+      expect(fetch).toHaveBeenCalledOnce()
+      expectAccountRequest(...fetch.mock.calls[0]!, path, method)
+      expect(await new Request(...fetch.mock.calls[0]!).json()).toEqual(body)
+    },
+  )
 
   it.each([
     { label: 'apps', request: () => webAppClient.me.apps.get() },

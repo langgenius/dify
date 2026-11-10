@@ -19,6 +19,11 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 const buildAppLabel = 'app.endUser.buildYourOwnApp'
 const accountLabel = 'app.endUser.account'
 const profile: WebAccountProfileResponse = {
+  email: 'joel@example.com',
+  is_password_set: false,
+  interface_language: 'en-US',
+  interface_theme: 'system',
+  timezone: 'UTC',
   name: 'Joel',
   avatar: null,
   avatar_url: null,
@@ -77,7 +82,7 @@ describe('sidebar workspace entry', () => {
       .toHaveAttribute('href', destination)
     await expect
       .element(screen.getByRole('link', { name: accountLabel }))
-      .toHaveAttribute('href', 'https://console.example.com/dify/account')
+      .toHaveAttribute('href', '/my-account')
     await expect
       .element(screen.getByRole('link', { name: 'app.endUser.myApps' }))
       .toHaveAttribute('aria-current', 'page')
@@ -104,7 +109,7 @@ describe('sidebar workspace entry', () => {
       .toHaveAttribute('href', '/dify/create-workspace')
     await expect
       .element(screen.getByRole('link', { name: accountLabel }))
-      .toHaveAttribute('href', '/dify/account')
+      .toHaveAttribute('href', '/my-account')
   })
 
   it('waits for the Console prefix before exposing the workspace destination', async () => {
@@ -117,14 +122,16 @@ describe('sidebar workspace entry', () => {
 
     await expect.element(screen.getByText(profile.name)).toBeVisible()
     await expect.element(screen.getByRole('link', { name: buildAppLabel })).not.toBeInTheDocument()
-    await expect.element(screen.getByRole('link', { name: accountLabel })).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('link', { name: accountLabel }))
+      .toHaveAttribute('href', '/my-account')
     featuresRequest.resolve(Response.json(features))
     await expect
       .element(screen.getByRole('link', { name: buildAppLabel }))
       .toHaveAttribute('href', 'https://console.example.com/dify/')
     await expect
       .element(screen.getByRole('link', { name: accountLabel }))
-      .toHaveAttribute('href', 'https://console.example.com/dify/account')
+      .toHaveAttribute('href', '/my-account')
   })
 
   it.each(['missing', 'failed'] as const)(
@@ -143,7 +150,9 @@ describe('sidebar workspace entry', () => {
       await expect
         .element(screen.getByRole('link', { name: buildAppLabel }))
         .not.toBeInTheDocument()
-      await expect.element(screen.getByRole('link', { name: accountLabel })).not.toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('link', { name: accountLabel }))
+        .toHaveAttribute('href', '/my-account')
     },
   )
 
