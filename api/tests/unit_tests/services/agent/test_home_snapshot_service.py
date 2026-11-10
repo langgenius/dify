@@ -48,7 +48,7 @@ def _build_draft(*, home_snapshot_id: str | None = "home-old") -> AgentConfigDra
     )
 
 
-def _client(*, snapshot_ref: str = "snapshot-ref-1") -> MagicMock:
+def _client(*, snapshot_ref: str | None = "snapshot-ref-1") -> MagicMock:
     client = MagicMock()
     client.create_home_snapshot_from_binding_sync.return_value = SimpleNamespace(snapshot_ref=snapshot_ref)
     return client
@@ -143,6 +143,7 @@ def test_build_apply_checkpoints_exact_active_binding(
         session=sqlite_session,
         build_draft=_build_draft(),
     )
+    assert snapshot is not None
     sqlite_session.flush()
 
     stored = sqlite_session.scalar(select(AgentHomeSnapshot).where(AgentHomeSnapshot.id == snapshot.id))
@@ -166,6 +167,7 @@ def test_build_apply_forwards_default_home_generation(monkeypatch: pytest.Monkey
         session=sqlite_session,
         build_draft=_build_draft(home_snapshot_id=None),
     )
+    assert snapshot is not None
     sqlite_session.flush()
 
     assert snapshot.snapshot_ref == "snapshot-ref-2"
