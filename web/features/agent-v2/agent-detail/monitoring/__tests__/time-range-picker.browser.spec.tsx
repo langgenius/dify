@@ -5,7 +5,10 @@ async function setup() {
   const onChange = vi.fn()
   const screen = await render(
     <AgentMonitoringTimeRangePicker
-      value={{ name: 'Nov 6 - Nov 6', query: { start: '2026-11-06 00:00', end: '2026-11-06 23:59' } }}
+      value={{
+        name: 'Nov 6 - Nov 6',
+        query: { start: '2026-11-06 00:00', end: '2026-11-06 23:59' },
+      }}
       onChange={onChange}
     />,
   )
