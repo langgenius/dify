@@ -59,7 +59,7 @@ from repositories.human_input_v2.form_repository import Form
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerExecutionRepository
 from services.agent.workspace_service import AgentWorkspaceService
 from services.trigger.execution_layer import TriggerPostLayer
-from services.trigger.execution_service import TriggerExecutionRef
+from services.trigger.execution_store import TriggerExecutionRef
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
     _build_app_generate_entity,

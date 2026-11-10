@@ -39,7 +39,8 @@ from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.event_gateway import PluginTriggerEventGateway
 from services.trigger.event_service import TriggerEventService
 from services.trigger.execution_gateway import WorkflowTriggerExecutionGateway
-from services.trigger.execution_service import TriggerExecutionService, TriggerExecutionStore
+from services.trigger.execution_service import TriggerExecutionService
+from services.trigger.execution_store import TriggerExecutionStore
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_gateway import (
     OAuthProxyContextGateway,

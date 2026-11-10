@@ -46,7 +46,8 @@ from repositories.sqlalchemy_workflow_trigger_log_repository import (
 from services.errors.app import WorkflowNotFoundError
 from services.trigger.execution_gateway import WorkflowTriggerExecutionGateway
 from services.trigger.execution_layer import TriggerPostLayer
-from services.trigger.execution_service import TriggerExecution, TriggerExecutionRef, TriggerExecutionService
+from services.trigger.execution_service import TriggerExecutionService
+from services.trigger.execution_store import TriggerExecution, TriggerExecutionRef
 from services.workflow.entities import ScheduleTriggerData, TriggerActor
 from tasks.async_workflow_tasks import execute_workflow_professional, execute_workflow_sandbox, execute_workflow_team
 from tests.helpers.unit.model_factories import make_workflow

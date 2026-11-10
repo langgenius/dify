@@ -20,7 +20,7 @@ from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.workflow_trigger_log_repository import WorkflowTriggerLogRepository
 from services.errors.app import WorkflowNotFoundError
-from services.trigger.execution_service import TriggerExecution, TriggerExecutionRef
+from services.trigger.execution_store import TriggerExecution, TriggerExecutionRef
 from services.workflow.entities import TriggerActor, TriggerData, TriggerWorkflowSnapshot
 
 
