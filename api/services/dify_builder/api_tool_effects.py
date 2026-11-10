@@ -1,4 +1,4 @@
-"""Owned custom API facts and native definition binding; no credentials are decrypted.
+"""Owned custom API selection and native definition projection; no credentials are decrypted.
 
 A definition is execution evidence, never a permission or a semantic read verdict.
 Only the selected tenant-owned operation is projected. Native admission compares
@@ -11,29 +11,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.tools.entities.tool_bundle import ApiToolBundle
+from core.tools.api_tool.definition_binding import admit_api_definition, api_definition, provider_definition
 from models.tools import ApiToolProvider
-from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 
-
-def api_definition(provider_id: str, bundle: ApiToolBundle, credential_version: str) -> dict[str, Any]:
-    """Accept a validated native bundle; return nonsecret facts bound to its account version."""
-    return {
-        "provider_id": provider_id,
-        "bundle": bundle.model_dump(mode="json"),
-        "credential_version": credential_version,
-    }
-
-
-def provider_definition(provider: ApiToolProvider, action: str) -> dict[str, Any] | None:
-    """Project exactly one owned operation, or None for missing/ambiguous declarations."""
-    matches = [tool for tool in provider.tools if tool.operation_id == action]
-    if len(matches) != 1:
-        return None
-    return {
-        **api_definition(provider.id, matches[0], canonical_digest(provider.credentials_str)),
-        "account": provider.name,
-    }
+__all__ = ["admit_api_definition", "api_definition", "is_api_tool", "owned_api_definitions", "provider_definition"]
 
 
 def owned_api_definitions(session: Session, tenant_id: str, graph: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
@@ -71,14 +52,3 @@ def owned_api_definitions(session: Session, tenant_id: str, graph: Mapping[str, 
 def is_api_tool(data: Mapping[str, Any]) -> bool:
     """Recognize the native custom API capability, independent of its display name."""
     return data.get("type") == "tool" and data.get("provider_type") == "api"
-
-
-def admit_api_definition(provider: ApiToolProvider, action: str, expected: str) -> ApiToolBundle:
-    """Before decryption, return exactly the approved operation or refuse without provider I/O."""
-    try:
-        definition = provider_definition(provider, action)
-    except (ValueError, TypeError):
-        definition = None
-    if definition is None or canonical_digest(definition) != expected:
-        raise BuilderExecutionPolicyError("api_tool_definition_stale")
-    return ApiToolBundle.model_validate(definition["bundle"])
