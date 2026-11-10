@@ -1,4 +1,3 @@
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -225,8 +224,9 @@ def test_get_prompt_dispatches_completion_and_chat_and_invalid() -> None:
     )
     assert chat_result[0].content == "h"
 
+    invalid_prompt_template: list[ChatModelMessage] = ["not-chat-model-message"]  # pyrefly: ignore[bad-assignment]
     invalid_result = transform.get_prompt(
-        prompt_template=cast(list[ChatModelMessage], ["not-chat-model-message"]),
+        prompt_template=invalid_prompt_template,
         inputs={"name": "john"},
         query="q",
         files=[],
