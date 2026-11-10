@@ -16,7 +16,7 @@
     "dev": "vp dev",
     "dev:next": "next dev",
     "dev:next:inspect": "next dev --inspect",
-    "dev:proxy": "dev-proxy --config ./dev-proxy.config.ts --env-file ./.env.local",
+    "dev:proxy": "vp run --cache @langgenius/dev-proxy#build && dev-proxy --config ./dev-proxy.config.ts --env-file ./.env.local",
     "dev:vinext": "vp dev",
     "gen-doc-paths": "node ./scripts/gen-doc-paths.ts && vp fmt types/doc-paths.ts",
     "gen-icons": "pnpm --filter @dify/iconify-collections generate",
