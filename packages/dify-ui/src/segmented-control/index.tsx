@@ -26,51 +26,91 @@ type SegmentedControlProps<Value = string> = Omit<
 function SelectionThumb() {
   const ref = React.useRef<HTMLSpanElement>(null)
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const thumb = ref.current!
-    let painted: HTMLElement | null = null
+    const group = thumb.parentElement!
+    const getSelected = () => group.querySelector<HTMLElement>('[role="radio"][data-checked]')
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let selected = getSelected()
+    let slide: Animation | undefined
+    let hideFill: Animation | undefined
 
-    function clearSurface() {
-      painted?.removeAttribute('data-dify-segment-sliding')
-      painted = null
-      thumb.style.visibility = ''
+    function stop() {
+      if (slide) {
+        slide.onfinish = null
+        slide.cancel()
+      }
+      hideFill?.cancel()
+      slide = undefined
+      thumb.hidden = true
     }
 
-    function start() {
-      const selected = thumb.parentElement?.querySelector<HTMLElement>(
-        '[role="radio"][data-checked]',
-      )
-      if (!selected || selected === painted) return
-      clearSurface()
-      // Callers style the checked radio. Borrow only its surface while CSS moves the thumb.
-      const style = getComputedStyle(selected)
+    function update() {
+      const next = getSelected()
+      if (next === selected) return
+      const from = (slide ? thumb : selected)?.getBoundingClientRect()
+      selected = next
+      stop()
+      if (!next || !from?.width || reducedMotion.matches || next.matches(':focus-visible')) return
+
+      const to = next.getBoundingClientRect()
+      if (!to.width || !to.height) return
+
+      // Paint the item's actual surface during the slide. Its layout and focus ring stay in place.
+      const surface = getComputedStyle(next)
       Object.assign(thumb.style, {
-        backgroundColor: style.backgroundColor,
-        border: style.border,
-        borderRadius: style.borderRadius,
-        boxShadow: style.getPropertyValue('--tw-shadow'),
-        visibility: 'visible',
+        width: surface.width,
+        height: surface.height,
+        backgroundColor: surface.backgroundColor,
+        border: surface.border,
+        borderRadius: surface.borderRadius,
+        boxShadow: surface.getPropertyValue('--tw-shadow'),
       })
-      painted = selected
-      painted.setAttribute('data-dify-segment-sliding', '')
+      thumb.hidden = false
+      const origin = thumb.getBoundingClientRect()
+      const scaleX = origin.width / Number.parseFloat(surface.width)
+      const scaleY = origin.height / Number.parseFloat(surface.height)
+      const transform = (rect: DOMRect) =>
+        `translate(${(rect.x - origin.x) / scaleX}px, ${(rect.y - origin.y) / scaleY}px) scale(${rect.width / origin.width}, ${rect.height / origin.height})`
+
+      const timing: KeyframeAnimationOptions = {
+        duration: 180,
+        easing: 'cubic-bezier(0.2, 0, 0, 1)',
+        fill: 'both',
+      }
+      const clear = {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        '--tw-shadow': '0 0 #0000',
+      }
+      hideFill = next.animate([clear, clear], timing)
+      slide = thumb.animate([{ transform: transform(from) }, { transform: transform(to) }], timing)
+      slide.onfinish = stop
     }
 
-    function finish() {
-      if (thumb.getAnimations().length === 0) clearSurface()
-    }
-
-    thumb.addEventListener('transitionrun', start)
-    thumb.addEventListener('transitionend', finish)
-    thumb.addEventListener('transitioncancel', finish)
+    const observer = new MutationObserver(update)
+    observer.observe(group, {
+      attributes: true,
+      attributeFilter: ['data-checked'],
+      childList: true,
+      subtree: true,
+    })
+    reducedMotion.addEventListener('change', stop)
     return () => {
-      thumb.removeEventListener('transitionrun', start)
-      thumb.removeEventListener('transitionend', finish)
-      thumb.removeEventListener('transitioncancel', finish)
-      clearSurface()
+      observer.disconnect()
+      reducedMotion.removeEventListener('change', stop)
+      stop()
     }
   }, [])
 
-  return <span ref={ref} data-dify-segment-thumb="" aria-hidden="true" />
+  return (
+    <span
+      ref={ref}
+      hidden
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-s-0 top-0 origin-top-left"
+    />
+  )
 }
 
 function SegmentedControl<Value = string>({
@@ -80,7 +120,6 @@ function SegmentedControl<Value = string>({
 }: SegmentedControlProps<Value>) {
   return (
     <BaseRadioGroup<Value>
-      data-dify-segmented-control=""
       className={(state) =>
         cn(
           'relative isolate inline-flex items-center gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5',
@@ -89,8 +128,8 @@ function SegmentedControl<Value = string>({
       }
       {...props}
     >
-      {children}
       <SelectionThumb />
+      {children}
     </BaseRadioGroup>
   )
 }
