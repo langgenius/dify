@@ -14,11 +14,12 @@ from flask_restx import Resource
 from controllers.console import api as console_api
 from controllers.console.app import workflow_draft_variable as app
 from controllers.console.app import workflow_variable_admission as admission
+from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.datasets.rag_pipeline import rag_pipeline_draft_variable as pipeline
 from controllers.console.snippets import snippet_workflow_draft_variable as snippet
 from controllers.console.wraps import RBACPermission
 from graphon.variables import StringSegment
-from libs.external_api import ExternalApi
+from libs.external_api import ExternalApi, error_responses
 from machinery.context import RequestContext
 from services.workflow.contracts import DraftWorkflowMissingError, WorkflowOwner
 from services.workflow.variable_contracts import (
@@ -313,6 +314,7 @@ def test_domain_errors_use_production_http_mapping(
     api.error_handlers = console_api.error_handlers.copy()
 
     class Endpoint(Resource):
+        @error_responses(DraftWorkflowNotExist)
         @admission.console_variable_admission("pipeline")
         def get(self, _context: RequestContext) -> None:
             raise failure

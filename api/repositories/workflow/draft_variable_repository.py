@@ -1,5 +1,6 @@
 """Persistence for workflow draft variables and their stored-file metadata."""
 
+import json
 from collections.abc import Sequence, Set
 from datetime import datetime
 from enum import StrEnum
@@ -20,7 +21,74 @@ from machinery.context import RequestContext
 from models import Account, Conversation, UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from repositories.app.console_repository import console_app_actor, require_console_app
+from services.workflow.draft_variable_contracts import (
+    DraftVariableFileRecord,
+    DraftVariableFileWriteCommand,
+    DraftVariableRecord,
+    DraftVariableWriteCommand,
+)
 from services.workflow.variable_contracts import DraftVariableChangedError, WorkflowDraftVariableList
+
+
+def _variable_file_model(command: DraftVariableFileWriteCommand) -> WorkflowDraftVariableFile:
+    """Materialize one file command as a new persistence row without writing it."""
+    model = WorkflowDraftVariableFile(
+        tenant_id=command.tenant_id,
+        app_id=command.app_id,
+        user_id=command.user_id,
+        upload_file_id=command.upload_file_id,
+        size=command.size,
+        length=command.length,
+        value_type=command.value_type,
+    )
+    model.id = command.id
+    return model
+
+
+def _variable_model(command: DraftVariableWriteCommand) -> WorkflowDraftVariable:
+    """Materialize one write command and assign its timestamps exactly once."""
+    model = WorkflowDraftVariable._new(
+        app_id=command.app_id,
+        user_id=command.user_id,
+        node_id=command.node_id,
+        name=command.name,
+        value=command.value,
+        node_execution_id=command.node_execution_id,
+        description=command.description,
+        file_id=command.file_id,
+    )
+    model.id = command.id
+    model.visible = command.visible
+    model.editable = command.editable
+    return model
+
+
+def _variable_record(model: WorkflowDraftVariable) -> DraftVariableRecord:
+    """Copy all loader-facing values before the repository session closes."""
+    variable_file = model.variable_file
+    file_record = None
+    if variable_file is not None:
+        upload_file = variable_file.upload_file
+        file_record = DraftVariableFileRecord(
+            id=variable_file.id,
+            upload_file_id=variable_file.upload_file_id,
+            value_type=variable_file.value_type,
+            storage_key=upload_file.key if upload_file is not None else None,
+        )
+    selector = json.loads(model.selector)
+    if not isinstance(selector, list) or not all(isinstance(part, str) for part in selector):
+        raise ValueError(f"invalid selector for draft variable {model.id}")
+    return DraftVariableRecord(
+        id=model.id,
+        node_id=model.node_id,
+        name=model.name,
+        description=model.description,
+        selector=tuple(selector),
+        value_type=model.value_type,
+        value=model.value,
+        file_id=model.file_id,
+        variable_file=file_record,
+    )
 
 
 class WorkflowDraftVariableRepository:
@@ -207,7 +275,7 @@ class WorkflowDraftVariableRepository:
             session.delete(variable)
         return [upload_id] if upload_id is not None else []
 
-    def retain_files_for_cleanup(self, files: Sequence[WorkflowDraftVariableFile]) -> None:
+    def retain_files_for_cleanup(self, files: Sequence[DraftVariableFileWriteCommand]) -> None:
         """Retain failed-save metadata after rollback, without replacing a committed reference."""
         with self._sessions.begin() as session:
             uploads = set(
@@ -220,7 +288,7 @@ class WorkflowDraftVariableRepository:
             )
             for file in files:
                 if file.upload_file_id in uploads and session.get(WorkflowDraftVariableFile, file.id) is None:
-                    session.add(file)
+                    session.add(_variable_file_model(file))
 
     def pending_file_cleanup(self, limit: int, *, after: str | None) -> list[str]:
         """Orphaned metadata is the durable work list; paginate past failures without a new table."""
@@ -265,13 +333,8 @@ class WorkflowDraftVariableRepository:
         app_id: str,
         selectors: Sequence[list[str]],
         user_id: str,
-    ) -> list[WorkflowDraftVariable]:
-        """
-        Retrieve WorkflowDraftVariable instances based on app_id and selectors.
-
-        The returned WorkflowDraftVariable objects are guaranteed to have their
-        associated variable_file and variable_file.upload_file relationships preloaded.
-        """
+    ) -> list[DraftVariableRecord]:
+        """Return persistence-neutral records for the requested actor-owned selectors."""
         if not selectors:
             return []
         with self._sessions() as session:
@@ -288,7 +351,7 @@ class WorkflowDraftVariableRepository:
             # Alternatively, a `SELECT` statement could be constructed for each selector and
             # combined using `UNION` to fetch all rows.
             # Benchmarking indicates that both approaches yield comparable performance.
-            return list(
+            models = list(
                 session.scalars(
                     select(WorkflowDraftVariable)
                     .options(
@@ -303,16 +366,22 @@ class WorkflowDraftVariableRepository:
                     )
                 )
             )
+            return [_variable_record(model) for model in models]
 
-    def save(self, variables: Sequence[WorkflowDraftVariable], files: Sequence[WorkflowDraftVariableFile]) -> None:
+    def save(
+        self, variables: Sequence[DraftVariableWriteCommand], files: Sequence[DraftVariableFileWriteCommand]
+    ) -> None:
+        """Commit file metadata and variable upserts as one transaction."""
         with self._sessions.begin() as session:
-            session.add_all(files)
+            session.add_all([_variable_file_model(file) for file in files])
             session.flush()
-            _batch_upsert_draft_variable(session, variables)
+            _batch_upsert_draft_variable(session, [_variable_model(variable) for variable in variables])
 
-    def prefill(self, variables: Sequence[WorkflowDraftVariable]) -> None:
+    def prefill(self, variables: Sequence[DraftVariableWriteCommand]) -> None:
         with self._sessions.begin() as session:
-            _batch_upsert_draft_variable(session, variables, policy=_UpsertPolicy.IGNORE)
+            _batch_upsert_draft_variable(
+                session, [_variable_model(variable) for variable in variables], policy=_UpsertPolicy.IGNORE
+            )
 
     def actor(self, context: RequestContext, app_id: str) -> Account:
         with self._sessions() as session:

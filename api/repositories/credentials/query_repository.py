@@ -1,6 +1,7 @@
 """Persistence-owned credential queries and visibility filtering shared across domains."""
 
 from collections.abc import Sequence
+from copy import deepcopy
 from typing import override
 
 from sqlalchemy import and_, func, or_, select, update
@@ -20,6 +21,7 @@ from services.credentials.query import (
     DatasourceCredentialListItem,
     ModelCredentialRecord,
     ToolCredentialRecord,
+    ToolCredentialSnapshot,
     TriggerSubscriptionRecord,
 )
 from services.credentials.tool_runtime import ToolRuntimeCredential
@@ -64,7 +66,7 @@ def apply_credential_visibility_filter_for_actor(
 
 
 class CredentialQueryRepository(CredentialQuery):
-    """Load complete credential lists without exposing ORM objects or SQL to callers."""
+    """Load stored credentials without exposing ORM objects or SQL to callers."""
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -117,6 +119,25 @@ class CredentialQueryRepository(CredentialQuery):
             )
             assert isinstance(result, CursorResult)
             return result.rowcount == 1
+
+    def get_tool(self, *, workspace_id: str, provider: str, credential_id: str | None) -> ToolCredentialSnapshot | None:
+        """Load one credential, using the configured default when its ID is absent or empty."""
+        query = select(BuiltinToolProvider).where(
+            BuiltinToolProvider.tenant_id == workspace_id, BuiltinToolProvider.provider == provider
+        )
+        if credential_id:
+            query = query.where(BuiltinToolProvider.id == credential_id)
+        else:
+            query = query.order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+        with self._session_factory() as session:
+            row = session.scalar(query.limit(1))
+            if row is None:
+                return None
+            return ToolCredentialSnapshot(
+                id=row.id,
+                credential_type=row.credential_type.value,
+                credentials=deepcopy(row.credentials),
+            )
 
     @override
     def list_models(self, *, workspace_id: str, provider: str, actor_id: str | None) -> Sequence[ModelCredentialRecord]:

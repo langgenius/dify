@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "必填僅作為模型推理的參考，不用於參數輸出的強制驗證。",
   "nodes.parameterExtractor.addExtractParameterContent.type": "類型",
   "nodes.parameterExtractor.advancedSetting": "高級設置",
-  "nodes.parameterExtractor.extractParametersNotSet": "提取參數未設置",
+  "nodes.parameterExtractor.extractParametersNotSet": "未配置提取參數",
   "nodes.parameterExtractor.importFromTool": "從工具導入",
   "nodes.parameterExtractor.instruction": "指令",
   "nodes.parameterExtractor.instructionTip": "你可以輸入額外的附加指令，幫助參數提取器理解如何提取參數",
