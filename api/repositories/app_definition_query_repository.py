@@ -1,6 +1,6 @@
 """Database repository for externally visible app definitions."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, cast, override
 
 from sqlalchemy import String, select
@@ -26,7 +26,9 @@ from services.app_definition_query_service import (
     ServiceApiAppRecord,
     WebAppParameterConfig,
 )
+from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
+from services.workflow.entities import TriggerWorkflowSnapshot
 from services.workflow.tool_credentials import get_tool_connection_requirements, requires_end_user_connections
 from services.workflow_test_credentials import BuilderScope, BuilderTestMembership
 
@@ -157,6 +159,62 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 return None
             owner_id, role = row
             return BuilderTestMembership(owner_id, role.value)
+
+    def get_trigger_workflow(self, *, tenant_id: str, app_id: str, workflow_id: str | None) -> TriggerWorkflowSnapshot:
+        with self._session_factory() as session:
+            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
+            if app is None:
+                raise WorkflowNotFoundError(f"App not found: {app_id}")
+            selected_id = workflow_id or app.workflow_id
+            workflow = (
+                session.scalar(
+                    select(Workflow).where(
+                        Workflow.id == selected_id, Workflow.app_id == app_id, Workflow.tenant_id == tenant_id
+                    )
+                )
+                if selected_id
+                else None
+            )
+            if workflow is None:
+                if workflow_id:
+                    raise WorkflowNotFoundError(f"Published workflow not found: {workflow_id}")
+                raise WorkflowNotFoundError(f"No published workflow found for app: {app_id}")
+            if workflow_id and workflow.version == Workflow.VERSION_DRAFT:
+                raise IsDraftWorkflowError(
+                    f"Cannot use draft workflow version. Workflow ID: {workflow_id}. "
+                    "Please use a published workflow version or leave workflow_id empty."
+                )
+            return self._trigger_workflow_snapshot(workflow)
+
+    def get_published_trigger_workflows(
+        self, *, tenant_id: str, app_ids: Sequence[str]
+    ) -> Mapping[str, TriggerWorkflowSnapshot]:
+        if not app_ids:
+            return {}
+        with self._session_factory() as session:
+            workflows = session.scalars(
+                select(Workflow)
+                .join(App, App.workflow_id == Workflow.id)
+                .where(
+                    App.id.in_(app_ids),
+                    App.tenant_id == tenant_id,
+                    Workflow.app_id == App.id,
+                    Workflow.tenant_id == App.tenant_id,
+                    Workflow.version != Workflow.VERSION_DRAFT,
+                )
+            ).all()
+            return {workflow.app_id: self._trigger_workflow_snapshot(workflow) for workflow in workflows}
+
+    @staticmethod
+    def _trigger_workflow_snapshot(workflow: Workflow) -> TriggerWorkflowSnapshot:
+        return TriggerWorkflowSnapshot(
+            id=workflow.id,
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            type=workflow.type,
+            version=workflow.version,
+            graph=workflow.graph,
+        )
 
     @override
     def get_service_api_record(self, app_id: str, *, tenant_id: str | None = None) -> ServiceApiAppRecord | None:
