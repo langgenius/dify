@@ -490,6 +490,39 @@ def _find_planned_tool_entry(node: dict[str, Any], entries: list[ToolCatalogueEn
     return resolve_tool_entry(entries, node.get("tool"), purpose=str(node.get("purpose") or ""))
 
 
+def _planned_tool_selector_errors(
+    plan_nodes: list[dict[str, Any]], entries: list[ToolCatalogueEntry]
+) -> list[WorkflowGenerateErrorDict]:
+    """Refuse unresolved authoritative Tool identities before generation or hydration.
+
+    A supplied provider type and an installed multi-type pair require exact
+    resolution. Generic/no-selector plans and unique legacy prose fallbacks
+    remain choices for the builder. Returns ordinary UNKNOWN_TOOL diagnostics;
+    this check mutates neither the plan nor the graph and performs no I/O.
+    """
+    errors: list[WorkflowGenerateErrorDict] = []
+    for node in plan_nodes:
+        selector = node.get("tool")
+        if node.get("node_type") == BuiltinNodeTypes.TOOL and isinstance(selector, dict):
+            provider = str(selector.get("provider_id") or selector.get("provider_name") or "").strip()
+            name = str(selector.get("tool_name") or "").strip()
+            native_types = {
+                entry["provider_type"]
+                for entry in entries
+                if entry["provider_name"] == provider and entry["tool_name"] == name
+            }
+            authoritative = selector.get("provider_type") is not None or len(native_types) > 1
+            if authoritative and _find_planned_tool_entry(node, entries) is None:
+                errors.append(
+                    _err(
+                        WorkflowGenerateErrorCode.UNKNOWN_TOOL,
+                        "Planned Tool identity is unavailable or ambiguous; select an exact installed provider type.",
+                        node_id=str(node.get("id") or ""),
+                    )
+                )
+    return errors
+
+
 def _format_omitted_tool_preview(entries: list[ToolCatalogueEntry]) -> str:
     """Build a bounded identity preview for fallback diagnostics."""
     identifiers = [f"{entry['provider_name']}/{entry['tool_name']}" for entry in entries]
@@ -763,6 +796,14 @@ class WorkflowGenerator:
                 resolved_mode,
             )
             yield "result", cast(dict[str, Any], empty_plan)
+            return
+
+        selection_errors = _planned_tool_selector_errors(plan_nodes, full_tool_catalogue_entries)
+        if selection_errors:
+            yield (
+                "result",
+                cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), selection_errors), resolved_mode)),
+            )
             return
 
         plan_edges = [cast(dict[str, Any], edge) for edge in (plan.get("edges") or []) if isinstance(edge, dict)]
@@ -1571,7 +1612,13 @@ class WorkflowGenerator:
         metadata, parameter declarations, output schema, and form defaults are
         deterministic catalogue data. Hydrating them here prevents a selected
         installed plugin from becoming an unusable guessed node configuration.
+        Unresolved authoritative selections raise _StageSchemaError before any
+        graph mutation. Generation reports the same check as UNKNOWN_TOOL before
+        builders run, so an alternate installed Tool cannot survive as success.
         """
+        selection_errors = _planned_tool_selector_errors(plan_nodes, tool_catalogue_entries)
+        if selection_errors:
+            raise _StageSchemaError("Tool selection", selection_errors[0]["detail"])
         if not tool_catalogue_entries:
             return
         planned_by_id = {

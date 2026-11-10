@@ -5,6 +5,7 @@ native execution uses a recording local transport, never a live MCP service.
 """
 
 import json
+from collections.abc import Sequence
 from copy import deepcopy
 from typing import NoReturn, NotRequired, TypedDict
 from uuid import uuid4
@@ -22,6 +23,8 @@ from core.workflow.generator.tool_catalogue import (
     format_tool_catalogue,
 )
 from core.workflow.generator.types import GraphDict
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from models.tools import MCPToolProvider
 from services.dify_builder.agent import resources
 from services.dify_builder.effect_disclosure import disclose
@@ -611,3 +614,192 @@ def test_collision_namespaced_pinning_and_explicit_type_remain_authoritative(nat
     context = format_plugin_tool_output_context(plan_json=json.dumps(plan), target_node_id="end", entries=entries)
     assert '"results"' in context
     assert '"output_schema_state":"declared"' in context
+
+
+def alternate_builtin_graph() -> GraphDict:
+    """A complete installed alternate that ordinary structural checks accept."""
+    return {
+        "nodes": [
+            {
+                "id": "start",
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {"type": "start", "title": "Start", "variables": []},
+            },
+            {
+                "id": "clock",
+                "type": "custom",
+                "position": {"x": 300, "y": 0},
+                "data": {
+                    "type": "tool",
+                    "title": "Clock",
+                    "provider_id": "time",
+                    "provider_name": "time",
+                    "provider_type": "builtin",
+                    "tool_name": "current_time",
+                    "tool_label": "Clock",
+                    "tool_configurations": {
+                        "format": {"type": "constant", "value": "%Y"},
+                        "timezone": {"type": "constant", "value": "UTC"},
+                    },
+                    "tool_parameters": {},
+                },
+            },
+            {
+                "id": "end",
+                "type": "custom",
+                "position": {"x": 600, "y": 0},
+                "data": {
+                    "type": "end",
+                    "title": "End",
+                    "outputs": [{"variable": "text", "value_selector": ["clock", "text"]}],
+                },
+            },
+        ],
+        "edges": [
+            {"id": "a", "type": "custom", "source": "start", "target": "clock"},
+            {"id": "b", "type": "custom", "source": "clock", "target": "end"},
+        ],
+        "viewport": {"x": 0, "y": 0, "zoom": 1},
+    }
+
+
+class AlternateBuiltinModel:
+    """Injected cognition transport returning a valid alternate Tool configuration."""
+
+    def __init__(self, selector: dict[str, str] | None) -> None:
+        self.graph = alternate_builtin_graph()
+        self.builder_calls: list[str] = []
+        self.planner_calls = 0
+        nodes: list[dict[str, object]] = [
+            {"id": "start", "label": "Start", "node_type": "start", "purpose": "Start"},
+            {"id": "clock", "label": "Clock", "node_type": "tool", "purpose": "Choose an installed clock"},
+            {"id": "end", "label": "End", "node_type": "end", "purpose": "Return the clock output"},
+        ]
+        if selector is not None:
+            nodes[1]["tool"] = selector
+        self.plan: dict[str, object] = {
+            "title": "Clock",
+            "description": "Return the clock output",
+            "nodes": nodes,
+            "edges": [{"source": "start", "target": "clock"}, {"source": "clock", "target": "end"}],
+        }
+
+    def invoke_llm(self, *, prompt_messages: Sequence[PromptMessage], stream: bool, **_kwargs: object) -> LLMResult:
+
+        assert stream is False
+        if "workflow planner" in str(prompt_messages[0].content).lower():
+            self.planner_calls += 1
+            payload = self.plan
+        else:
+            prompt = "\n".join(str(message.content) for message in prompt_messages)
+            node = next(node for node in self.graph["nodes"] if f"id={node['id']}, type=" in prompt)
+            self.builder_calls.append(node["id"])
+            payload = {
+                "config": {
+                    key: deepcopy(value)
+                    for key, value in node["data"].items()
+                    if key not in {"type", "title", "desc", "selected"}
+                }
+            }
+        return LLMResult(
+            model="controlled",
+            prompt_messages=prompt_messages,
+            message=AssistantPromptMessage(content=json.dumps(payload)),
+            usage=LLMUsage.empty_usage(),
+        )
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        {"provider_id": "time", "tool_name": "current_time", "provider_type": "api"},
+        {"provider_id": "time", "tool_name": "current_time"},
+    ],
+    ids=["explicit_unavailable", "ambiguous_untyped"],
+)
+def test_authoritative_selector_refuses_complete_alternate_graph_before_hydration(
+    native_inventory: Engine, selector: dict[str, str]
+) -> None:
+    from services.workflow_generation.runner import WorkflowGenerator, _StageSchemaError
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    graph = alternate_builtin_graph()
+    before = deepcopy(graph)
+    assert (
+        WorkflowGenerator._validate_structure(graph=graph, mode="workflow", installed_tools={("time", "current_time")})
+        == []
+    )
+    with pytest.raises(_StageSchemaError, match="unavailable or ambiguous"):
+        WorkflowGenerator._hydrate_tool_nodes(
+            graph=graph,
+            plan_nodes=[{"id": "clock", "node_type": "tool", "tool": selector}],
+            tool_catalogue_entries=build_tool_catalogue(TENANT_ID),
+        )
+    assert graph == before
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        {"provider_id": "time", "tool_name": "current_time", "provider_type": "api"},
+        {"provider_id": "time", "tool_name": "current_time"},
+    ],
+    ids=["explicit_unavailable", "ambiguous_untyped"],
+)
+def test_generation_refuses_authoritative_selector_before_alternate_builder(
+    native_inventory: Engine, selector: dict[str, str]
+) -> None:
+    from services.workflow_generation.runner import WorkflowGenerator
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    model = AlternateBuiltinModel(selector)
+    result = WorkflowGenerator.generate_workflow_graph(
+        model_instance=model,
+        model_parameters={},
+        provider="controlled",
+        model_name="controlled",
+        model_mode="chat",
+        mode="workflow",
+        instruction="Use the selected tool",
+        tool_catalogue_entries=build_tool_catalogue(TENANT_ID),
+        installed_tools={("time", "current_time")},
+    )
+    assert result["error"]
+    assert [(error["code"], error.get("node_id")) for error in result["errors"]] == [("UNKNOWN_TOOL", "clock")]
+    assert result["graph"]["nodes"] == []
+    assert model.planner_calls == 1
+    assert model.builder_calls == []
+
+
+def test_generic_tool_choice_without_selector_still_generates_installed_tool(native_inventory: Engine) -> None:
+    from services.workflow_generation.runner import WorkflowGenerator
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    model = AlternateBuiltinModel(None)
+    result = WorkflowGenerator.generate_workflow_graph(
+        model_instance=model,
+        model_parameters={},
+        provider="controlled",
+        model_name="controlled",
+        model_mode="chat",
+        mode="workflow",
+        instruction="Choose an installed clock",
+        tool_catalogue_entries=build_tool_catalogue(TENANT_ID),
+        installed_tools={("time", "current_time")},
+    )
+    assert result["error"] == ""
+    assert result["errors"] == []
+    clock = next(node for node in result["graph"]["nodes"] if node["data"].get("type") == "tool")
+    assert (clock["data"]["provider_type"], clock["data"]["provider_id"], clock["data"]["tool_name"]) == (
+        "builtin",
+        "time",
+        "current_time",
+    )
+    assert set(model.builder_calls) == {"start", "clock", "end"}
