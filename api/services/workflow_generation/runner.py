@@ -65,9 +65,9 @@ from core.workflow.generator.tool_catalogue import (
     find_tool_entry,
     format_tool_builder_context,
     format_tool_catalogue,
+    resolve_tool_entry,
     select_legacy_fallback_selection,
     select_tool_candidates,
-    text_mentions_tool_identifier,
 )
 from core.workflow.generator.types import (
     GraphDict,
@@ -487,19 +487,7 @@ def _find_planned_tool_entry(node: dict[str, Any], entries: list[ToolCatalogueEn
     fallback keeps older/smaller models useful when they follow the instruction
     to name ``provider/tool`` but omit the optional object.
     """
-    tool_selector = node.get("tool")
-    if isinstance(tool_selector, dict):
-        provider_name = str(tool_selector.get("provider_id") or tool_selector.get("provider_name") or "")
-        tool_name = str(tool_selector.get("tool_name") or "")
-        entry = find_tool_entry(entries, provider_name, tool_name)
-        if entry is not None:
-            return entry
-
-    purpose = str(node.get("purpose") or "")
-    for entry in entries:
-        if text_mentions_tool_identifier(purpose, entry["provider_name"], entry["tool_name"]):
-            return entry
-    return None
+    return resolve_tool_entry(entries, node.get("tool"), purpose=str(node.get("purpose") or ""))
 
 
 def _format_omitted_tool_preview(entries: list[ToolCatalogueEntry]) -> str:
@@ -1599,11 +1587,12 @@ class WorkflowGenerator:
             if not isinstance(data, dict):
                 continue
             entry = _find_planned_tool_entry(planned, tool_catalogue_entries)
-            if entry is None:
+            if entry is None and not isinstance(planned.get("tool"), dict):
                 entry = find_tool_entry(
                     tool_catalogue_entries,
                     str(data.get("provider_id") or data.get("provider_name") or ""),
                     str(data.get("tool_name") or ""),
+                    provider_type=str(data["provider_type"]) if data.get("provider_type") else None,
                 )
             if entry is None:
                 continue

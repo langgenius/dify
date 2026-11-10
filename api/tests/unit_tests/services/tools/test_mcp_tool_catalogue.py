@@ -71,7 +71,14 @@ def definition() -> CachedDeclaration:
     }
 
 
-def add_provider(engine: Engine, *, tenant_id: str = TENANT_ID, authed: bool = True, tools: object = None) -> None:
+def add_provider(
+    engine: Engine,
+    *,
+    tenant_id: str = TENANT_ID,
+    authed: bool = True,
+    tools: object = None,
+    server_identifier: str = SERVER,
+) -> None:
     with engine.begin() as connection:
         connection.execute(
             insert(MCPToolProvider).values(
@@ -79,7 +86,7 @@ def add_provider(engine: Engine, *, tenant_id: str = TENANT_ID, authed: bool = T
                 tenant_id=tenant_id,
                 user_id=ACCOUNT_B,
                 name="Microsoft Docs (display only)",
-                server_identifier=SERVER,
+                server_identifier=server_identifier,
                 server_url="encrypted-url-marker",
                 server_url_hash="synthetic-hash",
                 encrypted_headers='{"secret":"encrypted-header-marker"}',
@@ -148,7 +155,7 @@ def test_mcp_configuration_does_not_borrow_builtin_credentials(
 
     monkeypatch.setattr(resources, "_authorized_providers", forbidden)
     refs = resources.list_tenant_resources(TENANT_ID).tools
-    ref = next(ref for ref in refs if ref.id == f"{SERVER}/{ACTION}")
+    ref = next(ref for ref in refs if ref.id == f"mcp:{SERVER}/{ACTION}")
     assert ref.readiness == "ready"
     assert ref.binding["provider_type"] == "mcp"
     assert ref.availability["runtime"] == "unverified"
@@ -164,7 +171,7 @@ def test_mcp_configuration_does_not_borrow_builtin_credentials(
 def test_selected_mcp_binding_rejects_stale_or_foreign_declarations(inventory: Engine, mutation: str) -> None:
     add_provider(inventory)
     catalogue = resources.list_tenant_resources(TENANT_ID)
-    ref = next((item for item in catalogue.tools if item.id == f"{SERVER}/{ACTION}"), None)
+    ref = next((item for item in catalogue.tools if item.id == f"mcp:{SERVER}/{ACTION}"), None)
     assert ref is not None
     graph = bound_graph(build_tool_catalogue(TENANT_ID))
     with inventory.begin() as connection:
@@ -312,8 +319,8 @@ def test_bound_mcp_graph_uses_native_tool_adapter_and_end_returns_transport_outp
     monkeypatch.setattr(resources, "_list_models", lambda _tenant: [])
     monkeypatch.setattr(resources, "_list_datasets", lambda _tenant, _account: [])
     add_provider(sqlite_engine)
-    plan = bind_resources(None, TENANT_ID, ["Search Microsoft documentation"], [f"{SERVER}/{ACTION}"])
-    assert f"[{SERVER}/{ACTION}]" in plan[0]
+    plan = bind_resources(None, TENANT_ID, ["Search Microsoft documentation"], [f"mcp:{SERVER}/{ACTION}"])
+    assert f"[mcp:{SERVER}/{ACTION}]" in plan[0]
     graph_config = bound_graph(build_tool_catalogue(TENANT_ID))
     calls: list[tuple[str, dict[str, object]]] = []
 
@@ -445,7 +452,7 @@ def test_mcp_without_output_declaration_keeps_native_generic_outputs(inventory: 
     entry = find_tool_entry(build_tool_catalogue(TENANT_ID), SERVER, ACTION)
     assert entry is not None
     assert entry["output_schema"] == {}
-    ref = next(item for item in resources.list_tenant_resources(TENANT_ID).tools if item.id == f"{SERVER}/{ACTION}")
+    ref = next(item for item in resources.list_tenant_resources(TENANT_ID).tools if item.id == f"mcp:{SERVER}/{ACTION}")
     assert ref.output_schema_state == "absent"
     assert bound_graph([entry])["nodes"][1]["data"]["output_schema"] == {}
 
@@ -474,3 +481,133 @@ def test_malformed_mcp_action_does_not_hide_other_cached_actions(inventory: Engi
     add_provider(inventory, tools=[{"name": "bad", "inputSchema": {"type": "impossible"}}, definition()])
     entries = [entry for entry in build_tool_catalogue(TENANT_ID) if entry["provider_type"] == "mcp"]
     assert [entry["tool_name"] for entry in entries] == [ACTION]
+
+
+@pytest.fixture
+def native_inventory(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Engine:
+    bind_database(monkeypatch, sqlite_engine)
+    install_fake_daemon(monkeypatch, FakeToolDaemon())
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant, _account: [])
+    return sqlite_engine
+
+
+def test_native_identity_collision_keeps_selected_mcp_binding_and_provider(native_inventory: Engine) -> None:
+    from core.tools.entities.tool_entities import ToolProviderType
+    from core.tools.mcp_tool.tool import MCPTool
+    from services.dify_builder.agent.build import _installed_tool_refs, bind_resources
+    from services.workflow_generation.runner import WorkflowGenerator, _find_planned_tool_entry
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    entries = build_tool_catalogue(TENANT_ID)
+    refs = resources.list_tenant_resources(TENANT_ID).tools
+    collided = [
+        ref
+        for ref in refs
+        if ref.binding.get("provider_id") == "time" and ref.binding.get("tool_name") == "current_time"
+    ]
+    assert {ref.id for ref in collided} == {"time/current_time", "mcp:time/current_time"}
+    selected = next(ref for ref in collided if ref.id == "mcp:time/current_time")
+    assert selected.binding["provider_type"] == "mcp"
+    plan = bind_resources(None, TENANT_ID, ["Use selected MCP"], [selected.id])
+    assert "[mcp:time/current_time]" in plan[0]
+    assert _installed_tool_refs(TENANT_ID, None)[("time", "current_time")].binding["provider_type"] == "builtin"
+    selector = {
+        "id": "search",
+        "node_type": "tool",
+        "tool": {"provider_id": "time", "tool_name": "current_time", "provider_type": "mcp"},
+    }
+    entry = _find_planned_tool_entry(selector, entries)
+    assert entry is not None
+    assert entry["provider_type"] == "mcp"
+    graph = bound_graph(entries)
+    graph["nodes"][1]["data"].update({"provider_id": "time", "tool_name": "current_time", "provider_type": "mcp"})
+    WorkflowGenerator._hydrate_tool_nodes(graph=graph, plan_nodes=[selector], tool_catalogue_entries=entries)
+    assert graph["nodes"][1]["data"]["provider_type"] == "mcp"
+    assert graph["nodes"][1]["data"]["output_schema"] == OUTPUT
+    validate_changed_resources(
+        {"nodes": []}, dict(graph), resources.list_tenant_resources(TENANT_ID), confirmed_ids=[f"tool:{selected.id}"]
+    )
+    native = ToolManager.get_tool_runtime(ToolProviderType.MCP, "time", "current_time", TENANT_ID)
+    assert isinstance(native, MCPTool)
+    assert native.server_identifier == "time"
+    assert native.entity.output_schema == OUTPUT
+
+
+def test_colliding_untyped_lookup_refuses_and_routed_catalogue_retains_native_types(native_inventory: Engine) -> None:
+    from core.workflow.generator.tool_catalogue import select_tool_candidates
+    from services.workflow_generation.runner import _find_planned_tool_entry
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    entries = build_tool_catalogue(TENANT_ID)
+    assert find_tool_entry(entries, "time", "current_time") is None
+    assert (
+        _find_planned_tool_entry(
+            {"tool": {"provider_id": "time", "tool_name": "current_time"}, "purpose": "time/current_time"}, entries
+        )
+        is None
+    )
+    selected = select_tool_candidates(entries, [{"capability": "current time", "keywords": []}])
+    assert {
+        entry["provider_type"]
+        for entry in selected.entries
+        if entry["provider_name"] == "time" and entry["tool_name"] == "current_time"
+    } == {"builtin", "mcp"}
+
+
+def test_valid_mcp_sibling_reaches_native_resolver_with_boolean_property_schema(native_inventory: Engine) -> None:
+    from core.tools.entities.tool_entities import ToolProviderType
+    from core.tools.mcp_tool.tool import MCPTool
+    from services.dify_builder.agent.build import bind_resources
+
+    add_provider(
+        native_inventory,
+        tools=[definition(), {"name": "other_action", "inputSchema": {"type": "object", "properties": {"flag": True}}}],
+    )
+    entry = find_tool_entry(build_tool_catalogue(TENANT_ID), SERVER, ACTION)
+    assert entry is not None
+    plan = bind_resources(None, TENANT_ID, ["Search docs"], [f"mcp:{SERVER}/{ACTION}"])
+    assert f"[mcp:{SERVER}/{ACTION}]" in plan[0]
+    graph = bound_graph(build_tool_catalogue(TENANT_ID))
+    validate_changed_resources({"nodes": []}, dict(graph), resources.list_tenant_resources(TENANT_ID))
+    native = ToolManager.get_tool_runtime(ToolProviderType.MCP, SERVER, ACTION, TENANT_ID)
+    assert isinstance(native, MCPTool)
+    assert native.entity.identity.name == ACTION
+    assert native.entity.output_schema == OUTPUT
+    with pytest.raises(ValueError, match="not found"):
+        ToolManager.get_mcp_provider_controller(TENANT_ID, SERVER).get_tool("other_action")
+
+
+def test_collision_namespaced_pinning_and_explicit_type_remain_authoritative(native_inventory: Engine) -> None:
+    from core.workflow.generator.tool_catalogue import resolve_tool_entry, select_tool_candidates
+    from services.dify_builder.api_tool_output_context import format_plugin_tool_output_context
+
+    declaration = definition()
+    declaration["name"] = "current_time"
+    add_provider(native_inventory, server_identifier="time", tools=[declaration])
+    entries = build_tool_catalogue(TENANT_ID)
+    pinned = select_tool_candidates(entries, [], explicit_text="Use mcp:time/current_time")
+    assert [(entry["provider_type"], entry["provider_name"], entry["tool_name"]) for entry in pinned.entries] == [
+        ("mcp", "time", "current_time")
+    ]
+    selector = {"provider_id": "time", "tool_name": "current_time", "provider_type": "mcp"}
+    selected = resolve_tool_entry(entries, selector, purpose="Use time/current_time")
+    assert selected is not None
+    assert selected["provider_type"] == "mcp"
+    builtin = resolve_tool_entry(entries, {**selector, "provider_type": "builtin"}, purpose="Use mcp:time/current_time")
+    assert builtin is not None
+    assert builtin["provider_type"] == "builtin"
+    assert (
+        resolve_tool_entry(entries, {**selector, "provider_type": "api"}, purpose="Use mcp:time/current_time") is None
+    )
+    plan = {
+        "nodes": [{"id": "search", "node_type": "tool", "tool": selector}, {"id": "end", "node_type": "end"}],
+        "edges": [{"source": "search", "target": "end"}],
+    }
+    context = format_plugin_tool_output_context(plan_json=json.dumps(plan), target_node_id="end", entries=entries)
+    assert '"results"' in context
+    assert '"output_schema_state":"declared"' in context
