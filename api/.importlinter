@@ -1443,6 +1443,7 @@ source_modules =
     services.trigger.subscription_binding_service
     services.async_workflow_service
     services.trigger.workflow_dispatch_service
+    services.trigger.webhook_service
 forbidden_modules =
     controllers
     extensions
