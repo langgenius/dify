@@ -42,8 +42,8 @@ export function ExternalAgentOverviewPage({ agentId }: { agentId: string }) {
   useDocumentTitle(agent.name)
 
   return (
-    <div className="my-1 me-1 min-h-0 flex-1 overflow-y-auto rounded-lg bg-background-default">
-      <div className="flex flex-wrap items-center gap-4 p-6">
+    <div className="my-1 me-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default">
+      <div className="flex shrink-0 flex-wrap items-center gap-4 p-6">
         <AppIcon
           icon={agent.icon}
           size="xl"
@@ -86,38 +86,40 @@ export function ExternalAgentOverviewPage({ agentId }: { agentId: string }) {
           onUpdate={(agent) => updatePreview({ agent })}
         />
       </div>
-      <div className="grid items-start gap-10 px-6 pb-8 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex min-w-0 flex-col gap-8 pt-4">
-          <section>
-            <h2 className="pb-2 body-lg-regular leading-6 font-medium text-text-secondary">
-              {t(($) => $['external.overview.about'])}
-            </h2>
-            <p className="body-md-regular wrap-break-word text-text-secondary">
-              {agent.description}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
-              <DefaultFormats
-                label={t(($) => $['external.overview.defaultInputFormats'])}
-                hint={t(($) => $['external.overview.defaultInputFormatsHint'])}
-                formats={preview.defaultInputFormats}
-              />
-              <DefaultFormats
-                label={t(($) => $['external.overview.defaultOutputFormats'])}
-                hint={t(($) => $['external.overview.defaultOutputFormatsHint'])}
-                formats={preview.defaultOutputFormats}
-              />
-            </div>
-          </section>
-          <ExternalAgentSkills skills={preview.skills} />
-          <ExternalAgentUsedInApps apps={agent.apps} />
-        </div>
-        <div className="flex min-w-0 flex-col gap-4 pt-4">
-          <ExternalAgentConnection preview={preview} onUpdate={updatePreview} />
-          <ExternalAgentServiceDetails
-            provider={preview.provider}
-            version={preview.version}
-            documentationUrl={preview.documentationUrl}
-          />
+      <div data-external-agent-overview-scroll className="isolate min-h-0 flex-1 overflow-y-auto">
+        <div className="grid items-start gap-10 px-6 pb-8 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="flex min-w-0 flex-col gap-8 pt-4">
+            <section>
+              <h2 className="pb-2 body-lg-regular leading-6 font-medium text-text-secondary">
+                {t(($) => $['external.overview.about'])}
+              </h2>
+              <p className="body-md-regular wrap-break-word text-text-secondary">
+                {agent.description}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+                <DefaultFormats
+                  label={t(($) => $['external.overview.defaultInputFormats'])}
+                  hint={t(($) => $['external.overview.defaultInputFormatsHint'])}
+                  formats={preview.defaultInputFormats}
+                />
+                <DefaultFormats
+                  label={t(($) => $['external.overview.defaultOutputFormats'])}
+                  hint={t(($) => $['external.overview.defaultOutputFormatsHint'])}
+                  formats={preview.defaultOutputFormats}
+                />
+              </div>
+            </section>
+            <ExternalAgentSkills skills={preview.skills} />
+            <ExternalAgentUsedInApps apps={agent.apps} />
+          </div>
+          <div className="mt-6 flex min-w-0 flex-col gap-4 xl:sticky xl:top-6">
+            <ExternalAgentConnection preview={preview} onUpdate={updatePreview} />
+            <ExternalAgentServiceDetails
+              provider={preview.provider}
+              version={preview.version}
+              documentationUrl={preview.documentationUrl}
+            />
+          </div>
         </div>
       </div>
     </div>

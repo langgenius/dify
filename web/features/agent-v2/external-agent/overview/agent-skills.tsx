@@ -1,12 +1,37 @@
 import type { ExternalAgentOverviewPreview, ExternalAgentSkillPreview } from '../preview'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 function AgentSkill({ skill }: { skill: ExternalAgentSkillPreview }) {
   const { t } = useTranslation(['agentRoster'])
+  const startRef = useRef<HTMLSpanElement>(null)
+  const [isStuck, setIsStuck] = useState(false)
+
+  useEffect(() => {
+    const start = startRef.current
+    const root = start?.closest('[data-external-agent-overview-scroll]')
+    if (!start || !root) return
+
+    // Observe the section's natural start while CSS handles sticking and being pushed away.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.rootBounds) return
+        setIsStuck(entry.boundingClientRect.top < entry.rootBounds.top)
+      },
+      { root, threshold: [0, 1] },
+    )
+    observer.observe(start)
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    <Collapsible defaultOpen className="px-4 py-3">
-      <h3>
+    <Collapsible defaultOpen className="relative px-4">
+      <span ref={startRef} aria-hidden className="pointer-events-none absolute top-0 h-px w-px" />
+      <h3
+        data-stuck={isStuck || undefined}
+        className="sticky top-0 z-10 -mx-4 border-b border-transparent bg-background-default px-4 py-2 data-stuck:border-divider-subtle"
+      >
         <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-sm text-start system-md-semibold text-text-primary">
           <span className="min-w-0 wrap-break-word">{skill.name}</span>
           <span
@@ -16,7 +41,7 @@ function AgentSkill({ skill }: { skill: ExternalAgentSkillPreview }) {
         </CollapsibleTrigger>
       </h3>
       <CollapsiblePanel>
-        <div className="flex flex-col gap-3 pt-0.5">
+        <div className="flex flex-col gap-3 pt-0.5 pb-3">
           <div className="space-y-1.5">
             <p className="system-sm-regular wrap-break-word text-text-tertiary">
               {skill.description}
@@ -91,7 +116,7 @@ export function ExternalAgentSkills({
           {t(($) => $['external.overview.emptySkills'])}
         </p>
       ) : (
-        <div className="divide-y divide-divider-subtle overflow-hidden rounded-xl border border-divider-regular">
+        <div className="divide-y divide-divider-subtle overflow-clip rounded-xl border border-divider-regular">
           {skills.map((skill) => (
             <AgentSkill key={skill.id} skill={skill} />
           ))}

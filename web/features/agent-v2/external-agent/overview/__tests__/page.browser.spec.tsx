@@ -94,6 +94,55 @@ it('reveals skill examples and connection details while retaining the tracing ch
   await expect.element(tracing).not.toBeChecked()
 })
 
+it('keeps the header and connection rail visible while skill headings hand over during scrolling', async () => {
+  await setup()
+  const title = page.getByRole('heading', { name: 'Contract Review Agent', exact: true }).element()
+  const testAgent = page.getByRole('button', { name: 'Test agent', exact: true }).element()
+  const firstSkill = page.getByRole('heading', { name: 'Contract review', exact: true }).element()
+  const nextSkill = page.getByRole('heading', { name: 'Clause rewrite', exact: true }).element()
+  const connection = page.getByRole('heading', { name: 'Connection', exact: true }).element()
+  const viewport = firstSkill.closest<HTMLElement>('[data-external-agent-overview-scroll]')
+  if (!viewport) throw new Error('The overview must provide its own content scroll area')
+
+  await expect.poll(() => viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight)
+  const viewportTop = viewport.getBoundingClientRect().top
+  const initialTitleTop = title.getBoundingClientRect().top
+  const initialActionTop = testAgent.getBoundingClientRect().top
+  const initialSkillTop = firstSkill.getBoundingClientRect().top
+
+  viewport.scrollTo({ top: initialSkillTop - viewportTop + 32 })
+  await expect
+    .poll(() => Math.abs(firstSkill.getBoundingClientRect().top - viewportTop))
+    .toBeLessThan(1)
+  expect(title.getBoundingClientRect().top).toBe(initialTitleTop)
+  expect(testAgent.getBoundingClientRect().top).toBe(initialActionTop)
+  const pinnedConnectionTop = connection.getBoundingClientRect().top
+  expect(pinnedConnectionTop).toBeGreaterThan(viewportTop)
+  expect(pinnedConnectionTop).toBeLessThan(viewportTop + viewport.clientHeight)
+
+  const nextSkillOffset = nextSkill.getBoundingClientRect().top - viewportTop + viewport.scrollTop
+  viewport.scrollTo({ top: nextSkillOffset - firstSkill.getBoundingClientRect().height / 2 })
+  await expect.poll(() => firstSkill.getBoundingClientRect().top).toBeLessThan(viewportTop)
+  expect(firstSkill.getBoundingClientRect().bottom).toBeGreaterThan(viewportTop)
+  expect(firstSkill.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+    nextSkill.getBoundingClientRect().top,
+  )
+
+  viewport.scrollTo({ top: nextSkillOffset + 32 })
+  await expect
+    .poll(() => Math.abs(nextSkill.getBoundingClientRect().top - viewportTop))
+    .toBeLessThan(1)
+  expect(firstSkill.getBoundingClientRect().bottom).toBeLessThanOrEqual(viewportTop)
+  expect(title.getBoundingClientRect().top).toBe(initialTitleTop)
+  expect(testAgent.getBoundingClientRect().top).toBe(initialActionTop)
+  expect(connection.getBoundingClientRect().top).toBe(pinnedConnectionTop)
+
+  viewport.scrollTo({ top: 0 })
+  await expect
+    .poll(() => Math.abs(firstSkill.getBoundingClientRect().top - initialSkillTop))
+    .toBeLessThan(1)
+})
+
 it('updates the overview identity after saving the management edit', async () => {
   await setup()
   await manage('Edit info')
