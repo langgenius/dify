@@ -124,13 +124,16 @@ class TestHitTestingPayload:
             query="test query",
             retrieval_model=RetrievalModel.model_validate(retrieval_model_data),
             external_retrieval_model={"provider": "openai"},
-            attachment_ids=["att_1", "att_2"],
+            attachment_ids=["f030575b-8ac7-4824-949d-8a1cd575c082", "9c603550-52be-46d6-8078-f5047c6b631c"],
         )
         assert payload.query == "test query"
         assert payload.retrieval_model is not None
         assert payload.retrieval_model.top_k == 5
         assert payload.external_retrieval_model == {"provider": "openai"}
-        assert payload.attachment_ids == ["att_1", "att_2"]
+        assert payload.attachment_ids == [
+            "f030575b-8ac7-4824-949d-8a1cd575c082",
+            "9c603550-52be-46d6-8078-f5047c6b631c",
+        ]
 
     def test_payload_query_too_long(self) -> None:
         """Test payload rejects query over 250 characters."""

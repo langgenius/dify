@@ -15,6 +15,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from machinery.context import RequestContext
 from services.agent.log_contracts import AgentLogAppNotFoundError
@@ -78,6 +79,7 @@ class AgentLogApi(Resource):
     @console_ns.doc(params=query_params_from_model(AgentLogQuery))
     @console_ns.response(200, "Agent logs retrieved successfully", console_ns.models[AgentLogResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
+    @error_responses(AppNotFoundError)
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())])
     @model_validate(AgentLogQuery)
     def get(self, req_data: AgentLogQuery, request_context: RequestContext, app_id: UUID):
