@@ -344,6 +344,47 @@ class ExcelExtractor(BaseExtractor):
         """
         return any(cell is not None and str(cell).strip() for row in sheet.iter_rows(values_only=True) for cell in row)
 
+    @staticmethod
+    def _merged_spans_by_row(sheet) -> dict[int, list[tuple[int, int, str]]]:
+        """Collect single-row merged ranges and the text they carry.
+
+        A header cell merged across several columns stores its value in the
+        top-left cell only; openpyxl reports the covered cells as ``None``.
+        The scan needs to know which columns a merged header covers so the
+        covered ones inherit its name instead of being dropped.
+
+        Only ranges confined to one row are returned. A vertically merged
+        range describes a section title rather than a header spanning
+        columns, and extending it to sibling columns would invent columns
+        the sheet does not have.
+
+        Args:
+            sheet (`Worksheet`):
+                The worksheet to inspect.
+
+        Returns:
+            `dict[int, list[tuple[int, int, str]]]`:
+                Row index (1-based) to ``(start_col, end_col, name)`` in
+                0-based column indices, sorted by start column.
+        """
+        spans: dict[int, list[tuple[int, int, str]]] = {}
+        merged = getattr(sheet, "merged_cells", None)
+        if merged is None:
+            return spans
+        for cell_range in merged.ranges:
+            if cell_range.min_row != cell_range.max_row:
+                continue
+            value = sheet.cell(row=cell_range.min_row, column=cell_range.min_col).value
+            if value is None or not str(value).strip():
+                continue
+            name = str(value).strip().replace('"', '\\"')
+            spans.setdefault(cell_range.min_row, []).append(
+                (cell_range.min_col - 1, cell_range.max_col - 1, name),
+            )
+        for entries in spans.values():
+            entries.sort()
+        return spans
+
     def _find_header_and_columns(self, sheet, scan_rows: int = 100) -> tuple[int, dict[int, str], int]:
         """Locate the table header in a worksheet.
 
@@ -373,6 +414,7 @@ class ExcelExtractor(BaseExtractor):
         """
         # Store potential candidates: (row_index, non_empty_count, column_map)
         candidates: list[Candidate] = []
+        spans_by_row = self._merged_spans_by_row(sheet)
 
         for current_row_idx, row in enumerate(sheet.iter_rows(min_row=1, max_row=scan_rows, values_only=True), start=1):
             # Filter out empty cells and build a temp map for this row
@@ -381,6 +423,16 @@ class ExcelExtractor(BaseExtractor):
             for col_idx, cell_value in enumerate(row):
                 if cell_value is not None and str(cell_value).strip():
                     row_map[col_idx] = str(cell_value).strip().replace('"', '\\"')
+
+            # A header cell merged across several columns leaves the covered
+            # cells empty, so their columns never enter the map and every
+            # value below them is dropped. Give those columns the merged
+            # header's name, numbered from the second covered column so the
+            # repeated name can still be told apart from the first.
+            for start_col, end_col, name in spans_by_row.get(current_row_idx, ()):
+                for col_idx in range(start_col, end_col + 1):
+                    column_name = name if col_idx == start_col else f"{name}_{col_idx - start_col + 1}"
+                    row_map.setdefault(col_idx, column_name)
 
             if not row_map:
                 continue

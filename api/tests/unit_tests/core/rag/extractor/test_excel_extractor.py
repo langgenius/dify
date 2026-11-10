@@ -387,3 +387,73 @@ class TestExcelExtractor:
         assert documents == []
         assert "No header row found in sheet" in caplog.text
         assert "Sheet1" in caplog.text
+
+    def test_extract_xlsx_keeps_columns_under_a_merged_header(self, tmp_path):
+        """A header merged across columns must not hide the covered column.
+
+        openpyxl stores a merged header's text in its leftmost cell and
+        reports the covered cells as None, so the covered columns used to be
+        left out of the column map and their values never reached the text.
+        """
+        from openpyxl import Workbook
+
+        path = tmp_path / "merged_header.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet["A1"] = "Customer"
+        sheet["B1"] = "Contact"
+        sheet.merge_cells("B1:C1")
+        sheet["D1"] = "Phone"
+        for column, value in enumerate(["Acme", "Jane", "Doe", "555-0100"], start=1):
+            sheet.cell(row=2, column=column, value=value)
+        workbook.save(path)
+
+        documents = ExcelExtractor(str(path)).extract()
+        text = "\n".join(document.page_content for document in documents)
+
+        assert "Acme" in text
+        assert "Jane" in text
+        assert "Doe" in text, "the covered column's value must survive"
+        assert "555-0100" in text
+
+    def test_merged_header_names_stay_distinguishable(self, tmp_path):
+        """Reusing one name for every covered column would be ambiguous."""
+        from openpyxl import Workbook
+
+        path = tmp_path / "merged_header_names.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet["A1"] = "Group"
+        sheet["B1"] = "Value"
+        sheet.merge_cells("B1:D1")
+        for column, value in enumerate(["g1", "v1", "v2", "v3"], start=1):
+            sheet.cell(row=2, column=column, value=value)
+        workbook.save(path)
+
+        documents = ExcelExtractor(str(path)).extract()
+        text = "\n".join(document.page_content for document in documents)
+
+        assert '"Value":"v1"' in text
+        assert '"Value_2":"v2"' in text
+        assert '"Value_3":"v3"' in text
+
+    def test_vertically_merged_header_is_not_extended_to_siblings(self):
+        """A row-spanning merge is a section title, not a multi-column header."""
+        extractor = ExcelExtractor("dummy.xlsx")
+
+        class _Range:
+            min_row = 1
+            max_row = 3
+            min_col = 2
+            max_col = 2
+
+        class _Merged:
+            ranges = [_Range()]
+
+        class _Sheet:
+            merged_cells = _Merged()
+
+            def cell(self, row, column):
+                return SimpleNamespace(value="Section")
+
+        assert extractor._merged_spans_by_row(_Sheet()) == {}
