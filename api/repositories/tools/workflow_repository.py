@@ -9,7 +9,6 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolNotFoundError
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser, Tenant, Workflow
-from models.account import TenantAccountJoin
 from models.model import App
 from models.tool_runtime_contracts import WorkflowToolDefinition
 from models.tools import ToolLabelBinding, WorkflowToolProvider
@@ -75,15 +74,17 @@ class WorkflowToolRepository:
             return workflow
 
     def actor(self, *, tenant_id: str, user_id: str) -> Account | EndUser | None:
+        """Resolve an already-authorized actor without imposing Account membership.
+
+        Accounts are global identities; EndUsers belong to the requested tenant.
+        Return a detached actor, or None when the tenant or identity is missing.
+        Application access authorization remains the caller's responsibility.
+        """
         with self._sessions() as session:
             tenant = session.get(Tenant, tenant_id)
             if tenant is None:
                 return None
-            account = session.scalar(
-                select(Account)
-                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-                .where(Account.id == user_id, TenantAccountJoin.tenant_id == tenant_id)
-            )
+            account = session.scalar(select(Account).where(Account.id == user_id))
             if account is not None:
                 account.set_current_tenant_with_session(tenant, session=session)
                 session.expunge(account)

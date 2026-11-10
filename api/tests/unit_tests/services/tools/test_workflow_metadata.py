@@ -108,19 +108,19 @@ def test_metadata_management_and_runtime_declaration_without_execution_dependenc
     assert runtime.entity.parameters[0].name == "question"
 
 
-def test_workflow_queries_enforce_tenant_ownership_for_all_entry_points(
+def test_workflow_queries_enforce_tenant_ownership_for_tool_resources(
     published_tool: str,
     workflow_tools: WorkflowToolManageService,
     tool_providers: ToolProviderRepository,
     workflow_queries: WorkflowToolQueries,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
+    """Tool resources remain tenant-scoped while Account identities are global."""
     with sqlite_session_factory.begin() as session:
         session.add(make_tenant(tenant_id="other-tenant"))
     assert workflow_queries.provider(tenant_id="other-tenant", provider_id=published_tool) is None
     assert workflow_queries.providers(tenant_id="other-tenant") == []
     assert workflow_queries.provider_for_app(tenant_id="other-tenant", app_id="app-1") is None
-    assert workflow_queries.actor(tenant_id="other-tenant", user_id="account-1") is None
     assert workflow_queries.labels(tenant_id="other-tenant", provider_ids=[published_tool]) == {}
     for query in [workflow_queries.app, workflow_queries.current_workflow]:
         with pytest.raises(ToolNotFoundError):

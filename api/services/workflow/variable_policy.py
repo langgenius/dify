@@ -1,8 +1,14 @@
-"""Pure environment-variable patch rules shared by draft mutation paths."""
+"""Pure workflow-variable rules shared by draft mutation paths."""
 
 from collections.abc import Sequence
 
+from constants.workflow import EDITABLE_SYSTEM_VARIABLE_NAMES
 from graphon.variables import VariableBase
+
+
+def is_system_variable_editable(name: str) -> bool:
+    """Only query and files may be edited or exposed as editable system variables."""
+    return name in EDITABLE_SYSTEM_VARIABLE_NAMES
 
 
 def merge_environment_variable_patch(
