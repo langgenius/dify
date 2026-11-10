@@ -9,12 +9,11 @@ from werkzeug.wrappers import Response
 from controllers.common.access_response import webhook_not_found_response
 from controllers.trigger import bp
 from controllers.trigger.webhook_request import WebhookRequestParser, WebhookRequestValidationError
-from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
 from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
 from enums import QuotaType
 from extensions.ext_application_services import application_services
 from services.errors.app import QuotaExceededError
+from services.trigger.debug_events import WebhookDebugEvent
 from services.trigger.webhook_service import WebhookContext, WebhookNotFoundError, build_webhook_workflow_inputs
 
 logger = logging.getLogger(__name__)
@@ -35,7 +34,7 @@ def _get_quota_exceeded_message(feature: str) -> str:
 
 
 def _prepare_webhook_execution(webhook_id: str, *, debug: bool) -> tuple[WebhookContext, WebhookRequestParser]:
-    services = application_services().workspaces
+    services = application_services().triggers
     context = services.webhooks.prepare(webhook_id=webhook_id, debug=debug)
     parser = WebhookRequestParser(
         request=request,
@@ -61,7 +60,7 @@ def handle_webhook(webhook_id: str) -> Response | tuple[Response, int]:
             return jsonify({"error": "Bad Request", "message": error.public_message}), HTTPStatus.BAD_REQUEST
 
         # Process webhook call (send to Celery)
-        application_services().workspaces.webhooks.execute(context=context, data=webhook_data, actor=parser.actor)
+        application_services().triggers.webhooks.execute(context=context, data=webhook_data, actor=parser.actor)
 
         # Return configured response
         response_data, status_code = parser.generate_webhook_response(context.node_config)
@@ -104,12 +103,6 @@ def handle_webhook_debug(webhook_id: str) -> Response | tuple[Response, int]:
 
         workflow_inputs = build_webhook_workflow_inputs(webhook_data)
 
-        # Generate pool key and dispatch debug event
-        pool_key: str = build_webhook_pool_key(
-            tenant_id=context.tenant_id,
-            app_id=context.app_id,
-            node_id=context.node_id,
-        )
         event = WebhookDebugEvent(
             request_id=f"webhook_debug_{context.webhook_id}_{int(time.time() * 1000)}",
             timestamp=int(time.time()),
@@ -120,10 +113,10 @@ def handle_webhook_debug(webhook_id: str) -> Response | tuple[Response, int]:
                 "method": webhook_data.get("method"),
             },
         )
-        dispatch_count = TriggerDebugEventBus.dispatch(
+        dispatch_count = application_services().triggers.debug.dispatch_webhook_debug(
             tenant_id=context.tenant_id,
+            app_id=context.app_id,
             event=event,
-            pool_key=pool_key,
         )
         if dispatch_count == 0:
             logger.warning(

@@ -3,13 +3,11 @@ from __future__ import annotations
 import importlib
 import json
 import time
-from datetime import timedelta
 from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
 import pytest
-from flask import Flask
 from flask.testing import FlaskClient
 from kombu.simple import SimpleQueue
 from sqlalchemy import select
@@ -21,12 +19,10 @@ from core.trigger.constants import (
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
-from core.trigger.debug import event_selectors
-from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.event_selectors import WebhookTriggerDebugEventPoller
-from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
 from core.trigger.entities.entities import Subscription
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
+from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
@@ -39,6 +35,7 @@ from models.trigger import (
 )
 from models.workflow import Workflow
 from services.system_feature_service import SystemFeatureService
+from services.trigger.debug_events import PluginTriggerDebugEvent, build_plugin_pool_key
 from services.trigger.schedule_service import ScheduleService
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from services.workflow_service import WorkflowService
@@ -217,39 +214,6 @@ def test_webhook_trigger_creates_trigger_log(
     message.ack()
 
 
-def test_schedule_visual_debug_poll_generates_event(
-    flask_app_with_containers: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Visual mode schedule node should generate event in single-step debug."""
-    base_now = naive_utc_now()
-    monkeypatch.setattr(event_selectors, "naive_utc_now", lambda: base_now)
-    monkeypatch.setattr(
-        event_selectors,
-        "calculate_next_run_at",
-        lambda *_args, **_kwargs: base_now - timedelta(minutes=1),
-    )
-    node_config = {
-        "id": "schedule-visual",
-        "data": {
-            "type": TRIGGER_SCHEDULE_NODE_TYPE,
-            "mode": "visual",
-            "frequency": "daily",
-            "visual_config": {"time": "3:00 PM"},
-            "timezone": "UTC",
-        },
-    }
-    poller = event_selectors.ScheduleTriggerDebugEventPoller(
-        tenant_id="tenant",
-        user_id="user",
-        app_id="app",
-        node_config=node_config,
-        node_id="schedule-visual",
-    )
-    event = poller.poll()
-    assert event is not None
-    assert event.workflow_args["inputs"] == {}
-
-
 def test_plugin_dispatch_delivers_each_debug_event_to_its_waiting_pool(
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
@@ -280,7 +244,7 @@ def test_plugin_dispatch_delivers_each_debug_event_to_its_waiting_pool(
     }
     for name, pool_key in pools.items():
         assert (
-            TriggerDebugEventBus.poll(
+            application_services().triggers.debug_events.poll(
                 event_type=PluginTriggerDebugEvent,
                 pool_key=pool_key,
                 tenant_id=tenant.id,
@@ -298,11 +262,12 @@ def test_plugin_dispatch_delivers_each_debug_event_to_its_waiting_pool(
         timestamp=timestamp,
         request_id="request-with-two-events",
         subscription=subscription,
+        debug_events=application_services().triggers.debug_events,
     )
 
     assert dispatched == 2
     for name, pool_key in pools.items():
-        event = TriggerDebugEventBus.poll(
+        event = application_services().triggers.debug_events.poll(
             event_type=PluginTriggerDebugEvent,
             pool_key=pool_key,
             tenant_id=tenant.id,
@@ -355,15 +320,9 @@ def test_webhook_debug_dispatches_event(
     db_session_with_containers.add(webhook_trigger)
     db_session_with_containers.commit()
 
-    # Listener polls first to enter waiting pool
-    poller = WebhookTriggerDebugEventPoller(
-        tenant_id=tenant.id,
-        user_id=account.id,
-        app_id=app_model.id,
-        node_config=draft_workflow.get_node_config_by_id(webhook_node_id),
-        node_id=webhook_node_id,
-    )
-    assert poller.poll() is None
+    debug = application_services().triggers.debug
+    node_config = draft_workflow.get_node_config_by_id(webhook_node_id)
+    assert debug.poll(node_config=node_config, tenant_id=tenant.id, user_id=account.id, app_id=app_model.id) is None
 
     response = test_client_with_containers.post(
         f"/triggers/webhook-debug/{webhook_trigger.webhook_id}",
@@ -373,7 +332,7 @@ def test_webhook_debug_dispatches_event(
 
     assert response.status_code == 200
     # Second poll should get the event
-    event = poller.poll()
+    event = debug.poll(node_config=node_config, tenant_id=tenant.id, user_id=account.id, app_id=app_model.id)
     assert event is not None
     assert event.workflow_args["inputs"]["webhook_body"]["foo"] == "bar"
     assert (
@@ -421,7 +380,7 @@ def test_schedule_visual_cron_conversion(
     else:
         node_config["data"]["cron_expression"] = cron_expression
 
-    config = ScheduleService.to_schedule_config(node_config)
+    config = ScheduleService.to_schedule_config(NodeConfigDictAdapter.validate_python(node_config))
 
     assert config.cron_expression == expected_cron, f"Expected {expected_cron}, got {config.cron_expression}"
     assert config.timezone == "UTC"

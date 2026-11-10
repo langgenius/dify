@@ -1446,6 +1446,8 @@ source_modules =
     services.trigger.webhook_service
     services.trigger.schedule_service
     services.trigger.schedule_store
+    services.trigger.execution_service
+    services.trigger.execution_layer
 forbidden_modules =
     controllers
     extensions
@@ -1471,6 +1473,8 @@ source_modules =
     services.trigger.trigger_subscription_builder_service
     services.trigger.endpoint_service
     services.trigger.event_service
+    services.trigger.debug_service
+    services.trigger.trigger_request_service
 forbidden_modules =
     controllers
     extensions
@@ -1520,4 +1524,26 @@ forbidden_modules =
     sqlalchemy
     core.db
     models.engine
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-debug-repository-boundary]
+name = Trigger debug persistence depends on contracts rather than service implementations
+type = forbidden
+source_modules =
+    repositories.trigger.debug_repository
+forbidden_modules =
+    services.trigger.debug_service
+    services.trigger.schedule_service
+    services.trigger.webhook_service
+allow_indirect_imports = True
+
+[importlinter:contract:trigger-execution-repository-boundary]
+name = Trigger execution persistence depends on contracts rather than its service
+type = forbidden
+source_modules =
+    repositories.sqlalchemy_workflow_trigger_log_repository
+forbidden_modules =
+    services.trigger.execution_service
+    services.trigger.execution_gateway
+    services.trigger.execution_layer
 allow_indirect_imports = True
