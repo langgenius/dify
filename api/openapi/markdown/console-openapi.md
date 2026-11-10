@@ -14758,7 +14758,10 @@ Enable a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/endpoints/list
+**Given authorized workspace IDs and a validated query, return JSON endpoint DTOs**
+
 List plugin endpoints with pagination
+Service failures propagate. This read does not change endpoint state.
 
 #### Parameters
 
@@ -14775,7 +14778,10 @@ List plugin endpoints with pagination
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/endpoints/list/plugin
+**Given authorized workspace IDs and a validated query, return plugin endpoint DTOs**
+
 List endpoints for a specific plugin
+Service failures propagate. This read does not change endpoint state.
 
 #### Parameters
 
