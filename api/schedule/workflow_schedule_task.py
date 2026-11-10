@@ -7,4 +7,4 @@ from extensions.ext_application_services import application_services
 
 @shared_task(queue="schedule_poller")
 def poll_workflow_schedules() -> None:
-    application_services().workspaces.trigger_schedules.poll()
+    application_services().triggers.schedules.poll()

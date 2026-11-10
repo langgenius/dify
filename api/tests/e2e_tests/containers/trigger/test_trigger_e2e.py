@@ -244,7 +244,7 @@ def test_plugin_dispatch_delivers_each_debug_event_to_its_waiting_pool(
     }
     for name, pool_key in pools.items():
         assert (
-            application_services().workspaces.trigger_debug_events.poll(
+            application_services().triggers.debug_events.poll(
                 event_type=PluginTriggerDebugEvent,
                 pool_key=pool_key,
                 tenant_id=tenant.id,
@@ -262,12 +262,12 @@ def test_plugin_dispatch_delivers_each_debug_event_to_its_waiting_pool(
         timestamp=timestamp,
         request_id="request-with-two-events",
         subscription=subscription,
-        debug_events=application_services().workspaces.trigger_debug_events,
+        debug_events=application_services().triggers.debug_events,
     )
 
     assert dispatched == 2
     for name, pool_key in pools.items():
-        event = application_services().workspaces.trigger_debug_events.poll(
+        event = application_services().triggers.debug_events.poll(
             event_type=PluginTriggerDebugEvent,
             pool_key=pool_key,
             tenant_id=tenant.id,
@@ -320,7 +320,7 @@ def test_webhook_debug_dispatches_event(
     db_session_with_containers.add(webhook_trigger)
     db_session_with_containers.commit()
 
-    debug = application_services().workspaces.trigger_debug
+    debug = application_services().triggers.debug
     node_config = draft_workflow.get_node_config_by_id(webhook_node_id)
     assert debug.poll(node_config=node_config, tenant_id=tenant.id, user_id=account.id, app_id=app_model.id) is None
 

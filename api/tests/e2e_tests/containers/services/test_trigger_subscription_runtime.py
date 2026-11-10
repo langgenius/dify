@@ -40,7 +40,7 @@ daemon = test_trigger_subscription_builder.daemon
 def _get(harness: _Harness, subscription_id: str) -> TriggerSubscriptionRuntime:
     def run() -> TriggerSubscriptionRuntime:
         with harness.app.app_context():
-            runtime = application_services().workspaces.trigger_subscriptions.get_for_execution(
+            runtime = application_services().triggers.subscriptions.get_for_execution(
                 tenant_id=harness.tenant_id, subscription_id=subscription_id
             )
             assert runtime is not None
@@ -171,14 +171,14 @@ def test_debug_poller_invokes_injected_subscription_query_after_receiving_event(
 
     def poll() -> TriggerDebugEvent | None:
         with harness.app.app_context():
-            debug = application_services().workspaces.trigger_debug
+            debug = application_services().triggers.debug
             node = workflow.get_node_config_by_id(node_config["id"])
             assert (
                 debug.poll(node_config=node, tenant_id=harness.tenant_id, user_id=harness.account_id, app_id=app.id)
                 is None
             )
             assert daemon.requests == []
-            dispatched = application_services().workspaces.trigger_debug_events.dispatch(
+            dispatched = application_services().triggers.debug_events.dispatch(
                 tenant_id=harness.tenant_id,
                 event=debug_event,
                 pool_key=build_plugin_pool_key(
@@ -265,7 +265,7 @@ def test_debug_event_cannot_dispatch_subscription_credentials_to_another_provide
     def invoke() -> None:
         with harness.app.app_context():
             with pytest.raises(ValueError, match="Subscription provider does not match trigger event"):
-                application_services().workspaces.trigger_events.invoke_debug(
+                application_services().triggers.events.invoke_debug(
                     tenant_id=harness.tenant_id,
                     user_id="webhook-user",
                     node_config={"id": "trigger", "data": node},

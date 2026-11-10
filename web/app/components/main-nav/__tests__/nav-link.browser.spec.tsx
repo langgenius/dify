@@ -1,7 +1,7 @@
 import type { ContextType } from 'react'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { RouterContext } from 'next/dist/shared/lib/router-context.shared-runtime'
+import { userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
 import MainNavLink from '../components/nav-link'
 
 vi.mock('@/app/components/apps/list-navigation-state', () => ({
@@ -9,7 +9,6 @@ vi.mock('@/app/components/apps/list-navigation-state', () => ({
 }))
 
 it('navigates from the primary sidebar without requesting route scroll and focus handling', async () => {
-  const user = userEvent.setup()
   const router: NonNullable<ContextType<typeof RouterContext>> = {
     basePath: '',
     pathname: '/apps',
@@ -30,7 +29,7 @@ it('navigates from the primary sidebar without requesting route scroll and focus
     isPreview: false,
   }
 
-  render(
+  const screen = await render(
     <RouterContext value={router}>
       <MainNavLink
         pathname="/apps"
@@ -45,13 +44,15 @@ it('navigates from the primary sidebar without requesting route scroll and focus
     </RouterContext>,
   )
 
-  await user.tab()
-  await user.keyboard('{Enter}')
+  const link = screen.getByRole('link', { name: 'Marketplace' })
+  await userEvent.tab()
+  await expect.element(link).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
 
   expect(router.push).toHaveBeenCalledWith(
     '/marketplace',
     '/marketplace',
     expect.objectContaining({ scroll: false }),
   )
-  expect(screen.getByRole('link', { name: 'Marketplace' })).toHaveFocus()
+  await expect.element(link).toHaveFocus()
 })
