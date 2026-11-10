@@ -812,7 +812,7 @@ class WorkflowGenerator:
         if selection_errors:
             yield (
                 "result",
-                cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), selection_errors), resolved_mode)),
+                dict(_with_mode(_result_with_errors(_empty_result(), selection_errors), resolved_mode)),
             )
             return
 
