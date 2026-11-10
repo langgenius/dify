@@ -109,6 +109,7 @@ class WorkflowToolRuntimeKwargs(TypedDict, total=False):
     draft_tool_workflow_id: str
     allow_draft_credential_delegation: bool
     builder_expected_credential_fingerprint: str
+    builder_expected_api_binding: str
     builder_credential_refreshed: Callable[[str], None] | None
 
 
@@ -242,6 +243,7 @@ class ToolManager:
         draft_tool_node_id: str | None = None,
         allow_draft_credential_delegation: bool = False,
         builder_expected_credential_fingerprint: str | None = None,
+        builder_expected_api_binding: str | None = None,
         builder_credential_refreshed: Callable[[str], None] | None = None,
         draft_tool_app_id: str | None = None,
         json_provider_validator: Callable[[object, object], None] | None = None,
@@ -365,11 +367,21 @@ class ToolManager:
                 return builtin_tool.fork_tool_runtime(runtime=runtime)
 
             case ToolProviderType.API:
-                api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
-                encrypter, _ = create_tool_provider_encrypter(
-                    tenant_id=tenant_id,
-                    controller=api_provider,
-                )
+                if builder_expected_api_binding is None:
+                    api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
+                else:
+                    api_provider, credentials = cls.get_api_provider_controller(
+                        tenant_id, provider_id, expected_binding=builder_expected_api_binding, action=tool_name
+                    )
+                if builder_expected_api_binding is None:
+                    encrypter, _ = create_tool_provider_encrypter(tenant_id=tenant_id, controller=api_provider)
+                else:
+                    # The approved ciphertext version cannot inherit a name-keyed cached account.
+                    encrypter, _ = create_provider_encrypter(
+                        tenant_id=tenant_id,
+                        config=[item.to_basic_provider_config() for item in api_provider.get_credentials_schema()],
+                        cache=NoOpProviderCredentialCache(),
+                    )
                 return api_provider.get_tool(tool_name).fork_tool_runtime(
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
@@ -719,6 +731,7 @@ class ToolManager:
         draft_tool_workflow_id: str | None = None,
         allow_draft_credential_delegation: bool = False,
         builder_expected_credential_fingerprint: str | None = None,
+        builder_expected_api_binding: str | None = None,
         builder_credential_refreshed: Callable[[str], None] | None = None,
         execution_driver: "WorkflowRunDriver | None" = None,
         workflow_tool_definition: WorkflowTool | None = None,
@@ -749,6 +762,8 @@ class ToolManager:
             )
 
         draft_options: _DraftToolRuntimeKwargs = {}
+        if builder_expected_api_binding is not None:
+            draft_options["builder_expected_api_binding"] = builder_expected_api_binding
         if builder_expected_credential_fingerprint is not None:
             draft_options["builder_expected_credential_fingerprint"] = builder_expected_credential_fingerprint
             draft_options["builder_credential_refreshed"] = builder_credential_refreshed
@@ -1145,7 +1160,7 @@ class ToolManager:
 
     @classmethod
     def get_api_provider_controller(
-        cls, tenant_id: str, provider_id: str
+        cls, tenant_id: str, provider_id: str, *, expected_binding: str | None = None, action: str = ""
     ) -> tuple[ApiToolProviderController, dict[str, Any]]:
         """
         get the api provider
@@ -1155,7 +1170,27 @@ class ToolManager:
 
         :return: the provider controller, the credentials
         """
-        provider: ApiToolProvider | None = db.session.scalar(
+        if expected_binding is not None:
+            # Builder reads one immutable provider snapshot in a short session.
+            # No metadata transaction survives decryption or provider transport.
+            with Session(db.engine) as session:
+                return cls._api_provider_controller_from_session(
+                    session, tenant_id, provider_id, expected_binding=expected_binding, action=action
+                )
+        return cls._api_provider_controller_from_session(
+            db.session(), tenant_id, provider_id, expected_binding=None, action=action
+        )
+
+    @classmethod
+    def _api_provider_controller_from_session(
+        cls, session: Session, tenant_id: str, provider_id: str, *, expected_binding: str | None, action: str
+    ) -> tuple[ApiToolProviderController, dict[str, Any]]:
+        """Return native metadata and encrypted credentials from this owned session.
+
+        Bound calls validate first and use the returned operation snapshot;
+        callers close the metadata session before decryption or provider I/O.
+        """
+        provider: ApiToolProvider | None = session.scalar(
             select(ApiToolProvider)
             .where(
                 ApiToolProvider.id == provider_id,
@@ -1167,6 +1202,12 @@ class ToolManager:
         if provider is None:
             raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
 
+        selected_bundle = None
+        if expected_binding is not None:
+            from services.dify_builder.api_tool_effects import admit_api_definition
+
+            selected_bundle = admit_api_definition(provider, action, expected_binding)
+
         auth_type = ApiProviderAuthType.NONE
         provider_auth_type = provider.credentials.get("auth_type")
         if provider_auth_type in ("api_key_header", "api_key"):  # backward compatibility
@@ -1177,9 +1218,9 @@ class ToolManager:
         controller = ApiToolProviderController.from_db(
             provider,
             auth_type,
-            session=db.session(),
+            session=session,
         )
-        controller.load_bundled_tools(provider.tools)
+        controller.load_bundled_tools([selected_bundle] if selected_bundle is not None else provider.tools)
 
         return controller, provider.credentials
 
