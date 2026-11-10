@@ -1,9 +1,8 @@
-from contextlib import nullcontext
 from dataclasses import dataclass
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models.agent import (
     Agent,
@@ -24,7 +23,8 @@ from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from repositories.agent.home_snapshot_repository import AgentHomeSnapshotRepository
-from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
+from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
+from services.agent.retirement_service import WorkflowAgentRetirementService
 
 
 @dataclass(frozen=True)
@@ -37,6 +37,7 @@ class _OrphanAggregateIds:
 
 
 def test_db_phase_failure_persists_nothing_and_publishes_nothing(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -56,7 +57,7 @@ def test_db_phase_failure_persists_nothing_and_publishes_nothing(
     cleanup_app, collect = _celery_boundary_mocks(monkeypatch)
 
     with pytest.raises(RuntimeError) as exc_info:
-        WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
             tenant_id="tenant-1",
             agent_ids=[seeded.agent_id],
             account_id="account-1",
@@ -169,11 +170,11 @@ def _publication_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, Magi
     cleanup_app = MagicMock()
     enqueue_collection = MagicMock()
     monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay",
+        "services.agent.retirement_service.remove_app_and_related_data_task.delay",
         cleanup_app,
     )
     monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.enqueue_agent_resource_collection",
+        "services.agent.retirement_service.enqueue_agent_resource_collection",
         enqueue_collection,
     )
     return cleanup_app, enqueue_collection
@@ -185,7 +186,7 @@ def _celery_boundary_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, 
     cleanup_app = MagicMock()
     collect = MagicMock()
     monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay",
+        "services.agent.retirement_service.remove_app_and_related_data_task.delay",
         cleanup_app,
     )
     monkeypatch.setattr(
@@ -221,6 +222,7 @@ def _assert_aggregate_untouched(session: Session, seeded: _OrphanAggregateIds) -
     ],
 )
 def test_retire_unowned_requires_an_exact_persisted_workflow_owner_key(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     workflow_version: str,
@@ -277,18 +279,15 @@ def test_retire_unowned_requires_an_exact_persisted_workflow_owner_key(
     )
     sqlite_session.add_all([agent, app, workflow, binding])
     sqlite_session.commit()
-    monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
-    )
     celery_delay = MagicMock()
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", celery_delay)
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[agent.id],
         account_id="account-1",
     )
 
+    sqlite_session.expire_all()
     stored_agent = sqlite_session.get(Agent, agent.id)
     assert stored_agent is not None
     assert stored_agent.status is expected_status
@@ -304,6 +303,7 @@ def test_retire_unowned_requires_an_exact_persisted_workflow_owner_key(
     indirect=True,
 )
 def test_retire_unowned_archives_orphan_and_retires_resources(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -349,18 +349,16 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
     )
     sqlite_session.add_all([agent, hidden_app, home, workspace, binding])
     sqlite_session.commit()
-    monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
-    )
+    hidden_app_id = hidden_app.id
     cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[agent.id],
         account_id="account-1",
     )
 
+    sqlite_session.expire_all()
     stored_agent = sqlite_session.get(Agent, agent.id)
     stored_binding = sqlite_session.get(AgentWorkspaceBinding, binding.id)
     stored_workspace = sqlite_session.get(AgentWorkspace, workspace.id)
@@ -369,12 +367,12 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
     assert stored_binding is not None
     assert stored_workspace is not None
     assert stored_home is not None
-    assert sqlite_session.get(App, hidden_app.id) is None
+    assert sqlite_session.get(App, hidden_app_id) is None
     assert stored_agent.status is AgentStatus.ARCHIVED
     assert stored_binding.status is AgentWorkingResourceStatus.RETIRED
     assert stored_workspace.status is AgentWorkingResourceStatus.RETIRED
     assert stored_home.status is AgentWorkingResourceStatus.RETIRED
-    cleanup_app.assert_called_once_with(tenant_id="tenant-1", app_id=hidden_app.id)
+    cleanup_app.assert_called_once_with(tenant_id="tenant-1", app_id=hidden_app_id)
     enqueue_collection.assert_called_once_with(
         tenant_id="tenant-1",
         workspace_ids=[workspace.id],
@@ -385,6 +383,7 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
 
 
 def test_hidden_app_cleanup_failure_blocks_collector_and_keeps_committed_state(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -399,7 +398,7 @@ def test_hidden_app_cleanup_failure_blocks_collector_and_keeps_committed_state(
     cleanup_app.side_effect = [None, error]
 
     with pytest.raises(RuntimeError) as exc_info:
-        WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
             tenant_id="tenant-1",
             agent_ids=[first.agent_id, second.agent_id],
             account_id="account-1",
@@ -415,6 +414,7 @@ def test_hidden_app_cleanup_failure_blocks_collector_and_keeps_committed_state(
 
 
 def test_retire_unowned_retry_after_hidden_app_enqueue_failure_preserves_full_collector_payload(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -470,7 +470,7 @@ def test_retire_unowned_retry_after_hidden_app_enqueue_failure_preserves_full_co
     cleanup_app.side_effect = [error, None]
 
     with pytest.raises(RuntimeError) as exc_info:
-        WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
             tenant_id="tenant-1",
             agent_ids=[agent_id],
             account_id="account-1",
@@ -493,7 +493,7 @@ def test_retire_unowned_retry_after_hidden_app_enqueue_failure_preserves_full_co
     assert stored_home.status is AgentWorkingResourceStatus.RETIRED
     enqueue_collection.assert_not_called()
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[agent_id],
         account_id="account-1",
@@ -510,6 +510,7 @@ def test_retire_unowned_retry_after_hidden_app_enqueue_failure_preserves_full_co
 
 
 def test_roster_scoped_agent_is_never_touched(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -517,7 +518,7 @@ def test_roster_scoped_agent_is_never_touched(
     seeded = _seed_orphan_aggregate(sqlite_session, scope=AgentScope.ROSTER)
     cleanup_app, collect = _celery_boundary_mocks(monkeypatch)
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[seeded.agent_id],
         account_id="account-1",
@@ -529,6 +530,7 @@ def test_roster_scoped_agent_is_never_touched(
 
 
 def test_non_agent_mode_backing_app_is_never_deleted(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -536,7 +538,7 @@ def test_non_agent_mode_backing_app_is_never_deleted(
     seeded = _seed_orphan_aggregate(sqlite_session, app_mode=AppMode.CHAT)
     _publication_mocks(monkeypatch)
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[seeded.agent_id],
         account_id="account-1",
@@ -550,6 +552,7 @@ def test_non_agent_mode_backing_app_is_never_deleted(
 
 
 def test_tenant_isolation_leaves_other_tenant_rows_untouched(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -591,7 +594,7 @@ def test_tenant_isolation_leaves_other_tenant_rows_untouched(
     sqlite_session.commit()
     cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[target.agent_id],
         account_id="account-1",
@@ -613,6 +616,7 @@ def test_tenant_isolation_leaves_other_tenant_rows_untouched(
 
 
 def test_repeat_after_success_republishes_full_payload_and_preserves_audit(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -622,7 +626,7 @@ def test_repeat_after_success_republishes_full_payload_and_preserves_audit(
     seeded = _seed_orphan_aggregate(sqlite_session)
     cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[seeded.agent_id],
         account_id="account-1",
@@ -633,7 +637,7 @@ def test_repeat_after_success_republishes_full_payload_and_preserves_audit(
     assert stored_agent.archived_by == "account-1"
     first_archived_at = stored_agent.archived_at
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[seeded.agent_id],
         account_id="account-2",
@@ -658,6 +662,7 @@ def test_repeat_after_success_republishes_full_payload_and_preserves_audit(
 
 @pytest.mark.parametrize("candidates", [[], ["", ""]], ids=["empty", "all-blank"])
 def test_blank_candidates_cause_no_side_effects(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     candidates: list[str],
 ) -> None:
@@ -668,12 +673,13 @@ def test_blank_candidates_cause_no_side_effects(
         pytest.fail("empty candidates must not open a database session")
 
     monkeypatch.setattr(
-        "services.agent.legacy_retirement_service.session_factory.create_session",
+        sqlite_session_factory,
+        "begin",
         unexpected_session,
     )
-    cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
+    cleanup_app, enqueue_collection = _celery_boundary_mocks(monkeypatch)
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=candidates,
         account_id="account-1",
@@ -684,6 +690,7 @@ def test_blank_candidates_cause_no_side_effects(
 
 
 def test_duplicate_candidate_ids_are_processed_once(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -691,7 +698,7 @@ def test_duplicate_candidate_ids_are_processed_once(
     seeded = _seed_orphan_aggregate(sqlite_session)
     cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[seeded.agent_id, seeded.agent_id, seeded.agent_id],
         account_id="account-1",
@@ -708,6 +715,7 @@ def test_duplicate_candidate_ids_are_processed_once(
 
 
 def test_non_candidate_same_tenant_aggregate_is_untouched(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -717,7 +725,7 @@ def test_non_candidate_same_tenant_aggregate_is_untouched(
     bystander = _seed_orphan_aggregate(sqlite_session, suffix="2")
     cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
 
-    WorkflowAgentRetirementService.retire_unowned(
+    WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)).retire_unowned(
         tenant_id="tenant-1",
         agent_ids=[target.agent_id],
         account_id="account-1",
