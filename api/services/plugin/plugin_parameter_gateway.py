@@ -6,10 +6,10 @@ from typing import Any
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.tool_manager import ToolManager
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
+from services.tools.tool_manager import ToolManager
 
 
 class DaemonPluginParameterGateway:
