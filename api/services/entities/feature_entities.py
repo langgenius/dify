@@ -151,6 +151,7 @@ class FeatureModel(FeatureResponseModel):
     education: EducationModel = EducationModel()
     enable_skill: bool = True
     enable_knowledge_fs: bool = False
+    workflow_collaboration_enabled: bool = False
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     # Indexing tasks still consume this internally; Console queries vector usage separately.
@@ -195,7 +196,6 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
-    enable_collaboration_mode: bool = True
     is_allow_register: bool = False
     is_email_setup: bool = False
     license: LicenseStatusModel = LicenseStatusModel()

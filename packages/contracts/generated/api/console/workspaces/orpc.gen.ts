@@ -38,6 +38,15 @@ import {
   zPluginError,
   zRoleAlreadyAssignedError,
   zTooManyFilesError,
+  zTriggerOauthClientChangedError,
+  zTriggerOauthClientConfigInvalidError,
+  zTriggerOauthProviderError,
+  zTriggerSubscriptionChangedError,
+  zTriggerSubscriptionInvalidError,
+  zTriggerSubscriptionLimitReachedError,
+  zTriggerSubscriptionNameConflictError,
+  zTriggerSubscriptionNotFoundError,
+  zTriggerSubscriptionProviderError,
   zUnsupportedFileTypeError,
 } from './zod.gen.ts'
 import {
@@ -5741,7 +5750,7 @@ export const info3 = {
 }
 
 /**
- * Remove custom OAuth client configuration
+ * Remove the workspace's custom OAuth client configuration
  */
 export const delete26 = oc
   .route({
@@ -5749,14 +5758,14 @@ export const delete26 = oc
     method: 'DELETE',
     operationId: 'deleteWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Remove custom OAuth client configuration',
+    summary: "Remove the workspace's custom OAuth client configuration",
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
 
 /**
- * Get OAuth client configuration for a provider
+ * Get the masked OAuth client configuration for a provider
  */
 export const get127 = oc
   .route({
@@ -5764,14 +5773,20 @@ export const get127 = oc
     method: 'GET',
     operationId: 'getWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Get OAuth client configuration for a provider',
+    summary: 'Get the masked OAuth client configuration for a provider',
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+  })
 
 /**
- * Configure custom OAuth client for a provider
+ * Configure the workspace's custom OAuth client for a provider
  */
 export const post84 = oc
   .route({
@@ -5779,7 +5794,7 @@ export const post84 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentTriggerProviderByProviderOauthClient',
     path: '/workspaces/current/trigger-provider/{provider}/oauth/client',
-    summary: 'Configure custom OAuth client for a provider',
+    summary: "Configure the workspace's custom OAuth client for a provider",
     tags: ['console'],
   })
   .input(
@@ -5789,6 +5804,13 @@ export const post84 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    trigger_oauth_client_changed: { status: 409, data: zTriggerOauthClientChangedError },
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+  })
 
 export const client = {
   delete: delete26,
@@ -5823,6 +5845,17 @@ export const post85 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    trigger_subscription_limit_reached: {
+      status: 400,
+      data: zTriggerSubscriptionLimitReachedError,
+    },
+    trigger_subscription_name_conflict: {
+      status: 409,
+      data: zTriggerSubscriptionNameConflictError,
+    },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const bySubscriptionBuilderId = {
   post: post85,
@@ -6024,6 +6057,13 @@ export const get131 = oc
     }),
   )
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse)
+  .errors({
+    trigger_oauth_client_config_invalid: {
+      status: 500,
+      data: zTriggerOauthClientConfigInvalidError,
+    },
+    trigger_oauth_provider_error: { status: 502, data: zTriggerOauthProviderError },
+  })
 
 export const authorize = {
   get: get131,
@@ -6034,7 +6074,7 @@ export const oauth3 = {
 }
 
 /**
- * Verify credentials for an existing subscription (edit mode only)
+ * Verify credentials against the subscription's own provider without updating it
  */
 export const post89 = oc
   .route({
@@ -6043,7 +6083,7 @@ export const post89 = oc
     operationId:
       'postWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionId',
     path: '/workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}',
-    summary: 'Verify credentials for an existing subscription (edit mode only)',
+    summary: "Verify credentials against the subscription's own provider without updating it",
     tags: ['console'],
   })
   .input(
@@ -6056,6 +6096,11 @@ export const post89 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse,
   )
+  .errors({
+    trigger_subscription_invalid: { status: 400, data: zTriggerSubscriptionInvalidError },
+    trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const bySubscriptionId = {
   post: post89,
@@ -6080,7 +6125,7 @@ export const byProvider3 = {
 }
 
 /**
- * Delete a subscription instance
+ * Delete the subscription and its workflow trigger bindings
  */
 export const post90 = oc
   .route({
@@ -6088,7 +6133,7 @@ export const post90 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDelete',
     path: '/workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete',
-    summary: 'Delete a subscription instance',
+    summary: 'Delete the subscription and its workflow trigger bindings',
     tags: ['console'],
   })
   .input(
@@ -6097,13 +6142,18 @@ export const post90 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse)
+  .errors({
+    trigger_subscription_changed: { status: 409, data: zTriggerSubscriptionChangedError },
+    trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const delete27 = {
   post: post90,
 }
 
 /**
- * Update a subscription instance
+ * Rename a subscription or rebuild its provider configuration
  */
 export const post91 = oc
   .route({
@@ -6111,7 +6161,7 @@ export const post91 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdate',
     path: '/workspaces/current/trigger-provider/{subscription_id}/subscriptions/update',
-    summary: 'Update a subscription instance',
+    summary: 'Rename a subscription or rebuild its provider configuration',
     tags: ['console'],
   })
   .input(
@@ -6121,6 +6171,15 @@ export const post91 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse)
+  .errors({
+    trigger_subscription_changed: { status: 409, data: zTriggerSubscriptionChangedError },
+    trigger_subscription_name_conflict: {
+      status: 409,
+      data: zTriggerSubscriptionNameConflictError,
+    },
+    trigger_subscription_not_found: { status: 404, data: zTriggerSubscriptionNotFoundError },
+    trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
+  })
 
 export const update7 = {
   post: post91,
@@ -6269,12 +6328,19 @@ export const switch3 = {
   post: post95,
 }
 
+/**
+ * Return an icon for a tenant UUID and a supported icon type
+ *
+ * Invalid path arguments fail before provider discovery or asset access.
+ */
 export const get134 = oc
   .route({
+    description: 'Invalid path arguments fail before provider discovery or asset access.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLang',
     path: '/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}',
+    summary: 'Return an icon for a tenant UUID and a supported icon type',
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath }))

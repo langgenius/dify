@@ -193,7 +193,7 @@ describe('Conversation sidebar', () => {
   })
 
   it('keeps desktop collapse actions out of the mobile sidebar', () => {
-    renderSidebar({ ownerProps: { isMobile: true } })
+    renderSidebar({ ownerProps: { isBelowSm: true } })
     expect(
       screen.queryByRole('button', { name: /layout.sidebar.(expand|collapse)Sidebar/ }),
     ).not.toBeInTheDocument()

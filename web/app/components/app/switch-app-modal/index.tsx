@@ -118,7 +118,7 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
         else onOpenChange?.(nextOpen, details)
       }}
     >
-      <DialogContent initialFocus={nameInputRef} className="w-150 max-w-150">
+      <DialogContent initialFocus={nameInputRef} className="w-150">
         <SwitchAppSession
           nameInputRef={nameInputRef}
           sourceApp={sourceApp}
@@ -272,7 +272,7 @@ function SwitchAppSession({
                   if (checked) setShowConfirmDelete(true)
                 }}
               />
-              <span className="ml-2 text-left text-sm/5 text-text-secondary">
+              <span className="ms-2 text-start text-sm/5 text-text-secondary">
                 {t(($) => $.removeOriginal, { ns: 'app' })}
               </span>
             </label>

@@ -121,6 +121,7 @@ const renderTemplate = (
   configuredProviders?: ChannelSummary['provider'][],
   resource: EditorResource = {
     kind: 'app',
+    collaborationEnabled: false,
     appId: 'app-template-test',
     mode: 'workflow',
   },
@@ -624,6 +625,7 @@ describe('Human Input v2 Message Template', () => {
     )
     const { props } = renderTemplate({}, {}, ['resend', 'lark'], {
       kind: 'app',
+      collaborationEnabled: false,
       appId: 'app-template-test',
       mode: chat ? 'advanced-chat' : 'workflow',
     })
@@ -684,6 +686,7 @@ describe('Human Input v2 Message Template', () => {
         rerenderEnvironment({
           resource: {
             kind: 'app',
+            collaborationEnabled: false,
             appId: 'another-app',
             mode: 'workflow',
           },
@@ -894,13 +897,23 @@ describe('Human Input v2 Message Template', () => {
       reason: 'read-only',
       readonly: true,
       canRun: true,
-      resource: { kind: 'app', appId: 'app-template-test', mode: 'workflow' } as const,
+      resource: {
+        kind: 'app',
+        collaborationEnabled: false,
+        appId: 'app-template-test',
+        mode: 'workflow',
+      } as const,
     },
     {
       reason: 'no run permission',
       readonly: false,
       canRun: false,
-      resource: { kind: 'app', appId: 'app-template-test', mode: 'workflow' } as const,
+      resource: {
+        kind: 'app',
+        collaborationEnabled: false,
+        appId: 'app-template-test',
+        mode: 'workflow',
+      } as const,
     },
     {
       reason: 'snippet',
@@ -912,7 +925,7 @@ describe('Human Input v2 Message Template', () => {
       reason: 'missing app ID',
       readonly: false,
       canRun: true,
-      resource: { kind: 'app', appId: '', mode: 'workflow' } as const,
+      resource: { kind: 'app', collaborationEnabled: false, appId: '', mode: 'workflow' } as const,
     },
   ])('does not offer test sending for $reason', async ({ readonly, canRun, resource }) => {
     const user = userEvent.setup()

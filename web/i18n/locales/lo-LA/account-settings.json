@@ -1,10 +1,5 @@
 {
   "account.account": "ບັນຊີ",
-  "account.appearanceDark": "ມືດ",
-  "account.appearanceFollowSystem": "ຕາມລະບົບ",
-  "account.appearanceLabel": "ຮູບລັກສະນະ",
-  "account.appearanceLight": "ແຈ້ງ",
-  "account.appearanceSystem": "ລະບົບ",
   "account.changeEmail.authTip": "ເມື່ອປ່ຽນອີເມວແລ້ວ, ບັນຊີ Google ຫຼື GitHub ທີ່ເຊື່ອມໂຍງກັບອີເມວເກົ່າຈະບໍ່ສາມາດໃຊ້ເຂົ້າສູ່ລະບົບບັນຊີນີ້ໄດ້ອີກ.",
   "account.changeEmail.changeTo": "ປ່ຽນເປັນ {{email}}",
   "account.changeEmail.codeLabel": "ລະຫັດຢືນຢັນ",

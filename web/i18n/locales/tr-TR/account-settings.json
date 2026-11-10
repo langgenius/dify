@@ -1,10 +1,5 @@
 {
   "account.account": "Hesap",
-  "account.appearanceDark": "Koyu",
-  "account.appearanceFollowSystem": "Follow system",
-  "account.appearanceLabel": "Görünüm",
-  "account.appearanceLight": "Açık",
-  "account.appearanceSystem": "Sistem",
   "account.changeEmail.authTip": "E-posta adresiniz değiştiğinde, eski e-posta adresinize bağlı Google veya GitHub hesapları bu hesaba giriş yapamayacak.",
   "account.changeEmail.changeTo": "{{email}}'yi değiştir",
   "account.changeEmail.codeLabel": "Doğrulama kodu",

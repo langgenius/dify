@@ -180,7 +180,9 @@ it('focuses the next card without moving the roster scroll position', async () =
   const targetName = 'Agent 15'
   const { screen, queryClient, openDelete } = await setup(agents)
   try {
-    const viewport = screen.getByRole('region', { name: 'Agents', exact: true }).element()
+    const viewport = screen
+      .getByRole('region', { name: 'Agents', exact: true })
+      .element().parentElement!
     await expect.poll(() => viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight)
     viewport.scrollTo({ top: 600 })
     await expect.poll(() => viewport.scrollTop).toBeGreaterThan(0)

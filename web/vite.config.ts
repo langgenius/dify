@@ -149,6 +149,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
               '@base-ui/react/slider',
               'vite-plus/test/browser',
               'dayjs/plugin/relativeTime',
+              'next/script',
               'react-textarea-autosize',
             ],
           },

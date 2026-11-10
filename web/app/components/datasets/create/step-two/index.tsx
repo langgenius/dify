@@ -2,9 +2,9 @@
 
 import type { FC, MouseEvent } from 'react'
 import type { StepTwoProps } from './types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,7 +17,6 @@ import {
 } from '@/app/components/datasets/dataset-fields'
 import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LanguagesSupported } from '@/i18n/language'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
@@ -69,7 +68,7 @@ const StepTwo: FC<StepTwoProps> = ({
 
   const { t } = useTranslation(['datasetCreation'])
   const locale = useLocale()
-  const isMobile = useBreakpoints() === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const previewTriggerRef = useRef<HTMLButtonElement | null>(null)
   const currentDataset = useDatasetDetailContextWithSelector((s) => s.dataset)
@@ -301,13 +300,8 @@ const StepTwo: FC<StepTwoProps> = ({
     isInInit
 
   return (
-    <div className={cn('flex size-full min-w-0', isMobile && 'flex-col overflow-y-auto')}>
-      <div
-        className={cn(
-          '@container/chunkfields relative min-w-0 py-6',
-          isMobile ? 'w-full shrink-0 px-4' : 'h-full w-1/2 overflow-y-auto px-12',
-        )}
-      >
+    <div className="flex size-full min-w-0 max-sm:flex-col max-sm:overflow-y-auto">
+      <div className="@container/chunkfields relative min-w-0 py-6 max-sm:w-full max-sm:shrink-0 max-sm:px-4 sm:h-full sm:w-1/2 sm:overflow-y-auto sm:px-12">
         <h1 className="mb-1 system-md-semibold text-text-secondary">
           {t(($) => $['stepTwo.segmentation'], { ns: 'datasetCreation' })}
         </h1>
@@ -392,7 +386,7 @@ const StepTwo: FC<StepTwoProps> = ({
         />
       </div>
       <PreviewPanel
-        isMobile={isMobile}
+        isBelowSm={isBelowSm}
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         finalFocus={previewTriggerRef}

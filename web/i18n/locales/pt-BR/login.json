@@ -25,6 +25,7 @@
   "enterYourName": "Por favor, digite seu nome de usuário",
   "error.emailEmpty": "O endereço de e-mail é obrigatório",
   "error.emailInValid": "Digite um endereço de e-mail válido",
+  "error.initPasswordIncorrect": "A senha de inicialização está incorreta.",
   "error.invalidEmailOrPassword": "E-mail ou senha inválidos.",
   "error.invalidSSOProtocol": "Protocolo SSO inválido",
   "error.nameEmpty": "O nome é obrigatório",
