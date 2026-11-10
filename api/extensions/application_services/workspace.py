@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from functools import partial
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -12,6 +13,7 @@ from core.plugin.impl.oauth import OAuthHandler
 from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import delete_cache_for_subscription
+from enums import QuotaType
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
@@ -20,6 +22,7 @@ from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepositor
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerDispatchRepository
 from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
+from repositories.trigger.schedule_repository import TriggerScheduleRepository
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
 from repositories.trigger.subscription_repository import (
     RedisTriggerSubscriptionLocks,
@@ -47,6 +50,8 @@ from services.trigger.oauth_gateway import (
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.trigger.provider_query import TriggerProviderQuery
+from services.trigger.schedule_gateway import ScheduleWorkflowGateway, publish_schedules
+from services.trigger.schedule_service import SchedulePublicationService, TriggerScheduleService
 from services.trigger.subscription_binding_service import (
     TriggerSubscriptionBindingQuery,
     TriggerSubscriptionBindingService,
@@ -119,6 +124,8 @@ class WorkspaceServices:
     webhook_draft_bindings: WebhookBindingService
     create_webhook_publication_service: Callable[[Session], WebhookBindingService]
     trigger_workflow_dispatch: PluginTriggerWorkflowDispatchService
+    trigger_schedules: TriggerScheduleService
+    create_schedule_publication_service: Callable[[Session], SchedulePublicationService]
     trigger_oauth_clients: TriggerOAuthClientService
     trigger_oauth: TriggerOAuthService
 
@@ -211,6 +218,7 @@ def build_workspace_services(
         workflows=workflow_queries, logs=execution_logs, queues=queues, reserve_quota=QuotaService.reserve
     )
     app_triggers = SQLAlchemyAppTriggerRepository(session_factory=database_client)
+    schedules = TriggerScheduleRepository(session_factory=database_client)
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
         management=WorkspaceService(
@@ -281,6 +289,19 @@ def build_workspace_services(
             end_users=trigger_end_users,
             reserve_quota=QuotaService.reserve,
             mark_rate_limited=mark_rate_limited,
+        ),
+        trigger_schedules=TriggerScheduleService(
+            schedules=schedules,
+            publish=publish_schedules,
+            dispatch=ScheduleWorkflowGateway(workflows=workflow_dispatch),
+            reserve=partial(QuotaService.reserve, QuotaType.TRIGGER),
+            mark_rate_limited=mark_rate_limited,
+            now=lambda: datetime.now(UTC),
+            batch_size=dify_config.WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE,
+            max_dispatch_per_tick=dify_config.WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK,
+        ),
+        create_schedule_publication_service=lambda session: SchedulePublicationService(
+            sync_schedule=partial(schedules.sync_publication, session=session), now=lambda: datetime.now(UTC)
         ),
         trigger_subscription_management=trigger_subscription_management,
         trigger_subscription_renewal=renewal,
