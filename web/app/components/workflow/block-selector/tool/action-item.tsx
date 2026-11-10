@@ -12,8 +12,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { getProviderReference } from '@/utils/provider-reference'
 import { basePath } from '@/utils/var'
 import BlockIcon from '../../block-icon'
@@ -62,7 +61,7 @@ const ToolItem: FC<Props> = ({
   const language = useGetLanguage()
   const previewDescriptionId = React.useId()
   const previewDescription = payload.description[language]
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const normalizedIcon = useMemo<ToolWithProvider['icon']>(() => {
     return normalizeProviderIcon(provider.icon) ?? provider.icon
   }, [provider.icon])
@@ -71,7 +70,7 @@ const ToolItem: FC<Props> = ({
     return normalizeProviderIcon(provider.icon_dark) ?? provider.icon_dark
   }, [provider.icon_dark])
   const providerIcon = useMemo(() => {
-    if (theme === Theme.dark && normalizedIconDark) return normalizedIconDark
+    if (theme === 'dark' && normalizedIconDark) return normalizedIconDark
     return normalizedIcon
   }, [theme, normalizedIcon, normalizedIconDark])
 
@@ -81,7 +80,7 @@ const ToolItem: FC<Props> = ({
       size="medium"
       aria-describedby={previewDescription ? previewDescriptionId : undefined}
       disabled={disabled}
-      className="w-full justify-between pr-1 pl-5.25 text-left focus-visible:ring-inset disabled:cursor-default"
+      className="w-full justify-between ps-5.25 pe-1 text-start focus-visible:ring-inset disabled:cursor-default"
       onClick={() => {
         if (disabled) return
         const params: Record<string, string> = {}
@@ -114,11 +113,11 @@ const ToolItem: FC<Props> = ({
         })
       }}
     >
-      <div className="truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary">
+      <div className="truncate border-s-2 border-divider-subtle py-2 ps-4 system-sm-medium text-text-secondary">
         <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
       </div>
       {isAdded && (
-        <div className="mr-4 system-xs-regular text-text-tertiary">
+        <div className="me-4 system-xs-regular text-text-tertiary">
           {t(($) => $['addToolModal.added'], { ns: 'tools' })}
         </div>
       )}

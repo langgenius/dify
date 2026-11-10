@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "Wymagane jest tylko jako odniesienie do wnioskowania modelu, a nie do obowiązkowej walidacji wyjścia parametru.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "Typ",
   "nodes.parameterExtractor.advancedSetting": "Zaawansowane ustawienia",
-  "nodes.parameterExtractor.extractParametersNotSet": "Parametry wyodrębniania nie zostały ustawione",
+  "nodes.parameterExtractor.extractParametersNotSet": "Nie skonfigurowano parametrów wyodrębniania",
   "nodes.parameterExtractor.importFromTool": "Importuj z narzędzi",
   "nodes.parameterExtractor.instruction": "Instrukcja",
   "nodes.parameterExtractor.instructionTip": "Wprowadź dodatkowe instrukcje, aby pomóc ekstraktorowi parametrów zrozumieć, jak wyodrębniać parametry.",

@@ -223,7 +223,7 @@ describe('PreferencePage - Interactions', () => {
     const language = screen.getByRole('combobox', { name: 'common.language.displayLanguage' })
     const timezone = screen.getByRole('combobox', { name: 'common.language.timezone' })
     const appearance = screen.getByRole('combobox', {
-      name: 'accountSettings.account.appearanceLabel',
+      name: 'common.theme.label',
     })
 
     await selectOption('common.language.displayLanguage', chinese.name)
