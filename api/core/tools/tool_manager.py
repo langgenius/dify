@@ -1204,7 +1204,7 @@ class ToolManager:
 
         selected_bundle = None
         if expected_binding is not None:
-            from core.tools.api_tool.definition_binding import admit_api_definition
+            from core.tools.custom_tool.definition_binding import admit_api_definition
 
             selected_bundle = admit_api_definition(provider, action, expected_binding)
 
