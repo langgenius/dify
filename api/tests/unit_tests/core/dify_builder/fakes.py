@@ -357,6 +357,44 @@ class InMemoryRepository(Repository):
             return copy.deepcopy(snapshot)
 
     @override
+    def cleared_execution_settled(self, session: Session) -> bool:
+        """Observe stored predecessor Runs without changing the clear receipt.
+
+        This fake has no request/effect ledger, so request-only evidence and
+        explicit request references cannot establish settlement here.
+        """
+        with self._lock:
+            previous = self._history.get((session.id, session.version - 1))
+            if previous is None:
+                return False
+            context = previous[1]
+            controls = context.task_control
+            if (
+                controls.get("settlement") in {"pending", "unknown"}
+                or controls.get("receipt", {}).get("enqueue") in {"pending", "dispatching", "claimed", "unknown"}
+                or controls.get("native_request_id")
+                or controls.get("ordinary_request_ids")
+            ):
+                return False
+            run = self._runs.get(context.verify_run_id)
+            if run is None or run.session_id != session.id or run.status not in {"succeeded", "failed", "stopped"}:
+                return False
+            evidence = run.verification.execution_evidence if run.verification else None
+            if evidence is not None and (
+                not evidence.sealed or evidence.safety_outcome == "execution_evidence_unknown"
+            ):
+                return False
+            return not (
+                context.test_input_ref
+                and any(
+                    candidate.session_id == session.id
+                    and candidate.inputs_ref == context.test_input_ref
+                    and not candidate.immutable
+                    for candidate in self._runs.values()
+                )
+            )
+
+    @override
     def compare_and_advance(
         self,
         session_id: str,

@@ -451,3 +451,152 @@ def test_workflow_writer_fake_stop_cannot_release_resumed_generation() -> None:
     assert repo.activate_workflow_writer(session.id, "resumed-token", 600)
     repo.release_workflow_writer(session.id, generation=1)
     assert not repo.activate_workflow_writer(session.id, "resumed-token", 600)
+
+
+def _pending_memory_clear(
+    run: Run | None, predecessor: DifyBuilderContext | None = None
+) -> tuple[InMemoryRepository, Session, DifyBuilderContext]:
+    repo = InMemoryRepository()
+    session = _session(id="cleared-session")
+    context = predecessor or DifyBuilderContext(verify_run_id="run", test_input_ref="inputs")
+    repo.create_session(session, context, [])
+    if run is not None:
+        repo.save_run(run.session_id or session.id, run)
+    cleared = DifyBuilderContext(
+        paused=True,
+        task_status="abandoned",
+        last_command_id="clear",
+        task_control={
+            "conversation_clear": {"version": 2, "seq_floor": 0},
+            "settlement": "pending",
+            "lifecycle_receipt": {"id": "clear", "receipt": {"settlement": "pending"}},
+        },
+    )
+    repo.compare_and_advance(session.id, 1, session.current_state, cleared, [])
+    return repo, repo.get_session(session.id)[0], cleared
+
+
+@pytest.mark.parametrize("status", ["succeeded", "failed", "stopped"])
+def test_memory_clear_observes_owned_terminal_run_without_mutating_receipt(status: str) -> None:
+    repo, session, cleared = _pending_memory_clear(Run(id="run", status=status, inputs_ref="inputs", immutable=True))
+    assert repo.cleared_execution_settled(session) is True
+    stored, context = repo.get_session(session.id)
+    assert stored == session
+    assert context == cleared
+    assert repo.get_session_at_version(session.id, 1)[1].verify_run_id == "run"
+
+
+@pytest.mark.parametrize(
+    "variant",
+    [
+        "missing_predecessor",
+        "missing_run",
+        "foreign_run",
+        "request_only",
+        "no_execution",
+        "running",
+        "unknown",
+        "immutable_unknown",
+        "unsealed",
+        "unknown_evidence",
+        "pending_control",
+        "unknown_control",
+        "enqueue_pending",
+        "enqueue_dispatching",
+        "enqueue_claimed",
+        "enqueue_unknown",
+        "native_request",
+        "ordinary_request",
+        "mutable_run",
+    ],
+)
+def test_memory_clear_cannot_settle_unobserved_pending_or_unknown_execution(variant: str) -> None:
+    from core.dify_builder.models import RunVerification
+    from runtime_contracts.builder.execution import ExecutionEvidenceSummary
+
+    run = Run(id="run", status="failed", inputs_ref="inputs", immutable=True)
+    context = DifyBuilderContext(verify_run_id="run", test_input_ref="inputs")
+    if variant == "foreign_run":
+        run.session_id = "other-session"
+    elif variant in {"request_only", "no_execution"}:
+        context.verify_run_id = ""
+        if variant == "no_execution":
+            context.test_input_ref = ""
+    elif variant in {"running", "unknown", "immutable_unknown"}:
+        run.status = "running" if variant == "running" else "unknown"
+        run.immutable = variant == "immutable_unknown"
+    elif variant in {"unsealed", "unknown_evidence"}:
+        run.verification = RunVerification(
+            execution_revision="revision",
+            executed_graph_revision="graph",
+            terminal_outputs=None,
+            output_findings=[],
+            executed_node_ids=[],
+            no_output_dead_branch=False,
+            execution_evidence=ExecutionEvidenceSummary(
+                request_id="request",
+                mode="restricted",
+                sealed=variant != "unsealed",
+                safety_outcome="execution_evidence_unknown" if variant == "unknown_evidence" else "execution_blocked",
+                sandbox_profile="disabled",
+                fixture_digest="a" * 64,
+            ),
+        )
+    elif variant in {"pending_control", "unknown_control"}:
+        context.task_control["settlement"] = "pending" if variant == "pending_control" else "unknown"
+    elif variant.startswith("enqueue_"):
+        context.task_control["receipt"] = {"enqueue": variant.removeprefix("enqueue_")}
+    elif variant == "native_request":
+        context.task_control["native_request_id"] = "unobserved-native-request"
+    elif variant == "ordinary_request":
+        context.task_control["ordinary_request_ids"] = ["unobserved-ordinary-request"]
+    elif variant == "mutable_run":
+        run.immutable = False
+    repo, session, _ = _pending_memory_clear(None if variant == "missing_run" else run, context)
+    if variant == "missing_predecessor":
+        session.version = 1
+    assert repo.cleared_execution_settled(session) is False
+
+
+@pytest.mark.parametrize("scope", ["same_inputs", "other_inputs", "other_session"])
+def test_memory_clear_observes_only_owned_open_runs_for_predecessor_inputs(scope: str) -> None:
+    repo, session, _ = _pending_memory_clear(Run(id="run", status="succeeded", inputs_ref="inputs", immutable=True))
+    repo.save_run(
+        "other-session" if scope == "other_session" else session.id,
+        Run(id="open", status="running", inputs_ref="other" if scope == "other_inputs" else "inputs"),
+    )
+    assert repo.cleared_execution_settled(session) is (scope != "same_inputs")
+
+
+def test_memory_clear_uses_exact_predecessor_instead_of_older_terminal_history() -> None:
+    repo, session, _ = _pending_memory_clear(Run(id="run", status="succeeded", inputs_ref="inputs", immutable=True))
+    # The immediate predecessor of version 3 is the cleared context with no
+    # execution references; version 1's terminal Run must not be substituted.
+    repo.compare_and_advance(session.id, 2, session.current_state, DifyBuilderContext(), [])
+    current, _ = repo.get_session(session.id)
+    assert repo.cleared_execution_settled(current) is False
+
+
+def test_memory_clear_readback_settles_after_retained_run_finishes_without_replay() -> None:
+    from typing import NoReturn
+
+    from services.dify_builder.service import DifyBuilderService
+    from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
+
+    def forbidden(*_args: object, **_kwargs: object) -> NoReturn:
+        raise AssertionError("clear readback cannot read workflow or enqueue")
+
+    run = Run(id="run", status="running", inputs_ref="inputs")
+    repo, session, cleared = _pending_memory_clear(run)
+    service = DifyBuilderService(
+        repo, FakeSessionLock(), forbidden, get_app_revision_fn=forbidden, read_task_dsl_fn=forbidden
+    )
+    actor = Actor(account_id=session.owner_account_id, tenant_id=session.tenant_id)
+    assert service.get_session_view(session.id, actor).lifecycle_settlement == "pending"
+    repo.save_run(session.id, replace(run, status="failed", immutable=True))
+    view = service.get_session_view(session.id, actor)
+    assert view.lifecycle_settlement == "settled"
+    assert view.conversation_cleared
+    assert view.conversation_last_seq == -1
+    assert view.test_execution is None
+    assert repo.get_session(session.id) == (session, cleared)
