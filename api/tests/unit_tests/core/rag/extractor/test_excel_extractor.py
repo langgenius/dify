@@ -305,3 +305,67 @@ class TestExcelExtractor:
 
         empty_sheet = _FakeSheet(header_rows=[(None, None)], data_rows=[])
         assert extractor._find_header_and_columns(empty_sheet) == (0, {}, 0)
+
+    def test_extract_xlsx_finds_a_header_below_the_first_ten_rows(self, tmp_path):
+        """A title and spacer rows must not hide the table.
+
+        Business spreadsheets commonly put a report title, a logo or blank
+        rows above the table. Scanning only the first ten rows found no
+        header there and the whole sheet was dropped without a log.
+        """
+        from openpyxl import Workbook
+
+        path = tmp_path / "late_header.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.cell(row=1, column=1, value="Quarterly Sales Report")
+        for column, name in enumerate(["Region", "Revenue", "Units"], start=1):
+            sheet.cell(row=12, column=column, value=name)
+        for column, value in enumerate(["APAC", 4200, 42], start=1):
+            sheet.cell(row=13, column=column, value=value)
+        for column, value in enumerate(["EMEA", 3100, 31], start=1):
+            sheet.cell(row=14, column=column, value=value)
+        workbook.save(path)
+
+        documents = ExcelExtractor(str(path)).extract()
+        text = "\n".join(document.page_content for document in documents)
+
+        assert documents, "the sheet must not be dropped"
+        for value in ("APAC", "EMEA", "4200", "3100", "42", "31"):
+            assert value in text
+
+    def test_extract_xlsx_keeps_every_column_of_a_late_header(self, tmp_path):
+        """The header row must bring its whole column map with it.
+
+        When only a single-cell title row was in range the fallback picked
+        that row as the header, so every column past the first was skipped
+        and their values never reached the index.
+        """
+        from openpyxl import Workbook
+
+        path = tmp_path / "late_header_columns.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        for column, name in enumerate(["Region", "Revenue", "Units"], start=1):
+            sheet.cell(row=11, column=column, value=name)
+        for column, value in enumerate(["APAC", 4200, 42], start=1):
+            sheet.cell(row=12, column=column, value=value)
+        workbook.save(path)
+
+        documents = ExcelExtractor(str(path)).extract()
+        text = "\n".join(document.page_content for document in documents)
+
+        assert "Revenue" in text
+        assert "4200" in text
+        assert "Units" in text
+        assert "42" in text
+
+    def test_sheet_without_a_header_row_is_reported(self, caplog):
+        """A skipped sheet with values must leave a trace in the log."""
+        extractor = ExcelExtractor("dummy.xlsx")
+        sheet = _FakeSheet(header_rows=[(None, None)], data_rows=[])
+
+        assert extractor._sheet_has_values(sheet) is False
+
+        populated = _FakeSheet(header_rows=[("value",)], data_rows=[])
+        assert extractor._sheet_has_values(populated) is True

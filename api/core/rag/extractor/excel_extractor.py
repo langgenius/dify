@@ -88,6 +88,15 @@ class ExcelExtractor(BaseExtractor):
                     sheet = wb[sheet_name]
                     header_row_idx, column_map, max_col_idx = self._find_header_and_columns(sheet)
                     if not column_map:
+                        # A sheet holding values but no row that reads like a
+                        # header contributes nothing to the index; say so
+                        # rather than letting its rows vanish silently.
+                        if self._sheet_has_values(sheet):
+                            logger.warning(
+                                "No header row found in sheet %r of %s; its content is skipped",
+                                sheet_name,
+                                self._file_path,
+                            )
                         continue
                     start_row = header_row_idx + 1
                     sheet_image_map = self._extract_images_from_sheet(
@@ -315,19 +324,56 @@ class ExcelExtractor(BaseExtractor):
 
         return None
 
-    def _find_header_and_columns(self, sheet, scan_rows=10) -> tuple[int, dict[int, str], int]:
-        """
-        Scan first N rows to find the most likely header row.
+    @staticmethod
+    def _sheet_has_values(sheet) -> bool:
+        """Whether any cell in the worksheet holds a non-empty value.
+
+        Used only to decide whether a skipped sheet deserves a warning: an
+        empty sheet is expected to produce nothing, while a sheet with data
+        that yielded no header row is a loss the caller should hear about.
+        Reads the first column-free pass over the sheet and does not modify
+        it.
+
+        Args:
+            sheet (`Worksheet`):
+                The worksheet to inspect.
+
         Returns:
-            header_row_idx: 1-based index of the header row
-            column_map: Dict mapping 0-based column index to column name
-            max_col_idx: 1-based index of the last valid column (for iter_rows boundary)
+            `bool`:
+                ``True`` when at least one row holds a non-empty cell.
+        """
+        return any(cell is not None and str(cell).strip() for row in sheet.iter_rows(values_only=True) for cell in row)
+
+    def _find_header_and_columns(self, sheet, scan_rows: int = 100) -> tuple[int, dict[int, str], int]:
+        """Locate the table header in a worksheet.
+
+        Business spreadsheets routinely carry a report title, a logo or
+        blank spacer rows above the table, so the header is not always in
+        the first few rows.  The scan therefore covers a generous window
+        rather than a handful of rows: the workbook is already loaded into
+        memory by the caller, so widening the window costs one pass over
+        those rows and nothing else.
+
+        Args:
+            sheet (`Worksheet`):
+                The worksheet to inspect.
+            scan_rows (`int`):
+                How many leading rows to consider.  Rows of entirely empty
+                cells are skipped without consuming the candidate budget.
+
+        Returns:
+            `tuple[int, dict[int, str], int]`:
+                The 1-based header row index, the map from 0-based column
+                index to column name, and the 1-based index of the last
+                column in the header.  All three are zero or empty when no
+                row in the window holds any value.
+
+        Side effects:
+            Reads the worksheet only; no cell is modified.
         """
         # Store potential candidates: (row_index, non_empty_count, column_map)
         candidates: list[Candidate] = []
 
-        # Limit scan to avoid performance issues on huge files
-        # We iterate manually to control the read scope
         for current_row_idx, row in enumerate(sheet.iter_rows(min_row=1, max_row=scan_rows, values_only=True), start=1):
             # Filter out empty cells and build a temp map for this row
             # col_idx is 0-based
