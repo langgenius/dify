@@ -230,9 +230,7 @@ def test_invalid_parameter_kind_fails_before_event_dispatch(harness: _Harness, d
                 "branch": TriggerEventNodeData.TriggerEventInput(type="variable", value=["node", "branch"]),
             }
             with pytest.raises(TriggerEventParameterError, match="Unknown plugin trigger input type 'variable'"):
-                application_services().triggers.events.invoke(
-                    event=prepared, user_id="webhook-user", node_data=node
-                )
+                application_services().triggers.events.invoke(event=prepared, user_id="webhook-user", node_data=node)
 
     Context().run(run)
 
