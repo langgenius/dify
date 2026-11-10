@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { CommandSearchResult } from '../types'
 import type { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
+import type { ThemePreference } from '@/features/theme/theme'
 
 export type CommandContext = {
   t: TFunction<['app', 'common', 'modelProvider', 'accountSettings']>
@@ -8,7 +9,7 @@ export type CommandContext = {
   agentsAvailable: boolean
   skillsAvailable: boolean
   currentApp: { id: string; mode: 'workflow' | 'advanced-chat' } | null
-  setTheme: (theme: string) => void
+  setThemePreference: (preference: ThemePreference) => void
   setLocale: (locale: string) => Promise<void>
   getDocsHomeUrl: () => string
   onError: (error: unknown) => void

@@ -1,4 +1,6 @@
+import json
 from collections.abc import Callable
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -456,3 +458,39 @@ def test_queries_and_related_apps_materialize_after_session_close(
     assert related["total"] == 1
     assert related["data"][0]["id"] == "app"
     assert related["data"][0]["mode"] == "chat"
+
+
+def test_query_history_pagination_preserves_invalid_image_records(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    contents = [
+        "legacy text",
+        json.dumps(
+            [{"content_type": "text_query", "content": "example"}, {"content_type": "image_query", "content": ""}]
+        ),
+    ]
+    ids = []
+    with sqlite_session_factory.begin() as session:
+        for day, content in enumerate(contents, 1):
+            row = DatasetQuery(
+                dataset_id="dataset",
+                content=content,
+                source=DatasetQuerySource.HIT_TESTING,
+                source_app_id=None,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="actor",
+            )
+            row.created_at = datetime(2026, 1, day)
+            session.add(row)
+            session.flush()
+            ids.append(row.id)
+    first = DatasetQueryListResponse.model_validate(operations.queries(REF, page=1, limit=1))
+    second = DatasetQueryListResponse.model_validate(operations.queries(REF, page=2, limit=1))
+    assert (first.total, first.page, first.limit, first.has_more) == (2, 1, 1, True)
+    assert (second.total, second.page, second.limit, second.has_more) == (2, 2, 1, False)
+    assert [first.data[0].id, second.data[0].id] == list(reversed(ids))
+    assert [item.content for item in first.data[0].queries] == ["example", ""]
+    assert first.data[0].queries[1].file_info is None
+    assert second.data[0].queries[0].content == "legacy text"
+    with sqlite_session_factory() as session:
+        assert list(session.scalars(select(DatasetQuery.content).order_by(DatasetQuery.created_at))) == contents

@@ -382,6 +382,14 @@ class RunNotFound(OpenApiError):  # noqa: N818
     description = "No run with this id exists for this app."
 
 
+class WorkflowEventReconnectModeUnsupportedError(OpenApiError):
+    """Reject unsupported App modes with the established 422 invalid_param reconnect contract."""
+
+    code = 422
+    error_code = OpenApiErrorCode.INVALID_PARAM
+    description = "mode_not_supported_for_event_reconnect"
+
+
 class RunNotStoppable(OpenApiError):  # noqa: N818
     code = 409
     error_code = OpenApiErrorCode.RUN_NOT_STOPPABLE

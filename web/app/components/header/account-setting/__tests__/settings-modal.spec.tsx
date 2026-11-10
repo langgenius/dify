@@ -143,7 +143,7 @@ it('opens preferences from the URL control, switches real pages, and closes with
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Open preferences' }))
   const dialog = await findSettings()
-  expect(within(dialog).getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
+  expect(within(dialog).getByText('common.theme.label')).toBeInTheDocument()
   expect(within(dialog).getByRole('button', { current: 'page' })).toHaveAccessibleName(
     'navigation.settings.preferences',
   )
@@ -312,7 +312,7 @@ it.each([
 ])('hides billing and falls back to preferences for $reason', async ({ options }) => {
   renderSettings(TAB.BILLING, options)
   const dialog = await findSettings()
-  expect(within(dialog).getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
+  expect(within(dialog).getByText('common.theme.label')).toBeInTheDocument()
   expect(
     within(dialog).queryByRole('button', { name: 'navigation.settings.billing' }),
   ).not.toBeInTheDocument()

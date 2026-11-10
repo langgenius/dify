@@ -149,6 +149,49 @@ def test_get_requires_tenant_and_subscription_id_with_valid_decoys(
     assert repository.get(tenant_id=stored.tenant_id, subscription_id=stored.id) == stored
 
 
+def test_get_by_endpoint_returns_detached_encrypted_snapshot_and_releases_connection(
+    repository: TriggerSubscriptionRepository,
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+) -> None:
+    expected = _snapshot()
+    decoy = _snapshot()
+    _persist(sqlite_session_factory, decoy, expected)
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+
+    snapshot = repository.get_by_endpoint(endpoint_id=expected.endpoint_id)
+
+    assert pool.checkedout() == 0
+    assert snapshot is not None
+    assert snapshot == expected
+    assert snapshot.tenant_id != decoy.tenant_id
+    assert snapshot.user_id != decoy.user_id
+    assert snapshot.credentials == {"token": "encrypted-token"}
+    snapshot.parameters["events"].append("issues")
+
+    # The detached result cannot mutate either persisted subscription.
+    assert repository.get(tenant_id=expected.tenant_id, subscription_id=expected.id) == expected
+    assert repository.get(tenant_id=decoy.tenant_id, subscription_id=decoy.id) == decoy
+    assert pool.checkedout() == 0
+
+
+def test_get_by_endpoint_does_not_fall_back_to_another_valid_subscription(
+    repository: TriggerSubscriptionRepository,
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+) -> None:
+    decoy = _snapshot()
+    _persist(sqlite_session_factory, decoy)
+
+    assert repository.get_by_endpoint(endpoint_id=str(uuid4())) is None
+
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+    assert pool.checkedout() == 0
+    assert repository.get_by_endpoint(endpoint_id=decoy.endpoint_id) == decoy
+
+
 def test_create_enforces_provider_limit_without_counting_other_tenants_or_providers(
     repository: TriggerSubscriptionRepository,
     sqlite_session_factory: sessionmaker[Session],

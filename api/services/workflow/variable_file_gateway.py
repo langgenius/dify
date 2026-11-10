@@ -8,7 +8,40 @@ from core.app.file_access import FileAccessControllerProtocol
 from factories.file_factory import build_from_mapping
 from factories.file_factory.common import resolve_mapping_file_id
 from graphon.file import File, FileTransferMethod
+from models.enums import CreatorUserRole
 from models.utils.file_input_compat import build_file_from_mapping_without_lookup
+from services.file_service import FileService, FileUploadActor
+from services.workflow.draft_variable_contracts import DraftUploadRecord, DraftVariableCreator
+
+
+class WorkflowDraftFileUploader:
+    """Upload draft-variable content without exposing file persistence models."""
+
+    def __init__(self, files: FileService) -> None:
+        self._files = files
+
+    def upload_file(
+        self,
+        *,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+        creator: DraftVariableCreator,
+        tenant_id: str,
+    ) -> DraftUploadRecord:
+        """Persist one account-owned upload in the explicit tenant and return its plain identity.
+
+        The creator has already been admitted as an account. FileService owns storage and
+        database writes; its detached result is narrowed to the identity the draft saver needs.
+        """
+        upload = self._files.upload_file_for_actor(
+            actor=FileUploadActor(id=creator.id, creator_role=CreatorUserRole.ACCOUNT),
+            resource_tenant_id=tenant_id,
+            filename=filename,
+            content=content,
+            mimetype=mimetype,
+        )
+        return DraftUploadRecord(id=upload.id)
 
 
 class WorkflowVariableFileGateway:

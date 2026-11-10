@@ -436,6 +436,7 @@ def app_services(
         tool_providers=tool_providers,
         workflow_tools=workflow_queries,
         workflow_publisher=build_console_workflow_service(
+            invoke_plugin_event=lambda **_: None,
             database_client=sqlite_session_factory,
             redis=redis_client,
             variables=workflow_variables,
