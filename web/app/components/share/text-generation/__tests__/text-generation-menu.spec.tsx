@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AccessMode } from '@/models/access-control'
 import { startWebAppAccountSession } from '@/service/webapp-auth'
 import { createTestQueryClient } from '@/test/query-client'
+import { createWebAccountProfile } from '@/test/webapp-account-profile'
 import TextGenerationMenu from '../text-generation-menu'
 
 const mockSetTheme = vi.fn()
@@ -66,11 +67,11 @@ vi.mock('@/service/webapp-address', async (importOriginal) => ({
   resolveWebAppAddress: () => webAppAddress,
 }))
 
-const profile: WebAccountProfileResponse = {
+const profile: WebAccountProfileResponse = createWebAccountProfile({
   name: 'Alice Chen',
   avatar: 'avatar-file-id',
   avatar_url: 'https://example.com/signed-avatar.png',
-}
+})
 const queryClients: ReturnType<typeof createTestQueryClient>[] = []
 function renderMenu(props: ComponentProps<typeof TextGenerationMenu> = {}) {
   const queryClient = createTestQueryClient()

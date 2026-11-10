@@ -1,6 +1,6 @@
 """Application service for changing a current account password."""
 
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext, RequestContext
 from services.account_errors import AccountNotFoundError, CurrentAccountPasswordIncorrectError
 from services.account_ports import AccountPasswordHasher, AccountRepository
 from services.entities.account_entities import AccountSnapshot
@@ -16,7 +16,15 @@ class AccountPasswordService:
         self._accounts = accounts
         self._passwords = passwords
 
-    def change(self, context: RequestContext, *, current_password: str, new_password: str) -> AccountSnapshot:
+    def change(
+        self, context: AccountRequestContext | RequestContext, *, current_password: str, new_password: str
+    ) -> AccountSnapshot:
+        """Set or change only the admitted Account's password, without workspace scope.
+
+        Existing credentials require current-password verification; an unset
+        password does not. Invalid input and missing Accounts fail without a
+        password update. Hashing occurs outside write transactions.
+        """
         credentials = self._accounts.get_credentials(context.account_id)
         if credentials is None:
             raise AccountNotFoundError

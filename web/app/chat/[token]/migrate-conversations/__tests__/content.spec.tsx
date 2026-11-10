@@ -12,6 +12,7 @@ import { webAppLogout } from '@/service/webapp-auth'
 import { beginWebAppAccountLogin } from '@/service/webapp/login'
 import { createDeferred } from '@/test/deferred'
 import { createTestQueryClient } from '@/test/query-client'
+import { createWebAccountProfile } from '@/test/webapp-account-profile'
 import MigrateConversationsContent from '../content'
 
 vi.mock('@/next/navigation', () => ({
@@ -104,11 +105,9 @@ beforeEach(() => {
   vi.mocked(beginWebAppAccountLogin)
     .mockReset()
     .mockResolvedValue('https://accounts.example/signin?code_challenge=challenge')
-  vi.mocked(webAppClient.account.profile.get).mockResolvedValue({
-    name: 'Reader',
-    avatar: null,
-    avatar_url: null,
-  })
+  vi.mocked(webAppClient.account.profile.get).mockResolvedValue(
+    createWebAccountProfile({ name: 'Reader' }),
+  )
   vi.mocked(webAppClient.migration.claimablePassports.post).mockResolvedValue({
     data: [
       {

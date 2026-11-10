@@ -9,6 +9,7 @@ import { startWebAppAccountSession } from '@/service/webapp-auth'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
 import { createTestQueryClient } from '@/test/query-client'
+import { createWebAccountProfile } from '@/test/webapp-account-profile'
 import Sidebar from '../sidebar'
 
 vi.mock('@/next/navigation', () => ({
@@ -18,13 +19,13 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const buildAppLabel = 'app.endUser.buildYourOwnApp'
 const accountLabel = 'app.endUser.account'
-const profile: WebAccountProfileResponse = {
+const profile: WebAccountProfileResponse = createWebAccountProfile({
   name: 'Joel',
   avatar: null,
   avatar_url: null,
   has_owned_tenant: false,
   has_tenant: false,
-}
+})
 const features = {
   ...createSystemFeaturesFixture(),
   account_login_url: 'https://console.example.com/dify/signin',

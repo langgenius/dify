@@ -14,6 +14,7 @@ import {
 } from '@/service/webapp-auth'
 import { createDeferred } from '@/test/deferred'
 import { createReactI18nextMock } from '@/test/i18n-mock'
+import { createWebAccountProfile } from '@/test/webapp-account-profile'
 import AccountMenu from '../account-menu'
 
 vi.mock('react-i18next', () =>
@@ -28,11 +29,11 @@ vi.mock('react-i18next', () =>
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/service/refresh-token', () => ({ refreshAccessTokenOrReLogin: vi.fn() }))
 
-const profile: WebAccountProfileResponse = {
+const profile: WebAccountProfileResponse = createWebAccountProfile({
   name: 'Joel',
   avatar: null,
   avatar_url: 'https://example.com/joel.png',
-}
+})
 const clients: QueryClient[] = []
 
 function renderAccountMenu() {

@@ -3,7 +3,7 @@ from http import HTTPStatus
 from flask import make_response, request
 from flask_restx import Resource
 from jwt import InvalidTokenError
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common.fields import (
@@ -28,12 +28,10 @@ from controllers.console.wraps import (
 from controllers.web import web_ns
 from controllers.web.error import WebAppAccessServiceUnavailableError, WebAppNotFoundError
 from controllers.web.flask_admission import web_anonymous_admission
-from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
-from fields.base import ResponseModel
 from libs.external_api import error_responses
-from libs.helper import EmailStr, build_avatar_url
+from libs.helper import EmailStr
 from libs.password import valid_password
 from libs.token import (
     clear_webapp_access_token_from_cookie,
@@ -41,8 +39,7 @@ from libs.token import (
     extract_webapp_cookie_token,
     extract_webapp_passport,
 )
-from machinery.context import AccountRequestContext, RequestContext
-from services.account_errors import AccountNotFoundError
+from machinery.context import RequestContext
 from services.entities.account_login_entities import LoginMode
 from services.entities.auth_entities import LoginPayloadBase
 from services.web_authentication_service import (
@@ -52,8 +49,6 @@ from services.web_authentication_service import (
     WebInvalidEmailError,
     WebInvalidTokenError,
 )
-from services.web_identity_service import WebIdentityError
-from services.web_passport_service import WebPassportUnauthorizedError
 from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 
 _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
@@ -86,24 +81,6 @@ class LoginStatusQuery(BaseModel):
     user_id: str | None = Field(default=None, description="End user session ID")
 
 
-class WebAccountProfileResponse(ResponseModel):
-    name: str
-    avatar: str | None
-    has_owned_tenant: bool | None = Field(
-        default=None,
-        description="Whether the Account owns an existing tenant, including archived tenants. Null means unavailable.",
-    )
-    has_tenant: bool | None = Field(
-        default=None,
-        description="Whether the Account has a tenant membership, including ownership. Null means unavailable.",
-    )
-
-    @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
-    @property
-    def avatar_url(self) -> str | None:
-        return build_avatar_url(self.avatar)
-
-
 register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload, LoginStatusQuery)
 register_response_schema_models(
     web_ns,
@@ -111,38 +88,7 @@ register_response_schema_models(
     LoginStatusResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
-    WebAccountProfileResponse,
 )
-
-
-@web_ns.route("/account/profile")
-class WebAccountProfileApi(Resource):
-    @web_ns.doc(description="Get the authenticated WebApp user's profile")
-    @web_ns.response(HTTPStatus.OK, "Account profile", web_ns.models[WebAccountProfileResponse.__name__])
-    def get(self):
-        """Return the Account profile authenticated by the WebApp login cookie.
-
-        The profile is Account-scoped, so neither an App Passport nor X-App-Code is required.
-        A missing, invalid, expired, or unavailable Account identity returns 401.
-        """
-        try:
-            identity = application_services().consumer.authenticate(extract_webapp_cookie_token(request))
-        except (WebIdentityError, WebPassportUnauthorizedError):
-            raise Unauthorized("Account login required.") from None
-        context = AccountRequestContext(
-            request_id=get_request_id(),
-            trace_id=get_trace_id(),
-            account_id=identity.account_id,
-        )
-        try:
-            account = application_services().accounts.profile.get(context)
-        except AccountNotFoundError as error:
-            raise Unauthorized("Account login required.") from error
-        response = make_response(
-            WebAccountProfileResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
-        )
-        response.headers["Cache-Control"] = "no-store"
-        return response
 
 
 @web_ns.route("/login")
