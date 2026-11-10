@@ -416,6 +416,8 @@ def test_transport_json_schema_contains_request_and_sse_unions() -> None:
         "progress",
         "progress_snapshot",
         "reasoning",
+        "session_ready",
+        "session_state",
         "workflow",
     }
 

@@ -60,6 +60,7 @@ def test_session_view_to_dict_projects_only_browser_fields() -> None:
         "reply_language": "",
         "canvas_read_only": False,
         "run_status": "waiting_input",
+        "command_pending": False,
         "interrupted": False,
         "conversation_last_seq": 7,
         "last_command_id": "",
@@ -71,6 +72,7 @@ def test_session_view_to_dict_projects_only_browser_fields() -> None:
         "pending_fix_context": None,
         "phase": "understand",
         "actions": [],
+        "test_execution": None,
     }
 
 
@@ -129,6 +131,7 @@ def test_public_session_projection_exposes_decision_and_strips_internal_revision
         "reply_language": "ja",
         "canvas_read_only": False,
         "run_status": "waiting_input",
+        "command_pending": False,
         "interrupted": False,
         "conversation_last_seq": 8,
         "phase": "clarify",

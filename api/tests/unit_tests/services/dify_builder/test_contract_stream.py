@@ -249,7 +249,7 @@ def test_stream_projects_incremental_events_and_drops_internal_fields() -> None:
         {
             "event": "command_finished",
             "data": {
-                **_view(version=2, run_status="waiting_input"),
+                **_view(version=2, run_status="waiting_input", command_pending=False),
                 "command_id": "command-1",
             },
         },

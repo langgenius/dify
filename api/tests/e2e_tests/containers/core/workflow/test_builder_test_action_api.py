@@ -112,8 +112,8 @@ def _settled(response: TestResponse) -> DifyBuilderSessionViewResponse:
 
 def _ready(response: TestResponse) -> DifyBuilderSessionViewResponse:
     try:
-        frame = next(iter(response.response)).decode()
-        event = DifyBuilderStreamEventResponse.model_validate_json(frame.splitlines()[1].removeprefix("data: ")).root
+        frame = next(response.iter_encoded())
+        event = DifyBuilderStreamEventResponse.model_validate_json(frame.splitlines()[1].removeprefix(b"data: ")).root
         assert isinstance(event, DifyBuilderSessionReadyEventResponse)
         return event.data
     finally:
@@ -346,15 +346,15 @@ def test_native_resume_through_choice_reuses_one_durable_dispatch(
     enabled = True
     stream = c.client.get(base + "/stream", buffered=False)
     try:
-        chunks = iter(stream.response)
+        chunks = stream.iter_encoded()
         ready = DifyBuilderStreamEventResponse.model_validate_json(
-            next(chunks).decode().splitlines()[1].removeprefix("data: ")
+            next(chunks).splitlines()[1].removeprefix(b"data: ")
         ).root
         assert isinstance(ready, DifyBuilderSessionReadyEventResponse)
         assert ready.data.test_execution == first.test_execution
         _control(c, base, "confirm_test_operation", "confirm-1")
         event = DifyBuilderStreamEventResponse.model_validate_json(
-            next(chunks).decode().splitlines()[1].removeprefix("data: ")
+            next(chunks).splitlines()[1].removeprefix(b"data: ")
         ).root
         assert event.event == "session_state"
         assert event.data.test_execution is not None

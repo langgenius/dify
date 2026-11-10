@@ -600,10 +600,10 @@
   "console POST /datasets/{resource_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
   "console POST /datasets/api-keys": ["compatible", "parsed-vs-wire-output"],
   "console POST /dify-builder/agent/ping": ["no-input-schema", "undocumented-output"],
-  "console POST /dify-builder/sessions": ["compatible", "raw-stream-vs-event-iterator"],
+  "console POST /dify-builder/sessions": ["compatible", "parsed-vs-wire-output"],
   "console POST /dify-builder/sessions/{session_id}/actions": [
     "compatible",
-    "raw-stream-vs-event-iterator"
+    "parsed-vs-wire-output"
   ],
   "console POST /dify-builder/sessions/{session_id}/fix-intents": [
     "compatible",
@@ -611,7 +611,7 @@
   ],
   "console POST /dify-builder/sessions/{session_id}/messages": [
     "compatible",
-    "raw-stream-vs-event-iterator"
+    "parsed-vs-wire-output"
   ],
   "console POST /dify-builder/sessions/{session_id}/native-tests": [
     "compatible",
