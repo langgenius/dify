@@ -249,7 +249,10 @@ def completed(
     initial.inputs_ref, initial.immutable = saved_id, True
     repo.save_run(session.id, initial)
     context.verify_run_id, context.test_input_ref = verify_id, saved_id
-    profile = getattr(request, "param", "legacy")
+    try:
+        profile = request.param
+    except AttributeError:
+        profile = "legacy"
     items = []
     if profile == "approval_progress":
         items.append(
