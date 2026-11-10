@@ -286,18 +286,22 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
     def _process_stream_events(self, publisher: AppGeneratorTTSPublisher | None) -> Generator[StreamResponse]:
         """
-        Process stream response.
-        :return:
+        Process response events, preserving moderation replies without another provider call.
+
+        A rendered moderation rejection is not a provider stop and does not
+        require token estimation or rebuilding already settled model usage.
         """
         for message in self.queue_manager.listen():
             self.raise_output_moderation_error()
             if publisher:
                 publisher.publish(message)
             event = message.event
+            moderation_reply = False
 
             if isinstance(event, QueueErrorEvent):
                 replacement = self.moderation_replacement(event.error)
                 if replacement is not None:
+                    moderation_reply = True
                     answer, phase = replacement
                     had_answer = bool(self._task_state.llm_result.message.get_text_content())
                     self._task_state.llm_result.message.content = answer
@@ -321,7 +325,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     if isinstance(event, QueueMessageEndEvent):
                         if event.llm_result:
                             self._task_state.llm_result = event.llm_result
-                    else:
+                    elif not moderation_reply:
                         self._handle_stop(event)
 
                     # handle output moderation

@@ -24,8 +24,8 @@ class ModerationUnavailableInvocationError(ModerationUnavailableError, Moderatio
 
     def __init__(self) -> None:
         """Expose a safe retry message; the raising adapter retains the private cause."""
-        super().__init__("Content moderation is temporarily unavailable. Please try again later.")
+        super().__init__("This message can’t be processed right now. Please try again later.")
 
 
 class PlatformModerationRejectedInvocationError(ModerationRejectedInvocationError):
-    """Identify platform verdicts that app OpenAI rules may render with their configured preset."""
+    """Identify platform verdicts that apps may render with a configured preset or the chat default reply."""

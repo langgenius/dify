@@ -13,7 +13,7 @@ from core.model_context import get_app_moderation_runtime, use_app_moderation_ru
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from enums import DeploymentEdition
 from machinery.context import AppRequestContext
-from models.model import App
+from models.model import App, AppMode
 from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
     PlatformModerationRejectedInvocationError,
@@ -29,6 +29,8 @@ from services.moderation_service import (
 from services.moderation_session import ModerationSession
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_CHAT_MODERATION_REPLY = "This message can’t be processed."
 
 
 class ScopedAppModerationRuntime:
@@ -63,7 +65,7 @@ class ScopedAppModerationRuntime:
         return app_output_evaluator(app_config)
 
     def replacement(self, app_config: AppConfig, error: Exception) -> tuple[str, str] | None:
-        """Preserve an enabled app preset for platform rejection, never for infrastructure errors."""
+        """Resolve a matching app preset or chat default for platform rejection, never backend failures."""
         if app_config.tenant_id != self.session.tenant_id or app_config.app_id != self.session.app_id:
             return None
         return app_rejection_replacement(app_config, error)
@@ -244,11 +246,11 @@ def evaluate_app_input(
         values = {**inputs, "query__": query} if query else dict(inputs)
         check = build_app_openai_checker(session, "input")
         flagged = any(check(str(value)) for value in values.values())
-        preset_response = rule.config.get("inputs_config", {}).get("preset_response", "")
+        preset_response = _platform_rejection_response(app_config, "input") if flagged else ""
         return ModerationInputsResult(
             flagged=flagged,
             action=ModerationAction.DIRECT_OUTPUT,
-            preset_response=preset_response if flagged else "",
+            preset_response=preset_response or "",
             inputs=dict(inputs),
             query=query,
         )
@@ -272,11 +274,11 @@ def evaluate_app_output(session: ModerationSession, app_config: AppConfig, text:
         return ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
     if rule.type == "openai_moderation" and session.enabled:
         flagged = build_app_openai_checker(session, "output")(text)
-        preset_response = rule.config.get("outputs_config", {}).get("preset_response", "")
+        preset_response = _platform_rejection_response(app_config, "output") if flagged else ""
         return ModerationOutputsResult(
             flagged=flagged,
             action=ModerationAction.DIRECT_OUTPUT,
-            preset_response=preset_response if flagged else "",
+            preset_response=preset_response or "",
             text=text,
         )
     verdict = _app_service().evaluate(
@@ -313,17 +315,30 @@ def app_output_evaluator(app_config: AppConfig) -> Callable[[str], ModerationOut
 
 
 def app_rejection_replacement(app_config: AppConfig, error: Exception) -> tuple[str, str] | None:
-    """Apply an enabled app OpenAI preset only to a platform rejection, never service unavailability."""
+    """Prefer an enabled OpenAI preset; use an English chat default for other platform rejections.
+
+    Defaults apply only to Chatbot, Chatflow and legacy Agent Chat. Non-chat
+    invocations retain their error unless they already have a matching preset.
+    Unavailable services and explicit non-platform policy errors never become replies.
+    """
     if not isinstance(error, PlatformModerationRejectedInvocationError):
         return None
+    response = _platform_rejection_response(app_config, error.phase)
+    return (response, error.phase) if response is not None else None
+
+
+def _platform_rejection_response(app_config: AppConfig, phase: ModerationPhase) -> str | None:
+    """Resolve one trusted platform verdict to its nonblank preset or chat fallback without changing configuration."""
     rule = app_config.sensitive_word_avoidance
-    if rule is None or rule.type != "openai_moderation":
-        return None
-    config = rule.config.get(f"{error.phase}s_config")
-    if not isinstance(config, dict) or config.get("enabled") is not True:
-        return None
-    response = config.get("preset_response")
-    return (response, error.phase) if isinstance(response, str) else None
+    if rule is not None and rule.type == "openai_moderation":
+        config = rule.config.get(f"{phase}s_config")
+        if isinstance(config, dict) and config.get("enabled") is True:
+            response = config.get("preset_response")
+            if isinstance(response, str) and response.strip():
+                return response
+    if app_config.app_mode in {AppMode.CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT_CHAT}:
+        return DEFAULT_CHAT_MODERATION_REPLY
+    return None
 
 
 def workflow_rejection_handler(app_config: AppConfig) -> Callable[[str], tuple[str, str] | None]:

@@ -138,7 +138,7 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         return None
 
     def moderation_replacement(self, error: Exception) -> tuple[str, str] | None:
-        """Render only platform verdicts using an enabled app OpenAI preset; never hide backend failures."""
+        """Render platform verdicts using a matching app preset or chat default; never hide backend failures."""
         replacement = (
             self._app_moderation.replacement(self._application_generate_entity.app_config, error)
             if self._app_moderation is not None

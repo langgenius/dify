@@ -358,7 +358,7 @@ def test_guard_maps_checker_failures_without_delivering_content(mode: str, failu
         assert caught.value.status_code == 400
     else:
         assert isinstance(caught.value, ModerationUnavailableInvocationError)
-        assert str(caught.value) == "Content moderation is temporarily unavailable. Please try again later."
+        assert str(caught.value) == "This message can’t be processed right now. Please try again later."
         assert caught.value.error_code == "moderation_unavailable"
         assert caught.value.status_code == 503
     assert events == (["closed"] if mode in {"segmented_stream", "buffered_stream"} else [])

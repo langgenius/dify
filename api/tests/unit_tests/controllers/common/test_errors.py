@@ -116,7 +116,7 @@ def test_refresh_unavailability_has_one_documented_response(source_api: External
             ModerationUnavailableInvocationError(),
             503,
             "moderation_unavailable",
-            "Content moderation is temporarily unavailable. Please try again later.",
+            "This message can’t be processed right now. Please try again later.",
         ),
     ],
 )

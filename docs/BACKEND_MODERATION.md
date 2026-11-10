@@ -100,13 +100,27 @@ session, so their outputs retain independent app checks unless trusted delivery
 provenance is available locally. A client-provided approval flag must never be
 used to skip platform or app checks across that boundary.
 
-An enabled app OpenAI rule uses its phase-specific preset when the platform
-rejects content. Chat responses use the existing reply/replacement events and finish
-the message without exposing the rejected segment. A failed chatflow retains its
-failed workflow status while rendering a matching invocation-local rejection
-with the app preset. Unavailable checks are errors, not content verdicts, and
-never become preset replies. If the app rule or phase is disabled, the platform
-rejection retains its normal error response.
+An enabled app OpenAI rule uses its nonblank phase-specific preset when the
+platform rejects content. Chatbot, Chatflow, and legacy Agent Chat use the
+English default `This message can’t be processed.` when no matching
+preset is configured, including when app moderation or its phase is disabled.
+The default is resolved at runtime, not written into the app configuration.
+Other app moderation backends retain their own verdict and replacement rules;
+their presets are not reused for a separate platform rejection.
+
+Chat replies use the existing `message` or `message_replace` event followed by
+`message_end`, without exposing the rejected segment. A replacement covers the
+entire answer, including any previously delivered prefix, and the stored answer
+matches the replacement. Rendering it does not invoke a model or estimate token
+usage again. A failed chatflow retains its failed workflow status while rendering
+the matching invocation-local rejection with its preset or default reply.
+
+Unavailable checks are errors, not content verdicts, and never become replies.
+Explicit non-platform model policy failures are also preserved. Completion,
+Workflow, RAG, and other non-chat paths retain the normal moderation error when
+there is no matching preset. Remote New Agent errors retain their existing
+transport handling; arbitrary upstream errors are not inferred to be platform
+rejections from their text.
 
 Platform rejections emit warning logs containing tenant, app, and phase.
 Tenant-route failures also log fallback warnings. Moderated content and API keys
@@ -121,16 +135,18 @@ the usual SSE `error` event. Console clients use their existing error toast:
 | Condition | Code | Event status | Message |
 | --- | --- | --- | --- |
 | Content rejected | `moderation_rejected` | 400 | The configured rejection message, or the phase-specific fallback |
-| Check unavailable or failed | `moderation_unavailable` | 503 | Content moderation is temporarily unavailable. Please try again later. |
+| Check unavailable or failed | `moderation_unavailable` | 503 | This message can’t be processed right now. Please try again later. |
 
 These statuses describe the SSE error payload, not the HTTP status of an already
 opened stream. Non-streaming requests on Console, Service API, and Web API return
 the same codes and messages with the corresponding HTTP status. Check failures
 retain their original cause in backend logs but
 never expose platform credentials or plugin diagnostics to clients. Provider
-generation failures retain their existing classification. Approved segments
-remain visible; neither error delivers the rejected or unchecked segment.
-An enabled matching app rule may render a rejection as described above.
+generation failures retain their existing classification. When an error is
+surfaced, approved segments remain visible; neither error delivers the rejected
+or unchecked segment.
+Chat apps may render a platform rejection using a matching preset or the default
+reply described above instead of returning this error payload.
 
 App output evaluation failures use the same `moderation_unavailable` contract.
 The background worker publishes a terminal error and the response pipeline stops
