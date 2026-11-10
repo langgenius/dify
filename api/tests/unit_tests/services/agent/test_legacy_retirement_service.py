@@ -23,7 +23,7 @@ from models.agent import (
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from repositories.agent.home_snapshot_repository import AgentHomeSnapshotRepository
 from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
 
 
@@ -49,7 +49,7 @@ def test_db_phase_failure_persists_nothing_and_publishes_nothing(
     seeded = _seed_orphan_aggregate(sqlite_session)
     error = RuntimeError("retirement failed")
     monkeypatch.setattr(
-        AgentHomeSnapshotService,
+        AgentHomeSnapshotRepository,
         "retire_all_for_agent",
         MagicMock(side_effect=error),
     )
