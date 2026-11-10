@@ -21,6 +21,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { RiEditFill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -28,7 +29,6 @@ import utc from 'dayjs/plugin/utc'
 import { parseAsString, useQueryState } from 'nuqs'
 import { Suspense, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { ConversationDetail } from './conversation-detail'
 import EmptyElement from './empty-element'
@@ -66,9 +66,9 @@ const HandThumbIconWithCount: FC<{ count: number; iconType: 'up' | 'down' }> = (
   const Icon = iconType === 'up' ? HandThumbUpIcon : HandThumbDownIcon
   return (
     <div
-      className={`inline-flex w-fit items-center rounded-md p-1 text-xs ${classname} mr-1 last:mr-0`}
+      className={`inline-flex w-fit items-center rounded-md p-1 text-xs ${classname} me-1 last:me-0`}
     >
-      <Icon className="mr-0.5 size-3 rounded-md" />
+      <Icon className="me-0.5 size-3 rounded-md" />
       {count > 0 ? count : null}
     </div>
   )
@@ -122,8 +122,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   )
 
   const popupRef = useRef<HTMLDivElement>(null)
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const isChatMode = appDetail.mode !== 'completion'
   const isChatflow = appDetail.mode === 'advanced-chat'
@@ -178,8 +177,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     <div className="relative mt-2 grow overflow-x-auto">
       <Dialog
         open={!!conversationIdInUrl}
-        modal={isMobile}
-        disablePointerDismissal={!isMobile}
+        modal={isBelowSm}
+        disablePointerDismissal={!isBelowSm}
         onOpenChange={(open) => {
           if (!open) onCloseDialog()
         }}
@@ -198,35 +197,35 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           </colgroup>
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
-              <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+              <td className="w-5 rounded-s-lg bg-background-section-burn ps-2 pe-1 whitespace-nowrap"></td>
+              <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                 {isChatMode
                   ? t(($) => $['table.header.summary'], { ns: 'appLog' })
                   : t(($) => $['table.header.input'], { ns: 'appLog' })}
               </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.endUser'], { ns: 'appLog' })}
               </th>
               {isChatflow && (
-                <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+                <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.status'], { ns: 'appLog' })}
                 </th>
               )}
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                 {isChatMode
                   ? t(($) => $['table.header.messageCount'], { ns: 'appLog' })
                   : t(($) => $['table.header.output'], { ns: 'appLog' })}
               </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.userRate'], { ns: 'appLog' })}
               </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.adminRate'], { ns: 'appLog' })}
               </th>
-              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+              <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.updatedTime'], { ns: 'appLog' })}
               </th>
-              <th className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
+              <th className="rounded-e-lg bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.time'], { ns: 'appLog' })}
               </th>
             </tr>
@@ -266,7 +265,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                     >
                       <td className="h-4">
                         {!log.read_at && (
-                          <div className="flex items-center p-3 pr-0.5">
+                          <div className="flex items-center p-3 pe-0.5">
                             <span
                               aria-hidden="true"
                               className="inline-block size-1.5 rounded-sm bg-util-colors-blue-blue-500"
@@ -277,22 +276,22 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                           </div>
                         )}
                       </td>
-                      <td className="w-40 p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
+                      <td className="w-40 p-3 pe-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
                         {renderTdValue(
                           leftValue,
                           isLeftEmpty,
                           isChatMode && 'annotated' in log && log.annotated,
                         )}
                       </td>
-                      <td className="p-3 pr-2">
+                      <td className="p-3 pe-2">
                         {renderTdValue(endUser || defaultValue, !endUser)}
                       </td>
                       {isChatflow && (
-                        <td className="w-40 p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
+                        <td className="w-40 p-3 pe-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
                           {statusTdRender('status_count' in log ? log.status_count : undefined)}
                         </td>
                       )}
-                      <td className="p-3 pr-2" style={{ maxWidth: isChatMode ? 100 : 200 }}>
+                      <td className="p-3 pe-2" style={{ maxWidth: isChatMode ? 100 : 200 }}>
                         {renderTdValue(
                           rightValue,
                           isRightEmpty,
@@ -300,7 +299,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                           'annotation' in log ? log.annotation : undefined,
                         )}
                       </td>
-                      <td className="p-3 pr-2">
+                      <td className="p-3 pe-2">
                         {!log.user_feedback_stats?.like && !log.user_feedback_stats?.dislike ? (
                           renderTdValue(defaultValue, true)
                         ) : (
@@ -320,7 +319,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                           </>
                         )}
                       </td>
-                      <td className="p-3 pr-2">
+                      <td className="p-3 pe-2">
                         {!log.admin_feedback_stats?.like && !log.admin_feedback_stats?.dislike ? (
                           renderTdValue(defaultValue, true)
                         ) : (
@@ -340,7 +339,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                           </>
                         )}
                       </td>
-                      <td className="w-40 p-3 pr-2">
+                      <td className="w-40 p-3 pe-2">
                         {log.updated_at
                           ? formatTime(
                               log.updated_at,
@@ -348,10 +347,10 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                             )
                           : defaultValue}
                       </td>
-                      <td className="w-40 p-3 pr-2">
+                      <td className="w-40 p-3 pe-2">
                         <DialogTrigger
                           data-log-detail-trigger
-                          className="w-full cursor-pointer rounded-sm text-left"
+                          className="w-full cursor-pointer rounded-sm text-start"
                           onClick={(event) => {
                             event.stopPropagation()
                             handleRowClick(log)
@@ -373,12 +372,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           </tbody>
         </table>
         <DialogPortal>
-          {isMobile && <DialogBackdrop />}
+          {isBelowSm && <DialogBackdrop />}
           <DialogViewport className="pointer-events-none">
             <DialogPopup
               ref={popupRef}
               initialFocus={popupRef}
-              className="pointer-events-auto fixed top-16 right-2 bottom-4 flex w-[calc(100%-1rem)] max-w-160 flex-col overflow-hidden rounded-xl bg-components-panel-bg shadow-xl outline-hidden"
+              className="pointer-events-auto fixed inset-e-2 top-16 bottom-4 flex w-[calc(100%-1rem)] max-w-160 flex-col overflow-hidden rounded-xl bg-components-panel-bg shadow-xl outline-hidden"
             >
               <div className="flex min-h-0 flex-1 flex-col">
                 <ConversationSession appDetail={appDetail} conversationId={conversationIdInUrl} />

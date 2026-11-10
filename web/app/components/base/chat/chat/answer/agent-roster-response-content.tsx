@@ -14,6 +14,7 @@ type AgentRosterResponseContentProps = {
   item: ChatItem
   responding?: boolean
   content?: string
+  showThoughts?: boolean
 }
 
 const SHELL_TOOL_NAMES = new Set(['shell_run', 'shell_wait', 'shell_input', 'shell_interrupt'])
@@ -108,11 +109,13 @@ function hashString(value: string) {
   return (hash >>> 0).toString(36)
 }
 
-function hasVisibleActivity(thought: ThoughtItem) {
-  return !!thought.tool || !!thought.message_files?.length
+function hasVisibleActivity(thought: ThoughtItem, showThoughts: boolean) {
+  return (
+    (showThoughts && !!thought.thought?.trim()) || !!thought.tool || !!thought.message_files?.length
+  )
 }
 
-function getAgentActivityEntries(item: ChatItem): AgentActivityEntry[] {
+function getAgentActivityEntries(item: ChatItem, showThoughts: boolean): AgentActivityEntry[] {
   if (item.agent_response_parts?.length) {
     const keyOccurrences = new Map<string, number>()
 
@@ -128,7 +131,7 @@ function getAgentActivityEntries(item: ChatItem): AgentActivityEntry[] {
       if (part.type === 'message')
         return part.content ? [{ type: 'message', content: part.content, key }] : []
 
-      return hasVisibleActivity(part.thought)
+      return hasVisibleActivity(part.thought, showThoughts)
         ? [{ type: 'thought', thought: part.thought, key }]
         : []
     })
@@ -142,7 +145,7 @@ function getAgentActivityEntries(item: ChatItem): AgentActivityEntry[] {
       const answer = thought.answer
       if (answer?.trim()) parts.push({ type: 'message', content: answer, key: `message-${key}` })
 
-      if (hasVisibleActivity(thought))
+      if (hasVisibleActivity(thought, showThoughts))
         parts.push({ type: 'thought', thought, key: `thought-${key}` })
 
       return parts
@@ -218,7 +221,7 @@ function ToolActivityItem({ tool }: { tool: ToolActivity }) {
     <div className="flex w-full max-w-full min-w-0 flex-col items-start">
       {hasDetails ? (
         <Collapsible className="w-full max-w-full items-start">
-          <CollapsibleTrigger className="group/tool flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-md p-1 text-left system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary">
+          <CollapsibleTrigger className="group/tool flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-md p-1 text-start system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary">
             {content}
           </CollapsibleTrigger>
           <CollapsiblePanel className="w-full max-w-full">
@@ -258,15 +261,22 @@ function ToolActivityItem({ tool }: { tool: ToolActivity }) {
 function AgentActivityItem({
   thought,
   responding,
+  showThoughts,
 }: {
   thought: ThoughtItem
   responding?: boolean
+  showThoughts: boolean
 }) {
   const locale = useLocale()
   const tools = getToolActivities(thought, locale, responding)
 
   return (
     <div className="flex w-full max-w-full min-w-0 flex-col py-0.5">
+      {showThoughts && !!thought.thought?.trim() && (
+        <div className="px-1 body-md-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
+          {thought.thought.trim()}
+        </div>
+      )}
       {tools.map((tool) => (
         <ToolActivityItem key={`${getThoughtKey(thought)}-${tool.key}`} tool={tool} />
       ))}
@@ -288,11 +298,13 @@ function AgentActivityDisclosure({
   entries,
   responding,
   defaultOpen,
+  showThoughts,
 }: {
   item: ChatItem
   entries: AgentActivityEntry[]
   responding?: boolean
   defaultOpen?: boolean
+  showThoughts: boolean
 }) {
   const { t } = useTranslation(['agentV2'])
   const workingDuration = useWorkingDuration(responding)
@@ -309,7 +321,7 @@ function AgentActivityDisclosure({
     <Collapsible className="w-full max-w-full items-start gap-1" defaultOpen={defaultOpen}>
       <CollapsibleTrigger
         aria-label={title}
-        className="group/thinking flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-1 rounded-md p-1 text-left system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary"
+        className="group/thinking flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-1 rounded-md p-1 text-start system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary"
       >
         <span>{thinking}</span>
         {duration && (
@@ -332,7 +344,12 @@ function AgentActivityDisclosure({
                 content={resolveKnowledgeCitationLinks(entry.content, item.citation)}
               />
             ) : (
-              <AgentActivityItem key={entry.key} thought={entry.thought} responding={responding} />
+              <AgentActivityItem
+                key={entry.key}
+                thought={entry.thought}
+                responding={responding}
+                showThoughts={showThoughts}
+              />
             ),
           )}
         </div>
@@ -345,6 +362,7 @@ export function AgentRosterResponseContent({
   item,
   responding,
   content,
+  showThoughts = false,
 }: AgentRosterResponseContentProps) {
   if (item.annotation?.logAnnotation) {
     return (
@@ -355,7 +373,7 @@ export function AgentRosterResponseContent({
     )
   }
 
-  const entries = getAgentActivityEntries(item)
+  const entries = getAgentActivityEntries(item, showThoughts)
   const hasLiveResponseParts = !!item.agent_response_parts?.length
   const hasThinkingStatus =
     entries.length === 0 && !!item.agent_response_parts?.some((part) => part.type === 'thought')
@@ -381,6 +399,7 @@ export function AgentRosterResponseContent({
           item={item}
           entries={entries}
           responding={responding}
+          showThoughts={showThoughts}
           defaultOpen={hasLiveResponseParts && (!!responding || entries.length > 0)}
         />
       )}

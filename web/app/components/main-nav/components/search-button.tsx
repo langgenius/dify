@@ -6,7 +6,7 @@ import { Kbd } from '@langgenius/dify-ui/kbd'
 import { detectPlatform, formatForDisplay } from '@tanstack/react-hotkeys'
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 
 function noopSubscribe() {

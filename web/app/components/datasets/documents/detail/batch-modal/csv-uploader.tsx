@@ -11,10 +11,9 @@ import { useTranslation } from 'react-i18next'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { toast } from '@/app/notifications'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { upload } from '@/service/base'
 import { consoleQuery } from '@/service/console'
-import { Theme } from '@/types/app'
 
 type Props = Readonly<{
   file: FileItem | undefined
@@ -175,8 +174,8 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
     if (!isValid(currentFile)) return
     initialUpload(currentFile)
   }
-  const { theme } = useTheme()
-  const chartColor = useMemo(() => (theme === Theme.dark ? '#5289ff' : '#296dff'), [theme])
+  const theme = useResolvedTheme()
+  const chartColor = useMemo(() => (theme === 'dark' ? '#5289ff' : '#296dff'), [theme])
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)
     dropRef.current?.addEventListener('dragover', handleDragOver)
@@ -213,14 +212,14 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
                 {t(($) => $['list.batchModal.csvUploadTitle'], { ns: 'datasetDocuments' })}
                 <button
                   type="button"
-                  className="inline cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  className="inline cursor-pointer border-none bg-transparent p-0 text-start text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={selectHandle}
                 >
                   {t(($) => $['list.batchModal.browse'], { ns: 'datasetDocuments' })}
                 </button>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
+            {dragging && <div ref={dragRef} className="absolute inset-s-0 top-0 size-full" />}
           </div>
         )}
         {file && (
@@ -231,7 +230,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
             )}
           >
             <span aria-hidden className="i-custom-public-files-csv h-8.5 w-8 shrink-0" />
-            <div className="ml-2 flex w-0 grow">
+            <div className="ms-2 flex w-0 grow">
               <span className="max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">
                 {file.file.name.replace(/.csv$/, '')}
               </span>

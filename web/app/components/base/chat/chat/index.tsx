@@ -84,6 +84,7 @@ export type ChatProps = {
     item: ChatItem
     responding?: boolean
     content?: string
+    showThoughts?: boolean
   }) => ReactNode
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => Node<HumanInputNodeType> | undefined

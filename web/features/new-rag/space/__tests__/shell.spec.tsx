@@ -27,21 +27,12 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.apiBaseInfo.get': async () => ({ api_base_url: 'https://api.example.com/v1/' }),
       'knowledgeFs.spaces.byControlSpaceId.externalAccess.get': service.getExternalAccess,
       'knowledgeFs.spaces.byControlSpaceId.get': service.getSpace,
     }),
   }
 })
-
-// The dialog owns endpoint and key management; the shell only decides when and with what status.
-vi.mock('../api-access-dialog', () => ({
-  KnowledgeFsApiAccessDialog: ({ status, open }: { status: string; open: boolean }) =>
-    open ? (
-      <div role="dialog" aria-label="knowledge-fs-api-access">
-        {status}
-      </div>
-    ) : null,
-}))
 
 const externalAccess = (
   overrides: Partial<KnowledgeFsExternalAccessResponse> = {},
@@ -188,9 +179,13 @@ describe('KnowledgeSpaceShell', () => {
     await screen.findByText('knowledgeSpace.apiAccessActive')
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.apiAgentAccess' }))
 
-    expect(screen.getByRole('dialog', { name: 'knowledge-fs-api-access' })).toHaveTextContent(
-      'active',
-    )
+    const dialog = screen.getByRole('dialog', { name: 'knowledgeSpace.apiAgentAccess' })
+    expect(
+      await within(dialog).findByText('https://api.example.com/v1/knowledge-fs/spaces/space-1'),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText('knowledgeSpace.settings.viewOnly')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('lets users collapse and restore the knowledge detail sidebar', async () => {

@@ -24,6 +24,7 @@ from core.model_manager import ModelManager
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.workflow.file_reference import resolve_file_record_id
 from enums import CloudPlan, DeploymentEdition
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
@@ -68,6 +69,7 @@ from models.workflow import Workflow
 from repositories.knowledge import dataset_api_key_bindings
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form, get_latest_dataset_process_rule
 from repositories.knowledge.segment_repository import query_child_chunks
+from services.auth.resource_access_token_contracts import DatasetServiceApiGrant
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -132,15 +134,6 @@ class AutoDisableLogsDict(TypedDict):
 
 class DatasetService:
     @staticmethod
-    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
-        if not dify_config.RBAC_ENABLED:
-            return False
-
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
-        workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
-        return "dataset.create_and_management" in workspace_permission_keys
-
-    @staticmethod
     def get_datasets(
         page: int,
         per_page: int,
@@ -154,17 +147,30 @@ class DatasetService:
         creator_ids: list[str] | None = None,
         *,
         tags: TagTargetQuery,
+        service_api_grant: DatasetServiceApiGrant | None = None,
     ):
-        """Return visible datasets for a tenant using the injected read session."""
+        """Return datasets under account or Dataset Service API visibility.
+
+        Service API callers skip account ACLs while retaining the tenant boundary.
+        A resource-scoped grant further restricts the query to its authorized IDs.
+        Account callers must supply the resolved RBAC resource scope when restricted.
+        This method preserves that scope and pagination without fetching another
+        permission snapshot; include_all does not bypass the RBAC resource filter.
+        """
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
-        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+        if service_api_grant is not None:
+            if service_api_grant.tenant_id != tenant_id:
+                raise ValueError("Dataset Service API grant does not match the requested workspace.")
+            if service_api_grant.dataset_ids is not None:
+                query = query.where(Dataset.id.in_(service_api_grant.dataset_ids))
+        elif dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
             if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             query = query.where(accessible_filter)
 
-        if user:
+        if service_api_grant is None and user:
             # get permitted dataset ids
             dataset_permission = session.scalars(
                 select(DatasetPermission).where(
@@ -179,45 +185,35 @@ class DatasetService:
                     query = query.where(Dataset.id.in_(permitted_dataset_ids))
                 else:
                     return [], 0
-            else:
-                if dify_config.RBAC_ENABLED:
-                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
-                    should_show_all_datasets = include_all and can_manage_all_datasets
-                else:
-                    should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
-
+            elif not dify_config.RBAC_ENABLED:
+                should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
                 if not should_show_all_datasets:
-                    if dify_config.RBAC_ENABLED:
-                        # RBAC mode: show all datasets.  Permission control is enforced
-                        # via permission_keys on each item and @rbac_permission_required decorators.
-                        pass
+                    # Keep legacy visibility rules when RBAC is disabled.
+                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
+                        query = query.where(
+                            sa.or_(
+                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                sa.and_(
+                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                    Dataset.maintainer == user.id,
+                                ),
+                                sa.and_(
+                                    Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
+                                    Dataset.id.in_(permitted_dataset_ids),
+                                ),
+                            )
+                        )
                     else:
-                        # Keep legacy visibility rules when RBAC is disabled.
-                        if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
-                            query = query.where(
-                                sa.or_(
-                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                    sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
-                                        Dataset.maintainer == user.id,
-                                    ),
-                                    sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
-                                        Dataset.id.in_(permitted_dataset_ids),
-                                    ),
-                                )
+                        query = query.where(
+                            sa.or_(
+                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                sa.and_(
+                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                    Dataset.maintainer == user.id,
+                                ),
                             )
-                        else:
-                            query = query.where(
-                                sa.or_(
-                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                    sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
-                                        Dataset.maintainer == user.id,
-                                    ),
-                                )
-                            )
-        else:
+                        )
+        elif service_api_grant is None:
             if dify_config.RBAC_ENABLED:
                 # Without an account we cannot resolve RBAC resource visibility.
                 query = query.where(sa.false())
@@ -1654,8 +1650,10 @@ class DocumentService:
 
     @staticmethod
     def get_document_download_url(document: Document, session: Session) -> str:
-        """
-        Return a signed download URL for an upload-file document.
+        """Return a signed URL for a file-backed document in the caller's tenant.
+
+        Requires a legacy upload or pipeline local-file reference to an existing tenant-owned
+        UploadFile. On success the URL downloads that file; invalid or missing links raise 404.
         """
         upload_file = DocumentService._get_upload_file_for_upload_file_document(document, session)
         return file_helpers.get_signed_file_url(upload_file_id=upload_file.id, as_attachment=True)
@@ -1751,14 +1749,25 @@ class DocumentService:
         invalid_source_message: str,
         missing_file_message: str,
     ) -> str:
-        """
-        Normalize and validate `Document -> UploadFile` linkage for download flows.
-        """
-        if document.data_source_type != DataSourceType.UPLOAD_FILE:
-            raise NotFound(invalid_source_message)
+        """Resolve a file-backed document's UploadFile id without trusting its source metadata.
 
+        Legacy uploads use ``upload_file_id``; pipeline local files use ``real_file_id``
+        after conversion or ``related_id``/``reference`` when created in a pipeline.
+        Other source types and absent references raise 404; callers must still load the
+        UploadFile within the document's tenant before using the resolved id.
+        """
         data_source_info: dict[str, Any] = document.data_source_info_dict or {}
-        upload_file_id: str | None = data_source_info.get("upload_file_id")
+        if document.data_source_type == DataSourceType.UPLOAD_FILE:
+            upload_file_id = data_source_info.get("upload_file_id")
+        elif document.data_source_type == DataSourceType.LOCAL_FILE:
+            file_reference = (
+                data_source_info.get("real_file_id")
+                or data_source_info.get("related_id")
+                or data_source_info.get("reference")
+            )
+            upload_file_id = resolve_file_record_id(file_reference) if isinstance(file_reference, str) else None
+        else:
+            raise NotFound(invalid_source_message)
         if not upload_file_id:
             raise NotFound(missing_file_message)
 
@@ -1766,9 +1775,7 @@ class DocumentService:
 
     @staticmethod
     def _get_upload_file_for_upload_file_document(document: Document, session: Session) -> UploadFile:
-        """
-        Load the `UploadFile` row for an upload-file document.
-        """
+        """Load a file-backed document's UploadFile within its tenant or raise 404."""
         upload_file_id = DocumentService._get_upload_file_id_for_upload_file_document(
             document,
             invalid_source_message="Document does not have an uploaded file to download.",
@@ -1788,8 +1795,10 @@ class DocumentService:
         tenant_id: str,
         session: Session,
     ) -> dict[str, UploadFile]:
-        """
-        Batch load upload files keyed by document id for ZIP downloads.
+        """Load tenant-owned UploadFiles for file-backed documents keyed by document id.
+
+        Requires every requested document and file to exist in the given dataset and tenant.
+        Returns a complete mapping on success; missing or unsupported sources raise 404.
         """
         document_id_list: list[str] = list(document_ids)
 

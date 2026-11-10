@@ -705,6 +705,9 @@ export type Parameters = {
   sensitive_word_avoidance: {
     enabled?: boolean
   }
+  show_thoughts?: {
+    enabled?: boolean
+  }
   speech_to_text: {
     enabled?: boolean
   }
@@ -1239,7 +1242,6 @@ export type SystemFeatureModel = {
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
-  enable_collaboration_mode: boolean
   enable_creators_platform: boolean
   enable_email_code_login: boolean
   enable_email_password_login: boolean

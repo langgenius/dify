@@ -9,7 +9,7 @@ from tests.helpers.workflow.mock_config import MockConfigBuilder
 from tests.helpers.workflow.table_runner import TableTestRunner
 
 
-def test_tool_in_chatflow():
+def test_tool_in_chatflow() -> None:
     runner = TableTestRunner()
 
     # Load the workflow configuration
@@ -42,7 +42,7 @@ def test_tool_in_chatflow():
     assert success_events[-1].outputs["answer"] == "hello, dify!"
 
 
-def test_answer_can_render_llm_structured_output_in_chatflow():
+def test_answer_can_render_llm_structured_output_in_chatflow() -> None:
     runner = TableTestRunner()
 
     fixture_data = runner.workflow_runner.load_fixture("basic_chatflow")

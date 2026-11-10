@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.18.0"
+version = "1.19.0"
 requires-python = "~=3.13.0"
 
 dependencies = [
@@ -44,11 +44,12 @@ dependencies = [
     "opentelemetry-instrumentation-httpx==0.65b0",
     "opentelemetry-instrumentation-redis==0.65b0",
     "opentelemetry-instrumentation-sqlalchemy==0.65b0",
-    "opentelemetry-propagator-b3>=1.45.0,<2.0.0",
+    "opentelemetry-propagator-b3>=1.45.2,<2.0.0",
     "pydantic-settings>=2.14.2,<3.0.0",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
     "sentry-sdk>=2.57.0,<3.0.0",
+    "tzdata>=2025.2",
     "werkzeug>=3.1.7,<4.0.0",
     "zstandard==0.25.0",
     # Emerging: newer and fast-moving, use compatible pins
@@ -201,10 +202,10 @@ dev = [
     "pytest-xdist>=3.8.0",
     "pyrefly>=1.4.0",
     "xinference-client>=2.7.0",
-    "types-pytz>=2026.5.0.20261006",
     "types-bleach>=6.4.0.20260728",
     "types-croniter>=6.2.4.20261006",
     "types-jsonschema>=4.26.0.20261006",
+    "types-grpcio>=1.85.0.20261028",
 ]
 
 ############################################################

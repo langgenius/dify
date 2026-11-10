@@ -284,7 +284,7 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
               </label>
               <Input
                 id={dslUrlInputId}
-                placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
+                placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' })}
                 value={dslUrl}
                 onChange={(event) => setDslUrl(event.target.value)}
               />

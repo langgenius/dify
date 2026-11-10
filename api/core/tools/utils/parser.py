@@ -238,7 +238,7 @@ class ApiBasedToolSchemaParser:
     @staticmethod
     def _get_tool_parameter_type(parameter: dict[str, Any]) -> ToolParameter.ToolParameterType | None:
         parameter = parameter or {}
-        typ: str | None = None
+        typ: str | list[str] | None = None
         if parameter.get("format") == "binary":
             return ToolParameter.ToolParameterType.FILE
 
@@ -246,6 +246,11 @@ class ApiBasedToolSchemaParser:
             typ = parameter["type"]
         elif "schema" in parameter and "type" in parameter["schema"]:
             typ = parameter["schema"]["type"]
+
+        if isinstance(typ, list):
+            # OpenAPI 3.1 expresses nullable types as unions, e.g.
+            # ["integer", "null"]. Use the first non-null member.
+            typ = next((item for item in typ if item != "null"), None)
 
         if typ in {"integer", "number"}:
             return ToolParameter.ToolParameterType.NUMBER
