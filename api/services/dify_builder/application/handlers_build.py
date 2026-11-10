@@ -22,7 +22,7 @@ from core.dify_builder.contract import (
     ResourceSelectCard,
     TestResultCard,
 )
-from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError
+from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, NotFoundError
 from core.dify_builder.input_schema import schema_hash, validate_runtime_inputs
 from core.dify_builder.models import (
     ConversationItem,
@@ -582,7 +582,32 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
 
 
 def _knowledge_scope(fc: DifyBuilderContext) -> str:
-    return canonical_digest({"goal": fc.goal_text, "generation": fc.task_control.get("generation", 0)})
+    """Bind goal intent to its logical task, independently of execution consent.
+
+    Resume changes the execution generation, not the user's goal decision.
+    Legacy empty task IDs remain session-local through the owning repository;
+    a new logical task or a changed goal invalidates this scope.
+    """
+    return canonical_digest({"goal": fc.goal_text, "logical_task_id": fc.logical_task_id})
+
+
+def _knowledge_scope_matches(fc: DifyBuilderContext, decision: dict, *, effective: bool = False) -> bool:
+    """Validate stored goal scope without upgrading legacy execution authority.
+
+    New decisions survive Resume only within the same logical task and goal.
+    Unmarked legacy decisions require their original current-generation scope;
+    unknown scope kinds refuse. This performs no I/O or context mutation.
+    """
+    digest = (
+        decision.get("effective_scope_digest", decision.get("scope_digest"))
+        if effective
+        else decision.get("scope_digest")
+    )
+    if decision.get("scope_kind") == "logical_task":
+        return digest == _knowledge_scope(fc)
+    if "scope_kind" not in decision:
+        return digest == canonical_digest({"goal": fc.goal_text, "generation": fc.task_control.get("generation", 0)})
+    return False
 
 
 def _knowledge_waived(fc: DifyBuilderContext) -> bool:
@@ -590,7 +615,7 @@ def _knowledge_waived(fc: DifyBuilderContext) -> bool:
     return (
         isinstance(decision, dict)
         and decision.get("choice") == "waive"
-        and decision.get("effective_scope_digest", decision.get("scope_digest")) == _knowledge_scope(fc)
+        and _knowledge_scope_matches(fc, decision, effective=True)
         and bool(decision.get("card_key"))
     )
 
@@ -648,6 +673,7 @@ def _ask_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     fc.resource_selection["knowledge_decision_pending"] = {
         "card_key": key,
         "scope_digest": _knowledge_scope(fc),
+        "scope_kind": "logical_task",
         "original_goal": fc.goal_text,
         "actor_id": turn.actor.account_id,
         "tenant_id": turn.actor.tenant_id,
@@ -683,17 +709,19 @@ def _ask_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
 
 
 def _handle_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """Apply only the current actor's explicit choice; retain keeps its form open.
+    """Apply only a current, actor-bound explicit goal choice.
 
-    Repeated retain choices append no new message and perform no cognition or
-    workflow operations. Keeping the pending nonce lets the user later choose
-    a goal change through the same current form, with ordinary version checks.
+    First retain acknowledges a selected waiting form; repeated retains append
+    no card/message and perform no cognition or workflow operations. The nonce
+    still permits explicit later adjustment with ordinary version checks.
+    Valid legacy submissions gain task scope. A resumed legacy gate can only
+    reoffer after its saved task/goal is verified; the old choice is ignored.
+    Foreign or changed-task/goal choices change nothing.
     """
     pending = fc.resource_selection.get("knowledge_decision_pending")
     payload = turn.action.payload if turn.action and isinstance(turn.action.payload, dict) else {}
     if (
         not isinstance(pending, dict)
-        or pending.get("scope_digest") != _knowledge_scope(fc)
         or pending.get("actor_id") != turn.actor.account_id
         or pending.get("tenant_id") != turn.actor.tenant_id
     ):
@@ -703,11 +731,15 @@ def _handle_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     value = payload.get(key) if isinstance(key, str) else None
     if not isinstance(options, list) or len(options) != 2 or value not in options:
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
+    if not _knowledge_scope_matches(fc, pending):
+        return _restore_legacy_knowledge_decision(env, turn, s, fc, pending)
     choice = "retain" if value == options[0] else "waive"
     previous = fc.resource_selection.get("knowledge_scope_decision")
     if choice == "retain" and isinstance(previous, dict) and previous.get("card_key") == key:
-        if previous.get("choice") == "retain":
+        if previous.get("choice") == "retain" and previous.get("scope_kind") == "logical_task":
             return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
+    pending = {**pending, "scope_digest": _knowledge_scope(fc), "scope_kind": "logical_task"}
+    fc.resource_selection["knowledge_decision_pending"] = pending
     decision = {**pending, "choice": choice, "user_choice": value}
     fc.resource_selection["knowledge_scope_decision"] = decision
     if choice == "retain":
@@ -741,13 +773,59 @@ def _handle_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
 
 
+def _restore_legacy_knowledge_decision(
+    env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, pending: dict
+) -> StepResult:
+    """Reoffer a resumed legacy gate only from matching saved task/goal facts.
+
+    The caller has validated the current actor and submitted old control.
+    Missing history, unknown scope kinds, or changed tasks/goals refuse without
+    mutation. Success issues one fresh nonce and task scope; it never accepts
+    the old choice, waives a goal, refreshes resources, or runs a workflow.
+    """
+    unchanged = StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
+    source_version = pending.get("source_version")
+    if (
+        "scope_kind" in pending
+        or pending.get("original_goal") != fc.goal_text
+        or type(source_version) is not int
+        or not 1 <= source_version < s.version
+    ):
+        return unchanged
+    try:
+        original_session, original = env.repo.get_session_at_version(s.id, source_version)
+    except NotFoundError:
+        return unchanged
+    if (
+        original.goal_text != fc.goal_text
+        or original.logical_task_id != fc.logical_task_id
+        or original_session.owner_account_id != s.owner_account_id
+        or original_session.tenant_id != s.tenant_id
+        or pending.get("scope_digest")
+        != canonical_digest({"goal": original.goal_text, "generation": original.task_control.get("generation", 0)})
+    ):
+        return unchanged
+    result = _ask_knowledge_decision(env, turn, s, fc)
+    message = (
+        "已恢复当前任务的知识库目标确认。先前表单来自恢复任务之前，请使用新表单重新选择；刚才的旧表单提交未更改目标，也未生成或执行工作流。"
+        if fc.reply_language.lower().startswith("zh")
+        else (
+            "The knowledge-goal confirmation for this task has been restored. The earlier form predates Resume; "
+            "choose using the refreshed form. The old submission did not change the goal, generate or run a workflow."
+        )
+    )
+    result.items.extend(append_assistant(env, s, fc, message, cards=["form"]))
+    return result
+
+
 def _knowledge_wait(
     env: Env, s: Session, fc: DifyBuilderContext, *, unavailable: bool = False, execution: Any = None
 ) -> StepResult:
-    """Explain the capability block while preserving the current decision gate.
+    """Acknowledge retained intent without asking the unanswered question again.
 
-    A pending retain/waive form stays actionable; an invalid resource selection
-    stays at resource selection. Neither path authorizes planning or execution.
+    Valid first retention projects its accepted value in the existing form
+    contract, leaving explicit adjustment and Stop available. Invalid resource
+    selections stay at resource selection. Neither authorizes execution.
     """
     chinese = fc.reply_language.lower().startswith("zh")
     if unavailable:
@@ -770,7 +848,31 @@ def _knowledge_wait(
                 "support; this selection did not generate or execute a workflow."
             )
         )
-    items = append_assistant(env, s, fc, message, execution=execution)
+    items = []
+    pending = fc.resource_selection.get("knowledge_decision_pending")
+    if not unavailable and isinstance(pending, dict):
+        items.extend(
+            append_card(
+                fc,
+                FormCard(
+                    variant="build_requirements",
+                    title="已保留知识库目标，等待后续能力"
+                    if chinese
+                    else "Knowledge goal retained; waiting for support",
+                    description=(
+                        "当前保留选择已记录，无需重复提交。可通过下方选项明确调整目标，也可停止任务。"
+                        if chinese
+                        else (
+                            "Your choice to retain the goal is recorded; no resubmission is needed. "
+                            "Use the options below to explicitly adjust the goal, or stop the task."
+                        )
+                    ),
+                    fields=build_form_fields(fc.form_fields),
+                    values={pending["card_key"]: pending["options"][0]},
+                ),
+            )
+        )
+    items.extend(append_assistant(env, s, fc, message, execution=execution, cards=["form"] if items else None))
     waiting_state = (
         PcState.BUILD_GOAL_ANALYSIS
         if fc.resource_selection.get("knowledge_decision_pending")

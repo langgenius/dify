@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 from datetime import datetime
-from typing import NoReturn, override
+from typing import TYPE_CHECKING, NoReturn, override
 
 import pytest
 
@@ -25,6 +25,13 @@ from tests.unit_tests.services.dify_builder.test_knowledge_source_cue import (
     CAPTURED_NO_EXTRA_COMPONENTS,
     MEETING_GOAL,
 )
+
+if TYPE_CHECKING:
+    from services.dify_builder.repository import SqlDifyBuilderRepository
+    from services.dify_builder.service import DifyBuilderService
+    from tests.unit_tests.services.dify_builder.test_service import Enqueued
+
+pytest_plugins = ["tests.unit_tests.services.dify_builder.test_service"]
 
 DATASET = "25f76fa8-db3b-499d-b7fc-2bfbddad778a"
 KNOWLEDGE = "knowledge:" + DATASET
@@ -612,6 +619,9 @@ def test_refusing_goal_change_keeps_current_actionable_form_and_does_not_repeat_
     assert view.active_interaction.action_id == "submit_requirements"
     assert view.active_interaction.valid_at_version == result.version
     assert view.active_interaction.card.payload["fields"][0]["key"] == key
+    # Retention is an accepted choice, not the original unanswered question.
+    assert view.active_interaction.card.payload["values"] == {key: context.form_fields[0]["options"][0]}
+    assert len([item for item in repo.list_conversation(sid) if item.kind == "form"]) == 2
     assert _internal_action_allowed(result.current_state, context, "message")
     assert _internal_action_allowed(result.current_state, context, "stop")
     conversation = repo.list_conversation(sid)
@@ -633,6 +643,167 @@ def test_refusing_goal_change_keeps_current_actionable_form_and_does_not_repeat_
     assert repeated_view.active_interaction.card.seq == view.active_interaction.card.seq
     assert not context.checkpoint_id
     assert agent.requests == requests
+
+
+@pytest.mark.parametrize("logical_task_id", ["", "stable-knowledge-task"])
+@pytest.mark.parametrize("legacy", [False, True])
+def test_retained_goal_stays_adjustable_after_sql_stop_resume(
+    monkeypatch: pytest.MonkeyPatch,
+    service: "DifyBuilderService",
+    repo: "SqlDifyBuilderRepository",
+    enqueued: list["Enqueued"],
+    logical_task_id: str,
+    legacy: bool,
+) -> None:
+    from sqlalchemy import func, select
+
+    from core.dify_builder.models import Graph
+    from models.dify_builder import DifyBuilderRun
+    from runtime_contracts.builder.execution import canonical_digest
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.dify_port import WorkflowServiceDifyPort
+    from services.dify_builder.task_control_service import claim_continuation, refresh_continuation
+    from tests.unit_tests.services.dify_builder.test_service import ACCOUNT_ID, APP_ID, TENANT_ID, _actor
+
+    reads: list[tuple[str, str | None]] = []
+    resolutions: list[str] = []
+    model_calls: list[dict[str, object]] = []
+
+    def catalog(
+        tenant_id: str, *, account_id: str | None = None, selected_agent_ids: frozenset[str] = frozenset()
+    ) -> resources.TenantResources:
+        assert selected_agent_ids == frozenset()
+        reads.append((tenant_id, account_id))
+        return inventory()
+
+    def resolve() -> object:
+        resolutions.append("model")
+        return object()
+
+    def invoke(_model: object, **kwargs: object) -> dict[str, object]:
+        model_calls.append(kwargs)
+        return {"resource_ids": []}
+
+    monkeypatch.setattr(resources, "list_tenant_resources", catalog)
+    monkeypatch.setattr(build.llm, "invoke_json", invoke)
+    monkeypatch.setattr(build, "assess_capability_gap", lambda *_a, **_k: "")
+    agent = LlmBuilderAgent(TENANT_ID, account_id=ACCOUNT_ID, model_resolver_fn=resolve)
+    session = Session(
+        app_id=APP_ID,
+        owner_account_id=ACCOUNT_ID,
+        tenant_id=TENANT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_RESOURCE_RECOMMENDATION,
+    )
+    goal = "必须从知识库检索依据后回答"
+    repo.create_session(
+        session,
+        DifyBuilderContext(
+            goal_text=goal,
+            reply_language="zh-Hans",
+            logical_task_id=logical_task_id,
+            task_status="active",
+            resource_selection={"offered_knowledge_ids": [KNOWLEDGE]},
+        ),
+        [],
+    )
+    dify = FakeDifyPort()
+
+    def refuse_effect(*_args: object, **_kwargs: object) -> NoReturn:
+        raise AssertionError("A knowledge waiting/adjustment gate cannot execute a workflow effect")
+
+    for operation in ("run_draft", "apply_repair", "publish", "restore_graph"):
+        monkeypatch.setattr(dify, operation, refuse_effect)
+    runner = Runner(Env(agent=agent, repo=repo, dify=dify, now=lambda: datetime.min), build_registry())
+
+    def submit(kind: str, payload: dict[str, object]) -> Session:
+        current, _ = repo.get_session(session.id)
+        action = Action(kind=kind, payload=payload, base_version=current.version)
+        service._prepare_action(session.id, _actor(), action)
+        return runner.advance(session.id, Turn(actor=_actor(), action=action))
+
+    submit("confirm_resources", {"resource_ids": [KNOWLEDGE]})
+    field = repo.get_session(session.id)[1].form_fields[0]
+    key, options = field["key"], field["options"]
+    retained = submit("submit_requirements", {key: options[0]})
+    _, context = repo.get_session(session.id)
+    if legacy:
+        # Persist the pre-fix context shape, then use the real Resume owner.
+        for name in ("knowledge_decision_pending", "knowledge_scope_decision"):
+            context.resource_selection[name].pop("scope_kind")
+            context.resource_selection[name]["scope_digest"] = canonical_digest({"goal": goal, "generation": 0})
+        repo.compare_and_advance(session.id, retained.version, retained.current_state, context, [])
+        retained, context = repo.get_session(session.id)
+    decision = dict(context.resource_selection["knowledge_scope_decision"])
+    waiting = service._build_session_view(retained, context).active_interaction
+    assert waiting is not None
+    conversation = repo.list_conversation(session.id)
+    # A GET/refresh reads the same accepted card without rediscovery/cognition.
+    assert service.get_session_view(session.id, _actor()).active_interaction == waiting
+    assert repo.list_conversation(session.id) == conversation
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph(nodes=[], edges=[])), "waiting-revision")
+    stopped = service.stop_task(session.id, _actor(), base_version=retained.version, client_action_id="knowledge-stop")
+    service.resume_task(session.id, _actor(), base_version=stopped.version, client_action_id="knowledge-resume")
+    continuation = enqueued[-1][1]
+    claim_continuation(repo, session.id, _actor(), continuation)
+    continuation_port = WorkflowServiceDifyPort()
+    monkeypatch.setattr(continuation_port, "read_task_dsl", service._read_task_dsl_fn)
+    refresh_continuation(repo, continuation_port, session.id, _actor(), continuation)
+    runner.advance(session.id, Turn(actor=_actor(), action=continuation))
+    resumed, context = repo.get_session(session.id)
+    assert context.task_control["generation"] == 1
+    assert context.logical_task_id == logical_task_id
+    assert context.goal_text == goal
+    assert context.resource_selection["knowledge_preferences"] == [KNOWLEDGE]
+    assert context.resource_selection["knowledge_scope_decision"] == decision
+    resumed_view = service._build_session_view(resumed, context)
+    assert resumed_view.active_interaction is not None
+    assert resumed_view.active_interaction.card == waiting.card
+    assert resumed_view.active_interaction.valid_at_version == resumed.version
+    if legacy:
+        restoration = submit("submit_requirements", {key: options[1]})
+        _, context = repo.get_session(session.id)
+        assert restoration.current_state == PcState.BUILD_GOAL_ANALYSIS
+        assert context.goal_text == goal
+        assert context.resource_selection["knowledge_scope_decision"] == decision
+        fresh = context.form_fields[0]
+        assert fresh["key"] != key
+        key, options = fresh["key"], fresh["options"]
+        submit("submit_requirements", {key: options[0]})
+        conversation = repo.list_conversation(session.id)
+    repeated = submit("submit_requirements", {key: options[0]})
+    assert [item for item in repo.list_conversation(session.id) if item.kind in {"form", "assistant_turn"}] == [
+        item for item in conversation if item.kind in {"form", "assistant_turn"}
+    ]
+    assert repeated.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert (reads, resolutions, model_calls) == ([(TENANT_ID, ACCOUNT_ID)], [], [])
+    assert context.task_status == "active"
+    assert not context.checkpoint_id
+    assert not context.verify_run_id
+    assert not context.built_node_ids
+    assert dify.applied == []
+    assert dify.run_draft_inputs == {}
+    assert not dify.published
+    with repo._session_factory() as sql:
+        assert sql.scalar(select(func.count()).select_from(DifyBuilderRun)) == 0
+
+    plan_calls: list[dict[str, object]] = []
+
+    def revised_plan(requirements: dict[str, object], **_kwargs: object) -> WorkflowPlan:
+        plan_calls.append(requirements)
+        return WorkflowPlan("Format text", "Text", "Formatted text", ["Format the supplied text"])
+
+    monkeypatch.setattr(agent, "propose_plan_v1", revised_plan)
+    adjusted = submit("submit_requirements", {key: options[1]})
+    _, context = repo.get_session(session.id)
+    assert adjusted.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert context.resource_selection["knowledge_scope_decision"]["choice"] == "waive"
+    assert context.resource_selection["knowledge_scope_decision"]["original_goal"] == goal
+    assert context.goal_text.startswith(goal)
+    assert context.goal_text != goal
+    assert len(plan_calls) == 1
+    assert len(reads) == 2
+    assert len(resolutions) == len(model_calls) == 1
 
 
 @pytest.mark.parametrize("selected", [False, True])
@@ -742,22 +913,134 @@ def test_replaying_resolved_scope_card_does_not_reauthorize_or_replan() -> None:
     assert len(agent.requests) == calls
 
 
-def test_decision_is_rejected_after_goal_or_actor_changes() -> None:
+@pytest.mark.parametrize("already_retained", [False, True])
+@pytest.mark.parametrize("resumed", [False, True])
+def test_legacy_goal_form_requires_its_original_generation_before_task_scope_upgrade(
+    already_retained: bool, resumed: bool
+) -> None:
+    from runtime_contracts.builder.execution import canonical_digest
+
+    runner, repo, sid, agent = decision_dialog()
+    session, context = repo.get_session(sid)
+    pending = context.resource_selection["knowledge_decision_pending"]
+    pending.pop("scope_kind", None)
+    pending["scope_digest"] = canonical_digest({"goal": context.goal_text, "generation": 0})
+    if already_retained:
+        context.resource_selection["knowledge_scope_decision"] = {**pending, "choice": "retain"}
+    if resumed:
+        context.task_control["generation"] = 1
+    previous = dict(context.resource_selection)
+    repo.compare_and_advance(sid, session.version, session.current_state, context, [])
+    conversation = repo.list_conversation(sid)
+    result = answer_decision(runner, repo, sid, option=1 if resumed else 0)
+    _, stored = repo.get_session(sid)
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert stored.goal_text == context.goal_text
+    assert agent.requests == []
+    if resumed:
+        # Restore a new gate; the submitted old choice grants no authority.
+        fresh = stored.resource_selection["knowledge_decision_pending"]
+        assert fresh["card_key"] != pending["card_key"]
+        assert fresh["scope_kind"] == "logical_task"
+        assert stored.resource_selection.get("knowledge_scope_decision") == previous.get("knowledge_scope_decision")
+        restored = repo.list_conversation(sid)
+        assert (
+            len([item for item in restored if item.kind == "form"])
+            == len([item for item in conversation if item.kind == "form"]) + 1
+        )
+        # An old option cannot submit the new current card or cause another restore.
+        runner.advance(
+            sid,
+            Turn(
+                actor=Actor(account_id="actor", tenant_id="tenant"),
+                action=Action(
+                    kind="submit_requirements",
+                    payload={pending["card_key"]: pending["options"][1]},
+                    base_version=result.version,
+                ),
+            ),
+        )
+        assert repo.list_conversation(sid) == restored
+        assert repo.get_session(sid)[1].goal_text == context.goal_text
+        answer_decision(runner, repo, sid, option=0)
+        waiting = repo.list_conversation(sid)
+        answer_decision(runner, repo, sid, option=0)
+        assert repo.list_conversation(sid) == waiting
+        assert agent.requests == []
+        adjusted = answer_decision(runner, repo, sid, option=1)
+        assert adjusted.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+        assert repo.get_session(sid)[1].resource_selection["knowledge_scope_decision"]["choice"] == "waive"
+        assert len(agent.requests) == 1
+    else:
+        assert stored.resource_selection["knowledge_scope_decision"]["choice"] == "retain"
+        assert stored.resource_selection["knowledge_decision_pending"]["scope_kind"] == "logical_task"
+        card = repo.list_conversation(sid)[-2]
+        assert card.kind == "form"
+        assert card.payload["values"] == {pending["card_key"]: pending["options"][0]}
+        assert not stored.checkpoint_id
+        assert not stored.verify_run_id
+
+
+@pytest.mark.parametrize("changed", ["goal", "task", "actor", "tenant", "missing_history"])
+def test_stale_legacy_form_cannot_restore_for_a_different_goal_task_or_actor(changed: str) -> None:
+    from runtime_contracts.builder.execution import canonical_digest
+
+    runner, repo, sid, agent = decision_dialog()
+    session, context = repo.get_session(sid)
+    pending = context.resource_selection["knowledge_decision_pending"]
+    pending.pop("scope_kind", None)
+    pending["scope_digest"] = canonical_digest({"goal": context.goal_text, "generation": 0})
+    context.task_control["generation"] = 1
+    actor = Actor(account_id="actor", tenant_id="tenant")
+    if changed == "goal":
+        context.goal_text = "A different current goal"
+    if changed == "task":
+        context.logical_task_id = "another-task"
+    if changed == "actor":
+        actor = replace(actor, account_id="another-actor")
+    if changed == "tenant":
+        actor = replace(actor, tenant_id="another-tenant")
+    if changed == "missing_history":
+        pending["source_version"] = 10000
+    version = repo.compare_and_advance(sid, session.version, session.current_state, context, [])
+    conversation = repo.list_conversation(sid)
+    runner.advance(
+        sid,
+        Turn(
+            actor=actor,
+            action=Action(
+                kind="submit_requirements",
+                payload={pending["card_key"]: pending["options"][1]},
+                base_version=version,
+            ),
+        ),
+    )
+    assert repo.list_conversation(sid) == conversation
+    assert "knowledge_scope_decision" not in repo.get_session(sid)[1].resource_selection
+    assert agent.requests == []
+
+
+@pytest.mark.parametrize("option", [0, 1])
+def test_decision_is_rejected_after_goal_task_or_actor_changes(option: int) -> None:
     from services.dify_builder.application.handlers_build import handle_goal_analysis
 
     runner, repo, sid, agent = decision_dialog()
     del runner
     session, ctx = repo.get_session(sid)
     field = ctx.form_fields[0]
-    for goal, actor in [("Different goal", "actor"), (ctx.goal_text, "another-actor")]:
-        changed = replace(ctx, goal_text=goal)
+    for changed, actor, tenant in [
+        (replace(ctx, goal_text="Different goal"), "actor", "tenant"),
+        (replace(ctx, logical_task_id="another-task"), "actor", "tenant"),
+        (replace(ctx), "another-actor", "tenant"),
+        (replace(ctx), "actor", "another-tenant"),
+    ]:
         result = handle_goal_analysis(
             Env(agent=agent, repo=repo, dify=FakeDifyPort(), now=lambda: datetime.min),
             Turn(
-                actor=Actor(account_id=actor, tenant_id="tenant"),
+                actor=Actor(account_id=actor, tenant_id=tenant),
                 action=Action(
                     kind="submit_requirements",
-                    payload={field["key"]: field["options"][1]},
+                    payload={field["key"]: field["options"][option]},
                     base_version=session.version,
                 ),
             ),
