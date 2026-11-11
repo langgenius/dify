@@ -12,7 +12,7 @@
 	"features": {
 		"ghcr.io/devcontainers/features/node:1": {
 			"nodeGypDependencies": true,
-			"version": "24.22.1"
+			"version": "24.22.2"
 		},
 		"ghcr.io/devcontainers-extra/features/npm-package:1": {
 			"package": "typescript",
