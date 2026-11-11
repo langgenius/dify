@@ -4156,3 +4156,29 @@ def test_overwrite_reuses_only_a_file_whose_stored_bytes_match_the_draft_claim(
     assert tool_files.stored[_tool_file_key(new_logo_id)] == _LOGO
     assert ids_before <= _tool_file_ids()
     assert stored_before.items() <= tool_files.stored.items()
+
+
+def test_create_import_duplicate_assign_current_created_by() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    other = "77777777-7777-7777-7777-777777777777"
+    duplicated = service.duplicate_skill(tenant_id=TENANT, user_id=other, skill_id=created["id"])
+    imported = service.import_skill(
+        tenant_id=TENANT,
+        user_id=other,
+        payload=SkillImportPayload(
+            filename="imported.zip",
+            content=_zip_payload(
+                {"SKILL.md": _skill_md(name="imported").replace("---\nname", "---\ncreated_by: attacker\nname", 1)}
+            ),
+        ),
+    )
+    assert created["created_by"] == USER
+    assert duplicated["created_by"] == other
+    assert imported["created_by"] == other
+    assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["created_by"] == USER
+    assert {item["id"]: item["created_by"] for item in service.list_skills(tenant_id=TENANT)["data"]} == {
+        created["id"]: USER,
+        duplicated["id"]: other,
+        imported["id"]: other,
+    }

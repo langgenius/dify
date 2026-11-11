@@ -1326,7 +1326,7 @@ export function SkillFileTree({
                   {detail?.name ?? skillId}
                 </p>
               </div>
-              {!readonly &&
+              {(!readonly || canDelete) &&
                 detail &&
                 (canEdit || canDelete || !!detail.latest_published_version_id) && (
                   <SkillDetailSidebarActions
