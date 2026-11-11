@@ -61,6 +61,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceEditSyncPolicyPayload,
     KnowledgeFSSourceImportFailureResponse,
     KnowledgeFSSourceListQuery,
+    KnowledgeFSSourcePageResponse,
+    KnowledgeFSSourcePagesQuery,
     KnowledgeFSSourceSyncPolicyPayload,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
@@ -77,6 +79,22 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSWorkflowFailedRetrievalCapturePayload,
     KnowledgeFSWorkflowFailedRetrievalCaptureResponse,
 )
+
+
+def test_source_pages_tree_preview_aliases() -> None:
+    query = KnowledgeFSSourcePagesQuery.model_validate(
+        {"view": "tree", "parentId": "repo:FFXN/dify", "cursor": "next", "limit": "10"}
+    )
+    assert query.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "cursor": "next",
+        "limit": 10,
+        "parentId": "repo:FFXN/dify",
+        "view": "tree",
+    }
+    page = KnowledgeFSSourcePageResponse.model_validate(
+        {"pageId": "repo:FFXN/dify", "pageName": "dify", "hasChildren": True, "type": "repository"}
+    )
+    assert page.model_dump(mode="json", exclude_none=True)["has_children"] is True
 
 
 def test_background_task_response_accepts_source_title_alias() -> None:
