@@ -60,7 +60,7 @@ class RBACMemberRolesApi(Resource):
     @console_account_admission(
         rbac_checks=[
             RBACCheck(
-                RBACPermission.WORKSPACE_ROLE_MANAGE,
+                RBACPermission.WORKSPACE_MEMBER_MANAGE,
                 Workspace(),
             )
         ]
