@@ -330,7 +330,7 @@ class TestWorkflowDraftVariableList:
             )
 
 
-def test_value_response_rejects_bare_model():
+def test_value_response_rejects_bare_model() -> None:
     """A bare model would expose the raw serialized JSON string as the value, so it must fail loudly."""
     conv_var = WorkflowDraftVariable.new_conversation_variable(
         app_id=_TEST_APP_ID, name="conv_var", value=build_segment(1)
@@ -339,7 +339,7 @@ def test_value_response_rejects_bare_model():
         dump_response(WorkflowDraftVariableResponse, conv_var)
 
 
-def test_value_response_accepts_plain_mapping():
+def test_value_response_accepts_plain_mapping() -> None:
     resp = WorkflowDraftVariableResponse.model_validate(
         {
             "id": "variable-id",

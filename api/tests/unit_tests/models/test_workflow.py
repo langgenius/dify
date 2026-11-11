@@ -529,7 +529,9 @@ class TestWorkflowCases:
             rebuild_file.assert_called_once()
             assert rebuild_file.call_args.kwargs["tenant_id"] == "tenant-1"
 
-        def test_array_file_variable_rebuilds_each_stored_payload_with_app_tenant(self, sqlite_session: Session):
+        def test_array_file_variable_rebuilds_each_stored_payload_with_app_tenant(
+            self, sqlite_session: Session
+        ) -> None:
             files = [
                 File(
                     file_id=f"test_file_id_{index}",
@@ -2220,7 +2222,7 @@ class TestWorkflowTypeBaseCases:
 
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
-def test_resolve_workflow_app_tenant_id_reads_through_caller_session(sqlite_session: Session):
+def test_resolve_workflow_app_tenant_id_reads_through_caller_session(sqlite_session: Session) -> None:
     app = App(
         id="app-1",
         tenant_id="tenant-1",
