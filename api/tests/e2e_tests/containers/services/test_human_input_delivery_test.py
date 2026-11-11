@@ -21,7 +21,7 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from graphon.enums import BuiltinNodeTypes
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, HumanInputFormUploadFile
-from models.model import App, AppMode, UploadFile
+from models.model import App, AppMode, CustomizeTokenStrategy, IconType, Site, UploadFile
 from models.workflow import Workflow, WorkflowType
 from services.workflow_service import WorkflowService
 
@@ -61,6 +61,26 @@ def _create_app_with_draft_workflow(
     )
     session.add(app)
     session.flush()
+
+    # Every created app gets a web app site, and the web form endpoints require one.
+    session.add(
+        Site(
+            app_id=app.id,
+            title="Test Site",
+            icon_type=IconType.EMOJI,
+            icon="app",
+            icon_background="#ffffff",
+            description="",
+            default_language="en",
+            chat_color_theme="light",
+            chat_color_theme_inverted=False,
+            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            code=f"code-{uuid.uuid4().hex[:8]}",
+            prompt_public=False,
+            show_workflow_steps=True,
+            use_icon_as_answer_icon=False,
+        )
+    )
 
     email_method = EmailDeliveryMethod(
         id=delivery_method_id,

@@ -12,6 +12,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import Forbidden
 
 import services
 from controllers.common.errors import (
@@ -19,6 +20,7 @@ from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
+    NotFoundError,
     RemoteFileAccessDeniedError,
     RemoteFileInvalidResponseError,
     RemoteFileInvalidUrlError,
@@ -30,6 +32,7 @@ from controllers.common.errors import (
 )
 from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
+from controllers.web.human_input_form import resolve_form_app_site
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse, FileWithSignedUrl
 from libs.exception import BaseHTTPException
@@ -109,9 +112,17 @@ def _extract_hitl_upload_token() -> str:
 
 def _validate_context(service: HumanInputFileUploadService, token: str) -> HumanInputUploadContext:
     try:
-        return service.validate_upload_token(token)
+        context = service.validate_upload_token(token)
     except InvalidUploadTokenError as exc:
         raise InvalidUploadTokenForbiddenError() from exc
+
+    # The form page applies the same check. When the app is gone, has no site,
+    # or its workspace is archived, the upload token stops working too.
+    try:
+        resolve_form_app_site(app_id=context.app_id, tenant_id=context.tenant_id)
+    except (NotFoundError, Forbidden) as exc:
+        raise InvalidUploadTokenForbiddenError() from exc
+    return context
 
 
 def _parse_local_upload_file() -> FileStorage:
