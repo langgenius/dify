@@ -119,6 +119,19 @@ def test_tenant_info_preserves_workspace_brand_visibility(
     assert "trial_credits" not in result
 
 
+def test_switch_membership_returns_snapshot_without_loading_console_features(
+    dependencies: tuple[WorkspaceService, Mock, Mock, Mock],
+) -> None:
+    service, store, features, _ = dependencies
+    store.switch.return_value = WORKSPACE
+
+    assert service.switch_membership("account", "target") == WORKSPACE
+
+    store.switch.assert_called_once_with(account_id="account", workspace_id="target")
+    features.get_features.assert_not_called()
+    features.get_effective_credit_pool.assert_not_called()
+
+
 def test_switch_serializes_effective_exhausted_pool(dependencies: tuple[WorkspaceService, Mock, Mock, Mock]) -> None:
     service, store, features, _ = dependencies
     store.switch.return_value = WORKSPACE

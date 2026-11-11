@@ -7,6 +7,16 @@ export function createWebAppQuery(client: WebAppClient) {
     path: ['webapp'],
     experimental_defaults: {
       account: {
+        changeEmail: {
+          reset: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _result, context) =>
+                  context.client.invalidateQueries({ queryKey: query.account.profile.get.key() }),
+              },
+            },
+          },
+        },
         profile: {
           patch: {
             mutationOptions: {
