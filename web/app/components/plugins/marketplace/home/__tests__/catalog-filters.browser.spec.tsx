@@ -1,51 +1,34 @@
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import pluginTags from '@/i18n/locales/en-US/plugin-tags.json'
+import plugin from '@/i18n/locales/en-US/plugin.json'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import CatalogLanguagesFilter from '../catalog-languages-filter'
 import CatalogTagsFilter from '../catalog-tags-filter'
 
-vi.mock('#i18n', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return {
-    ...createReactI18nextMock({
-      clearSearch: 'Clear {{label}}',
-      'marketplace.languages': 'Languages',
-      'marketplace.searchFilterLanguage': 'Search languages',
-      'pluginTags.allTags': 'All tags',
-      'pluginTags.clearSelectedTags': 'Clear {{tags}}',
-      'pluginTags.searchTags': 'Search tags',
-    }),
-    useLocale: () => 'en-US',
-  }
-})
-
-vi.mock('react-i18next', async (importOriginal) => {
-  const original = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return {
-    ...original,
-    ...createReactI18nextMock({
-      'pluginTags.allTags': 'All tags',
-      'pluginTags.clearSelectedTags': 'Clear {{tags}}',
-      'pluginTags.searchTags': 'Search tags',
-      'pluginTags.tags.agent': 'Agent',
-      'pluginTags.tags.rag': 'RAG',
-      'pluginTags.tags.search': 'Search',
-    }),
-  }
-})
+vi.unmock('react-i18next')
 
 async function renderFilters(searchParams = '') {
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    keySeparator: false,
+    resources: { 'en-US': { plugin, pluginTags } },
+  })
   const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({
     hasMemory: true,
     searchParams,
   })
   const screen = await render(
     <UrlState>
-      <div aria-label="Catalog filters" role="group">
-        <CatalogLanguagesFilter />
-        <CatalogTagsFilter />
-      </div>
+      <I18nextProvider i18n={i18n}>
+        <div aria-label="Catalog filters" role="group">
+          <CatalogLanguagesFilter />
+          <CatalogTagsFilter />
+        </div>
+      </I18nextProvider>
     </UrlState>,
   )
   return { onUrlUpdate, screen }
@@ -59,10 +42,10 @@ describe('Marketplace catalog filters', () => {
 
   it('keeps selected languages visible and restores focus after clearing', async () => {
     const { onUrlUpdate, screen } = await renderFilters()
-    const trigger = screen.getByRole('button', { name: 'Languages' })
+    const trigger = screen.getByRole('button', { name: 'Filter by Languages' })
 
     await trigger.click()
-    const search = screen.getByRole('searchbox', { name: 'Search languages' })
+    const search = screen.getByRole('searchbox', { name: 'Search language' })
     await expect.element(search).toHaveFocus()
     await search.fill('中文')
     await screen.getByRole('checkbox', { name: '中文' }).click()
@@ -76,7 +59,7 @@ describe('Marketplace catalog filters', () => {
     await userEvent.keyboard('{Escape}')
     const clear = screen.getByRole('button', { name: 'Clear 中文' })
     await clear.click()
-    await expect.element(screen.getByRole('button', { name: 'Languages' })).toHaveFocus()
+    await expect.element(screen.getByRole('button', { name: 'Filter by Languages' })).toHaveFocus()
     await expect
       .poll(() => onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('languages'))
       .toBe(false)
@@ -84,10 +67,10 @@ describe('Marketplace catalog filters', () => {
 
   it('filters real tag options, preserves multiple selections, and restores focus after clearing', async () => {
     const { onUrlUpdate, screen } = await renderFilters()
-    const trigger = screen.getByRole('button', { name: 'All tags' })
+    const trigger = screen.getByRole('button', { name: 'All Tags' })
 
     await trigger.click()
-    const search = screen.getByRole('searchbox', { name: 'Search tags' })
+    const search = screen.getByRole('searchbox', { name: 'Search Tags' })
     await expect.element(search).toHaveFocus()
     await search.fill('agent')
     await screen.getByRole('checkbox', { name: 'Agent' }).click()
@@ -99,8 +82,8 @@ describe('Marketplace catalog filters', () => {
     await expect.element(screen.getByRole('checkbox', { name: 'Agent' })).toBeChecked()
 
     await userEvent.keyboard('{Escape}')
-    await screen.getByRole('button', { name: 'Clear Agent' }).click()
-    await expect.element(screen.getByRole('button', { name: 'All tags' })).toHaveFocus()
+    await screen.getByRole('button', { name: 'Clear selected tags: Agent' }).click()
+    await expect.element(screen.getByRole('button', { name: 'All Tags' })).toHaveFocus()
     await expect.poll(() => onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('tags')).toBe(false)
   })
 })
