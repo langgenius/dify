@@ -10780,6 +10780,8 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 50 |
+| parentId | query |  | No | string |
+| view | query |  | No | string |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |
 
@@ -15414,6 +15416,8 @@ Set or reset the IM override for a contact. This endpoint is used to override th
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/human-input/v2/im-sync-runs
+**Start or reuse a workspace run using the authenticated Account ID**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15425,7 +15429,7 @@ Set or reset the IM override for a contact. This endpoint is used to override th
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/im-sync-runs/latest
-Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; the response does not include started_by.
+Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; initiator_display_name is resolved from the initiating Account.
 
 #### Responses
 
@@ -27181,6 +27185,7 @@ A trimmed version of `HumanInputContact` that only includes the fields needed fo
 | ---- | ---- | ----------- | -------- |
 | avatar_url | string | URL of the contact's avatar. | No |
 | created_at | integer | Timestamp when the contact was created. | Yes |
+| email | string | Primary contact email if one exists. | No |
 | id | string | Unique contact identifier. | Yes |
 | name | string | Display name shown in the contact directory. | Yes |
 
@@ -27543,8 +27548,8 @@ Stable reconciliation bucket for one synchronized directory entry.
 
 One IM sync run snapshot.
 
-The latest-only UI displays ``finished_at`` as the explicit sync time. The
-transport contract intentionally does not expose a ``started_by`` actor.
+The latest-only UI displays ``finished_at`` as the explicit sync time.
+The initiator display name is resolved from the initiating Dify Account.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -27553,6 +27558,7 @@ transport contract intentionally does not expose a ``started_by`` actor.
 | error_message | string | Terminal error message. Present only when the sync run status is `failed`. | No |
 | finished_at | integer | Unix timestamp in seconds when the sync run finished. This is the sync time displayed by the latest-only UI and is None while the run is unfinished. | No |
 | id | string | Unique sync run identifier. | Yes |
+| initiator_display_name | string | Current initiating Account name; empty for EE administrators or an unavailable Account. | Yes |
 | provider | [IMProvider](#improvider) | IM provider associated with the sync run. | Yes |
 | result_counts | [IMSyncRunResultCounts](#imsyncrunresultcounts) | Aggregate reconciliation counts for the current run snapshot. | Yes |
 | started_at | integer | Unix timestamp in seconds when the sync run started. | No |
@@ -28996,9 +29002,11 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | name | string |  | Yes |
 | page_id | string |  | Yes |
+| parent_id | string |  | No |
 | provider_item_id | string |  | Yes |
 | type | string |  | Yes |
 | workspace_id | string |  | Yes |
@@ -29060,6 +29068,7 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 | documents | [ [KnowledgeFSInitialSourcePreviewDocumentResponse](#knowledgefsinitialsourcepreviewdocumentresponse) ] |  | No |
 | files | [ [KnowledgeFSInitialSourcePreviewFileResponse](#knowledgefsinitialsourcepreviewfileresponse) ] |  | No |
 | kind | string, <br>**Available values:** "online_document", "online_drive", "website_crawl" | *Enum:* `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
+| next_cursor | string |  | No |
 | next_page_parameters | object |  | No |
 | pages | [ [KnowledgeFSInitialSourcePreviewPageResponse](#knowledgefsinitialsourcepreviewpageresponse) ] |  | No |
 
@@ -30273,6 +30282,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
@@ -30285,6 +30295,8 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
 | limit | integer, <br>**Default:** 50 |  | No |
+| parentId | string |  | No |
+| view | string |  | No |
 
 #### KnowledgeFSSourcePagesResponse
 

@@ -49,6 +49,7 @@ from services.app_definition_query_service import (
 from services.app_task_service import AppTaskService
 from services.end_user_connection_execution_adapters import validate_connection_execution
 from services.end_user_connections.errors import ConnectionError, ConnectionIdentityError, ConnectionRequiredError
+from services.human_input_v2.submission_service import HumanInputSubmissionService
 from services.workflow.tool_credentials import requires_end_user_connections
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
@@ -837,6 +838,11 @@ def _resume_advanced_chat(
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            restore_file_access=partial(
+                HumanInputSubmissionService(session_factory=session_factory).grant_submitted_file_access,
+                app_id=app_model.id,
+                workflow_run_id=workflow_run_id,
+            ),
             session=session,
         )
     except Exception:
@@ -904,6 +910,11 @@ def _resume_workflow(
             workflow_node_execution_repository=workflow_node_execution_repository,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            restore_file_access=partial(
+                HumanInputSubmissionService(session_factory=session_factory).grant_submitted_file_access,
+                app_id=app_model.id,
+                workflow_run_id=workflow_run_id,
+            ),
         )
     except Exception:
         logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)
