@@ -134,15 +134,6 @@ class AutoDisableLogsDict(TypedDict):
 
 class DatasetService:
     @staticmethod
-    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
-        if not dify_config.RBAC_ENABLED:
-            return False
-
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
-        workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
-        return "dataset.create_and_management" in workspace_permission_keys
-
-    @staticmethod
     def get_datasets(
         page: int,
         per_page: int,
@@ -157,11 +148,16 @@ class DatasetService:
         *,
         tags: TagTargetQuery,
         service_api_grant: DatasetServiceApiGrant | None = None,
+        for_selection: bool = False,
+        ids: list[str] | None = None,
     ):
         """Return datasets under account or Dataset Service API visibility.
 
         Service API callers skip account ACLs while retaining the tenant boundary.
         A resource-scoped grant further restricts the query to its authorized IDs.
+        Account callers must supply the resolved RBAC resource scope when restricted.
+        This method preserves that scope and pagination without fetching another
+        permission snapshot; include_all does not bypass the RBAC resource filter.
         """
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
@@ -191,44 +187,34 @@ class DatasetService:
                     query = query.where(Dataset.id.in_(permitted_dataset_ids))
                 else:
                     return [], 0
-            else:
-                if dify_config.RBAC_ENABLED:
-                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
-                    should_show_all_datasets = include_all and can_manage_all_datasets
-                else:
-                    should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
-
+            elif not dify_config.RBAC_ENABLED:
+                should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
                 if not should_show_all_datasets:
-                    if dify_config.RBAC_ENABLED:
-                        # RBAC mode: show all datasets.  Permission control is enforced
-                        # via permission_keys on each item and @rbac_permission_required decorators.
-                        pass
+                    # Keep legacy visibility rules when RBAC is disabled.
+                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
+                        query = query.where(
+                            sa.or_(
+                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                sa.and_(
+                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                    Dataset.maintainer == user.id,
+                                ),
+                                sa.and_(
+                                    Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
+                                    Dataset.id.in_(permitted_dataset_ids),
+                                ),
+                            )
+                        )
                     else:
-                        # Keep legacy visibility rules when RBAC is disabled.
-                        if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
-                            query = query.where(
-                                sa.or_(
-                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                    sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
-                                        Dataset.maintainer == user.id,
-                                    ),
-                                    sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
-                                        Dataset.id.in_(permitted_dataset_ids),
-                                    ),
-                                )
+                        query = query.where(
+                            sa.or_(
+                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                sa.and_(
+                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                    Dataset.maintainer == user.id,
+                                ),
                             )
-                        else:
-                            query = query.where(
-                                sa.or_(
-                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                    sa.and_(
-                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
-                                        Dataset.maintainer == user.id,
-                                    ),
-                                )
-                            )
+                        )
         elif service_api_grant is None:
             if dify_config.RBAC_ENABLED:
                 # Without an account we cannot resolve RBAC resource visibility.
@@ -237,9 +223,24 @@ class DatasetService:
                 # if no user, only show datasets that are shared with all team members
                 query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
+        if ids is not None:
+            query = query.where(Dataset.id.in_(ids))
+        if for_selection:
+            query = query.order_by(None).order_by(
+                Dataset.name.collate(
+                    {"sqlite": "BINARY", "postgresql": "C", "mysql": "utf8mb4_bin"}[session.get_bind().dialect.name]
+                ),
+                Dataset.id,
+            )
+
         if search:
             escaped_search = helper.escape_like_pattern(search)
-            query = query.where(Dataset.name.ilike(f"%{escaped_search}%", escape="\\"))
+            name_filter = Dataset.name.ilike(f"%{escaped_search}%", escape="\\")
+            query = query.where(
+                sa.or_(name_filter, sa.cast(Dataset.id, sa.String).ilike(f"%{escaped_search}%", escape="\\"))
+                if for_selection
+                else name_filter
+            )
 
         if creator_ids:
             query = query.where(Dataset.created_by.in_(creator_ids))

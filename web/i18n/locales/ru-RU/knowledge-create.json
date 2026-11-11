@@ -20,7 +20,6 @@
   "selectedFiles": "Выбранные файлы ({{valid}} из {{total}} допустимы)",
   "startWith": "Начните с",
   "startWithHelp": "Вы можете добавить больше источников или документов в любое время.",
-  "uploadCharactersUnavailable": "Символы: —",
   "uploadCompleted": "Добавлено",
   "uploadDocuments": "Загрузить документы",
   "uploadDropZoneTitle": "Перетащите файлы или выберите их",
