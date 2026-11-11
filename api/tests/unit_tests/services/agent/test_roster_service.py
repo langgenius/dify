@@ -1,5 +1,6 @@
 import json
 from contextlib import nullcontext
+from dataclasses import asdict
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call
@@ -8,7 +9,7 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
 from models.account import Account
@@ -43,6 +44,7 @@ from models.model import App, AppMode, AppModelConfig, Conversation, IconType, M
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
+from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository, visible_version_operations
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
@@ -58,6 +60,7 @@ from services.agent.errors import (
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.roster_service import AgentRosterService
+from services.agent.version_store import AgentVersionNotFoundError as StoredVersionNotFoundError
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppListParams, AppService
@@ -4383,8 +4386,9 @@ def test_roster_update_versions_and_detail(monkeypatch: pytest.MonkeyPatch, sqli
         account_id="account-1",
         payload=roster_service.RosterAgentUpdatePayload(description="new"),
     )
-    versions = service.list_agent_versions(tenant_id="tenant-1", agent_id="agent-1")
-    detail = service.get_agent_version_detail(tenant_id="tenant-1", agent_id="agent-1", version_id="version-2")
+    versions_repo = SQLAlchemyAgentVersionRepository(session_factory=sessionmaker(bind=session.get_bind()))
+    versions = [asdict(item) for item in versions_repo.list_versions(tenant_id="tenant-1", agent_id="agent-1")]
+    detail = asdict(versions_repo.get_version(tenant_id="tenant-1", agent_id="agent-1", version_id="version-2"))
 
     assert updated["description"] == "new"
     assert versions[0]["id"] == "version-4"
@@ -4394,13 +4398,13 @@ def test_roster_update_versions_and_detail(monkeypatch: pytest.MonkeyPatch, sqli
     assert versions[1]["id"] == "version-2"
     assert versions[1]["version"] == 1
     assert versions[1]["snapshot_version"] == 2
-    assert versions[0]["created_at"] == int(listed_version_created_at.timestamp())
+    assert versions[0]["created_at"] == int(listed_version_created_at.replace(tzinfo=None).timestamp())
     assert detail["version"] == 1
     assert detail["display_version"] == 1
     assert detail["snapshot_version"] == 2
-    assert detail["config_snapshot"] == {"prompt": {}}
-    assert detail["created_at"] == int(older_listed_version.created_at.timestamp())
-    assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
+    assert AgentSoulConfig.model_validate(detail["config_snapshot"]) == AgentSoulConfig()
+    assert detail["created_at"] == int(older_listed_version.created_at.replace(tzinfo=None).timestamp())
+    assert detail["revisions"][0]["created_at"] == int(revision_created_at.replace(tzinfo=None).timestamp())
 
 
 def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
@@ -4695,8 +4699,8 @@ def test_agent_app_visible_versions_exclude_draft_saves():
     agent_app = Agent(tenant_id="tenant-1", name="Agent", scope=AgentScope.ROSTER, source=AgentSource.AGENT_APP)
     roster_agent = Agent(tenant_id="tenant-1", name="Agent", scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
 
-    agent_app_operations = AgentRosterService._visible_version_operations(agent_app)
-    roster_operations = AgentRosterService._visible_version_operations(roster_agent)
+    agent_app_operations = visible_version_operations(agent_app)
+    roster_operations = visible_version_operations(roster_agent)
 
     assert agent_app_operations == {
         AgentConfigRevisionOperation.PUBLISH_DRAFT,
@@ -4714,7 +4718,6 @@ def test_restore_roster_agent_version_switches_active_snapshot(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
     session = sqlite_session
-    service = AgentRosterService(session)
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -4745,12 +4748,16 @@ def test_restore_roster_agent_version_switches_active_snapshot(
     session.add_all([agent, version, revision])
     session.commit()
 
-    restored = service.restore_agent_version(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        version_id="version-2",
-        account_id="account-1",
+    versions_repo = SQLAlchemyAgentVersionRepository(session_factory=sessionmaker(bind=session.get_bind()))
+    restored = asdict(
+        versions_repo.restore_version(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            version_id="version-2",
+            account_id="account-1",
+        )
     )
+    session.expire_all()
 
     assert restored == {
         "result": "success",
@@ -4776,7 +4783,6 @@ def test_restore_roster_agent_version_rejects_invisible_versions(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
     session = sqlite_session
-    service = AgentRosterService(session)
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -4798,8 +4804,9 @@ def test_restore_roster_agent_version_rejects_invisible_versions(
     session.add_all([agent, version])
     session.commit()
 
-    with pytest.raises(roster_service.AgentVersionNotFoundError):
-        service.restore_agent_version(
+    versions_repo = SQLAlchemyAgentVersionRepository(session_factory=sessionmaker(bind=session.get_bind()))
+    with pytest.raises(StoredVersionNotFoundError):
+        versions_repo.restore_version(
             tenant_id="tenant-1",
             agent_id="agent-1",
             version_id="version-2",
