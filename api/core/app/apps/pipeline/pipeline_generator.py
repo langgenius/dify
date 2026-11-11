@@ -773,7 +773,10 @@ class PipelineGenerator(BaseAppGenerator):
         user: Account | EndUser,
     ) -> list[Mapping[str, Any]]:
         """
-        Format datasource info list.
+        Expand online-drive folders and preserve the credential used for each file.
+
+        Missing credentials retain the existing default-provider behavior. Folder
+        browsing and subsequent downloads use the same selected credential.
         """
         if datasource_type == DatasourceProviderType.ONLINE_DRIVE:
             all_files: list[Mapping[str, Any]] = []
@@ -794,18 +797,19 @@ class PipelineGenerator(BaseAppGenerator):
                 tenant_id=pipeline.tenant_id,
                 datasource_type=DatasourceProviderType(datasource_type),
             )
-            credentials = self._datasource_providers.get_datasource_credentials(
-                tenant_id=pipeline.tenant_id,
-                provider=datasource_node_data.get("provider_name"),
-                plugin_id=datasource_node_data.get("plugin_id"),
-                credential_id=datasource_node_data.get("credential_id"),
-            )
-            if credentials:
-                datasource_runtime.runtime.credentials = credentials
             datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
 
             for datasource_info in datasource_info_list:
+                credential_id = (
+                    datasource_info.get("credential_id") or datasource_node_data.get("credential_id") or None
+                )
                 if datasource_info.get("id") and datasource_info.get("type") == "folder":
+                    datasource_runtime.runtime.credentials = self._datasource_providers.get_datasource_credentials(
+                        tenant_id=pipeline.tenant_id,
+                        provider=datasource_node_data.get("provider_name"),
+                        plugin_id=datasource_node_data.get("plugin_id"),
+                        credential_id=credential_id,
+                    )
                     # get all files in the folder
                     self._get_files_in_folder(
                         datasource_runtime,
@@ -813,7 +817,7 @@ class PipelineGenerator(BaseAppGenerator):
                         datasource_info.get("bucket", None),
                         user.id,
                         all_files,
-                        datasource_info,
+                        {**datasource_info, "credential_id": credential_id},
                         None,
                     )
                 else:
@@ -822,6 +826,7 @@ class PipelineGenerator(BaseAppGenerator):
                             "id": datasource_info.get("id", ""),
                             "name": datasource_info.get("name", "untitled"),
                             "bucket": datasource_info.get("bucket", None),
+                            "credential_id": credential_id,
                         }
                     )
             return all_files
@@ -891,6 +896,7 @@ class PipelineGenerator(BaseAppGenerator):
                                 "id": file.id,
                                 "name": file.name,
                                 "bucket": bucket,
+                                "credential_id": datasource_info.get("credential_id"),
                             }
                         )
                 is_truncated = files.is_truncated
