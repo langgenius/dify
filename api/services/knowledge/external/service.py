@@ -349,7 +349,7 @@ class ExternalDatasetService:
         tenant_id: str,
         dataset_id: str,
         query: str,
-        external_retrieval_parameters: dict[str, Any] | None = None,
+        external_retrieval_parameters: dict[str, Any],
         metadata_condition: MetadataFilteringCondition | None = None,
         *,
         session: Session,
@@ -373,7 +373,7 @@ class ExternalDatasetService:
         tenant_id: str,
         dataset_id: str,
         query: str,
-        external_retrieval_parameters: dict[str, Any] | None = None,
+        external_retrieval_parameters: dict[str, Any],
         metadata_condition: MetadataFilteringCondition | None = None,
         *,
         session: Session,
@@ -407,14 +407,11 @@ class ExternalDatasetService:
         headers = {"Content-Type": "application/json"}
         if settings.get("api_key"):
             headers["Authorization"] = f"Bearer {settings.get('api_key')}"
-        parameters = external_retrieval_parameters or {}
-        score_threshold_enabled = parameters.get("score_threshold_enabled") or False
-        score_threshold = parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
-        if score_threshold is None:
-            score_threshold = 0.0
+        score_threshold_enabled = external_retrieval_parameters.get("score_threshold_enabled") or False
+        score_threshold = external_retrieval_parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
         request_params = {
             "retrieval_setting": {
-                "top_k": parameters.get("top_k") or 2,
+                "top_k": external_retrieval_parameters.get("top_k"),
                 "score_threshold": score_threshold,
             },
             "query": query,
