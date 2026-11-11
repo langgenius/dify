@@ -994,14 +994,19 @@ DOCUMENT_ID = "00000000-0000-0000-0000-00000000000a"
 OTHER_DOCUMENT_ID = "00000000-0000-0000-0000-00000000000b"
 
 
-def _scan_entity(**overrides):
-    values = {
-        "datasource_type": DatasourceProviderType.LOCAL_FILE.value,
-        "datasource_info": {"related_id": UPLOAD_FILE_ID, "name": "report.docx"},
-        "dataset_id": DATASET_ID,
-        "document_id": DOCUMENT_ID,
-    }
-    return SimpleNamespace(**(values | overrides))
+class _ScanEntity:
+    """The fields of a pipeline run entity that the file admission check reads."""
+
+    def __init__(
+        self,
+        *,
+        datasource_type: str = DatasourceProviderType.LOCAL_FILE.value,
+        datasource_info: dict[str, str] | None = None,
+    ) -> None:
+        self.datasource_type = datasource_type
+        self.datasource_info = datasource_info or {"related_id": UPLOAD_FILE_ID, "name": "report.docx"}
+        self.dataset_id = DATASET_ID
+        self.document_id = DOCUMENT_ID
 
 
 def test_scan_local_file_fails_only_its_own_document_when_the_file_is_rejected(generator, sqlite_session: Session):
@@ -1026,9 +1031,7 @@ def test_scan_local_file_fails_only_its_own_document_when_the_file_is_rejected(g
     generator._file_admission.rejection = rejection
 
     with pytest.raises(module.PipelineFileRejectedError, match="Evil.A"):
-        generator._scan_local_file(
-            pipeline=SimpleNamespace(tenant_id=TENANT_ID), application_generate_entity=_scan_entity()
-        )
+        generator._scan_local_file(pipeline=_build_pipeline(), application_generate_entity=_ScanEntity())
 
     assert generator._file_admission.calls == [
         {"tenant_id": TENANT_ID, "dataset_id": DATASET_ID, "upload_file_id": UPLOAD_FILE_ID}
@@ -1043,16 +1046,16 @@ def test_scan_local_file_fails_only_its_own_document_when_the_file_is_rejected(g
 
 
 def test_scan_local_file_lets_allowed_files_and_other_datasources_through(generator):
-    pipeline = SimpleNamespace(tenant_id=TENANT_ID)
+    pipeline = _build_pipeline()
 
-    generator._scan_local_file(pipeline=pipeline, application_generate_entity=_scan_entity())
+    generator._scan_local_file(pipeline=pipeline, application_generate_entity=_ScanEntity())
     assert len(generator._file_admission.calls) == 1
 
     generator._scan_local_file(
         pipeline=pipeline,
-        application_generate_entity=_scan_entity(datasource_type=DatasourceProviderType.WEBSITE_CRAWL.value),
+        application_generate_entity=_ScanEntity(datasource_type=DatasourceProviderType.WEBSITE_CRAWL.value),
     )
     generator._scan_local_file(
-        pipeline=pipeline, application_generate_entity=_scan_entity(datasource_info={"name": "no reference"})
+        pipeline=pipeline, application_generate_entity=_ScanEntity(datasource_info={"name": "no reference"})
     )
     assert len(generator._file_admission.calls) == 1

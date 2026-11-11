@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.file_scan.base import FileScanner, ScannerConfigError, ScannerError
 from core.file_scan.entities import ScanProblem, ScanProviderType, ScanTarget, ScanVerdict
 from extensions.storage.storage_type import StorageType
+from models.dataset import Dataset
 from models.enums import CreatorUserRole
 from models.file_scan import (
     FileScanFallbackAction,
@@ -733,3 +734,18 @@ def test_scan_content_scans_bytes_that_are_not_stored_yet_under_the_scope_policy
         tenant_id=TENANT_ID, scope=other_scope, file_name="a.txt", mime_type="text/plain", content=b"x"
     )
     assert unscoped.status == "disabled"
+
+
+def test_dataset_scope_exists_only_for_a_dataset_of_the_workspace(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    dataset_id = "88888888-8888-4888-8888-888888888888"
+    with sqlite_session_factory.begin() as session:
+        dataset = Dataset(tenant_id=TENANT_ID, name="Docs", created_by=ACCOUNT_ID)
+        dataset.id = dataset_id
+        session.add(dataset)
+    policies = FileScanPolicyService(sqlite_session_factory)
+
+    assert policies.dataset_scope(tenant_id=TENANT_ID, dataset_id=dataset_id) == ScanScope("dataset", dataset_id)
+    assert policies.dataset_scope(tenant_id=OTHER_TENANT_ID, dataset_id=dataset_id) is None
+    assert policies.dataset_scope(tenant_id=TENANT_ID, dataset_id="99999999-9999-4999-8999-999999999999") is None
