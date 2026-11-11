@@ -31,6 +31,7 @@ from services.entities.site_dsl import SiteDsl
 from services.errors.app import DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.workflow.graph_diff import draft_token
+from services.workflow_service import WorkflowService
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 
@@ -992,36 +993,23 @@ def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: py
     assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
 
 
-def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
-    service = AppDslService(session=session)
-    app = SimpleNamespace(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow",
-        description="",
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
+def test_create_or_update_app_forwards_imported_agent_purge_ids(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    apply_config_overrides(monkeypatch, ENABLE_COLLABORATION_MODE=True)
+    service = AppDslService(session=sqlite_session)
+    app = _app(mode=AppMode.WORKFLOW)
+    workflow = make_workflow(
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        graph={"nodes": [], "edges": []},
     )
-    workflow = SimpleNamespace(id="workflow-1")
-    workflow_service = SimpleNamespace(
-        get_draft_workflow=Mock(return_value=None),
-        sync_draft_workflow=Mock(return_value=workflow),
-        align_loro_draft_after_graph_write=Mock(return_value=None),
-    )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
-    monkeypatch.setattr(
-        "services.app_dsl_service.AgentDslService.graph_without_package_bindings",
-        Mock(return_value={"nodes": [], "edges": []}),
-    )
+    sqlite_session.add_all([app, workflow])
+    sqlite_session.commit()
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: WorkflowService(sqlite_session_factory))
     monkeypatch.setattr(
         "services.app_dsl_service.AgentDslService.import_workflow_packages",
         Mock(return_value=(workflow, [], {"retired-agent"})),
-    )
-    monkeypatch.setattr(
-        "services.app_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
-        Mock(),
     )
     retire_unowned = Mock()
     monkeypatch.setattr(
@@ -1030,21 +1018,22 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
     )
 
     service._create_or_update_app(
-        app=cast(App, app),
+        app=app,
         data={
             "app": {"mode": AppMode.WORKFLOW.value},
             "workflow": {"graph": {"nodes": [], "edges": []}},
             "agent_packages": {"package-1": {}},
         },
-        account=Mock(id="account-1"),
+        account=_account(tenant_id=app.tenant_id),
     )
 
     retire_unowned.assert_called_once_with(
-        tenant_id="tenant-1",
+        tenant_id=app.tenant_id,
         agent_ids={"retired-agent"},
         account_id="account-1",
     )
-    workflow_service.align_loro_draft_after_graph_write.assert_called_once_with(workflow, replace=True, session=session)
+    assert workflow.loro_draft_snapshot is not None
+    assert workflow.loro_draft_epoch not in (None, workflow.id)
 
 
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(

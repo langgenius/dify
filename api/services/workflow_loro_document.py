@@ -153,22 +153,34 @@ def project_loro_graph(doc: LoroDoc) -> dict[str, LoroValue]:
 
 
 def merge_loro_update(doc: LoroDoc, update: bytes) -> None:
-    """Apply a native update or reject the whole request when causal dependencies are missing."""
+    """Apply a delta, rejecting malformed bytes and missing causal dependencies.
+
+    Native Loro decoding can raise a bare BaseException. Normalize that error
+    while allowing process-control exceptions to propagate.
+    """
     try:
         if LoroDoc.decode_import_blob_meta(update, True).mode != EncodedBlobMode.Updates:
             raise LoroDraftUpdateError("Expected a Loro delta.")
         status = doc.import_(update)
         if status.pending is not None:
             raise LoroDraftUpdateError("Loro update is missing causal dependencies.")
-    except (ValueError, RuntimeError, TypeError) as error:
+    except BaseException as error:
+        if type(error) is not BaseException and not isinstance(error, (ValueError, RuntimeError, TypeError)):
+            raise
         raise LoroDraftUpdateError(str(error)) from error
 
 
 def export_loro_delta(doc: LoroDoc, from_version: bytes | None) -> bytes | None:
-    """Return what a requester with a confirmed version is missing; None means it is current."""
+    """Return missing committed changes, or None when the requester is current.
+
+    Reject invalid versions, including native decode errors raised as a bare
+    BaseException, without intercepting process-control exceptions.
+    """
     try:
         known = VersionVector.decode(from_version) if from_version is not None else VersionVector()
-    except (ValueError, RuntimeError, TypeError) as error:
+    except BaseException as error:
+        if type(error) is not BaseException and not isinstance(error, (ValueError, RuntimeError, TypeError)):
+            raise
         raise LoroDraftUpdateError("Invalid version vector.") from error
     applied = doc.state_vv
     if not applied.includes_vv(known):

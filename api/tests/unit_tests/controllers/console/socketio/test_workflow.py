@@ -1,24 +1,37 @@
-"""Exercise collaboration metrics through Socket.IO's real lifecycle dispatch."""
+"""Exercise collaboration lifecycle and durable draft synchronization through registered Socket.IO handlers."""
 
 from collections.abc import Callable, Iterator
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 import socketio
 from engineio.socket import Socket
 from flask import Flask
+from loro import ExportMode, LoroDoc, VersionVector
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import Gauge, Histogram, InMemoryMetricReader, Metric, Sum
 from socketio.packet import ACK, CONNECT_ERROR, Packet
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import EnvironBuilder
 
 from controllers.console.socketio import workflow
+from enums import CloudPlan, DeploymentEdition
+from enums.account import TenantAccountRole
 from extensions.ext_redis import RedisClientWrapper
 from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
+from models.account import TenantAccountJoin
+from models.model import App, AppMode
+from models.workflow import Workflow
 from services.errors.billing import BillingUpstreamUnavailableError
 from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError
+from services.workflow_service import WorkflowService
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
+from tests.helpers.unit.services.workflow_collaboration_fixtures import RedisState
+
+type LoroClient = tuple[socketio.Server, App, Workflow, str]
 
 
 @pytest.fixture
@@ -217,3 +230,194 @@ def test_disconnect_type_error_is_not_retried(
     assert calls == [sid]
     if otel_enabled:
         _assert_single_event(_read_metrics(reader), "disconnect", "error")
+
+
+@pytest.fixture
+def loro_client(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> LoroClient:
+    """Provide a joined editor backed by real ORM objects, sessions and Redis repository logic."""
+    config_overrides(ENABLE_COLLABORATION_MODE=True, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
+    server, _, _ = collaboration_server
+    redis_transport[1].side_effect = RedisState().execute
+    tenant = make_tenant(tenant_id=str(uuid4()))
+    account = make_account(account_id=str(uuid4()), tenant=tenant)
+    app = make_app(app_id=str(uuid4()), tenant_id=tenant.id, mode=AppMode.WORKFLOW, maintainer=account.id)
+    draft = make_workflow(
+        app_id=app.id,
+        tenant_id=tenant.id,
+        created_by=account.id,
+        graph={"nodes": [{"id": "llm", "data": {"title": "Before"}}], "edges": []},
+    )
+    membership = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.EDITOR)
+    sqlite_session.add_all([tenant, account, app, draft, membership])
+    sqlite_session.commit()
+    eio_sid = "loro-editor"
+    server.eio.sockets[eio_sid] = Socket(server.eio, eio_sid)
+    sid = server.manager.connect(eio_sid, "/")
+    assert isinstance(sid, str)
+    server.save_session(sid, {"tenant_id": tenant.id, "user_id": account.id})
+    workflow.repository.set_session_info(
+        app.id,
+        {"sid": sid, "user_id": account.id, "username": account.name, "avatar": None, "connected_at": 1},
+    )
+    monkeypatch.setattr(workflow.session_factory, "create_session", sqlite_session_factory)
+    monkeypatch.setattr(workflow, "WorkflowService", lambda: WorkflowService(sqlite_session_factory))
+    return server, app, draft, sid
+
+
+def _seed_loro_client(client: LoroClient) -> tuple[LoroDoc, bytes]:
+    """Fetch the committed baseline through the registered binary synchronization handler."""
+    server, _, draft, sid = client
+    body, status = server.handlers["/"]["loro_draft_sync"](sid, {"epoch": draft.id})
+    assert status == 200
+    assert isinstance(body["update"], bytes)
+    assert isinstance(body["version"], bytes)
+    doc = LoroDoc()
+    doc.import_(body["update"])
+    return doc, body["version"]
+
+
+def test_loro_confirmation_matches_durable_history_and_duplicate_revision(
+    loro_client: LoroClient, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    """An ACK exposes only committed state; a dropped ACK can be retried without another revision."""
+    server, app, draft, sid = loro_client
+    doc, baseline = _seed_loro_client(loro_client)
+    doc.get_map("graph").insert("viewport", {"x": 42, "y": 0, "zoom": 1})
+    payload = {
+        "epoch": draft.id,
+        "version": baseline,
+        "update": doc.export(ExportMode.Updates(VersionVector.decode(baseline))),
+    }
+    first, status = server.handlers["/"]["loro_draft_sync"](sid, payload)
+    assert status == 200
+    with sqlite_session_factory() as session:
+        durable = session.get(Workflow, draft.id)
+        assert durable is not None
+        assert durable.app_id == app.id
+        assert durable.graph_dict["viewport"] == {"x": 42, "y": 0, "zoom": 1}
+        assert first["hash"] == durable.unique_hash
+        assert durable.loro_draft_snapshot is not None
+    duplicate, status = server.handlers["/"]["loro_draft_sync"](sid, payload)
+    assert status == 200
+    assert duplicate == first
+
+
+@pytest.mark.parametrize("kind", ["corrupt-update", "corrupt-version", "snapshot", "string-bytes"])
+def test_loro_rejects_invalid_binary_without_changing_the_draft(
+    loro_client: LoroClient, sqlite_session_factory: sessionmaker[Session], kind: str
+) -> None:
+    """Invalid or non-delta binary input returns 400 and leaves the last committed history intact."""
+    server, _, draft, sid = loro_client
+    doc, baseline = _seed_loro_client(loro_client)
+    payload: dict[str, object] = {"epoch": draft.id, "version": baseline}
+    if kind == "corrupt-update":
+        payload["update"] = b"invalid"
+    elif kind == "corrupt-version":
+        payload["version"] = b"invalid"
+    elif kind == "snapshot":
+        payload["update"] = doc.export(ExportMode.Snapshot())
+    else:
+        payload["update"] = "invalid"
+    assert server.handlers["/"]["loro_draft_sync"](sid, payload) == ({"msg": "invalid_loro_update"}, 400)
+    with sqlite_session_factory() as session:
+        durable = session.get(Workflow, draft.id)
+        assert durable is not None
+        assert durable.graph_dict == draft.graph_dict
+        assert durable.loro_draft_snapshot is not None
+        recovered = LoroDoc()
+        recovered.import_(durable.loro_draft_snapshot)
+        assert recovered.state_vv.encode() == baseline
+
+
+@pytest.mark.parametrize("reason", ["unjoined", "identity-changed", "disabled", "viewer", "wrong-tenant"])
+def test_loro_rechecks_editor_access_before_loading_history(
+    loro_client: LoroClient,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+    reason: str,
+) -> None:
+    """Reconnecting sockets cannot reuse an old membership, identity or collaboration entitlement."""
+    server, app, draft, sid = loro_client
+    if reason == "unjoined":
+        sid = "unjoined-socket"
+    elif reason == "identity-changed":
+        server.save_session(sid, {"tenant_id": app.tenant_id, "user_id": "another-user"})
+    elif reason == "disabled":
+        config_overrides(ENABLE_COLLABORATION_MODE=False)
+    elif reason == "wrong-tenant":
+        server.save_session(sid, {"tenant_id": "another-tenant", "user_id": draft.created_by})
+    else:
+        membership = sqlite_session.scalar(
+            select(TenantAccountJoin).where(TenantAccountJoin.account_id == draft.created_by)
+        )
+        assert membership is not None
+        membership.role = TenantAccountRole.NORMAL
+        sqlite_session.commit()
+    assert server.handlers["/"]["loro_draft_sync"](sid, {"epoch": draft.id}) == ({"msg": "unauthorized"}, 401)
+    sqlite_session.refresh(draft)
+    assert draft.loro_draft_snapshot is None
+
+
+@pytest.mark.parametrize("unavailable", [False, True])
+def test_loro_distinguishes_revoked_entitlement_from_billing_failure(
+    loro_client: LoroClient,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    unavailable: bool,
+) -> None:
+    """A revoked plan returns 403; a temporarily unavailable entitlement service returns 503."""
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    server, _, draft, sid = loro_client
+
+    def plan(_tenant_id: str) -> CloudPlan:
+        if unavailable:
+            raise BillingUpstreamUnavailableError("billing unavailable")
+        return CloudPlan.SANDBOX
+
+    monkeypatch.setattr("services.feature_service.FeatureService.get_workspace_plan", plan)
+    expected = ({"msg": "collaboration_unavailable"}, 503) if unavailable else ({"msg": "not_entitled"}, 403)
+    assert server.handlers["/"]["loro_draft_sync"](sid, {"epoch": draft.id}) == expected
+
+
+def test_loro_rejects_old_epochs_and_reports_a_missing_draft(loro_client: LoroClient, sqlite_session: Session) -> None:
+    """Old queued edits receive an epoch conflict; deleting the draft has a separate 404 outcome."""
+    server, _, draft, sid = loro_client
+    old_epoch = draft.id
+    draft.loro_draft_epoch = str(uuid4())
+    sqlite_session.commit()
+    assert server.handlers["/"]["loro_draft_sync"](sid, {"epoch": old_epoch}) == ({"msg": "epoch_changed"}, 409)
+    sqlite_session.delete(draft)
+    sqlite_session.commit()
+    assert server.handlers["/"]["loro_draft_sync"](sid, {"epoch": old_epoch}) == (
+        {"msg": "draft_workflow_not_exist"},
+        404,
+    )
+
+
+def test_loro_requires_explicit_empty_graph_confirmation(
+    loro_client: LoroClient, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    """An accidental empty graph is rejected until the client explicitly confirms clearing it."""
+    server, _, draft, sid = loro_client
+    doc, baseline = _seed_loro_client(loro_client)
+    doc.get_map("nodes").delete("llm")
+    doc.commit()
+    payload = {
+        "epoch": draft.id,
+        "version": baseline,
+        "update": doc.export(ExportMode.Updates(VersionVector.decode(baseline))),
+    }
+    assert server.handlers["/"]["loro_draft_sync"](sid, payload) == ({"msg": "empty_graph_confirmation_required"}, 409)
+    _, status = server.handlers["/"]["loro_draft_sync"](sid, {**payload, "allow_empty": True})
+    assert status == 200
+    with sqlite_session_factory() as session:
+        durable = session.get(Workflow, draft.id)
+        assert durable is not None
+        assert durable.graph_dict == {"nodes": [], "edges": []}
