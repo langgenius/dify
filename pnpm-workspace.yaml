@@ -50,6 +50,8 @@ overrides:
   # Upgrade public matcher APIs; glob 13 still needs RegExp internals until its v14 upgrade.
   '@eslint/config-array>minimatch': 11.0.7
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
+  # Keep Streamdown's math renderer aligned with the application's KaTeX stylesheet.
+  '@streamdown/math@1.0.3>katex': 0.19.1
   '@tsslint/cli>minimatch': 11.0.7
   '@tsslint/config>minimatch': 11.0.7
   '@tsslint/core>minimatch': 11.0.7
@@ -69,6 +71,7 @@ overrides:
   micromark-extension-math>katex: 0.18.10
   picomatch@>=4.0.0 <4.0.4: 4.0.7
   postcss@<8.5.10: ^8.5.10
+  'rehype-katex@7.0.1>katex': 0.19.1
   rollup@>=4.0.0 <4.59.0: 4.63.5
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   side-channel: npm:@nolyfill/side-channel@^1.0.44
@@ -229,7 +232,7 @@ catalog:
   js-yaml: 5.5.0
   jsonc-eslint-parser: 3.3.0
   jsonschema: 1.5.0
-  katex: 0.18.10
+  katex: 0.19.1
   knip: 6.45.0
   ky: 2.2.0
   lexical: 0.47.0

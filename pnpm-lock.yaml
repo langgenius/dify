@@ -600,8 +600,8 @@ catalogs:
       specifier: 1.5.0
       version: 1.5.0
     katex:
-      specifier: 0.18.10
-      version: 0.18.10
+      specifier: 0.19.1
+      version: 0.19.1
     knip:
       specifier: 6.45.0
       version: 6.45.0
@@ -800,6 +800,7 @@ overrides:
   '@babel/core@<=7.29.0': ^7.29.1
   '@eslint/config-array>minimatch': 11.0.7
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
+  '@streamdown/math@1.0.3>katex': 0.19.1
   '@tsslint/cli>minimatch': 11.0.7
   '@tsslint/config>minimatch': 11.0.7
   '@tsslint/core>minimatch': 11.0.7
@@ -816,6 +817,7 @@ overrides:
   micromark-extension-math>katex: 0.18.10
   picomatch@>=4.0.0 <4.0.4: 4.0.7
   postcss@<8.5.10: ^8.5.10
+  rehype-katex@7.0.1>katex: 0.19.1
   rollup@>=4.0.0 <4.59.0: 4.63.5
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   side-channel: npm:@nolyfill/side-channel@^1.0.44
@@ -1699,7 +1701,7 @@ importers:
         version: 1.5.0
       katex:
         specifier: 'catalog:'
-        version: 0.18.10
+        version: 0.19.1
       ky:
         specifier: 'catalog:'
         version: 2.2.0
@@ -5996,10 +5998,6 @@ packages:
     resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
     engines: {node: '>=22.12.0'}
 
-  commander@8.3.0:
-    resolution: {integrity: sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==}
-    engines: {node: '>= 12'}
-
   comment-parser@1.4.9:
     resolution: {integrity: sha512-+2AvZKjJaNq9GQljm3tr0utwrig5BL+jgJGvz5rDpGKNIp+ojcRXWUwBbh/sGIi1QCprR6PsKFakub+w1v+4hQ==}
     engines: {node: '>= 12.0.0'}
@@ -7152,12 +7150,12 @@ packages:
   jsonschema@1.5.0:
     resolution: {integrity: sha512-K+A9hhqbn0f3pJX17Q/7H6yQfD/5OXgdrR5UE12gMXCiN9D5Xq2o5mddV2QEcX/bjla99ASsAAQUyMCCRWAEhw==}
 
-  katex@0.16.47:
-    resolution: {integrity: sha512-Eeo8Ys1doU1z+x8AZsPpQu+p/QcZBI5PeOo7QGQdy2x2m0MU/hYagBbGOmXwr5KVbEfVuWv9LpnQWeehogurjg==}
-    hasBin: true
-
   katex@0.18.10:
     resolution: {integrity: sha512-/B6p9eY9DX7aHBfpkHdpirDTZ5QH9xTwL9y837PWuzuv41O5jFdqNQwVQEQsimY0/iVNkwBY4+4hMfhQ7d4Dbw==}
+    hasBin: true
+
+  katex@0.19.1:
+    resolution: {integrity: sha512-jG8uKntjSEcm2EpQOh0XturpPuuC9r3Sq5HLHdsFdWZT27E672SF19QEi+of0/YeOy15lDgRhKvr5614uRrEfA==}
     hasBin: true
 
   keyv@5.6.0:
@@ -11401,7 +11399,7 @@ snapshots:
 
   '@streamdown/math@1.0.3(react@19.3.1)(supports-color@11.0.0)':
     dependencies:
-      katex: 0.16.47
+      katex: 0.19.1
       react: 19.3.1
       rehype-katex: 7.0.1
       remark-math: 6.0.0(supports-color@11.0.0)
@@ -12792,8 +12790,6 @@ snapshots:
 
   commander@15.0.0: {}
 
-  commander@8.3.0: {}
-
   comment-parser@1.4.9: {}
 
   compare-versions@6.1.1: {}
@@ -14014,11 +14010,11 @@ snapshots:
 
   jsonschema@1.5.0: {}
 
-  katex@0.16.47:
-    dependencies:
-      commander: 8.3.0
-
   katex@0.18.10:
+    dependencies:
+      commander: 15.0.0
+
+  katex@0.19.1:
     dependencies:
       commander: 15.0.0
 
@@ -15440,7 +15436,7 @@ snapshots:
       '@types/katex': 0.16.8
       hast-util-from-html-isomorphic: 2.0.0
       hast-util-to-text: 4.0.2
-      katex: 0.16.47
+      katex: 0.19.1
       unist-util-visit-parents: 6.1.0
       vfile: 6.0.3
 
@@ -16756,7 +16752,7 @@ time:
   js-yaml@5.5.0: '2026-10-15T23:28:37.500Z'
   jsonc-eslint-parser@3.3.0: '2026-08-08T01:15:58.520Z'
   jsonschema@1.5.0: '2025-01-07T15:09:11.287Z'
-  katex@0.18.10: '2026-09-30T17:11:04.346Z'
+  katex@0.19.1: '2026-10-23T20:41:36.255Z'
   knip@6.45.0: '2026-11-10T14:16:56.251Z'
   ky@2.2.0: '2026-10-09T06:32:47.556Z'
   lexical-code-no-prism@0.41.0: '2026-03-08T16:50:40.266Z'
