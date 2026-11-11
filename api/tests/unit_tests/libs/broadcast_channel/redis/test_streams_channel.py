@@ -1,12 +1,10 @@
 import abc
 import threading
 import time
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, override
+from typing import Any, cast
 
 import pytest
-from redis import Redis
 
 from libs.broadcast_channel import channel as broadcast_channel
 from libs.broadcast_channel.exc import SubscriptionClosedError
@@ -18,7 +16,7 @@ from libs.broadcast_channel.redis.streams_channel import (
 from libs.broadcast_channel.signals import SIG_CLOSE
 
 
-class FakeStreamsRedis(Redis):
+class FakeStreamsRedis:
     """Minimal in-memory Redis Streams stub for unit tests.
 
     - Stores entries per key as [(id, {b"data": bytes}), ...]
@@ -28,7 +26,7 @@ class FakeStreamsRedis(Redis):
     """
 
     def __init__(self) -> None:
-        self._store: dict[str, list[tuple[str, dict[str, object]]]] = {}
+        self._store: dict[str, list[tuple[str, dict]]] = {}
         self._next_id: dict[str, int] = {}
         self._expire_calls: dict[str, int] = {}
         self._dollar_snapshots: dict[str, int] = {}
@@ -50,7 +48,7 @@ class FakeStreamsRedis(Redis):
     def expire(self, key: str, seconds: int) -> None:
         self._expire_calls[key] = self._expire_calls.get(key, 0) + 1
 
-    def xrevrange(self, key: str, count: int | None = None) -> list[tuple[str, dict[str, object]]]:
+    def xrevrange(self, key: str, count: int | None = None):
         self._xrevrange_calls += 1
         entries = list(reversed(self._store.get(key, [])))
         if count is not None:
@@ -58,9 +56,7 @@ class FakeStreamsRedis(Redis):
         return entries
 
     # Consumer API
-    def xread(
-        self, streams: dict[str, str], block: int | None = None, count: int | None = None
-    ) -> list[tuple[str, list[tuple[str, dict[str, object]]]]]:
+    def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         self._xread_calls += 1
         # Expect a single key
         assert len(streams) == 1
@@ -88,26 +84,24 @@ class FakeStreamsRedis(Redis):
 
 
 class FailExpireRedis(FakeStreamsRedis):
-    @override
     def expire(self, key: str, seconds: int) -> None:
         raise RuntimeError("expire failed")
 
 
 class FailXrevrangeRedis(FakeStreamsRedis):
-    @override
-    def xrevrange(self, key: str, count: int | None = None) -> list[tuple[str, dict[str, object]]]:
+    def xrevrange(self, key: str, count: int | None = None):
         raise RuntimeError("xrevrange failed")
 
 
-class BlockingRedis(Redis):
+class BlockingRedis:
     """A Redis mock whose xread blocks until a control event is xadd-ed."""
 
     def __init__(self) -> None:
         self._release = threading.Event()
-        self._store: dict[str, list[tuple[str, dict[str, object]]]] = {}
+        self._store: dict[str, list[tuple[str, dict]]] = {}
         self._next_id: dict[str, int] = {}
 
-    def xadd(self, key: str, fields: dict[str, object], *, maxlen: int | None = None) -> str:
+    def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
         n = self._next_id.get(key, 0) + 1
         self._next_id[key] = n
         entry_id = f"{n}-0"
@@ -115,9 +109,7 @@ class BlockingRedis(Redis):
         self._release.set()  # Wake up any blocked xread
         return entry_id
 
-    def xread(
-        self, streams: dict[str, str], block: int | None = None, count: int | None = None
-    ) -> list[tuple[str, list[tuple[str, dict[str, object]]]]]:
+    def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         self._release.wait(timeout=block / 1000.0 if block else None)
         key = next(iter(streams))
         entries = self._store.get(key, [])
@@ -126,7 +118,7 @@ class BlockingRedis(Redis):
             return [(key, entries)]
         return []
 
-    def xrevrange(self, key: str, count: int | None = None) -> list[tuple[str, dict[str, object]]]:
+    def xrevrange(self, key: str, count: int | None = None):
         entries = list(reversed(self._store.get(key, [])))
         if count is not None:
             entries = entries[:count]
@@ -168,10 +160,6 @@ def build_listen_payload_cases() -> list[ListenPayloadCase]:
     ]
 
 
-def _case_name(case: ListenPayloadCase) -> str:
-    return case.name
-
-
 @pytest.fixture
 def fake_redis() -> FakeStreamsRedis:
     return FakeStreamsRedis()
@@ -182,7 +170,7 @@ def streams_channel(fake_redis: FakeStreamsRedis) -> StreamsBroadcastChannel:
     return StreamsBroadcastChannel(fake_redis, retention_seconds=60)
 
 
-def test_prepared_subscription_capability_is_an_abstract_base_class() -> None:
+def test_prepared_subscription_capability_is_an_abstract_base_class():
     capability = broadcast_channel.SupportsPreparedSubscription
 
     assert issubclass(capability, abc.ABC)
@@ -191,7 +179,7 @@ def test_prepared_subscription_capability_is_an_abstract_base_class() -> None:
 
 
 class TestStreamsBroadcastChannel:
-    def test_topic_creation(self, streams_channel: StreamsBroadcastChannel, fake_redis: FakeStreamsRedis) -> None:
+    def test_topic_creation(self, streams_channel: StreamsBroadcastChannel, fake_redis: FakeStreamsRedis):
         topic = streams_channel.topic("alpha")
         assert isinstance(topic, StreamsTopic)
         assert topic._client is fake_redis
@@ -202,7 +190,7 @@ class TestStreamsBroadcastChannel:
         self,
         streams_channel: StreamsBroadcastChannel,
         fake_redis: FakeStreamsRedis,
-    ) -> None:
+    ):
         topic = streams_channel.topic("beta")
         payload = b"hello"
         topic.publish(payload)
@@ -211,18 +199,14 @@ class TestStreamsBroadcastChannel:
         # Expire called after publish
         assert fake_redis._expire_calls.get("stream:beta", 0) >= 1
 
-    def test_topic_uses_prefixed_stream_key(
-        self, fake_redis: FakeStreamsRedis, config_overrides: Callable[..., None]
-    ) -> None:
+    def test_topic_uses_prefixed_stream_key(self, fake_redis: FakeStreamsRedis, config_overrides):
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         topic = StreamsBroadcastChannel(fake_redis, retention_seconds=60).topic("alpha")
 
         assert topic._topic == "alpha"
         assert topic._key == "enterprise-a:stream:alpha"
 
-    def test_publish_uses_prefixed_stream_key(
-        self, fake_redis: FakeStreamsRedis, config_overrides: Callable[..., None]
-    ) -> None:
+    def test_publish_uses_prefixed_stream_key(self, fake_redis: FakeStreamsRedis, config_overrides):
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         topic = StreamsBroadcastChannel(fake_redis, retention_seconds=60).topic("beta")
         topic.publish(b"hello")
@@ -230,7 +214,7 @@ class TestStreamsBroadcastChannel:
         assert fake_redis._store["enterprise-a:stream:beta"][0][1] == {b"data": b"hello"}
         assert fake_redis._expire_calls.get("enterprise-a:stream:beta", 0) >= 1
 
-    def test_topic_exposes_producer_and_subscriber_views(self, streams_channel: StreamsBroadcastChannel) -> None:
+    def test_topic_exposes_producer_and_subscriber_views(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("producer-subscriber")
         subscriber = topic.as_subscriber()
 
@@ -239,12 +223,12 @@ class TestStreamsBroadcastChannel:
         assert not isinstance(topic, broadcast_channel.SupportsPreparedSubscription)
         assert isinstance(subscriber, broadcast_channel.SupportsPreparedSubscription)
 
-    def test_topic_explicitly_supports_prepared_subscriptions(self, streams_channel: StreamsBroadcastChannel) -> None:
+    def test_topic_explicitly_supports_prepared_subscriptions(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("prepared-capability")
 
         assert isinstance(topic.as_subscriber(), broadcast_channel.SupportsPreparedSubscription)
 
-    def test_publish_logs_warning_when_expire_fails(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_publish_logs_warning_when_expire_fails(self, caplog: pytest.LogCaptureFixture):
         channel = StreamsBroadcastChannel(FailExpireRedis(), retention_seconds=60)
         topic = channel.topic("expire-warning")
 
@@ -257,7 +241,7 @@ class TestStreamsSubscription:
     def test_subscribe_only_receives_messages_published_after_subscription_starts(
         self,
         streams_channel: StreamsBroadcastChannel,
-    ) -> None:
+    ):
         topic = streams_channel.topic("gamma")
         topic.publish(b"before-subscribe")
 
@@ -278,13 +262,11 @@ class TestStreamsSubscription:
 
         assert received == [b"after-subscribe-1", b"after-subscribe-2"]
 
-    def test_subscribe_starts_xread_at_latest_id_without_resolving_boundary(self) -> None:
-        start_ids: list[object] = []
+    def test_subscribe_starts_xread_at_latest_id_without_resolving_boundary(self):
+        start_ids: list[Any] = []
 
-        class OneReadRedis(Redis):
-            def xread(
-                self, streams: dict[str, str], block: int | None = None, count: int | None = None
-            ) -> list[tuple[str, list[tuple[str, dict[str, object]]]]]:
+        class OneReadRedis:
+            def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
                 start_ids.extend(streams.values())
                 subscription._closed = True
                 return []
@@ -298,7 +280,7 @@ class TestStreamsSubscription:
         self,
         streams_channel: StreamsBroadcastChannel,
         fake_redis: FakeStreamsRedis,
-    ) -> None:
+    ):
         topic = streams_channel.topic("prepared-boundary")
         topic.publish(b"before-prepare")
         subscriber = topic.as_subscriber()
@@ -316,7 +298,7 @@ class TestStreamsSubscription:
         self,
         streams_channel: StreamsBroadcastChannel,
         fake_redis: FakeStreamsRedis,
-    ) -> None:
+    ):
         topic = streams_channel.topic("prepared-ordering")
         topic.publish(b"before-prepare")
         subscriber = topic.as_subscriber()
@@ -340,7 +322,7 @@ class TestStreamsSubscription:
         self,
         streams_channel: StreamsBroadcastChannel,
         fake_redis: FakeStreamsRedis,
-    ) -> None:
+    ):
         topic = streams_channel.topic("prepared-empty")
         subscriber = topic.as_subscriber()
         assert isinstance(subscriber, broadcast_channel.SupportsPreparedSubscription)
@@ -355,7 +337,7 @@ class TestStreamsSubscription:
 
         assert fake_redis._xrevrange_calls == 1
 
-    def test_prepare_subscription_propagates_boundary_resolution_error(self) -> None:
+    def test_prepare_subscription_propagates_boundary_resolution_error(self):
         channel = StreamsBroadcastChannel(FailXrevrangeRedis(), retention_seconds=60)
         topic = channel.topic("broken-checkpoint")
         subscriber = topic.as_subscriber()
@@ -367,7 +349,7 @@ class TestStreamsSubscription:
     def test_prepared_subscription_receives_messages_published_right_after_entering(
         self,
         streams_channel: StreamsBroadcastChannel,
-    ) -> None:
+    ):
         """Regression test for the `workflow_started`-drop race (dify#40948).
 
         A prepared subscription fixes the delivery boundary before the background task can
@@ -392,7 +374,7 @@ class TestStreamsSubscription:
     def test_subscribe_does_not_replay_messages_published_before_it_started(
         self,
         streams_channel: StreamsBroadcastChannel,
-    ) -> None:
+    ):
         """`subscribe` preserves the "no stale replay" fix from #34030/#34040."""
         topic = streams_channel.topic("no-replay-topic")
         topic.publish(b"stale-event")
@@ -410,14 +392,14 @@ class TestStreamsSubscription:
 
         assert received == [b"fresh-event"]
 
-    def test_receive_timeout_returns_none(self, streams_channel: StreamsBroadcastChannel) -> None:
+    def test_receive_timeout_returns_none(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("delta")
         sub = topic.subscribe()
         with sub:
             # No messages yet
             assert sub.receive(timeout=0.05) is None
 
-    def test_close_stops_listener(self, streams_channel: StreamsBroadcastChannel) -> None:
+    def test_close_stops_listener(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("epsilon")
         sub = topic.subscribe()
         with sub:
@@ -427,7 +409,7 @@ class TestStreamsSubscription:
             with pytest.raises(SubscriptionClosedError):
                 sub.receive()
 
-    def test_no_expire_when_zero_retention(self, fake_redis: FakeStreamsRedis) -> None:
+    def test_no_expire_when_zero_retention(self, fake_redis: FakeStreamsRedis):
         channel = StreamsBroadcastChannel(fake_redis, retention_seconds=0)
         topic = channel.topic("zeta")
         topic.publish(b"payload")
@@ -437,19 +419,15 @@ class TestStreamsSubscription:
     @pytest.mark.parametrize(
         ("case"),
         build_listen_payload_cases(),
-        ids=_case_name,
+        ids=lambda case: cast(ListenPayloadCase, case).name,
     )
-    def test_listener_normalizes_supported_payloads_and_ignores_unsupported_shapes(
-        self, case: ListenPayloadCase
-    ) -> None:
-        class OneShotRedis(Redis):
+    def test_listener_normalizes_supported_payloads_and_ignores_unsupported_shapes(self, case: ListenPayloadCase):
+        class OneShotRedis:
             def __init__(self, fields: object) -> None:
                 self._fields = fields
                 self._calls = 0
 
-            def xread(
-                self, streams: dict[str, str], block: int | None = None, count: int | None = None
-            ) -> list[tuple[str, list[tuple[str, object]]]]:
+            def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
                 self._calls += 1
                 if self._calls == 1:
                     key = next(iter(streams))
@@ -466,18 +444,16 @@ class TestStreamsSubscription:
             item = subscription._queue.get_nowait()
             if item is subscription._SENTINEL:
                 break
-            received.append(item)
+            received.append(bytes(item))
 
         assert received == case.expected_messages
 
-    def test_listener_ignores_close_signal_from_another_subscription(self) -> None:
-        class OneShotRedis(Redis):
+    def test_listener_ignores_close_signal_from_another_subscription(self):
+        class OneShotRedis:
             def __init__(self) -> None:
                 self._calls = 0
 
-            def xread(
-                self, streams: dict[str, str], block: int | None = None, count: int | None = None
-            ) -> list[tuple[str, list[tuple[str, object]]]]:
+            def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
                 self._calls += 1
                 if self._calls == 1:
                     key = next(iter(streams))
@@ -501,9 +477,7 @@ class TestStreamsSubscription:
         assert subscription._queue.get_nowait() is subscription._SENTINEL
         assert subscription._queue.empty()
 
-    def test_iterator_yields_messages_until_subscription_is_closed(
-        self, streams_channel: StreamsBroadcastChannel
-    ) -> None:
+    def test_iterator_yields_messages_until_subscription_is_closed(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("iter")
         subscription = topic.subscribe()
         iterator = iter(subscription)
@@ -522,9 +496,7 @@ class TestStreamsSubscription:
         with pytest.raises(StopIteration):
             next(iterator)
 
-    def test_receive_with_none_timeout_blocks_until_message_arrives(
-        self, streams_channel: StreamsBroadcastChannel
-    ) -> None:
+    def test_receive_with_none_timeout_blocks_until_message_arrives(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("blocking")
         subscription = topic.subscribe()
 
@@ -541,7 +513,7 @@ class TestStreamsSubscription:
             subscription.close()
             publisher.join(timeout=1)
 
-    def test_receive_raises_when_queue_contains_close_sentinel(self) -> None:
+    def test_receive_raises_when_queue_contains_close_sentinel(self):
         subscription = _StreamsSubscription(FakeStreamsRedis(), "stream:sentinel")
         subscription._listener = threading.current_thread()
         subscription._queue.put_nowait(subscription._SENTINEL)
@@ -549,7 +521,7 @@ class TestStreamsSubscription:
         with pytest.raises(SubscriptionClosedError):
             subscription.receive(timeout=0.01)
 
-    def test_close_before_listener_starts_is_a_noop(self) -> None:
+    def test_close_before_listener_starts_is_a_noop(self):
         subscription = _StreamsSubscription(FakeStreamsRedis(), "stream:not-started")
 
         subscription.close()
@@ -558,7 +530,7 @@ class TestStreamsSubscription:
         with pytest.raises(SubscriptionClosedError):
             subscription.receive(timeout=0.01)
 
-    def test_start_if_needed_returns_immediately_for_closed_subscription(self) -> None:
+    def test_start_if_needed_returns_immediately_for_closed_subscription(self):
         subscription = _StreamsSubscription(FakeStreamsRedis(), "stream:already-closed")
         subscription._closed = True
 
@@ -566,7 +538,7 @@ class TestStreamsSubscription:
 
         assert subscription._listener is None
 
-    def test_iterator_skips_none_results_and_keeps_polling(self) -> None:
+    def test_iterator_skips_none_results_and_keeps_polling(self):
         subscription = _StreamsSubscription(FakeStreamsRedis(), "stream:iterator-none")
         items = iter([None, b"event"])
 
@@ -582,7 +554,7 @@ class TestStreamsSubscription:
 
         assert next(iter(subscription)) == b"event"
 
-    def test_control_event_unblocks_listener_for_prompt_close(self) -> None:
+    def test_control_event_unblocks_listener_for_prompt_close(self):
         """close() returns promptly because the control event (xadd) unblocks
         the listener from its blocking xread call.
         """
@@ -603,7 +575,7 @@ class TestStreamsSubscription:
         # should return well under 1s (the xread BLOCK timeout).
         assert elapsed < 0.5, f"close() took {elapsed:.3f}s; expected prompt return via control event"
 
-    def test_control_event_not_sent_when_listener_not_started(self) -> None:
+    def test_control_event_not_sent_when_listener_not_started(self):
         """close() should not fail when the listener was never started."""
         subscription = _StreamsSubscription(FakeStreamsRedis(), "stream:no-listener")
         subscription.close()
